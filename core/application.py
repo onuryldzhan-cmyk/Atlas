@@ -302,8 +302,11 @@ class AtlasApplication:
             # Execution subsystem
             # -------------------------------------------------
 
-            self.execution.start()
-            self.started_services.append("execution")
+            self._start_service(
+                name="execution",
+                service=self.execution,
+                required=True,
+            )
 
             # -------------------------------------------------
             # Exchange connection
@@ -311,16 +314,20 @@ class AtlasApplication:
 
             self.runtime.connect()
 
-            self.market_feed.start()
-            self.started_services.append("market_feed")
+            self._start_service(
+                name="market_feed",
+                service=self.market_feed,
+                required=True,
+            )
 
             # -------------------------------------------------
             # Intelligence
             # -------------------------------------------------
 
-            self._start_optional_service(
+            self._start_service(
                 name="brain",
                 service=self.brain,
+                required=True,
             )
 
             # -------------------------------------------------
@@ -333,15 +340,21 @@ class AtlasApplication:
             # Market loop
             # -------------------------------------------------
 
-            self.market_loop.start()
-            self.started_services.append("market_loop")
+            self._start_service(
+                name="market_loop",
+                service=self.market_loop,
+                required=True,
+            )
 
             # -------------------------------------------------
             # Controller
             # -------------------------------------------------
 
-            self.controller.start()
-            self.started_services.append("controller")
+            self._start_service(
+                name="controller",
+                service=self.controller,
+                required=True,
+            )
 
             self.runtime.start()
             self.running = True
@@ -379,18 +392,39 @@ class AtlasApplication:
             return False
 
     # =========================================================
-    # OPTIONAL SERVICE START
+    # SERVICE START
     # =========================================================
 
-    def _start_optional_service(
+    def _start_service(
         self,
         *,
         name: str,
         service: Any,
-    ) -> None:
+        required: bool = True,
+    ) -> bool:
         """
-        Start a service only when it exposes a callable start method.
+        Start one application service and validate its result.
+
+        Supported successful return contracts:
+        - None for legacy void start methods
+        - True for boolean lifecycle methods
+        - dictionaries that do not report an error or failure state
+
+        A service is added to started_services only after its startup
+        result has been validated successfully.
         """
+
+        if service is None:
+            if required:
+                raise RuntimeError(
+                    f"Required service is unavailable: {name}"
+                )
+
+            logger.info(
+                "Optional service unavailable: %s",
+                name,
+            )
+            return False
 
         start_method = getattr(
             service,
@@ -398,10 +432,116 @@ class AtlasApplication:
             None,
         )
 
-        if callable(start_method):
-            start_method()
+        if not callable(start_method):
+            if required:
+                raise RuntimeError(
+                    f"Required service has no start method: {name}"
+                )
 
-        self.started_services.append(name)
+            logger.info(
+                "Optional service has no start method: %s",
+                name,
+            )
+            return False
+
+        try:
+            result = start_method()
+            self._validate_start_result(
+                name=name,
+                result=result,
+            )
+        except Exception:
+            try:
+                self._stop_service(
+                    name=name,
+                    service=service,
+                )
+            except Exception:
+                logger.exception(
+                    "Failed service cleanup also failed: %s",
+                    name,
+                )
+
+            raise
+
+        self.started_services.append(
+            name
+        )
+
+        logger.info(
+            "Service started: %s",
+            name,
+        )
+
+        return True
+
+    @staticmethod
+    def _validate_start_result(
+        *,
+        name: str,
+        result: Any,
+    ) -> None:
+        """
+        Normalize heterogeneous service start return contracts.
+        """
+
+        if result is None:
+            return
+
+        if isinstance(
+            result,
+            bool,
+        ):
+            if not result:
+                raise RuntimeError(
+                    f"Service startup returned False: {name}"
+                )
+
+            return
+
+        if isinstance(
+            result,
+            dict,
+        ):
+            status = str(
+                result.get(
+                    "status",
+                    "",
+                )
+            ).strip().upper()
+
+            failure_statuses = {
+                "ERROR",
+                "FAIL",
+                "FAILED",
+                "FAILURE",
+                "REJECTED",
+            }
+
+            if status in failure_statuses:
+                raise RuntimeError(
+                    f"Service startup failed: {name}; "
+                    f"status={status}"
+                )
+
+            if result.get(
+                "success"
+            ) is False:
+                raise RuntimeError(
+                    f"Service startup reported success=False: {name}"
+                )
+
+            if (
+                "running" in result
+                and result.get("running") is False
+                and status not in {
+                    "SKIPPED",
+                    "DISABLED",
+                }
+            ):
+                raise RuntimeError(
+                    f"Service startup did not enter running state: {name}"
+                )
 
     # =========================================================
     # STARTUP ROLLBACK
@@ -448,15 +588,29 @@ class AtlasApplication:
                 error=exc,
             )
 
-        shutdown_order = (
-            ("controller", self.controller),
-            ("market_loop", self.market_loop),
-            ("execution", self.execution),
-            ("market_feed", self.market_feed),
-            ("scheduler", self.scheduler),
+        service_map = {
+            "execution": self.execution,
+            "market_feed": self.market_feed,
+            "brain": self.brain,
+            "market_loop": self.market_loop,
+            "controller": self.controller,
+            "scheduler": self.scheduler,
+        }
+
+        shutdown_names = list(
+            reversed(
+                self.started_services
+            )
         )
 
-        for name, service in shutdown_order:
+        for name in shutdown_names:
+            service = service_map.get(
+                name
+            )
+
+            if service is None:
+                continue
+
             try:
                 self._stop_service(
                     name=name,
