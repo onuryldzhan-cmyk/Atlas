@@ -307,14 +307,23 @@ class BinancePublicDataProvider(
         """
 
         with self._lock:
-            if self._closed:
-                raise MarketDataConnectionError(
-                    "Binance public provider has already "
-                    "been permanently closed."
-                )
-
             if self._connected:
                 return True
+
+            if self._closed:
+                if not self._owns_session:
+                    raise MarketDataConnectionError(
+                        "Injected Binance public provider session "
+                        "has already been closed."
+                    )
+
+                self._session = requests.Session()
+                self._closed = False
+
+                logger.info(
+                    "%s HTTP session recreated for restart.",
+                    self.PROVIDER_NAME,
+                )
 
         try:
             self.get_price(
