@@ -1,4 +1,4 @@
-﻿"""
+"""
 ATLAS EXCHANGE MANAGER v2.2
 
 Lifecycle-safe and fail-closed exchange facade.
@@ -41,7 +41,7 @@ _ALLOWED_ORDER_SIDES = {
 
 
 class ExchangeManager:
-    VERSION = "2.2"
+    VERSION = "2.3"
 
     def __init__(
         self,
@@ -285,11 +285,89 @@ class ExchangeManager:
 
             return rejection
 
-        result = self.exchange.place_order(
-            normalized_symbol,
-            normalized_side,
-            normalized_quantity,
-        )
+        try:
+            result = self.exchange.place_order(
+                normalized_symbol,
+                normalized_side,
+                normalized_quantity,
+            )
+        except TimeoutError as exc:
+            logger.exception(
+                "Exchange timeout during order submission: "
+                "symbol=%s side=%s quantity=%s",
+                normalized_symbol,
+                normalized_side,
+                normalized_quantity,
+            )
+
+            return {
+                "status": "ERROR",
+                "allowed": False,
+                "reason": "EXCHANGE_TIMEOUT",
+                "symbol": normalized_symbol,
+                "side": normalized_side,
+                "quantity": normalized_quantity,
+                "error_type": type(exc).__name__,
+            }
+        except ConnectionError as exc:
+            logger.exception(
+                "Exchange connection error during order submission: "
+                "symbol=%s side=%s quantity=%s",
+                normalized_symbol,
+                normalized_side,
+                normalized_quantity,
+            )
+
+            return {
+                "status": "ERROR",
+                "allowed": False,
+                "reason": "EXCHANGE_CONNECTION_ERROR",
+                "symbol": normalized_symbol,
+                "side": normalized_side,
+                "quantity": normalized_quantity,
+                "error_type": type(exc).__name__,
+            }
+        except Exception as exc:
+            logger.exception(
+                "Unexpected exchange adapter failure: "
+                "symbol=%s side=%s quantity=%s",
+                normalized_symbol,
+                normalized_side,
+                normalized_quantity,
+            )
+
+            return {
+                "status": "ERROR",
+                "allowed": False,
+                "reason": "EXCHANGE_ADAPTER_ERROR",
+                "symbol": normalized_symbol,
+                "side": normalized_side,
+                "quantity": normalized_quantity,
+                "error_type": type(exc).__name__,
+            }
+
+        if not isinstance(
+            result,
+            dict,
+        ):
+            logger.error(
+                "Invalid exchange response type: "
+                "symbol=%s side=%s quantity=%s response_type=%s",
+                normalized_symbol,
+                normalized_side,
+                normalized_quantity,
+                type(result).__name__,
+            )
+
+            return {
+                "status": "ERROR",
+                "allowed": False,
+                "reason": "INVALID_EXCHANGE_RESPONSE",
+                "symbol": normalized_symbol,
+                "side": normalized_side,
+                "quantity": normalized_quantity,
+                "error_type": "InvalidExchangeResponse",
+            }
 
         logger.info(
             "Live order delegated after validation, safety and risk "
