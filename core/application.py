@@ -667,6 +667,24 @@ class AtlasApplication:
         return True
 
     # =========================================================
+    # TERMINAL SHUTDOWN
+    # =========================================================
+
+    def shutdown(self) -> bool:
+        """
+        Perform the public terminal application shutdown.
+
+        The current legacy stop() implementation already performs full
+        service cleanup and terminates the runtime. This method provides
+        an explicit and stable terminal lifecycle entry point while
+        preserving backward compatibility with existing stop() callers.
+
+        The operation is idempotent: repeated calls are safe.
+        """
+
+        return self.stop()
+
+    # =========================================================
     # SERVICE STOP
     # =========================================================
 
