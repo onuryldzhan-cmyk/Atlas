@@ -1,5 +1,5 @@
 ﻿"""
-ATLAS EXCHANGE MANAGER v2.0
+ATLAS EXCHANGE MANAGER v2.1
 
 Lifecycle-safe and fail-closed exchange facade.
 
@@ -7,6 +7,7 @@ Responsibilities
 ----------------
 - Select the configured exchange adapter
 - Delegate market-data operations
+- Validate order inputs before adapter access
 - Enforce ExecutionSafetyGate before every live order submission
 - Support dependency injection for deterministic offline tests
 - Return structured rejection decisions
@@ -15,6 +16,9 @@ Responsibilities
 from __future__ import annotations
 
 import logging
+import math
+import re
+
 from typing import Any
 
 from exchange.adapters.binance_global import BinanceGlobalExchange
@@ -27,8 +31,18 @@ logger = logging.getLogger(
 )
 
 
+_SYMBOL_PATTERN = re.compile(
+    r"^[A-Z0-9]{5,30}$"
+)
+
+_ALLOWED_ORDER_SIDES = {
+    "BUY",
+    "SELL",
+}
+
+
 class ExchangeManager:
-    VERSION = "2.0"
+    VERSION = "2.1"
 
     def __init__(
         self,
@@ -109,30 +123,145 @@ class ExchangeManager:
             limit,
         )
 
+    @staticmethod
+    def _rejection(
+        *,
+        reason: str,
+        symbol: str,
+        side: str,
+        quantity: Any,
+    ) -> dict[str, Any]:
+        """
+        Build a consistent fail-closed order rejection.
+        """
+
+        return {
+            "status": "REJECTED",
+            "allowed": False,
+            "reason": reason,
+            "symbol": symbol,
+            "side": side,
+            "quantity": quantity,
+        }
+
+    @staticmethod
+    def _normalize_quantity(
+        quantity: Any,
+    ) -> float | None:
+        """
+        Convert quantity to a positive finite float.
+
+        Invalid, zero, negative, NaN and infinite values return None.
+        """
+
+        if isinstance(
+            quantity,
+            bool,
+        ):
+            return None
+
+        try:
+            normalized = float(
+                quantity
+            )
+        except (
+            TypeError,
+            ValueError,
+            OverflowError,
+        ):
+            return None
+
+        if not math.isfinite(
+            normalized
+        ):
+            return None
+
+        if normalized <= 0:
+            return None
+
+        return normalized
+
     def place_order(
         self,
         symbol: str,
         side: str,
-        quantity: float,
+        quantity: Any,
     ) -> dict[str, Any]:
         """
-        Authorize and submit one live exchange order.
+        Validate, authorize and submit one live exchange order.
 
-        The exchange adapter is never called unless every safety gate
-        passes. Rejections are structured, non-exceptional, and auditable.
+        Validation and authorization are completed before the exchange
+        adapter can be called.
         """
 
         normalized_symbol = str(
             symbol
+            if symbol is not None
+            else ""
         ).strip().upper()
 
         normalized_side = str(
             side
+            if side is not None
+            else ""
         ).strip().upper()
 
-        normalized_quantity = float(
+        normalized_quantity = self._normalize_quantity(
             quantity
         )
+
+        if not _SYMBOL_PATTERN.fullmatch(
+            normalized_symbol
+        ):
+            rejection = self._rejection(
+                reason="INVALID_SYMBOL",
+                symbol=normalized_symbol,
+                side=normalized_side,
+                quantity=quantity,
+            )
+
+            logger.warning(
+                "Order rejected before authorization: reason=%s",
+                rejection["reason"],
+            )
+
+            return rejection
+
+        if normalized_side not in _ALLOWED_ORDER_SIDES:
+            rejection = self._rejection(
+                reason="INVALID_SIDE",
+                symbol=normalized_symbol,
+                side=normalized_side,
+                quantity=quantity,
+            )
+
+            logger.warning(
+                "Order rejected before authorization: "
+                "symbol=%s side=%s reason=%s",
+                normalized_symbol,
+                normalized_side,
+                rejection["reason"],
+            )
+
+            return rejection
+
+        if normalized_quantity is None:
+            rejection = self._rejection(
+                reason="INVALID_QUANTITY",
+                symbol=normalized_symbol,
+                side=normalized_side,
+                quantity=quantity,
+            )
+
+            logger.warning(
+                "Order rejected before authorization: "
+                "symbol=%s side=%s reason=%s",
+                normalized_symbol,
+                normalized_side,
+                rejection["reason"],
+            )
+
+            return rejection
 
         authorization = (
             self.safety_gate.authorize_live_order()
@@ -141,17 +270,15 @@ class ExchangeManager:
         if authorization.get(
             "allowed"
         ) is not True:
-            rejection = {
-                "status": "REJECTED",
-                "allowed": False,
-                "reason": authorization.get(
+            rejection = self._rejection(
+                reason=authorization.get(
                     "reason",
                     "LIVE_AUTHORIZATION_REJECTED",
                 ),
-                "symbol": normalized_symbol,
-                "side": normalized_side,
-                "quantity": normalized_quantity,
-            }
+                symbol=normalized_symbol,
+                side=normalized_side,
+                quantity=normalized_quantity,
+            )
 
             logger.warning(
                 "Live order rejected: symbol=%s side=%s "
@@ -171,7 +298,7 @@ class ExchangeManager:
         )
 
         logger.info(
-            "Live order delegated after safety authorization: "
+            "Live order delegated after validation and authorization: "
             "symbol=%s side=%s quantity=%s",
             normalized_symbol,
             normalized_side,
@@ -215,6 +342,15 @@ class ExchangeManager:
             "name": "ExchangeManager",
             "version": self.VERSION,
             "exchange_name": self.exchange_name,
+            "validation": {
+                "allowed_sides": sorted(
+                    _ALLOWED_ORDER_SIDES
+                ),
+                "symbol_pattern": (
+                    _SYMBOL_PATTERN.pattern
+                ),
+                "quantity_requires_positive_finite_number": True,
+            },
             "safety": self.safety_gate.status(),
             "exchange": exchange_status,
         }
