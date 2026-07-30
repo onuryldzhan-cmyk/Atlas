@@ -1,9 +1,10 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from typing import Any
 
 import pytest
 
+from exchange.execution_risk_guard import ExecutionRiskGuard
 from exchange.execution_safety_gate import ExecutionSafetyGate
 from exchange.exchange_manager import ExchangeManager
 
@@ -41,6 +42,11 @@ def _build_manager() -> tuple[ExchangeManager, SpyExchange]:
         safety_gate=ExecutionSafetyGate(
             mode="LIVE",
             live_enabled=True,
+        ),
+        risk_guard=ExecutionRiskGuard(
+            starting_equity=10_000.0,
+            max_daily_loss_percent=5.0,
+            max_drawdown_percent=10.0,
         ),
     )
 

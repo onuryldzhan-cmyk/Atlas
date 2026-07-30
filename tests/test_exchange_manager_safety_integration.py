@@ -1,9 +1,10 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from typing import Any
 
 import pytest
 
+from exchange.execution_risk_guard import ExecutionRiskGuard
 from exchange.execution_safety_gate import (
     ExecutionSafetyGate,
 )
@@ -44,6 +45,11 @@ def _build_manager(
         exchange_name="test",
         exchange=exchange,
         safety_gate=gate,
+        risk_guard=ExecutionRiskGuard(
+            starting_equity=10_000.0,
+            max_daily_loss_percent=5.0,
+            max_drawdown_percent=10.0,
+        ),
     )
 
     return manager, exchange

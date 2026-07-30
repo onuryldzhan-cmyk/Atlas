@@ -1,16 +1,14 @@
 ﻿"""
-ATLAS EXCHANGE MANAGER v2.1
+ATLAS EXCHANGE MANAGER v2.2
 
 Lifecycle-safe and fail-closed exchange facade.
 
-Responsibilities
-----------------
-- Select the configured exchange adapter
-- Delegate market-data operations
-- Validate order inputs before adapter access
-- Enforce ExecutionSafetyGate before every live order submission
-- Support dependency injection for deterministic offline tests
-- Return structured rejection decisions
+Order path
+----------
+Input validation
+    -> LIVE safety authorization
+    -> financial risk authorization
+    -> exchange adapter
 """
 
 from __future__ import annotations
@@ -23,6 +21,7 @@ from typing import Any
 
 from exchange.adapters.binance_global import BinanceGlobalExchange
 from exchange.adapters.binance_tr import BinanceTRExchange
+from exchange.execution_risk_guard import ExecutionRiskGuard
 from exchange.execution_safety_gate import ExecutionSafetyGate
 
 
@@ -42,7 +41,7 @@ _ALLOWED_ORDER_SIDES = {
 
 
 class ExchangeManager:
-    VERSION = "2.1"
+    VERSION = "2.2"
 
     def __init__(
         self,
@@ -50,17 +49,8 @@ class ExchangeManager:
         *,
         exchange: Any | None = None,
         safety_gate: ExecutionSafetyGate | None = None,
+        risk_guard: ExecutionRiskGuard | None = None,
     ) -> None:
-        """
-        Construct the exchange facade.
-
-        Injected exchange adapters are primarily intended for tests and
-        controlled composition roots. When no adapter is injected, the
-        configured production adapter is created normally.
-
-        The safety gate defaults to a fail-closed environment-based gate.
-        """
-
         self.exchange_name = str(
             exchange_name
         ).strip().lower()
@@ -76,6 +66,8 @@ class ExchangeManager:
             if safety_gate is not None
             else ExecutionSafetyGate.from_environment()
         )
+
+        self.risk_guard = risk_guard
 
     def _create_exchange(
         self,
@@ -131,10 +123,6 @@ class ExchangeManager:
         side: str,
         quantity: Any,
     ) -> dict[str, Any]:
-        """
-        Build a consistent fail-closed order rejection.
-        """
-
         return {
             "status": "REJECTED",
             "allowed": False,
@@ -148,12 +136,6 @@ class ExchangeManager:
     def _normalize_quantity(
         quantity: Any,
     ) -> float | None:
-        """
-        Convert quantity to a positive finite float.
-
-        Invalid, zero, negative, NaN and infinite values return None.
-        """
-
         if isinstance(
             quantity,
             bool,
@@ -187,13 +169,6 @@ class ExchangeManager:
         side: str,
         quantity: Any,
     ) -> dict[str, Any]:
-        """
-        Validate, authorize and submit one live exchange order.
-
-        Validation and authorization are completed before the exchange
-        adapter can be called.
-        """
-
         normalized_symbol = str(
             symbol
             if symbol is not None
@@ -213,65 +188,38 @@ class ExchangeManager:
         if not _SYMBOL_PATTERN.fullmatch(
             normalized_symbol
         ):
-            rejection = self._rejection(
+            return self._rejection(
                 reason="INVALID_SYMBOL",
                 symbol=normalized_symbol,
                 side=normalized_side,
                 quantity=quantity,
             )
 
-            logger.warning(
-                "Order rejected before authorization: reason=%s",
-                rejection["reason"],
-            )
-
-            return rejection
-
         if normalized_side not in _ALLOWED_ORDER_SIDES:
-            rejection = self._rejection(
+            return self._rejection(
                 reason="INVALID_SIDE",
                 symbol=normalized_symbol,
                 side=normalized_side,
                 quantity=quantity,
             )
 
-            logger.warning(
-                "Order rejected before authorization: "
-                "symbol=%s side=%s reason=%s",
-                normalized_symbol,
-                normalized_side,
-                rejection["reason"],
-            )
-
-            return rejection
-
         if normalized_quantity is None:
-            rejection = self._rejection(
+            return self._rejection(
                 reason="INVALID_QUANTITY",
                 symbol=normalized_symbol,
                 side=normalized_side,
                 quantity=quantity,
             )
 
-            logger.warning(
-                "Order rejected before authorization: "
-                "symbol=%s side=%s reason=%s",
-                normalized_symbol,
-                normalized_side,
-                rejection["reason"],
-            )
-
-            return rejection
-
-        authorization = (
+        safety_decision = (
             self.safety_gate.authorize_live_order()
         )
 
-        if authorization.get(
+        if safety_decision.get(
             "allowed"
         ) is not True:
             rejection = self._rejection(
-                reason=authorization.get(
+                reason=safety_decision.get(
                     "reason",
                     "LIVE_AUTHORIZATION_REJECTED",
                 ),
@@ -281,8 +229,54 @@ class ExchangeManager:
             )
 
             logger.warning(
-                "Live order rejected: symbol=%s side=%s "
-                "quantity=%s reason=%s",
+                "Live order rejected by safety gate: "
+                "symbol=%s side=%s quantity=%s reason=%s",
+                normalized_symbol,
+                normalized_side,
+                normalized_quantity,
+                rejection["reason"],
+            )
+
+            return rejection
+
+        if self.risk_guard is None:
+            rejection = self._rejection(
+                reason="RISK_GUARD_NOT_CONFIGURED",
+                symbol=normalized_symbol,
+                side=normalized_side,
+                quantity=normalized_quantity,
+            )
+
+            logger.error(
+                "Live order rejected because risk guard is missing: "
+                "symbol=%s side=%s quantity=%s",
+                normalized_symbol,
+                normalized_side,
+                normalized_quantity,
+            )
+
+            return rejection
+
+        risk_decision = (
+            self.risk_guard.authorize_order()
+        )
+
+        if risk_decision.get(
+            "allowed"
+        ) is not True:
+            rejection = self._rejection(
+                reason=risk_decision.get(
+                    "reason",
+                    "RISK_AUTHORIZATION_REJECTED",
+                ),
+                symbol=normalized_symbol,
+                side=normalized_side,
+                quantity=normalized_quantity,
+            )
+
+            logger.warning(
+                "Live order rejected by risk guard: "
+                "symbol=%s side=%s quantity=%s reason=%s",
                 normalized_symbol,
                 normalized_side,
                 normalized_quantity,
@@ -298,8 +292,8 @@ class ExchangeManager:
         )
 
         logger.info(
-            "Live order delegated after validation and authorization: "
-            "symbol=%s side=%s quantity=%s",
+            "Live order delegated after validation, safety and risk "
+            "authorization: symbol=%s side=%s quantity=%s",
             normalized_symbol,
             normalized_side,
             normalized_quantity,
@@ -310,10 +304,6 @@ class ExchangeManager:
     def status(
         self,
     ) -> dict[str, Any]:
-        """
-        Return non-secret manager and safety state.
-        """
-
         exchange_status_method = getattr(
             self.exchange,
             "status",
@@ -352,5 +342,13 @@ class ExchangeManager:
                 "quantity_requires_positive_finite_number": True,
             },
             "safety": self.safety_gate.status(),
+            "risk_guard": (
+                self.risk_guard.status()
+                if self.risk_guard is not None
+                else {
+                    "configured": False,
+                    "status": "FAIL_CLOSED",
+                }
+            ),
             "exchange": exchange_status,
         }
