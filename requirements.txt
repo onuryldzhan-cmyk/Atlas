@@ -1,3 +1,6 @@
 # Reproducible installation for the current Atlas main.py runtime.
 -r requirements/base.txt
 -r requirements/exchange-binance.txt
+
+# FastAPI / Starlette test client
+httpx2==2.7.0
