@@ -1,0 +1,349 @@
+{
+  "project_root": "C:\\Users\\HUAWEİ\\OneDrive\\Masaüstü\\Project_Atlas_AI",
+  "targets": [
+    {
+      "file": "atlas_os/observability/metrics.py",
+      "status": "OK",
+      "line_count": 1420,
+      "imports": [
+        "__future__.annotations",
+        "atlas_os.contracts.ServiceIdentity",
+        "atlas_os.events.AtlasEvent",
+        "atlas_os.events.EventBusService",
+        "atlas_os.events.Subscription",
+        "atlas_os.services.BaseAtlasService",
+        "collections.deque",
+        "contextlib.AbstractContextManager",
+        "dataclasses.dataclass",
+        "dataclasses.field",
+        "datetime.UTC",
+        "datetime.datetime",
+        "enum.StrEnum",
+        "math",
+        "re",
+        "threading",
+        "time",
+        "typing.Any",
+        "typing.Mapping"
+      ],
+      "classes": [
+        {
+          "name": "MetricType",
+          "line": 82,
+          "methods": []
+        },
+        {
+          "name": "MetricsError",
+          "line": 92,
+          "methods": []
+        },
+        {
+          "name": "InvalidMetricNameError",
+          "line": 98,
+          "methods": []
+        },
+        {
+          "name": "MetricTypeConflictError",
+          "line": 104,
+          "methods": []
+        },
+        {
+          "name": "MetricIdentity",
+          "line": 111,
+          "methods": [
+            "label_dict"
+          ]
+        },
+        {
+          "name": "CounterMetric",
+          "line": 130,
+          "methods": []
+        },
+        {
+          "name": "GaugeMetric",
+          "line": 141,
+          "methods": []
+        },
+        {
+          "name": "HistogramMetric",
+          "line": 152,
+          "methods": []
+        },
+        {
+          "name": "MetricsStatistics",
+          "line": 169,
+          "methods": []
+        },
+        {
+          "name": "MetricsSnapshot",
+          "line": 191,
+          "methods": []
+        },
+        {
+          "name": "_CounterState",
+          "line": 208,
+          "methods": []
+        },
+        {
+          "name": "_GaugeState",
+          "line": 220,
+          "methods": []
+        },
+        {
+          "name": "_HistogramState",
+          "line": 232,
+          "methods": []
+        },
+        {
+          "name": "MetricTimer",
+          "line": 250,
+          "methods": [
+            "__init__",
+            "elapsed_seconds",
+            "__enter__",
+            "__exit__"
+          ]
+        },
+        {
+          "name": "MetricsService",
+          "line": 333,
+          "methods": [
+            "__init__",
+            "_on_start",
+            "_on_stop",
+            "histogram_history_limit",
+            "event_subscription_active",
+            "metric_series_count",
+            "increment",
+            "counter_value",
+            "set_gauge",
+            "adjust_gauge",
+            "gauge_value",
+            "observe",
+            "histogram",
+            "timer",
+            "_observe_event",
+            "remove_metric",
+            "clear_metrics",
+            "counter_metrics",
+            "gauge_metrics",
+            "histogram_metrics",
+            "statistics",
+            "metrics_snapshot",
+            "_health_details",
+            "_snapshot_metadata",
+            "_record_update",
+            "_assert_metric_type",
+            "_build_identity",
+            "_validate_metric_name",
+            "_normalize_labels",
+            "_normalize_number",
+            "_histogram_snapshot"
+          ]
+        }
+      ],
+      "logging_detected": false
+    },
+    {
+      "file": "core/brain_analyzer.py",
+      "status": "OK",
+      "line_count": 237,
+      "imports": [
+        "ast",
+        "datetime.datetime",
+        "json",
+        "os"
+      ],
+      "classes": [
+        {
+          "name": "BrainAnalyzer",
+          "line": 13,
+          "methods": [
+            "__init__",
+            "analyze_file",
+            "run"
+          ]
+        }
+      ],
+      "logging_detected": false
+    },
+    {
+      "file": "core/code_cleanup_analyzer.py",
+      "status": "OK",
+      "line_count": 349,
+      "imports": [
+        "__future__.annotations",
+        "ast",
+        "collections.defaultdict",
+        "os",
+        "pathlib.Path"
+      ],
+      "classes": [
+        {
+          "name": "CodeCleanupAnalyzer",
+          "line": 24,
+          "methods": [
+            "__init__",
+            "scan_files",
+            "analyze_imports",
+            "find_backups",
+            "find_large_files",
+            "find_unused_candidates",
+            "run",
+            "print_report"
+          ]
+        }
+      ],
+      "logging_detected": false
+    },
+    {
+      "file": "core/database.py",
+      "status": "OK",
+      "line_count": 91,
+      "imports": [
+        "datetime.datetime",
+        "json",
+        "os"
+      ],
+      "classes": [
+        {
+          "name": "DatabaseManager",
+          "line": 11,
+          "methods": [
+            "__init__",
+            "_ensure_file",
+            "save_trade",
+            "get_trades",
+            "update_trade",
+            "get_open_trades",
+            "_write",
+            "save_api_keys"
+          ]
+        }
+      ],
+      "logging_detected": false
+    },
+    {
+      "file": "core/execution_contracts.py",
+      "status": "OK",
+      "line_count": 101,
+      "imports": [
+        "__future__.annotations",
+        "abc.ABC",
+        "abc.abstractmethod",
+        "core.execution_models.ExecutionRequest",
+        "core.execution_models.ExecutionResult",
+        "typing.Protocol"
+      ],
+      "classes": [
+        {
+          "name": "ExecutionEngine",
+          "line": 36,
+          "methods": [
+            "name",
+            "mode",
+            "execute",
+            "health",
+            "status",
+            "reset"
+          ]
+        },
+        {
+          "name": "SupportsHealth",
+          "line": 80,
+          "methods": [
+            "health"
+          ]
+        },
+        {
+          "name": "SupportsStatus",
+          "line": 86,
+          "methods": [
+            "status"
+          ]
+        },
+        {
+          "name": "SupportsReset",
+          "line": 92,
+          "methods": [
+            "reset"
+          ]
+        },
+        {
+          "name": "SupportsDiagnostics",
+          "line": 98,
+          "methods": [
+            "diagnostics"
+          ]
+        }
+      ],
+      "logging_detected": false
+    },
+    {
+      "file": "core/intelligence/loop/intelligence_loop.py",
+      "status": "OK",
+      "line_count": 129,
+      "imports": [
+        "__future__.annotations",
+        "core.intelligence.atlas_brain_connector.AtlasBrainConnector",
+        "datetime.UTC",
+        "datetime.datetime",
+        "intelligence.trading.paper_bridge.PaperBridge",
+        "time"
+      ],
+      "classes": [
+        {
+          "name": "IntelligenceLoop",
+          "line": 11,
+          "methods": [
+            "__init__",
+            "run_cycle",
+            "start",
+            "stop"
+          ]
+        }
+      ],
+      "logging_detected": false
+    },
+    {
+      "file": "core/project_snapshot.py",
+      "status": "OK",
+      "line_count": 154,
+      "imports": [
+        "__future__.annotations",
+        "dataclasses.asdict",
+        "dataclasses.dataclass",
+        "datetime.datetime",
+        "datetime.timezone",
+        "json",
+        "pathlib.Path"
+      ],
+      "classes": [
+        {
+          "name": "ProjectSnapshot",
+          "line": 17,
+          "methods": []
+        },
+        {
+          "name": "ProjectSnapshotEngine",
+          "line": 36,
+          "methods": [
+            "__init__",
+            "create_snapshot",
+            "save"
+          ]
+        }
+      ],
+      "logging_detected": false
+    }
+  ],
+  "safety": {
+    "source_files_modified": false,
+    "atlas_modules_imported": false,
+    "services_started": false,
+    "exchange_connections_opened": false,
+    "secret_values_read": false
+  },
+  "missing_files": [],
+  "collected_files": 7
+}

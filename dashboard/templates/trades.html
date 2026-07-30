@@ -1,0 +1,114 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atlas AI - Trades</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: "Segoe UI", sans-serif; background: #0a0e1a; color: #e0e6ed; }
+        .sidebar { width: 250px; background: #111827; height: 100vh; position: fixed; padding: 20px; }
+        .sidebar h2 { color: #3b82f6; margin-bottom: 30px; }
+        .sidebar a { display: block; color: #94a3b8; text-decoration: none; padding: 12px 15px; border-radius: 8px; margin-bottom: 5px; transition: 0.3s; }
+        .sidebar a:hover, .sidebar a.active { background: #3b82f6; color: white; }
+        .main { margin-left: 250px; padding: 30px; }
+        .card { background: #1e293b; border-radius: 12px; padding: 25px; margin-bottom: 20px; }
+        .card h3 { color: #60a5fa; margin-bottom: 15px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #334155; }
+        th { color: #94a3b8; font-weight: 600; }
+        .status-open { color: #22c55e; }
+        .status-closed { color: #94a3b8; }
+        .pnl-positive { color: #22c55e; font-weight: bold; }
+        .pnl-negative { color: #ef4444; font-weight: bold; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .metric { background: #0f172a; padding: 20px; border-radius: 10px; text-align: center; }
+        .metric-value { font-size: 1.8em; font-weight: bold; color: #3b82f6; }
+        .metric-label { color: #94a3b8; margin-top: 5px; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>🧠 Atlas AI</h2>
+        <a href="index.html">📊 Dashboard</a>
+        <a href="analytics.html">📈 Analytics</a>
+        <a href="signals.html">📡 Signals</a>
+        <a href="trades.html" class="active">💰 Trades</a>
+        <a href="settings.html">⚙️ Settings</a>
+    </div>
+    <div class="main">
+        <h1>💰 Trade History</h1>
+        <div class="grid">
+            <div class="metric">
+                <div class="metric-value" id="totalTrades">24</div>
+                <div class="metric-label">Total Trades</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value pnl-positive" id="totalPnL">+$1,245.80</div>
+                <div class="metric-label">Total P&L</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="openPositions">3</div>
+                <div class="metric-label">Open Positions</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="avgReturn">+5.2%</div>
+                <div class="metric-label">Avg Return</div>
+            </div>
+        </div>
+        <div class="card">
+            <h3>Recent Trades</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Symbol</th>
+                        <th>Side</th>
+                        <th>Entry</th>
+                        <th>Exit</th>
+                        <th>Size</th>
+                        <th>P&L</th>
+                        <th>Status</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody id="tradesTable">
+                    <tr>
+                        <td>#001</td>
+                        <td>BTC/USDT</td>
+                        <td>LONG</td>
+                        <td>$65,200.00</td>
+                        <td>$67,420.50</td>
+                        <td>0.15 BTC</td>
+                        <td class="pnl-positive">+$332.08</td>
+                        <td class="status-closed">Closed</td>
+                        <td>2026-07-19 14:30</td>
+                    </tr>
+                    <tr>
+                        <td>#002</td>
+                        <td>ETH/USDT</td>
+                        <td>SHORT</td>
+                        <td>$3,500.00</td>
+                        <td>$3,245.80</td>
+                        <td>2.0 ETH</td>
+                        <td class="pnl-positive">+$508.40</td>
+                        <td class="status-closed">Closed</td>
+                        <td>2026-07-19 12:15</td>
+                    </tr>
+                    <tr>
+                        <td>#003</td>
+                        <td>SOL/USDT</td>
+                        <td>LONG</td>
+                        <td>$142.00</td>
+                        <td>--</td>
+                        <td>50 SOL</td>
+                        <td class="pnl-positive">+$160.00</td>
+                        <td class="status-open">Open</td>
+                        <td>2026-07-20 02:00</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

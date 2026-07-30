@@ -1,0 +1,281 @@
+==============================================================================
+ATLAS PHASE 6A2.2 — PARSE FAILURE CLASSIFICATION
+==============================================================================
+
+Python files scanned : 615
+Parse success        : 562
+Parse failures       : 53
+CRITICAL             : 0
+HIGH                 : 3
+MEDIUM               : 50
+LOW                  : 0
+Blocking Phase 6A    : 3
+Reachable failures   : 0
+Market relevant      : 3
+
+FAILURES
+------------------------------------------------------------------------------
+[HIGH] archive_unused_2026-07-22/atlas_paper_trading/live_data_feed.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""Atlas AI - Live Data Feed"""
+  Blocks  : True
+
+[HIGH] phase3f_bom_backup_20260727_114104/atlas_paper_trading/paper_trading_main.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""Atlas AI - Paper Trading Main Engine"""
+  Blocks  : True
+
+[HIGH] phase3f_bom_backup_20260727_114104/test_atlas_runtime_empty.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿from atlas_runtime import AtlasRuntime
+  Blocks  : True
+
+[MEDIUM] archive_unused_2026-07-22/ai/atlas_brain.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿from learning.model_memory import ModelMemory
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/ai/core/create_faz1.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿import os
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/ai/decision_engine.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿class DecisionEngine:
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/ai/intelligent_score.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿import json
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/ai/pattern_memory.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/atlas_memory_core (2).py:216 (UNTERMINATED_STRING)
+  Message : unterminated string literal (detected at line 216)
+  Context : print("
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/atlas_paper_trading/indicators.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""Atlas AI - Technical Indicators"""
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/atlas_paper_trading/live_trading_engine.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿import asyncio
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/atlas_paper_trading/signal_generator.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""Atlas AI - Signal Generator"""
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/atlas_paper_trading/strategy_base.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""Atlas AI - Strategy Base"""
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/atlas_paper_trading/strategy_manager.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""Atlas AI - Strategy Manager"""
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/backtest/backtest_engine_v2.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/backtest/better_backtest.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/backtest/standalone_backtest.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/cleanup_analyzer.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/cleanup_analyzer_v2.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/config/__init__.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/core/architecture_analyzer.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/core/atlas_brain_v2.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/core/backtest/combined_backtest.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/core/brain/context_manager.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/core/brain/decision_maker.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/core/brain/signal_processor.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/core/data/fetch_enhanced.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/core/dependency_graph.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/core/loop.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/data/fetch_simple.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/data/live_data_connector.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/execution/paper_trading.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/execution/paper_trading_v2.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/fix_bare_except.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/fix_bom.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/github/background_service.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/github/github_integration.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/github/run_all.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/risk/position_manager.py:161 (INDENTATION_UNEXPECTED)
+  Message : unexpected indent
+  Context : print(
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/simulation/__init__.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/strategy/fix_bollinger.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿import os
+  Blocks  : False
+
+[MEDIUM] archive_unused_2026-07-22/strategy/scalping.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""
+  Blocks  : False
+
+[MEDIUM] phase3f_bom_backup_20260727_114104/atlas_os/configuration/__init__.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""
+  Blocks  : False
+
+[MEDIUM] phase3f_bom_backup_20260727_114104/atlas_os/secrets/__init__.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""
+  Blocks  : False
+
+[MEDIUM] phase3f_bom_backup_20260727_114104/atlas_paper_trading/paper_trading_engine.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""Atlas AI - Paper Trading Engine"""
+  Blocks  : False
+
+[MEDIUM] phase3f_bom_backup_20260727_114104/atlas_paper_trading/performance_report.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""Atlas AI - Performance Report"""
+  Blocks  : False
+
+[MEDIUM] phase3f_bom_backup_20260727_114104/atlas_paper_trading/position_tracker.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""Atlas AI - Position Tracker"""
+  Blocks  : False
+
+[MEDIUM] phase3f_bom_backup_20260727_114104/atlas_paper_trading/risk_guardian.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""Atlas AI - Risk Guardian"""
+  Blocks  : False
+
+[MEDIUM] phase3f_bom_backup_20260727_114104/inspect_atlas_os_lifecycle.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿from __future__ import annotations
+  Blocks  : False
+
+[MEDIUM] phase3f_bom_backup_20260727_114104/test_atlas_infrastructure.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿from __future__ import annotations
+  Blocks  : False
+
+[MEDIUM] phase3f_bom_backup_20260727_114104/test_atlas_secure_core.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿from atlas_os import SecretBindingMode
+  Blocks  : False
+
+[MEDIUM] phase3f_bom_backup_20260727_114104/test_configuration_secrets_service.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿from atlas_os import (
+  Blocks  : False
+
+[MEDIUM] phase3f_bom_backup_20260727_114104/web_app.py:1 (OTHER_SYNTAX_ERROR)
+  Message : invalid non-printable character U+FEFF
+  Context : ﻿"""
+  Blocks  : False

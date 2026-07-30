@@ -1,0 +1,4703 @@
+{
+    "scans": [
+        {
+            "file": ".\\check_project.py",
+            "functions": 0,
+            "classes": 0,
+            "lines": 48,
+            "issues": []
+        },
+        {
+            "file": ".\\main.py",
+            "functions": 3,
+            "classes": 0,
+            "lines": 291,
+            "issues": []
+        },
+        {
+            "file": ".\\technical_analyzer.py",
+            "functions": 3,
+            "classes": 1,
+            "lines": 66,
+            "issues": []
+        },
+        {
+            "file": ".\\test_architecture_analyzer.py",
+            "functions": 0,
+            "classes": 0,
+            "lines": 27,
+            "issues": []
+        },
+        {
+            "file": ".\\test_ast_parser.py",
+            "functions": 2,
+            "classes": 0,
+            "lines": 79,
+            "issues": []
+        },
+        {
+            "file": ".\\test_atlas_evolution.py",
+            "functions": 0,
+            "classes": 0,
+            "lines": 41,
+            "issues": []
+        },
+        {
+            "file": ".\\test_codebase_indexer.py",
+            "functions": 0,
+            "classes": 0,
+            "lines": 21,
+            "issues": []
+        },
+        {
+            "file": ".\\test_code_analyzer.py",
+            "functions": 0,
+            "classes": 0,
+            "lines": 33,
+            "issues": []
+        },
+        {
+            "file": ".\\test_dependency_graph.py",
+            "functions": 0,
+            "classes": 0,
+            "lines": 46,
+            "issues": []
+        },
+        {
+            "file": ".\\test_event.py",
+            "functions": 1,
+            "classes": 0,
+            "lines": 36,
+            "issues": []
+        },
+        {
+            "file": ".\\test_evolution_engine.py",
+            "functions": 0,
+            "classes": 0,
+            "lines": 73,
+            "issues": []
+        },
+        {
+            "file": ".\\test_experiment_manager.py",
+            "functions": 0,
+            "classes": 0,
+            "lines": 39,
+            "issues": []
+        },
+        {
+            "file": ".\\test_github_scanner.py",
+            "functions": 0,
+            "classes": 0,
+            "lines": 20,
+            "issues": []
+        },
+        {
+            "file": ".\\test_improvement_planner.py",
+            "functions": 0,
+            "classes": 0,
+            "lines": 24,
+            "issues": []
+        },
+        {
+            "file": ".\\test_patch_generator.py",
+            "functions": 0,
+            "classes": 0,
+            "lines": 19,
+            "issues": []
+        },
+        {
+            "file": ".\\test_performance_feedback.py",
+            "functions": 0,
+            "classes": 0,
+            "lines": 36,
+            "issues": []
+        },
+        {
+            "file": ".\\test_refactor_advisor.py",
+            "functions": 0,
+            "classes": 0,
+            "lines": 15,
+            "issues": []
+        },
+        {
+            "file": ".\\test_research_integration.py",
+            "functions": 0,
+            "classes": 0,
+            "lines": 42,
+            "issues": []
+        },
+        {
+            "file": ".\\test_research_manager.py",
+            "functions": 0,
+            "classes": 0,
+            "lines": 31,
+            "issues": []
+        },
+        {
+            "file": ".\\test_self_improvement.py",
+            "functions": 0,
+            "classes": 0,
+            "lines": 12,
+            "issues": []
+        },
+        {
+            "file": ".\\test_upgrade_advisor.py",
+            "functions": 0,
+            "classes": 0,
+            "lines": 35,
+            "issues": []
+        },
+        {
+            "file": ".\\test_version_memory.py",
+            "functions": 0,
+            "classes": 0,
+            "lines": 26,
+            "issues": []
+        },
+        {
+            "file": ".\\web_app.py",
+            "functions": 0,
+            "classes": 0,
+            "lines": 85,
+            "issues": []
+        },
+        {
+            "file": ".\\ai\\atlas_brain.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 138,
+            "issues": []
+        },
+        {
+            "file": ".\\ai\\decision_engine.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 108,
+            "issues": []
+        },
+        {
+            "file": ".\\ai\\intelligent_score.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 46,
+            "issues": []
+        },
+        {
+            "file": ".\\ai\\learning_brain.py",
+            "functions": 4,
+            "classes": 1,
+            "lines": 140,
+            "issues": []
+        },
+        {
+            "file": ".\\ai\\performance_analyzer.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 102,
+            "issues": []
+        },
+        {
+            "file": ".\\ai\\trade_analyzer.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 133,
+            "issues": []
+        },
+        {
+            "file": ".\\ai\\analytics\\performance.py",
+            "functions": 3,
+            "classes": 1,
+            "lines": 93,
+            "issues": []
+        },
+        {
+            "file": ".\\analysis\\analyzer.py",
+            "functions": 1,
+            "classes": 1,
+            "lines": 55,
+            "issues": []
+        },
+        {
+            "file": ".\\analysis\\performance.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 50,
+            "issues": []
+        },
+        {
+            "file": ".\\analysis\\technical_analyzer.py",
+            "functions": 1,
+            "classes": 1,
+            "lines": 56,
+            "issues": []
+        },
+        {
+            "file": ".\\analytics\\ai_performance.py",
+            "functions": 5,
+            "classes": 1,
+            "lines": 124,
+            "issues": []
+        },
+        {
+            "file": ".\\analytics\\dashboard.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 130,
+            "issues": []
+        },
+        {
+            "file": ".\\analytics\\performance.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 59,
+            "issues": []
+        },
+        {
+            "file": ".\\analytics\\performance_tracker.py",
+            "functions": 5,
+            "classes": 1,
+            "lines": 184,
+            "issues": []
+        },
+        {
+            "file": ".\\analytics\\trade_report.py",
+            "functions": 3,
+            "classes": 1,
+            "lines": 182,
+            "issues": []
+        },
+        {
+            "file": ".\\backtest\\backtest_engine.py",
+            "functions": 3,
+            "classes": 1,
+            "lines": 106,
+            "issues": []
+        },
+        {
+            "file": ".\\config\\exchange_config.py",
+            "functions": 1,
+            "classes": 1,
+            "lines": 9,
+            "issues": []
+        },
+        {
+            "file": ".\\config\\main.py",
+            "functions": 0,
+            "classes": 0,
+            "lines": 5,
+            "issues": []
+        },
+        {
+            "file": ".\\config\\settings.py",
+            "functions": 0,
+            "classes": 0,
+            "lines": 24,
+            "issues": []
+        },
+        {
+            "file": ".\\config\\symbols.py",
+            "functions": 0,
+            "classes": 0,
+            "lines": 11,
+            "issues": []
+        },
+        {
+            "file": ".\\config\\__init__.py",
+            "functions": 0,
+            "classes": 0,
+            "lines": 0,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\adaptive_decision.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 164,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\adaptive_learning.py",
+            "functions": 6,
+            "classes": 1,
+            "lines": 248,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\adaptive_weights.py",
+            "functions": 4,
+            "classes": 1,
+            "lines": 113,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\ai_director.py",
+            "functions": 3,
+            "classes": 1,
+            "lines": 127,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\ai_generator.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 76,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\architecture_analyzer.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 99,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\ast_parser.py",
+            "functions": 3,
+            "classes": 3,
+            "lines": 160,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\atlas_brain.py",
+            "functions": 4,
+            "classes": 1,
+            "lines": 640,
+            "issues": [
+                "Dosya çok büyük, parçalanabilir."
+            ]
+        },
+        {
+            "file": ".\\core\\auth_panel.py",
+            "functions": 14,
+            "classes": 1,
+            "lines": 253,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\auto_manager.py",
+            "functions": 1,
+            "classes": 1,
+            "lines": 7,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\auto_pilot.py",
+            "functions": 5,
+            "classes": 1,
+            "lines": 216,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\auto_scanner.py",
+            "functions": 4,
+            "classes": 1,
+            "lines": 227,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\backtester.py",
+            "functions": 5,
+            "classes": 1,
+            "lines": 201,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\base_ai_module.py",
+            "functions": 8,
+            "classes": 1,
+            "lines": 177,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\capital_allocator.py",
+            "functions": 1,
+            "classes": 1,
+            "lines": 9,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\codebase_indexer.py",
+            "functions": 6,
+            "classes": 3,
+            "lines": 343,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\code_analyzer.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 154,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\code_smell_detector.py",
+            "functions": 6,
+            "classes": 1,
+            "lines": 400,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\confidence_engine.py",
+            "functions": 3,
+            "classes": 1,
+            "lines": 392,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\config_manager.py",
+            "functions": 6,
+            "classes": 1,
+            "lines": 119,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\database.py",
+            "functions": 8,
+            "classes": 1,
+            "lines": 91,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\data_downloader.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 100,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\data_provider.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 67,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\decision_engine.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 254,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\dependency_graph.py",
+            "functions": 9,
+            "classes": 1,
+            "lines": 86,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\engine.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 140,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\event_bus.py",
+            "functions": 6,
+            "classes": 1,
+            "lines": 103,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\event_listeners.py",
+            "functions": 4,
+            "classes": 1,
+            "lines": 99,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\event_manager.py",
+            "functions": 5,
+            "classes": 1,
+            "lines": 96,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\evolution_engine.py",
+            "functions": 3,
+            "classes": 1,
+            "lines": 158,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\executor.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 219,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\experiment_manager.py",
+            "functions": 7,
+            "classes": 1,
+            "lines": 270,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\github_intelligence.py",
+            "functions": 8,
+            "classes": 1,
+            "lines": 346,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\github_scanner.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 88,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\improvement_planner.py",
+            "functions": 3,
+            "classes": 1,
+            "lines": 166,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\knowledge_graph.py",
+            "functions": 8,
+            "classes": 1,
+            "lines": 150,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\learning_engine.py",
+            "functions": 8,
+            "classes": 1,
+            "lines": 286,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\learning_listener.py",
+            "functions": 4,
+            "classes": 1,
+            "lines": 192,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\live_trader.py",
+            "functions": 6,
+            "classes": 1,
+            "lines": 145,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\loop_engine.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 63,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\main.py",
+            "functions": 1,
+            "classes": 0,
+            "lines": 98,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\market_intelligence.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 31,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\market_regime.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 188,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\market_scanner.py",
+            "functions": 4,
+            "classes": 1,
+            "lines": 228,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\memory.py",
+            "functions": 4,
+            "classes": 1,
+            "lines": 89,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\module_registry.py",
+            "functions": 9,
+            "classes": 1,
+            "lines": 153,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\opportunity_engine.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 267,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\opportunity_scanner.py",
+            "functions": 4,
+            "classes": 1,
+            "lines": 196,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\outcome_memory.py",
+            "functions": 12,
+            "classes": 1,
+            "lines": 514,
+            "issues": [
+                "Dosya çok büyük, parçalanabilir."
+            ]
+        },
+        {
+            "file": ".\\core\\paper_trader.py",
+            "functions": 8,
+            "classes": 1,
+            "lines": 427,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\patch_generator.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 44,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\pattern_memory.py",
+            "functions": 7,
+            "classes": 1,
+            "lines": 427,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\performance_analyzer.py",
+            "functions": 3,
+            "classes": 1,
+            "lines": 223,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\performance_feedback.py",
+            "functions": 3,
+            "classes": 1,
+            "lines": 107,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\position_manager.py",
+            "functions": 12,
+            "classes": 1,
+            "lines": 177,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\position_monitor.py",
+            "functions": 4,
+            "classes": 1,
+            "lines": 70,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\profit_calculator.py",
+            "functions": 1,
+            "classes": 1,
+            "lines": 26,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\refactor_advisor.py",
+            "functions": 1,
+            "classes": 1,
+            "lines": 50,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\refactor_engine.py",
+            "functions": 7,
+            "classes": 1,
+            "lines": 263,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\research_integration.py",
+            "functions": 3,
+            "classes": 1,
+            "lines": 101,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\research_manager.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 74,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\risk_manager.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 257,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\self_improvement.py",
+            "functions": 4,
+            "classes": 1,
+            "lines": 265,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\shared_context.py",
+            "functions": 1,
+            "classes": 1,
+            "lines": 103,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\signal_fusion.py",
+            "functions": 1,
+            "classes": 1,
+            "lines": 288,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\strategy_brain.py",
+            "functions": 6,
+            "classes": 1,
+            "lines": 116,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\strategy_competition.py",
+            "functions": 3,
+            "classes": 1,
+            "lines": 548,
+            "issues": [
+                "Dosya çok büyük, parçalanabilir."
+            ]
+        },
+        {
+            "file": ".\\core\\strategy_config.py",
+            "functions": 4,
+            "classes": 2,
+            "lines": 55,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\technical_analyzer.py",
+            "functions": 4,
+            "classes": 1,
+            "lines": 84,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\trade_lifecycle.py",
+            "functions": 3,
+            "classes": 1,
+            "lines": 267,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\trade_memory.py",
+            "functions": 7,
+            "classes": 1,
+            "lines": 197,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\trade_tracker.py",
+            "functions": 7,
+            "classes": 1,
+            "lines": 278,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\trading_cycle.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 272,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\trading_engine.py",
+            "functions": 3,
+            "classes": 1,
+            "lines": 78,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\upgrade_advisor.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 106,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\upgrade_approval.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 112,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\upgrade_executor.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 57,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\upgrade_manager.py",
+            "functions": 3,
+            "classes": 1,
+            "lines": 123,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\version_memory.py",
+            "functions": 7,
+            "classes": 1,
+            "lines": 294,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\weight_optimizer.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 116,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\__init__.py",
+            "functions": 0,
+            "classes": 0,
+            "lines": 7,
+            "issues": []
+        },
+        {
+            "file": ".\\core\\strategies\\bollingerrsi.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 33,
+            "issues": []
+        },
+        {
+            "file": ".\\dashboard\\dashboard.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 78,
+            "issues": []
+        },
+        {
+            "file": ".\\dashboard\\portfolio_dashboard.py",
+            "functions": 3,
+            "classes": 1,
+            "lines": 84,
+            "issues": []
+        },
+        {
+            "file": ".\\data\\binance_provider.py",
+            "functions": 3,
+            "classes": 1,
+            "lines": 49,
+            "issues": []
+        },
+        {
+            "file": ".\\data\\candle_data.py",
+            "functions": 1,
+            "classes": 1,
+            "lines": 53,
+            "issues": []
+        },
+        {
+            "file": ".\\data\\data_provider.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 37,
+            "issues": []
+        },
+        {
+            "file": ".\\data\\live_provider.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 21,
+            "issues": []
+        },
+        {
+            "file": ".\\data\\market.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 51,
+            "issues": []
+        },
+        {
+            "file": ".\\data\\market_data.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 21,
+            "issues": []
+        },
+        {
+            "file": ".\\data\\market_scanner.py",
+            "functions": 3,
+            "classes": 1,
+            "lines": 142,
+            "issues": []
+        },
+        {
+            "file": ".\\data\\price_monitor.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 31,
+            "issues": []
+        },
+        {
+            "file": ".\\database\\engine.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 207,
+            "issues": []
+        },
+        {
+            "file": ".\\database\\learning_engine.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 152,
+            "issues": []
+        },
+        {
+            "file": ".\\database\\market_history.py",
+            "functions": 3,
+            "classes": 1,
+            "lines": 40,
+            "issues": []
+        },
+        {
+            "file": ".\\database\\trade_history.py",
+            "functions": 3,
+            "classes": 1,
+            "lines": 79,
+            "issues": []
+        },
+        {
+            "file": ".\\events\\base_event.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 30,
+            "issues": []
+        },
+        {
+            "file": ".\\events\\event_bus.py",
+            "functions": 3,
+            "classes": 1,
+            "lines": 64,
+            "issues": []
+        },
+        {
+            "file": ".\\events\\market_events.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 46,
+            "issues": []
+        },
+        {
+            "file": ".\\events\\trade_events.py",
+            "functions": 1,
+            "classes": 1,
+            "lines": 32,
+            "issues": []
+        },
+        {
+            "file": ".\\events\\__init__.py",
+            "functions": 0,
+            "classes": 0,
+            "lines": 5,
+            "issues": []
+        },
+        {
+            "file": ".\\exchange\\exchange_adapter.py",
+            "functions": 5,
+            "classes": 1,
+            "lines": 201,
+            "issues": []
+        },
+        {
+            "file": ".\\execution\\execution_manager.py",
+            "functions": 3,
+            "classes": 1,
+            "lines": 107,
+            "issues": []
+        },
+        {
+            "file": ".\\exit\\smart_exit.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 137,
+            "issues": []
+        },
+        {
+            "file": ".\\intelligence\\decision_engine.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 179,
+            "issues": []
+        },
+        {
+            "file": ".\\intelligence\\decision_logger.py",
+            "functions": 3,
+            "classes": 1,
+            "lines": 107,
+            "issues": []
+        },
+        {
+            "file": ".\\intelligence\\execution_engine.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 67,
+            "issues": []
+        },
+        {
+            "file": ".\\intelligence\\learning_memory.py",
+            "functions": 5,
+            "classes": 1,
+            "lines": 235,
+            "issues": []
+        },
+        {
+            "file": ".\\intelligence\\market_score.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 151,
+            "issues": []
+        },
+        {
+            "file": ".\\intelligence\\memory_analyzer.py",
+            "functions": 3,
+            "classes": 1,
+            "lines": 142,
+            "issues": []
+        },
+        {
+            "file": ".\\intelligence\\strategy_brain.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 196,
+            "issues": []
+        },
+        {
+            "file": ".\\intelligence\\strategy_memory.py",
+            "functions": 5,
+            "classes": 1,
+            "lines": 100,
+            "issues": []
+        },
+        {
+            "file": ".\\intelligence\\volatility_manager.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 100,
+            "issues": []
+        },
+        {
+            "file": ".\\intelligence\\confidence\\capital_allocator.py",
+            "functions": 1,
+            "classes": 1,
+            "lines": 35,
+            "issues": []
+        },
+        {
+            "file": ".\\intelligence\\confidence\\confidence_engine.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 208,
+            "issues": []
+        },
+        {
+            "file": ".\\intelligence\\confidence\\position_sizer.py",
+            "functions": 1,
+            "classes": 1,
+            "lines": 27,
+            "issues": []
+        },
+        {
+            "file": ".\\intelligence\\market\\breakout_analyzer.py",
+            "functions": 1,
+            "classes": 1,
+            "lines": 56,
+            "issues": []
+        },
+        {
+            "file": ".\\intelligence\\market\\market_intelligence.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 130,
+            "issues": []
+        },
+        {
+            "file": ".\\intelligence\\market\\market_scoring_engine.py",
+            "functions": 1,
+            "classes": 1,
+            "lines": 91,
+            "issues": []
+        },
+        {
+            "file": ".\\intelligence\\market\\market_structure_analyzer.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 129,
+            "issues": []
+        },
+        {
+            "file": ".\\intelligence\\market\\order_flow_analyzer.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 171,
+            "issues": []
+        },
+        {
+            "file": ".\\intelligence\\market\\support_resistance_analyzer.py",
+            "functions": 1,
+            "classes": 1,
+            "lines": 78,
+            "issues": []
+        },
+        {
+            "file": ".\\intelligence\\market\\volatility_analyzer.py",
+            "functions": 1,
+            "classes": 1,
+            "lines": 66,
+            "issues": []
+        },
+        {
+            "file": ".\\intelligence\\market\\volume_analyzer.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 83,
+            "issues": []
+        },
+        {
+            "file": ".\\intelligence\\signals\\signal_fusion.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 132,
+            "issues": []
+        },
+        {
+            "file": ".\\intelligence\\strategy_competition\\strategy_competition.py",
+            "functions": 1,
+            "classes": 1,
+            "lines": 35,
+            "issues": []
+        },
+        {
+            "file": ".\\learning\\adaptive_engine.py",
+            "functions": 3,
+            "classes": 1,
+            "lines": 174,
+            "issues": []
+        },
+        {
+            "file": ".\\learning\\adaptive_learning.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 204,
+            "issues": []
+        },
+        {
+            "file": ".\\learning\\atlas_brain.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 154,
+            "issues": []
+        },
+        {
+            "file": ".\\learning\\learner.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 82,
+            "issues": []
+        },
+        {
+            "file": ".\\learning\\learning_engine.py",
+            "functions": 7,
+            "classes": 1,
+            "lines": 331,
+            "issues": []
+        },
+        {
+            "file": ".\\learning\\model_memory.py",
+            "functions": 3,
+            "classes": 1,
+            "lines": 66,
+            "issues": []
+        },
+        {
+            "file": ".\\learning\\performance_analyzer.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 118,
+            "issues": []
+        },
+        {
+            "file": ".\\logs\\trade_logger.py",
+            "functions": 5,
+            "classes": 1,
+            "lines": 170,
+            "issues": []
+        },
+        {
+            "file": ".\\portfolio\\capital_manager.py",
+            "functions": 5,
+            "classes": 1,
+            "lines": 111,
+            "issues": []
+        },
+        {
+            "file": ".\\portfolio\\portfolio_manager.py",
+            "functions": 14,
+            "classes": 1,
+            "lines": 291,
+            "issues": []
+        },
+        {
+            "file": ".\\position\\position_manager.py",
+            "functions": 5,
+            "classes": 1,
+            "lines": 150,
+            "issues": []
+        },
+        {
+            "file": ".\\quality\\trade_filter.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 140,
+            "issues": []
+        },
+        {
+            "file": ".\\risk\\position_manager.py",
+            "functions": 4,
+            "classes": 1,
+            "lines": 99,
+            "issues": []
+        },
+        {
+            "file": ".\\risk\\position_sizer.py",
+            "functions": 1,
+            "classes": 1,
+            "lines": 35,
+            "issues": []
+        },
+        {
+            "file": ".\\risk\\risk_manager.py",
+            "functions": 5,
+            "classes": 1,
+            "lines": 85,
+            "issues": []
+        },
+        {
+            "file": ".\\risk\\risk_planner.py",
+            "functions": 1,
+            "classes": 1,
+            "lines": 28,
+            "issues": []
+        },
+        {
+            "file": ".\\risk\\trade_rules.py",
+            "functions": 3,
+            "classes": 1,
+            "lines": 69,
+            "issues": []
+        },
+        {
+            "file": ".\\scalping\\scalp_manager.py",
+            "functions": 3,
+            "classes": 1,
+            "lines": 66,
+            "issues": []
+        },
+        {
+            "file": ".\\signals\\base_signal.py",
+            "functions": 3,
+            "classes": 1,
+            "lines": 40,
+            "issues": []
+        },
+        {
+            "file": ".\\signals\\market\\market_signal.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 146,
+            "issues": []
+        },
+        {
+            "file": ".\\signals\\risk\\risk_signal.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 105,
+            "issues": []
+        },
+        {
+            "file": ".\\signals\\technical\\technical_signal.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 145,
+            "issues": []
+        },
+        {
+            "file": ".\\simulation\\ai_simulator.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 127,
+            "issues": []
+        },
+        {
+            "file": ".\\simulation\\run_simulation.py",
+            "functions": 1,
+            "classes": 0,
+            "lines": 98,
+            "issues": []
+        },
+        {
+            "file": ".\\simulation\\simulator.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 72,
+            "issues": []
+        },
+        {
+            "file": ".\\simulation\\__init__.py",
+            "functions": 0,
+            "classes": 0,
+            "lines": 0,
+            "issues": []
+        },
+        {
+            "file": ".\\strategy\\optimizer.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 74,
+            "issues": []
+        },
+        {
+            "file": ".\\strategy\\scalper.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 65,
+            "issues": []
+        },
+        {
+            "file": ".\\strategy\\scalping.py",
+            "functions": 0,
+            "classes": 0,
+            "lines": 0,
+            "issues": []
+        },
+        {
+            "file": ".\\strategy\\strategy_engine.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 90,
+            "issues": []
+        },
+        {
+            "file": ".\\timeframe\\multi_timeframe.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 170,
+            "issues": []
+        },
+        {
+            "file": ".\\trade\\simulator.py",
+            "functions": 3,
+            "classes": 1,
+            "lines": 61,
+            "issues": []
+        },
+        {
+            "file": ".\\trading\\auto_manager.py",
+            "functions": 2,
+            "classes": 1,
+            "lines": 105,
+            "issues": []
+        },
+        {
+            "file": ".\\trading\\paper_trader.py",
+            "functions": 6,
+            "classes": 1,
+            "lines": 238,
+            "issues": []
+        }
+    ],
+    "suggestions": [
+        {
+            "file": "cleanup_analyzer.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "cleanup_analyzer.py",
+            "priority": "INFO",
+            "title": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)",
+            "suggestion": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+        },
+        {
+            "file": "cleanup_analyzer_v2.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "cleanup_analyzer_v2.py",
+            "priority": "INFO",
+            "title": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)",
+            "suggestion": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+        },
+        {
+            "file": "fix_bare_except.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "fix_bare_except.py",
+            "priority": "INFO",
+            "title": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)",
+            "suggestion": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+        },
+        {
+            "file": "fix_bom.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "fix_bom.py",
+            "priority": "INFO",
+            "title": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)",
+            "suggestion": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+        },
+        {
+            "file": "web_app.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "web_app.py",
+            "priority": "INFO",
+            "title": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)",
+            "suggestion": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+        },
+        {
+            "file": "atlas_brain.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "atlas_brain.py",
+            "priority": "INFO",
+            "title": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)",
+            "suggestion": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+        },
+        {
+            "file": "decision_engine.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "decision_engine.py",
+            "priority": "INFO",
+            "title": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)",
+            "suggestion": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+        },
+        {
+            "file": "intelligent_score.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "intelligent_score.py",
+            "priority": "INFO",
+            "title": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)",
+            "suggestion": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+        },
+        {
+            "file": "learning_brain.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: analyze_history",
+            "suggestion": "Uzun fonksiyon: analyze_history"
+        },
+        {
+            "file": "pattern_memory.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "pattern_memory.py",
+            "priority": "INFO",
+            "title": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)",
+            "suggestion": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+        },
+        {
+            "file": "performance_analyzer.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: analyze",
+            "suggestion": "Uzun fonksiyon: analyze"
+        },
+        {
+            "file": "trade_analyzer.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: analyze",
+            "suggestion": "Uzun fonksiyon: analyze"
+        },
+        {
+            "file": "dashboard.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: show",
+            "suggestion": "Uzun fonksiyon: show"
+        },
+        {
+            "file": "trade_report.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: generate",
+            "suggestion": "Uzun fonksiyon: generate"
+        },
+        {
+            "file": "backtest_engine.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "backtest_engine.py",
+            "priority": "INFO",
+            "title": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)",
+            "suggestion": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+        },
+        {
+            "file": "backtest_engine_v2.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "backtest_engine_v2.py",
+            "priority": "INFO",
+            "title": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)",
+            "suggestion": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+        },
+        {
+            "file": "better_backtest.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "better_backtest.py",
+            "priority": "INFO",
+            "title": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)",
+            "suggestion": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+        },
+        {
+            "file": "standalone_backtest.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "standalone_backtest.py",
+            "priority": "INFO",
+            "title": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)",
+            "suggestion": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+        },
+        {
+            "file": "__init__.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "__init__.py",
+            "priority": "INFO",
+            "title": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)",
+            "suggestion": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+        },
+        {
+            "file": "adaptive_decision.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: evaluate",
+            "suggestion": "Uzun fonksiyon: evaluate"
+        },
+        {
+            "file": "architecture_analyzer.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "architecture_analyzer.py",
+            "priority": "INFO",
+            "title": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)",
+            "suggestion": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+        },
+        {
+            "file": "atlas_brain.py",
+            "priority": "HIGH",
+            "title": "Dosya çok büyük",
+            "suggestion": "Dosyayı daha küçük modüllere ayır."
+        },
+        {
+            "file": "atlas_brain.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: __init__",
+            "suggestion": "Uzun fonksiyon: __init__"
+        },
+        {
+            "file": "atlas_brain.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: run",
+            "suggestion": "Uzun fonksiyon: run"
+        },
+        {
+            "file": "atlas_brain.py",
+            "priority": "INFO",
+            "title": "Dosya çok büyük (>500 satır)",
+            "suggestion": "Dosya çok büyük (>500 satır)"
+        },
+        {
+            "file": "atlas_brain_v2.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "atlas_brain_v2.py",
+            "priority": "INFO",
+            "title": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)",
+            "suggestion": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+        },
+        {
+            "file": "backtester.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: run_backtest",
+            "suggestion": "Uzun fonksiyon: run_backtest"
+        },
+        {
+            "file": "codebase_indexer.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: index_file",
+            "suggestion": "Uzun fonksiyon: index_file"
+        },
+        {
+            "file": "code_analyzer.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: analyze",
+            "suggestion": "Uzun fonksiyon: analyze"
+        },
+        {
+            "file": "code_smell_detector.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: analyze",
+            "suggestion": "Uzun fonksiyon: analyze"
+        },
+        {
+            "file": "confidence_engine.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: calculate",
+            "suggestion": "Uzun fonksiyon: calculate"
+        },
+        {
+            "file": "decision_engine.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: decide",
+            "suggestion": "Uzun fonksiyon: decide"
+        },
+        {
+            "file": "dependency_graph.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "dependency_graph.py",
+            "priority": "INFO",
+            "title": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)",
+            "suggestion": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+        },
+        {
+            "file": "engine.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: start",
+            "suggestion": "Uzun fonksiyon: start"
+        },
+        {
+            "file": "executor.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: execute",
+            "suggestion": "Uzun fonksiyon: execute"
+        },
+        {
+            "file": "github_intelligence.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: generate_upgrade_suggestions",
+            "suggestion": "Uzun fonksiyon: generate_upgrade_suggestions"
+        },
+        {
+            "file": "improvement_planner.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: analyze",
+            "suggestion": "Uzun fonksiyon: analyze"
+        },
+        {
+            "file": "learning_listener.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: decision_created",
+            "suggestion": "Uzun fonksiyon: decision_created"
+        },
+        {
+            "file": "main.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: main",
+            "suggestion": "Uzun fonksiyon: main"
+        },
+        {
+            "file": "market_regime.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: detect",
+            "suggestion": "Uzun fonksiyon: detect"
+        },
+        {
+            "file": "module_health_monitor.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "module_health_monitor.py",
+            "priority": "INFO",
+            "title": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)",
+            "suggestion": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+        },
+        {
+            "file": "opportunity_engine.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: evaluate",
+            "suggestion": "Uzun fonksiyon: evaluate"
+        },
+        {
+            "file": "opportunity_scanner.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: scan",
+            "suggestion": "Uzun fonksiyon: scan"
+        },
+        {
+            "file": "outcome_memory.py",
+            "priority": "HIGH",
+            "title": "Dosya çok büyük",
+            "suggestion": "Dosyayı daha küçük modüllere ayır."
+        },
+        {
+            "file": "outcome_memory.py",
+            "priority": "INFO",
+            "title": "Dosya çok büyük (>500 satır)",
+            "suggestion": "Dosya çok büyük (>500 satır)"
+        },
+        {
+            "file": "paper_trader.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: open_trade",
+            "suggestion": "Uzun fonksiyon: open_trade"
+        },
+        {
+            "file": "paper_trader.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: check_positions",
+            "suggestion": "Uzun fonksiyon: check_positions"
+        },
+        {
+            "file": "paper_trader.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: close_trade",
+            "suggestion": "Uzun fonksiyon: close_trade"
+        },
+        {
+            "file": "pattern_memory.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: insight",
+            "suggestion": "Uzun fonksiyon: insight"
+        },
+        {
+            "file": "performance_analyzer.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: analyze",
+            "suggestion": "Uzun fonksiyon: analyze"
+        },
+        {
+            "file": "refactor_engine.py",
+            "priority": "HIGH",
+            "title": "Dosya çok büyük",
+            "suggestion": "Dosyayı daha küçük modüllere ayır."
+        },
+        {
+            "file": "refactor_engine.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: analyze_file",
+            "suggestion": "Uzun fonksiyon: analyze_file"
+        },
+        {
+            "file": "refactor_engine.py",
+            "priority": "INFO",
+            "title": "Dosya çok büyük (>500 satır)",
+            "suggestion": "Dosya çok büyük (>500 satır)"
+        },
+        {
+            "file": "refactor_engine.py",
+            "priority": "INFO",
+            "title": "TODO bulundu",
+            "suggestion": "TODO bulundu"
+        },
+        {
+            "file": "refactor_engine.py",
+            "priority": "INFO",
+            "title": "FIXME bulundu",
+            "suggestion": "FIXME bulundu"
+        },
+        {
+            "file": "refactor_engine.py",
+            "priority": "INFO",
+            "title": "TODO bulundu",
+            "suggestion": "TODO bulundu"
+        },
+        {
+            "file": "refactor_engine.py",
+            "priority": "INFO",
+            "title": "TODO bulundu",
+            "suggestion": "TODO bulundu"
+        },
+        {
+            "file": "refactor_engine.py",
+            "priority": "INFO",
+            "title": "FIXME bulundu",
+            "suggestion": "FIXME bulundu"
+        },
+        {
+            "file": "refactor_engine.py",
+            "priority": "INFO",
+            "title": "FIXME bulundu",
+            "suggestion": "FIXME bulundu"
+        },
+        {
+            "file": "risk_manager.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: calculate",
+            "suggestion": "Uzun fonksiyon: calculate"
+        },
+        {
+            "file": "self_improvement.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: analyze_system",
+            "suggestion": "Uzun fonksiyon: analyze_system"
+        },
+        {
+            "file": "self_improvement.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: generate_suggestions",
+            "suggestion": "Uzun fonksiyon: generate_suggestions"
+        },
+        {
+            "file": "signal_fusion.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: fuse",
+            "suggestion": "Uzun fonksiyon: fuse"
+        },
+        {
+            "file": "strategy_competition.py",
+            "priority": "HIGH",
+            "title": "Dosya çok büyük",
+            "suggestion": "Dosyayı daha küçük modüllere ayır."
+        },
+        {
+            "file": "strategy_competition.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: run",
+            "suggestion": "Uzun fonksiyon: run"
+        },
+        {
+            "file": "strategy_competition.py",
+            "priority": "INFO",
+            "title": "Dosya çok büyük (>500 satır)",
+            "suggestion": "Dosya çok büyük (>500 satır)"
+        },
+        {
+            "file": "trade_lifecycle.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: check_positions",
+            "suggestion": "Uzun fonksiyon: check_positions"
+        },
+        {
+            "file": "trading_cycle.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: run",
+            "suggestion": "Uzun fonksiyon: run"
+        },
+        {
+            "file": "weight_optimizer.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: optimize",
+            "suggestion": "Uzun fonksiyon: optimize"
+        },
+        {
+            "file": "combined_backtest.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "combined_backtest.py",
+            "priority": "INFO",
+            "title": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)",
+            "suggestion": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+        },
+        {
+            "file": "context_manager.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "context_manager.py",
+            "priority": "INFO",
+            "title": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)",
+            "suggestion": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+        },
+        {
+            "file": "decision_maker.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "decision_maker.py",
+            "priority": "INFO",
+            "title": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)",
+            "suggestion": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+        },
+        {
+            "file": "signal_processor.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "signal_processor.py",
+            "priority": "INFO",
+            "title": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)",
+            "suggestion": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+        },
+        {
+            "file": "fetch_enhanced.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "fetch_enhanced.py",
+            "priority": "INFO",
+            "title": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)",
+            "suggestion": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+        },
+        {
+            "file": "app.py",
+            "priority": "HIGH",
+            "title": "Dosya çok büyük",
+            "suggestion": "Dosyayı daha küçük modüllere ayır."
+        },
+        {
+            "file": "app.py",
+            "priority": "INFO",
+            "title": "Dosya çok büyük (>500 satır)",
+            "suggestion": "Dosya çok büyük (>500 satır)"
+        },
+        {
+            "file": "app_old.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "app_old.py",
+            "priority": "INFO",
+            "title": "'utf-8' codec can't decode byte 0xfe in position 25290: invalid start byte",
+            "suggestion": "'utf-8' codec can't decode byte 0xfe in position 25290: invalid start byte"
+        },
+        {
+            "file": "fetch_simple.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "fetch_simple.py",
+            "priority": "INFO",
+            "title": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)",
+            "suggestion": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+        },
+        {
+            "file": "live_data_connector.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "live_data_connector.py",
+            "priority": "INFO",
+            "title": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)",
+            "suggestion": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+        },
+        {
+            "file": "market_scanner.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: scan",
+            "suggestion": "Uzun fonksiyon: scan"
+        },
+        {
+            "file": "engine.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: start",
+            "suggestion": "Uzun fonksiyon: start"
+        },
+        {
+            "file": "learning_engine.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: learn",
+            "suggestion": "Uzun fonksiyon: learn"
+        },
+        {
+            "file": "paper_trading.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "paper_trading.py",
+            "priority": "INFO",
+            "title": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)",
+            "suggestion": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+        },
+        {
+            "file": "paper_trading_v2.py",
+            "priority": "HIGH",
+            "title": "Dosya çok büyük",
+            "suggestion": "Dosyayı daha küçük modüllere ayır."
+        },
+        {
+            "file": "paper_trading_v2.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "paper_trading_v2.py",
+            "priority": "INFO",
+            "title": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)",
+            "suggestion": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+        },
+        {
+            "file": "smart_exit.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: check_exit",
+            "suggestion": "Uzun fonksiyon: check_exit"
+        },
+        {
+            "file": "background_service.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "background_service.py",
+            "priority": "INFO",
+            "title": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)",
+            "suggestion": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+        },
+        {
+            "file": "github_integration.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "github_integration.py",
+            "priority": "INFO",
+            "title": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)",
+            "suggestion": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+        },
+        {
+            "file": "run_all.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "run_all.py",
+            "priority": "INFO",
+            "title": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)",
+            "suggestion": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+        },
+        {
+            "file": "decision_engine.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: decide",
+            "suggestion": "Uzun fonksiyon: decide"
+        },
+        {
+            "file": "market_score.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: calculate",
+            "suggestion": "Uzun fonksiyon: calculate"
+        },
+        {
+            "file": "strategy_brain.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: choose_strategy",
+            "suggestion": "Uzun fonksiyon: choose_strategy"
+        },
+        {
+            "file": "volatility_manager.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: calculate_risk",
+            "suggestion": "Uzun fonksiyon: calculate_risk"
+        },
+        {
+            "file": "confidence_engine.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: calculate",
+            "suggestion": "Uzun fonksiyon: calculate"
+        },
+        {
+            "file": "market_intelligence.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: analyze",
+            "suggestion": "Uzun fonksiyon: analyze"
+        },
+        {
+            "file": "market_scoring_engine.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: calculate",
+            "suggestion": "Uzun fonksiyon: calculate"
+        },
+        {
+            "file": "market_structure_analyzer.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: analyze",
+            "suggestion": "Uzun fonksiyon: analyze"
+        },
+        {
+            "file": "order_flow_analyzer.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: analyze",
+            "suggestion": "Uzun fonksiyon: analyze"
+        },
+        {
+            "file": "signal_fusion.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: combine",
+            "suggestion": "Uzun fonksiyon: combine"
+        },
+        {
+            "file": "adaptive_engine.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: learn",
+            "suggestion": "Uzun fonksiyon: learn"
+        },
+        {
+            "file": "adaptive_learning.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: learn",
+            "suggestion": "Uzun fonksiyon: learn"
+        },
+        {
+            "file": "atlas_brain.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: think",
+            "suggestion": "Uzun fonksiyon: think"
+        },
+        {
+            "file": "learning_engine.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: update_trade",
+            "suggestion": "Uzun fonksiyon: update_trade"
+        },
+        {
+            "file": "performance_analyzer.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: analyze",
+            "suggestion": "Uzun fonksiyon: analyze"
+        },
+        {
+            "file": "capital_manager.py",
+            "priority": "HIGH",
+            "title": "Dosya çok büyük",
+            "suggestion": "Dosyayı daha küçük modüllere ayır."
+        },
+        {
+            "file": "capital_manager.py",
+            "priority": "INFO",
+            "title": "Dosya çok büyük (>500 satır)",
+            "suggestion": "Dosya çok büyük (>500 satır)"
+        },
+        {
+            "file": "trade_filter.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: evaluate",
+            "suggestion": "Uzun fonksiyon: evaluate"
+        },
+        {
+            "file": "capital_manager.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: open_trade",
+            "suggestion": "Uzun fonksiyon: open_trade"
+        },
+        {
+            "file": "capital_manager.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: close_trade",
+            "suggestion": "Uzun fonksiyon: close_trade"
+        },
+        {
+            "file": "position_manager.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "position_manager.py",
+            "priority": "INFO",
+            "title": "SyntaxError: unexpected indent (<unknown>, line 161)",
+            "suggestion": "SyntaxError: unexpected indent (<unknown>, line 161)"
+        },
+        {
+            "file": "market_signal.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: generate",
+            "suggestion": "Uzun fonksiyon: generate"
+        },
+        {
+            "file": "risk_signal.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: generate",
+            "suggestion": "Uzun fonksiyon: generate"
+        },
+        {
+            "file": "technical_signal.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: generate",
+            "suggestion": "Uzun fonksiyon: generate"
+        },
+        {
+            "file": "ai_simulator.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: simulate",
+            "suggestion": "Uzun fonksiyon: simulate"
+        },
+        {
+            "file": "run_simulation.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: main",
+            "suggestion": "Uzun fonksiyon: main"
+        },
+        {
+            "file": "__init__.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "__init__.py",
+            "priority": "INFO",
+            "title": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)",
+            "suggestion": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+        },
+        {
+            "file": "scalping.py",
+            "priority": "HIGH",
+            "title": "Kalite skoru düşük",
+            "suggestion": "Kod gözden geçirilmeli."
+        },
+        {
+            "file": "scalping.py",
+            "priority": "INFO",
+            "title": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)",
+            "suggestion": "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+        },
+        {
+            "file": "multi_timeframe.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: analyze",
+            "suggestion": "Uzun fonksiyon: analyze"
+        },
+        {
+            "file": "auto_manager.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: check",
+            "suggestion": "Uzun fonksiyon: check"
+        },
+        {
+            "file": "paper_trader.py",
+            "priority": "INFO",
+            "title": "Uzun fonksiyon: buy",
+            "suggestion": "Uzun fonksiyon: buy"
+        }
+    ],
+    "files": [
+        {
+            "file": ".\\check_project.py",
+            "lines": 48,
+            "functions": 0,
+            "classes": 0,
+            "imports": 2,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\cleanup_analyzer.py",
+            "lines": 135,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\cleanup_analyzer_v2.py",
+            "lines": 152,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\fix_bare_except.py",
+            "lines": 62,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\fix_bom.py",
+            "lines": 70,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\main.py",
+            "lines": 195,
+            "functions": 7,
+            "classes": 0,
+            "imports": 7,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\technical_analyzer.py",
+            "lines": 66,
+            "functions": 3,
+            "classes": 1,
+            "imports": 0,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\test_architecture_analyzer.py",
+            "lines": 27,
+            "functions": 0,
+            "classes": 0,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\test_ast_parser.py",
+            "lines": 79,
+            "functions": 2,
+            "classes": 0,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\test_atlas_evolution.py",
+            "lines": 41,
+            "functions": 0,
+            "classes": 0,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\test_codebase_indexer.py",
+            "lines": 21,
+            "functions": 0,
+            "classes": 0,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\test_code_analyzer.py",
+            "lines": 33,
+            "functions": 0,
+            "classes": 0,
+            "imports": 2,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\test_dependency_graph.py",
+            "lines": 46,
+            "functions": 0,
+            "classes": 0,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\test_event.py",
+            "lines": 36,
+            "functions": 1,
+            "classes": 0,
+            "imports": 2,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\test_evolution_engine.py",
+            "lines": 73,
+            "functions": 0,
+            "classes": 0,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\test_experiment_manager.py",
+            "lines": 39,
+            "functions": 0,
+            "classes": 0,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\test_github_scanner.py",
+            "lines": 20,
+            "functions": 0,
+            "classes": 0,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\test_improvement_planner.py",
+            "lines": 24,
+            "functions": 0,
+            "classes": 0,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\test_patch_generator.py",
+            "lines": 19,
+            "functions": 0,
+            "classes": 0,
+            "imports": 3,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\test_performance_feedback.py",
+            "lines": 36,
+            "functions": 0,
+            "classes": 0,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\test_refactor_advisor.py",
+            "lines": 15,
+            "functions": 0,
+            "classes": 0,
+            "imports": 2,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\test_research_integration.py",
+            "lines": 42,
+            "functions": 0,
+            "classes": 0,
+            "imports": 5,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\test_research_manager.py",
+            "lines": 31,
+            "functions": 0,
+            "classes": 0,
+            "imports": 4,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\test_self_improvement.py",
+            "lines": 12,
+            "functions": 0,
+            "classes": 0,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\test_server.py",
+            "lines": 10,
+            "functions": 1,
+            "classes": 0,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\test_upgrade_advisor.py",
+            "lines": 35,
+            "functions": 0,
+            "classes": 0,
+            "imports": 3,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\test_version_memory.py",
+            "lines": 26,
+            "functions": 0,
+            "classes": 0,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\web_app.py",
+            "lines": 85,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\ai\\atlas_brain.py",
+            "lines": 66,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\ai\\backtest_runner.py",
+            "lines": 134,
+            "functions": 5,
+            "classes": 0,
+            "imports": 6,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\ai\\chat_assistant.py",
+            "lines": 213,
+            "functions": 13,
+            "classes": 1,
+            "imports": 4,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\ai\\decision_engine.py",
+            "lines": 108,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\ai\\intelligent_score.py",
+            "lines": 46,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\ai\\learning_brain.py",
+            "lines": 140,
+            "functions": 4,
+            "classes": 1,
+            "imports": 2,
+            "issues": [
+                "Uzun fonksiyon: analyze_history"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\ai\\lstm_predictor.py",
+            "lines": 183,
+            "functions": 8,
+            "classes": 1,
+            "imports": 5,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\ai\\pattern_memory.py",
+            "lines": 354,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\ai\\performance_analyzer.py",
+            "lines": 102,
+            "functions": 2,
+            "classes": 1,
+            "imports": 1,
+            "issues": [
+                "Uzun fonksiyon: analyze"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\ai\\trade_analyzer.py",
+            "lines": 133,
+            "functions": 2,
+            "classes": 1,
+            "imports": 1,
+            "issues": [
+                "Uzun fonksiyon: analyze"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\ai\\analytics\\performance.py",
+            "lines": 93,
+            "functions": 3,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\analysis\\analyzer.py",
+            "lines": 55,
+            "functions": 1,
+            "classes": 1,
+            "imports": 0,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\analysis\\performance.py",
+            "lines": 50,
+            "functions": 2,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\analysis\\technical_analyzer.py",
+            "lines": 56,
+            "functions": 1,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\analytics\\ai_performance.py",
+            "lines": 124,
+            "functions": 5,
+            "classes": 1,
+            "imports": 2,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\analytics\\dashboard.py",
+            "lines": 130,
+            "functions": 2,
+            "classes": 1,
+            "imports": 2,
+            "issues": [
+                "Uzun fonksiyon: show"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\analytics\\performance.py",
+            "lines": 59,
+            "functions": 2,
+            "classes": 1,
+            "imports": 2,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\analytics\\performance_tracker.py",
+            "lines": 184,
+            "functions": 5,
+            "classes": 1,
+            "imports": 3,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\analytics\\trade_report.py",
+            "lines": 182,
+            "functions": 3,
+            "classes": 1,
+            "imports": 3,
+            "issues": [
+                "Uzun fonksiyon: generate"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\backtest\\backtest_engine.py",
+            "lines": 445,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\backtest\\backtest_engine_v2.py",
+            "lines": 445,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\backtest\\backtest_runner.py",
+            "lines": 127,
+            "functions": 5,
+            "classes": 0,
+            "imports": 6,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\backtest\\better_backtest.py",
+            "lines": 303,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\backtest\\portfolio_backtest.py",
+            "lines": 386,
+            "functions": 19,
+            "classes": 8,
+            "imports": 7,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\backtest\\standalone_backtest.py",
+            "lines": 258,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\config\\exchange_config.py",
+            "lines": 9,
+            "functions": 1,
+            "classes": 1,
+            "imports": 0,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\config\\main.py",
+            "lines": 5,
+            "functions": 0,
+            "classes": 0,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\config\\settings.py",
+            "lines": 210,
+            "functions": 4,
+            "classes": 0,
+            "imports": 3,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\config\\symbols.py",
+            "lines": 11,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\config\\__init__.py",
+            "lines": 8,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\core\\adaptive_decision.py",
+            "lines": 164,
+            "functions": 2,
+            "classes": 1,
+            "imports": 0,
+            "issues": [
+                "Uzun fonksiyon: evaluate"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\core\\adaptive_learning.py",
+            "lines": 248,
+            "functions": 6,
+            "classes": 1,
+            "imports": 2,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\adaptive_weights.py",
+            "lines": 113,
+            "functions": 4,
+            "classes": 1,
+            "imports": 0,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\ai_director.py",
+            "lines": 127,
+            "functions": 3,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\ai_generator.py",
+            "lines": 76,
+            "functions": 2,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\architecture_analyzer.py",
+            "lines": 435,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\core\\ast_parser.py",
+            "lines": 160,
+            "functions": 3,
+            "classes": 3,
+            "imports": 6,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\atlas_brain.py",
+            "lines": 643,
+            "functions": 4,
+            "classes": 1,
+            "imports": 34,
+            "issues": [
+                "Uzun fonksiyon: __init__",
+                "Uzun fonksiyon: run",
+                "Dosya çok büyük (>500 satır)"
+            ],
+            "quality_score": 80
+        },
+        {
+            "file": ".\\core\\atlas_brain_v2.py",
+            "lines": 402,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\core\\auth_panel.py",
+            "lines": 253,
+            "functions": 14,
+            "classes": 1,
+            "imports": 3,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\auto_manager.py",
+            "lines": 7,
+            "functions": 1,
+            "classes": 1,
+            "imports": 0,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\auto_pilot.py",
+            "lines": 216,
+            "functions": 5,
+            "classes": 1,
+            "imports": 2,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\auto_scanner.py",
+            "lines": 227,
+            "functions": 4,
+            "classes": 1,
+            "imports": 4,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\backtester.py",
+            "lines": 201,
+            "functions": 5,
+            "classes": 1,
+            "imports": 5,
+            "issues": [
+                "Uzun fonksiyon: run_backtest"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\core\\base_ai_module.py",
+            "lines": 177,
+            "functions": 8,
+            "classes": 1,
+            "imports": 2,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\capital_allocator.py",
+            "lines": 9,
+            "functions": 1,
+            "classes": 1,
+            "imports": 0,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\codebase_indexer.py",
+            "lines": 343,
+            "functions": 6,
+            "classes": 3,
+            "imports": 7,
+            "issues": [
+                "Uzun fonksiyon: index_file"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\core\\code_analyzer.py",
+            "lines": 154,
+            "functions": 2,
+            "classes": 1,
+            "imports": 1,
+            "issues": [
+                "Uzun fonksiyon: analyze"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\core\\code_smell_detector.py",
+            "lines": 400,
+            "functions": 6,
+            "classes": 1,
+            "imports": 4,
+            "issues": [
+                "Uzun fonksiyon: analyze"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\core\\confidence_engine.py",
+            "lines": 392,
+            "functions": 3,
+            "classes": 1,
+            "imports": 0,
+            "issues": [
+                "Uzun fonksiyon: calculate"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\core\\config_manager.py",
+            "lines": 119,
+            "functions": 6,
+            "classes": 1,
+            "imports": 2,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\database.py",
+            "lines": 91,
+            "functions": 8,
+            "classes": 1,
+            "imports": 3,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\data_downloader.py",
+            "lines": 100,
+            "functions": 2,
+            "classes": 1,
+            "imports": 5,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\data_provider.py",
+            "lines": 67,
+            "functions": 2,
+            "classes": 1,
+            "imports": 4,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\decision_engine.py",
+            "lines": 254,
+            "functions": 2,
+            "classes": 1,
+            "imports": 1,
+            "issues": [
+                "Uzun fonksiyon: decide"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\core\\dependency_graph.py",
+            "lines": 293,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\core\\engine.py",
+            "lines": 140,
+            "functions": 2,
+            "classes": 1,
+            "imports": 10,
+            "issues": [
+                "Uzun fonksiyon: start"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\core\\event_bus.py",
+            "lines": 103,
+            "functions": 6,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\event_listeners.py",
+            "lines": 99,
+            "functions": 4,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\event_manager.py",
+            "lines": 96,
+            "functions": 5,
+            "classes": 1,
+            "imports": 2,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\evolution_engine.py",
+            "lines": 158,
+            "functions": 3,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\executor.py",
+            "lines": 219,
+            "functions": 2,
+            "classes": 1,
+            "imports": 2,
+            "issues": [
+                "Uzun fonksiyon: execute"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\core\\experiment_manager.py",
+            "lines": 270,
+            "functions": 7,
+            "classes": 1,
+            "imports": 4,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\github_intelligence.py",
+            "lines": 346,
+            "functions": 8,
+            "classes": 1,
+            "imports": 2,
+            "issues": [
+                "Uzun fonksiyon: generate_upgrade_suggestions"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\core\\github_scanner.py",
+            "lines": 88,
+            "functions": 2,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\improvement_planner.py",
+            "lines": 166,
+            "functions": 3,
+            "classes": 1,
+            "imports": 1,
+            "issues": [
+                "Uzun fonksiyon: analyze"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\core\\knowledge_graph.py",
+            "lines": 150,
+            "functions": 8,
+            "classes": 1,
+            "imports": 3,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\learning_engine.py",
+            "lines": 286,
+            "functions": 8,
+            "classes": 1,
+            "imports": 3,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\learning_listener.py",
+            "lines": 192,
+            "functions": 4,
+            "classes": 1,
+            "imports": 1,
+            "issues": [
+                "Uzun fonksiyon: decision_created"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\core\\live_trader.py",
+            "lines": 145,
+            "functions": 6,
+            "classes": 1,
+            "imports": 7,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\loop_engine.py",
+            "lines": 63,
+            "functions": 2,
+            "classes": 1,
+            "imports": 4,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\main.py",
+            "lines": 98,
+            "functions": 1,
+            "classes": 0,
+            "imports": 4,
+            "issues": [
+                "Uzun fonksiyon: main"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\core\\market_intelligence.py",
+            "lines": 31,
+            "functions": 2,
+            "classes": 1,
+            "imports": 3,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\market_regime.py",
+            "lines": 188,
+            "functions": 2,
+            "classes": 1,
+            "imports": 0,
+            "issues": [
+                "Uzun fonksiyon: detect"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\core\\market_scanner.py",
+            "lines": 228,
+            "functions": 4,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\memory.py",
+            "lines": 89,
+            "functions": 4,
+            "classes": 1,
+            "imports": 3,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\module_health_monitor.py",
+            "lines": 425,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\core\\module_registry.py",
+            "lines": 153,
+            "functions": 9,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\opportunity_engine.py",
+            "lines": 267,
+            "functions": 2,
+            "classes": 1,
+            "imports": 0,
+            "issues": [
+                "Uzun fonksiyon: evaluate"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\core\\opportunity_scanner.py",
+            "lines": 196,
+            "functions": 4,
+            "classes": 1,
+            "imports": 0,
+            "issues": [
+                "Uzun fonksiyon: scan"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\core\\outcome_memory.py",
+            "lines": 514,
+            "functions": 12,
+            "classes": 1,
+            "imports": 3,
+            "issues": [
+                "Dosya çok büyük (>500 satır)"
+            ],
+            "quality_score": 90
+        },
+        {
+            "file": ".\\core\\paper_trader.py",
+            "lines": 427,
+            "functions": 8,
+            "classes": 1,
+            "imports": 5,
+            "issues": [
+                "Uzun fonksiyon: open_trade",
+                "Uzun fonksiyon: check_positions",
+                "Uzun fonksiyon: close_trade"
+            ],
+            "quality_score": 85
+        },
+        {
+            "file": ".\\core\\patch_generator.py",
+            "lines": 44,
+            "functions": 2,
+            "classes": 1,
+            "imports": 2,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\pattern_memory.py",
+            "lines": 427,
+            "functions": 7,
+            "classes": 1,
+            "imports": 3,
+            "issues": [
+                "Uzun fonksiyon: insight"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\core\\performance_analyzer.py",
+            "lines": 223,
+            "functions": 3,
+            "classes": 1,
+            "imports": 2,
+            "issues": [
+                "Uzun fonksiyon: analyze"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\core\\performance_feedback.py",
+            "lines": 107,
+            "functions": 3,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\position_manager.py",
+            "lines": 177,
+            "functions": 12,
+            "classes": 1,
+            "imports": 4,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\position_monitor.py",
+            "lines": 70,
+            "functions": 4,
+            "classes": 1,
+            "imports": 2,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\profit_calculator.py",
+            "lines": 26,
+            "functions": 1,
+            "classes": 1,
+            "imports": 0,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\refactor_advisor.py",
+            "lines": 50,
+            "functions": 1,
+            "classes": 1,
+            "imports": 0,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\refactor_engine.py",
+            "lines": 506,
+            "functions": 10,
+            "classes": 1,
+            "imports": 7,
+            "issues": [
+                "Uzun fonksiyon: analyze_file",
+                "Dosya çok büyük (>500 satır)",
+                "TODO bulundu",
+                "FIXME bulundu",
+                "TODO bulundu",
+                "TODO bulundu",
+                "FIXME bulundu",
+                "FIXME bulundu"
+            ],
+            "quality_score": 76
+        },
+        {
+            "file": ".\\core\\research_integration.py",
+            "lines": 101,
+            "functions": 3,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\research_manager.py",
+            "lines": 74,
+            "functions": 2,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\risk_manager.py",
+            "lines": 257,
+            "functions": 2,
+            "classes": 1,
+            "imports": 0,
+            "issues": [
+                "Uzun fonksiyon: calculate"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\core\\self_improvement.py",
+            "lines": 265,
+            "functions": 4,
+            "classes": 1,
+            "imports": 1,
+            "issues": [
+                "Uzun fonksiyon: analyze_system",
+                "Uzun fonksiyon: generate_suggestions"
+            ],
+            "quality_score": 90
+        },
+        {
+            "file": ".\\core\\shared_context.py",
+            "lines": 103,
+            "functions": 1,
+            "classes": 1,
+            "imports": 2,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\signal_fusion.py",
+            "lines": 288,
+            "functions": 1,
+            "classes": 1,
+            "imports": 0,
+            "issues": [
+                "Uzun fonksiyon: fuse"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\core\\strategy_brain.py",
+            "lines": 116,
+            "functions": 6,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\strategy_competition.py",
+            "lines": 548,
+            "functions": 3,
+            "classes": 1,
+            "imports": 1,
+            "issues": [
+                "Uzun fonksiyon: run",
+                "Dosya çok büyük (>500 satır)"
+            ],
+            "quality_score": 85
+        },
+        {
+            "file": ".\\core\\strategy_config.py",
+            "lines": 55,
+            "functions": 4,
+            "classes": 2,
+            "imports": 2,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\technical_analyzer.py",
+            "lines": 84,
+            "functions": 4,
+            "classes": 1,
+            "imports": 0,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\trade_lifecycle.py",
+            "lines": 267,
+            "functions": 3,
+            "classes": 1,
+            "imports": 1,
+            "issues": [
+                "Uzun fonksiyon: check_positions"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\core\\trade_memory.py",
+            "lines": 197,
+            "functions": 7,
+            "classes": 1,
+            "imports": 3,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\trade_tracker.py",
+            "lines": 278,
+            "functions": 7,
+            "classes": 1,
+            "imports": 4,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\trading_cycle.py",
+            "lines": 272,
+            "functions": 2,
+            "classes": 1,
+            "imports": 12,
+            "issues": [
+                "Uzun fonksiyon: run"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\core\\trading_engine.py",
+            "lines": 78,
+            "functions": 3,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\upgrade_advisor.py",
+            "lines": 106,
+            "functions": 2,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\upgrade_approval.py",
+            "lines": 112,
+            "functions": 2,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\upgrade_executor.py",
+            "lines": 57,
+            "functions": 2,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\upgrade_manager.py",
+            "lines": 123,
+            "functions": 3,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\version_memory.py",
+            "lines": 294,
+            "functions": 7,
+            "classes": 1,
+            "imports": 4,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\weight_optimizer.py",
+            "lines": 116,
+            "functions": 2,
+            "classes": 1,
+            "imports": 0,
+            "issues": [
+                "Uzun fonksiyon: optimize"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\core\\__init__.py",
+            "lines": 7,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\core\\backtest\\combined_backtest.py",
+            "lines": 1,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\core\\brain\\context_manager.py",
+            "lines": 76,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\core\\brain\\decision_maker.py",
+            "lines": 73,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\core\\brain\\signal_processor.py",
+            "lines": 67,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\core\\data\\fetch_enhanced.py",
+            "lines": 180,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\core\\strategies\\bollingerrsi.py",
+            "lines": 33,
+            "functions": 2,
+            "classes": 1,
+            "imports": 0,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\dashboard\\app.py",
+            "lines": 616,
+            "functions": 23,
+            "classes": 0,
+            "imports": 13,
+            "issues": [
+                "Dosya çok büyük (>500 satır)"
+            ],
+            "quality_score": 90
+        },
+        {
+            "file": ".\\dashboard\\app_old.py",
+            "lines": 0,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "'utf-8' codec can't decode byte 0xfe in position 25290: invalid start byte"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\dashboard\\dashboard.py",
+            "lines": 78,
+            "functions": 2,
+            "classes": 1,
+            "imports": 2,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\dashboard\\portfolio_dashboard.py",
+            "lines": 84,
+            "functions": 3,
+            "classes": 1,
+            "imports": 0,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\data\\binance_provider.py",
+            "lines": 49,
+            "functions": 3,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\data\\candle_data.py",
+            "lines": 53,
+            "functions": 1,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\data\\data_provider.py",
+            "lines": 37,
+            "functions": 2,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\data\\fetch_simple.py",
+            "lines": 1,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\data\\live_data_connector.py",
+            "lines": 272,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\data\\live_provider.py",
+            "lines": 21,
+            "functions": 2,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\data\\market.py",
+            "lines": 51,
+            "functions": 2,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\data\\market_data.py",
+            "lines": 21,
+            "functions": 2,
+            "classes": 1,
+            "imports": 2,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\data\\market_scanner.py",
+            "lines": 142,
+            "functions": 3,
+            "classes": 1,
+            "imports": 3,
+            "issues": [
+                "Uzun fonksiyon: scan"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\data\\price_monitor.py",
+            "lines": 31,
+            "functions": 2,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\database\\engine.py",
+            "lines": 207,
+            "functions": 2,
+            "classes": 1,
+            "imports": 7,
+            "issues": [
+                "Uzun fonksiyon: start"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\database\\learning_engine.py",
+            "lines": 152,
+            "functions": 2,
+            "classes": 1,
+            "imports": 1,
+            "issues": [
+                "Uzun fonksiyon: learn"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\database\\market_history.py",
+            "lines": 40,
+            "functions": 3,
+            "classes": 1,
+            "imports": 3,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\database\\trade_history.py",
+            "lines": 79,
+            "functions": 3,
+            "classes": 1,
+            "imports": 3,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\events\\base_event.py",
+            "lines": 30,
+            "functions": 2,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\events\\event_bus.py",
+            "lines": 64,
+            "functions": 3,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\events\\market_events.py",
+            "lines": 46,
+            "functions": 2,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\events\\trade_events.py",
+            "lines": 32,
+            "functions": 1,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\events\\__init__.py",
+            "lines": 5,
+            "functions": 0,
+            "classes": 0,
+            "imports": 3,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\exchange\\exchange_adapter.py",
+            "lines": 316,
+            "functions": 9,
+            "classes": 1,
+            "imports": 5,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\execution\\execution_manager.py",
+            "lines": 107,
+            "functions": 3,
+            "classes": 1,
+            "imports": 2,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\execution\\paper_trading.py",
+            "lines": 430,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\execution\\paper_trading_v2.py",
+            "lines": 571,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\exit\\smart_exit.py",
+            "lines": 137,
+            "functions": 2,
+            "classes": 1,
+            "imports": 0,
+            "issues": [
+                "Uzun fonksiyon: check_exit"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\github\\background_service.py",
+            "lines": 199,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\github\\github_integration.py",
+            "lines": 182,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\github\\run_all.py",
+            "lines": 46,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\intelligence\\decision_engine.py",
+            "lines": 179,
+            "functions": 2,
+            "classes": 1,
+            "imports": 0,
+            "issues": [
+                "Uzun fonksiyon: decide"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\intelligence\\decision_logger.py",
+            "lines": 107,
+            "functions": 3,
+            "classes": 1,
+            "imports": 3,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\intelligence\\execution_engine.py",
+            "lines": 67,
+            "functions": 2,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\intelligence\\learning_memory.py",
+            "lines": 235,
+            "functions": 5,
+            "classes": 1,
+            "imports": 3,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\intelligence\\market_score.py",
+            "lines": 151,
+            "functions": 2,
+            "classes": 1,
+            "imports": 1,
+            "issues": [
+                "Uzun fonksiyon: calculate"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\intelligence\\memory_analyzer.py",
+            "lines": 142,
+            "functions": 3,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\intelligence\\strategy_brain.py",
+            "lines": 196,
+            "functions": 2,
+            "classes": 1,
+            "imports": 2,
+            "issues": [
+                "Uzun fonksiyon: choose_strategy"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\intelligence\\strategy_memory.py",
+            "lines": 100,
+            "functions": 5,
+            "classes": 1,
+            "imports": 2,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\intelligence\\volatility_manager.py",
+            "lines": 100,
+            "functions": 2,
+            "classes": 1,
+            "imports": 0,
+            "issues": [
+                "Uzun fonksiyon: calculate_risk"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\intelligence\\confidence\\capital_allocator.py",
+            "lines": 35,
+            "functions": 1,
+            "classes": 1,
+            "imports": 0,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\intelligence\\confidence\\confidence_engine.py",
+            "lines": 208,
+            "functions": 2,
+            "classes": 1,
+            "imports": 0,
+            "issues": [
+                "Uzun fonksiyon: calculate"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\intelligence\\confidence\\position_sizer.py",
+            "lines": 27,
+            "functions": 1,
+            "classes": 1,
+            "imports": 0,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\intelligence\\market\\breakout_analyzer.py",
+            "lines": 56,
+            "functions": 1,
+            "classes": 1,
+            "imports": 0,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\intelligence\\market\\market_intelligence.py",
+            "lines": 130,
+            "functions": 2,
+            "classes": 1,
+            "imports": 4,
+            "issues": [
+                "Uzun fonksiyon: analyze"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\intelligence\\market\\market_scoring_engine.py",
+            "lines": 91,
+            "functions": 1,
+            "classes": 1,
+            "imports": 0,
+            "issues": [
+                "Uzun fonksiyon: calculate"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\intelligence\\market\\market_structure_analyzer.py",
+            "lines": 129,
+            "functions": 2,
+            "classes": 1,
+            "imports": 0,
+            "issues": [
+                "Uzun fonksiyon: analyze"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\intelligence\\market\\order_flow_analyzer.py",
+            "lines": 171,
+            "functions": 2,
+            "classes": 1,
+            "imports": 0,
+            "issues": [
+                "Uzun fonksiyon: analyze"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\intelligence\\market\\support_resistance_analyzer.py",
+            "lines": 78,
+            "functions": 1,
+            "classes": 1,
+            "imports": 0,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\intelligence\\market\\volatility_analyzer.py",
+            "lines": 66,
+            "functions": 1,
+            "classes": 1,
+            "imports": 0,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\intelligence\\market\\volume_analyzer.py",
+            "lines": 83,
+            "functions": 2,
+            "classes": 1,
+            "imports": 0,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\intelligence\\signals\\signal_fusion.py",
+            "lines": 132,
+            "functions": 2,
+            "classes": 1,
+            "imports": 0,
+            "issues": [
+                "Uzun fonksiyon: combine"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\intelligence\\strategy_competition\\strategy_competition.py",
+            "lines": 35,
+            "functions": 1,
+            "classes": 1,
+            "imports": 0,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\learning\\adaptive_engine.py",
+            "lines": 174,
+            "functions": 3,
+            "classes": 1,
+            "imports": 2,
+            "issues": [
+                "Uzun fonksiyon: learn"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\learning\\adaptive_learning.py",
+            "lines": 204,
+            "functions": 2,
+            "classes": 1,
+            "imports": 1,
+            "issues": [
+                "Uzun fonksiyon: learn"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\learning\\atlas_brain.py",
+            "lines": 154,
+            "functions": 2,
+            "classes": 1,
+            "imports": 2,
+            "issues": [
+                "Uzun fonksiyon: think"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\learning\\learner.py",
+            "lines": 82,
+            "functions": 2,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\learning\\learning_engine.py",
+            "lines": 331,
+            "functions": 7,
+            "classes": 1,
+            "imports": 3,
+            "issues": [
+                "Uzun fonksiyon: update_trade"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\learning\\model_memory.py",
+            "lines": 66,
+            "functions": 3,
+            "classes": 1,
+            "imports": 2,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\learning\\performance_analyzer.py",
+            "lines": 118,
+            "functions": 2,
+            "classes": 1,
+            "imports": 0,
+            "issues": [
+                "Uzun fonksiyon: analyze"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\logs\\trade_logger.py",
+            "lines": 170,
+            "functions": 5,
+            "classes": 1,
+            "imports": 2,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\portfolio\\capital_manager.py",
+            "lines": 624,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "Dosya çok büyük (>500 satır)"
+            ],
+            "quality_score": 90
+        },
+        {
+            "file": ".\\portfolio\\portfolio_manager.py",
+            "lines": 291,
+            "functions": 14,
+            "classes": 1,
+            "imports": 2,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\position\\position_manager.py",
+            "lines": 150,
+            "functions": 5,
+            "classes": 1,
+            "imports": 0,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\quality\\trade_filter.py",
+            "lines": 140,
+            "functions": 2,
+            "classes": 1,
+            "imports": 0,
+            "issues": [
+                "Uzun fonksiyon: evaluate"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\risk\\capital_manager.py",
+            "lines": 377,
+            "functions": 6,
+            "classes": 1,
+            "imports": 2,
+            "issues": [
+                "Uzun fonksiyon: open_trade",
+                "Uzun fonksiyon: close_trade"
+            ],
+            "quality_score": 90
+        },
+        {
+            "file": ".\\risk\\position.py",
+            "lines": 354,
+            "functions": 9,
+            "classes": 1,
+            "imports": 4,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\risk\\position_manager.py",
+            "lines": 386,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "SyntaxError: unexpected indent (<unknown>, line 161)"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\risk\\position_sizer.py",
+            "lines": 35,
+            "functions": 1,
+            "classes": 1,
+            "imports": 0,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\risk\\risk_manager.py",
+            "lines": 85,
+            "functions": 5,
+            "classes": 1,
+            "imports": 0,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\risk\\risk_planner.py",
+            "lines": 28,
+            "functions": 1,
+            "classes": 1,
+            "imports": 0,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\risk\\trade_rules.py",
+            "lines": 69,
+            "functions": 3,
+            "classes": 1,
+            "imports": 0,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\scalping\\scalp_manager.py",
+            "lines": 66,
+            "functions": 3,
+            "classes": 1,
+            "imports": 0,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\signals\\base_signal.py",
+            "lines": 40,
+            "functions": 3,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\signals\\market\\market_signal.py",
+            "lines": 146,
+            "functions": 2,
+            "classes": 1,
+            "imports": 1,
+            "issues": [
+                "Uzun fonksiyon: generate"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\signals\\risk\\risk_signal.py",
+            "lines": 105,
+            "functions": 2,
+            "classes": 1,
+            "imports": 1,
+            "issues": [
+                "Uzun fonksiyon: generate"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\signals\\technical\\technical_signal.py",
+            "lines": 145,
+            "functions": 2,
+            "classes": 1,
+            "imports": 1,
+            "issues": [
+                "Uzun fonksiyon: generate"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\simulation\\ai_simulator.py",
+            "lines": 127,
+            "functions": 2,
+            "classes": 1,
+            "imports": 2,
+            "issues": [
+                "Uzun fonksiyon: simulate"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\simulation\\run_simulation.py",
+            "lines": 98,
+            "functions": 1,
+            "classes": 0,
+            "imports": 2,
+            "issues": [
+                "Uzun fonksiyon: main"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\simulation\\simulator.py",
+            "lines": 72,
+            "functions": 2,
+            "classes": 1,
+            "imports": 0,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\simulation\\__init__.py",
+            "lines": 9,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\strategy\\optimizer.py",
+            "lines": 74,
+            "functions": 2,
+            "classes": 1,
+            "imports": 1,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\strategy\\scalper.py",
+            "lines": 65,
+            "functions": 2,
+            "classes": 1,
+            "imports": 0,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\strategy\\scalping.py",
+            "lines": 103,
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+            "issues": [
+                "SyntaxError: invalid non-printable character U+FEFF (<unknown>, line 1)"
+            ],
+            "quality_score": 0
+        },
+        {
+            "file": ".\\strategy\\strategy_engine.py",
+            "lines": 90,
+            "functions": 2,
+            "classes": 1,
+            "imports": 0,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\timeframe\\multi_timeframe.py",
+            "lines": 170,
+            "functions": 2,
+            "classes": 1,
+            "imports": 0,
+            "issues": [
+                "Uzun fonksiyon: analyze"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\trade\\simulator.py",
+            "lines": 61,
+            "functions": 3,
+            "classes": 1,
+            "imports": 0,
+            "issues": [],
+            "quality_score": 100
+        },
+        {
+            "file": ".\\trading\\auto_manager.py",
+            "lines": 105,
+            "functions": 2,
+            "classes": 1,
+            "imports": 0,
+            "issues": [
+                "Uzun fonksiyon: check"
+            ],
+            "quality_score": 95
+        },
+        {
+            "file": ".\\trading\\paper_trader.py",
+            "lines": 238,
+            "functions": 6,
+            "classes": 1,
+            "imports": 1,
+            "issues": [
+                "Uzun fonksiyon: buy"
+            ],
+            "quality_score": 95
+        }
+    ],
+    "last_scan": "2026-07-20T02:59:56.438362"
+}

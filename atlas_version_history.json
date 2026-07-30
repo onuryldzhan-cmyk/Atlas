@@ -1,0 +1,15 @@
+[
+    {
+        "date": "2026-07-18 14:01:24",
+        "version_before": "6.5",
+        "version_after": "6.6",
+        "module": "confidence_engine",
+        "change": "Confidence ağırlıkları optimize edildi",
+        "reason": "Başarı oranı düşük",
+        "before": {
+            "win_rate": 42
+        },
+        "after": null,
+        "status": "TESTING"
+    }
+]

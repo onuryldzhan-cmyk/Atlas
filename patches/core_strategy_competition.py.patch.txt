@@ -1,0 +1,16 @@
+============================================================
+ATLAS AUTO PATCH
+============================================================
+
+Date : 2026-07-18 17:57:32.469836
+Target : core\strategy_competition.py
+Priority : MEDIUM
+
+Reason
+----------------------------------------
+Strateji seçimi ve puanlama ayrılmalı.
+
+Suggested Split
+----------------------------------------
+- strategy_selector.py
+- strategy_ranker.py

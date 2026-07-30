@@ -1,0 +1,28 @@
+{
+  "nodes": [
+    {
+      "type": "Coin",
+      "name": "BTCUSDT"
+    },
+    {
+      "type": "Strategy",
+      "name": "Trend-Follow"
+    },
+    {
+      "type": "Decision",
+      "name": "BUY"
+    }
+  ],
+  "edges": [
+    {
+      "source": "BTCUSDT",
+      "target": "Trend-Follow",
+      "relation": "USES"
+    },
+    {
+      "source": "Trend-Follow",
+      "target": "BUY",
+      "relation": "GENERATED"
+    }
+  ]
+}

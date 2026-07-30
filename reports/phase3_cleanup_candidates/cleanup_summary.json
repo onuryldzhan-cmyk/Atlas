@@ -1,0 +1,192 @@
+{
+  "project_root": "C:\\Users\\HUAWEİ\\OneDrive\\Masaüstü\\Project_Atlas_AI",
+  "total_files_classified": 307,
+  "status_counts": {
+    "DUPLICATE_REMOVE_CANDIDATE": 1,
+    "DUPLICATE_REVIEW": 1,
+    "EMPTY_REMOVE_CANDIDATE": 1,
+    "KEEP_CANONICAL": 36,
+    "KEEP_PACKAGE_MARKER": 14,
+    "KEEP_REVIEW": 160,
+    "KEEP_TEST_REVIEW": 61,
+    "KEEP_TOOL_REVIEW": 7,
+    "PARSE_ERROR_REVIEW": 13,
+    "QUARANTINE_SAFE": 13
+  },
+  "safe_quarantine_count": 13,
+  "exact_duplicate_removal_candidates": 1,
+  "empty_module_candidates": 1,
+  "parse_error_review_count": 13,
+  "important_rule": "No file may be deleted solely because it is not reachable from main.py.",
+  "next_stage": "Review only HIGH-confidence quarantine and duplicate candidates, then generate a reversible move manifest.",
+  "actionable_candidates": [
+    {
+      "path": "execution_manager.py",
+      "status": "DUPLICATE_REMOVE_CANDIDATE",
+      "confidence": "HIGH",
+      "reason": "Exact duplicate of a main.py-reachable file."
+    },
+    {
+      "path": "core/market_feed.py",
+      "status": "EMPTY_REMOVE_CANDIDATE",
+      "confidence": "MEDIUM",
+      "reason": "Effectively empty non-package Python module and not reachable from main.py."
+    },
+    {
+      "path": "atlas_os/configuration/__init__.py",
+      "status": "PARSE_ERROR_REVIEW",
+      "confidence": "HIGH",
+      "reason": "Python AST parsing failed; inspect before any cleanup action."
+    },
+    {
+      "path": "atlas_os/secrets/__init__.py",
+      "status": "PARSE_ERROR_REVIEW",
+      "confidence": "HIGH",
+      "reason": "Python AST parsing failed; inspect before any cleanup action."
+    },
+    {
+      "path": "atlas_paper_trading/paper_trading_engine.py",
+      "status": "PARSE_ERROR_REVIEW",
+      "confidence": "HIGH",
+      "reason": "Python AST parsing failed; inspect before any cleanup action."
+    },
+    {
+      "path": "atlas_paper_trading/paper_trading_main.py",
+      "status": "PARSE_ERROR_REVIEW",
+      "confidence": "HIGH",
+      "reason": "Python AST parsing failed; inspect before any cleanup action."
+    },
+    {
+      "path": "atlas_paper_trading/performance_report.py",
+      "status": "PARSE_ERROR_REVIEW",
+      "confidence": "HIGH",
+      "reason": "Python AST parsing failed; inspect before any cleanup action."
+    },
+    {
+      "path": "atlas_paper_trading/position_tracker.py",
+      "status": "PARSE_ERROR_REVIEW",
+      "confidence": "HIGH",
+      "reason": "Python AST parsing failed; inspect before any cleanup action."
+    },
+    {
+      "path": "atlas_paper_trading/risk_guardian.py",
+      "status": "PARSE_ERROR_REVIEW",
+      "confidence": "HIGH",
+      "reason": "Python AST parsing failed; inspect before any cleanup action."
+    },
+    {
+      "path": "inspect_atlas_os_lifecycle.py",
+      "status": "PARSE_ERROR_REVIEW",
+      "confidence": "HIGH",
+      "reason": "Python AST parsing failed; inspect before any cleanup action."
+    },
+    {
+      "path": "test_atlas_infrastructure.py",
+      "status": "PARSE_ERROR_REVIEW",
+      "confidence": "HIGH",
+      "reason": "Python AST parsing failed; inspect before any cleanup action."
+    },
+    {
+      "path": "test_atlas_runtime_empty.py",
+      "status": "PARSE_ERROR_REVIEW",
+      "confidence": "HIGH",
+      "reason": "Python AST parsing failed; inspect before any cleanup action."
+    },
+    {
+      "path": "test_atlas_secure_core.py",
+      "status": "PARSE_ERROR_REVIEW",
+      "confidence": "HIGH",
+      "reason": "Python AST parsing failed; inspect before any cleanup action."
+    },
+    {
+      "path": "test_configuration_secrets_service.py",
+      "status": "PARSE_ERROR_REVIEW",
+      "confidence": "HIGH",
+      "reason": "Python AST parsing failed; inspect before any cleanup action."
+    },
+    {
+      "path": "web_app.py",
+      "status": "PARSE_ERROR_REVIEW",
+      "confidence": "HIGH",
+      "reason": "Python AST parsing failed; inspect before any cleanup action."
+    },
+    {
+      "path": "ai/core/atlas_brain_backup_v6.py",
+      "status": "QUARANTINE_SAFE",
+      "confidence": "HIGH",
+      "reason": "Backup/archive/old-copy naming and not reachable from main.py."
+    },
+    {
+      "path": "ai/core/atlas_brain_old_v8.py",
+      "status": "QUARANTINE_SAFE",
+      "confidence": "HIGH",
+      "reason": "Backup/archive/old-copy naming and not reachable from main.py."
+    },
+    {
+      "path": "core/decision_adapter_backup.py",
+      "status": "QUARANTINE_SAFE",
+      "confidence": "HIGH",
+      "reason": "Backup/archive/old-copy naming and not reachable from main.py."
+    },
+    {
+      "path": "core/execution_manager_backup.py",
+      "status": "QUARANTINE_SAFE",
+      "confidence": "HIGH",
+      "reason": "Backup/archive/old-copy naming and not reachable from main.py."
+    },
+    {
+      "path": "core/execution_manager_v1_backup.py",
+      "status": "QUARANTINE_SAFE",
+      "confidence": "HIGH",
+      "reason": "Backup/archive/old-copy naming and not reachable from main.py."
+    },
+    {
+      "path": "core/execution_manager_v28_backup.py",
+      "status": "QUARANTINE_SAFE",
+      "confidence": "HIGH",
+      "reason": "Backup/archive/old-copy naming and not reachable from main.py."
+    },
+    {
+      "path": "core/execution_manager_v7_backup.py",
+      "status": "QUARANTINE_SAFE",
+      "confidence": "HIGH",
+      "reason": "Backup/archive/old-copy naming and not reachable from main.py."
+    },
+    {
+      "path": "core/execution_manager_v9_backup.py",
+      "status": "QUARANTINE_SAFE",
+      "confidence": "HIGH",
+      "reason": "Backup/archive/old-copy naming and not reachable from main.py."
+    },
+    {
+      "path": "core/execution_models_v21_backup.py",
+      "status": "QUARANTINE_SAFE",
+      "confidence": "HIGH",
+      "reason": "Backup/archive/old-copy naming and not reachable from main.py."
+    },
+    {
+      "path": "core/execution_state_v1_backup.py",
+      "status": "QUARANTINE_SAFE",
+      "confidence": "HIGH",
+      "reason": "Backup/archive/old-copy naming and not reachable from main.py."
+    },
+    {
+      "path": "intelligence/core/intelligence_core_backup.py",
+      "status": "QUARANTINE_SAFE",
+      "confidence": "HIGH",
+      "reason": "Backup/archive/old-copy naming and not reachable from main.py."
+    },
+    {
+      "path": "phase1_backup_20260727_132959/atlas_os/__init__.py",
+      "status": "QUARANTINE_SAFE",
+      "confidence": "HIGH",
+      "reason": "Backup/archive/old-copy naming and not reachable from main.py."
+    },
+    {
+      "path": "phase1_backup_20260727_133009/atlas_os/__init__.py",
+      "status": "QUARANTINE_SAFE",
+      "confidence": "HIGH",
+      "reason": "Backup/archive/old-copy naming and not reachable from main.py."
+    }
+  ]
+}

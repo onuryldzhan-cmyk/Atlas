@@ -1,0 +1,205 @@
+{
+  "winning": [
+    {
+      "timestamp": null,
+      "signal": "AL | Score:6 | RSI asiri satim (22.1) | Fiyat BB alt bandinda | Fiyat SMA20'nin altinda | Yuksek hacim",
+      "context": {},
+      "pnl_pct": 4.109724163381973,
+      "hold_time_hours": 0
+    },
+    {
+      "timestamp": null,
+      "signal": "AL | Score:6 | RSI asiri satim (26.0) | Fiyat BB alt bandinda | Fiyat SMA20'nin altinda | Yuksek hacim",
+      "context": {},
+      "pnl_pct": 4.250624404325678,
+      "hold_time_hours": 0
+    },
+    {
+      "timestamp": null,
+      "signal": "AL | Score:4 | RSI asiri satim (32.5) | Fiyat BB alt bandinda",
+      "context": {},
+      "pnl_pct": 4.099331501761734,
+      "hold_time_hours": 0
+    },
+    {
+      "timestamp": null,
+      "signal": "AL | Score:6 | RSI asiri satim (25.9) | Fiyat BB alt bandinda | Fiyat SMA20'nin altinda | Yuksek hacim",
+      "context": {},
+      "pnl_pct": 4.457519580102046,
+      "hold_time_hours": 0
+    },
+    {
+      "timestamp": null,
+      "signal": "AL | Score:6 | RSI asiri satim (30.8) | Fiyat BB alt bandinda | Fiyat SMA20'nin altinda | Yuksek hacim",
+      "context": {},
+      "pnl_pct": 4.062821454812637,
+      "hold_time_hours": 0
+    },
+    {
+      "timestamp": null,
+      "signal": "AL | Score:6 | RSI asiri satim (28.7) | Fiyat BB alt bandinda | Fiyat SMA20'nin altinda | Yuksek hacim",
+      "context": {},
+      "pnl_pct": 4.610132720775906,
+      "hold_time_hours": 0
+    },
+    {
+      "timestamp": null,
+      "signal": "AL | Score:6 | RSI asiri satim (15.9) | Fiyat BB alt bandinda | Fiyat SMA20'nin altinda | Yuksek hacim",
+      "context": {},
+      "pnl_pct": 4.220321863847554,
+      "hold_time_hours": 0
+    },
+    {
+      "timestamp": null,
+      "signal": "AL | Score:6 | RSI asiri satim (23.6) | Fiyat BB alt bandinda | Fiyat SMA20'nin altinda | Yuksek hacim",
+      "context": {},
+      "pnl_pct": 4.374476862908445,
+      "hold_time_hours": 0
+    },
+    {
+      "timestamp": null,
+      "signal": "AL | Score:6 | RSI asiri satim (12.8) | Fiyat BB alt bandinda | Fiyat SMA20'nin altinda | Yuksek hacim",
+      "context": {},
+      "pnl_pct": 4.11557556666438,
+      "hold_time_hours": 0
+    },
+    {
+      "timestamp": null,
+      "signal": "AL | Score:4 | Fiyat BB alt bandinda | Fiyat SMA20'nin altinda | Yuksek hacim",
+      "context": {},
+      "pnl_pct": 4.149113440891857,
+      "hold_time_hours": 0
+    },
+    {
+      "timestamp": null,
+      "signal": "AL | Score:4 | Fiyat BB alt bandinda | Fiyat SMA20'nin altinda | Yuksek hacim",
+      "context": {},
+      "pnl_pct": 4.140552762106308,
+      "hold_time_hours": 0
+    },
+    {
+      "timestamp": null,
+      "signal": "AL | Score:5 | RSI asiri satim (22.1) | Fiyat BB alt bandinda | Yuksek hacim",
+      "context": {},
+      "pnl_pct": 4.3287477599465145,
+      "hold_time_hours": 0
+    },
+    {
+      "timestamp": null,
+      "signal": "AL | Score:4 | RSI asiri satim (26.1) | Fiyat BB alt bandinda",
+      "context": {},
+      "pnl_pct": 4.11827196834124,
+      "hold_time_hours": 0
+    },
+    {
+      "timestamp": null,
+      "signal": "AL | Score:4 | RSI asiri satim (31.3) | Fiyat BB alt bandinda",
+      "context": {},
+      "pnl_pct": 4.110594560288054,
+      "hold_time_hours": 0
+    }
+  ],
+  "losing": [
+    {
+      "timestamp": null,
+      "signal": "AL | Score:4 | RSI asiri satim (26.1) | Fiyat BB alt bandinda",
+      "context": {},
+      "pnl_pct": -2.247111584068108,
+      "exit_reason": "UNKNOWN"
+    },
+    {
+      "timestamp": null,
+      "signal": "AL | Score:4 | RSI asiri satim (29.7) | Fiyat BB alt bandinda",
+      "context": {},
+      "pnl_pct": -2.090840945437231,
+      "exit_reason": "UNKNOWN"
+    },
+    {
+      "timestamp": null,
+      "signal": "AL | Score:4 | RSI asiri satim (30.4) | Fiyat BB alt bandinda",
+      "context": {},
+      "pnl_pct": -2.128082191780824,
+      "exit_reason": "UNKNOWN"
+    },
+    {
+      "timestamp": null,
+      "signal": "AL | Score:5 | RSI asiri satim (32.9) | Fiyat BB alt bandinda | Yuksek hacim",
+      "context": {},
+      "pnl_pct": -3.00521680169388,
+      "exit_reason": "UNKNOWN"
+    },
+    {
+      "timestamp": null,
+      "signal": "AL | Score:4 | RSI asiri satim (27.4) | Fiyat BB alt bandinda",
+      "context": {},
+      "pnl_pct": -2.5386129949682745,
+      "exit_reason": "UNKNOWN"
+    },
+    {
+      "timestamp": null,
+      "signal": "AL | Score:4 | RSI asiri satim (27.0) | Fiyat BB alt bandinda",
+      "context": {},
+      "pnl_pct": -2.674592378901187,
+      "exit_reason": "UNKNOWN"
+    },
+    {
+      "timestamp": null,
+      "signal": "AL | Score:6 | RSI asiri satim (13.8) | Fiyat BB alt bandinda | Fiyat SMA20'nin altinda | Yuksek hacim",
+      "context": {},
+      "pnl_pct": -2.0403459174086995,
+      "exit_reason": "UNKNOWN"
+    },
+    {
+      "timestamp": null,
+      "signal": "AL | Score:5 | RSI asiri satim (9.1) | Fiyat BB alt bandinda | Fiyat SMA20'nin altinda",
+      "context": {},
+      "pnl_pct": -2.040361619594142,
+      "exit_reason": "UNKNOWN"
+    },
+    {
+      "timestamp": null,
+      "signal": "AL | Score:5 | RSI asiri satim (9.1) | Fiyat BB alt bandinda | Fiyat SMA20'nin altinda",
+      "context": {},
+      "pnl_pct": -3.3339906087166944,
+      "exit_reason": "UNKNOWN"
+    },
+    {
+      "timestamp": null,
+      "signal": "AL | Score:6 | RSI asiri satim (24.0) | Fiyat BB alt bandinda | Fiyat SMA20'nin altinda | Yuksek hacim",
+      "context": {},
+      "pnl_pct": -2.066823643375968,
+      "exit_reason": "UNKNOWN"
+    },
+    {
+      "timestamp": null,
+      "signal": "AL | Score:6 | RSI asiri satim (19.8) | Fiyat BB alt bandinda | Fiyat SMA20'nin altinda | Yuksek hacim",
+      "context": {},
+      "pnl_pct": -3.252829875518675,
+      "exit_reason": "UNKNOWN"
+    },
+    {
+      "timestamp": null,
+      "signal": "AL | Score:6 | RSI asiri satim (19.3) | Fiyat BB alt bandinda | Fiyat SMA20'nin altinda | Yuksek hacim",
+      "context": {},
+      "pnl_pct": -2.606232247284882,
+      "exit_reason": "UNKNOWN"
+    },
+    {
+      "timestamp": null,
+      "signal": "AL | Score:3 | Fiyat BB alt bandinda | Yuksek hacim",
+      "context": {},
+      "pnl_pct": -2.467857739188512,
+      "exit_reason": "UNKNOWN"
+    },
+    {
+      "timestamp": null,
+      "signal": "AL | Score:3 | Fiyat BB alt bandinda | Yuksek hacim",
+      "context": {},
+      "pnl_pct": -2.1207122740264572,
+      "exit_reason": "UNKNOWN"
+    }
+  ],
+  "market_context": {},
+  "signal_stats": {},
+  "time_patterns": {}
+}

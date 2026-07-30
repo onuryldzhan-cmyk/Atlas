@@ -1,0 +1,469 @@
+{
+  "phase": "6A5.1",
+  "generated_utc": "2026-07-27T14:27:28.090445+00:00",
+  "targets": {
+    "market_feed": {
+      "label": "market_feed",
+      "path": "exchange\\market_feed.py",
+      "exists": true,
+      "imports": [
+        "__future__:annotations",
+        "logging",
+        "datetime:datetime",
+        "typing:Any",
+        "typing:Iterable",
+        "atlas_finance.market_data.binance_public_provider:BinancePublicDataProvider",
+        "atlas_finance.market_data.contracts:MarketDataProviderProtocol",
+        "atlas_finance.market_data.market_feed_service:MarketFeedService",
+        "atlas_finance.market_data.models:MarketCandle,MarketPrice"
+      ],
+      "classes": [
+        {
+          "name": "MarketFeed",
+          "bases": [],
+          "line_start": 65,
+          "line_end": 345,
+          "methods": [
+            {
+              "name": "candles",
+              "signature": "candles(self, symbol: str, interval: str = '1m', limit: int = 500) -> list[list[Any]]",
+              "line_start": 195,
+              "line_end": 236,
+              "source": "    def candles(\n        self,\n        symbol: str,\n        interval: str = \"1m\",\n        limit: int = 500,\n    ) -> list[list[Any]]:\n        \"\"\"\n        Return normalized candles in Binance-compatible kline row format.\n\n        Row format\n        ----------\n        [\n            open_time_ms,\n            open,\n            high,\n            low,\n            close,\n            volume,\n            close_time_ms,\n            quote_asset_volume,\n            number_of_trades,\n            taker_buy_base_volume,\n            taker_buy_quote_volume,\n            ignore,\n        ]\n\n        The final five values are recovered from candle metadata when\n        available; otherwise safe neutral defaults are used.\n        \"\"\"\n\n        results = self.service.get_candles(\n            symbol,\n            timeframe=interval,\n            limit=limit,\n        )\n\n        return [\n            self._to_legacy_candle_row(\n                candle\n            )\n            for candle in results\n        ]",
+              "relevant_calls": [
+                {
+                  "call": "self.service.get_candles",
+                  "line": 225,
+                  "arguments": [
+                    "symbol"
+                  ],
+                  "keywords": {
+                    "timeframe": "interval",
+                    "limit": "limit"
+                  }
+                },
+                {
+                  "call": "self._to_legacy_candle_row",
+                  "line": 232,
+                  "arguments": [
+                    "candle"
+                  ],
+                  "keywords": {}
+                }
+              ]
+            },
+            {
+              "name": "get_candles",
+              "signature": "get_candles(self, symbol: str, timeframe: str = '5m', limit: int = 100) -> tuple[MarketCandle, ...]",
+              "line_start": 250,
+              "line_end": 266,
+              "source": "    def get_candles(\n        self,\n        symbol: str,\n        timeframe: str = \"5m\",\n        limit: int = 100,\n    ) -> tuple[MarketCandle, ...]:\n        \"\"\"\n        Expose the canonical normalized candle API.\n        \"\"\"\n\n        return tuple(\n            self.service.get_candles(\n                symbol,\n                timeframe=timeframe,\n                limit=limit,\n            )\n        )",
+              "relevant_calls": [
+                {
+                  "call": "self.service.get_candles",
+                  "line": 261,
+                  "arguments": [
+                    "symbol"
+                  ],
+                  "keywords": {
+                    "timeframe": "timeframe",
+                    "limit": "limit"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "market_feed_snapshot",
+              "signature": "market_feed_snapshot(self)",
+              "line_start": 273,
+              "line_end": 276,
+              "source": "    def market_feed_snapshot(\n        self,\n    ):\n        return self.service.market_feed_snapshot()",
+              "relevant_calls": [
+                {
+                  "call": "self.service.market_feed_snapshot",
+                  "line": 276,
+                  "arguments": [],
+                  "keywords": {}
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "candle_processor": {
+      "label": "candle_processor",
+      "path": "core\\candle_processor.py",
+      "exists": true,
+      "imports": [
+        "__future__:annotations",
+        "logging",
+        "datetime:datetime,timezone"
+      ],
+      "classes": [
+        {
+          "name": "CandleProcessor",
+          "bases": [],
+          "line_start": 27,
+          "line_end": 261,
+          "methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self)",
+              "line_start": 30,
+              "line_end": 32,
+              "source": "    def __init__(self):\n\n        self.version = \"2.0\"",
+              "relevant_calls": []
+            },
+            {
+              "name": "normalize",
+              "signature": "normalize(self, candles)",
+              "line_start": 36,
+              "line_end": 80,
+              "source": "    def normalize(\n        self,\n        candles\n    ):\n\n        if not candles:\n\n            return []\n\n\n        result = []\n\n\n        for candle in candles:\n\n\n            try:\n\n\n                normalized = self._parse(\n                    candle\n                )\n\n\n                if normalized:\n\n                    result.append(\n                        normalized\n                    )\n\n\n            except Exception as e:\n\n                logger.warning(\n                    f\"Candle skipped: {e}\"\n                )\n\n\n\n        result = self._clean(\n            result\n        )\n\n\n        return result",
+              "relevant_calls": []
+            },
+            {
+              "name": "_parse",
+              "signature": "_parse(self, candle)",
+              "line_start": 89,
+              "line_end": 184,
+              "source": "    def _parse(\n        self,\n        candle\n    ):\n\n\n        if isinstance(\n            candle,\n            list\n        ):\n\n\n            return {\n\n                \"timestamp\":\n                    datetime.now(\n                        timezone.utc\n                    ).isoformat(),\n\n\n                \"open\":\n                    float(candle[1]),\n\n\n                \"high\":\n                    float(candle[2]),\n\n\n                \"low\":\n                    float(candle[3]),\n\n\n                \"close\":\n                    float(candle[4]),\n\n\n                \"volume\":\n                    float(candle[5])\n\n            }\n\n\n\n        elif isinstance(\n            candle,\n            dict\n        ):\n\n\n            return {\n\n                \"timestamp\":\n                    candle.get(\n                        \"timestamp\",\n                        datetime.now(\n                            timezone.utc\n                        ).isoformat()\n                    ),\n\n\n                \"open\":\n                    float(\n                        candle[\"open\"]\n                    ),\n\n\n                \"high\":\n                    float(\n                        candle[\"high\"]\n                    ),\n\n\n                \"low\":\n                    float(\n                        candle[\"low\"]\n                    ),\n\n\n                \"close\":\n                    float(\n                        candle[\"close\"]\n                    ),\n\n\n                \"volume\":\n                    float(\n                        candle.get(\n                            \"volume\",\n                            0\n                        )\n                    )\n\n            }\n\n\n        return None",
+              "relevant_calls": [
+                {
+                  "call": "candle.get",
+                  "line": 141,
+                  "arguments": [
+                    "'timestamp'",
+                    "datetime.now(timezone.utc).isoformat()"
+                  ],
+                  "keywords": {}
+                },
+                {
+                  "call": "candle.get",
+                  "line": 175,
+                  "arguments": [
+                    "'volume'",
+                    "0"
+                  ],
+                  "keywords": {}
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "market_loop": {
+      "label": "market_loop",
+      "path": "core\\market_loop.py",
+      "exists": true,
+      "imports": [
+        "__future__:annotations",
+        "logging",
+        "threading",
+        "time",
+        "traceback",
+        "datetime:UTC,datetime",
+        "typing:Any",
+        "analysis.world_analysis_engine:WorldAnalysisEngine",
+        "core.candle_processor:CandleProcessor",
+        "core.decision_adapter:DecisionAdapter",
+        "core.technical_analyzer:TechnicalAnalyzer"
+      ],
+      "classes": [
+        {
+          "name": "MarketLoop",
+          "bases": [],
+          "line_start": 72,
+          "line_end": 1398,
+          "methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, brain: Any, market_feed: Any, execution: Any | None = None, event_bus: Any | None = None, symbols: list[str] | tuple[str, ...] | None = None, interval: float = 10.0) -> None",
+              "line_start": 104,
+              "line_end": 166,
+              "source": "    def __init__(\n        self,\n        brain: Any,\n        market_feed: Any,\n        execution: Any | None = None,\n        event_bus: Any | None = None,\n        symbols: list[str] | tuple[str, ...] | None = None,\n        interval: float = 10.0,\n    ) -> None:\n        self.brain = brain\n        self.market_feed = market_feed\n        self.execution = execution\n        self.event_bus = event_bus\n\n        self.symbols = self._normalize_symbols(\n            symbols or self.DEFAULT_SYMBOLS\n        )\n\n        self.interval = max(\n            1.0,\n            float(interval),\n        )\n\n        self.processor = CandleProcessor()\n        self.technical = TechnicalAnalyzer()\n        self.world = WorldAnalysisEngine()\n        self.decision_adapter = DecisionAdapter()\n\n        self.running = False\n        self.stop_event = threading.Event()\n        self.thread: threading.Thread | None = None\n        self.lock = threading.RLock()\n\n        self.started_at: str | None = None\n        self.stopped_at: str | None = None\n        self.last_cycle: str | None = None\n        self.last_cycle_duration = 0.0\n\n        self.last_signals: dict[str, dict[str, Any]] = {}\n        self.last_executions: dict[str, dict[str, Any]] = {}\n\n        self.metrics: dict[str, int | float] = {\n            \"cycles\": 0,\n            \"symbols_scanned\": 0,\n            \"symbols_skipped\": 0,\n            \"decisions_received\": 0,\n            \"decisions_normalized\": 0,\n            \"decisions_rejected\": 0,\n            \"hold_decisions\": 0,\n            \"execution_requests\": 0,\n            \"executions_completed\": 0,\n            \"executions_rejected\": 0,\n            \"execution_failures\": 0,\n            \"errors\": 0,\n            \"latency\": 0.0,\n        }\n\n        self.errors: list[dict[str, Any]] = []\n\n        logger.info(\n            \"Atlas Market Loop v%s initialized\",\n            self.VERSION,\n        )",
+              "relevant_calls": [
+                {
+                  "call": "CandleProcessor",
+                  "line": 127,
+                  "arguments": [],
+                  "keywords": {}
+                },
+                {
+                  "call": "TechnicalAnalyzer",
+                  "line": 128,
+                  "arguments": [],
+                  "keywords": {}
+                },
+                {
+                  "call": "WorldAnalysisEngine",
+                  "line": 129,
+                  "arguments": [],
+                  "keywords": {}
+                },
+                {
+                  "call": "DecisionAdapter",
+                  "line": 130,
+                  "arguments": [],
+                  "keywords": {}
+                }
+              ]
+            },
+            {
+              "name": "start",
+              "signature": "start(self) -> bool",
+              "line_start": 172,
+              "line_end": 208,
+              "source": "    def start(self) -> bool:\n        \"\"\"\n        Start the market worker thread.\n\n        Returns:\n            True when the loop starts or is already running.\n        \"\"\"\n\n        with self.lock:\n            if self.running:\n                logger.warning(\n                    \"Market Loop is already running\"\n                )\n                return True\n\n            self.running = True\n            self.stop_event.clear()\n\n            self.started_at = datetime.now(\n                UTC\n            ).isoformat()\n\n            self.stopped_at = None\n\n            self.thread = threading.Thread(\n                target=self.worker,\n                name=\"AtlasMarketLoop\",\n                daemon=True,\n            )\n\n            self.thread.start()\n\n        logger.info(\n            \"Market Loop started\"\n        )\n\n        return True",
+              "relevant_calls": []
+            },
+            {
+              "name": "stop",
+              "signature": "stop(self) -> bool",
+              "line_start": 214,
+              "line_end": 266,
+              "source": "    def stop(self) -> bool:\n        \"\"\"\n        Stop the worker thread gracefully.\n        \"\"\"\n\n        with self.lock:\n            if not self.running:\n                logger.info(\n                    \"Market Loop is already stopped\"\n                )\n                return True\n\n            self.running = False\n            self.stop_event.set()\n\n            thread = self.thread\n\n        if (\n            thread is not None\n            and thread.is_alive()\n            and thread is not threading.current_thread()\n        ):\n            thread.join(\n                timeout=max(\n                    5.0,\n                    self.interval + 1.0,\n                )\n            )\n\n        with self.lock:\n            still_alive = bool(\n                self.thread\n                and self.thread.is_alive()\n            )\n\n            self.stopped_at = datetime.now(\n                UTC\n            ).isoformat()\n\n            if not still_alive:\n                self.thread = None\n\n        if still_alive:\n            logger.warning(\n                \"Market Loop thread did not stop within timeout\"\n            )\n            return False\n\n        logger.info(\n            \"Market Loop stopped\"\n        )\n\n        return True",
+              "relevant_calls": []
+            },
+            {
+              "name": "process_symbol",
+              "signature": "process_symbol(self, symbol: str) -> dict[str, Any] | None",
+              "line_start": 347,
+              "line_end": 595,
+              "source": "    def process_symbol(\n        self,\n        symbol: str,\n    ) -> dict[str, Any] | None:\n        \"\"\"\n        Execute the full intelligence pipeline for one symbol.\n        \"\"\"\n\n        symbol = str(\n            symbol\n        ).strip().upper()\n\n        try:\n            candles = self._load_candles(\n                symbol\n            )\n\n            if not candles:\n                self._increment_metric(\n                    \"symbols_skipped\"\n                )\n                return None\n\n            normalized_candles = self.processor.normalize(\n                candles\n            )\n\n            if not normalized_candles:\n                self._increment_metric(\n                    \"symbols_skipped\"\n                )\n                return None\n\n            if len(normalized_candles) < 50:\n                logger.warning(\n                    \"%s skipped: insufficient candles=%s\",\n                    symbol,\n                    len(normalized_candles),\n                )\n\n                self._increment_metric(\n                    \"symbols_skipped\"\n                )\n\n                return None\n\n            analysis = self.technical.analyze(\n                normalized_candles\n            )\n\n            if not isinstance(\n                analysis,\n                dict,\n            ):\n                logger.warning(\n                    \"%s skipped: invalid technical analysis\",\n                    symbol,\n                )\n\n                self._increment_metric(\n                    \"symbols_skipped\"\n                )\n\n                return None\n\n            price = self.processor.latest_price(\n                normalized_candles\n            )\n\n            price = self._safe_float(\n                price\n            )\n\n            if price <= 0:\n                logger.warning(\n                    \"%s skipped: invalid price=%s\",\n                    symbol,\n                    price,\n                )\n\n                self._increment_metric(\n                    \"symbols_skipped\"\n                )\n\n                return None\n\n            score = self.calculate_score(\n                analysis\n            )\n\n            market_data = self.world.build_market_data(\n                symbol,\n                price,\n                analysis,\n                score,\n            )\n\n            raw_decision = self.brain.analyze_and_decide(\n                symbol,\n                market_data,\n            )\n\n            self._increment_metric(\n                \"decisions_received\"\n            )\n\n            normalized_decision = (\n                self.normalize_decision(\n                    raw_decision=raw_decision,\n                    symbol=symbol,\n                    price=price,\n                    market_data=market_data,\n                )\n            )\n\n            if normalized_decision is None:\n                self._increment_metric(\n                    \"decisions_rejected\"\n                )\n\n                logger.warning(\n                    \"%s decision normalization failed\",\n                    symbol,\n                )\n\n                self.publish(\n                    \"DECISION_NORMALIZATION_FAILED\",\n                    {\n                        \"symbol\": symbol,\n                        \"raw_decision\": self._safe_payload(\n                            raw_decision\n                        ),\n                        \"timestamp\": datetime.now(\n                            UTC\n                        ).isoformat(),\n                    },\n                )\n\n                return None\n\n            self._increment_metric(\n                \"decisions_normalized\"\n            )\n\n            with self.lock:\n                self.last_signals[\n                    symbol\n                ] = normalized_decision\n\n            self.publish(\n                \"ATLAS_DECISION\",\n                normalized_decision,\n            )\n\n            action = normalized_decision.get(\n                \"action\",\n                \"HOLD\",\n            )\n\n            if action in self.NON_EXECUTION_ACTIONS:\n                self._increment_metric(\n                    \"hold_decisions\"\n                )\n\n                logger.info(\n                    \"%s decision HOLD | execution skipped\",\n                    symbol,\n                )\n\n                result = {\n                    \"status\": \"SKIPPED\",\n                    \"reason\": \"NON_EXECUTION_ACTION\",\n                    \"symbol\": symbol,\n                    \"action\": action,\n                    \"timestamp\": datetime.now(\n                        UTC\n                    ).isoformat(),\n                }\n\n                with self.lock:\n                    self.last_executions[\n                        symbol\n                    ] = result\n\n                return result\n\n            if action not in self.VALID_EXECUTION_ACTIONS:\n                self._increment_metric(\n                    \"decisions_rejected\"\n                )\n\n                logger.warning(\n                    \"%s invalid normalized action: %s\",\n                    symbol,\n                    action,\n                )\n\n                return {\n                    \"status\": \"REJECTED\",\n                    \"reason\": \"INVALID_NORMALIZED_ACTION\",\n                    \"symbol\": symbol,\n                    \"action\": action,\n                }\n\n            if self.execution is None:\n                logger.warning(\n                    \"%s execution skipped: manager unavailable\",\n                    symbol,\n                )\n\n                return {\n                    \"status\": \"SKIPPED\",\n                    \"reason\": \"EXECUTION_MANAGER_UNAVAILABLE\",\n                    \"symbol\": symbol,\n                    \"action\": action,\n                }\n\n            market_state = self.world.build_market_state(\n                market_data\n            )\n\n            result = self.route_execution(\n                decision=normalized_decision,\n                market_state=market_state,\n            )\n\n            with self.lock:\n                self.last_executions[\n                    symbol\n                ] = result\n\n            self._increment_metric(\n                \"symbols_scanned\"\n            )\n\n            return result\n\n        except Exception as exc:\n            self._record_error(\n                phase=f\"symbol:{symbol}\",\n                error=exc,\n            )\n\n            logger.exception(\n                \"%s processing failed\",\n                symbol,\n            )\n\n            return None",
+              "relevant_calls": [
+                {
+                  "call": "self._load_candles",
+                  "line": 360,
+                  "arguments": [
+                    "symbol"
+                  ],
+                  "keywords": {}
+                },
+                {
+                  "call": "self.technical.analyze",
+                  "line": 393,
+                  "arguments": [
+                    "normalized_candles"
+                  ],
+                  "keywords": {}
+                },
+                {
+                  "call": "self.brain.analyze_and_decide",
+                  "line": 444,
+                  "arguments": [
+                    "symbol",
+                    "market_data"
+                  ],
+                  "keywords": {}
+                },
+                {
+                  "call": "self.normalize_decision",
+                  "line": 454,
+                  "arguments": [],
+                  "keywords": {
+                    "raw_decision": "raw_decision",
+                    "symbol": "symbol",
+                    "price": "price",
+                    "market_data": "market_data"
+                  }
+                },
+                {
+                  "call": "normalized_decision.get",
+                  "line": 501,
+                  "arguments": [
+                    "'action'",
+                    "'HOLD'"
+                  ],
+                  "keywords": {}
+                }
+              ]
+            },
+            {
+              "name": "_load_candles",
+              "signature": "_load_candles(self, symbol: str) -> Any",
+              "line_start": 601,
+              "line_end": 626,
+              "source": "    def _load_candles(\n        self,\n        symbol: str,\n    ) -> Any:\n        \"\"\"\n        Retrieve candles from the configured MarketFeed.\n        \"\"\"\n\n        candles_method = getattr(\n            self.market_feed,\n            \"candles\",\n            None,\n        )\n\n        if not callable(\n            candles_method\n        ):\n            raise AttributeError(\n                \"MarketFeed does not provide candles()\"\n            )\n\n        return candles_method(\n            symbol,\n            interval=\"1m\",\n            limit=200,\n        )",
+              "relevant_calls": [
+                {
+                  "call": "candles_method",
+                  "line": 622,
+                  "arguments": [
+                    "symbol"
+                  ],
+                  "keywords": {
+                    "interval": "'1m'",
+                    "limit": "200"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "normalize_decision",
+              "signature": "normalize_decision(self, *, raw_decision: Any, symbol: str, price: float, market_data: Any) -> dict[str, Any] | None",
+              "line_start": 632,
+              "line_end": 745,
+              "source": "    def normalize_decision(\n        self,\n        *,\n        raw_decision: Any,\n        symbol: str,\n        price: float,\n        market_data: Any,\n    ) -> dict[str, Any] | None:\n        \"\"\"\n        Convert Brain output into the canonical execution decision schema.\n        \"\"\"\n\n        source = self._decision_to_dict(\n            raw_decision\n        )\n\n        if source is None:\n            return None\n\n        enriched_decision = dict(\n            source\n        )\n\n        enriched_decision[\"symbol\"] = symbol\n        enriched_decision[\"price\"] = price\n\n        if \"market_state\" not in enriched_decision:\n            enriched_decision[\n                \"market_state\"\n            ] = (\n                market_data\n                if isinstance(\n                    market_data,\n                    dict,\n                )\n                else {}\n            )\n\n        normalized = self.decision_adapter.normalize(\n            enriched_decision\n        )\n\n        if not isinstance(\n            normalized,\n            dict,\n        ):\n            return None\n\n        action = str(\n            normalized.get(\n                \"action\",\n                \"HOLD\",\n            )\n        ).strip().upper()\n\n        normalized[\"action\"] = action\n        normalized[\"symbol\"] = str(\n            normalized.get(\n                \"symbol\",\n                symbol,\n            )\n        ).strip().upper()\n\n        normalized[\"price\"] = self._safe_float(\n            normalized.get(\n                \"price\",\n                price,\n            )\n        )\n\n        normalized[\"confidence\"] = (\n            self._normalize_confidence(\n                normalized.get(\n                    \"confidence\",\n                    0,\n                )\n            )\n        )\n\n        normalized.setdefault(\n            \"strategy\",\n            \"Atlas\",\n        )\n\n        normalized.setdefault(\n            \"risk_level\",\n            \"MEDIUM\",\n        )\n\n        metadata = normalized.get(\n            \"metadata\"\n        )\n\n        if not isinstance(\n            metadata,\n            dict,\n        ):\n            metadata = {}\n\n        metadata.update(\n            {\n                \"market_loop_version\": self.VERSION,\n                \"raw_decision_type\": type(\n                    raw_decision\n                ).__name__,\n                \"normalized_at\": datetime.now(\n                    UTC\n                ).isoformat(),\n            }\n        )\n\n        normalized[\"metadata\"] = metadata\n\n        return normalized",
+              "relevant_calls": [
+                {
+                  "call": "self._decision_to_dict",
+                  "line": 644,
+                  "arguments": [
+                    "raw_decision"
+                  ],
+                  "keywords": {}
+                },
+                {
+                  "call": "self.decision_adapter.normalize",
+                  "line": 670,
+                  "arguments": [
+                    "enriched_decision"
+                  ],
+                  "keywords": {}
+                }
+              ]
+            },
+            {
+              "name": "route_execution",
+              "signature": "route_execution(self, *, decision: dict[str, Any], market_state: Any) -> dict[str, Any]",
+              "line_start": 843,
+              "line_end": 947,
+              "source": "    def route_execution(\n        self,\n        *,\n        decision: dict[str, Any],\n        market_state: Any,\n    ) -> dict[str, Any]:\n        \"\"\"\n        Route one canonical decision to ExecutionManager.\n        \"\"\"\n\n        self._increment_metric(\n            \"execution_requests\"\n        )\n\n        try:\n            result = self.execution.execute(\n                decision,\n                market_state,\n            )\n\n        except Exception as exc:\n            self._increment_metric(\n                \"execution_failures\"\n            )\n\n            self._record_error(\n                phase=\"execution\",\n                error=exc,\n            )\n\n            logger.exception(\n                \"%s execution routing failed\",\n                decision.get(\n                    \"symbol\",\n                    \"UNKNOWN\",\n                ),\n            )\n\n            return {\n                \"status\": \"FAILED\",\n                \"reason\": \"EXECUTION_EXCEPTION\",\n                \"error\": str(\n                    exc\n                ),\n                \"symbol\": decision.get(\n                    \"symbol\",\n                    \"UNKNOWN\",\n                ),\n                \"action\": decision.get(\n                    \"action\",\n                    \"UNKNOWN\",\n                ),\n                \"timestamp\": datetime.now(\n                    UTC\n                ).isoformat(),\n            }\n\n        result_dict = self._normalize_execution_result(\n            result\n        )\n\n        status = str(\n            result_dict.get(\n                \"status\",\n                \"UNKNOWN\",\n            )\n        ).upper()\n\n        if status in {\n            \"PAPER_EXECUTED\",\n            \"EXECUTED\",\n            \"COMPLETED\",\n            \"SUCCESS\",\n        }:\n            self._increment_metric(\n                \"executions_completed\"\n            )\n\n        elif status == \"REJECTED\":\n            self._increment_metric(\n                \"executions_rejected\"\n            )\n\n        elif status in {\n            \"FAILED\",\n            \"ERROR\",\n        }:\n            self._increment_metric(\n                \"execution_failures\"\n            )\n\n        logger.info(\n            \"%s execution %s | action=%s\",\n            decision.get(\n                \"symbol\",\n                \"UNKNOWN\",\n            ),\n            status,\n            decision.get(\n                \"action\",\n                \"UNKNOWN\",\n            ),\n        )\n\n        return result_dict",
+              "relevant_calls": [
+                {
+                  "call": "decision.get",
+                  "line": 875,
+                  "arguments": [
+                    "'symbol'",
+                    "'UNKNOWN'"
+                  ],
+                  "keywords": {}
+                },
+                {
+                  "call": "decision.get",
+                  "line": 887,
+                  "arguments": [
+                    "'symbol'",
+                    "'UNKNOWN'"
+                  ],
+                  "keywords": {}
+                },
+                {
+                  "call": "decision.get",
+                  "line": 891,
+                  "arguments": [
+                    "'action'",
+                    "'UNKNOWN'"
+                  ],
+                  "keywords": {}
+                },
+                {
+                  "call": "decision.get",
+                  "line": 936,
+                  "arguments": [
+                    "'symbol'",
+                    "'UNKNOWN'"
+                  ],
+                  "keywords": {}
+                },
+                {
+                  "call": "decision.get",
+                  "line": 941,
+                  "arguments": [
+                    "'action'",
+                    "'UNKNOWN'"
+                  ],
+                  "keywords": {}
+                }
+              ]
+            },
+            {
+              "name": "calculate_score",
+              "signature": "calculate_score(analysis: dict[str, Any]) -> float",
+              "line_start": 1006,
+              "line_end": 1061,
+              "source": "    def calculate_score(\n        analysis: dict[str, Any],\n    ) -> float:\n        \"\"\"\n        Produce a bounded market quality score between 0 and 1.\n        \"\"\"\n\n        score = 0.5\n\n        rsi = analysis.get(\n            \"rsi\"\n        )\n\n        trend = str(\n            analysis.get(\n                \"trend\",\n                \"\",\n            )\n        ).upper()\n\n        try:\n            rsi_value = float(\n                rsi\n            )\n        except (\n            TypeError,\n            ValueError,\n        ):\n            rsi_value = None\n\n        if rsi_value is not None:\n            if 40 <= rsi_value <= 60:\n                score += 0.15\n\n            elif rsi_value < 30:\n                score += 0.10\n\n            elif rsi_value > 70:\n                score -= 0.10\n\n        if trend == \"BULLISH\":\n            score += 0.20\n\n        elif trend == \"BEARISH\":\n            score -= 0.20\n\n        return round(\n            max(\n                0.0,\n                min(\n                    score,\n                    1.0,\n                ),\n            ),\n            2,\n        )",
+              "relevant_calls": [
+                {
+                  "call": "analysis.get",
+                  "line": 1015,
+                  "arguments": [
+                    "'rsi'"
+                  ],
+                  "keywords": {}
+                },
+                {
+                  "call": "str(analysis.get('trend', '')).upper",
+                  "line": 1019,
+                  "arguments": [],
+                  "keywords": {}
+                },
+                {
+                  "call": "analysis.get",
+                  "line": 1020,
+                  "arguments": [
+                    "'trend'",
+                    "''"
+                  ],
+                  "keywords": {}
+                }
+              ]
+            },
+            {
+              "name": "health",
+              "signature": "health(self) -> dict[str, Any]",
+              "line_start": 1287,
+              "line_end": 1316,
+              "source": "    def health(self) -> dict[str, Any]:\n        \"\"\"\n        Return concise health information.\n        \"\"\"\n\n        with self.lock:\n            thread_alive = bool(\n                self.thread\n                and self.thread.is_alive()\n            )\n\n            healthy = bool(\n                (\n                    not self.running\n                    or thread_alive\n                )\n                and self.metrics[\n                    \"errors\"\n                ] == 0\n            )\n\n            return {\n                \"healthy\": healthy,\n                \"running\": self.running,\n                \"thread_alive\": thread_alive,\n                \"version\": self.VERSION,\n                \"errors\": self.metrics[\n                    \"errors\"\n                ],\n            }",
+              "relevant_calls": []
+            }
+          ]
+        }
+      ]
+    },
+    "technical_analyzer": {
+      "label": "technical_analyzer",
+      "path": "core\\technical_analyzer.py",
+      "exists": true,
+      "imports": [
+        "__future__:annotations",
+        "logging",
+        "statistics"
+      ],
+      "classes": [
+        {
+          "name": "TechnicalAnalyzer",
+          "bases": [],
+          "line_start": 36,
+          "line_end": 424,
+          "methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self)",
+              "line_start": 39,
+              "line_end": 41,
+              "source": "    def __init__(self):\n\n        self.version = \"2.0\"",
+              "relevant_calls": []
+            },
+            {
+              "name": "analyze",
+              "signature": "analyze(self, candles)",
+              "line_start": 327,
+              "line_end": 424,
+              "source": "    def analyze(\n        self,\n        candles\n    ):\n\n\n        if not candles:\n\n            return {}\n\n\n\n        closes=[\n\n            c[\"close\"]\n\n            for c in candles\n\n        ]\n\n\n\n        ema20=self.ema(\n            closes,\n            20\n        )\n\n\n        ema50=self.ema(\n            closes,\n            50\n        )\n\n\n        rsi=self.rsi(\n            closes\n        )\n\n\n        trend=\"NEUTRAL\"\n\n\n\n        if ema20 and ema50:\n\n\n            if ema20 > ema50:\n\n                trend=\"BULLISH\"\n\n\n            elif ema20 < ema50:\n\n                trend=\"BEARISH\"\n\n\n\n        return {\n\n\n            \"ema20\":\n                ema20,\n\n\n            \"ema50\":\n                ema50,\n\n\n            \"rsi\":\n                rsi,\n\n\n            \"trend\":\n                trend,\n\n\n            \"volatility\":\n                self.volatility(\n                    closes\n                ),\n\n\n            \"momentum\":\n                self.momentum(\n                    closes\n                ),\n\n\n            \"volume_pressure\":\n                self.volume_pressure(\n                    candles\n                ),\n\n\n            \"last_close\":\n                closes[-1]\n\n        }",
+              "relevant_calls": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "safety": {
+    "source_files_modified": false,
+    "atlas_modules_imported": false,
+    "exchange_connections_opened": false
+  }
+}

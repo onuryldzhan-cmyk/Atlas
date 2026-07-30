@@ -1,0 +1,28 @@
+==============================================================================
+ATLAS PHASE 6A2 — MARKET DATA ARCHITECTURE AUDIT
+==============================================================================
+
+Python files scanned : 613
+Parse failures       : 53
+HIGH findings        : 1
+MEDIUM findings      : 2
+Legacy usage files   : 7
+Canonical usage files: 1
+
+FINDINGS
+------------------------------------------------------------------------------
+[HIGH] LEGACY_COMPOSITION_ROOT — Application still constructs legacy MarketFeed
+  Evidence: core/application.py imports exchange.market_feed.MarketFeed
+  Action  : Introduce a compatibility adapter or migrate the composition root to AtlasFinance MarketFeedService after contract tests.
+
+[MEDIUM] EMPTY_CORE_MARKET_FEED — core/market_feed.py is empty
+  Evidence: The expected core feed module has zero bytes.
+  Action  : Keep it unused, remove references, or convert it into a deliberate compatibility export only after import analysis.
+
+[MEDIUM] DIRECT_EXCHANGE_ACCESS — Active modules contain direct exchange access markers
+  Evidence: [{'file': 'web_app.py', 'markers': ['requests.get(', 'api.binance.com']}, {'file': 'data/binance_provider.py', 'markers': ['requests.get(', 'api.binance.com']}, {'file': 'exchange/base_exchange.py', 'markers': ['get_klines(']}, {'file': 'exchange/exchange_manager.py', 'markers': ['get_klines(']}, {'file': 'exchange/market_feed.py', 'markers': ['get_klines(']}, {'file': 'phase6a2_tool_backup_20260727_170020/phase6a2_market_data_architecture_audit.py', 'markers': ['requests.get(', 'requests.post(', 'client.get_', 'get_klines(', 'get_ticker(', 'futures_', 'api.binance.com']}, {'file': 'phase6a2_tool_backup_20260727_170048/phase6a2_market_data_architecture_audit.py', 'markers': ['requests.get(', 'requests.post(', 'client.get_', 'get_klines(', 'get_ticker(', 'futures_', 'api.binance.com']}, {'file': 'archive_unused_2026-07-22/ai/atlas_telegram_connector.py', 'markers': ['requests.get(', 'requests.post(']}, {'file': 'archive_unused_2026-07-22/core/data_downloader.py', 'markers': ['requests.get(', 'api.binance.com']}, {'file': 'archive_unused_2026-07-22/core/data_provider.py', 'markers': ['requests.get(', 'get_klines(', 'api.binance.com']}, {'file': 'archive_unused_2026-07-22/core/live_trader.py', 'markers': ['client.get_', 'get_klines(']}, {'file': 'archive_unused_2026-07-22/core/trading_cycle.py', 'markers': ['get_klines(']}, {'file': 'archive_unused_2026-07-22/data/binance_provider.py', 'markers': ['client.get_', 'get_klines(']}, {'file': 'archive_unused_2026-07-22/data/data_manager.py', 'markers': ['client.get_', 'get_klines(', 'get_ticker(', 'futures_', 'api.binance.com']}, {'file': 'archive_unused_2026-07-22/ai/core/atlas_live_connector.py', 'markers': ['get_klines(', 'api.binance.com']}, {'file': 'archive_unused_2026-07-22/ai/core/atlas_live_trading.py', 'markers': ['requests.get(', 'api.binance.com']}, {'file': 'archive_unused_2026-07-22/ai/core/atlas_live_trading_v2.py', 'markers': ['client.get_', 'get_klines(', 'api.binance.com']}, {'file': 'archive_unused_2026-07-22/ai/core/atlas_live_trading_v21.py', 'markers': ['client.get_', 'get_klines(', 'api.binance.com']}, {'file': 'archive_unused_2026-07-22/ai/core/atlas_telegram_connector.py', 'markers': ['requests.get(', 'requests.post(']}]
+  Action  : Restrict external market requests to provider/adapter modules.
+
+[INFO] CANONICAL_SERVICE_READY — MarketFeedService exposes production service capabilities
+  Evidence: ['_health_details', '_on_start', '_on_stop', 'get_candles', 'get_price', 'market_feed_snapshot', 'statistics']
+  Action  : Proceed with adapter and composition migration tests.

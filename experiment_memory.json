@@ -1,0 +1,38 @@
+[
+    {
+        "id": 1,
+        "date": "2026-07-18 14:21:36",
+        "module": "confidence_engine",
+        "change": "Confidence threshold 70 -> 65",
+        "reason": "Başarı oranını artırmak",
+        "before": {
+            "confidence": 70
+        },
+        "after": {
+            "confidence": 65
+        },
+        "status": "TESTING",
+        "result": null
+    },
+    {
+        "id": 2,
+        "date": "2026-07-18 14:25:31",
+        "module": "confidence_engine",
+        "change": "Confidence threshold 70 -> 65",
+        "reason": "Başarı oranını artırmak",
+        "before": {
+            "confidence": 70
+        },
+        "after": {
+            "confidence": 65
+        },
+        "status": "SUCCESS",
+        "result": {
+            "experiment_id": 2,
+            "old_score": 42,
+            "new_score": 58,
+            "improvement": 16,
+            "success": true
+        }
+    }
+]

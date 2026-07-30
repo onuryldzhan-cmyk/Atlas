@@ -1,0 +1,15 @@
+{
+  "phase": "6A5.2",
+  "generated_utc": "2026-07-27T14:29:56.594236+00:00",
+  "test_file": "tests\\phase6\\test_market_loop_integration.py",
+  "compile_passed": true,
+  "compile_error": null,
+  "tests_passed": true,
+  "return_code": 0,
+  "stdout": "",
+  "stderr": "test_candle_processor_accepts_binance_legacy_rows (tests.phase6.test_market_loop_integration.MarketLoopIntegrationTests.test_candle_processor_accepts_binance_legacy_rows) ... ok\ntest_market_loop_requests_real_legacy_contract (tests.phase6.test_market_loop_integration.MarketLoopIntegrationTests.test_market_loop_requests_real_legacy_contract) ... ok\ntest_process_symbol_reaches_brain_without_execution (tests.phase6.test_market_loop_integration.MarketLoopIntegrationTests.test_process_symbol_reaches_brain_without_execution) ... ok\ntest_technical_analyzer_accepts_normalized_candles (tests.phase6.test_market_loop_integration.MarketLoopIntegrationTests.test_technical_analyzer_accepts_normalized_candles) ... ok\n\n----------------------------------------------------------------------\nRan 4 tests in 0.004s\n\nOK\n",
+  "backup": null,
+  "source_files_modified": false,
+  "network_used": false,
+  "execution_used": false
+}

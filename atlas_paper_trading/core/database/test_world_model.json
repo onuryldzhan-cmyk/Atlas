@@ -1,0 +1,623 @@
+{
+  "entities": {
+    "bitcoin": {
+      "id": "bitcoin",
+      "name": "Bitcoin",
+      "type": "asset",
+      "properties": {
+        "symbol": "BTCUSDT",
+        "market_cap_rank": 1,
+        "dominance": true
+      },
+      "aliases": [
+        "BTC",
+        "XBT"
+      ],
+      "description": "Ilk ve en buyuk kripto para",
+      "importance": 1.0
+    },
+    "ethereum": {
+      "id": "ethereum",
+      "name": "Ethereum",
+      "type": "asset",
+      "properties": {
+        "symbol": "ETHUSDT",
+        "market_cap_rank": 2,
+        "smart_contract": true
+      },
+      "aliases": [
+        "ETH"
+      ],
+      "description": "Akilli sozlesme platformu",
+      "importance": 0.95
+    },
+    "solana": {
+      "id": "solana",
+      "name": "Solana",
+      "type": "asset",
+      "properties": {
+        "symbol": "SOLUSDT",
+        "market_cap_rank": 5,
+        "high_tps": true
+      },
+      "aliases": [
+        "SOL"
+      ],
+      "description": "Yuksek hizli Layer1",
+      "importance": 0.8
+    },
+    "bnb": {
+      "id": "bnb",
+      "name": "BNB",
+      "type": "asset",
+      "properties": {
+        "symbol": "BNBUSDT",
+        "market_cap_rank": 4,
+        "exchange_token": true
+      },
+      "aliases": [
+        "BNB"
+      ],
+      "description": "Binance borsa tokeni",
+      "importance": 0.75
+    },
+    "xrp": {
+      "id": "xrp",
+      "name": "XRP",
+      "type": "asset",
+      "properties": {
+        "symbol": "XRPUSDT",
+        "market_cap_rank": 7,
+        "payment_focused": true
+      },
+      "aliases": [
+        "XRP",
+        "Ripple"
+      ],
+      "description": "Odeme odakli kripto para",
+      "importance": 0.7
+    },
+    "ada": {
+      "id": "ada",
+      "name": "Cardano",
+      "type": "asset",
+      "properties": {
+        "symbol": "ADAUSDT",
+        "market_cap_rank": 10,
+        "research_driven": true
+      },
+      "aliases": [
+        "ADA"
+      ],
+      "description": "Arastirma odakli Layer1",
+      "importance": 0.65
+    },
+    "layer1": {
+      "id": "layer1",
+      "name": "Layer 1",
+      "type": "category",
+      "properties": {},
+      "aliases": [
+        "L1"
+      ],
+      "description": "Temel blok zinciri protokolleri",
+      "importance": 0.9
+    },
+    "layer2": {
+      "id": "layer2",
+      "name": "Layer 2",
+      "type": "category",
+      "properties": {},
+      "aliases": [
+        "L2"
+      ],
+      "description": "Olceklendirme cozumleri",
+      "importance": 0.7
+    },
+    "defi": {
+      "id": "defi",
+      "name": "DeFi",
+      "type": "category",
+      "properties": {},
+      "aliases": [],
+      "description": "Merkeziyetsiz finans",
+      "importance": 0.85
+    },
+    "stablecoin": {
+      "id": "stablecoin",
+      "name": "Stablecoin",
+      "type": "category",
+      "properties": {},
+      "aliases": [],
+      "description": "Dolar pegli kripto paralar",
+      "importance": 0.8
+    },
+    "meme": {
+      "id": "meme",
+      "name": "Meme Coin",
+      "type": "category",
+      "properties": {},
+      "aliases": [],
+      "description": "Sosyal medya odakli coinler",
+      "importance": 0.4
+    },
+    "fed": {
+      "id": "fed",
+      "name": "FED",
+      "type": "entity",
+      "properties": {
+        "country": "USA",
+        "type": "central_bank"
+      },
+      "aliases": [
+        "Federal Reserve"
+      ],
+      "description": "ABD Merkez Bankasi",
+      "importance": 0.95
+    },
+    "sec": {
+      "id": "sec",
+      "name": "SEC",
+      "type": "entity",
+      "properties": {
+        "country": "USA",
+        "type": "regulator"
+      },
+      "aliases": [],
+      "description": "ABD Menkul Kiymetler Borsasi Komisyonu",
+      "importance": 0.9
+    },
+    "binance": {
+      "id": "binance",
+      "name": "Binance",
+      "type": "entity",
+      "properties": {
+        "type": "exchange",
+        "volume_rank": 1
+      },
+      "aliases": [
+        "BNB Chain"
+      ],
+      "description": "En buyuk kripto borsasi",
+      "importance": 0.9
+    },
+    "dxy": {
+      "id": "dxy",
+      "name": "DXY",
+      "type": "index",
+      "properties": {
+        "full_name": "US Dollar Index"
+      },
+      "aliases": [
+        "Dollar Index"
+      ],
+      "description": "Dolar endeksi",
+      "importance": 0.85
+    },
+    "sp500": {
+      "id": "sp500",
+      "name": "S&P 500",
+      "type": "index",
+      "properties": {
+        "type": "stock_index"
+      },
+      "aliases": [
+        "SPX"
+      ],
+      "description": "ABD hisse senedi endeksi",
+      "importance": 0.8
+    },
+    "nasdaq": {
+      "id": "nasdaq",
+      "name": "NASDAQ",
+      "type": "index",
+      "properties": {
+        "type": "tech_index"
+      },
+      "aliases": [],
+      "description": "Teknoloji hisse endeksi",
+      "importance": 0.75
+    },
+    "vix": {
+      "id": "vix",
+      "name": "VIX",
+      "type": "index",
+      "properties": {
+        "type": "volatility_index"
+      },
+      "aliases": [
+        "Fear Index"
+      ],
+      "description": "Piyasa korku endeksi",
+      "importance": 0.7
+    },
+    "usdt": {
+      "id": "usdt",
+      "name": "USDT",
+      "type": "stablecoin",
+      "properties": {
+        "issuer": "Tether",
+        "peg": "USD"
+      },
+      "aliases": [
+        "Tether"
+      ],
+      "description": "En buyuk stablecoin",
+      "importance": 0.9
+    },
+    "usdc": {
+      "id": "usdc",
+      "name": "USDC",
+      "type": "stablecoin",
+      "properties": {
+        "issuer": "Circle",
+        "peg": "USD"
+      },
+      "aliases": [],
+      "description": "ABD merkezli stablecoin",
+      "importance": 0.85
+    },
+    "bull_market": {
+      "id": "bull_market",
+      "name": "Bull Market",
+      "type": "regime",
+      "properties": {
+        "sentiment": "positive",
+        "trend": "up"
+      },
+      "aliases": [
+        "Bull"
+      ],
+      "description": "Yukselis piyasasi",
+      "importance": 0.8
+    },
+    "bear_market": {
+      "id": "bear_market",
+      "name": "Bear Market",
+      "type": "regime",
+      "properties": {
+        "sentiment": "negative",
+        "trend": "down"
+      },
+      "aliases": [
+        "Bear"
+      ],
+      "description": "Dusus piyasasi",
+      "importance": 0.8
+    },
+    "altcoin_season": {
+      "id": "altcoin_season",
+      "name": "Altcoin Season",
+      "type": "regime",
+      "properties": {
+        "dominance": "low",
+        "altcoin_performance": "high"
+      },
+      "aliases": [
+        "Alt Season"
+      ],
+      "description": "Altcoinlerin BTC'den iyi performans gosterdigi donem",
+      "importance": 0.7
+    },
+    "btc_dominance": {
+      "id": "btc_dominance",
+      "name": "BTC Dominance",
+      "type": "regime",
+      "properties": {
+        "dominance": "high",
+        "btc_performance": "strong"
+      },
+      "aliases": [],
+      "description": "BTC'nin piyasaya hakim oldugu donem",
+      "importance": 0.7
+    },
+    "etf": {
+      "id": "etf",
+      "name": "ETF",
+      "type": "instrument",
+      "properties": {
+        "type": "fund",
+        "crypto_related": true
+      },
+      "aliases": [
+        "Exchange Traded Fund"
+      ],
+      "description": "Borsada islem goren fon",
+      "importance": 0.85
+    },
+    "futures": {
+      "id": "futures",
+      "name": "Futures",
+      "type": "instrument",
+      "properties": {
+        "type": "derivative"
+      },
+      "aliases": [],
+      "description": "Vadeli islem sozlesmesi",
+      "importance": 0.8
+    },
+    "fed_rate_hike": {
+      "id": "fed_rate_hike",
+      "name": "FED Rate Hike",
+      "type": "event",
+      "properties": {
+        "impact": "high",
+        "type": "monetary_policy"
+      },
+      "aliases": [],
+      "description": "FED faiz artirimi",
+      "importance": 0.9
+    }
+  },
+  "relations": [
+    {
+      "source": "bitcoin",
+      "target": "layer1",
+      "relation": "is_a",
+      "strength": 1.0,
+      "direction": "forward",
+      "evidence": [],
+      "timestamp": "2026-07-20T17:58:43.508723"
+    },
+    {
+      "source": "ethereum",
+      "target": "layer1",
+      "relation": "is_a",
+      "strength": 1.0,
+      "direction": "forward",
+      "evidence": [],
+      "timestamp": "2026-07-20T17:58:43.508753"
+    },
+    {
+      "source": "solana",
+      "target": "layer1",
+      "relation": "is_a",
+      "strength": 1.0,
+      "direction": "forward",
+      "evidence": [],
+      "timestamp": "2026-07-20T17:58:43.508759"
+    },
+    {
+      "source": "usdt",
+      "target": "stablecoin",
+      "relation": "belongs_to",
+      "strength": 1.0,
+      "direction": "forward",
+      "evidence": [],
+      "timestamp": "2026-07-20T17:58:43.508762"
+    },
+    {
+      "source": "usdc",
+      "target": "stablecoin",
+      "relation": "belongs_to",
+      "strength": 1.0,
+      "direction": "forward",
+      "evidence": [],
+      "timestamp": "2026-07-20T17:58:43.508765"
+    },
+    {
+      "source": "solana",
+      "target": "ethereum",
+      "relation": "competes_with",
+      "strength": 0.8,
+      "direction": "forward",
+      "evidence": [],
+      "timestamp": "2026-07-20T17:58:43.508767"
+    },
+    {
+      "source": "bnb",
+      "target": "ethereum",
+      "relation": "competes_with",
+      "strength": 0.6,
+      "direction": "forward",
+      "evidence": [],
+      "timestamp": "2026-07-20T17:58:43.508770"
+    },
+    {
+      "source": "xrp",
+      "target": "ethereum",
+      "relation": "competes_with",
+      "strength": 0.4,
+      "direction": "forward",
+      "evidence": [],
+      "timestamp": "2026-07-20T17:58:43.508772"
+    },
+    {
+      "source": "fed",
+      "target": "dxy",
+      "relation": "influences",
+      "strength": 0.9,
+      "direction": "forward",
+      "evidence": [],
+      "timestamp": "2026-07-20T17:58:43.508775"
+    },
+    {
+      "source": "fed",
+      "target": "sp500",
+      "relation": "influences",
+      "strength": 0.7,
+      "direction": "forward",
+      "evidence": [],
+      "timestamp": "2026-07-20T17:58:43.508777"
+    },
+    {
+      "source": "sec",
+      "target": "bitcoin",
+      "relation": "influences",
+      "strength": 0.6,
+      "direction": "forward",
+      "evidence": [],
+      "timestamp": "2026-07-20T17:58:43.508779"
+    },
+    {
+      "source": "sec",
+      "target": "etf",
+      "relation": "influences",
+      "strength": 0.8,
+      "direction": "forward",
+      "evidence": [],
+      "timestamp": "2026-07-20T17:58:43.508782"
+    },
+    {
+      "source": "dxy",
+      "target": "bitcoin",
+      "relation": "negatively_correlates",
+      "strength": 0.6,
+      "direction": "forward",
+      "evidence": [],
+      "timestamp": "2026-07-20T17:58:43.508785"
+    },
+    {
+      "source": "sp500",
+      "target": "bitcoin",
+      "relation": "positively_correlates",
+      "strength": 0.5,
+      "direction": "forward",
+      "evidence": [],
+      "timestamp": "2026-07-20T17:58:43.508788"
+    },
+    {
+      "source": "nasdaq",
+      "target": "bitcoin",
+      "relation": "positively_correlates",
+      "strength": 0.55,
+      "direction": "forward",
+      "evidence": [],
+      "timestamp": "2026-07-20T17:58:43.508790"
+    },
+    {
+      "source": "vix",
+      "target": "bitcoin",
+      "relation": "negatively_correlates",
+      "strength": 0.4,
+      "direction": "forward",
+      "evidence": [],
+      "timestamp": "2026-07-20T17:58:43.508792"
+    },
+    {
+      "source": "etf",
+      "target": "bitcoin",
+      "relation": "increases_demand",
+      "strength": 0.8,
+      "direction": "forward",
+      "evidence": [],
+      "timestamp": "2026-07-20T17:58:43.508794"
+    },
+    {
+      "source": "etf",
+      "target": "ethereum",
+      "relation": "increases_demand",
+      "strength": 0.7,
+      "direction": "forward",
+      "evidence": [],
+      "timestamp": "2026-07-20T17:58:43.508797"
+    },
+    {
+      "source": "bull_market",
+      "target": "altcoin_season",
+      "relation": "enables",
+      "strength": 0.7,
+      "direction": "forward",
+      "evidence": [],
+      "timestamp": "2026-07-20T17:58:43.508799"
+    },
+    {
+      "source": "btc_dominance",
+      "target": "altcoin_season",
+      "relation": "negatively_correlates",
+      "strength": 0.8,
+      "direction": "forward",
+      "evidence": [],
+      "timestamp": "2026-07-20T17:58:43.508801"
+    },
+    {
+      "source": "bear_market",
+      "target": "btc_dominance",
+      "relation": "leads_to",
+      "strength": 0.6,
+      "direction": "forward",
+      "evidence": [],
+      "timestamp": "2026-07-20T17:58:43.508804"
+    },
+    {
+      "source": "altcoin_season",
+      "target": "bitcoin",
+      "relation": "depends_on",
+      "strength": 0.9,
+      "direction": "forward",
+      "evidence": [],
+      "timestamp": "2026-07-20T17:58:43.508806"
+    },
+    {
+      "source": "defi",
+      "target": "ethereum",
+      "relation": "depends_on",
+      "strength": 0.8,
+      "direction": "forward",
+      "evidence": [],
+      "timestamp": "2026-07-20T17:58:43.508808"
+    },
+    {
+      "source": "bitcoin",
+      "target": "altcoin_season",
+      "relation": "dominates",
+      "strength": 0.7,
+      "direction": "forward",
+      "evidence": [],
+      "timestamp": "2026-07-20T17:58:43.508811"
+    },
+    {
+      "source": "ethereum",
+      "target": "bitcoin",
+      "relation": "synchronizes_with",
+      "strength": 0.8,
+      "direction": "bidirectional",
+      "evidence": [],
+      "timestamp": "2026-07-20T17:58:43.508814"
+    },
+    {
+      "source": "solana",
+      "target": "bitcoin",
+      "relation": "synchronizes_with",
+      "strength": 0.7,
+      "direction": "bidirectional",
+      "evidence": [],
+      "timestamp": "2026-07-20T17:58:43.508818"
+    },
+    {
+      "source": "fed_rate_hike",
+      "target": "fed",
+      "relation": "leads_to",
+      "strength": 1.0,
+      "direction": "forward",
+      "evidence": [],
+      "timestamp": "2026-07-20T17:58:43.510379"
+    }
+  ],
+  "market_state": {
+    "timestamp": "2026-07-20T17:58:43.510565",
+    "active_regime": "btc_dominance",
+    "dominance": {
+      "BTC": 52.3,
+      "ETH": 18.1,
+      "SOL": 3.2
+    },
+    "correlations": {
+      "BTC-ETH": 0.85,
+      "BTC-SOL": 0.75
+    },
+    "sentiment": {
+      "fear_greed": 35,
+      "funding": 0.01
+    },
+    "risk_factors": [
+      "FED meeting",
+      "ETF outflows",
+      "Geopolitical tension"
+    ],
+    "key_events": [
+      "FED meeting tomorrow",
+      "ETH ETF approval pending"
+    ]
+  }
+}

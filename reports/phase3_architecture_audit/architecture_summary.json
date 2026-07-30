@@ -1,0 +1,177 @@
+{
+  "project_root": "C:\\Users\\HUAWEİ\\OneDrive\\Masaüstü\\Project_Atlas_AI",
+  "python_version": "3.14.6 (tags/v3.14.6:c63aec6, Jun 10 2026, 10:26:10) [MSC v.1944 64 bit (AMD64)]",
+  "total_python_files": 307,
+  "parse_success": 294,
+  "parse_failures": 13,
+  "reachable_modules_from_main": 36,
+  "unreachable_modules_from_main": 271,
+  "exact_duplicate_groups": 6,
+  "exact_duplicate_files": 20,
+  "duplicate_class_names": 50,
+  "largest_files": [
+    {
+      "path": "core\\execution_manager.py",
+      "loc": 2810,
+      "reachable_from_main": true
+    },
+    {
+      "path": "execution_manager.py",
+      "loc": 2810,
+      "reachable_from_main": false
+    },
+    {
+      "path": "atlas_os\\scheduling\\scheduler.py",
+      "loc": 2406,
+      "reachable_from_main": false
+    },
+    {
+      "path": "atlas_os\\configuration\\configuration_service.py",
+      "loc": 2242,
+      "reachable_from_main": false
+    },
+    {
+      "path": "atlas_os\\secrets\\secrets_manager.py",
+      "loc": 2072,
+      "reachable_from_main": false
+    },
+    {
+      "path": "atlas_finance\\market_data\\market_feed_service.py",
+      "loc": 1930,
+      "reachable_from_main": false
+    },
+    {
+      "path": "core\\paper_execution_engine.py",
+      "loc": 1866,
+      "reachable_from_main": false
+    },
+    {
+      "path": "core\\execution_manager_v28_backup.py",
+      "loc": 1561,
+      "reachable_from_main": false
+    },
+    {
+      "path": "ai\\core\\atlas_brain_old_v8.py",
+      "loc": 1547,
+      "reachable_from_main": false
+    },
+    {
+      "path": "atlas_os\\observability\\metrics.py",
+      "loc": 1420,
+      "reachable_from_main": false
+    },
+    {
+      "path": "core\\execution_controller.py",
+      "loc": 1414,
+      "reachable_from_main": false
+    },
+    {
+      "path": "core\\market_loop.py",
+      "loc": 1398,
+      "reachable_from_main": true
+    },
+    {
+      "path": "atlas_os\\integration\\configuration_secrets_bridge.py",
+      "loc": 1383,
+      "reachable_from_main": false
+    },
+    {
+      "path": "atlas_os\\services\\dependency_manager.py",
+      "loc": 1334,
+      "reachable_from_main": false
+    },
+    {
+      "path": "atlas_finance\\market_data\\binance_public_provider.py",
+      "loc": 1308,
+      "reachable_from_main": false
+    },
+    {
+      "path": "core\\position_controller.py",
+      "loc": 1307,
+      "reachable_from_main": true
+    },
+    {
+      "path": "atlas_runtime\\runtime.py",
+      "loc": 1294,
+      "reachable_from_main": false
+    },
+    {
+      "path": "core\\decision_adapter.py",
+      "loc": 1158,
+      "reachable_from_main": true
+    },
+    {
+      "path": "atlas_os\\audit\\audit_log.py",
+      "loc": 1114,
+      "reachable_from_main": false
+    },
+    {
+      "path": "core\\portfolio_manager.py",
+      "loc": 1110,
+      "reachable_from_main": false
+    },
+    {
+      "path": "atlas_runtime\\bootstrap.py",
+      "loc": 1052,
+      "reachable_from_main": false
+    },
+    {
+      "path": "atlas_os\\events\\event_bus.py",
+      "loc": 1003,
+      "reachable_from_main": false
+    },
+    {
+      "path": "core\\execution_models.py",
+      "loc": 975,
+      "reachable_from_main": true
+    },
+    {
+      "path": "atlas_os\\integrations\\event_integration.py",
+      "loc": 946,
+      "reachable_from_main": false
+    },
+    {
+      "path": "ai\\core\\atlas_reasoning_engine.py",
+      "loc": 927,
+      "reachable_from_main": true
+    }
+  ],
+  "reachable_files": [
+    "ai\\core\\atlas_brain.py",
+    "ai\\core\\atlas_memory_core.py",
+    "ai\\core\\atlas_reasoning_engine.py",
+    "ai\\core\\atlas_world_model.py",
+    "ai\\core\\intelligence\\agent_fusion.py",
+    "ai\\core\\intelligence\\confidence\\confidence_engine.py",
+    "ai\\core\\intelligence\\decision_builder.py",
+    "ai\\core\\intelligence\\memory_adapter.py",
+    "ai\\core\\intelligence\\reasoning_adapter.py",
+    "ai\\core\\intelligence\\risk_engine.py",
+    "analysis\\world_analysis_engine.py",
+    "core\\application.py",
+    "core\\brain.py",
+    "core\\candle_processor.py",
+    "core\\controller\\atlas_controller.py",
+    "core\\decision.py",
+    "core\\decision_adapter.py",
+    "core\\event_bus.py",
+    "core\\execution_manager.py",
+    "core\\execution_models.py",
+    "core\\lifecycle.py",
+    "core\\logger.py",
+    "core\\market_loop.py",
+    "core\\paper_trader.py",
+    "core\\position_controller.py",
+    "core\\runtime.py",
+    "core\\scheduler.py",
+    "core\\service_container.py",
+    "core\\technical_analyzer.py",
+    "exchange\\adapters\\binance_global.py",
+    "exchange\\adapters\\binance_tr.py",
+    "exchange\\base_exchange.py",
+    "exchange\\exchange_manager.py",
+    "exchange\\market_feed.py",
+    "main.py",
+    "portfolio\\capital_manager.py"
+  ]
+}

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-white p-8">
+    <div class="max-w-6xl mx-auto">
+        <h1 class="text-3xl font-bold mb-6 italic text-blue-500">ATLAS AI <span class="text-white not-italic text-lg">TERMINAL v2.0</span></h1>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800">
+                <h2 class="text-slate-500 text-xs uppercase font-bold">Güncel Fiyat</h2>
+                <div id="price-display" class="text-3xl font-mono mt-2">Yükleniyor...</div>
+            </div>
+            <div class="bg-slate-900 p-6 rounded-2xl border border-blue-500">
+                <h2 class="text-blue-400 text-xs uppercase font-bold">Otonom Karar</h2>
+                <div id="decision-content" class="mt-2 font-bold">Analiz ediliyor...</div>
+            </div>
+            <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800">
+                <h2 class="text-slate-500 text-xs uppercase font-bold">Sistem Durumu</h2>
+                <div class="text-emerald-400 mt-2">● AKTİF (Online)</div>
+            </div>
+        </div>
+        <div class="mt-8 bg-slate-900 p-6 rounded-2xl border border-slate-800">
+            <h2 class="text-xs uppercase text-slate-500 font-bold tracking-widest">Otonom İşlem Geçmişi</h2>
+            <div id="trade-log" class="mt-4 font-mono text-sm text-slate-400 h-32 overflow-y-auto">> Bot izleme modunda...</div>
+        </div>
+    </div>
+    <script>
+        async function updateTerminal() {
+            const res = await fetch('/api/analysis');
+            const data = await res.json();
+            document.getElementById('price-display').innerText = data.price.toLocaleString() + ' TRY';
+            document.getElementById('decision-content').innerHTML = 
+                `<span class="text-2xl">${data.decision.action}</span><br><span class="text-xs text-slate-400">${data.decision.reason}</span>`;
+            if (data.decision.action !== "HOLD") {
+                const logBox = document.getElementById('trade-log');
+                logBox.innerHTML += `<br>> ${new Date().toLocaleTimeString()} - Karar: ${data.decision.action} (${data.decision.reason})`;
+            }
+        }
+        setInterval(updateTerminal, 5000);
+        updateTerminal();
+    </script>
+</body>
+</html>

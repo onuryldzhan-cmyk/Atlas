@@ -1,0 +1,544 @@
+{
+    "generated": "2026-07-23T14:40:51.522368",
+    "total_modules": 88,
+    "large_files": [
+        {
+            "file": ".\\ai\\core\\atlas_brain.py",
+            "lines": 1567,
+            "size_kb": 18.73
+        },
+        {
+            "file": ".\\ai\\core\\atlas_reasoning_engine.py",
+            "lines": 927,
+            "size_kb": 13.06
+        },
+        {
+            "file": ".\\backtest\\backtest_engine.py",
+            "lines": 871,
+            "size_kb": 31.61
+        },
+        {
+            "file": ".\\config\\settings.py",
+            "lines": 550,
+            "size_kb": 6.73
+        },
+        {
+            "file": ".\\core\\application.py",
+            "lines": 463,
+            "size_kb": 6.66
+        },
+        {
+            "file": ".\\core\\brain.py",
+            "lines": 551,
+            "size_kb": 6.78
+        },
+        {
+            "file": ".\\core\\execution_manager.py",
+            "lines": 626,
+            "size_kb": 8.81
+        },
+        {
+            "file": ".\\core\\market_loop.py",
+            "lines": 562,
+            "size_kb": 7.2
+        },
+        {
+            "file": ".\\core\\paper_trader.py",
+            "lines": 511,
+            "size_kb": 6.84
+        },
+        {
+            "file": ".\\core\\signal_pipeline.py",
+            "lines": 684,
+            "size_kb": 23.75
+        },
+        {
+            "file": ".\\core\\technical_analyzer.py",
+            "lines": 424,
+            "size_kb": 5.33
+        },
+        {
+            "file": ".\\core\\trade_plan_engine.py",
+            "lines": 477,
+            "size_kb": 5.75
+        },
+        {
+            "file": ".\\dashboard\\app.py",
+            "lines": 617,
+            "size_kb": 18.54
+        },
+        {
+            "file": ".\\portfolio\\capital_manager.py",
+            "lines": 658,
+            "size_kb": 9.12
+        },
+        {
+            "file": ".\\strategy\\strategy_base.py",
+            "lines": 705,
+            "size_kb": 26.43
+        }
+    ],
+    "categories": {
+        "CORE": [
+            {
+                "file": ".\\core\\adaptive_profit_engine.py",
+                "lines": 351,
+                "size_kb": 4.01
+            },
+            {
+                "file": ".\\core\\application.py",
+                "lines": 463,
+                "size_kb": 6.66
+            },
+            {
+                "file": ".\\core\\candle_processor.py",
+                "lines": 261,
+                "size_kb": 3.85
+            },
+            {
+                "file": ".\\core\\class_registry_scan.py",
+                "lines": 151,
+                "size_kb": 1.79
+            },
+            {
+                "file": ".\\core\\decision.py",
+                "lines": 377,
+                "size_kb": 4.66
+            },
+            {
+                "file": ".\\core\\decision_adapter.py",
+                "lines": 380,
+                "size_kb": 4.75
+            },
+            {
+                "file": ".\\core\\dynamic_profit_engine.py",
+                "lines": 385,
+                "size_kb": 5.01
+            },
+            {
+                "file": ".\\core\\events.py",
+                "lines": 212,
+                "size_kb": 3.07
+            },
+            {
+                "file": ".\\core\\event_bus.py",
+                "lines": 208,
+                "size_kb": 3.25
+            },
+            {
+                "file": ".\\core\\execution_bridge.py",
+                "lines": 252,
+                "size_kb": 3.02
+            },
+            {
+                "file": ".\\core\\execution_manager.py",
+                "lines": 626,
+                "size_kb": 8.81
+            },
+            {
+                "file": ".\\core\\execution_manager_backup.py",
+                "lines": 184,
+                "size_kb": 2.42
+            },
+            {
+                "file": ".\\core\\execution_manager_v1_backup.py",
+                "lines": 184,
+                "size_kb": 2.42
+            },
+            {
+                "file": ".\\core\\health_monitor.py",
+                "lines": 210,
+                "size_kb": 3.47
+            },
+            {
+                "file": ".\\core\\interfaces.py",
+                "lines": 123,
+                "size_kb": 1.72
+            },
+            {
+                "file": ".\\core\\lifecycle.py",
+                "lines": 233,
+                "size_kb": 4.2
+            },
+            {
+                "file": ".\\core\\logger.py",
+                "lines": 118,
+                "size_kb": 1.79
+            },
+            {
+                "file": ".\\core\\market_feed.py",
+                "lines": 0,
+                "size_kb": 0.0
+            },
+            {
+                "file": ".\\core\\market_intelligence.py",
+                "lines": 31,
+                "size_kb": 1.33
+            },
+            {
+                "file": ".\\core\\market_loop.py",
+                "lines": 562,
+                "size_kb": 7.2
+            },
+            {
+                "file": ".\\core\\market_scanner.py",
+                "lines": 172,
+                "size_kb": 2.08
+            },
+            {
+                "file": ".\\core\\module.py",
+                "lines": 91,
+                "size_kb": 1.51
+            },
+            {
+                "file": ".\\core\\module_classifier.py",
+                "lines": 361,
+                "size_kb": 5.76
+            },
+            {
+                "file": ".\\core\\module_manager.py",
+                "lines": 91,
+                "size_kb": 1.34
+            },
+            {
+                "file": ".\\core\\opportunity_engine.py",
+                "lines": 301,
+                "size_kb": 3.35
+            },
+            {
+                "file": ".\\core\\pipeline.py",
+                "lines": 154,
+                "size_kb": 2.27
+            },
+            {
+                "file": ".\\core\\position_controller.py",
+                "lines": 359,
+                "size_kb": 4.34
+            },
+            {
+                "file": ".\\core\\position_lifecycle.py",
+                "lines": 369,
+                "size_kb": 4.43
+            },
+            {
+                "file": ".\\core\\position_reentry_engine.py",
+                "lines": 186,
+                "size_kb": 2.22
+            },
+            {
+                "file": ".\\core\\position_state.py",
+                "lines": 62,
+                "size_kb": 1.1
+            },
+            {
+                "file": ".\\core\\profit_manager.py",
+                "lines": 304,
+                "size_kb": 3.58
+            },
+            {
+                "file": ".\\core\\reentry_engine.py",
+                "lines": 234,
+                "size_kb": 2.63
+            },
+            {
+                "file": ".\\core\\runtime.py",
+                "lines": 270,
+                "size_kb": 4.79
+            },
+            {
+                "file": ".\\core\\scheduler.py",
+                "lines": 266,
+                "size_kb": 4.19
+            },
+            {
+                "file": ".\\core\\service_registry.py",
+                "lines": 185,
+                "size_kb": 2.5
+            },
+            {
+                "file": ".\\core\\signal_pipeline.py",
+                "lines": 684,
+                "size_kb": 23.75
+            },
+            {
+                "file": ".\\core\\adapters\\market_adapter.py",
+                "lines": 95,
+                "size_kb": 1.3
+            },
+            {
+                "file": ".\\core\\adapters\\__init__.py",
+                "lines": 0,
+                "size_kb": 0.0
+            }
+        ],
+        "AI": [
+            {
+                "file": ".\\main.py",
+                "lines": 75,
+                "size_kb": 0.91
+            },
+            {
+                "file": ".\\ai\\chat_assistant.py",
+                "lines": 213,
+                "size_kb": 8.72
+            },
+            {
+                "file": ".\\ai\\lstm_predictor.py",
+                "lines": 183,
+                "size_kb": 5.83
+            },
+            {
+                "file": ".\\ai\\target_prediction_engine.py",
+                "lines": 313,
+                "size_kb": 3.5
+            },
+            {
+                "file": ".\\ai\\cognition\\state.py",
+                "lines": 35,
+                "size_kb": 0.5
+            },
+            {
+                "file": ".\\ai\\core\\atlas_brain.py",
+                "lines": 1567,
+                "size_kb": 18.73
+            },
+            {
+                "file": ".\\ai\\core\\atlas_brain_backup_v6.py",
+                "lines": 291,
+                "size_kb": 4.23
+            },
+            {
+                "file": ".\\ai\\core\\atlas_multi_agent.py",
+                "lines": 310,
+                "size_kb": 11.54
+            },
+            {
+                "file": ".\\ai\\core\\atlas_reasoning_engine.py",
+                "lines": 927,
+                "size_kb": 13.06
+            },
+            {
+                "file": ".\\ai\\core\\atlas_world_model.py",
+                "lines": 271,
+                "size_kb": 9.62
+            },
+            {
+                "file": ".\\atlas_paper_trading\\paper_trading_main.py",
+                "lines": 115,
+                "size_kb": 9.03
+            },
+            {
+                "file": ".\\core\\brain.py",
+                "lines": 551,
+                "size_kb": 6.78
+            },
+            {
+                "file": ".\\core\\brain_analyzer.py",
+                "lines": 237,
+                "size_kb": 3.31
+            },
+            {
+                "file": ".\\core\\brain_compare.py",
+                "lines": 183,
+                "size_kb": 2.23
+            },
+            {
+                "file": ".\\core\\brain_dependency_scan.py",
+                "lines": 198,
+                "size_kb": 2.36
+            },
+            {
+                "file": ".\\core\\import_graph_brain.py",
+                "lines": 154,
+                "size_kb": 2.36
+            },
+            {
+                "file": ".\\core\\service_container.py",
+                "lines": 194,
+                "size_kb": 3.15
+            }
+        ],
+        "TRADING": [
+            {
+                "file": ".\\core\\paper_trader.py",
+                "lines": 511,
+                "size_kb": 6.84
+            },
+            {
+                "file": ".\\core\\trade_plan_engine.py",
+                "lines": 477,
+                "size_kb": 5.75
+            },
+            {
+                "file": ".\\strategy\\strategy_base.py",
+                "lines": 705,
+                "size_kb": 26.43
+            }
+        ],
+        "LEARNING": [
+            {
+                "file": ".\\ai\\core\\atlas_memory_core.py",
+                "lines": 271,
+                "size_kb": 10.29
+            },
+            {
+                "file": ".\\core\\learning_engine.py",
+                "lines": 286,
+                "size_kb": 4.86
+            },
+            {
+                "file": ".\\core\\memory.py",
+                "lines": 186,
+                "size_kb": 2.53
+            }
+        ],
+        "DATA": [],
+        "DATABASE": [
+            {
+                "file": ".\\core\\database.py",
+                "lines": 91,
+                "size_kb": 1.57
+            }
+        ],
+        "ANALYSIS": [
+            {
+                "file": ".\\analysis\\technical_analyzer.py",
+                "lines": 351,
+                "size_kb": 4.48
+            },
+            {
+                "file": ".\\analysis\\__init__.py",
+                "lines": 7,
+                "size_kb": 0.08
+            },
+            {
+                "file": ".\\core\\code_cleanup_analyzer.py",
+                "lines": 349,
+                "size_kb": 6.17
+            },
+            {
+                "file": ".\\core\\technical_analyzer.py",
+                "lines": 424,
+                "size_kb": 5.33
+            }
+        ],
+        "TEST": [
+            {
+                "file": ".\\test_feed.py",
+                "lines": 9,
+                "size_kb": 0.13
+            },
+            {
+                "file": ".\\backtest\\backtest_engine.py",
+                "lines": 871,
+                "size_kb": 31.61
+            },
+            {
+                "file": ".\\backtest\\portfolio_backtest.py",
+                "lines": 386,
+                "size_kb": 14.42
+            }
+        ],
+        "CONFIG": [
+            {
+                "file": ".\\config\\settings.py",
+                "lines": 550,
+                "size_kb": 6.73
+            }
+        ],
+        "WEB": [
+            {
+                "file": ".\\web_app.py",
+                "lines": 93,
+                "size_kb": 3.43
+            },
+            {
+                "file": ".\\core\\capital_allocator.py",
+                "lines": 161,
+                "size_kb": 1.88
+            },
+            {
+                "file": ".\\portfolio\\capital_manager.py",
+                "lines": 658,
+                "size_kb": 9.12
+            }
+        ],
+        "UNKNOWN": [
+            {
+                "file": ".\\check_project.py",
+                "lines": 48,
+                "size_kb": 0.8
+            },
+            {
+                "file": ".\\analytics\\performance_tracker.py",
+                "lines": 184,
+                "size_kb": 2.51
+            },
+            {
+                "file": ".\\atlas_paper_trading\\paper_trading_engine.py",
+                "lines": 171,
+                "size_kb": 11.38
+            },
+            {
+                "file": ".\\atlas_paper_trading\\performance_report.py",
+                "lines": 98,
+                "size_kb": 5.23
+            },
+            {
+                "file": ".\\atlas_paper_trading\\position_tracker.py",
+                "lines": 147,
+                "size_kb": 9.92
+            },
+            {
+                "file": ".\\atlas_paper_trading\\risk_guardian.py",
+                "lines": 111,
+                "size_kb": 6.86
+            },
+            {
+                "file": ".\\dashboard\\app.py",
+                "lines": 617,
+                "size_kb": 18.54
+            },
+            {
+                "file": ".\\exchange\\base_exchange.py",
+                "lines": 38,
+                "size_kb": 0.59
+            },
+            {
+                "file": ".\\exchange\\exchange_manager.py",
+                "lines": 68,
+                "size_kb": 1.39
+            },
+            {
+                "file": ".\\exchange\\market_feed.py",
+                "lines": 48,
+                "size_kb": 0.83
+            },
+            {
+                "file": ".\\exchange\\__init__.py",
+                "lines": 0,
+                "size_kb": 0.0
+            },
+            {
+                "file": ".\\exchange\\adapters\\binance_global.py",
+                "lines": 83,
+                "size_kb": 1.54
+            },
+            {
+                "file": ".\\exchange\\adapters\\binance_tr.py",
+                "lines": 10,
+                "size_kb": 0.17
+            },
+            {
+                "file": ".\\exchange\\adapters\\__init__.py",
+                "lines": 0,
+                "size_kb": 0.0
+            },
+            {
+                "file": ".\\portfolio\\portfolio_manager.py",
+                "lines": 380,
+                "size_kb": 5.87
+            }
+        ]
+    }
+}

@@ -1,0 +1,21 @@
+{
+  "time": "2026-07-15 12:03:15.269257",
+  "total_tests": 1,
+  "wins": 0,
+  "losses": 1,
+  "success_rate": 0.0,
+  "strategies": {
+    "scalping": {
+      "wins": 0,
+      "losses": 1
+    },
+    "trend": {
+      "wins": 0,
+      "losses": 0
+    },
+    "reversal": {
+      "wins": 0,
+      "losses": 0
+    }
+  }
+}

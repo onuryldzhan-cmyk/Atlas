@@ -1,0 +1,462 @@
+{
+  "total_modules_analyzed": 198,
+  "total_issues": 1634,
+  "severity_breakdown": {
+    "critical": 0,
+    "high": 52,
+    "medium": 95,
+    "low": 1487
+  },
+  "architecture_score": 70.25,
+  "duplicate_code_pairs": 754,
+  "worst_modules": [
+    {
+      "file": "core\\atlas_brain.py",
+      "score": 40.0,
+      "lines": 643,
+      "issues": 10
+    },
+    {
+      "file": "core\\strategy_competition.py",
+      "score": 40.0,
+      "lines": 548,
+      "issues": 1
+    },
+    {
+      "file": "core\\codebase_indexer.py",
+      "score": 50.0,
+      "lines": 343,
+      "issues": 11
+    },
+    {
+      "file": "core\\code_smell_detector.py",
+      "score": 50.0,
+      "lines": 400,
+      "issues": 18
+    },
+    {
+      "file": "core\\confidence_engine.py",
+      "score": 50.0,
+      "lines": 392,
+      "issues": 2
+    }
+  ],
+  "critical_issues": [
+    {
+      "file_path": "ai\\trade_analyzer.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (112 satir)",
+      "line_number": 13,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "analytics\\dashboard.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (114 satir)",
+      "line_number": 11,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "analytics\\trade_report.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (145 satir)",
+      "line_number": 37,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "core\\adaptive_decision.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (147 satir)",
+      "line_number": 17,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "core\\adaptive_learning.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Bos except blogu",
+      "line_number": 77,
+      "suggestion": "Kod kokusu giderilmeli: empty_except"
+    },
+    {
+      "file_path": "core\\atlas_brain.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (151 satir)",
+      "line_number": 75,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "core\\atlas_brain.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (321 satir)",
+      "line_number": 231,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "core\\backtester.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (110 satir)",
+      "line_number": 40,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "core\\codebase_indexer.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (148 satir)",
+      "line_number": 83,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "core\\code_analyzer.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (117 satir)",
+      "line_number": 37,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "core\\code_smell_detector.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (169 satir)",
+      "line_number": 62,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "core\\confidence_engine.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (334 satir)",
+      "line_number": 58,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "core\\decision_engine.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (221 satir)",
+      "line_number": 33,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "core\\engine.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (112 satir)",
+      "line_number": 28,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "core\\executor.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (175 satir)",
+      "line_number": 44,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "core\\learning_engine.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Bos except blogu",
+      "line_number": 112,
+      "suggestion": "Kod kokusu giderilmeli: empty_except"
+    },
+    {
+      "file_path": "core\\market_regime.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (162 satir)",
+      "line_number": 26,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "core\\opportunity_engine.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (248 satir)",
+      "line_number": 19,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "core\\opportunity_scanner.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (101 satir)",
+      "line_number": 16,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "core\\paper_trader.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (141 satir)",
+      "line_number": 161,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "core\\pattern_memory.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (180 satir)",
+      "line_number": 247,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "core\\performance_analyzer.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (165 satir)",
+      "line_number": 58,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "core\\refactor_engine.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (137 satir)",
+      "line_number": 143,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "core\\risk_manager.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (237 satir)",
+      "line_number": 20,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "core\\self_improvement.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (101 satir)",
+      "line_number": 130,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "core\\signal_fusion.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (277 satir)",
+      "line_number": 11,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "core\\strategy_competition.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (483 satir)",
+      "line_number": 65,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "core\\trade_lifecycle.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (212 satir)",
+      "line_number": 55,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "core\\trade_lifecycle.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Bos except blogu",
+      "line_number": 254,
+      "suggestion": "Kod kokusu giderilmeli: empty_except"
+    },
+    {
+      "file_path": "core\\trading_cycle.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (210 satir)",
+      "line_number": 62,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "database\\engine.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (176 satir)",
+      "line_number": 31,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "database\\learning_engine.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (128 satir)",
+      "line_number": 15,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "exit\\smart_exit.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (127 satir)",
+      "line_number": 10,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "intelligence\\decision_engine.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (157 satir)",
+      "line_number": 22,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "intelligence\\market_score.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (137 satir)",
+      "line_number": 14,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "intelligence\\strategy_brain.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (179 satir)",
+      "line_number": 17,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "intelligence\\strategy_brain.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Bos except blogu",
+      "line_number": 160,
+      "suggestion": "Kod kokusu giderilmeli: empty_except"
+    },
+    {
+      "file_path": "learning\\adaptive_engine.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (134 satir)",
+      "line_number": 31,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "learning\\adaptive_learning.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (179 satir)",
+      "line_number": 15,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "learning\\atlas_brain.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (137 satir)",
+      "line_number": 17,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "learning\\learning_engine.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Bos except blogu",
+      "line_number": 80,
+      "suggestion": "Kod kokusu giderilmeli: empty_except"
+    },
+    {
+      "file_path": "learning\\performance_analyzer.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (108 satir)",
+      "line_number": 10,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "quality\\trade_filter.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (131 satir)",
+      "line_number": 9,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "simulation\\ai_simulator.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (112 satir)",
+      "line_number": 15,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "timeframe\\multi_timeframe.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (160 satir)",
+      "line_number": 10,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "signals\\market\\market_signal.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (130 satir)",
+      "line_number": 16,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "signals\\technical\\technical_signal.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (129 satir)",
+      "line_number": 16,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "intelligence\\confidence\\confidence_engine.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (175 satir)",
+      "line_number": 33,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "intelligence\\market\\market_intelligence.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (103 satir)",
+      "line_number": 27,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "intelligence\\market\\market_structure_analyzer.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (119 satir)",
+      "line_number": 10,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "intelligence\\market\\order_flow_analyzer.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (161 satir)",
+      "line_number": 10,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    },
+    {
+      "file_path": "intelligence\\signals\\signal_fusion.py",
+      "issue_type": "smell",
+      "severity": "high",
+      "message": "Fonksiyon cok uzun (122 satir)",
+      "line_number": 10,
+      "suggestion": "Fonksiyonu daha kucuk parcalara bolun."
+    }
+  ]
+}

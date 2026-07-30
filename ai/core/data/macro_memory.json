@@ -1,0 +1,64 @@
+[
+    {
+        "engine": "Atlas Macro Engine",
+        "version": "2.0",
+        "timestamp": "2026-07-21T08:52:02.819645",
+        "events": [
+            {
+                "name": "US CPI",
+                "type": "cpi",
+                "date": "2026-07-21T08:52:02.819471",
+                "actual": 3.1,
+                "forecast": 3.3,
+                "previous": null,
+                "importance": 3,
+                "impact": "BULLISH",
+                "metadata": {}
+            },
+            {
+                "name": "FED Interest Rate",
+                "type": "fed_rate",
+                "date": "2026-07-21T08:52:02.819507",
+                "actual": 4.5,
+                "forecast": 4.75,
+                "previous": null,
+                "importance": 3,
+                "impact": "BULLISH",
+                "metadata": {}
+            },
+            {
+                "name": "US GDP",
+                "type": "gdp",
+                "date": "2026-07-21T08:52:02.819519",
+                "actual": 2.5,
+                "forecast": 2.0,
+                "previous": null,
+                "importance": 2,
+                "impact": "BULLISH",
+                "metadata": {}
+            }
+        ],
+        "score": {
+            "score": 40,
+            "inflation": 15,
+            "growth": 10,
+            "liquidity": 15,
+            "risk": 0,
+            "reasons": [
+                "Enflasyon baskısı azalıyor.",
+                "Para politikası destekleyici.",
+                "Ekonomik büyüme güçlü."
+            ]
+        },
+        "environment": "risk_on",
+        "bias": {
+            "bias": "BULLISH",
+            "confidence": 40,
+            "reason": [
+                "Enflasyon baskısı azalıyor.",
+                "Para politikası destekleyici.",
+                "Ekonomik büyüme güçlü."
+            ]
+        }
+    }
+]

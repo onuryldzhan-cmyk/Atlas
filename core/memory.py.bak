@@ -1,0 +1,89 @@
+import os
+import json
+from datetime import datetime
+
+class LearningMemory:
+    """
+    PROJECT ATLAS AI - Hafıza ve Kendi Kendine Öğrenme Motoru
+    İşlem geçmişini kaydeder, analiz eder ve başarı oranlarını optimize eder.
+    """
+    def __init__(self, filepath="data/atlas_memory.json"):
+        self.filepath = filepath
+        self._ensure_file_exists()
+
+    def _ensure_file_exists(self):
+        """Hafıza dosyasının ve klasörünün varlığını kontrol eder, yoksa oluşturur."""
+        os.makedirs(os.path.dirname(self.filepath), exist_ok=True)
+        if not os.path.exists(self.filepath):
+            with open(self.filepath, "w", encoding="utf-8") as f:
+                json.dump([], f, indent=4)
+
+    def save_trade(self, trade_data: dict):
+        """Yeni bir işlem kaydını hafızaya ekler."""
+        try:
+            with open(self.filepath, "r", encoding="utf-8") as f:
+                memory = json.load(f)
+        except Exception:
+            memory = []
+
+        # İşleme zaman damgası ekle
+        trade_data["timestamp"] = datetime.now().isoformat()
+        memory.append(trade_data)
+
+        with open(self.filepath, "w", encoding="utf-8") as f:
+            json.dump(memory, f, indent=4, ensure_ascii=False)
+
+    def get_stats(self, symbol: str = None) -> dict:
+        """
+        Hafızadaki verileri analiz ederek başarı oranlarını çıkarır.
+        Hangi saat, hangi strateji ve hangi indikatör değerlerinin kazandırdığını raporlar.
+        """
+        try:
+            with open(self.filepath, "r", encoding="utf-8") as f:
+                trades = json.load(f)
+        except Exception:
+            return {"status": "No memory data found"}
+
+        if not trades:
+            return {"status": "No trades recorded yet"}
+
+        # Belirli bir coin filtresi varsa uygula
+        if symbol:
+            trades = [t for t in trades if t.get("symbol") == symbol]
+
+        closed_trades = [t for t in trades if t.get("status") == "CLOSED"]
+        if not closed_trades:
+            return {"status": "No closed trades to analyze"}
+
+        total_trades = len(closed_trades)
+        wins = len([t for t in closed_trades if float(t.get("profit", 0)) > 0])
+        losses = total_trades - wins
+        total_profit = sum(float(t.get("profit", 0)) for t in closed_trades)
+        win_rate = (wins / total_trades) * 100 if total_trades > 0 else 0
+
+        # En iyi çalışan stratejiyi bulma
+        strategy_stats = {}
+        for t in closed_trades:
+            strat = t.get("strategy", "UNKNOWN")
+            profit = float(t.get("profit", 0))
+            if strat not in strategy_stats:
+                strategy_stats[strat] = {"total": 0, "profit": 0.0}
+            strategy_stats[strat]["total"] += 1
+            strategy_stats[strat]["profit"] += profit
+
+        best_strategy = "None"
+        best_profit = -999999.0
+        for strat, data in strategy_stats.items():
+            if data["profit"] > best_profit:
+                best_profit = data["profit"]
+                best_strategy = strat
+
+        return {
+            "total_trades": total_trades,
+            "wins": wins,
+            "losses": losses,
+            "win_rate": round(win_rate, 2),
+            "total_profit": round(total_profit, 4),
+            "best_strategy": best_strategy,
+            "strategy_breakdown": strategy_stats
+        }

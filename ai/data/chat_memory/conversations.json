@@ -1,0 +1,82 @@
+[
+  {
+    "timestamp": "2026-07-19T17:59:54.715278",
+    "question": "merhaba",
+    "answer": "Merhaba! Ben Atlas AI. Bugun size nasil yardimci olabilirim? Islem sayisi, kazanma orani, sistem durumu veya gelistirme onerileri hakkinda soru sorabilirsiniz."
+  },
+  {
+    "timestamp": "2026-07-19T17:59:54.716289",
+    "question": "bugun kac islem acildi",
+    "answer": "Bugun henuz islem acilmadi. Sistem aktif olarak piyasayi izliyor."
+  },
+  {
+    "timestamp": "2026-07-19T17:59:54.717017",
+    "question": "kazanma oranim ne kadar",
+    "answer": "Henuz islem yapilmadi. Ilk islem acildiginde kazanma orani hesaplanacak."
+  },
+  {
+    "timestamp": "2026-07-19T17:59:54.717857",
+    "question": "toplam kar ne durumda",
+    "answer": "Henuz realise edilmis bir kar/zarar yok. Sistem aktif olarak calisiyor."
+  },
+  {
+    "timestamp": "2026-07-19T17:59:54.718868",
+    "question": "sistem nasil calisiyor",
+    "answer": "Atlas AI sistemi aktif ve calisiyor. Tum moduller yuklu ve piyasa izleniyor."
+  },
+  {
+    "timestamp": "2026-07-19T17:59:54.719863",
+    "question": "neleri gelistirebiliriz",
+    "answer": "Atlas'i gelistirmek icin onerilerim:\n1. Gercek AI modeli ekle (LSTM/Transformer ile fiyat tahmini)\n2. Pattern recognition sistemi (teknik formasyonlari tanima)\n3. Reinforcement Learning (stratejiyi kendi kendine ogrenme)\n4. Multi-Agent debate sistemi (birden fazla AI'nin tartismasi)\n5. Gercek Binance verisi ile backtest\n6. Sentiment analysis (Twitter/News analizi)\n7. Market regime detection (piyasa durumunu algilama)\n8. Dynamic position sizing (risk'e gore pozisyon ayarlama)"
+  },
+  {
+    "timestamp": "2026-07-19T17:59:54.720537",
+    "question": "tesekkurler",
+    "answer": "Rica ederim! Baska bir sorunuz varsa bekliyorum."
+  },
+  {
+    "timestamp": "2026-07-19T17:59:54.721224",
+    "question": "gule gule",
+    "answer": "Gorusmek uzere! Basarili islemler dilerim."
+  },
+  {
+    "timestamp": "2026-07-19T18:00:02.025663",
+    "question": "merhaba",
+    "answer": "Merhaba! Ben Atlas AI. Bugun size nasil yardimci olabilirim? Islem sayisi, kazanma orani, sistem durumu veya gelistirme onerileri hakkinda soru sorabilirsiniz."
+  },
+  {
+    "timestamp": "2026-07-19T18:00:02.026514",
+    "question": "bugun kac islem acildi",
+    "answer": "Bugun henuz islem acilmadi. Sistem aktif olarak piyasayi izliyor."
+  },
+  {
+    "timestamp": "2026-07-19T18:00:02.027198",
+    "question": "kazanma oranim ne kadar",
+    "answer": "Henuz islem yapilmadi. Ilk islem acildiginde kazanma orani hesaplanacak."
+  },
+  {
+    "timestamp": "2026-07-19T18:00:02.027883",
+    "question": "toplam kar ne durumda",
+    "answer": "Henuz realise edilmis bir kar/zarar yok. Sistem aktif olarak calisiyor."
+  },
+  {
+    "timestamp": "2026-07-19T18:00:02.028645",
+    "question": "sistem nasil calisiyor",
+    "answer": "Atlas AI sistemi aktif ve calisiyor. Tum moduller yuklu ve piyasa izleniyor."
+  },
+  {
+    "timestamp": "2026-07-19T18:00:02.029702",
+    "question": "neleri gelistirebiliriz",
+    "answer": "Atlas'i gelistirmek icin onerilerim:\n1. Gercek AI modeli ekle (LSTM/Transformer ile fiyat tahmini)\n2. Pattern recognition sistemi (teknik formasyonlari tanima)\n3. Reinforcement Learning (stratejiyi kendi kendine ogrenme)\n4. Multi-Agent debate sistemi (birden fazla AI'nin tartismasi)\n5. Gercek Binance verisi ile backtest\n6. Sentiment analysis (Twitter/News analizi)\n7. Market regime detection (piyasa durumunu algilama)\n8. Dynamic position sizing (risk'e gore pozisyon ayarlama)"
+  },
+  {
+    "timestamp": "2026-07-19T18:00:02.030354",
+    "question": "tesekkurler",
+    "answer": "Rica ederim! Baska bir sorunuz varsa bekliyorum."
+  },
+  {
+    "timestamp": "2026-07-19T18:00:02.030991",
+    "question": "gule gule",
+    "answer": "Gorusmek uzere! Basarili islemler dilerim."
+  }
+]

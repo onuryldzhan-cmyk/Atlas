@@ -1,0 +1,17 @@
+========================================================================
+ATLAS PHASE 5B - ACTIONABLE OBSERVABILITY GAPS
+========================================================================
+Actionable gaps : 4
+HIGH            : 0
+MEDIUM          : 3
+LOW             : 1
+
+Top actionable classes:
+[MEDIUM] core/brain_analyzer.py:13 -> BrainAnalyzer
+[MEDIUM] core/code_cleanup_analyzer.py:24 -> CodeCleanupAnalyzer
+[MEDIUM] core/execution_contracts.py:80 -> SupportsHealth
+[LOW] core/project_snapshot.py:36 -> ProjectSnapshotEngine
+
+Reports : C:\Users\HUAWEİ\OneDrive\Masaüstü\Project_Atlas_AI\reports\phase5_observability_gap
+
+PHASE 5B COMPLETED - READ-ONLY AUDIT

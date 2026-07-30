@@ -1,0 +1,257 @@
+{
+  "phase": "6A3.1",
+  "generated_utc": "2026-07-27T14:17:29.439542+00:00",
+  "targets": {
+    "contracts": {
+      "label": "contracts",
+      "path": "atlas_finance\\market_data\\contracts.py",
+      "exists": true,
+      "classes": [
+        {
+          "name": "MarketDataProviderProtocol",
+          "bases": [
+            "Protocol"
+          ],
+          "line_start": 38,
+          "line_end": 94,
+          "methods": [
+            {
+              "name": "connect",
+              "signature": "connect(self) -> bool",
+              "line_start": 61,
+              "line_end": 69,
+              "source": "    def connect(\n        self,\n    ) -> bool:\n        \"\"\"\n        Initialize provider resources.\n\n        Public HTTP providers may implement this by validating\n        connectivity and preparing a reusable session.\n        \"\"\"",
+              "docstring": "Initialize provider resources.\n\nPublic HTTP providers may implement this by validating\nconnectivity and preparing a reusable session."
+            },
+            {
+              "name": "disconnect",
+              "signature": "disconnect(self) -> None",
+              "line_start": 71,
+              "line_end": 76,
+              "source": "    def disconnect(\n        self,\n    ) -> None:\n        \"\"\"\n        Release provider resources.\n        \"\"\"",
+              "docstring": "Release provider resources."
+            },
+            {
+              "name": "get_price",
+              "signature": "get_price(self, symbol: str) -> MarketPrice",
+              "line_start": 78,
+              "line_end": 84,
+              "source": "    def get_price(\n        self,\n        symbol: str,\n    ) -> MarketPrice:\n        \"\"\"\n        Return the latest normalized market price.\n        \"\"\"",
+              "docstring": "Return the latest normalized market price."
+            },
+            {
+              "name": "get_candles",
+              "signature": "get_candles(self, symbol: str, timeframe: str = '5m', limit: int = 100) -> Sequence[MarketCandle]",
+              "line_start": 86,
+              "line_end": 94,
+              "source": "    def get_candles(\n        self,\n        symbol: str,\n        timeframe: str = \"5m\",\n        limit: int = 100,\n    ) -> Sequence[MarketCandle]:\n        \"\"\"\n        Return normalized OHLCV candles.\n        \"\"\"",
+              "docstring": "Return normalized OHLCV candles."
+            }
+          ],
+          "docstring": "Public market-data provider contract."
+        }
+      ],
+      "functions": []
+    },
+    "provider": {
+      "label": "provider",
+      "path": "atlas_finance\\market_data\\binance_public_provider.py",
+      "exists": true,
+      "classes": [
+        {
+          "name": "BinancePublicDataProvider",
+          "bases": [
+            "MarketDataProviderProtocol"
+          ],
+          "line_start": 94,
+          "line_end": 1308,
+          "methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, *, base_url: str = DEFAULT_BASE_URL, timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS, retry_attempts: int = DEFAULT_RETRY_ATTEMPTS, retry_backoff_seconds: float = DEFAULT_RETRY_BACKOFF_SECONDS, maximum_candle_limit: int = DEFAULT_MAXIMUM_CANDLE_LIMIT, session: Session | None = None, connection_test_symbol: str = 'BTCUSDT') -> None",
+              "line_start": 164,
+              "line_end": 241,
+              "source": "    def __init__(\n        self,\n        *,\n        base_url: str = DEFAULT_BASE_URL,\n        timeout_seconds: float = (\n            DEFAULT_TIMEOUT_SECONDS\n        ),\n        retry_attempts: int = (\n            DEFAULT_RETRY_ATTEMPTS\n        ),\n        retry_backoff_seconds: float = (\n            DEFAULT_RETRY_BACKOFF_SECONDS\n        ),\n        maximum_candle_limit: int = (\n            DEFAULT_MAXIMUM_CANDLE_LIMIT\n        ),\n        session: Session | None = None,\n        connection_test_symbol: str = \"BTCUSDT\",\n    ) -> None:\n        self._base_url = self._validate_base_url(\n            base_url\n        )\n\n        self._timeout_seconds = (\n            self._validate_positive_float(\n                timeout_seconds,\n                field_name=\"timeout_seconds\",\n            )\n        )\n\n        self._retry_attempts = (\n            self._validate_retry_attempts(\n                retry_attempts\n            )\n        )\n\n        self._retry_backoff_seconds = (\n            self._validate_non_negative_float(\n                retry_backoff_seconds,\n                field_name=(\n                    \"retry_backoff_seconds\"\n                ),\n            )\n        )\n\n        self._maximum_candle_limit = (\n            self._validate_maximum_candle_limit(\n                maximum_candle_limit\n            )\n        )\n\n        self._connection_test_symbol = (\n            self._normalize_symbol(\n                connection_test_symbol\n            )\n        )\n\n        self._session = (\n            session\n            if session is not None\n            else requests.Session()\n        )\n\n        self._owns_session = (\n            session is None\n        )\n\n        self._connected = False\n\n        self._closed = False\n\n        self._lock = threading.RLock()\n\n        logger.info(\n            \"%s v%s initialized.\",\n            self.PROVIDER_NAME,\n            self.VERSION,\n        )",
+              "docstring": null
+            },
+            {
+              "name": "connect",
+              "signature": "connect(self) -> bool",
+              "line_start": 300,
+              "line_end": 340,
+              "source": "    def connect(\n        self,\n    ) -> bool:\n        \"\"\"\n        Validate public Binance connectivity.\n\n        No authentication or private account request is made.\n        \"\"\"\n\n        with self._lock:\n            if self._closed:\n                raise MarketDataConnectionError(\n                    \"Binance public provider has already \"\n                    \"been permanently closed.\"\n                )\n\n            if self._connected:\n                return True\n\n        try:\n            self.get_price(\n                self._connection_test_symbol\n            )\n\n        except Exception as error:\n            with self._lock:\n                self._connected = False\n\n            raise MarketDataConnectionError(\n                \"Binance public connectivity test failed.\"\n            ) from error\n\n        with self._lock:\n            self._connected = True\n\n        logger.info(\n            \"%s connected successfully.\",\n            self.PROVIDER_NAME,\n        )\n\n        return True",
+              "docstring": "Validate public Binance connectivity.\n\nNo authentication or private account request is made."
+            },
+            {
+              "name": "disconnect",
+              "signature": "disconnect(self) -> None",
+              "line_start": 342,
+              "line_end": 362,
+              "source": "    def disconnect(\n        self,\n    ) -> None:\n        \"\"\"\n        Disconnect and release owned HTTP resources.\n        \"\"\"\n\n        with self._lock:\n            self._connected = False\n\n            if (\n                self._owns_session\n                and not self._closed\n            ):\n                self._session.close()\n                self._closed = True\n\n        logger.info(\n            \"%s disconnected.\",\n            self.PROVIDER_NAME,\n        )",
+              "docstring": "Disconnect and release owned HTTP resources."
+            },
+            {
+              "name": "get_price",
+              "signature": "get_price(self, symbol: str) -> MarketPrice",
+              "line_start": 368,
+              "line_end": 440,
+              "source": "    def get_price(\n        self,\n        symbol: str,\n    ) -> MarketPrice:\n        \"\"\"\n        Fetch and normalize the latest symbol price.\n        \"\"\"\n\n        normalized_symbol = (\n            self._normalize_symbol(\n                symbol\n            )\n        )\n\n        payload = self._request_json(\n            endpoint=\"/api/v3/ticker/price\",\n            params={\n                \"symbol\": normalized_symbol,\n            },\n        )\n\n        if not isinstance(\n            payload,\n            Mapping,\n        ):\n            raise MarketDataResponseError(\n                \"Binance ticker response must be \"\n                \"a JSON object.\"\n            )\n\n        response_symbol = (\n            self._normalize_symbol(\n                str(\n                    payload.get(\n                        \"symbol\",\n                        normalized_symbol,\n                    )\n                )\n            )\n        )\n\n        if (\n            response_symbol\n            != normalized_symbol\n        ):\n            raise MarketDataResponseError(\n                \"Binance ticker response symbol does \"\n                \"not match the requested symbol.\"\n            )\n\n        price = self._parse_positive_float(\n            payload.get(\n                \"price\"\n            ),\n            field_name=\"price\",\n            exception_type=InvalidPriceError,\n        )\n\n        with self._lock:\n            self._connected = True\n\n        return MarketPrice(\n            symbol=normalized_symbol,\n            price=price,\n            provider=self.PROVIDER_NAME,\n            received_at=utc_now(),\n            source_timestamp=None,\n            metadata={\n                \"endpoint\": (\n                    \"/api/v3/ticker/price\"\n                ),\n            },\n        )",
+              "docstring": "Fetch and normalize the latest symbol price."
+            },
+            {
+              "name": "get_candles",
+              "signature": "get_candles(self, symbol: str, timeframe: str = '5m', limit: int = 100) -> Sequence[MarketCandle]",
+              "line_start": 446,
+              "line_end": 533,
+              "source": "    def get_candles(\n        self,\n        symbol: str,\n        timeframe: str = \"5m\",\n        limit: int = 100,\n    ) -> Sequence[MarketCandle]:\n        \"\"\"\n        Fetch and normalize Binance OHLCV candles.\n        \"\"\"\n\n        normalized_symbol = (\n            self._normalize_symbol(\n                symbol\n            )\n        )\n\n        normalized_timeframe = (\n            self._normalize_timeframe(\n                timeframe\n            )\n        )\n\n        normalized_limit = (\n            self._validate_candle_limit(\n                limit\n            )\n        )\n\n        payload = self._request_json(\n            endpoint=\"/api/v3/klines\",\n            params={\n                \"symbol\": normalized_symbol,\n                \"interval\": normalized_timeframe,\n                \"limit\": normalized_limit,\n            },\n        )\n\n        if not isinstance(\n            payload,\n            list,\n        ):\n            raise MarketDataResponseError(\n                \"Binance kline response must be \"\n                \"a JSON array.\"\n            )\n\n        candles: list[\n            MarketCandle\n        ] = []\n\n        for index, raw_candle in enumerate(\n            payload\n        ):\n            try:\n                candle = self._parse_candle(\n                    raw_candle,\n                    symbol=normalized_symbol,\n                    timeframe=(\n                        normalized_timeframe\n                    ),\n                )\n\n            except (\n                InvalidCandleError,\n                MarketDataResponseError,\n                TypeError,\n                ValueError,\n                IndexError,\n            ) as error:\n                raise InvalidCandleError(\n                    \"Invalid Binance candle at index \"\n                    f\"{index}: {error}\"\n                ) from error\n\n            candles.append(\n                candle\n            )\n\n        candles.sort(\n            key=lambda item: item.open_time\n        )\n\n        with self._lock:\n            self._connected = True\n\n        return tuple(\n            candles\n        )",
+              "docstring": "Fetch and normalize Binance OHLCV candles."
+            }
+          ],
+          "docstring": "Public Binance REST market-data provider.\n\nThe provider intentionally implements no authenticated or\nexecution-related endpoint."
+        }
+      ],
+      "functions": []
+    },
+    "service": {
+      "label": "service",
+      "path": "atlas_finance\\market_data\\market_feed_service.py",
+      "exists": true,
+      "classes": [
+        {
+          "name": "MarketFeedEventType",
+          "bases": [],
+          "line_start": 111,
+          "line_end": 162,
+          "methods": [],
+          "docstring": "MarketFeedService event identifiers."
+        },
+        {
+          "name": "_MutableRequestStatistics",
+          "bases": [],
+          "line_start": 173,
+          "line_end": 285,
+          "methods": [],
+          "docstring": "Internal mutable request statistics."
+        },
+        {
+          "name": "MarketFeedService",
+          "bases": [
+            "BaseAtlasService"
+          ],
+          "line_start": 293,
+          "line_end": 1924,
+          "methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, *, provider: MarketDataProviderProtocol, event_bus: EventBusService | None = None, metrics: MetricsService | None = None, publish_events: bool = True, collect_metrics: bool = True, failure_threshold: int = DEFAULT_FAILURE_THRESHOLD) -> None",
+              "line_start": 353,
+              "line_end": 448,
+              "source": "    def __init__(\n        self,\n        *,\n        provider: MarketDataProviderProtocol,\n        event_bus: EventBusService | None = None,\n        metrics: MetricsService | None = None,\n        publish_events: bool = True,\n        collect_metrics: bool = True,\n        failure_threshold: int = (\n            DEFAULT_FAILURE_THRESHOLD\n        ),\n    ) -> None:\n        super().__init__(\n            ServiceIdentity(\n                name=self.SERVICE_NAME,\n                version=self.VERSION,\n                service_type=self.SERVICE_TYPE,\n                description=self.DESCRIPTION,\n            )\n        )\n\n        if not isinstance(\n            provider,\n            MarketDataProviderProtocol,\n        ):\n            raise MarketDataConfigurationError(\n                \"provider must implement \"\n                \"MarketDataProviderProtocol.\"\n            )\n\n        self._failure_threshold = (\n            self._validate_failure_threshold(\n                failure_threshold\n            )\n        )\n\n        self._provider = provider\n\n        self._event_bus = event_bus\n\n        self._metrics = metrics\n\n        self._publish_events = bool(\n            publish_events\n        )\n\n        self._collect_metrics = bool(\n            collect_metrics\n        )\n\n        self._lock = threading.RLock()\n\n        self._price_statistics = (\n            _MutableRequestStatistics()\n        )\n\n        self._candle_statistics = (\n            _MutableRequestStatistics()\n        )\n\n        self._last_prices: dict[\n            str,\n            MarketPrice,\n        ] = {}\n\n        self._last_candle_counts: dict[\n            str,\n            int,\n        ] = {}\n\n        self._service_started_at: (\n            datetime | None\n        ) = None\n\n        self._last_request_at: (\n            datetime | None\n        ) = None\n\n        self._last_success_at: (\n            datetime | None\n        ) = None\n\n        self._last_failure_at: (\n            datetime | None\n        ) = None\n\n        self._consecutive_failures = 0\n\n        self._degradation_active = False\n\n        logger.info(\n            \"%s v%s initialized with provider %s.\",\n            self.SERVICE_NAME,\n            self.VERSION,\n            self._provider.provider_name,\n        )",
+              "docstring": null
+            },
+            {
+              "name": "_on_start",
+              "signature": "_on_start(self) -> None",
+              "line_start": 503,
+              "line_end": 574,
+              "source": "    def _on_start(\n        self,\n    ) -> None:\n        try:\n            connected = self._provider.connect()\n\n            if not connected:\n                raise MarketDataProviderUnavailableError(\n                    \"Market-data provider returned \"\n                    \"an unsuccessful connection result.\"\n                )\n\n            started_at = utc_now()\n\n            with self._lock:\n                self._service_started_at = (\n                    started_at\n                )\n\n                self._consecutive_failures = 0\n\n                self._degradation_active = False\n\n            self._set_provider_connected_metric(\n                True\n            )\n\n            self._publish_event(\n                MarketFeedEventType.SERVICE_STARTED,\n                payload={\n                    \"provider\": (\n                        self.provider_name\n                    ),\n                    \"version\": self.VERSION,\n                    \"started_at\": (\n                        started_at.isoformat()\n                    ),\n                },\n            )\n\n            logger.info(\n                \"%s started successfully.\",\n                self.SERVICE_NAME,\n            )\n\n        except Exception as error:\n            self._set_provider_connected_metric(\n                False\n            )\n\n            self._publish_event(\n                (\n                    MarketFeedEventType\n                    .SERVICE_START_FAILED\n                ),\n                severity=EventSeverity.CRITICAL,\n                payload={\n                    \"provider\": (\n                        self.provider_name\n                    ),\n                    \"error_type\": (\n                        type(error).__name__\n                    ),\n                    \"error\": str(\n                        error\n                    ),\n                },\n            )\n\n            raise MarketDataServiceStartupError(\n                \"MarketFeedService startup failed.\"\n            ) from error",
+              "docstring": null
+            },
+            {
+              "name": "_on_stop",
+              "signature": "_on_stop(self) -> None",
+              "line_start": 576,
+              "line_end": 627,
+              "source": "    def _on_stop(\n        self,\n    ) -> None:\n        try:\n            self._provider.disconnect()\n\n            self._set_provider_connected_metric(\n                False\n            )\n\n            stopped_at = utc_now()\n\n            self._publish_event(\n                MarketFeedEventType.SERVICE_STOPPED,\n                payload={\n                    \"provider\": (\n                        self.provider_name\n                    ),\n                    \"stopped_at\": (\n                        stopped_at.isoformat()\n                    ),\n                },\n            )\n\n            logger.info(\n                \"%s stopped successfully.\",\n                self.SERVICE_NAME,\n            )\n\n        except Exception as error:\n            self._publish_event(\n                (\n                    MarketFeedEventType\n                    .SERVICE_STOP_FAILED\n                ),\n                severity=EventSeverity.ERROR,\n                payload={\n                    \"provider\": (\n                        self.provider_name\n                    ),\n                    \"error_type\": (\n                        type(error).__name__\n                    ),\n                    \"error\": str(\n                        error\n                    ),\n                },\n            )\n\n            raise MarketDataServiceShutdownError(\n                \"MarketFeedService shutdown failed.\"\n            ) from error",
+              "docstring": null
+            },
+            {
+              "name": "get_price",
+              "signature": "get_price(self, symbol: str, *, correlation_id: str | None = None) -> MarketPrice",
+              "line_start": 633,
+              "line_end": 704,
+              "source": "    def get_price(\n        self,\n        symbol: str,\n        *,\n        correlation_id: str | None = None,\n    ) -> MarketPrice:\n        \"\"\"\n        Return the latest normalized market price.\n        \"\"\"\n\n        self._require_running()\n\n        normalized_symbol = (\n            self._normalize_symbol(\n                symbol\n            )\n        )\n\n        requested_at = utc_now()\n\n        with self._lock:\n            self._last_request_at = requested_at\n\n        self._publish_event(\n            MarketFeedEventType.PRICE_REQUESTED,\n            payload={\n                \"symbol\": normalized_symbol,\n                \"provider\": self.provider_name,\n            },\n            correlation_id=correlation_id,\n        )\n\n        started = perf_counter()\n\n        try:\n            price = self._provider.get_price(\n                normalized_symbol\n            )\n\n            self._validate_price_result(\n                price,\n                expected_symbol=(\n                    normalized_symbol\n                ),\n            )\n\n        except Exception as error:\n            latency = self._safe_latency(\n                started\n            )\n\n            self._record_failure(\n                request_type=\"price\",\n                symbol=normalized_symbol,\n                latency_seconds=latency,\n                error=error,\n                correlation_id=correlation_id,\n            )\n\n            raise\n\n        latency = self._safe_latency(\n            started\n        )\n\n        self._record_price_success(\n            price=price,\n            latency_seconds=latency,\n            correlation_id=correlation_id,\n        )\n\n        return price",
+              "docstring": "Return the latest normalized market price."
+            },
+            {
+              "name": "get_candles",
+              "signature": "get_candles(self, symbol: str, timeframe: str = '5m', limit: int = 100, *, correlation_id: str | None = None) -> tuple[MarketCandle, ...]",
+              "line_start": 706,
+              "line_end": 813,
+              "source": "    def get_candles(\n        self,\n        symbol: str,\n        timeframe: str = \"5m\",\n        limit: int = 100,\n        *,\n        correlation_id: str | None = None,\n    ) -> tuple[MarketCandle, ...]:\n        \"\"\"\n        Return normalized OHLCV candles.\n        \"\"\"\n\n        self._require_running()\n\n        normalized_symbol = (\n            self._normalize_symbol(\n                symbol\n            )\n        )\n\n        normalized_timeframe = (\n            self._normalize_timeframe(\n                timeframe\n            )\n        )\n\n        normalized_limit = (\n            self._validate_limit(\n                limit\n            )\n        )\n\n        requested_at = utc_now()\n\n        with self._lock:\n            self._last_request_at = requested_at\n\n        self._publish_event(\n            MarketFeedEventType.CANDLES_REQUESTED,\n            payload={\n                \"symbol\": normalized_symbol,\n                \"timeframe\": normalized_timeframe,\n                \"limit\": normalized_limit,\n                \"provider\": self.provider_name,\n            },\n            correlation_id=correlation_id,\n        )\n\n        started = perf_counter()\n\n        try:\n            received = self._provider.get_candles(\n                normalized_symbol,\n                normalized_timeframe,\n                normalized_limit,\n            )\n\n            candles = tuple(\n                received\n            )\n\n            self._validate_candle_results(\n                candles,\n                expected_symbol=(\n                    normalized_symbol\n                ),\n                expected_timeframe=(\n                    normalized_timeframe\n                ),\n                maximum_count=(\n                    normalized_limit\n                ),\n            )\n\n        except Exception as error:\n            latency = self._safe_latency(\n                started\n            )\n\n            self._record_failure(\n                request_type=\"candles\",\n                symbol=normalized_symbol,\n                latency_seconds=latency,\n                error=error,\n                correlation_id=correlation_id,\n                extra_payload={\n                    \"timeframe\": (\n                        normalized_timeframe\n                    ),\n                    \"limit\": normalized_limit,\n                },\n            )\n\n            raise\n\n        latency = self._safe_latency(\n            started\n        )\n\n        self._record_candle_success(\n            symbol=normalized_symbol,\n            timeframe=normalized_timeframe,\n            candles=candles,\n            latency_seconds=latency,\n            correlation_id=correlation_id,\n        )\n\n        return candles",
+              "docstring": "Return normalized OHLCV candles."
+            }
+          ],
+          "docstring": "AtlasOS-native public market-data service."
+        }
+      ],
+      "functions": []
+    },
+    "base_service": {
+      "label": "base_service",
+      "path": "atlas_os\\services\\base_service.py",
+      "exists": true,
+      "classes": [
+        {
+          "name": "ServiceLifecycleError",
+          "bases": [
+            "RuntimeError"
+          ],
+          "line_start": 74,
+          "line_end": 77,
+          "methods": [],
+          "docstring": "Raised when a service receives an invalid lifecycle operation."
+        },
+        {
+          "name": "BaseAtlasService",
+          "bases": [
+            "AtlasService"
+          ],
+          "line_start": 80,
+          "line_end": 458,
+          "methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, identity: ServiceIdentity) -> None",
+              "line_start": 94,
+              "line_end": 108,
+              "source": "    def __init__(\n        self,\n        identity: ServiceIdentity,\n    ) -> None:\n\n        self._identity = identity\n\n        self._state = ServiceState.CREATED\n\n        self._started_at: datetime | None = None\n        self._stopped_at: datetime | None = None\n\n        self._last_error: str | None = None\n\n        self._lock = threading.RLock()",
+              "docstring": null
+            },
+            {
+              "name": "start",
+              "signature": "start(self) -> None",
+              "line_start": 170,
+              "line_end": 222,
+              "source": "    def start(self) -> None:\n        \"\"\"\n        Start the service safely.\n\n        Calling start while already running is treated as an\n        idempotent operation and produces no additional side effects.\n        \"\"\"\n\n        with self._lock:\n\n            if self._state == ServiceState.RUNNING:\n                return\n\n            if self._state in {\n                ServiceState.STARTING,\n                ServiceState.STOPPING,\n            }:\n                raise ServiceLifecycleError(\n                    f\"Service '{self.identity.name}' cannot start \"\n                    f\"while state is {self._state.value}.\"\n                )\n\n            self._state = ServiceState.STARTING\n            self._last_error = None\n\n            try:\n\n                self._on_start()\n\n                self._started_at = datetime.now(UTC)\n                self._stopped_at = None\n                self._state = ServiceState.RUNNING\n\n                logger.info(\n                    \"AtlasOS service started: %s v%s\",\n                    self.identity.name,\n                    self.identity.version,\n                )\n\n            except Exception as exc:\n\n                self._last_error = (\n                    f\"{type(exc).__name__}: {exc}\"\n                )\n\n                self._state = ServiceState.FAILED\n\n                logger.exception(\n                    \"AtlasOS service start failed: %s\",\n                    self.identity.name,\n                )\n\n                raise",
+              "docstring": "Start the service safely.\n\nCalling start while already running is treated as an\nidempotent operation and produces no additional side effects."
+            },
+            {
+              "name": "stop",
+              "signature": "stop(self) -> None",
+              "line_start": 228,
+              "line_end": 285,
+              "source": "    def stop(self) -> None:\n        \"\"\"\n        Stop the service safely.\n\n        Calling stop before startup or after shutdown is treated as\n        an idempotent operation.\n        \"\"\"\n\n        with self._lock:\n\n            if self._state in {\n                ServiceState.CREATED,\n                ServiceState.STOPPED,\n            }:\n                self._state = ServiceState.STOPPED\n\n                if self._stopped_at is None:\n                    self._stopped_at = datetime.now(UTC)\n\n                return\n\n            if self._state == ServiceState.STOPPING:\n                return\n\n            if self._state == ServiceState.STARTING:\n                raise ServiceLifecycleError(\n                    f\"Service '{self.identity.name}' cannot stop \"\n                    \"while startup is in progress.\"\n                )\n\n            self._state = ServiceState.STOPPING\n\n            try:\n\n                self._on_stop()\n\n                self._stopped_at = datetime.now(UTC)\n                self._state = ServiceState.STOPPED\n\n                logger.info(\n                    \"AtlasOS service stopped: %s\",\n                    self.identity.name,\n                )\n\n            except Exception as exc:\n\n                self._last_error = (\n                    f\"{type(exc).__name__}: {exc}\"\n                )\n\n                self._state = ServiceState.FAILED\n\n                logger.exception(\n                    \"AtlasOS service stop failed: %s\",\n                    self.identity.name,\n                )\n\n                raise",
+              "docstring": "Stop the service safely.\n\nCalling stop before startup or after shutdown is treated as\nan idempotent operation."
+            },
+            {
+              "name": "health",
+              "signature": "health(self) -> HealthReport",
+              "line_start": 291,
+              "line_end": 345,
+              "source": "    def health(self) -> HealthReport:\n        \"\"\"\n        Return a standardized service health report.\n        \"\"\"\n\n        with self._lock:\n\n            state = self._state\n\n            if state == ServiceState.RUNNING:\n                status = HealthStatus.HEALTHY\n                message = \"Service is operating normally.\"\n\n            elif state == ServiceState.DEGRADED:\n                status = HealthStatus.DEGRADED\n                message = \"Service is operational but degraded.\"\n\n            elif state == ServiceState.FAILED:\n                status = HealthStatus.UNHEALTHY\n                message = (\n                    self._last_error\n                    or \"Service lifecycle failed.\"\n                )\n\n            elif state in {\n                ServiceState.CREATED,\n                ServiceState.STOPPED,\n            }:\n                status = HealthStatus.UNKNOWN\n                message = \"Service is not currently running.\"\n\n            else:\n                status = HealthStatus.UNKNOWN\n                message = (\n                    f\"Service lifecycle transition: \"\n                    f\"{state.value}.\"\n                )\n\n            details = dict(\n                self._health_details()\n            )\n\n            if self._last_error is not None:\n                details.setdefault(\n                    \"last_error\",\n                    self._last_error,\n                )\n\n            return HealthReport(\n                service_name=self.identity.name,\n                status=status,\n                state=state,\n                message=message,\n                details=details,\n            )",
+              "docstring": "Return a standardized service health report."
+            }
+          ],
+          "docstring": "Reusable lifecycle implementation for AtlasOS services.\n\nSubclasses implement the following hooks:\n\n- _on_start()\n- _on_stop()\n- _health_details()\n- _snapshot_metadata()\n\nThe public start and stop methods must not normally be overridden."
+        }
+      ],
+      "functions": []
+    }
+  },
+  "safety": {
+    "source_files_modified": false,
+    "atlas_modules_imported": false,
+    "exchange_connections_opened": false
+  }
+}

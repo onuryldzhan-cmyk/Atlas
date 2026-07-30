@@ -1,0 +1,92 @@
+==============================================================================
+ATLAS PHASE 6A1 — MARKET DATA SOURCE SUMMARY
+==============================================================================
+
+Generated UTC : 2026-07-27T13:54:22.670447+00:00
+Collected     : 27
+Missing exact : 1
+
+FILES
+------------------------------------------------------------------------------
+[OK] analysis/world_analysis_engine.py
+  Lines: 122 | Classes: 1 | Imports: 2
+  Signals: timestamp
+[OK] archive_unused_2026-07-22/config/exchange_config.py
+  Lines: 9 | Classes: 1 | Imports: 0
+  Signals: exchange_reference
+[OK] archive_unused_2026-07-22/data/binance_provider.py
+  Lines: 49 | Classes: 1 | Imports: 1
+  Signals: exchange_reference
+[OK] archive_unused_2026-07-22/data/candle_data.py
+  Lines: 53 | Classes: 1 | Imports: 1
+[OK] archive_unused_2026-07-22/data/market_data.py
+  Lines: 21 | Classes: 1 | Imports: 2
+[OK] archive_unused_2026-07-22/exchange/exchange_adapter.py
+  Lines: 316 | Classes: 1 | Imports: 13
+  Signals: exchange_reference, cache
+[OK] atlas_finance/market_data/binance_public_provider.py
+  Lines: 1308 | Classes: 1 | Imports: 33
+  Signals: logging, threading, requests, exchange_reference, retry_or_reconnect, timestamp
+[OK] atlas_finance/market_data/market_feed_service.py
+  Lines: 1930 | Classes: 3 | Imports: 33
+  Signals: logging, threading, exchange_reference, event_bus_reference, retry_or_reconnect, health, timestamp
+[OK] config/settings.py
+  Lines: 550 | Classes: 6 | Imports: 6
+  Signals: exchange_reference
+[OK] core/candle_processor.py
+  Lines: 261 | Classes: 1 | Imports: 4
+  Signals: logging, exchange_reference, timestamp
+[OK] core/data/price_provider.py
+  Lines: 197 | Classes: 1 | Imports: 3
+  Signals: logging, cache, timestamp
+[OK] core/event_bus.py
+  Lines: 250 | Classes: 1 | Imports: 5
+  Signals: logging, threading, event_bus_reference, timestamp
+[OK] core/events.py
+  Lines: 212 | Classes: 5 | Imports: 9
+  Signals: timestamp
+[OK] core/intelligence/loop/intelligence_loop.py
+  Lines: 142 | Classes: 1 | Imports: 7
+  Signals: logging, timestamp
+[OK] core/market_feed.py
+  Lines: 0 | Classes: 0 | Imports: 0
+[OK] core/market_loop.py
+  Lines: 1398 | Classes: 1 | Imports: 12
+  Signals: logging, threading, exchange_reference, event_bus_reference, health, timestamp
+[OK] core/technical_analyzer.py
+  Lines: 424 | Classes: 1 | Imports: 3
+  Signals: logging
+[OK] data/binance_provider.py
+  Lines: 176 | Classes: 1 | Imports: 2
+  Signals: logging, requests, exchange_reference
+[OK] data/candle_manager.py
+  Lines: 222 | Classes: 1 | Imports: 3
+  Signals: logging, cache, timestamp
+[OK] exchange/adapters/binance_global.py
+  Lines: 321 | Classes: 1 | Imports: 7
+  Signals: logging, exchange_reference, retry_or_reconnect
+[OK] exchange/adapters/binance_tr.py
+  Lines: 10 | Classes: 1 | Imports: 1
+  Signals: exchange_reference
+[OK] exchange/base_exchange.py
+  Lines: 38 | Classes: 1 | Imports: 2
+  Signals: exchange_reference
+[OK] exchange/exchange_manager.py
+  Lines: 68 | Classes: 1 | Imports: 4
+  Signals: logging, exchange_reference
+[OK] exchange/market_feed.py
+  Lines: 48 | Classes: 1 | Imports: 3
+  Signals: logging, exchange_reference
+[OK] inspect_atlas_market_data.py
+  Lines: 501 | Classes: 0 | Imports: 7
+  Signals: exchange_reference, cache
+[OK] test_market_data.py
+  Lines: 36 | Classes: 0 | Imports: 2
+  Signals: exchange_reference
+[OK] tools/market_data_source_collector.py
+  Lines: 531 | Classes: 0 | Imports: 10
+  Signals: logging, threading, websocket, exchange_reference, event_bus_reference, retry_or_reconnect, cache, health, timestamp
+
+MISSING EXACT TARGETS
+------------------------------------------------------------------------------
+- config/config.py

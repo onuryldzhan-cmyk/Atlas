@@ -1,0 +1,2 @@
+# Required by exchange/adapters/binance_global.py
+binance-connector

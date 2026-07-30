@@ -1,0 +1,5074 @@
+{
+  "project_root": "C:\\Users\\HUAWEİ\\OneDrive\\Masaüstü\\Project_Atlas_AI",
+  "files_scanned": 300,
+  "classes_scanned": 482,
+  "runtime_relevant_classes": 197,
+  "parse_failures": [],
+  "runtime_classes": [
+    {
+      "file": "test_atlas_os_audit_log.py",
+      "name": "AuditDemoService",
+      "bases": [
+        "BaseAtlasService"
+      ],
+      "line": 21,
+      "methods": [
+        "__init__",
+        "_on_start",
+        "_on_stop"
+      ],
+      "lifecycle_methods": [
+        "_on_start",
+        "_on_stop"
+      ],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [
+        "_on_stop"
+      ],
+      "dependencies": [
+        "name"
+      ],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "test_atlas_os_event_integration.py",
+      "name": "DemoService",
+      "bases": [
+        "BaseAtlasService"
+      ],
+      "line": 19,
+      "methods": [
+        "__init__",
+        "_on_start",
+        "_on_stop"
+      ],
+      "lifecycle_methods": [
+        "_on_start",
+        "_on_stop"
+      ],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [
+        "_on_stop"
+      ],
+      "dependencies": [
+        "name"
+      ],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "test_atlas_os_health_monitor.py",
+      "name": "DemoMarketService",
+      "bases": [
+        "BaseAtlasService"
+      ],
+      "line": 18,
+      "methods": [
+        "__init__",
+        "_on_start",
+        "_on_stop"
+      ],
+      "lifecycle_methods": [
+        "_on_start",
+        "_on_stop"
+      ],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [
+        "_on_stop"
+      ],
+      "dependencies": [],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "test_atlas_os_kernel.py",
+      "name": "DemoService",
+      "bases": [
+        "BaseAtlasService"
+      ],
+      "line": 16,
+      "methods": [
+        "__init__",
+        "_on_start",
+        "_on_stop"
+      ],
+      "lifecycle_methods": [
+        "_on_start",
+        "_on_stop"
+      ],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [
+        "_on_stop"
+      ],
+      "dependencies": [
+        "name"
+      ],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "test_full_execution_lifecycle.py",
+      "name": "TestRisk",
+      "bases": [],
+      "line": 42,
+      "methods": [
+        "position_closed",
+        "position_opened",
+        "validate"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "test_full_execution_lifecycle.py",
+      "name": "TestCapital",
+      "bases": [],
+      "line": 69,
+      "methods": [
+        "allocate"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "test_full_execution_lifecycle.py",
+      "name": "TestPaper",
+      "bases": [],
+      "line": 101,
+      "methods": [
+        "buy",
+        "execute",
+        "sell"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/contracts.py",
+      "name": "ServiceState",
+      "bases": [
+        "StrEnum"
+      ],
+      "line": 43,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/contracts.py",
+      "name": "HealthStatus",
+      "bases": [
+        "StrEnum"
+      ],
+      "line": 57,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/contracts.py",
+      "name": "ServiceIdentity",
+      "bases": [],
+      "line": 69,
+      "methods": [
+        "__post_init__"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/contracts.py",
+      "name": "HealthReport",
+      "bases": [],
+      "line": 91,
+      "methods": [
+        "is_operational"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/contracts.py",
+      "name": "ServiceSnapshot",
+      "bases": [],
+      "line": 118,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/contracts.py",
+      "name": "AtlasService",
+      "bases": [
+        "ABC"
+      ],
+      "line": 131,
+      "methods": [
+        "health",
+        "identity",
+        "snapshot",
+        "start",
+        "state",
+        "stop"
+      ],
+      "lifecycle_methods": [
+        "start",
+        "stop"
+      ],
+      "health_methods": [
+        "health",
+        "snapshot"
+      ],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [
+        "stop"
+      ],
+      "dependencies": [],
+      "logging": false,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_runtime/bootstrap.py",
+      "name": "AtlasBootstrapError",
+      "bases": [
+        "RuntimeError"
+      ],
+      "line": 107,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_runtime/bootstrap.py",
+      "name": "AtlasBootstrapConfigurationError",
+      "bases": [
+        "AtlasBootstrapError"
+      ],
+      "line": 115,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_runtime/bootstrap.py",
+      "name": "AtlasSecureCore",
+      "bases": [],
+      "line": 132,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_runtime/bootstrap.py",
+      "name": "AtlasInfrastructure",
+      "bases": [],
+      "line": 158,
+      "methods": [
+        "secure_core"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_runtime/runtime.py",
+      "name": "AtlasRuntimeState",
+      "bases": [
+        "str",
+        "Enum"
+      ],
+      "line": 98,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_runtime/runtime.py",
+      "name": "AtlasRuntimeError",
+      "bases": [
+        "RuntimeError"
+      ],
+      "line": 128,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_runtime/runtime.py",
+      "name": "AtlasRuntimeStateError",
+      "bases": [
+        "AtlasRuntimeError"
+      ],
+      "line": 136,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_runtime/runtime.py",
+      "name": "AtlasRuntimeConfigurationError",
+      "bases": [
+        "AtlasRuntimeError"
+      ],
+      "line": 144,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_runtime/runtime.py",
+      "name": "AtlasRuntimeStartupError",
+      "bases": [
+        "AtlasRuntimeError"
+      ],
+      "line": 152,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_runtime/runtime.py",
+      "name": "AtlasRuntimeShutdownError",
+      "bases": [
+        "AtlasRuntimeError"
+      ],
+      "line": 160,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_runtime/runtime.py",
+      "name": "RuntimeServiceRegistration",
+      "bases": [],
+      "line": 177,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_runtime/runtime.py",
+      "name": "AtlasRuntimeSnapshot",
+      "bases": [],
+      "line": 202,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_runtime/runtime.py",
+      "name": "AtlasRuntime",
+      "bases": [],
+      "line": 249,
+      "methods": [
+        "__enter__",
+        "__exit__",
+        "__init__",
+        "_ensure_state",
+        "_handle_shutdown_signal",
+        "_install_shutdown_handlers",
+        "_normalize_dependencies",
+        "_restore_signal_handlers",
+        "_service_name",
+        "created_at",
+        "is_running",
+        "kernel",
+        "last_error",
+        "register_service",
+        "register_services",
+        "registrations",
+        "request_shutdown",
+        "run_forever",
+        "service_count",
+        "shutdown_requested",
+        "snapshot",
+        "start",
+        "started_at",
+        "state",
+        "stop",
+        "stopped_at",
+        "uptime_seconds",
+        "validate"
+      ],
+      "lifecycle_methods": [
+        "start",
+        "stop"
+      ],
+      "health_methods": [
+        "snapshot"
+      ],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [
+        "stop"
+      ],
+      "dependencies": [
+        "_kernel",
+        "_shutdown_event",
+        "install_signal_handlers",
+        "kernel",
+        "metadata"
+      ],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "core/application.py",
+      "name": "AtlasApplication",
+      "bases": [],
+      "line": 83,
+      "methods": [
+        "__init__",
+        "__repr__",
+        "_build_infrastructure",
+        "_build_services",
+        "_record_error",
+        "_register_services",
+        "_rollback_startup",
+        "_safe_status",
+        "_start_optional_service",
+        "_stop_service",
+        "health",
+        "start",
+        "status",
+        "stop"
+      ],
+      "lifecycle_methods": [
+        "start",
+        "stop"
+      ],
+      "health_methods": [
+        "health",
+        "status"
+      ],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [
+        "stop"
+      ],
+      "dependencies": [
+        "event_bus",
+        "exchange_name",
+        "execution_mode",
+        "logger_manager",
+        "market_interval",
+        "runtime",
+        "scheduler",
+        "started_services",
+        "symbols"
+      ],
+      "logging": true,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "core/events.py",
+      "name": "EventType",
+      "bases": [
+        "Enum"
+      ],
+      "line": 24,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "core/events.py",
+      "name": "AtlasEvent",
+      "bases": [],
+      "line": 90,
+      "methods": [
+        "to_dict"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "core/events.py",
+      "name": "RuntimeStartedEvent",
+      "bases": [
+        "AtlasEvent"
+      ],
+      "line": 147,
+      "methods": [
+        "__init__"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [
+        "source"
+      ],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "core/events.py",
+      "name": "RuntimeStoppedEvent",
+      "bases": [
+        "AtlasEvent"
+      ],
+      "line": 165,
+      "methods": [
+        "__init__"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [
+        "source"
+      ],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "core/events.py",
+      "name": "TradeOpenedEvent",
+      "bases": [
+        "AtlasEvent"
+      ],
+      "line": 183,
+      "methods": [
+        "__init__"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [
+        "price",
+        "side",
+        "symbol"
+      ],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "core/event_bus.py",
+      "name": "EventBus",
+      "bases": [],
+      "line": 64,
+      "methods": [
+        "__init__",
+        "get_history",
+        "publish",
+        "status",
+        "subscribe"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [
+        "status"
+      ],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "core/execution_contracts.py",
+      "name": "SupportsHealth",
+      "bases": [
+        "Protocol"
+      ],
+      "line": 80,
+      "methods": [
+        "health"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [
+        "health"
+      ],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "core/execution_event.py",
+      "name": "ExecutionEvent",
+      "bases": [],
+      "line": 11,
+      "methods": [
+        "__init__",
+        "to_dict"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [
+        "event",
+        "payload"
+      ],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "core/health_monitor.py",
+      "name": "HealthMonitor",
+      "bases": [],
+      "line": 30,
+      "methods": [
+        "__init__",
+        "check",
+        "is_healthy",
+        "report"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [
+        "is_healthy"
+      ],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [
+        "container",
+        "runtime",
+        "scheduler"
+      ],
+      "logging": true,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "core/lifecycle.py",
+      "name": "LifecycleManager",
+      "bases": [],
+      "line": 27,
+      "methods": [
+        "__init__",
+        "health_check",
+        "initialize_all",
+        "register",
+        "shutdown_all",
+        "start_all",
+        "stop_all"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [
+        "health_check"
+      ],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [
+        "services"
+      ],
+      "logging": true,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "core/position_lifecycle.py",
+      "name": "PositionLifecycle",
+      "bases": [],
+      "line": 29,
+      "methods": [
+        "__init__",
+        "_profit",
+        "close",
+        "create",
+        "get",
+        "partial_exit",
+        "update"
+      ],
+      "lifecycle_methods": [
+        "close"
+      ],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [
+        "close"
+      ],
+      "dependencies": [],
+      "logging": true,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "core/runtime.py",
+      "name": "RuntimeState",
+      "bases": [
+        "Enum"
+      ],
+      "line": 31,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "core/runtime.py",
+      "name": "RuntimeInfo",
+      "bases": [],
+      "line": 53,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "core/runtime.py",
+      "name": "AtlasRuntime",
+      "bases": [],
+      "line": 79,
+      "methods": [
+        "__init__",
+        "_transition",
+        "boot",
+        "connect",
+        "degrade",
+        "fail",
+        "health",
+        "initialize",
+        "pause",
+        "ready",
+        "resume",
+        "shutdown",
+        "start",
+        "status",
+        "stop"
+      ],
+      "lifecycle_methods": [
+        "initialize",
+        "shutdown",
+        "start",
+        "stop"
+      ],
+      "health_methods": [
+        "health",
+        "status"
+      ],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [
+        "shutdown",
+        "stop"
+      ],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "core/scheduler.py",
+      "name": "ScheduledTask",
+      "bases": [],
+      "line": 31,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "core/scheduler.py",
+      "name": "Scheduler",
+      "bases": [],
+      "line": 50,
+      "methods": [
+        "__init__",
+        "_execute",
+        "_run",
+        "add_task",
+        "remove_task",
+        "start",
+        "status",
+        "stop"
+      ],
+      "lifecycle_methods": [
+        "start",
+        "stop"
+      ],
+      "health_methods": [
+        "status"
+      ],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [
+        "stop"
+      ],
+      "dependencies": [
+        "_stop_event"
+      ],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "core/service_container.py",
+      "name": "ServiceContainer",
+      "bases": [],
+      "line": 28,
+      "methods": [
+        "__init__",
+        "clear",
+        "contains",
+        "get",
+        "list_services",
+        "register",
+        "register_factory",
+        "remove"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [
+        "_services"
+      ],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "core/service_registry.py",
+      "name": "ServiceInfo",
+      "bases": [],
+      "line": 29,
+      "methods": [
+        "to_dict"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "core/service_registry.py",
+      "name": "ServiceRegistry",
+      "bases": [],
+      "line": 70,
+      "methods": [
+        "__init__",
+        "clear",
+        "disable",
+        "enable",
+        "exists",
+        "get",
+        "list_services",
+        "register"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [
+        "services"
+      ],
+      "logging": true,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "tools/runtime_architecture_auditor.py",
+      "name": "ClassRecord",
+      "bases": [],
+      "line": 36,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "tests/atlas_os/test_audit_log.py",
+      "name": "AuditLogServiceTests",
+      "bases": [
+        "unittest.TestCase"
+      ],
+      "line": 22,
+      "methods": [
+        "setUp",
+        "tearDown",
+        "test_audit_starts_subscribed",
+        "test_correlation_id_is_preserved",
+        "test_event_is_persisted_as_jsonl",
+        "test_event_is_recorded",
+        "test_existing_records_can_be_loaded",
+        "test_health_contains_audit_statistics",
+        "test_history_is_bounded",
+        "test_manual_rotation",
+        "test_memory_clear_preserves_file",
+        "test_multiple_events_create_multiple_lines",
+        "test_query_by_correlation_id",
+        "test_query_by_event_type",
+        "test_query_by_severity",
+        "test_query_limit",
+        "test_snapshot_contains_runtime_data",
+        "test_statistics_are_recorded"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [
+        "event_bus"
+      ],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "tests/atlas_os/test_base_service.py",
+      "name": "DummyService",
+      "bases": [
+        "BaseAtlasService"
+      ],
+      "line": 20,
+      "methods": [
+        "__init__",
+        "_health_details",
+        "_on_start",
+        "_on_stop",
+        "_snapshot_metadata"
+      ],
+      "lifecycle_methods": [
+        "_on_start",
+        "_on_stop"
+      ],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [
+        "_on_stop"
+      ],
+      "dependencies": [
+        "fail_start",
+        "fail_stop"
+      ],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "tests/atlas_os/test_base_service.py",
+      "name": "BaseAtlasServiceTests",
+      "bases": [
+        "unittest.TestCase"
+      ],
+      "line": 78,
+      "methods": [
+        "test_degrade_requires_running_state",
+        "test_degraded_service_can_recover",
+        "test_initial_state_is_created",
+        "test_running_health_is_healthy",
+        "test_snapshot_contains_service_information",
+        "test_start_failure_moves_service_to_failed",
+        "test_start_is_idempotent",
+        "test_start_moves_service_to_running",
+        "test_stop_failure_moves_service_to_failed",
+        "test_stop_is_idempotent",
+        "test_stop_moves_service_to_stopped"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "tests/atlas_os/test_contracts.py",
+      "name": "ServiceIdentityTests",
+      "bases": [
+        "unittest.TestCase"
+      ],
+      "line": 17,
+      "methods": [
+        "test_empty_name_is_rejected",
+        "test_empty_service_type_is_rejected",
+        "test_empty_version_is_rejected",
+        "test_valid_identity"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "tests/atlas_os/test_contracts.py",
+      "name": "HealthReportTests",
+      "bases": [
+        "unittest.TestCase"
+      ],
+      "line": 62,
+      "methods": [
+        "test_degraded_service_is_operational",
+        "test_healthy_service_is_operational",
+        "test_unhealthy_service_is_not_operational"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "tests/atlas_os/test_dependency_manager.py",
+      "name": "DependencyTestService",
+      "bases": [
+        "BaseAtlasService"
+      ],
+      "line": 23,
+      "methods": [
+        "__init__",
+        "_on_start",
+        "_on_stop"
+      ],
+      "lifecycle_methods": [
+        "_on_start",
+        "_on_stop"
+      ],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [
+        "_on_stop"
+      ],
+      "dependencies": [
+        "fail_start",
+        "fail_stop",
+        "name"
+      ],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "tests/atlas_os/test_dependency_manager.py",
+      "name": "DependencyServiceManagerTests",
+      "bases": [
+        "unittest.TestCase"
+      ],
+      "line": 80,
+      "methods": [
+        "setUp",
+        "test_cycle_is_detected",
+        "test_declarations_are_available",
+        "test_dependants_are_reported",
+        "test_dependency_failure_blocks_dependant",
+        "test_direct_dependencies_are_returned",
+        "test_duplicate_dependencies_are_removed",
+        "test_existing_running_dependency_is_not_rolled_back",
+        "test_missing_dependency_is_detected",
+        "test_plan_calculates_dependency_order",
+        "test_recursive_dependencies_are_returned",
+        "test_register_service_without_dependencies",
+        "test_rollback_stops_started_dependencies",
+        "test_self_dependency_is_rejected",
+        "test_start_starts_dependencies_first",
+        "test_stop_all_stops_dependants_first",
+        "test_stop_dependency_stops_dependants_first"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [
+        "manager"
+      ],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "tests/atlas_os/test_event_bus.py",
+      "name": "EventBusServiceTests",
+      "bases": [
+        "unittest.TestCase"
+      ],
+      "line": 19,
+      "methods": [
+        "_handler",
+        "setUp",
+        "test_clear_history_does_not_reset_statistics",
+        "test_event_history_can_be_filtered",
+        "test_event_history_is_bounded",
+        "test_event_metadata_is_normalized",
+        "test_event_payload_is_immutable",
+        "test_event_type_is_case_insensitive",
+        "test_health_contains_event_statistics",
+        "test_initial_state",
+        "test_invalid_history_limit_is_rejected",
+        "test_publish_requires_running_bus",
+        "test_snapshot_contains_statistics",
+        "test_specific_and_wildcard_subscribers_receive_event",
+        "test_subscribe_and_publish",
+        "test_subscriber_failure_is_isolated",
+        "test_unknown_subscription_is_rejected",
+        "test_unmatched_event_has_no_delivery",
+        "test_unsubscribe_removes_handler",
+        "test_wildcard_subscription_receives_all_events"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [
+        "event_bus",
+        "received_events"
+      ],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "tests/atlas_os/test_event_integration.py",
+      "name": "IntegrationTestService",
+      "bases": [
+        "BaseAtlasService"
+      ],
+      "line": 23,
+      "methods": [
+        "__init__",
+        "_on_start",
+        "_on_stop"
+      ],
+      "lifecycle_methods": [
+        "_on_start",
+        "_on_stop"
+      ],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [
+        "_on_stop"
+      ],
+      "dependencies": [
+        "fail_start",
+        "fail_stop",
+        "name"
+      ],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "tests/atlas_os/test_event_integration.py",
+      "name": "EventIntegrationTests",
+      "bases": [
+        "unittest.TestCase"
+      ],
+      "line": 63,
+      "methods": [
+        "event_types",
+        "setUp",
+        "tearDown",
+        "test_blocked_service_event_is_published",
+        "test_event_payload_contains_service_state",
+        "test_event_statistics_are_recorded",
+        "test_health_degraded_event",
+        "test_health_monitor_initial_event",
+        "test_health_recovered_event",
+        "test_health_transition_is_not_duplicated",
+        "test_kernel_start_event_order",
+        "test_kernel_start_events_are_published",
+        "test_kernel_stop_events_are_published",
+        "test_lifecycle_events_share_correlation_id",
+        "test_rollback_event_is_published",
+        "test_service_dependencies_generate_events_in_order",
+        "test_start_failure_event_is_published",
+        "test_stopped_event_bus_does_not_crash_kernel"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [
+        "event_bus",
+        "kernel",
+        "received_events"
+      ],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "tests/atlas_os/test_health_monitor.py",
+      "name": "MonitorTestService",
+      "bases": [
+        "BaseAtlasService"
+      ],
+      "line": 21,
+      "methods": [
+        "__init__",
+        "_on_start",
+        "_on_stop"
+      ],
+      "lifecycle_methods": [
+        "_on_start",
+        "_on_stop"
+      ],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [
+        "_on_stop"
+      ],
+      "dependencies": [
+        "name"
+      ],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "tests/atlas_os/test_health_monitor.py",
+      "name": "HealthMonitorServiceTests",
+      "bases": [
+        "unittest.TestCase"
+      ],
+      "line": 47,
+      "methods": [
+        "setUp",
+        "tearDown",
+        "test_background_monitor_runs",
+        "test_background_monitor_stops",
+        "test_clear_history_resets_monitor_data",
+        "test_degradation_is_detected",
+        "test_first_poll_creates_initial_transition",
+        "test_history_is_bounded",
+        "test_initial_configuration",
+        "test_invalid_history_limit_is_rejected",
+        "test_invalid_interval_is_rejected",
+        "test_monitor_snapshot_contains_data",
+        "test_poll_once_records_observation",
+        "test_recovery_is_detected",
+        "test_repeated_same_health_creates_no_new_transition",
+        "test_service_health_details_are_available"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [
+        "kernel",
+        "service"
+      ],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "tests/atlas_os/test_kernel.py",
+      "name": "TestService",
+      "bases": [
+        "AtlasService"
+      ],
+      "line": 23,
+      "methods": [
+        "__init__",
+        "health_check",
+        "initialize",
+        "metadata",
+        "snapshot",
+        "start",
+        "state",
+        "stop"
+      ],
+      "lifecycle_methods": [
+        "initialize",
+        "start",
+        "stop"
+      ],
+      "health_methods": [
+        "health_check",
+        "snapshot"
+      ],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [
+        "stop"
+      ],
+      "dependencies": [
+        "dependencies",
+        "name"
+      ],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "tests/atlas_os/test_metrics.py",
+      "name": "MetricsServiceTests",
+      "bases": [
+        "unittest.TestCase"
+      ],
+      "line": 20,
+      "methods": [
+        "setUp",
+        "tearDown",
+        "test_clear_metrics",
+        "test_counter_cannot_decrease",
+        "test_counter_increment",
+        "test_counter_labels_create_distinct_series",
+        "test_gauge_can_be_adjusted",
+        "test_gauge_can_be_set",
+        "test_health_contains_metrics_statistics",
+        "test_histogram_history_is_bounded",
+        "test_histogram_observation",
+        "test_initial_service_gauge_exists",
+        "test_invalid_metric_name_is_rejected",
+        "test_label_order_is_deterministic",
+        "test_metric_can_be_removed",
+        "test_metric_type_conflict_is_rejected",
+        "test_non_finite_value_is_rejected",
+        "test_snapshot_contains_metrics",
+        "test_statistics_are_recorded",
+        "test_timer_records_duration",
+        "test_timer_records_error_outcome"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [
+        "metrics"
+      ],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "tests/atlas_os/test_metrics.py",
+      "name": "MetricsEventBusTests",
+      "bases": [
+        "unittest.TestCase"
+      ],
+      "line": 478,
+      "methods": [
+        "setUp",
+        "tearDown",
+        "test_event_is_converted_to_metrics",
+        "test_event_subscription_is_active",
+        "test_multiple_events_are_counted",
+        "test_stop_removes_event_subscription"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [
+        "event_bus",
+        "metrics"
+      ],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "tests/atlas_os/test_scheduler.py",
+      "name": "SchedulerServiceTests",
+      "bases": [
+        "unittest.TestCase"
+      ],
+      "line": 49,
+      "methods": [
+        "setUp",
+        "tearDown",
+        "test_cancel_task",
+        "test_clear_history_preserves_tasks",
+        "test_duplicate_task_name_is_rejected",
+        "test_failed_task_is_recorded",
+        "test_health_contains_scheduler_data",
+        "test_history_can_be_filtered",
+        "test_history_is_bounded",
+        "test_interval_task_runs_repeatedly",
+        "test_invalid_interval_is_rejected",
+        "test_manual_task_execution_success",
+        "test_manual_task_registration",
+        "test_once_task_runs_automatically",
+        "test_pause_task",
+        "test_remove_task",
+        "test_resume_task",
+        "test_retry_policy_recovers_task",
+        "test_scheduler_starts_worker",
+        "test_snapshot_contains_tasks",
+        "test_statistics_are_recorded",
+        "test_task_timeout_is_recorded",
+        "test_unknown_task_is_rejected"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [
+        "scheduler"
+      ],
+      "logging": false,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "tests/atlas_os/test_scheduler.py",
+      "name": "SchedulerEventBusTests",
+      "bases": [
+        "unittest.TestCase"
+      ],
+      "line": 687,
+      "methods": [
+        "setUp",
+        "tearDown",
+        "test_failed_task_event_is_published",
+        "test_scheduler_events_are_published",
+        "test_timeout_event_is_published"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [
+        "event_bus",
+        "scheduler"
+      ],
+      "logging": false,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "tests/atlas_os/test_service_registry.py",
+      "name": "RegistryTestService",
+      "bases": [
+        "BaseAtlasService"
+      ],
+      "line": 23,
+      "methods": [
+        "__init__",
+        "_health_details",
+        "_on_start",
+        "_on_stop"
+      ],
+      "lifecycle_methods": [
+        "_on_start",
+        "_on_stop"
+      ],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [
+        "_on_stop"
+      ],
+      "dependencies": [
+        "fail_start",
+        "fail_stop",
+        "name"
+      ],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "tests/atlas_os/test_service_registry.py",
+      "name": "ServiceRegistryTests",
+      "bases": [
+        "unittest.TestCase"
+      ],
+      "line": 87,
+      "methods": [
+        "setUp",
+        "test_duplicate_service_is_rejected",
+        "test_health_detects_degraded_service",
+        "test_health_detects_failed_service",
+        "test_health_reports_healthy_registry",
+        "test_lookup_is_case_insensitive",
+        "test_missing_service_returns_none",
+        "test_register_service",
+        "test_registry_starts_empty",
+        "test_require_missing_service_raises",
+        "test_rollback_stops_previously_started_services",
+        "test_running_service_can_be_stopped_and_removed",
+        "test_running_service_cannot_be_removed_unsafely",
+        "test_snapshot_contains_registered_services",
+        "test_start_all_uses_registration_order",
+        "test_start_failure_is_isolated",
+        "test_start_single_service",
+        "test_stop_all_uses_reverse_registration_order",
+        "test_stop_on_failure_prevents_later_startup",
+        "test_stop_single_service",
+        "test_unregister_stopped_service"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [
+        "registry"
+      ],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/audit/audit_log.py",
+      "name": "AuditLogService",
+      "bases": [
+        "BaseAtlasService"
+      ],
+      "line": 246,
+      "methods": [
+        "__init__",
+        "_current_file_size",
+        "_health_details",
+        "_json_default",
+        "_on_start",
+        "_on_stop",
+        "_persist_record",
+        "_prepare_storage",
+        "_rotate_if_required",
+        "_snapshot_metadata",
+        "audit_file",
+        "audit_snapshot",
+        "clear_memory_history",
+        "event_bus",
+        "find_by_correlation_id",
+        "history_limit",
+        "last_record",
+        "load_existing",
+        "query",
+        "record_count",
+        "record_event",
+        "records",
+        "rotate",
+        "rotation_size_bytes",
+        "statistics",
+        "subscribed"
+      ],
+      "lifecycle_methods": [
+        "_on_start",
+        "_on_stop"
+      ],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [
+        "_on_stop"
+      ],
+      "dependencies": [
+        "_event_bus",
+        "_last_recorded_event_type",
+        "audit_file",
+        "event_bus",
+        "history_limit",
+        "load_existing_records",
+        "raise_on_persistence_failure",
+        "rotation_size_bytes"
+      ],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/configuration/configuration_service.py",
+      "name": "ConfigurationValueType",
+      "bases": [
+        "StrEnum"
+      ],
+      "line": 103,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/configuration/configuration_service.py",
+      "name": "ConfigurationSource",
+      "bases": [
+        "StrEnum"
+      ],
+      "line": 116,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/configuration/configuration_service.py",
+      "name": "ConfigurationEnvironment",
+      "bases": [
+        "StrEnum"
+      ],
+      "line": 127,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/configuration/configuration_service.py",
+      "name": "ConfigurationEventType",
+      "bases": [
+        "StrEnum"
+      ],
+      "line": 138,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/configuration/configuration_service.py",
+      "name": "ConfigurationError",
+      "bases": [
+        "RuntimeError"
+      ],
+      "line": 171,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/configuration/configuration_service.py",
+      "name": "ConfigurationKeyNotFoundError",
+      "bases": [
+        "ConfigurationError"
+      ],
+      "line": 177,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/configuration/configuration_service.py",
+      "name": "DuplicateConfigurationKeyError",
+      "bases": [
+        "ConfigurationError"
+      ],
+      "line": 183,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/configuration/configuration_service.py",
+      "name": "ConfigurationValidationError",
+      "bases": [
+        "ConfigurationError"
+      ],
+      "line": 189,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/configuration/configuration_service.py",
+      "name": "ConfigurationConversionError",
+      "bases": [
+        "ConfigurationError"
+      ],
+      "line": 195,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/configuration/configuration_service.py",
+      "name": "ConfigurationSourceError",
+      "bases": [
+        "ConfigurationError"
+      ],
+      "line": 201,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/configuration/configuration_service.py",
+      "name": "ProductionSafetyError",
+      "bases": [
+        "ConfigurationError"
+      ],
+      "line": 207,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/configuration/configuration_service.py",
+      "name": "ConfigurationSchema",
+      "bases": [],
+      "line": 218,
+      "methods": [
+        "__post_init__"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/configuration/configuration_service.py",
+      "name": "ConfigurationEntry",
+      "bases": [],
+      "line": 293,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/configuration/configuration_service.py",
+      "name": "ConfigurationChange",
+      "bases": [],
+      "line": 310,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/configuration/configuration_service.py",
+      "name": "ConfigurationStatistics",
+      "bases": [],
+      "line": 327,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/configuration/configuration_service.py",
+      "name": "ConfigurationSnapshot",
+      "bases": [],
+      "line": 352,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/configuration/configuration_service.py",
+      "name": "_ConfigurationValue",
+      "bases": [],
+      "line": 370,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/configuration/configuration_service.py",
+      "name": "ConfigurationService",
+      "bases": [
+        "BaseAtlasService"
+      ],
+      "line": 384,
+      "methods": [
+        "__init__",
+        "_apply_value",
+        "_convert_boolean",
+        "_convert_dictionary",
+        "_convert_list",
+        "_convert_value",
+        "_flatten_mapping",
+        "_health_details",
+        "_load_mapping",
+        "_mask_value",
+        "_normalize_key",
+        "_on_start",
+        "_on_stop",
+        "_publish_configuration_event",
+        "_record_load_failure",
+        "_snapshot_metadata",
+        "_validate_constraints",
+        "add_json_source",
+        "as_dict",
+        "change_history",
+        "clear_change_history",
+        "clear_runtime_overrides",
+        "configuration_snapshot",
+        "contains",
+        "entries",
+        "entry",
+        "environment",
+        "get",
+        "json_sources",
+        "load_environment",
+        "load_json",
+        "missing_required_keys",
+        "register",
+        "register_many",
+        "register_schema",
+        "registered_key_count",
+        "reload",
+        "remove_runtime_override",
+        "require",
+        "set",
+        "source_of",
+        "statistics",
+        "strict_mode",
+        "validate",
+        "validate_production"
+      ],
+      "lifecycle_methods": [
+        "_on_start",
+        "_on_stop"
+      ],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [
+        "_on_stop"
+      ],
+      "dependencies": [
+        "_configuration_lock",
+        "_event_bus",
+        "_event_publication_failures",
+        "_publish_events",
+        "_runtime_overrides",
+        "environment",
+        "event_bus",
+        "history_limit",
+        "publish_events",
+        "secret_mask",
+        "strict_mode"
+      ],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/core/contracts.py",
+      "name": "ServiceState",
+      "bases": [
+        "StrEnum"
+      ],
+      "line": 36,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/core/contracts.py",
+      "name": "HealthState",
+      "bases": [
+        "StrEnum"
+      ],
+      "line": 51,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/core/contracts.py",
+      "name": "ServiceMetadata",
+      "bases": [],
+      "line": 63,
+      "methods": [
+        "__post_init__"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/core/contracts.py",
+      "name": "HealthReport",
+      "bases": [],
+      "line": 91,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/core/contracts.py",
+      "name": "ServiceSnapshot",
+      "bases": [],
+      "line": 106,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/core/contracts.py",
+      "name": "AtlasService",
+      "bases": [
+        "ABC"
+      ],
+      "line": 121,
+      "methods": [
+        "health_check",
+        "initialize",
+        "metadata",
+        "snapshot",
+        "start",
+        "state",
+        "stop"
+      ],
+      "lifecycle_methods": [
+        "initialize",
+        "start",
+        "stop"
+      ],
+      "health_methods": [
+        "health_check",
+        "snapshot"
+      ],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [
+        "stop"
+      ],
+      "dependencies": [],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/core/kernel.py",
+      "name": "KernelState",
+      "bases": [
+        "StrEnum"
+      ],
+      "line": 58,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/core/kernel.py",
+      "name": "KernelError",
+      "bases": [
+        "RuntimeError"
+      ],
+      "line": 73,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/core/kernel.py",
+      "name": "InvalidKernelStateError",
+      "bases": [
+        "KernelError"
+      ],
+      "line": 79,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/core/kernel.py",
+      "name": "KernelStartupError",
+      "bases": [
+        "KernelError"
+      ],
+      "line": 85,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/core/kernel.py",
+      "name": "KernelSnapshot",
+      "bases": [],
+      "line": 92,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/core/kernel.py",
+      "name": "AtlasKernel",
+      "bases": [],
+      "line": 110,
+      "methods": [
+        "__enter__",
+        "__exit__",
+        "__init__",
+        "_mark_failed",
+        "_rollback_started_services",
+        "health",
+        "initialize",
+        "is_running",
+        "register_service",
+        "snapshot",
+        "start",
+        "state",
+        "stop"
+      ],
+      "lifecycle_methods": [
+        "initialize",
+        "start",
+        "stop"
+      ],
+      "health_methods": [
+        "health",
+        "snapshot"
+      ],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [
+        "stop"
+      ],
+      "dependencies": [
+        "_started_services",
+        "registry"
+      ],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/core/service_registry.py",
+      "name": "ServiceRegistryError",
+      "bases": [
+        "RuntimeError"
+      ],
+      "line": 38,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/core/service_registry.py",
+      "name": "DuplicateServiceError",
+      "bases": [
+        "ServiceRegistryError"
+      ],
+      "line": 44,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/core/service_registry.py",
+      "name": "ServiceNotFoundError",
+      "bases": [
+        "ServiceRegistryError"
+      ],
+      "line": 50,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/core/service_registry.py",
+      "name": "MissingDependencyError",
+      "bases": [
+        "ServiceRegistryError"
+      ],
+      "line": 56,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/core/service_registry.py",
+      "name": "CircularDependencyError",
+      "bases": [
+        "ServiceRegistryError"
+      ],
+      "line": 62,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/core/service_registry.py",
+      "name": "ServiceRegistry",
+      "bases": [],
+      "line": 68,
+      "methods": [
+        "__init__",
+        "clear",
+        "contains",
+        "count",
+        "get",
+        "health_reports",
+        "list_services",
+        "names",
+        "register",
+        "register_many",
+        "resolve_startup_order",
+        "snapshots",
+        "unregister",
+        "validate_dependencies"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [
+        "_services"
+      ],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/events/event_bus.py",
+      "name": "EventSeverity",
+      "bases": [
+        "StrEnum"
+      ],
+      "line": 81,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/events/event_bus.py",
+      "name": "EventBusError",
+      "bases": [
+        "RuntimeError"
+      ],
+      "line": 93,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/events/event_bus.py",
+      "name": "EventBusNotRunningError",
+      "bases": [
+        "EventBusError"
+      ],
+      "line": 99,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/events/event_bus.py",
+      "name": "SubscriptionNotFoundError",
+      "bases": [
+        "EventBusError"
+      ],
+      "line": 105,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/events/event_bus.py",
+      "name": "AtlasEvent",
+      "bases": [],
+      "line": 112,
+      "methods": [
+        "__post_init__"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/events/event_bus.py",
+      "name": "Subscription",
+      "bases": [],
+      "line": 175,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/events/event_bus.py",
+      "name": "DeliveryFailure",
+      "bases": [],
+      "line": 189,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/events/event_bus.py",
+      "name": "PublishResult",
+      "bases": [],
+      "line": 205,
+      "methods": [
+        "success"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/events/event_bus.py",
+      "name": "EventBusSnapshot",
+      "bases": [],
+      "line": 229,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/events/event_bus.py",
+      "name": "_SubscriberRecord",
+      "bases": [],
+      "line": 251,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/events/event_bus.py",
+      "name": "EventBusService",
+      "bases": [
+        "BaseAtlasService"
+      ],
+      "line": 260,
+      "methods": [
+        "__init__",
+        "_health_details",
+        "_normalize_event_type",
+        "_on_start",
+        "_on_stop",
+        "_resolve_handler_name",
+        "_snapshot_metadata",
+        "clear_history",
+        "event_bus_snapshot",
+        "event_history",
+        "failed_deliveries",
+        "failure_history",
+        "failure_history_limit",
+        "history_limit",
+        "publish",
+        "publish_event",
+        "published_events",
+        "reset_statistics",
+        "subscribe",
+        "subscription_count",
+        "subscriptions",
+        "successful_deliveries",
+        "unsubscribe"
+      ],
+      "lifecycle_methods": [
+        "_on_start",
+        "_on_stop"
+      ],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [
+        "_on_stop"
+      ],
+      "dependencies": [
+        "_event_history",
+        "_event_lock",
+        "_published_events",
+        "failure_history_limit",
+        "history_limit",
+        "require_running"
+      ],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/integration/configuration_secrets_service.py",
+      "name": "ConfigurationSecretsServiceError",
+      "bases": [
+        "RuntimeError"
+      ],
+      "line": 101,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/integration/configuration_secrets_service.py",
+      "name": "ConfigurationServiceUnavailableError",
+      "bases": [
+        "ConfigurationSecretsServiceError"
+      ],
+      "line": 109,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/integration/configuration_secrets_service.py",
+      "name": "SecretsManagerUnavailableError",
+      "bases": [
+        "ConfigurationSecretsServiceError"
+      ],
+      "line": 117,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/integration/configuration_secrets_service.py",
+      "name": "RequiredSecretResolutionError",
+      "bases": [
+        "ConfigurationSecretsServiceError"
+      ],
+      "line": 125,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/integration/configuration_secrets_service.py",
+      "name": "ConfigurationSecretsValidationError",
+      "bases": [
+        "ConfigurationSecretsServiceError"
+      ],
+      "line": 133,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/integration/configuration_secrets_service.py",
+      "name": "ConfigurationSecretsService",
+      "bases": [
+        "BaseAtlasService"
+      ],
+      "line": 146,
+      "methods": [
+        "__init__",
+        "_assert_dependencies_ready",
+        "_create_service_identity",
+        "_health_details",
+        "_on_start",
+        "_on_stop",
+        "_refresh_bridge_snapshot",
+        "_snapshot_metadata",
+        "_to_isoformat",
+        "register_binding",
+        "register_secret",
+        "reload",
+        "secure_snapshot",
+        "unresolved_required_bindings",
+        "validate_bindings"
+      ],
+      "lifecycle_methods": [
+        "_on_start",
+        "_on_stop"
+      ],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [
+        "_on_stop"
+      ],
+      "dependencies": [
+        "bridge",
+        "caller",
+        "configuration_service",
+        "continue_on_error",
+        "identity",
+        "reject_plaintext_configuration",
+        "require_running_dependencies",
+        "secrets_manager",
+        "validate_on_start"
+      ],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/integrations/event_integration.py",
+      "name": "AtlasSystemEventType",
+      "bases": [
+        "StrEnum"
+      ],
+      "line": 87,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/integrations/event_integration.py",
+      "name": "EventIntegrationStatistics",
+      "bases": [],
+      "line": 125,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/integrations/event_integration.py",
+      "name": "_SafeEventPublisher",
+      "bases": [],
+      "line": 140,
+      "methods": [
+        "_initialize_event_publisher",
+        "_publish_safely",
+        "event_bus",
+        "event_statistics"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [
+        "_event_bus",
+        "_last_published_event_type"
+      ],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/integrations/event_integration.py",
+      "name": "EventAwareAtlasOSKernel",
+      "bases": [
+        "_SafeEventPublisher",
+        "AtlasOSKernel"
+      ],
+      "line": 285,
+      "methods": [
+        "__init__",
+        "_new_correlation_id",
+        "_publish_start_steps",
+        "_publish_stop_steps",
+        "start",
+        "stop"
+      ],
+      "lifecycle_methods": [
+        "start",
+        "stop"
+      ],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [
+        "stop"
+      ],
+      "dependencies": [
+        "event_bus",
+        "identity",
+        "metadata",
+        "service_manager"
+      ],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/integrations/event_integration.py",
+      "name": "EventAwareHealthMonitorService",
+      "bases": [
+        "_SafeEventPublisher",
+        "HealthMonitorService"
+      ],
+      "line": 724,
+      "methods": [
+        "__init__",
+        "_publish_transition",
+        "clear_history",
+        "poll_once"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [
+        "auto_synchronize_kernel",
+        "daemon",
+        "event_bus",
+        "history_limit",
+        "interval_seconds",
+        "kernel"
+      ],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/kernel/kernel.py",
+      "name": "KernelState",
+      "bases": [
+        "StrEnum"
+      ],
+      "line": 76,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/kernel/kernel.py",
+      "name": "KernelLifecycleError",
+      "bases": [
+        "RuntimeError"
+      ],
+      "line": 90,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/kernel/kernel.py",
+      "name": "KernelIdentity",
+      "bases": [],
+      "line": 97,
+      "methods": [
+        "__post_init__"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/kernel/kernel.py",
+      "name": "KernelHealthReport",
+      "bases": [],
+      "line": 134,
+      "methods": [
+        "is_operational"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/kernel/kernel.py",
+      "name": "KernelSnapshot",
+      "bases": [],
+      "line": 171,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/kernel/kernel.py",
+      "name": "AtlasOSKernel",
+      "bases": [],
+      "line": 194,
+      "methods": [
+        "__init__",
+        "_ensure_configuration_state",
+        "created_at",
+        "health",
+        "identity",
+        "is_running",
+        "last_error",
+        "metadata",
+        "plan",
+        "register_service",
+        "registry",
+        "service_count",
+        "service_manager",
+        "set_metadata",
+        "snapshot",
+        "start",
+        "started_at",
+        "state",
+        "stop",
+        "stopped_at",
+        "synchronize_state",
+        "unregister_service",
+        "uptime",
+        "uptime_seconds",
+        "validate"
+      ],
+      "lifecycle_methods": [
+        "start",
+        "stop"
+      ],
+      "health_methods": [
+        "health",
+        "snapshot"
+      ],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [
+        "stop"
+      ],
+      "dependencies": [
+        "_service_manager",
+        "identity",
+        "metadata",
+        "service_manager"
+      ],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/observability/health_monitor.py",
+      "name": "HealthTransitionType",
+      "bases": [
+        "StrEnum"
+      ],
+      "line": 76,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/observability/health_monitor.py",
+      "name": "HealthObservation",
+      "bases": [],
+      "line": 88,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/observability/health_monitor.py",
+      "name": "HealthTransition",
+      "bases": [],
+      "line": 111,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/observability/health_monitor.py",
+      "name": "HealthMonitorSnapshot",
+      "bases": [],
+      "line": 128,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/observability/health_monitor.py",
+      "name": "HealthMonitorService",
+      "bases": [
+        "BaseAtlasService"
+      ],
+      "line": 148,
+      "methods": [
+        "__init__",
+        "_detect_transition",
+        "_health_details",
+        "_log_transition",
+        "_monitor_loop",
+        "_on_start",
+        "_on_stop",
+        "_snapshot_metadata",
+        "clear_history",
+        "history_limit",
+        "interval_seconds",
+        "kernel",
+        "last_observation",
+        "last_transition",
+        "monitor_snapshot",
+        "observation_count",
+        "observations",
+        "poll_once",
+        "thread_alive",
+        "transition_count",
+        "transitions"
+      ],
+      "lifecycle_methods": [
+        "_on_start",
+        "_on_stop"
+      ],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [
+        "_on_stop"
+      ],
+      "dependencies": [
+        "_auto_synchronize_kernel",
+        "_kernel",
+        "_stop_event",
+        "auto_synchronize_kernel",
+        "daemon",
+        "history_limit",
+        "interval_seconds",
+        "kernel"
+      ],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/observability/metrics.py",
+      "name": "MetricType",
+      "bases": [
+        "StrEnum"
+      ],
+      "line": 82,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/observability/metrics.py",
+      "name": "MetricsError",
+      "bases": [
+        "RuntimeError"
+      ],
+      "line": 92,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/observability/metrics.py",
+      "name": "InvalidMetricNameError",
+      "bases": [
+        "MetricsError"
+      ],
+      "line": 98,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/observability/metrics.py",
+      "name": "MetricTypeConflictError",
+      "bases": [
+        "MetricsError"
+      ],
+      "line": 104,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/observability/metrics.py",
+      "name": "MetricIdentity",
+      "bases": [],
+      "line": 111,
+      "methods": [
+        "label_dict"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/observability/metrics.py",
+      "name": "CounterMetric",
+      "bases": [],
+      "line": 130,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/observability/metrics.py",
+      "name": "GaugeMetric",
+      "bases": [],
+      "line": 141,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/observability/metrics.py",
+      "name": "HistogramMetric",
+      "bases": [],
+      "line": 152,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/observability/metrics.py",
+      "name": "MetricsStatistics",
+      "bases": [],
+      "line": 169,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/observability/metrics.py",
+      "name": "MetricsSnapshot",
+      "bases": [],
+      "line": 191,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/observability/metrics.py",
+      "name": "_CounterState",
+      "bases": [],
+      "line": 208,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/observability/metrics.py",
+      "name": "_GaugeState",
+      "bases": [],
+      "line": 220,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/observability/metrics.py",
+      "name": "_HistogramState",
+      "bases": [],
+      "line": 232,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/observability/metrics.py",
+      "name": "MetricTimer",
+      "bases": [],
+      "line": 250,
+      "methods": [
+        "__enter__",
+        "__exit__",
+        "__init__",
+        "elapsed_seconds"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [
+        "_metric_name",
+        "_metrics",
+        "labels",
+        "metric_name",
+        "metrics"
+      ],
+      "logging": false,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/observability/metrics.py",
+      "name": "MetricsService",
+      "bases": [
+        "BaseAtlasService"
+      ],
+      "line": 333,
+      "methods": [
+        "__init__",
+        "_assert_metric_type",
+        "_build_identity",
+        "_health_details",
+        "_histogram_snapshot",
+        "_normalize_labels",
+        "_normalize_number",
+        "_observe_event",
+        "_on_start",
+        "_on_stop",
+        "_record_update",
+        "_snapshot_metadata",
+        "_validate_metric_name",
+        "adjust_gauge",
+        "clear_metrics",
+        "counter_metrics",
+        "counter_value",
+        "event_subscription_active",
+        "gauge_metrics",
+        "gauge_value",
+        "histogram",
+        "histogram_history_limit",
+        "histogram_metrics",
+        "increment",
+        "metric_series_count",
+        "metrics_snapshot",
+        "observe",
+        "remove_metric",
+        "set_gauge",
+        "statistics",
+        "timer"
+      ],
+      "lifecycle_methods": [
+        "_on_start",
+        "_on_stop"
+      ],
+      "health_methods": [],
+      "metric_methods": [
+        "increment",
+        "observe"
+      ],
+      "recovery_methods": [],
+      "shutdown_methods": [
+        "_on_stop"
+      ],
+      "dependencies": [
+        "_collect_event_metrics",
+        "_event_bus",
+        "_event_observations",
+        "_event_subscription",
+        "_last_metric_name",
+        "_metric_types",
+        "_metrics_lock",
+        "collect_event_metrics",
+        "event_bus",
+        "histogram_history_limit"
+      ],
+      "logging": false,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/scheduling/scheduler.py",
+      "name": "TaskScheduleType",
+      "bases": [
+        "StrEnum"
+      ],
+      "line": 103,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/scheduling/scheduler.py",
+      "name": "ScheduledTaskState",
+      "bases": [
+        "StrEnum"
+      ],
+      "line": 113,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/scheduling/scheduler.py",
+      "name": "TaskExecutionStatus",
+      "bases": [
+        "StrEnum"
+      ],
+      "line": 127,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/scheduling/scheduler.py",
+      "name": "SchedulerEventType",
+      "bases": [
+        "StrEnum"
+      ],
+      "line": 139,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/scheduling/scheduler.py",
+      "name": "SchedulerError",
+      "bases": [
+        "RuntimeError"
+      ],
+      "line": 164,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/scheduling/scheduler.py",
+      "name": "TaskNotFoundError",
+      "bases": [
+        "SchedulerError"
+      ],
+      "line": 170,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/scheduling/scheduler.py",
+      "name": "DuplicateTaskError",
+      "bases": [
+        "SchedulerError"
+      ],
+      "line": 176,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/scheduling/scheduler.py",
+      "name": "InvalidTaskConfigurationError",
+      "bases": [
+        "SchedulerError"
+      ],
+      "line": 182,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/scheduling/scheduler.py",
+      "name": "TaskExecutionError",
+      "bases": [
+        "SchedulerError"
+      ],
+      "line": 188,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/scheduling/scheduler.py",
+      "name": "RetryPolicy",
+      "bases": [],
+      "line": 199,
+      "methods": [
+        "__post_init__",
+        "delay_for_attempt"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/scheduling/scheduler.py",
+      "name": "TaskConfiguration",
+      "bases": [],
+      "line": 260,
+      "methods": [
+        "__post_init__"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/scheduling/scheduler.py",
+      "name": "TaskExecutionRecord",
+      "bases": [],
+      "line": 332,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/scheduling/scheduler.py",
+      "name": "ScheduledTaskSnapshot",
+      "bases": [],
+      "line": 352,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/scheduling/scheduler.py",
+      "name": "SchedulerStatistics",
+      "bases": [],
+      "line": 381,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/scheduling/scheduler.py",
+      "name": "SchedulerSnapshot",
+      "bases": [],
+      "line": 410,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/scheduling/scheduler.py",
+      "name": "_ScheduledTask",
+      "bases": [],
+      "line": 429,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/scheduling/scheduler.py",
+      "name": "SchedulerService",
+      "bases": [
+        "BaseAtlasService"
+      ],
+      "line": 458,
+      "methods": [
+        "__init__",
+        "_active_execution_count",
+        "_calculate_initial_run",
+        "_collect_due_tasks",
+        "_create_skipped_record",
+        "_execute_task",
+        "_health_details",
+        "_on_start",
+        "_on_stop",
+        "_publish_scheduler_event",
+        "_resolve_task_id",
+        "_run_callable_with_timeout",
+        "_schedule_next_run",
+        "_snapshot_metadata",
+        "_snapshot_task",
+        "_worker_loop",
+        "cancel_task",
+        "clear_history",
+        "history",
+        "history_limit",
+        "pause_task",
+        "polling_interval_seconds",
+        "register_interval",
+        "register_manual",
+        "register_once",
+        "register_task",
+        "remove_task",
+        "resume_task",
+        "run_task",
+        "scheduler_snapshot",
+        "statistics",
+        "task_count",
+        "task_exists",
+        "task_snapshot",
+        "task_snapshots",
+        "worker_alive"
+      ],
+      "lifecycle_methods": [
+        "_on_start",
+        "_on_stop"
+      ],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [
+        "_on_stop"
+      ],
+      "dependencies": [
+        "_event_bus",
+        "_event_publication_failures",
+        "_publish_events",
+        "_scheduler_lock",
+        "_stop_event",
+        "_wake_event",
+        "event_bus",
+        "history_limit",
+        "polling_interval_seconds",
+        "publish_events"
+      ],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/secrets/secrets_manager.py",
+      "name": "SecretEventType",
+      "bases": [
+        "StrEnum"
+      ],
+      "line": 96,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_os/services/base_service.py",
+      "name": "ServiceLifecycleError",
+      "bases": [
+        "RuntimeError"
+      ],
+      "line": 74,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/services/base_service.py",
+      "name": "BaseAtlasService",
+      "bases": [
+        "AtlasService"
+      ],
+      "line": 80,
+      "methods": [
+        "__init__",
+        "_health_details",
+        "_on_start",
+        "_on_stop",
+        "_snapshot_metadata",
+        "health",
+        "identity",
+        "is_running",
+        "last_error",
+        "mark_degraded",
+        "recover",
+        "snapshot",
+        "start",
+        "started_at",
+        "state",
+        "stop",
+        "stopped_at"
+      ],
+      "lifecycle_methods": [
+        "_on_start",
+        "_on_stop",
+        "start",
+        "stop"
+      ],
+      "health_methods": [
+        "health",
+        "snapshot"
+      ],
+      "metric_methods": [],
+      "recovery_methods": [
+        "recover"
+      ],
+      "shutdown_methods": [
+        "_on_stop",
+        "stop"
+      ],
+      "dependencies": [
+        "identity"
+      ],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/services/dependency_manager.py",
+      "name": "DependencyManagerError",
+      "bases": [
+        "RuntimeError"
+      ],
+      "line": 88,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/services/dependency_manager.py",
+      "name": "MissingDependencyError",
+      "bases": [
+        "DependencyManagerError"
+      ],
+      "line": 94,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/services/dependency_manager.py",
+      "name": "CircularDependencyError",
+      "bases": [
+        "DependencyManagerError"
+      ],
+      "line": 100,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/services/dependency_manager.py",
+      "name": "InvalidDependencyError",
+      "bases": [
+        "DependencyManagerError"
+      ],
+      "line": 106,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/services/dependency_manager.py",
+      "name": "ServiceBlockedError",
+      "bases": [
+        "DependencyManagerError"
+      ],
+      "line": 112,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/services/dependency_manager.py",
+      "name": "OrchestrationAction",
+      "bases": [
+        "StrEnum"
+      ],
+      "line": 118,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/services/dependency_manager.py",
+      "name": "DependencyDeclaration",
+      "bases": [],
+      "line": 130,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/services/dependency_manager.py",
+      "name": "OrchestrationStep",
+      "bases": [],
+      "line": 140,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/services/dependency_manager.py",
+      "name": "OrchestrationPlan",
+      "bases": [],
+      "line": 158,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/services/dependency_manager.py",
+      "name": "OrchestrationResult",
+      "bases": [],
+      "line": 173,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/services/dependency_manager.py",
+      "name": "DependencyServiceManager",
+      "bases": [],
+      "line": 190,
+      "methods": [
+        "__contains__",
+        "__init__",
+        "__len__",
+        "_build_plan_from_keys",
+        "_calculate_topological_keys",
+        "_collect_dependency_keys",
+        "_display_name",
+        "_execute_start_plan",
+        "_execute_stop_keys",
+        "_normalize_dependencies",
+        "_normalize_name",
+        "_operation_to_step",
+        "_require_registered_key",
+        "_validate_missing_dependencies",
+        "declarations",
+        "dependants_of",
+        "dependencies_of",
+        "plan_all",
+        "plan_for",
+        "register",
+        "registry",
+        "service_count",
+        "start",
+        "start_all",
+        "stop",
+        "stop_all",
+        "unregister",
+        "validate"
+      ],
+      "lifecycle_methods": [
+        "start",
+        "stop"
+      ],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [
+        "stop"
+      ],
+      "dependencies": [
+        "_registry",
+        "registry"
+      ],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/services/registry.py",
+      "name": "ServiceRegistryError",
+      "bases": [
+        "RuntimeError"
+      ],
+      "line": 59,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/services/registry.py",
+      "name": "DuplicateServiceError",
+      "bases": [
+        "ServiceRegistryError"
+      ],
+      "line": 65,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/services/registry.py",
+      "name": "ServiceNotFoundError",
+      "bases": [
+        "ServiceRegistryError"
+      ],
+      "line": 71,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/services/registry.py",
+      "name": "ServiceRemovalError",
+      "bases": [
+        "ServiceRegistryError"
+      ],
+      "line": 77,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/services/registry.py",
+      "name": "ServiceOperationResult",
+      "bases": [],
+      "line": 84,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/services/registry.py",
+      "name": "RegistryHealthReport",
+      "bases": [],
+      "line": 101,
+      "methods": [
+        "is_operational"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/services/registry.py",
+      "name": "RegistrySnapshot",
+      "bases": [],
+      "line": 127,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_os/services/registry.py",
+      "name": "ServiceRegistry",
+      "bases": [],
+      "line": 141,
+      "methods": [
+        "__contains__",
+        "__init__",
+        "__len__",
+        "_get_required_by_key",
+        "_normalize_name",
+        "_start_service",
+        "_stop_service",
+        "get",
+        "health",
+        "names",
+        "register",
+        "registration_order",
+        "require",
+        "service_count",
+        "services",
+        "snapshot",
+        "start",
+        "start_all",
+        "stop",
+        "stop_all",
+        "unregister"
+      ],
+      "lifecycle_methods": [
+        "start",
+        "stop"
+      ],
+      "health_methods": [
+        "health",
+        "snapshot"
+      ],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [
+        "stop"
+      ],
+      "dependencies": [
+        "_services"
+      ],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_finance/market_data/exceptions.py",
+      "name": "MarketDataServiceError",
+      "bases": [
+        "MarketDataError"
+      ],
+      "line": 142,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_finance/market_data/exceptions.py",
+      "name": "MarketDataServiceNotRunningError",
+      "bases": [
+        "MarketDataServiceError"
+      ],
+      "line": 150,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_finance/market_data/exceptions.py",
+      "name": "MarketDataServiceStartupError",
+      "bases": [
+        "MarketDataServiceError"
+      ],
+      "line": 158,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_finance/market_data/exceptions.py",
+      "name": "MarketDataServiceShutdownError",
+      "bases": [
+        "MarketDataServiceError"
+      ],
+      "line": 166,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": false,
+      "threading": false,
+      "async_support": false,
+      "event_bus_reference": false
+    },
+    {
+      "file": "atlas_finance/market_data/market_feed_service.py",
+      "name": "MarketFeedEventType",
+      "bases": [],
+      "line": 111,
+      "methods": [],
+      "lifecycle_methods": [],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_finance/market_data/market_feed_service.py",
+      "name": "_MutableRequestStatistics",
+      "bases": [],
+      "line": 173,
+      "methods": [
+        "record_failure",
+        "record_success",
+        "snapshot"
+      ],
+      "lifecycle_methods": [],
+      "health_methods": [
+        "snapshot"
+      ],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [],
+      "dependencies": [],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    },
+    {
+      "file": "atlas_finance/market_data/market_feed_service.py",
+      "name": "MarketFeedService",
+      "bases": [
+        "BaseAtlasService"
+      ],
+      "line": 293,
+      "methods": [
+        "__init__",
+        "_health_details",
+        "_increment_metric",
+        "_normalize_symbol",
+        "_normalize_timeframe",
+        "_observe_metric",
+        "_on_start",
+        "_on_stop",
+        "_publish_event",
+        "_record_candle_success",
+        "_record_failure",
+        "_record_price_success",
+        "_require_running",
+        "_safe_latency",
+        "_set_metric",
+        "_set_provider_connected_metric",
+        "_snapshot_metadata",
+        "_validate_candle_results",
+        "_validate_failure_threshold",
+        "_validate_limit",
+        "_validate_price_result",
+        "collect_metrics",
+        "consecutive_failures",
+        "failure_threshold",
+        "get_candles",
+        "get_price",
+        "last_price",
+        "market_feed_snapshot",
+        "provider",
+        "provider_connected",
+        "provider_name",
+        "publish_events",
+        "statistics"
+      ],
+      "lifecycle_methods": [
+        "_on_start",
+        "_on_stop"
+      ],
+      "health_methods": [],
+      "metric_methods": [],
+      "recovery_methods": [],
+      "shutdown_methods": [
+        "_on_stop"
+      ],
+      "dependencies": [
+        "_collect_metrics",
+        "_event_bus",
+        "_metrics",
+        "_provider",
+        "_publish_events",
+        "_service_started_at",
+        "collect_metrics",
+        "event_bus",
+        "failure_threshold",
+        "metrics",
+        "provider",
+        "publish_events"
+      ],
+      "logging": true,
+      "threading": true,
+      "async_support": false,
+      "event_bus_reference": true
+    }
+  ],
+  "dependency_graph": {
+    "ai": [
+      "core",
+      "intelligence"
+    ],
+    "atlas_finance": [
+      "atlas_os"
+    ],
+    "atlas_runtime": [
+      "atlas_os"
+    ],
+    "core": [
+      "analysis",
+      "exchange",
+      "intelligence"
+    ],
+    "dashboard": [
+      "core"
+    ],
+    "inspect_atlas_os_lifecycle": [
+      "atlas_os"
+    ],
+    "inspect_market_service_contracts": [
+      "atlas_os"
+    ],
+    "main": [
+      "core"
+    ],
+    "portfolio": [
+      "core"
+    ],
+    "strategy": [
+      "core"
+    ],
+    "test_adaptive_learning": [
+      "intelligence"
+    ],
+    "test_advisor": [
+      "assistant"
+    ],
+    "test_application": [
+      "core"
+    ],
+    "test_atlas_infrastructure": [
+      "atlas_os",
+      "atlas_runtime"
+    ],
+    "test_atlas_os_audit_log": [
+      "atlas_os"
+    ],
+    "test_atlas_os_event_bus": [
+      "atlas_os"
+    ],
+    "test_atlas_os_event_integration": [
+      "atlas_os"
+    ],
+    "test_atlas_os_health_monitor": [
+      "atlas_os"
+    ],
+    "test_atlas_os_kernel": [
+      "atlas_os"
+    ],
+    "test_atlas_os_scheduler": [
+      "atlas_os"
+    ],
+    "test_atlas_pipeline": [
+      "core",
+      "intelligence"
+    ],
+    "test_atlas_runtime_empty": [
+      "atlas_runtime"
+    ],
+    "test_atlas_secure_core": [
+      "atlas_os",
+      "atlas_runtime"
+    ],
+    "test_awareness": [
+      "assistant"
+    ],
+    "test_brain_connector": [
+      "core"
+    ],
+    "test_buy_execution": [
+      "core"
+    ],
+    "test_capital": [
+      "core"
+    ],
+    "test_coin_scanner": [
+      "intelligence"
+    ],
+    "test_configuration_secrets_service": [
+      "atlas_os"
+    ],
+    "test_controller": [
+      "core"
+    ],
+    "test_decision": [
+      "intelligence"
+    ],
+    "test_decision_adapter": [
+      "core"
+    ],
+    "test_evaluator": [
+      "assistant"
+    ],
+    "test_evolution": [
+      "assistant"
+    ],
+    "test_execution": [
+      "intelligence"
+    ],
+    "test_execution_manager_v21": [
+      "core"
+    ],
+    "test_execution_pipeline": [
+      "core"
+    ],
+    "test_executor": [
+      "core"
+    ],
+    "test_experiment": [
+      "assistant"
+    ],
+    "test_feed": [
+      "exchange"
+    ],
+    "test_full_execution_lifecycle": [
+      "core"
+    ],
+    "test_improvement": [
+      "assistant"
+    ],
+    "test_intelligence_core": [
+      "intelligence"
+    ],
+    "test_intelligence_loop": [
+      "core"
+    ],
+    "test_knowledge": [
+      "assistant"
+    ],
+    "test_live_loop": [
+      "core"
+    ],
+    "test_market_intelligence": [
+      "analysis",
+      "intelligence"
+    ],
+    "test_opportunity": [
+      "intelligence"
+    ],
+    "test_paper_bridge": [
+      "intelligence"
+    ],
+    "test_portfolio_intelligence": [
+      "intelligence"
+    ],
+    "test_position_database": [
+      "core"
+    ],
+    "test_position_lifecycle": [
+      "core"
+    ],
+    "test_regime": [
+      "intelligence"
+    ],
+    "test_risk": [
+      "core"
+    ],
+    "test_risk_intelligence": [
+      "intelligence"
+    ],
+    "test_self_improvement": [
+      "assistant"
+    ],
+    "test_strategy_selector": [
+      "intelligence"
+    ],
+    "test_supervisor": [
+      "assistant"
+    ],
+    "test_trade_memory": [
+      "core"
+    ],
+    "test_validator": [
+      "core"
+    ],
+    "tests": [
+      "atlas_os"
+    ],
+    "web_app": [
+      "core"
+    ]
+  },
+  "dependency_cycles": [],
+  "production_gaps": [
+    {
+      "area": "OBSERVABILITY",
+      "severity": "MEDIUM",
+      "finding": "One or more runtime classes have no detectable logging.",
+      "recommendation": "Use component loggers and lifecycle event logging."
+    }
+  ],
+  "recommended_roadmap": [
+    {
+      "order": 1,
+      "phase": "5B",
+      "title": "Runtime Contract Consolidation"
+    },
+    {
+      "order": 2,
+      "phase": "5C",
+      "title": "Dependency Startup and Shutdown Plan"
+    },
+    {
+      "order": 3,
+      "phase": "5D",
+      "title": "Health and Diagnostics Standard"
+    },
+    {
+      "order": 4,
+      "phase": "5E",
+      "title": "Metrics and Observability"
+    },
+    {
+      "order": 5,
+      "phase": "5F",
+      "title": "Graceful Shutdown"
+    },
+    {
+      "order": 6,
+      "phase": "5G",
+      "title": "Recovery Policy"
+    },
+    {
+      "order": 7,
+      "phase": "5H",
+      "title": "Runtime Integration Tests"
+    }
+  ],
+  "safety": {
+    "source_files_modified": false,
+    "atlas_modules_imported": false,
+    "services_started": false,
+    "exchange_connections_opened": false,
+    "secret_values_read": false
+  }
+}

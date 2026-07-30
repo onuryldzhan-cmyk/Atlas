@@ -1,0 +1,205 @@
+==============================================================================
+ATLAS PHASE 6A2.1 — MARKET DATA MIGRATION READINESS
+==============================================================================
+
+Python files scanned       : 614
+Parse failures total       : 53
+Active parse failures      : 53
+Archived-like failures     : 0
+Legacy usage files         : 2
+Canonical usage files      : 1
+Direct exchange files      : 24
+HIGH migration findings    : 1
+
+MIGRATION FINDINGS
+------------------------------------------------------------------------------
+[HIGH] PUBLIC_METHOD_COMPATIBILITY_GAP
+  Canonical service does not expose every public legacy method.
+  Methods: candles, price, start, stop
+
+[INFO] APPLICATION_CALLS_COMPATIBLE
+  Detected application calls are available on canonical service.
+
+[INFO] MIGRATION_STRATEGY
+  Prefer an explicit compatibility adapter and contract tests before changing core/application.py.
+
+LEGACY MARKET FEED USAGE
+------------------------------------------------------------------------------
+- core/application.py
+  import line 70: exchange.market_feed.MarketFeed
+  construct line 184: args=[] kwargs={'exchange_name': 'self.exchange_name'}
+- test_feed.py
+  import line 1: exchange.market_feed.MarketFeed
+  construct line 3: args=[] kwargs={}
+
+ACTIVE PARSE FAILURES
+------------------------------------------------------------------------------
+- archive_unused_2026-07-22/ai/atlas_brain.py:1 invalid non-printable character U+FEFF | ﻿from learning.model_memory import ModelMemory
+- archive_unused_2026-07-22/ai/core/create_faz1.py:1 invalid non-printable character U+FEFF | ﻿import os
+- archive_unused_2026-07-22/ai/decision_engine.py:1 invalid non-printable character U+FEFF | ﻿class DecisionEngine:
+- archive_unused_2026-07-22/ai/intelligent_score.py:1 invalid non-printable character U+FEFF | ﻿import json
+- archive_unused_2026-07-22/ai/pattern_memory.py:1 invalid non-printable character U+FEFF | ﻿"""
+- archive_unused_2026-07-22/atlas_memory_core (2).py:216 unterminated string literal (detected at line 216) | print("
+- archive_unused_2026-07-22/atlas_paper_trading/indicators.py:1 invalid non-printable character U+FEFF | ﻿"""Atlas AI - Technical Indicators"""
+- archive_unused_2026-07-22/atlas_paper_trading/live_data_feed.py:1 invalid non-printable character U+FEFF | ﻿"""Atlas AI - Live Data Feed"""
+- archive_unused_2026-07-22/atlas_paper_trading/live_trading_engine.py:1 invalid non-printable character U+FEFF | ﻿import asyncio
+- archive_unused_2026-07-22/atlas_paper_trading/signal_generator.py:1 invalid non-printable character U+FEFF | ﻿"""Atlas AI - Signal Generator"""
+- archive_unused_2026-07-22/atlas_paper_trading/strategy_base.py:1 invalid non-printable character U+FEFF | ﻿"""Atlas AI - Strategy Base"""
+- archive_unused_2026-07-22/atlas_paper_trading/strategy_manager.py:1 invalid non-printable character U+FEFF | ﻿"""Atlas AI - Strategy Manager"""
+- archive_unused_2026-07-22/backtest/backtest_engine_v2.py:1 invalid non-printable character U+FEFF | ﻿"""
+- archive_unused_2026-07-22/backtest/better_backtest.py:1 invalid non-printable character U+FEFF | ﻿"""
+- archive_unused_2026-07-22/backtest/standalone_backtest.py:1 invalid non-printable character U+FEFF | ﻿"""
+- archive_unused_2026-07-22/cleanup_analyzer.py:1 invalid non-printable character U+FEFF | ﻿"""
+- archive_unused_2026-07-22/cleanup_analyzer_v2.py:1 invalid non-printable character U+FEFF | ﻿"""
+- archive_unused_2026-07-22/config/__init__.py:1 invalid non-printable character U+FEFF | ﻿"""
+- archive_unused_2026-07-22/core/architecture_analyzer.py:1 invalid non-printable character U+FEFF | ﻿"""
+- archive_unused_2026-07-22/core/atlas_brain_v2.py:1 invalid non-printable character U+FEFF | ﻿"""
+- archive_unused_2026-07-22/core/backtest/combined_backtest.py:1 invalid non-printable character U+FEFF | ﻿
+- archive_unused_2026-07-22/core/brain/context_manager.py:1 invalid non-printable character U+FEFF | ﻿"""
+- archive_unused_2026-07-22/core/brain/decision_maker.py:1 invalid non-printable character U+FEFF | ﻿"""
+- archive_unused_2026-07-22/core/brain/signal_processor.py:1 invalid non-printable character U+FEFF | ﻿"""
+- archive_unused_2026-07-22/core/data/fetch_enhanced.py:1 invalid non-printable character U+FEFF | ﻿"""
+- archive_unused_2026-07-22/core/dependency_graph.py:1 invalid non-printable character U+FEFF | ﻿"""
+- archive_unused_2026-07-22/core/loop.py:1 invalid non-printable character U+FEFF | ﻿"""
+- archive_unused_2026-07-22/data/fetch_simple.py:1 invalid non-printable character U+FEFF | ﻿
+- archive_unused_2026-07-22/data/live_data_connector.py:1 invalid non-printable character U+FEFF | ﻿"""
+- archive_unused_2026-07-22/execution/paper_trading.py:1 invalid non-printable character U+FEFF | ﻿"""
+- archive_unused_2026-07-22/execution/paper_trading_v2.py:1 invalid non-printable character U+FEFF | ﻿"""
+- archive_unused_2026-07-22/fix_bare_except.py:1 invalid non-printable character U+FEFF | ﻿"""
+- archive_unused_2026-07-22/fix_bom.py:1 invalid non-printable character U+FEFF | ﻿"""
+- archive_unused_2026-07-22/github/background_service.py:1 invalid non-printable character U+FEFF | ﻿"""
+- archive_unused_2026-07-22/github/github_integration.py:1 invalid non-printable character U+FEFF | ﻿"""
+- archive_unused_2026-07-22/github/run_all.py:1 invalid non-printable character U+FEFF | ﻿"""
+- archive_unused_2026-07-22/risk/position_manager.py:161 unexpected indent | print(
+- archive_unused_2026-07-22/simulation/__init__.py:1 invalid non-printable character U+FEFF | ﻿"""
+- archive_unused_2026-07-22/strategy/fix_bollinger.py:1 invalid non-printable character U+FEFF | ﻿import os
+- archive_unused_2026-07-22/strategy/scalping.py:1 invalid non-printable character U+FEFF | ﻿"""
+- phase3f_bom_backup_20260727_114104/atlas_os/configuration/__init__.py:1 invalid non-printable character U+FEFF | ﻿"""
+- phase3f_bom_backup_20260727_114104/atlas_os/secrets/__init__.py:1 invalid non-printable character U+FEFF | ﻿"""
+- phase3f_bom_backup_20260727_114104/atlas_paper_trading/paper_trading_engine.py:1 invalid non-printable character U+FEFF | ﻿"""Atlas AI - Paper Trading Engine"""
+- phase3f_bom_backup_20260727_114104/atlas_paper_trading/paper_trading_main.py:1 invalid non-printable character U+FEFF | ﻿"""Atlas AI - Paper Trading Main Engine"""
+- phase3f_bom_backup_20260727_114104/atlas_paper_trading/performance_report.py:1 invalid non-printable character U+FEFF | ﻿"""Atlas AI - Performance Report"""
+- phase3f_bom_backup_20260727_114104/atlas_paper_trading/position_tracker.py:1 invalid non-printable character U+FEFF | ﻿"""Atlas AI - Position Tracker"""
+- phase3f_bom_backup_20260727_114104/atlas_paper_trading/risk_guardian.py:1 invalid non-printable character U+FEFF | ﻿"""Atlas AI - Risk Guardian"""
+- phase3f_bom_backup_20260727_114104/inspect_atlas_os_lifecycle.py:1 invalid non-printable character U+FEFF | ﻿from __future__ import annotations
+- phase3f_bom_backup_20260727_114104/test_atlas_infrastructure.py:1 invalid non-printable character U+FEFF | ﻿from __future__ import annotations
+- phase3f_bom_backup_20260727_114104/test_atlas_runtime_empty.py:1 invalid non-printable character U+FEFF | ﻿from atlas_runtime import AtlasRuntime
+- phase3f_bom_backup_20260727_114104/test_atlas_secure_core.py:1 invalid non-printable character U+FEFF | ﻿from atlas_os import SecretBindingMode
+- phase3f_bom_backup_20260727_114104/test_configuration_secrets_service.py:1 invalid non-printable character U+FEFF | ﻿from atlas_os import (
+- phase3f_bom_backup_20260727_114104/web_app.py:1 invalid non-printable character U+FEFF | ﻿"""
+
+DIRECT EXCHANGE ACCESS
+------------------------------------------------------------------------------
+- [ACTIVE] archive_unused_2026-07-22/ai/atlas_telegram_connector.py
+  line 35: requests.get
+  line 49: requests.post
+- [ACTIVE] archive_unused_2026-07-22/ai/core/atlas_live_connector.py
+  line 33: BASE_URL = "https://api.binance.com"
+  line 40: def get_ticker_24h(self, symbol: str) -> Optional[Dict]:
+  line 68: def get_klines(self, symbol: str, interval: str = "5m", limit: int = 100) -> Optional[List]:
+  line 259: self.binance.get_ticker_24h
+  line 260: self.binance.get_klines
+- [ACTIVE] archive_unused_2026-07-22/ai/core/atlas_live_trading.py
+  line 62: url = "https://api.binance.com/api/v3/klines"
+  line 64: requests.get
+- [ACTIVE] archive_unused_2026-07-22/ai/core/atlas_live_trading_v2.py
+  line 27: BINANCE_API_URL: str = "https://api.binance.com"
+  line 28: BINANCE_FAPI_URL: str = "https://fapi.binance.com"
+  line 111: def get_klines(self, symbol: str, interval: str = "1h", limit: int = 100) -> List[Dict]:
+  line 614: self.client.get_klines
+- [ACTIVE] archive_unused_2026-07-22/ai/core/atlas_live_trading_v21.py
+  line 27: BINANCE_API_URL: str = "https://api.binance.com"
+  line 28: BINANCE_FAPI_URL: str = "https://fapi.binance.com"
+  line 143: def get_klines(self, symbol: str, interval: str = "1h", limit: int = 100) -> List[Dict]:
+  line 681: self.client.get_klines
+- [ACTIVE] archive_unused_2026-07-22/ai/core/atlas_telegram_connector.py
+  line 35: requests.get
+  line 49: requests.post
+- [ACTIVE] archive_unused_2026-07-22/core/data_downloader.py
+  line 12: self.base_url = "https://api.binance.com/api/v3/klines"
+  line 38: requests.get
+- [ACTIVE] archive_unused_2026-07-22/core/data_provider.py
+  line 12: def get_klines(self, symbol: str, interval: str = "1m", limit: int = 100) -> List[Dict[str, Any]]:
+  line 14: url = f"https://api.binance.com/api/v3/klines?symbol={symbol}&interval={interval}&limit={limit}"
+  line 15: requests.get.json
+  line 15: requests.get
+  line 42: url = f"https://api.binance.com/api/v3/klines"
+  line 51: requests.get.json
+  line 51: requests.get
+- [ACTIVE] archive_unused_2026-07-22/core/live_trader.py
+  line 50: self.client.get_klines
+- [ACTIVE] archive_unused_2026-07-22/core/trading_cycle.py
+  line 74: self.data_provider.get_klines
+- [ACTIVE] archive_unused_2026-07-22/data/binance_provider.py
+  line 12: self.client.get_symbol_ticker
+  line 23: self.client.get_klines
+- [ACTIVE] archive_unused_2026-07-22/data/data_manager.py
+  line 256: BASE_URL = "https://api.binance.com"
+  line 257: FUTURES_URL = "https://fapi.binance.com"
+  line 257: FUTURES_URL = "https://fapi.binance.com"
+  line 267: self.base_url = self.FUTURES_URL if use_futures else self.BASE_URL
+  line 303: import urllib.request
+  line 319: urllib.request.Request
+  line 320: urllib.request.urlopen
+  line 339: def get_klines(self, symbol: str, interval: str = "5m", limit: int = 100) -> List[OHLCV]:
+  line 367: def get_ticker(self, symbol: str) -> Dict[str, Any]:
+  line 508: self.client.get_klines
+  line 557: self.client.get_ticker
+- [ACTIVE] atlas_finance/market_data/binance_public_provider.py
+  line 111: "https://api.binance.com"
+- [ACTIVE] data/binance_provider.py
+  line 26: "https://api.binance.com"
+  line 52: requests.get
+  line 87: requests.get
+  line 125: requests.get
+- [ACTIVE] exchange/adapters/binance_global.py
+  line 244: def get_klines(
+- [ACTIVE] exchange/base_exchange.py
+  line 23: def get_klines(
+- [ACTIVE] exchange/exchange_manager.py
+  line 44: def get_klines(
+  line 51: self.exchange.get_klines
+- [ACTIVE] exchange/market_feed.py
+  line 44: self.manager.get_klines
+- [ACTIVE] phase6a2_tool_backup_20260727_170020/phase6a2_market_data_architecture_audit.py
+  line 59: "requests.get(",
+  line 60: "requests.post(",
+  line 62: "get_klines(",
+  line 63: "get_ticker(",
+  line 64: "futures_",
+  line 65: "api.binance.com",
+- [ACTIVE] phase6a2_tool_backup_20260727_170048/phase6a2_market_data_architecture_audit.py
+  line 59: "requests.get(",
+  line 60: "requests.post(",
+  line 62: "get_klines(",
+  line 63: "get_ticker(",
+  line 64: "futures_",
+  line 65: "api.binance.com",
+- [ACTIVE] tools/market_data_source_collector.py
+  line 290: or "requests.get" in calls
+  line 291: or "requests.post" in calls
+  line 304: "futures_",
+- [ACTIVE] tools/phase6a2_1_market_data_migration_readiness.py
+  line 64: "requests.get",
+  line 65: "requests.post",
+  line 66: "httpx.get",
+  line 67: "httpx.post",
+  line 68: "urllib.request",
+  line 69: "get_klines",
+  line 70: "get_ticker",
+  line 71: "get_symbol_ticker",
+  line 72: "futures_",
+  line 73: "api.binance.com",
+  line 74: "api.binance.us",
+  line 75: "api.binance.me",
+- [ACTIVE] tools/phase6a2_market_data_architecture_audit.py
+  line 59: "requests.get(",
+  line 60: "requests.post(",
+  line 62: "get_klines(",
+  line 63: "get_ticker(",
+  line 64: "futures_",
+  line 65: "api.binance.com",
+- [ACTIVE] web_app.py
+  line 45: requests.get.json
+  line 45: requests.get
+  line 45: price = float(requests.get("https://api.binance.com/api/v3/ticker/price?symbol=BTCTRY", timeout=5).json()["price"])

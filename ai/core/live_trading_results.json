@@ -1,0 +1,27 @@
+{
+  "timestamp": "2026-07-21T12:51:49.448243",
+  "initial_balance": 10000.0,
+  "final_balance": 10000.436204774,
+  "trades": [
+    {
+      "symbol": "BTCUSDT",
+      "direction": "long",
+      "entry": 66289.56,
+      "exit": 66315.98,
+      "pnl_pct": 0.03985544631763773,
+      "pnl_usd": 0.29253897597146095,
+      "reason": "session_end",
+      "time": "2026-07-21T12:51:48.934427"
+    },
+    {
+      "symbol": "ETHUSDT",
+      "direction": "long",
+      "entry": 1940.97,
+      "exit": 1941.38,
+      "pnl_pct": 0.02112345888911636,
+      "pnl_usd": 0.14366579802884932,
+      "reason": "session_end",
+      "time": "2026-07-21T12:51:49.446959"
+    }
+  ]
+}

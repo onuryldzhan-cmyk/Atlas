@@ -1,0 +1,284 @@
+{
+  "timestamp": "2026-07-19T13:48:57.825532",
+  "total_files": 223,
+  "unused_files": [],
+  "top_contributors": [
+    {
+      "file": "backtest/backtest_engine.py",
+      "total_lines": 446,
+      "code_lines": 369,
+      "comment_lines": 3,
+      "functions": 18,
+      "classes": 3,
+      "complexity": 58,
+      "contribution_score": 100,
+      "grade": "A"
+    },
+    {
+      "file": "backtest/backtest_engine_v2.py",
+      "total_lines": 446,
+      "code_lines": 369,
+      "comment_lines": 3,
+      "functions": 18,
+      "classes": 3,
+      "complexity": 58,
+      "contribution_score": 100,
+      "grade": "A"
+    },
+    {
+      "file": "backtest/better_backtest.py",
+      "total_lines": 304,
+      "code_lines": 243,
+      "comment_lines": 10,
+      "functions": 13,
+      "classes": 6,
+      "complexity": 69,
+      "contribution_score": 100,
+      "grade": "A"
+    },
+    {
+      "file": "backtest/standalone_backtest.py",
+      "total_lines": 259,
+      "code_lines": 205,
+      "comment_lines": 7,
+      "functions": 11,
+      "classes": 4,
+      "complexity": 56,
+      "contribution_score": 100,
+      "grade": "A"
+    },
+    {
+      "file": "config/settings.py",
+      "total_lines": 210,
+      "code_lines": 125,
+      "comment_lines": 43,
+      "functions": 4,
+      "classes": 0,
+      "complexity": 10,
+      "contribution_score": 100,
+      "grade": "A"
+    },
+    {
+      "file": "core/architecture_analyzer.py",
+      "total_lines": 436,
+      "code_lines": 360,
+      "comment_lines": 2,
+      "functions": 15,
+      "classes": 4,
+      "complexity": 67,
+      "contribution_score": 100,
+      "grade": "A"
+    },
+    {
+      "file": "core/atlas_brain.py",
+      "total_lines": 643,
+      "code_lines": 335,
+      "comment_lines": 48,
+      "functions": 4,
+      "classes": 1,
+      "complexity": 6,
+      "contribution_score": 100,
+      "grade": "A"
+    },
+    {
+      "file": "core/auth_panel.py",
+      "total_lines": 253,
+      "code_lines": 212,
+      "comment_lines": 7,
+      "functions": 14,
+      "classes": 1,
+      "complexity": 32,
+      "contribution_score": 100,
+      "grade": "A"
+    },
+    {
+      "file": "core/codebase_indexer.py",
+      "total_lines": 343,
+      "code_lines": 211,
+      "comment_lines": 20,
+      "functions": 6,
+      "classes": 3,
+      "complexity": 20,
+      "contribution_score": 100,
+      "grade": "A"
+    },
+    {
+      "file": "core/code_smell_detector.py",
+      "total_lines": 400,
+      "code_lines": 208,
+      "comment_lines": 18,
+      "functions": 6,
+      "classes": 1,
+      "complexity": 19,
+      "contribution_score": 100,
+      "grade": "A"
+    }
+  ],
+  "bottom_contributors": [
+    {
+      "file": "test_improvement_planner.py",
+      "total_lines": 24,
+      "code_lines": 9,
+      "comment_lines": 0,
+      "functions": 0,
+      "classes": 0,
+      "complexity": 1,
+      "contribution_score": 1.4,
+      "grade": "D"
+    },
+    {
+      "file": "simulation/__init__.py",
+      "total_lines": 10,
+      "code_lines": 7,
+      "comment_lines": 0,
+      "functions": 0,
+      "classes": 0,
+      "complexity": 0,
+      "contribution_score": 0.7,
+      "grade": "D"
+    },
+    {
+      "file": "config/symbols.py",
+      "total_lines": 11,
+      "code_lines": 6,
+      "comment_lines": 0,
+      "functions": 0,
+      "classes": 0,
+      "complexity": 0,
+      "contribution_score": 0.6,
+      "grade": "D"
+    },
+    {
+      "file": "config/__init__.py",
+      "total_lines": 9,
+      "code_lines": 6,
+      "comment_lines": 0,
+      "functions": 0,
+      "classes": 0,
+      "complexity": 0,
+      "contribution_score": 0.6,
+      "grade": "D"
+    },
+    {
+      "file": "test_self_improvement.py",
+      "total_lines": 12,
+      "code_lines": 5,
+      "comment_lines": 0,
+      "functions": 0,
+      "classes": 0,
+      "complexity": 0,
+      "contribution_score": 0.5,
+      "grade": "D"
+    },
+    {
+      "file": "core/__init__.py",
+      "total_lines": 7,
+      "code_lines": 5,
+      "comment_lines": 0,
+      "functions": 0,
+      "classes": 0,
+      "complexity": 0,
+      "contribution_score": 0.5,
+      "grade": "D"
+    },
+    {
+      "file": "config/main.py",
+      "total_lines": 6,
+      "code_lines": 4,
+      "comment_lines": 0,
+      "functions": 0,
+      "classes": 0,
+      "complexity": 0,
+      "contribution_score": 0.4,
+      "grade": "D"
+    },
+    {
+      "file": "events/__init__.py",
+      "total_lines": 5,
+      "code_lines": 3,
+      "comment_lines": 0,
+      "functions": 0,
+      "classes": 0,
+      "complexity": 0,
+      "contribution_score": 0.3,
+      "grade": "D"
+    },
+    {
+      "file": "data/fetch_simple.py",
+      "total_lines": 1,
+      "code_lines": 1,
+      "comment_lines": 0,
+      "functions": 0,
+      "classes": 0,
+      "complexity": 0,
+      "contribution_score": 0.1,
+      "grade": "D"
+    },
+    {
+      "file": "core/backtest/combined_backtest.py",
+      "total_lines": 1,
+      "code_lines": 1,
+      "comment_lines": 0,
+      "functions": 0,
+      "classes": 0,
+      "complexity": 0,
+      "contribution_score": 0.1,
+      "grade": "D"
+    }
+  ],
+  "recommendations": [
+    {
+      "priority": "MEDIUM",
+      "type": "REFACTOR",
+      "file": "core/atlas_brain.py",
+      "message": "'core/atlas_brain.py' 643 satir. Bolunmeli.",
+      "contribution": 100,
+      "action": "SPLIT"
+    },
+    {
+      "priority": "MEDIUM",
+      "type": "REFACTOR",
+      "file": "core/outcome_memory.py",
+      "message": "'core/outcome_memory.py' 514 satir. Bolunmeli.",
+      "contribution": 100,
+      "action": "SPLIT"
+    },
+    {
+      "priority": "MEDIUM",
+      "type": "REFACTOR",
+      "file": "core/refactor_engine.py",
+      "message": "'core/refactor_engine.py' 506 satir. Bolunmeli.",
+      "contribution": 100,
+      "action": "SPLIT"
+    },
+    {
+      "priority": "MEDIUM",
+      "type": "REFACTOR",
+      "file": "core/strategy_competition.py",
+      "message": "'core/strategy_competition.py' 548 satir. Bolunmeli.",
+      "contribution": 95.6,
+      "action": "SPLIT"
+    },
+    {
+      "priority": "MEDIUM",
+      "type": "REFACTOR",
+      "file": "execution/paper_trading_v2.py",
+      "message": "'execution/paper_trading_v2.py' 572 satir. Bolunmeli.",
+      "contribution": 100,
+      "action": "SPLIT"
+    },
+    {
+      "priority": "MEDIUM",
+      "type": "REFACTOR",
+      "file": "portfolio/capital_manager.py",
+      "message": "'portfolio/capital_manager.py' 625 satir. Bolunmeli.",
+      "contribution": 100,
+      "action": "SPLIT"
+    }
+  ],
+  "summary": {
+    "cleanup": 0,
+    "refactor": 6,
+    "review": 0
+  }
+}

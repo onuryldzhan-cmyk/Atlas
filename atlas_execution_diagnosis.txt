@@ -1,0 +1,3414 @@
+============================================================
+ATLAS EXECUTION DIAGNOSIS
+Generated: 2026-07-26 14:40:29
+============================================================
+
+============================================================
+FILE: .\core\market_loop.py
+============================================================
+"""
+============================================================
+ATLAS AI MARKET LOOP v7.0
+============================================================
+
+Institutional Market Intelligence Orchestrator
+
+
+Pipeline
+
+Exchange
+   |
+MarketFeed
+   |
+Candle Processor
+   |
+Technical Analyzer
+   |
+World Analysis Engine
+   |
+Atlas Brain
+   |
+Decision Validation
+   |
+Execution Manager
+   |
+Learning System
+   |
+Event Bus
+
+
+Responsibilities
+
+- Realtime market scanning
+- Multi symbol analysis
+- AI decision routing
+- Execution coordination
+- Event publishing
+- Health monitoring
+- Error recovery
+- Performance metrics
+
+
+============================================================
+"""
+
+
+from __future__ import annotations
+
+
+import logging
+import threading
+import time
+
+
+from datetime import datetime, UTC
+
+
+
+from core.candle_processor import CandleProcessor
+from core.technical_analyzer import TechnicalAnalyzer
+
+
+from analysis.world_analysis_engine import WorldAnalysisEngine
+
+
+
+logger = logging.getLogger(
+    "AtlasAI.MarketLoop"
+)
+
+
+
+
+
+class MarketLoop:
+
+
+    VERSION = "7.0"
+
+
+
+    def __init__(
+
+        self,
+
+        brain,
+
+        market_feed,
+
+        execution=None,
+
+        event_bus=None,
+
+        symbols=None,
+
+        interval=10
+
+    ):
+
+
+        self.brain = brain
+
+        self.market_feed = market_feed
+
+        self.execution = execution
+
+        self.event_bus = event_bus
+
+
+
+        self.symbols = symbols or [
+
+            "BTCUSDT",
+            "ETHUSDT",
+            "BNBUSDT",
+            "SOLUSDT",
+            "XRPUSDT"
+
+        ]
+
+
+
+        self.interval = interval
+
+
+
+        self.processor = CandleProcessor()
+
+        self.technical = TechnicalAnalyzer()
+
+        self.world = WorldAnalysisEngine()
+
+
+
+        self.running = False
+
+        self.stop_event = threading.Event()
+
+        self.thread = None
+
+
+
+        self.started_at = None
+
+        self.last_cycle = None
+
+
+
+        self.last_signals = {}
+
+
+
+        self.metrics = {
+
+            "cycles":0,
+
+            "symbols_scanned":0,
+
+            "decisions":0,
+
+            "executions":0,
+
+            "errors":0,
+
+            "latency":0
+
+        }
+
+
+
+        self.errors = []
+
+
+
+        logger.info(
+
+            "Atlas Market Loop v%s initialized",
+
+            self.VERSION
+
+        )
+
+
+
+
+
+
+    # =====================================================
+    # START
+    # =====================================================
+
+
+    def start(self):
+
+
+        if self.running:
+
+            return
+
+
+
+        self.running = True
+
+        self.stop_event.clear()
+
+
+
+        self.started_at = datetime.now(
+            UTC
+        ).isoformat()
+
+
+
+        self.thread = threading.Thread(
+
+            target=self.worker,
+
+            name="AtlasMarketLoop",
+
+            daemon=True
+
+        )
+
+
+
+        self.thread.start()
+
+
+
+        logger.info(
+            "Market Loop started"
+        )
+
+
+
+
+
+
+    # =====================================================
+    # STOP
+    # =====================================================
+
+
+    def stop(self):
+
+
+        self.running = False
+
+
+        self.stop_event.set()
+
+
+
+        if self.thread:
+
+
+            self.thread.join(
+                timeout=5
+            )
+
+
+
+        logger.info(
+            "Market Loop stopped"
+        )
+
+
+
+
+
+
+    # =====================================================
+    # WORKER
+    # =====================================================
+
+
+    def worker(self):
+
+
+        while self.running:
+
+
+            start=time.time()
+
+
+            try:
+
+
+                for symbol in self.symbols:
+
+
+                    if not self.running:
+
+                        break
+
+
+                    self.process_symbol(
+                        symbol
+                    )
+
+
+
+                self.metrics["cycles"] += 1
+
+
+
+                self.last_cycle = datetime.now(
+                    UTC
+                ).isoformat()
+
+
+
+                self.metrics["latency"] = round(
+
+                    time.time()-start,
+
+                    4
+
+                )
+
+
+
+            except Exception as e:
+
+
+                self.metrics["errors"] += 1
+
+
+                self.errors.append({
+
+                    "time":
+                    datetime.now(
+                        UTC
+                    ).isoformat(),
+
+                    "error":
+                    str(e)
+
+                })
+
+
+                logger.exception(
+                    "Market cycle failed"
+                )
+
+
+
+            self.stop_event.wait(
+                self.interval
+            )
+
+
+
+
+
+
+
+
+    # =====================================================
+    # SYMBOL PIPELINE
+    # =====================================================
+
+
+    def process_symbol(
+
+        self,
+
+        symbol
+
+    ):
+
+
+        try:
+
+
+            candles = self.market_feed.candles(
+
+                symbol,
+
+                interval="1m",
+
+                limit=200
+
+            )
+
+
+            if not candles:
+
+                return
+
+
+
+            candles = self.processor.normalize(
+                candles
+            )
+
+
+
+            if len(candles)<50:
+
+                return
+
+
+
+
+            analysis = self.technical.analyze(
+
+                candles
+
+            )
+
+
+
+            price = self.processor.latest_price(
+
+                candles
+
+            )
+
+
+            if not price:
+
+                return
+
+
+
+            score = self.calculate_score(
+
+                analysis
+
+            )
+
+
+
+            market_data = self.world.build_market_data(
+
+                symbol,
+
+                price,
+
+                analysis,
+
+                score
+
+            )
+
+
+
+            decision = self.brain.analyze_and_decide(
+
+                symbol,
+
+                market_data
+
+            )
+
+
+
+            if not decision:
+
+                return
+
+
+
+            decision["symbol"] = symbol
+
+            decision["price"] = price
+
+
+
+            self.last_signals[symbol] = decision
+
+
+
+            self.metrics["decisions"] += 1
+
+
+
+            self.publish(
+
+                "ATLAS_DECISION",
+
+                decision
+
+            )
+
+
+
+            state = self.world.build_market_state(
+
+                market_data
+
+            )
+
+
+
+            if self.execution:
+
+
+                result = self.execution.execute(
+
+                    decision,
+
+                    state
+
+                )
+
+
+                self.metrics["executions"] += 1
+
+
+
+                logger.info(
+
+                    "%s execution %s",
+
+                    symbol,
+
+                    result.get(
+                        "status"
+                    )
+
+                )
+
+
+
+            self.metrics["symbols_scanned"] +=1
+
+
+
+
+        except Exception as e:
+
+
+            self.metrics["errors"] +=1
+
+
+            logger.exception(
+
+                "%s processing failed",
+
+                symbol
+
+            )
+
+
+
+
+
+
+
+    # =====================================================
+    # SCORE
+    # =====================================================
+
+
+    def calculate_score(
+
+        self,
+
+        analysis
+
+    ):
+
+
+        score=0.5
+
+
+
+        rsi = analysis.get(
+            "rsi"
+        )
+
+
+        trend = analysis.get(
+            "trend"
+        )
+
+
+
+        if rsi:
+
+
+            if 40 <= rsi <=60:
+
+                score +=0.15
+
+
+            elif rsi <30:
+
+                score +=0.10
+
+
+            elif rsi >70:
+
+                score -=0.10
+
+
+
+        if trend=="BULLISH":
+
+            score+=0.20
+
+
+
+        elif trend=="BEARISH":
+
+            score-=0.20
+
+
+
+        return round(
+
+            max(
+
+                0,
+
+                min(
+
+                    score,
+
+                    1
+
+                )
+
+            ),
+
+            2
+
+        )
+
+
+
+
+
+
+
+    # =====================================================
+    # EVENT BUS
+    # =====================================================
+
+
+    def publish(
+
+        self,
+
+        event,
+
+        data
+
+    ):
+
+
+        if not self.event_bus:
+
+            return
+
+
+
+        try:
+
+
+            if hasattr(
+
+                self.event_bus,
+
+                "publish"
+
+            ):
+
+
+                self.event_bus.publish(
+
+                    event,
+
+                    data
+
+                )
+
+
+        except Exception:
+
+
+            logger.exception(
+
+                "Event publish failed"
+
+            )
+
+
+
+
+
+
+
+    # =====================================================
+    # STATUS
+    # =====================================================
+
+
+    def status(self):
+
+
+        return {
+
+
+            "version":
+
+            self.VERSION,
+
+
+            "running":
+
+            self.running,
+
+
+            "started_at":
+
+            self.started_at,
+
+
+            "symbols":
+
+            len(self.symbols),
+
+
+            "metrics":
+
+            self.metrics,
+
+
+            "last_cycle":
+
+            self.last_cycle,
+
+
+            "errors":
+
+            len(self.errors)
+
+        }
+
+============================================================
+FILE: .\core\execution_manager.py
+============================================================
+"""
+============================================================
+ATLAS EXECUTION MANAGER v27.0
+============================================================
+
+Institutional Grade Execution Orchestrator
+
+
+Architecture
+
+
+Atlas Brain
+
+    |
+    v
+
+Decision Engine
+
+    |
+    v
+
+Execution Manager
+
+    |
+    +----------------+
+    |                |
+    v                v
+
+Risk Validation   Capital Allocation
+
+
+    |
+    v
+
+Position Controller
+
+
+    |
+    v
+
+Paper / Live Router
+
+
+    |
+    v
+
+Event Bus
+
+
+Responsibilities
+
+- Validate AI decisions
+- Apply execution rules
+- Manage order lifecycle
+- Route paper execution
+- Prepare live execution
+- Manage capital allocation
+- Maintain audit trail
+- Publish system events
+- Provide diagnostics
+
+
+============================================================
+"""
+
+
+from __future__ import annotations
+
+
+import logging
+
+from dataclasses import dataclass, asdict
+
+from datetime import datetime, UTC
+
+
+
+logger = logging.getLogger(
+    "AtlasAI.ExecutionManager"
+)
+
+
+
+
+
+# ============================================================
+# DATA MODELS
+# ============================================================
+
+
+@dataclass
+class ExecutionRequest:
+
+
+    symbol: str
+
+    action: str
+
+    price: float
+
+    confidence: float
+
+    timestamp: str
+
+
+
+    def to_dict(self):
+
+        return asdict(self)
+
+
+
+
+
+
+@dataclass
+class ExecutionResult:
+
+
+    status: str
+
+    symbol: str
+
+    action: str
+
+    mode: str
+
+    timestamp: str
+
+    message: str = ""
+
+    data: dict | None = None
+
+
+
+    def to_dict(self):
+
+        return asdict(self)
+
+
+
+
+
+
+# ============================================================
+# EXECUTION MANAGER
+# ============================================================
+
+
+
+class ExecutionManager:
+
+
+
+    VERSION = "27.0"
+
+
+    MIN_CONFIDENCE = 60
+
+
+
+
+
+
+    def __init__(
+
+
+        self,
+
+
+        capital_manager=None,
+
+
+        position_controller=None,
+
+
+        paper_trader=None,
+
+
+        event_bus=None,
+
+
+        mode="PAPER"
+
+
+    ):
+
+
+        self.capital_manager = capital_manager
+
+        self.position_controller = position_controller
+
+        self.paper_trader = paper_trader
+
+        self.event_bus = event_bus
+
+
+        self.mode = mode.upper()
+
+
+
+        self.running = False
+
+
+
+        self.history = []
+
+
+
+        self.stats = {
+
+
+            "received":0,
+
+            "executed":0,
+
+            "rejected":0,
+
+            "failed":0
+
+
+        }
+
+
+
+        logger.info(
+
+            "Execution Manager v%s initialized mode=%s",
+
+            self.VERSION,
+
+            self.mode
+
+        )
+
+
+
+    # ============================================================
+    # START
+    # ============================================================
+
+
+    def start(self):
+
+
+        self.running = True
+
+
+        logger.info(
+
+            "Execution Manager ONLINE"
+
+        )
+
+
+
+
+    # ============================================================
+    # STOP
+    # ============================================================
+
+
+    def stop(self):
+
+
+        self.running = False
+
+
+        logger.info(
+
+            "Execution Manager OFFLINE"
+
+        )
+
+
+
+
+
+
+    # ============================================================
+    # MAIN EXECUTION PIPELINE
+    # ============================================================
+
+
+    def execute(
+
+        self,
+
+        decision,
+
+        market_state=None
+
+    ):
+
+
+        self.stats["received"] += 1
+
+
+
+        if not self.running:
+
+
+            return self.reject(
+
+                "EXECUTION_MANAGER_OFFLINE"
+
+            )
+
+
+
+        try:
+
+
+
+            request = self.build_request(
+
+                decision
+
+            )
+
+
+
+            validation = self.validate_request(
+
+                request
+
+            )
+
+
+
+            if not validation["approved"]:
+
+
+                return self.reject(
+
+                    validation["reason"]
+
+                )
+
+
+
+
+            risk_check = self.risk_check(
+
+                request,
+
+                market_state
+
+            )
+
+
+
+            if not risk_check["approved"]:
+
+
+                return self.reject(
+
+                    risk_check["reason"]
+
+                )
+
+
+
+
+
+            if self.mode == "PAPER":
+
+
+
+                result = self.paper_execute(
+
+                    request
+
+                )
+
+
+            else:
+
+
+
+                result = self.live_execute(
+
+                    request
+
+                )
+
+
+
+
+
+            self.stats["executed"] += 1
+
+
+
+            self.history.append(
+
+                result
+
+            )
+
+
+
+            self.publish(
+
+                "EXECUTION_COMPLETED",
+
+                result
+
+            )
+
+
+
+            return result
+
+
+
+
+
+        except Exception as e:
+
+
+
+            self.stats["failed"] += 1
+
+
+
+            logger.exception(
+
+                "Execution pipeline failed"
+
+            )
+
+
+
+            return {
+
+
+                "status":
+
+                "FAILED",
+
+
+                "error":
+
+                str(e)
+
+            }
+
+
+
+
+
+
+
+    # ============================================================
+    # REQUEST BUILDER
+    # ============================================================
+
+
+    def build_request(
+
+        self,
+
+        decision
+
+    ):
+
+
+        return ExecutionRequest(
+
+
+            symbol=
+
+            decision.get(
+
+                "symbol",
+
+                "UNKNOWN"
+
+            ),
+
+
+
+            action=
+
+            decision.get(
+
+                "action",
+
+                "HOLD"
+
+            ),
+
+
+
+            price=
+
+            decision.get(
+
+                "price",
+
+                0
+
+            ),
+
+
+
+            confidence=
+
+            float(
+
+                decision.get(
+
+                    "confidence",
+
+                    0
+
+                )
+
+            ),
+
+
+
+            timestamp=
+
+            datetime.now(
+
+                UTC
+
+            ).isoformat()
+
+
+        )
+
+
+
+
+
+
+
+    # ============================================================
+    # REQUEST VALIDATION
+    # ============================================================
+
+
+    def validate_request(
+
+        self,
+
+        request
+
+    ):
+
+
+
+        if request.symbol == "UNKNOWN":
+
+
+            return {
+
+
+                "approved":
+
+                False,
+
+
+                "reason":
+
+                "INVALID_SYMBOL"
+
+
+            }
+
+
+
+
+        if request.action not in (
+
+            "BUY",
+
+            "SELL"
+
+        ):
+
+
+            return {
+
+
+                "approved":
+
+                False,
+
+
+                "reason":
+
+                "INVALID_ACTION"
+
+
+            }
+
+
+
+
+
+        if request.price <= 0:
+
+
+            return {
+
+
+                "approved":
+
+                False,
+
+
+                "reason":
+
+                "INVALID_PRICE"
+
+
+            }
+
+
+
+
+
+        if request.confidence < self.MIN_CONFIDENCE:
+
+
+            return {
+
+
+                "approved":
+
+                False,
+
+
+                "reason":
+
+                "LOW_CONFIDENCE"
+
+
+            }
+
+
+
+
+
+        return {
+
+
+            "approved":
+
+            True
+
+
+        }
+
+
+
+
+
+
+
+
+    # ============================================================
+    # RISK VALIDATION
+    # ============================================================
+
+
+    def risk_check(
+
+        self,
+
+        request,
+
+        market_state=None
+
+    ):
+
+
+
+        if request.action == "BUY":
+
+
+
+            if self.position_controller:
+
+
+
+                try:
+
+
+                    if hasattr(
+
+                        self.position_controller,
+
+                        "can_open"
+
+                    ):
+
+
+                        allowed = self.position_controller.can_open(
+
+                            request.symbol
+
+                        )
+
+
+                        if not allowed:
+
+
+                            return {
+
+
+                                "approved":
+
+                                False,
+
+
+                                "reason":
+
+                                "POSITION_LIMIT"
+
+
+                            }
+
+
+                except Exception:
+
+
+
+                    logger.exception(
+
+                        "Risk check failed"
+
+                    )
+
+
+
+
+
+
+        return {
+
+
+            "approved":
+
+            True
+
+
+        }
+
+    # ============================================================
+    # PAPER EXECUTION ENGINE
+    # ============================================================
+
+
+    def paper_execute(
+
+        self,
+
+        request: ExecutionRequest
+
+    ):
+
+
+
+        symbol = request.symbol
+
+        action = request.action
+
+        price = request.price
+
+
+
+
+        logger.info(
+
+            "[PAPER ORDER] %s %s @ %.4f",
+
+            action,
+
+            symbol,
+
+            price
+
+        )
+
+
+
+
+        result = ExecutionResult(
+
+
+            status="PAPER_EXECUTED",
+
+
+            symbol=symbol,
+
+
+            action=action,
+
+
+            mode="PAPER",
+
+
+            timestamp=request.timestamp,
+
+
+            data={}
+
+
+        )
+
+
+
+
+
+        # ========================================================
+        # BUY FLOW
+        # ========================================================
+
+
+        if action == "BUY":
+
+
+
+            allocation = self.allocate_capital(
+
+                request
+
+            )
+
+
+
+            result.data["allocation"] = allocation
+
+
+
+
+
+            # -------------------------
+            # PAPER TRADER
+            # -------------------------
+
+
+            if self.paper_trader:
+
+
+
+                try:
+
+
+
+                    if hasattr(
+
+                        self.paper_trader,
+
+                        "open_trade"
+
+                    ):
+
+
+
+                        trade = self.paper_trader.open_trade(
+
+                            symbol,
+
+                            price,
+
+                            allocation
+
+                        )
+
+
+
+                        result.data["paper_trade"] = trade
+
+
+
+
+
+                except Exception:
+
+
+
+                    logger.exception(
+
+                        "PaperTrader BUY failed"
+
+                    )
+
+
+
+
+
+
+
+            # -------------------------
+            # POSITION CONTROLLER
+            # -------------------------
+
+
+            if self.position_controller:
+
+
+
+                try:
+
+
+
+                    if hasattr(
+
+                        self.position_controller,
+
+                        "open_position"
+
+                    ):
+
+
+
+                        self.position_controller.open_position(
+
+
+                            symbol=symbol,
+
+
+                            price=price,
+
+
+                            side="LONG"
+
+
+                        )
+
+
+
+
+
+                except Exception:
+
+
+
+                    logger.exception(
+
+                        "PositionController open failed"
+
+                    )
+
+
+
+
+
+            self.publish(
+
+                "TRADE_OPENED",
+
+                result.to_dict()
+
+            )
+
+
+
+
+
+
+
+        # ========================================================
+        # SELL FLOW
+        # ========================================================
+
+
+        elif action == "SELL":
+
+
+
+
+
+            # -------------------------
+            # PAPER CLOSE
+            # -------------------------
+
+
+            if self.paper_trader:
+
+
+
+                try:
+
+
+
+                    if hasattr(
+
+                        self.paper_trader,
+
+                        "close_trade"
+
+                    ):
+
+
+
+                        trade = self.paper_trader.close_trade(
+
+                            symbol
+
+                        )
+
+
+
+                        result.data["paper_trade"] = trade
+
+
+
+
+
+                except Exception:
+
+
+
+                    logger.exception(
+
+                        "PaperTrader SELL failed"
+
+                    )
+
+
+
+
+
+
+
+
+            # -------------------------
+            # POSITION CLOSE
+            # -------------------------
+
+
+            if self.position_controller:
+
+
+
+                try:
+
+
+
+                    if hasattr(
+
+                        self.position_controller,
+
+                        "close_position"
+
+                    ):
+
+
+
+                        self.position_controller.close_position(
+
+                            symbol
+
+                        )
+
+
+
+
+
+                except Exception:
+
+
+
+                    logger.exception(
+
+                        "Position close failed"
+
+                    )
+
+
+
+
+
+
+            self.publish(
+
+                "TRADE_CLOSED",
+
+                result.to_dict()
+
+            )
+
+
+
+
+
+        return result.to_dict()
+
+
+
+
+
+
+
+    # ============================================================
+    # CAPITAL ALLOCATION
+    # ============================================================
+
+
+    def allocate_capital(
+
+        self,
+
+        request
+
+    ):
+
+
+
+        DEFAULT_AMOUNT = 100
+
+
+
+
+
+        if not self.capital_manager:
+
+
+            return DEFAULT_AMOUNT
+
+
+
+
+
+        try:
+
+
+
+            # Yeni CapitalManager desteği
+
+
+            if hasattr(
+
+                self.capital_manager,
+
+                "calculate_position_size"
+
+            ):
+
+
+
+                return self.capital_manager.calculate_position_size(
+
+                    request.to_dict()
+
+                )
+
+
+
+
+
+
+
+            # Eski uyumluluk
+
+
+            if hasattr(
+
+                self.capital_manager,
+
+                "available_capital"
+
+            ):
+
+
+
+                return min(
+
+                    DEFAULT_AMOUNT,
+
+                    self.capital_manager.available_capital
+
+                )
+
+
+
+
+
+        except Exception:
+
+
+
+            logger.exception(
+
+                "Capital allocation failed"
+
+            )
+
+
+
+
+        return DEFAULT_AMOUNT
+    # ============================================================
+    # LIVE EXECUTION ROUTER
+    # ============================================================
+
+
+    def live_execute(
+
+        self,
+
+        request: ExecutionRequest
+
+    ):
+
+
+
+        logger.warning(
+
+            "LIVE execution requested but disabled"
+
+        )
+
+
+
+        result = ExecutionResult(
+
+
+            status="LIVE_DISABLED",
+
+
+            symbol=request.symbol,
+
+
+            action=request.action,
+
+
+            mode="LIVE",
+
+
+            timestamp=request.timestamp,
+
+
+            message="Live trading disabled"
+
+
+        )
+
+
+
+        self.publish(
+
+            "LIVE_EXECUTION_BLOCKED",
+
+            result.to_dict()
+
+        )
+
+
+
+        return result.to_dict()
+
+
+
+
+
+
+
+    # ============================================================
+    # EVENT BUS
+    # ============================================================
+
+
+    def publish(
+
+        self,
+
+        event_name,
+
+        payload
+
+    ):
+
+
+
+        if not self.event_bus:
+
+
+            return
+
+
+
+
+
+        try:
+
+
+
+            if not hasattr(
+
+                self.event_bus,
+
+                "publish"
+
+            ):
+
+
+                return
+
+
+
+
+
+            event_payload = {
+
+
+                "event":
+
+                event_name,
+
+
+                "payload":
+
+                payload,
+
+
+                "timestamp":
+
+                datetime.now(
+
+                    UTC
+
+                ).isoformat()
+
+
+
+            }
+
+
+
+
+
+            #
+            # Atlas EventBus standard
+            #
+
+
+            self.event_bus.publish(
+
+                event_payload
+
+            )
+
+
+
+
+
+
+        except TypeError:
+
+
+
+            #
+            # Legacy EventBus fallback
+            #
+
+
+            try:
+
+
+
+                self.event_bus.publish(
+
+                    event_name,
+
+                    payload
+
+                )
+
+
+
+            except Exception:
+
+
+
+                logger.exception(
+
+                    "Legacy EventBus failed"
+
+                )
+
+
+
+
+
+        except Exception:
+
+
+
+            logger.exception(
+
+                "Event publishing failed"
+
+            )
+
+
+
+
+
+
+
+
+
+    # ============================================================
+    # REJECTION HANDLER
+    # ============================================================
+
+
+    def reject(
+
+        self,
+
+        reason
+
+    ):
+
+
+
+        self.stats["rejected"] += 1
+
+
+
+
+        result = {
+
+
+            "status":
+
+            "REJECTED",
+
+
+
+            "reason":
+
+            reason,
+
+
+
+            "timestamp":
+
+            datetime.now(
+
+                UTC
+
+            ).isoformat()
+
+
+
+        }
+
+
+
+
+
+        logger.warning(
+
+            "[EXECUTION REJECTED] %s",
+
+            reason
+
+        )
+
+
+
+
+        self.publish(
+
+            "EXECUTION_REJECTED",
+
+            result
+
+        )
+
+
+
+        return result
+
+
+
+
+
+
+
+    # ============================================================
+    # HISTORY
+    # ============================================================
+
+
+    def get_history(
+
+        self
+
+    ):
+
+
+
+        return self.history
+
+
+
+
+
+
+
+
+    # ============================================================
+    # RESET
+    # ============================================================
+
+
+    def reset(
+
+        self
+
+    ):
+
+
+
+        self.history.clear()
+
+
+
+        self.stats = {
+
+
+            "received":0,
+
+
+            "executed":0,
+
+
+            "rejected":0,
+
+
+            "failed":0
+
+
+        }
+
+
+
+        logger.info(
+
+            "Execution Manager reset"
+
+        )
+
+
+
+
+
+
+
+    # ============================================================
+    # HEALTH CHECK
+    # ============================================================
+
+
+    def health(
+
+        self
+
+    ):
+
+
+
+        return {
+
+
+            "healthy":
+
+            self.running,
+
+
+
+            "version":
+
+            self.VERSION,
+
+
+
+            "mode":
+
+            self.mode,
+
+
+
+            "statistics":
+
+            self.stats
+
+
+
+        }
+
+
+
+
+
+
+
+    # ============================================================
+    # STATUS
+    # ============================================================
+
+
+    def status(
+
+        self
+
+    ):
+
+
+
+        return {
+
+
+            "version":
+
+            self.VERSION,
+
+
+
+            "mode":
+
+            self.mode,
+
+
+
+            "running":
+
+            self.running,
+
+
+
+            "history":
+
+            len(
+
+                self.history
+
+            ),
+
+
+
+            "statistics":
+
+            self.stats,
+
+
+
+            "dependencies":{
+
+
+                "capital_manager":
+
+                self.capital_manager is not None,
+
+
+
+                "position_controller":
+
+                self.position_controller is not None,
+
+
+
+                "paper_trader":
+
+                self.paper_trader is not None,
+
+
+
+                "event_bus":
+
+                self.event_bus is not None
+
+
+            }
+
+
+
+        }
+
+
+
+
+
+
+
+    # ============================================================
+    # REPRESENTATION
+    # ============================================================
+
+
+    def __repr__(
+
+        self
+
+    ):
+
+
+
+        return (
+
+            f"<ExecutionManager "
+
+            f"v{self.VERSION} "
+
+            f"mode={self.mode}>"
+
+        )
+
+============================================================
+FILE: .\core\execution_models.py
+============================================================
+"""
+============================================================
+ATLAS EXECUTION MODELS v21.0
+============================================================
+
+Unified Execution Data Contracts
+
+Used by:
+
+- Paper Execution Engine
+- Live Execution Engine
+- Backtest Engine
+- Exchange Adapters
+
+============================================================
+"""
+
+
+from __future__ import annotations
+
+
+from dataclasses import dataclass, field
+from typing import Any
+from datetime import datetime, UTC
+
+
+
+# ==========================================================
+# REQUEST
+# ==========================================================
+
+
+@dataclass
+class ExecutionRequest:
+
+
+    symbol: str
+
+
+    action: str
+
+
+    price: float
+
+
+    amount: float
+
+
+    strategy: str = "Unknown"
+
+
+    confidence: float = 0.0
+
+
+    risk: str = "MEDIUM"
+
+
+    metadata: dict[str, Any] = field(
+        default_factory=dict
+    )
+
+
+
+    def normalized_action(self):
+
+        return self.action.upper()
+
+
+
+
+# ==========================================================
+# RESULT
+# ==========================================================
+
+
+@dataclass
+class ExecutionResult:
+
+
+    success: bool
+
+
+    status: str
+
+
+    message: str
+
+
+
+    execution_id: str | None = None
+
+
+    position_id: str | None = None
+
+
+
+    symbol: str | None = None
+
+
+    action: str | None = None
+
+
+
+    filled_price: float | None = None
+
+
+    filled_amount: float | None = None
+
+
+
+    fee: float = 0.0
+
+
+
+    pnl: float = 0.0
+
+
+
+    metadata: dict[str, Any] = field(
+        default_factory=dict
+    )
+
+
+
+    timestamp: str = field(
+        default_factory=lambda:
+        datetime.now(
+            UTC
+        ).isoformat()
+    )
+
+============================================================
+FILE: .\core\decision_adapter.py
+============================================================
+"""
+============================================================
+ATLAS AI DECISION ADAPTER v4.0
+============================================================
+
+Professional Decision Normalization Layer
+
+
+Responsibilities:
+
+- Convert AI decision objects
+- Normalize dictionary outputs
+- Support dataclass decisions
+- Support legacy formats
+- Validate execution payload
+- Provide unified Atlas decision schema
+
+
+Flow:
+
+
+Brain
+
+ |
+
+Decision Builder
+
+ |
+
+Decision Adapter
+
+ |
+
+Risk Engine
+
+ |
+
+Execution Manager
+
+
+============================================================
+"""
+
+
+from __future__ import annotations
+
+
+import logging
+
+from datetime import datetime, UTC
+from dataclasses import asdict, is_dataclass
+
+
+
+logger = logging.getLogger(
+    "AtlasAI.DecisionAdapter"
+)
+
+
+
+
+
+class DecisionAdapter:
+
+
+
+    VERSION = "4.0"
+
+
+
+    def __init__(self):
+
+
+        self.converted = 0
+
+        self.errors = []
+
+
+
+
+
+
+
+    # =====================================================
+    # PUBLIC ENTRY
+    # =====================================================
+
+
+    @classmethod
+    def convert(
+
+        cls,
+
+        decision
+
+    ):
+
+
+        adapter = cls()
+
+
+        return adapter.normalize(
+
+            decision
+
+        )
+
+
+
+
+
+
+
+
+    # =====================================================
+    # NORMALIZER
+    # =====================================================
+
+
+    def normalize(
+
+        self,
+
+        decision
+
+    ):
+
+
+
+        try:
+
+
+
+            if decision is None:
+
+
+                return None
+
+
+
+
+
+            data = self.to_dict(
+
+                decision
+
+            )
+
+
+
+            if data is None:
+
+
+                return None
+
+
+
+
+
+            result = self.build_schema(
+
+                data
+
+            )
+
+
+
+            self.converted += 1
+
+
+
+            return result
+
+
+
+
+
+        except Exception as e:
+
+
+
+            logger.exception(
+
+                "Decision normalization failed"
+
+            )
+
+
+
+            self.errors.append(
+
+                str(e)
+
+            )
+
+
+            return None
+
+
+
+
+
+
+
+
+    # =====================================================
+    # OBJECT CONVERSION
+    # =====================================================
+
+
+    def to_dict(
+
+        self,
+
+        decision
+
+    ):
+
+
+
+        if isinstance(
+
+            decision,
+
+            dict
+
+        ):
+
+
+            return decision
+
+
+
+
+
+        if is_dataclass(
+
+            decision
+
+        ):
+
+
+            return asdict(
+
+                decision
+
+            )
+
+
+
+
+
+        if hasattr(
+
+            decision,
+
+            "__dict__"
+
+        ):
+
+
+            return vars(
+
+                decision
+
+            )
+
+
+
+
+
+        logger.error(
+
+            "Unsupported decision type: %s",
+
+            type(decision)
+
+        )
+
+
+
+        return None
+
+
+
+
+
+
+
+
+    # =====================================================
+    # BUILD ATLAS FORMAT
+    # =====================================================
+
+
+    def build_schema(
+
+        self,
+
+        data
+
+    ):
+
+
+
+        action = self.get_action(
+
+            data
+
+        )
+
+
+        symbol = self.get_symbol(
+
+            data
+
+        )
+
+
+        confidence = self.get_confidence(
+
+            data
+
+        )
+
+
+        price = self.get_price(
+
+            data
+
+        )
+
+
+        return {
+
+
+            "action":
+
+            action,
+
+
+
+            "symbol":
+
+            symbol,
+
+
+
+            "confidence":
+
+            confidence,
+
+
+
+            "strategy":
+
+            data.get(
+
+                "strategy",
+
+                "Atlas"
+
+            ),
+
+
+
+            "risk_level":
+
+            str(
+
+                data.get(
+
+                    "risk_level",
+
+                    data.get(
+
+                        "risk",
+
+                        "MEDIUM"
+
+                    )
+
+                )
+
+            ).upper(),
+
+
+
+            "price":
+
+            price,
+
+
+
+            "created_at":
+
+            datetime.now(
+
+                UTC
+
+            ).isoformat(),
+
+
+
+            "metadata":
+
+            {
+
+
+                "adapter_version":
+
+                self.VERSION,
+
+
+                "source":
+
+                "DecisionAdapter"
+
+            }
+
+        }
+
+
+
+
+
+
+
+
+
+
+    # =====================================================
+    # FIELD EXTRACTION
+    # =====================================================
+
+
+    def get_action(
+
+        self,
+
+        data
+
+    ):
+
+
+
+        action = data.get(
+
+            "action",
+
+            data.get(
+
+                "decision",
+
+                "HOLD"
+
+            )
+
+        )
+
+
+
+        action = str(
+
+            action
+
+        ).upper()
+
+
+
+
+
+        aliases = {
+
+
+            "LONG":
+
+            "BUY",
+
+
+            "SHORT":
+
+            "SELL",
+
+
+            "WAIT":
+
+            "HOLD"
+
+
+        }
+
+
+
+        return aliases.get(
+
+            action,
+
+            action
+
+        )
+
+
+
+
+
+
+
+    def get_symbol(
+
+        self,
+
+        data
+
+    ):
+
+
+
+        symbol = data.get(
+
+            "symbol"
+
+        )
+
+
+
+        if symbol:
+
+
+            return str(
+
+                symbol
+
+            ).upper()
+
+
+
+
+
+        order = data.get(
+
+            "order",
+
+            {}
+
+        )
+
+
+
+        return str(
+
+            order.get(
+
+                "symbol",
+
+                "UNKNOWN"
+
+            )
+
+        ).upper()
+
+
+
+
+
+
+
+
+    def get_confidence(
+
+        self,
+
+        data
+
+    ):
+
+
+
+        value = data.get(
+
+            "confidence",
+
+            0
+
+        )
+
+
+        try:
+
+
+            return round(
+
+                float(value),
+
+                2
+
+            )
+
+
+        except Exception:
+
+
+            return 0
+
+
+
+
+
+
+
+
+    def get_price(
+
+        self,
+
+        data
+
+    ):
+
+
+
+        price = data.get(
+
+            "price",
+
+            0
+
+        )
+
+
+        if price:
+
+
+            return price
+
+
+
+
+
+        market = data.get(
+
+            "market_state",
+
+            {}
+
+        )
+
+
+        return market.get(
+
+            "price",
+
+            0
+
+        )
+
+
+
+
+
+
+
+
+
+
+    # =====================================================
+    # STATUS
+    # =====================================================
+
+
+    def status(
+
+        self
+
+    ):
+
+
+        return {
+
+
+            "version":
+
+            self.VERSION,
+
+
+            "converted":
+
+            self.converted,
+
+
+            "errors":
+
+            len(
+
+                self.errors
+
+            )
+
+        }
+
+============================================================
+FILE: .\core\execution_contracts.py
+============================================================
+"""
+============================================================
+ATLAS AI EXECUTION CONTRACTS v2.0
+============================================================
+
+Execution Layer Contracts
+
+Every execution backend MUST implement the same API.
+
+Supported engines
+
+- Paper
+- Live
+- Backtest
+- Simulation
+- Replay
+
+============================================================
+"""
+
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+from typing import Protocol
+
+from core.execution_models import (
+    ExecutionRequest,
+    ExecutionResult,
+)
+
+
+# ==========================================================
+# MAIN EXECUTION CONTRACT
+# ==========================================================
+
+class ExecutionEngine(ABC):
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """Engine name"""
+
+    @property
+    @abstractmethod
+    def mode(self) -> str:
+        """Execution mode"""
+
+    @abstractmethod
+    def execute(
+        self,
+        request: ExecutionRequest,
+    ) -> ExecutionResult:
+        """
+        Execute one order.
+        """
+
+    @abstractmethod
+    def health(self) -> dict:
+        """
+        Component health information.
+        """
+
+    @abstractmethod
+    def status(self) -> dict:
+        """
+        Runtime statistics.
+        """
+
+    @abstractmethod
+    def reset(self) -> None:
+        """
+        Reset runtime state.
+        """
+
+
+# ==========================================================
+# OPTIONAL PROTOCOLS
+# ==========================================================
+
+class SupportsHealth(Protocol):
+
+    def health(self) -> dict:
+        ...
+
+
+class SupportsStatus(Protocol):
+
+    def status(self) -> dict:
+        ...
+
+
+class SupportsReset(Protocol):
+
+    def reset(self) -> None:
+        ...
+
+
+class SupportsDiagnostics(Protocol):
+
+    def diagnostics(self) -> dict:
+        ...

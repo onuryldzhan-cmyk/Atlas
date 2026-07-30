@@ -1,0 +1,798 @@
+{
+  "symbol": "BTCUSDT",
+  "strategy": "macd",
+  "metrics": {
+    "total_return_pct": -100.0,
+    "win_rate": 38.392857142857146,
+    "max_drawdown_pct": 100.00000000000003,
+    "sharpe_ratio": 0,
+    "profit_factor": 0.6384776070573221,
+    "total_trades": 112
+  },
+  "trades": [
+    {
+      "direction": "short",
+      "entry": 42260.11937000001,
+      "exit": 39965.11,
+      "pnl_pct": 5.43067413015688,
+      "reason": "tp"
+    },
+    {
+      "direction": "short",
+      "entry": 46989.683405,
+      "exit": 48681.81,
+      "pnl_pct": -3.6010597909666724,
+      "reason": "sl"
+    },
+    {
+      "direction": "long",
+      "entry": 49623.529365,
+      "exit": 52508.19,
+      "pnl_pct": 5.813090426886448,
+      "reason": "tp"
+    },
+    {
+      "direction": "short",
+      "entry": 52467.762995000005,
+      "exit": 54622.18,
+      "pnl_pct": -4.106172785001914,
+      "reason": "sl"
+    },
+    {
+      "direction": "long",
+      "entry": 57822.206654999994,
+      "exit": 55829.51,
+      "pnl_pct": -3.4462480252432224,
+      "reason": "sl"
+    },
+    {
+      "direction": "short",
+      "entry": 57958.62619,
+      "exit": 60814.19,
+      "pnl_pct": -4.926900442116914,
+      "reason": "sl"
+    },
+    {
+      "direction": "long",
+      "entry": 62763.506069999996,
+      "exit": 67205.58,
+      "pnl_pct": 7.077478949384648,
+      "reason": "tp"
+    },
+    {
+      "direction": "short",
+      "entry": 70156.054425,
+      "exit": 73503.56,
+      "pnl_pct": -4.771513453024411,
+      "reason": "sl"
+    },
+    {
+      "direction": "long",
+      "entry": 68624.83527,
+      "exit": 73147.54,
+      "pnl_pct": 6.590478085966556,
+      "reason": "tp"
+    },
+    {
+      "direction": "long",
+      "entry": 80363.05144499999,
+      "exit": 77865.9,
+      "pnl_pct": -3.107337762938273,
+      "reason": "sl"
+    },
+    {
+      "direction": "long",
+      "entry": 73252.457925,
+      "exit": 69676.39,
+      "pnl_pct": -4.881840181610529,
+      "reason": "sl"
+    },
+    {
+      "direction": "short",
+      "entry": 74454.01437,
+      "exit": 70373.53,
+      "pnl_pct": 5.4805431305852705,
+      "reason": "tp"
+    },
+    {
+      "direction": "long",
+      "entry": 67882.054065,
+      "exit": 65125.22,
+      "pnl_pct": -4.061211910824347,
+      "reason": "sl"
+    },
+    {
+      "direction": "short",
+      "entry": 65439.873695,
+      "exit": 67602.57,
+      "pnl_pct": -3.304860145482292,
+      "reason": "sl"
+    },
+    {
+      "direction": "short",
+      "entry": 67751.997055,
+      "exit": 63283.11,
+      "pnl_pct": 6.595948826972919,
+      "reason": "tp"
+    },
+    {
+      "direction": "long",
+      "entry": 61012.15083,
+      "exit": 58463.99,
+      "pnl_pct": -4.176480906401773,
+      "reason": "sl"
+    },
+    {
+      "direction": "long",
+      "entry": 57956.86395,
+      "exit": 56026.61,
+      "pnl_pct": -3.3305010286016317,
+      "reason": "sl"
+    },
+    {
+      "direction": "long",
+      "entry": 58590.690705,
+      "exit": 56198.72,
+      "pnl_pct": -4.082509825739048,
+      "reason": "sl"
+    },
+    {
+      "direction": "short",
+      "entry": 56807.08225000001,
+      "exit": 58990.04,
+      "pnl_pct": -3.8427563316719966,
+      "reason": "sl"
+    },
+    {
+      "direction": "long",
+      "entry": 60218.45418,
+      "exit": 57875.54,
+      "pnl_pct": -3.8906913369060514,
+      "reason": "sl"
+    },
+    {
+      "direction": "short",
+      "entry": 57426.31248,
+      "exit": 53123.89,
+      "pnl_pct": 7.492075138027392,
+      "reason": "tp"
+    },
+    {
+      "direction": "short",
+      "entry": 52810.691445000004,
+      "exit": 54598.21,
+      "pnl_pct": -3.384766429088732,
+      "reason": "sl"
+    },
+    {
+      "direction": "long",
+      "entry": 52696.55511,
+      "exit": 50103.44,
+      "pnl_pct": -4.920843695735083,
+      "reason": "sl"
+    },
+    {
+      "direction": "long",
+      "entry": 52098.38617499999,
+      "exit": 54288.97,
+      "pnl_pct": 4.204705722825606,
+      "reason": "signal"
+    },
+    {
+      "direction": "short",
+      "entry": 54292.20032,
+      "exit": 55695.68,
+      "pnl_pct": -2.585048444763413,
+      "reason": "signal"
+    },
+    {
+      "direction": "long",
+      "entry": 56328.960405,
+      "exit": 53947.89,
+      "pnl_pct": -4.227080329337384,
+      "reason": "sl"
+    },
+    {
+      "direction": "short",
+      "entry": 52024.91453,
+      "exit": 53894.98,
+      "pnl_pct": -3.5945575055613674,
+      "reason": "sl"
+    },
+    {
+      "direction": "long",
+      "entry": 57694.843005,
+      "exit": 60995.92,
+      "pnl_pct": 5.72161535254358,
+      "reason": "tp"
+    },
+    {
+      "direction": "short",
+      "entry": 57674.51831500001,
+      "exit": 60192.29,
+      "pnl_pct": -4.365483680762999,
+      "reason": "sl"
+    },
+    {
+      "direction": "long",
+      "entry": 59631.10065,
+      "exit": 62835.78,
+      "pnl_pct": 5.374174407428112,
+      "reason": "tp"
+    },
+    {
+      "direction": "long",
+      "entry": 67740.763455,
+      "exit": 71278.83,
+      "pnl_pct": 5.222950502101053,
+      "reason": "tp"
+    },
+    {
+      "direction": "short",
+      "entry": 73257.083135,
+      "exit": 76275.14,
+      "pnl_pct": -4.119815771859569,
+      "reason": "sl"
+    },
+    {
+      "direction": "long",
+      "entry": 78188.04448499999,
+      "exit": 76571.14,
+      "pnl_pct": -2.06796895311813,
+      "reason": "signal"
+    },
+    {
+      "direction": "short",
+      "entry": 112257.48318000001,
+      "exit": 116392.18,
+      "pnl_pct": -3.6832260111962207,
+      "reason": "sl"
+    },
+    {
+      "direction": "short",
+      "entry": 112117.83304,
+      "exit": 117953.21,
+      "pnl_pct": -5.2046822541764035,
+      "reason": "sl"
+    },
+    {
+      "direction": "short",
+      "entry": 119757.15147,
+      "exit": 121651.76,
+      "pnl_pct": -1.58204207994594,
+      "reason": "signal"
+    },
+    {
+      "direction": "long",
+      "entry": 132505.18948499998,
+      "exit": 141569.41,
+      "pnl_pct": 6.840653222888394,
+      "reason": "tp"
+    },
+    {
+      "direction": "short",
+      "entry": 146819.45355,
+      "exit": 155517.02,
+      "pnl_pct": -5.92398775482296,
+      "reason": "sl"
+    },
+    {
+      "direction": "long",
+      "entry": 175670.59139999998,
+      "exit": 169274.72,
+      "pnl_pct": -3.640832167199032,
+      "reason": "sl"
+    },
+    {
+      "direction": "short",
+      "entry": 201310.11459,
+      "exit": 201566.37,
+      "pnl_pct": -0.12729385730165033,
+      "reason": "signal"
+    },
+    {
+      "direction": "long",
+      "entry": 198786.26346,
+      "exit": 189242.64,
+      "pnl_pct": -4.800947154942802,
+      "reason": "sl"
+    },
+    {
+      "direction": "long",
+      "entry": 202175.39717999997,
+      "exit": 190116.23,
+      "pnl_pct": -5.964705571600036,
+      "reason": "sl"
+    },
+    {
+      "direction": "short",
+      "entry": 190770.97679500002,
+      "exit": 181006.32,
+      "pnl_pct": 5.11852324659059,
+      "reason": "tp"
+    },
+    {
+      "direction": "long",
+      "entry": 185087.27739,
+      "exit": 199564.91,
+      "pnl_pct": 7.822057147393215,
+      "reason": "tp"
+    },
+    {
+      "direction": "long",
+      "entry": 159068.70460499998,
+      "exit": 168815.4,
+      "pnl_pct": 6.127349448908287,
+      "reason": "tp"
+    },
+    {
+      "direction": "short",
+      "entry": 159629.455345,
+      "exit": 162484.86,
+      "pnl_pct": -1.7887705303690555,
+      "reason": "signal"
+    },
+    {
+      "direction": "long",
+      "entry": 166670.703705,
+      "exit": 161077.31,
+      "pnl_pct": -3.355954934287709,
+      "reason": "sl"
+    },
+    {
+      "direction": "short",
+      "entry": 157867.38681999999,
+      "exit": 166232.4,
+      "pnl_pct": -5.298759514869133,
+      "reason": "sl"
+    },
+    {
+      "direction": "short",
+      "entry": 159651.044545,
+      "exit": 164737.99,
+      "pnl_pct": -3.1862901176109424,
+      "reason": "sl"
+    },
+    {
+      "direction": "short",
+      "entry": 160493.403155,
+      "exit": 150380.36,
+      "pnl_pct": 6.3012204590322805,
+      "reason": "tp"
+    },
+    {
+      "direction": "short",
+      "entry": 162319.92943500003,
+      "exit": 152145.98,
+      "pnl_pct": 6.267837517187999,
+      "reason": "tp"
+    },
+    {
+      "direction": "long",
+      "entry": 157341.78157499997,
+      "exit": 167597.32,
+      "pnl_pct": 6.5180007003489635,
+      "reason": "tp"
+    },
+    {
+      "direction": "short",
+      "entry": 216673.12924,
+      "exit": 204504.3,
+      "pnl_pct": 5.6162152098339355,
+      "reason": "tp"
+    },
+    {
+      "direction": "short",
+      "entry": 196968.93626500003,
+      "exit": 183793.1,
+      "pnl_pct": 6.68929655347957,
+      "reason": "tp"
+    },
+    {
+      "direction": "long",
+      "entry": 193752.74796,
+      "exit": 183180.47,
+      "pnl_pct": -5.456582201447093,
+      "reason": "sl"
+    },
+    {
+      "direction": "long",
+      "entry": 207243.23983500001,
+      "exit": 196353.21,
+      "pnl_pct": -5.2547093182244655,
+      "reason": "sl"
+    },
+    {
+      "direction": "short",
+      "entry": 208869.702905,
+      "exit": 219317.87,
+      "pnl_pct": -5.002241564805649,
+      "reason": "sl"
+    },
+    {
+      "direction": "short",
+      "entry": 213441.20601000002,
+      "exit": 227331.14,
+      "pnl_pct": -6.50761596116039,
+      "reason": "sl"
+    },
+    {
+      "direction": "long",
+      "entry": 240616.10792999997,
+      "exit": 254406.82,
+      "pnl_pct": 5.731416815208411,
+      "reason": "tp"
+    },
+    {
+      "direction": "short",
+      "entry": 224532.02782500003,
+      "exit": 210210.73,
+      "pnl_pct": 6.378287304367116,
+      "reason": "tp"
+    },
+    {
+      "direction": "long",
+      "entry": 232673.59866,
+      "exit": 225415.52,
+      "pnl_pct": -3.1194251095957153,
+      "reason": "sl"
+    },
+    {
+      "direction": "short",
+      "entry": 227302.05212,
+      "exit": 235939.47,
+      "pnl_pct": -3.79997355916524,
+      "reason": "sl"
+    },
+    {
+      "direction": "long",
+      "entry": 242540.2095,
+      "exit": 263540.74,
+      "pnl_pct": 8.658576878156772,
+      "reason": "tp"
+    },
+    {
+      "direction": "short",
+      "entry": 259068.60090000002,
+      "exit": 268699.06,
+      "pnl_pct": -3.7173393713263296,
+      "reason": "sl"
+    },
+    {
+      "direction": "short",
+      "entry": 253288.64232500002,
+      "exit": 261082.57,
+      "pnl_pct": -3.0770932338132364,
+      "reason": "sl"
+    },
+    {
+      "direction": "long",
+      "entry": 278036.51878499996,
+      "exit": 266819.84,
+      "pnl_pct": -4.03424659250376,
+      "reason": "sl"
+    },
+    {
+      "direction": "short",
+      "entry": 263253.92719,
+      "exit": 279594.72,
+      "pnl_pct": -6.20723610258099,
+      "reason": "sl"
+    },
+    {
+      "direction": "short",
+      "entry": 285330.23351499997,
+      "exit": 294142.48,
+      "pnl_pct": -3.088437694260936,
+      "reason": "sl"
+    },
+    {
+      "direction": "short",
+      "entry": 253514.80918500002,
+      "exit": 237979.97,
+      "pnl_pct": 6.127783712100076,
+      "reason": "tp"
+    },
+    {
+      "direction": "short",
+      "entry": 246045.625645,
+      "exit": 255230.46,
+      "pnl_pct": -3.7329801458255063,
+      "reason": "sl"
+    },
+    {
+      "direction": "short",
+      "entry": 253790.91106500002,
+      "exit": 264849.54,
+      "pnl_pct": -4.357377846430309,
+      "reason": "sl"
+    },
+    {
+      "direction": "long",
+      "entry": 257657.66444999998,
+      "exit": 246442.46,
+      "pnl_pct": -4.35275405990353,
+      "reason": "sl"
+    },
+    {
+      "direction": "long",
+      "entry": 245417.27731499998,
+      "exit": 257366.54,
+      "pnl_pct": 4.868957400119312,
+      "reason": "signal"
+    },
+    {
+      "direction": "short",
+      "entry": 256347.75200500002,
+      "exit": 242234.99,
+      "pnl_pct": 5.505319198088681,
+      "reason": "tp"
+    },
+    {
+      "direction": "short",
+      "entry": 250486.63403000002,
+      "exit": 247722.45,
+      "pnl_pct": 1.1035255596388214,
+      "reason": "signal"
+    },
+    {
+      "direction": "long",
+      "entry": 267907.56684,
+      "exit": 260757.22,
+      "pnl_pct": -2.668960389711695,
+      "reason": "signal"
+    },
+    {
+      "direction": "long",
+      "entry": 256227.18957,
+      "exit": 279586.08,
+      "pnl_pct": 9.116476073129038,
+      "reason": "tp"
+    },
+    {
+      "direction": "short",
+      "entry": 280200.659585,
+      "exit": 280865.07,
+      "pnl_pct": -0.23711950428098102,
+      "reason": "signal"
+    },
+    {
+      "direction": "long",
+      "entry": 272378.571225,
+      "exit": 263929.78,
+      "pnl_pct": -3.101856062685936,
+      "reason": "sl"
+    },
+    {
+      "direction": "long",
+      "entry": 267373.62,
+      "exit": 284074.01,
+      "pnl_pct": 6.2460874038358805,
+      "reason": "tp"
+    },
+    {
+      "direction": "short",
+      "entry": 261535.94661,
+      "exit": 276307.14,
+      "pnl_pct": -5.647863546660631,
+      "reason": "sl"
+    },
+    {
+      "direction": "long",
+      "entry": 267692.229225,
+      "exit": 282353.74,
+      "pnl_pct": 5.477002757026883,
+      "reason": "tp"
+    },
+    {
+      "direction": "short",
+      "entry": 268553.33616,
+      "exit": 255023.91,
+      "pnl_pct": 5.03789167301179,
+      "reason": "tp"
+    },
+    {
+      "direction": "long",
+      "entry": 277572.65697,
+      "exit": 268924.26,
+      "pnl_pct": -3.11572366832037,
+      "reason": "sl"
+    },
+    {
+      "direction": "long",
+      "entry": 276951.90674999997,
+      "exit": 279177.39,
+      "pnl_pct": 0.8035630720567513,
+      "reason": "signal"
+    },
+    {
+      "direction": "long",
+      "entry": 291874.634385,
+      "exit": 282219.75,
+      "pnl_pct": -3.30788744467072,
+      "reason": "sl"
+    },
+    {
+      "direction": "long",
+      "entry": 303275.97220499994,
+      "exit": 291191.28,
+      "pnl_pct": -3.984717983800986,
+      "reason": "sl"
+    },
+    {
+      "direction": "short",
+      "entry": 229474.54533000002,
+      "exit": 215453.22,
+      "pnl_pct": 6.110187650589481,
+      "reason": "tp"
+    },
+    {
+      "direction": "long",
+      "entry": 227786.726445,
+      "exit": 217104.93,
+      "pnl_pct": -4.689384939898671,
+      "reason": "sl"
+    },
+    {
+      "direction": "short",
+      "entry": 219386.95165000003,
+      "exit": 232859.81,
+      "pnl_pct": -6.14113931966836,
+      "reason": "sl"
+    },
+    {
+      "direction": "short",
+      "entry": 235446.27797000002,
+      "exit": 242659.44,
+      "pnl_pct": -3.063612681496312,
+      "reason": "sl"
+    },
+    {
+      "direction": "short",
+      "entry": 273596.23345,
+      "exit": 285731.36,
+      "pnl_pct": -4.4354143319073485,
+      "reason": "sl"
+    },
+    {
+      "direction": "long",
+      "entry": 300647.31853499997,
+      "exit": 291718.04,
+      "pnl_pct": -2.970017686673791,
+      "reason": "signal"
+    },
+    {
+      "direction": "long",
+      "entry": 302346.347625,
+      "exit": 290643.39,
+      "pnl_pct": -3.8707124186977624,
+      "reason": "sl"
+    },
+    {
+      "direction": "short",
+      "entry": 276897.88180000003,
+      "exit": 256362.18,
+      "pnl_pct": 7.416344851215845,
+      "reason": "tp"
+    },
+    {
+      "direction": "long",
+      "entry": 275482.59245999996,
+      "exit": 265759.79,
+      "pnl_pct": -3.529370902595861,
+      "reason": "sl"
+    },
+    {
+      "direction": "short",
+      "entry": 266812.576975,
+      "exit": 246413.99,
+      "pnl_pct": 7.6452868924958155,
+      "reason": "tp"
+    },
+    {
+      "direction": "short",
+      "entry": 256872.00974500002,
+      "exit": 273091.18,
+      "pnl_pct": -6.3141057179024465,
+      "reason": "sl"
+    },
+    {
+      "direction": "short",
+      "entry": 266313.60658500006,
+      "exit": 274684.73,
+      "pnl_pct": -3.143332975864336,
+      "reason": "sl"
+    },
+    {
+      "direction": "long",
+      "entry": 268908.376995,
+      "exit": 286628.67,
+      "pnl_pct": 6.589714014498503,
+      "reason": "tp"
+    },
+    {
+      "direction": "short",
+      "entry": 275855.36332,
+      "exit": 284634.79,
+      "pnl_pct": -3.1826195345042443,
+      "reason": "sl"
+    },
+    {
+      "direction": "long",
+      "entry": 322758.168435,
+      "exit": 337785.15,
+      "pnl_pct": 4.65580209413857,
+      "reason": "signal"
+    },
+    {
+      "direction": "long",
+      "entry": 314987.58508499997,
+      "exit": 303950.53,
+      "pnl_pct": -3.503965110885743,
+      "reason": "sl"
+    },
+    {
+      "direction": "long",
+      "entry": 269232.21883499995,
+      "exit": 255361.37,
+      "pnl_pct": -5.152001827649298,
+      "reason": "sl"
+    },
+    {
+      "direction": "short",
+      "entry": 244538.459605,
+      "exit": 253350.31,
+      "pnl_pct": -3.603461970453916,
+      "reason": "sl"
+    },
+    {
+      "direction": "short",
+      "entry": 244835.26113,
+      "exit": 241289.13,
+      "pnl_pct": 1.4483743532828417,
+      "reason": "signal"
+    },
+    {
+      "direction": "long",
+      "entry": 239953.83696,
+      "exit": 254896.37,
+      "pnl_pct": 6.227253220581304,
+      "reason": "tp"
+    },
+    {
+      "direction": "short",
+      "entry": 267143.49143500003,
+      "exit": 250458.82,
+      "pnl_pct": 6.245584103650024,
+      "reason": "tp"
+    },
+    {
+      "direction": "short",
+      "entry": 242418.320205,
+      "exit": 233963.71,
+      "pnl_pct": 3.487611908972226,
+      "reason": "signal"
+    },
+    {
+      "direction": "long",
+      "entry": 232296.11000999997,
+      "exit": 225161.99,
+      "pnl_pct": -3.0711319314356453,
+      "reason": "sl"
+    },
+    {
+      "direction": "long",
+      "entry": 220647.38856,
+      "exit": 236870.57,
+      "pnl_pct": 7.352537252254174,
+      "reason": "tp"
+    },
+    {
+      "direction": "short",
+      "entry": 247921.567205,
+      "exit": 234777.24,
+      "pnl_pct": 5.3018086942518,
+      "reason": "tp"
+    }
+  ]
+}

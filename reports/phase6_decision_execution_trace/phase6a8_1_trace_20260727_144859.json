@@ -1,0 +1,1536 @@
+{
+  "phase": "6A8.1",
+  "generated_utc": "2026-07-27T14:48:59.879417+00:00",
+  "mode": "PAPER",
+  "symbol": "BTCUSDT",
+  "duration_seconds": 8,
+  "production_source_files_modified": false,
+  "events": [
+    {
+      "timestamp_utc": "2026-07-27T14:48:51.485734+00:00",
+      "stage": "application.start.requested"
+    },
+    {
+      "timestamp_utc": "2026-07-27T14:48:51.878020+00:00",
+      "stage": "application.start.result",
+      "started": true,
+      "running": true,
+      "started_services": [
+        "execution",
+        "market_feed",
+        "brain",
+        "market_loop",
+        "controller"
+      ],
+      "errors": []
+    },
+    {
+      "timestamp_utc": "2026-07-27T14:48:52.181536+00:00",
+      "stage": "brain.input",
+      "symbol": "BTCUSDT",
+      "market_data": {
+        "symbol": "BTCUSDT",
+        "price": 64588.89,
+        "technical_score": 0.45,
+        "rsi": 45.21,
+        "ema20": 64680.9602,
+        "ema50": 64889.4969,
+        "adx": null,
+        "trend": "BEARISH",
+        "macro_score": 0.5,
+        "sentiment_score": 0.5,
+        "risk_score": 0.5,
+        "timestamp": "2026-07-27T14:48:52.181530+00:00"
+      }
+    },
+    {
+      "timestamp_utc": "2026-07-27T14:48:52.182266+00:00",
+      "stage": "brain.output",
+      "symbol": "BTCUSDT",
+      "raw_decision": {
+        "action": "HOLD",
+        "symbol": "BTCUSDT",
+        "confidence": 74.1,
+        "strategy": "Atlas_v10_MultiAgent",
+        "risk_level": "MEDIUM",
+        "price": 0.0,
+        "created_at": "2026-07-27T14:48:52.182101+00:00",
+        "metadata": {
+          "fusion": {
+            "BUY": 0.0,
+            "SELL": 0.259,
+            "HOLD": 0.741
+          },
+          "risk": {
+            "level": "MEDIUM",
+            "score": 0.495,
+            "reason": "Risk classified as MEDIUM with score 0.495"
+          },
+          "reasoning": {
+            "action": "SELL",
+            "confidence": 0.4
+          },
+          "memory": {
+            "trades": 0,
+            "win_rate": 0.0,
+            "effect": 0
+          },
+          "agents": {
+            "technical": {
+              "action": "HOLD",
+              "score": 0.45
+            },
+            "momentum": {
+              "action": "SELL",
+              "score": 0.3
+            },
+            "risk": {
+              "action": "HOLD",
+              "score": 0.5
+            },
+            "macro": {
+              "action": "HOLD",
+              "score": 0.5
+            },
+            "sentiment": {
+              "action": "HOLD",
+              "score": 0.5
+            }
+          },
+          "timestamp": "2026-07-27T17:48:52.182094",
+          "brain_version": "10.2",
+          "brain_session_id": "atlas_20260727_144851",
+          "analysis_timestamp": "2026-07-27T14:48:52.182129+00:00",
+          "world_analysis": {
+            "ETH": {
+              "strength": 0.85,
+              "relationship": "correlation",
+              "lag_hours": 0,
+              "path": [
+                "BTC",
+                "ETH"
+              ]
+            },
+            "SOL": {
+              "strength": 0.637,
+              "relationship": "correlation",
+              "lag_hours": 0,
+              "path": [
+                "BTC",
+                "ETH",
+                "SOL"
+              ]
+            }
+          },
+          "intermediate_confidence": 51.0,
+          "confidence_explanation": {
+            "confidence": 51.0,
+            "agreement": 0.8,
+            "reasoning": 0.4,
+            "risk_penalty": 0.2,
+            "explanation": "Agreement=0.80 Reasoning=0.40 RiskPenalty=0.20"
+          },
+          "final_confidence": 74.1,
+          "adapter_name": "DecisionAdapter",
+          "adapter_version": "5.2",
+          "normalized_at": "2026-07-27T14:48:52.182254+00:00",
+          "normalized_action": "HOLD",
+          "normalized_confidence": 74.1,
+          "source_fields": [
+            "action",
+            "confidence",
+            "created_at",
+            "metadata",
+            "reasoning",
+            "risk_level",
+            "strategy",
+            "symbol"
+          ]
+        }
+      }
+    },
+    {
+      "timestamp_utc": "2026-07-27T14:48:52.182292+00:00",
+      "stage": "normalize.input",
+      "raw_decision": {
+        "action": "HOLD",
+        "symbol": "BTCUSDT",
+        "confidence": 74.1,
+        "strategy": "Atlas_v10_MultiAgent",
+        "risk_level": "MEDIUM",
+        "price": 0.0,
+        "created_at": "2026-07-27T14:48:52.182101+00:00",
+        "metadata": {
+          "fusion": {
+            "BUY": 0.0,
+            "SELL": 0.259,
+            "HOLD": 0.741
+          },
+          "risk": {
+            "level": "MEDIUM",
+            "score": 0.495,
+            "reason": "Risk classified as MEDIUM with score 0.495"
+          },
+          "reasoning": {
+            "action": "SELL",
+            "confidence": 0.4
+          },
+          "memory": {
+            "trades": 0,
+            "win_rate": 0.0,
+            "effect": 0
+          },
+          "agents": {
+            "technical": {
+              "action": "HOLD",
+              "score": 0.45
+            },
+            "momentum": {
+              "action": "SELL",
+              "score": 0.3
+            },
+            "risk": {
+              "action": "HOLD",
+              "score": 0.5
+            },
+            "macro": {
+              "action": "HOLD",
+              "score": 0.5
+            },
+            "sentiment": {
+              "action": "HOLD",
+              "score": 0.5
+            }
+          },
+          "timestamp": "2026-07-27T17:48:52.182094",
+          "brain_version": "10.2",
+          "brain_session_id": "atlas_20260727_144851",
+          "analysis_timestamp": "2026-07-27T14:48:52.182129+00:00",
+          "world_analysis": {
+            "ETH": {
+              "strength": 0.85,
+              "relationship": "correlation",
+              "lag_hours": 0,
+              "path": [
+                "BTC",
+                "ETH"
+              ]
+            },
+            "SOL": {
+              "strength": 0.637,
+              "relationship": "correlation",
+              "lag_hours": 0,
+              "path": [
+                "BTC",
+                "ETH",
+                "SOL"
+              ]
+            }
+          },
+          "intermediate_confidence": 51.0,
+          "confidence_explanation": {
+            "confidence": 51.0,
+            "agreement": 0.8,
+            "reasoning": 0.4,
+            "risk_penalty": 0.2,
+            "explanation": "Agreement=0.80 Reasoning=0.40 RiskPenalty=0.20"
+          },
+          "final_confidence": 74.1,
+          "adapter_name": "DecisionAdapter",
+          "adapter_version": "5.2",
+          "normalized_at": "2026-07-27T14:48:52.182254+00:00",
+          "normalized_action": "HOLD",
+          "normalized_confidence": 74.1,
+          "source_fields": [
+            "action",
+            "confidence",
+            "created_at",
+            "metadata",
+            "reasoning",
+            "risk_level",
+            "strategy",
+            "symbol"
+          ]
+        }
+      },
+      "symbol": "BTCUSDT",
+      "price": 64588.89
+    },
+    {
+      "timestamp_utc": "2026-07-27T14:48:52.182340+00:00",
+      "stage": "normalize.output",
+      "normalized_decision": {
+        "action": "HOLD",
+        "symbol": "BTCUSDT",
+        "confidence": 74.1,
+        "strategy": "Atlas_v10_MultiAgent",
+        "risk_level": "MEDIUM",
+        "price": 64588.89,
+        "created_at": "2026-07-27T14:48:52.182101+00:00",
+        "metadata": {
+          "fusion": {
+            "BUY": 0.0,
+            "SELL": 0.259,
+            "HOLD": 0.741
+          },
+          "risk": {
+            "level": "MEDIUM",
+            "score": 0.495,
+            "reason": "Risk classified as MEDIUM with score 0.495"
+          },
+          "reasoning": {
+            "action": "SELL",
+            "confidence": 0.4
+          },
+          "memory": {
+            "trades": 0,
+            "win_rate": 0.0,
+            "effect": 0
+          },
+          "agents": {
+            "technical": {
+              "action": "HOLD",
+              "score": 0.45
+            },
+            "momentum": {
+              "action": "SELL",
+              "score": 0.3
+            },
+            "risk": {
+              "action": "HOLD",
+              "score": 0.5
+            },
+            "macro": {
+              "action": "HOLD",
+              "score": 0.5
+            },
+            "sentiment": {
+              "action": "HOLD",
+              "score": 0.5
+            }
+          },
+          "timestamp": "2026-07-27T17:48:52.182094",
+          "brain_version": "10.2",
+          "brain_session_id": "atlas_20260727_144851",
+          "analysis_timestamp": "2026-07-27T14:48:52.182129+00:00",
+          "world_analysis": {
+            "ETH": {
+              "strength": 0.85,
+              "relationship": "correlation",
+              "lag_hours": 0,
+              "path": [
+                "BTC",
+                "ETH"
+              ]
+            },
+            "SOL": {
+              "strength": 0.637,
+              "relationship": "correlation",
+              "lag_hours": 0,
+              "path": [
+                "BTC",
+                "ETH",
+                "SOL"
+              ]
+            }
+          },
+          "intermediate_confidence": 51.0,
+          "confidence_explanation": {
+            "confidence": 51.0,
+            "agreement": 0.8,
+            "reasoning": 0.4,
+            "risk_penalty": 0.2,
+            "explanation": "Agreement=0.80 Reasoning=0.40 RiskPenalty=0.20"
+          },
+          "final_confidence": 74.1,
+          "adapter_name": "DecisionAdapter",
+          "adapter_version": "5.2",
+          "normalized_at": "2026-07-27T14:48:52.182337+00:00",
+          "normalized_action": "HOLD",
+          "normalized_confidence": 74.1,
+          "source_fields": [
+            "action",
+            "confidence",
+            "created_at",
+            "market_state",
+            "metadata",
+            "price",
+            "risk_level",
+            "strategy",
+            "symbol"
+          ],
+          "market_loop_version": "8.0",
+          "raw_decision_type": "dict"
+        }
+      }
+    },
+    {
+      "timestamp_utc": "2026-07-27T14:48:54.476326+00:00",
+      "stage": "brain.input",
+      "symbol": "BTCUSDT",
+      "market_data": {
+        "symbol": "BTCUSDT",
+        "price": 64588.87,
+        "technical_score": 0.45,
+        "rsi": 45.21,
+        "ema20": 64680.9583,
+        "ema50": 64889.4962,
+        "adx": null,
+        "trend": "BEARISH",
+        "macro_score": 0.5,
+        "sentiment_score": 0.5,
+        "risk_score": 0.5,
+        "timestamp": "2026-07-27T14:48:54.476320+00:00"
+      }
+    },
+    {
+      "timestamp_utc": "2026-07-27T14:48:54.477089+00:00",
+      "stage": "brain.output",
+      "symbol": "BTCUSDT",
+      "raw_decision": {
+        "action": "HOLD",
+        "symbol": "BTCUSDT",
+        "confidence": 74.1,
+        "strategy": "Atlas_v10_MultiAgent",
+        "risk_level": "MEDIUM",
+        "price": 0.0,
+        "created_at": "2026-07-27T14:48:54.476918+00:00",
+        "metadata": {
+          "fusion": {
+            "BUY": 0.0,
+            "SELL": 0.259,
+            "HOLD": 0.741
+          },
+          "risk": {
+            "level": "MEDIUM",
+            "score": 0.495,
+            "reason": "Risk classified as MEDIUM with score 0.495"
+          },
+          "reasoning": {
+            "action": "SELL",
+            "confidence": 0.4
+          },
+          "memory": {
+            "trades": 0,
+            "win_rate": 0.0,
+            "effect": 0
+          },
+          "agents": {
+            "technical": {
+              "action": "HOLD",
+              "score": 0.45
+            },
+            "momentum": {
+              "action": "SELL",
+              "score": 0.3
+            },
+            "risk": {
+              "action": "HOLD",
+              "score": 0.5
+            },
+            "macro": {
+              "action": "HOLD",
+              "score": 0.5
+            },
+            "sentiment": {
+              "action": "HOLD",
+              "score": 0.5
+            }
+          },
+          "timestamp": "2026-07-27T17:48:54.476907",
+          "brain_version": "10.2",
+          "brain_session_id": "atlas_20260727_144851",
+          "analysis_timestamp": "2026-07-27T14:48:54.476957+00:00",
+          "world_analysis": {
+            "ETH": {
+              "strength": 0.85,
+              "relationship": "correlation",
+              "lag_hours": 0,
+              "path": [
+                "BTC",
+                "ETH"
+              ]
+            },
+            "SOL": {
+              "strength": 0.637,
+              "relationship": "correlation",
+              "lag_hours": 0,
+              "path": [
+                "BTC",
+                "ETH",
+                "SOL"
+              ]
+            }
+          },
+          "intermediate_confidence": 51.0,
+          "confidence_explanation": {
+            "confidence": 51.0,
+            "agreement": 0.8,
+            "reasoning": 0.4,
+            "risk_penalty": 0.2,
+            "explanation": "Agreement=0.80 Reasoning=0.40 RiskPenalty=0.20"
+          },
+          "final_confidence": 74.1,
+          "adapter_name": "DecisionAdapter",
+          "adapter_version": "5.2",
+          "normalized_at": "2026-07-27T14:48:54.477077+00:00",
+          "normalized_action": "HOLD",
+          "normalized_confidence": 74.1,
+          "source_fields": [
+            "action",
+            "confidence",
+            "created_at",
+            "metadata",
+            "reasoning",
+            "risk_level",
+            "strategy",
+            "symbol"
+          ]
+        }
+      }
+    },
+    {
+      "timestamp_utc": "2026-07-27T14:48:54.477113+00:00",
+      "stage": "normalize.input",
+      "raw_decision": {
+        "action": "HOLD",
+        "symbol": "BTCUSDT",
+        "confidence": 74.1,
+        "strategy": "Atlas_v10_MultiAgent",
+        "risk_level": "MEDIUM",
+        "price": 0.0,
+        "created_at": "2026-07-27T14:48:54.476918+00:00",
+        "metadata": {
+          "fusion": {
+            "BUY": 0.0,
+            "SELL": 0.259,
+            "HOLD": 0.741
+          },
+          "risk": {
+            "level": "MEDIUM",
+            "score": 0.495,
+            "reason": "Risk classified as MEDIUM with score 0.495"
+          },
+          "reasoning": {
+            "action": "SELL",
+            "confidence": 0.4
+          },
+          "memory": {
+            "trades": 0,
+            "win_rate": 0.0,
+            "effect": 0
+          },
+          "agents": {
+            "technical": {
+              "action": "HOLD",
+              "score": 0.45
+            },
+            "momentum": {
+              "action": "SELL",
+              "score": 0.3
+            },
+            "risk": {
+              "action": "HOLD",
+              "score": 0.5
+            },
+            "macro": {
+              "action": "HOLD",
+              "score": 0.5
+            },
+            "sentiment": {
+              "action": "HOLD",
+              "score": 0.5
+            }
+          },
+          "timestamp": "2026-07-27T17:48:54.476907",
+          "brain_version": "10.2",
+          "brain_session_id": "atlas_20260727_144851",
+          "analysis_timestamp": "2026-07-27T14:48:54.476957+00:00",
+          "world_analysis": {
+            "ETH": {
+              "strength": 0.85,
+              "relationship": "correlation",
+              "lag_hours": 0,
+              "path": [
+                "BTC",
+                "ETH"
+              ]
+            },
+            "SOL": {
+              "strength": 0.637,
+              "relationship": "correlation",
+              "lag_hours": 0,
+              "path": [
+                "BTC",
+                "ETH",
+                "SOL"
+              ]
+            }
+          },
+          "intermediate_confidence": 51.0,
+          "confidence_explanation": {
+            "confidence": 51.0,
+            "agreement": 0.8,
+            "reasoning": 0.4,
+            "risk_penalty": 0.2,
+            "explanation": "Agreement=0.80 Reasoning=0.40 RiskPenalty=0.20"
+          },
+          "final_confidence": 74.1,
+          "adapter_name": "DecisionAdapter",
+          "adapter_version": "5.2",
+          "normalized_at": "2026-07-27T14:48:54.477077+00:00",
+          "normalized_action": "HOLD",
+          "normalized_confidence": 74.1,
+          "source_fields": [
+            "action",
+            "confidence",
+            "created_at",
+            "metadata",
+            "reasoning",
+            "risk_level",
+            "strategy",
+            "symbol"
+          ]
+        }
+      },
+      "symbol": "BTCUSDT",
+      "price": 64588.87
+    },
+    {
+      "timestamp_utc": "2026-07-27T14:48:54.477154+00:00",
+      "stage": "normalize.output",
+      "normalized_decision": {
+        "action": "HOLD",
+        "symbol": "BTCUSDT",
+        "confidence": 74.1,
+        "strategy": "Atlas_v10_MultiAgent",
+        "risk_level": "MEDIUM",
+        "price": 64588.87,
+        "created_at": "2026-07-27T14:48:54.476918+00:00",
+        "metadata": {
+          "fusion": {
+            "BUY": 0.0,
+            "SELL": 0.259,
+            "HOLD": 0.741
+          },
+          "risk": {
+            "level": "MEDIUM",
+            "score": 0.495,
+            "reason": "Risk classified as MEDIUM with score 0.495"
+          },
+          "reasoning": {
+            "action": "SELL",
+            "confidence": 0.4
+          },
+          "memory": {
+            "trades": 0,
+            "win_rate": 0.0,
+            "effect": 0
+          },
+          "agents": {
+            "technical": {
+              "action": "HOLD",
+              "score": 0.45
+            },
+            "momentum": {
+              "action": "SELL",
+              "score": 0.3
+            },
+            "risk": {
+              "action": "HOLD",
+              "score": 0.5
+            },
+            "macro": {
+              "action": "HOLD",
+              "score": 0.5
+            },
+            "sentiment": {
+              "action": "HOLD",
+              "score": 0.5
+            }
+          },
+          "timestamp": "2026-07-27T17:48:54.476907",
+          "brain_version": "10.2",
+          "brain_session_id": "atlas_20260727_144851",
+          "analysis_timestamp": "2026-07-27T14:48:54.476957+00:00",
+          "world_analysis": {
+            "ETH": {
+              "strength": 0.85,
+              "relationship": "correlation",
+              "lag_hours": 0,
+              "path": [
+                "BTC",
+                "ETH"
+              ]
+            },
+            "SOL": {
+              "strength": 0.637,
+              "relationship": "correlation",
+              "lag_hours": 0,
+              "path": [
+                "BTC",
+                "ETH",
+                "SOL"
+              ]
+            }
+          },
+          "intermediate_confidence": 51.0,
+          "confidence_explanation": {
+            "confidence": 51.0,
+            "agreement": 0.8,
+            "reasoning": 0.4,
+            "risk_penalty": 0.2,
+            "explanation": "Agreement=0.80 Reasoning=0.40 RiskPenalty=0.20"
+          },
+          "final_confidence": 74.1,
+          "adapter_name": "DecisionAdapter",
+          "adapter_version": "5.2",
+          "normalized_at": "2026-07-27T14:48:54.477152+00:00",
+          "normalized_action": "HOLD",
+          "normalized_confidence": 74.1,
+          "source_fields": [
+            "action",
+            "confidence",
+            "created_at",
+            "market_state",
+            "metadata",
+            "price",
+            "risk_level",
+            "strategy",
+            "symbol"
+          ],
+          "market_loop_version": "8.0",
+          "raw_decision_type": "dict"
+        }
+      }
+    },
+    {
+      "timestamp_utc": "2026-07-27T14:48:56.944922+00:00",
+      "stage": "brain.input",
+      "symbol": "BTCUSDT",
+      "market_data": {
+        "symbol": "BTCUSDT",
+        "price": 64588.61,
+        "technical_score": 0.45,
+        "rsi": 45.19,
+        "ema20": 64680.9335,
+        "ema50": 64889.486,
+        "adx": null,
+        "trend": "BEARISH",
+        "macro_score": 0.5,
+        "sentiment_score": 0.5,
+        "risk_score": 0.5,
+        "timestamp": "2026-07-27T14:48:56.944916+00:00"
+      }
+    },
+    {
+      "timestamp_utc": "2026-07-27T14:48:56.945613+00:00",
+      "stage": "brain.output",
+      "symbol": "BTCUSDT",
+      "raw_decision": {
+        "action": "HOLD",
+        "symbol": "BTCUSDT",
+        "confidence": 74.1,
+        "strategy": "Atlas_v10_MultiAgent",
+        "risk_level": "MEDIUM",
+        "price": 0.0,
+        "created_at": "2026-07-27T14:48:56.945471+00:00",
+        "metadata": {
+          "fusion": {
+            "BUY": 0.0,
+            "SELL": 0.259,
+            "HOLD": 0.741
+          },
+          "risk": {
+            "level": "MEDIUM",
+            "score": 0.495,
+            "reason": "Risk classified as MEDIUM with score 0.495"
+          },
+          "reasoning": {
+            "action": "SELL",
+            "confidence": 0.4
+          },
+          "memory": {
+            "trades": 0,
+            "win_rate": 0.0,
+            "effect": 0
+          },
+          "agents": {
+            "technical": {
+              "action": "HOLD",
+              "score": 0.45
+            },
+            "momentum": {
+              "action": "SELL",
+              "score": 0.3
+            },
+            "risk": {
+              "action": "HOLD",
+              "score": 0.5
+            },
+            "macro": {
+              "action": "HOLD",
+              "score": 0.5
+            },
+            "sentiment": {
+              "action": "HOLD",
+              "score": 0.5
+            }
+          },
+          "timestamp": "2026-07-27T17:48:56.945464",
+          "brain_version": "10.2",
+          "brain_session_id": "atlas_20260727_144851",
+          "analysis_timestamp": "2026-07-27T14:48:56.945497+00:00",
+          "world_analysis": {
+            "ETH": {
+              "strength": 0.85,
+              "relationship": "correlation",
+              "lag_hours": 0,
+              "path": [
+                "BTC",
+                "ETH"
+              ]
+            },
+            "SOL": {
+              "strength": 0.637,
+              "relationship": "correlation",
+              "lag_hours": 0,
+              "path": [
+                "BTC",
+                "ETH",
+                "SOL"
+              ]
+            }
+          },
+          "intermediate_confidence": 51.0,
+          "confidence_explanation": {
+            "confidence": 51.0,
+            "agreement": 0.8,
+            "reasoning": 0.4,
+            "risk_penalty": 0.2,
+            "explanation": "Agreement=0.80 Reasoning=0.40 RiskPenalty=0.20"
+          },
+          "final_confidence": 74.1,
+          "adapter_name": "DecisionAdapter",
+          "adapter_version": "5.2",
+          "normalized_at": "2026-07-27T14:48:56.945601+00:00",
+          "normalized_action": "HOLD",
+          "normalized_confidence": 74.1,
+          "source_fields": [
+            "action",
+            "confidence",
+            "created_at",
+            "metadata",
+            "reasoning",
+            "risk_level",
+            "strategy",
+            "symbol"
+          ]
+        }
+      }
+    },
+    {
+      "timestamp_utc": "2026-07-27T14:48:56.945635+00:00",
+      "stage": "normalize.input",
+      "raw_decision": {
+        "action": "HOLD",
+        "symbol": "BTCUSDT",
+        "confidence": 74.1,
+        "strategy": "Atlas_v10_MultiAgent",
+        "risk_level": "MEDIUM",
+        "price": 0.0,
+        "created_at": "2026-07-27T14:48:56.945471+00:00",
+        "metadata": {
+          "fusion": {
+            "BUY": 0.0,
+            "SELL": 0.259,
+            "HOLD": 0.741
+          },
+          "risk": {
+            "level": "MEDIUM",
+            "score": 0.495,
+            "reason": "Risk classified as MEDIUM with score 0.495"
+          },
+          "reasoning": {
+            "action": "SELL",
+            "confidence": 0.4
+          },
+          "memory": {
+            "trades": 0,
+            "win_rate": 0.0,
+            "effect": 0
+          },
+          "agents": {
+            "technical": {
+              "action": "HOLD",
+              "score": 0.45
+            },
+            "momentum": {
+              "action": "SELL",
+              "score": 0.3
+            },
+            "risk": {
+              "action": "HOLD",
+              "score": 0.5
+            },
+            "macro": {
+              "action": "HOLD",
+              "score": 0.5
+            },
+            "sentiment": {
+              "action": "HOLD",
+              "score": 0.5
+            }
+          },
+          "timestamp": "2026-07-27T17:48:56.945464",
+          "brain_version": "10.2",
+          "brain_session_id": "atlas_20260727_144851",
+          "analysis_timestamp": "2026-07-27T14:48:56.945497+00:00",
+          "world_analysis": {
+            "ETH": {
+              "strength": 0.85,
+              "relationship": "correlation",
+              "lag_hours": 0,
+              "path": [
+                "BTC",
+                "ETH"
+              ]
+            },
+            "SOL": {
+              "strength": 0.637,
+              "relationship": "correlation",
+              "lag_hours": 0,
+              "path": [
+                "BTC",
+                "ETH",
+                "SOL"
+              ]
+            }
+          },
+          "intermediate_confidence": 51.0,
+          "confidence_explanation": {
+            "confidence": 51.0,
+            "agreement": 0.8,
+            "reasoning": 0.4,
+            "risk_penalty": 0.2,
+            "explanation": "Agreement=0.80 Reasoning=0.40 RiskPenalty=0.20"
+          },
+          "final_confidence": 74.1,
+          "adapter_name": "DecisionAdapter",
+          "adapter_version": "5.2",
+          "normalized_at": "2026-07-27T14:48:56.945601+00:00",
+          "normalized_action": "HOLD",
+          "normalized_confidence": 74.1,
+          "source_fields": [
+            "action",
+            "confidence",
+            "created_at",
+            "metadata",
+            "reasoning",
+            "risk_level",
+            "strategy",
+            "symbol"
+          ]
+        }
+      },
+      "symbol": "BTCUSDT",
+      "price": 64588.61
+    },
+    {
+      "timestamp_utc": "2026-07-27T14:48:56.945674+00:00",
+      "stage": "normalize.output",
+      "normalized_decision": {
+        "action": "HOLD",
+        "symbol": "BTCUSDT",
+        "confidence": 74.1,
+        "strategy": "Atlas_v10_MultiAgent",
+        "risk_level": "MEDIUM",
+        "price": 64588.61,
+        "created_at": "2026-07-27T14:48:56.945471+00:00",
+        "metadata": {
+          "fusion": {
+            "BUY": 0.0,
+            "SELL": 0.259,
+            "HOLD": 0.741
+          },
+          "risk": {
+            "level": "MEDIUM",
+            "score": 0.495,
+            "reason": "Risk classified as MEDIUM with score 0.495"
+          },
+          "reasoning": {
+            "action": "SELL",
+            "confidence": 0.4
+          },
+          "memory": {
+            "trades": 0,
+            "win_rate": 0.0,
+            "effect": 0
+          },
+          "agents": {
+            "technical": {
+              "action": "HOLD",
+              "score": 0.45
+            },
+            "momentum": {
+              "action": "SELL",
+              "score": 0.3
+            },
+            "risk": {
+              "action": "HOLD",
+              "score": 0.5
+            },
+            "macro": {
+              "action": "HOLD",
+              "score": 0.5
+            },
+            "sentiment": {
+              "action": "HOLD",
+              "score": 0.5
+            }
+          },
+          "timestamp": "2026-07-27T17:48:56.945464",
+          "brain_version": "10.2",
+          "brain_session_id": "atlas_20260727_144851",
+          "analysis_timestamp": "2026-07-27T14:48:56.945497+00:00",
+          "world_analysis": {
+            "ETH": {
+              "strength": 0.85,
+              "relationship": "correlation",
+              "lag_hours": 0,
+              "path": [
+                "BTC",
+                "ETH"
+              ]
+            },
+            "SOL": {
+              "strength": 0.637,
+              "relationship": "correlation",
+              "lag_hours": 0,
+              "path": [
+                "BTC",
+                "ETH",
+                "SOL"
+              ]
+            }
+          },
+          "intermediate_confidence": 51.0,
+          "confidence_explanation": {
+            "confidence": 51.0,
+            "agreement": 0.8,
+            "reasoning": 0.4,
+            "risk_penalty": 0.2,
+            "explanation": "Agreement=0.80 Reasoning=0.40 RiskPenalty=0.20"
+          },
+          "final_confidence": 74.1,
+          "adapter_name": "DecisionAdapter",
+          "adapter_version": "5.2",
+          "normalized_at": "2026-07-27T14:48:56.945672+00:00",
+          "normalized_action": "HOLD",
+          "normalized_confidence": 74.1,
+          "source_fields": [
+            "action",
+            "confidence",
+            "created_at",
+            "market_state",
+            "metadata",
+            "price",
+            "risk_level",
+            "strategy",
+            "symbol"
+          ],
+          "market_loop_version": "8.0",
+          "raw_decision_type": "dict"
+        }
+      }
+    },
+    {
+      "timestamp_utc": "2026-07-27T14:48:59.290273+00:00",
+      "stage": "brain.input",
+      "symbol": "BTCUSDT",
+      "market_data": {
+        "symbol": "BTCUSDT",
+        "price": 64585.47,
+        "technical_score": 0.45,
+        "rsi": 45.01,
+        "ema20": 64680.6344,
+        "ema50": 64889.3628,
+        "adx": null,
+        "trend": "BEARISH",
+        "macro_score": 0.5,
+        "sentiment_score": 0.5,
+        "risk_score": 0.5,
+        "timestamp": "2026-07-27T14:48:59.290268+00:00"
+      }
+    },
+    {
+      "timestamp_utc": "2026-07-27T14:48:59.291475+00:00",
+      "stage": "brain.output",
+      "symbol": "BTCUSDT",
+      "raw_decision": {
+        "action": "HOLD",
+        "symbol": "BTCUSDT",
+        "confidence": 74.1,
+        "strategy": "Atlas_v10_MultiAgent",
+        "risk_level": "MEDIUM",
+        "price": 0.0,
+        "created_at": "2026-07-27T14:48:59.291263+00:00",
+        "metadata": {
+          "fusion": {
+            "BUY": 0.0,
+            "SELL": 0.259,
+            "HOLD": 0.741
+          },
+          "risk": {
+            "level": "MEDIUM",
+            "score": 0.495,
+            "reason": "Risk classified as MEDIUM with score 0.495"
+          },
+          "reasoning": {
+            "action": "SELL",
+            "confidence": 0.4
+          },
+          "memory": {
+            "trades": 0,
+            "win_rate": 0.0,
+            "effect": 0
+          },
+          "agents": {
+            "technical": {
+              "action": "HOLD",
+              "score": 0.45
+            },
+            "momentum": {
+              "action": "SELL",
+              "score": 0.3
+            },
+            "risk": {
+              "action": "HOLD",
+              "score": 0.5
+            },
+            "macro": {
+              "action": "HOLD",
+              "score": 0.5
+            },
+            "sentiment": {
+              "action": "HOLD",
+              "score": 0.5
+            }
+          },
+          "timestamp": "2026-07-27T17:48:59.291258",
+          "brain_version": "10.2",
+          "brain_session_id": "atlas_20260727_144851",
+          "analysis_timestamp": "2026-07-27T14:48:59.291323+00:00",
+          "world_analysis": {
+            "ETH": {
+              "strength": 0.85,
+              "relationship": "correlation",
+              "lag_hours": 0,
+              "path": [
+                "BTC",
+                "ETH"
+              ]
+            },
+            "SOL": {
+              "strength": 0.637,
+              "relationship": "correlation",
+              "lag_hours": 0,
+              "path": [
+                "BTC",
+                "ETH",
+                "SOL"
+              ]
+            }
+          },
+          "intermediate_confidence": 51.0,
+          "confidence_explanation": {
+            "confidence": 51.0,
+            "agreement": 0.8,
+            "reasoning": 0.4,
+            "risk_penalty": 0.2,
+            "explanation": "Agreement=0.80 Reasoning=0.40 RiskPenalty=0.20"
+          },
+          "final_confidence": 74.1,
+          "adapter_name": "DecisionAdapter",
+          "adapter_version": "5.2",
+          "normalized_at": "2026-07-27T14:48:59.291465+00:00",
+          "normalized_action": "HOLD",
+          "normalized_confidence": 74.1,
+          "source_fields": [
+            "action",
+            "confidence",
+            "created_at",
+            "metadata",
+            "reasoning",
+            "risk_level",
+            "strategy",
+            "symbol"
+          ]
+        }
+      }
+    },
+    {
+      "timestamp_utc": "2026-07-27T14:48:59.291499+00:00",
+      "stage": "normalize.input",
+      "raw_decision": {
+        "action": "HOLD",
+        "symbol": "BTCUSDT",
+        "confidence": 74.1,
+        "strategy": "Atlas_v10_MultiAgent",
+        "risk_level": "MEDIUM",
+        "price": 0.0,
+        "created_at": "2026-07-27T14:48:59.291263+00:00",
+        "metadata": {
+          "fusion": {
+            "BUY": 0.0,
+            "SELL": 0.259,
+            "HOLD": 0.741
+          },
+          "risk": {
+            "level": "MEDIUM",
+            "score": 0.495,
+            "reason": "Risk classified as MEDIUM with score 0.495"
+          },
+          "reasoning": {
+            "action": "SELL",
+            "confidence": 0.4
+          },
+          "memory": {
+            "trades": 0,
+            "win_rate": 0.0,
+            "effect": 0
+          },
+          "agents": {
+            "technical": {
+              "action": "HOLD",
+              "score": 0.45
+            },
+            "momentum": {
+              "action": "SELL",
+              "score": 0.3
+            },
+            "risk": {
+              "action": "HOLD",
+              "score": 0.5
+            },
+            "macro": {
+              "action": "HOLD",
+              "score": 0.5
+            },
+            "sentiment": {
+              "action": "HOLD",
+              "score": 0.5
+            }
+          },
+          "timestamp": "2026-07-27T17:48:59.291258",
+          "brain_version": "10.2",
+          "brain_session_id": "atlas_20260727_144851",
+          "analysis_timestamp": "2026-07-27T14:48:59.291323+00:00",
+          "world_analysis": {
+            "ETH": {
+              "strength": 0.85,
+              "relationship": "correlation",
+              "lag_hours": 0,
+              "path": [
+                "BTC",
+                "ETH"
+              ]
+            },
+            "SOL": {
+              "strength": 0.637,
+              "relationship": "correlation",
+              "lag_hours": 0,
+              "path": [
+                "BTC",
+                "ETH",
+                "SOL"
+              ]
+            }
+          },
+          "intermediate_confidence": 51.0,
+          "confidence_explanation": {
+            "confidence": 51.0,
+            "agreement": 0.8,
+            "reasoning": 0.4,
+            "risk_penalty": 0.2,
+            "explanation": "Agreement=0.80 Reasoning=0.40 RiskPenalty=0.20"
+          },
+          "final_confidence": 74.1,
+          "adapter_name": "DecisionAdapter",
+          "adapter_version": "5.2",
+          "normalized_at": "2026-07-27T14:48:59.291465+00:00",
+          "normalized_action": "HOLD",
+          "normalized_confidence": 74.1,
+          "source_fields": [
+            "action",
+            "confidence",
+            "created_at",
+            "metadata",
+            "reasoning",
+            "risk_level",
+            "strategy",
+            "symbol"
+          ]
+        }
+      },
+      "symbol": "BTCUSDT",
+      "price": 64585.47
+    },
+    {
+      "timestamp_utc": "2026-07-27T14:48:59.291540+00:00",
+      "stage": "normalize.output",
+      "normalized_decision": {
+        "action": "HOLD",
+        "symbol": "BTCUSDT",
+        "confidence": 74.1,
+        "strategy": "Atlas_v10_MultiAgent",
+        "risk_level": "MEDIUM",
+        "price": 64585.47,
+        "created_at": "2026-07-27T14:48:59.291263+00:00",
+        "metadata": {
+          "fusion": {
+            "BUY": 0.0,
+            "SELL": 0.259,
+            "HOLD": 0.741
+          },
+          "risk": {
+            "level": "MEDIUM",
+            "score": 0.495,
+            "reason": "Risk classified as MEDIUM with score 0.495"
+          },
+          "reasoning": {
+            "action": "SELL",
+            "confidence": 0.4
+          },
+          "memory": {
+            "trades": 0,
+            "win_rate": 0.0,
+            "effect": 0
+          },
+          "agents": {
+            "technical": {
+              "action": "HOLD",
+              "score": 0.45
+            },
+            "momentum": {
+              "action": "SELL",
+              "score": 0.3
+            },
+            "risk": {
+              "action": "HOLD",
+              "score": 0.5
+            },
+            "macro": {
+              "action": "HOLD",
+              "score": 0.5
+            },
+            "sentiment": {
+              "action": "HOLD",
+              "score": 0.5
+            }
+          },
+          "timestamp": "2026-07-27T17:48:59.291258",
+          "brain_version": "10.2",
+          "brain_session_id": "atlas_20260727_144851",
+          "analysis_timestamp": "2026-07-27T14:48:59.291323+00:00",
+          "world_analysis": {
+            "ETH": {
+              "strength": 0.85,
+              "relationship": "correlation",
+              "lag_hours": 0,
+              "path": [
+                "BTC",
+                "ETH"
+              ]
+            },
+            "SOL": {
+              "strength": 0.637,
+              "relationship": "correlation",
+              "lag_hours": 0,
+              "path": [
+                "BTC",
+                "ETH",
+                "SOL"
+              ]
+            }
+          },
+          "intermediate_confidence": 51.0,
+          "confidence_explanation": {
+            "confidence": 51.0,
+            "agreement": 0.8,
+            "reasoning": 0.4,
+            "risk_penalty": 0.2,
+            "explanation": "Agreement=0.80 Reasoning=0.40 RiskPenalty=0.20"
+          },
+          "final_confidence": 74.1,
+          "adapter_name": "DecisionAdapter",
+          "adapter_version": "5.2",
+          "normalized_at": "2026-07-27T14:48:59.291537+00:00",
+          "normalized_action": "HOLD",
+          "normalized_confidence": 74.1,
+          "source_fields": [
+            "action",
+            "confidence",
+            "created_at",
+            "market_state",
+            "metadata",
+            "price",
+            "risk_level",
+            "strategy",
+            "symbol"
+          ],
+          "market_loop_version": "8.0",
+          "raw_decision_type": "dict"
+        }
+      }
+    },
+    {
+      "timestamp_utc": "2026-07-27T14:48:59.878228+00:00",
+      "stage": "runtime.snapshot",
+      "snapshot": {
+        "healthy": true,
+        "running": true,
+        "thread_alive": true,
+        "version": "8.0",
+        "errors": 0
+      },
+      "metrics": {
+        "cycles": 4,
+        "symbols_scanned": 0,
+        "symbols_skipped": 0,
+        "decisions_received": 4,
+        "decisions_normalized": 4,
+        "decisions_rejected": 0,
+        "hold_decisions": 4,
+        "execution_requests": 0,
+        "executions_completed": 0,
+        "executions_rejected": 0,
+        "execution_failures": 0,
+        "errors": 0,
+        "latency": 0.3347
+      },
+      "last_signals": {
+        "BTCUSDT": {
+          "action": "HOLD",
+          "symbol": "BTCUSDT",
+          "confidence": 74.1,
+          "strategy": "Atlas_v10_MultiAgent",
+          "risk_level": "MEDIUM",
+          "price": 64585.47,
+          "created_at": "2026-07-27T14:48:59.291263+00:00",
+          "metadata": {
+            "fusion": {
+              "BUY": 0.0,
+              "SELL": 0.259,
+              "HOLD": 0.741
+            },
+            "risk": {
+              "level": "MEDIUM",
+              "score": 0.495,
+              "reason": "Risk classified as MEDIUM with score 0.495"
+            },
+            "reasoning": {
+              "action": "SELL",
+              "confidence": 0.4
+            },
+            "memory": {
+              "trades": 0,
+              "win_rate": 0.0,
+              "effect": 0
+            },
+            "agents": {
+              "technical": {
+                "action": "HOLD",
+                "score": 0.45
+              },
+              "momentum": {
+                "action": "SELL",
+                "score": 0.3
+              },
+              "risk": {
+                "action": "HOLD",
+                "score": 0.5
+              },
+              "macro": {
+                "action": "HOLD",
+                "score": 0.5
+              },
+              "sentiment": {
+                "action": "HOLD",
+                "score": 0.5
+              }
+            },
+            "timestamp": "2026-07-27T17:48:59.291258",
+            "brain_version": "10.2",
+            "brain_session_id": "atlas_20260727_144851",
+            "analysis_timestamp": "2026-07-27T14:48:59.291323+00:00",
+            "world_analysis": {
+              "ETH": {
+                "strength": 0.85,
+                "relationship": "correlation",
+                "lag_hours": 0,
+                "path": [
+                  "BTC",
+                  "ETH"
+                ]
+              },
+              "SOL": {
+                "strength": 0.637,
+                "relationship": "correlation",
+                "lag_hours": 0,
+                "path": [
+                  "BTC",
+                  "ETH",
+                  "SOL"
+                ]
+              }
+            },
+            "intermediate_confidence": 51.0,
+            "confidence_explanation": {
+              "confidence": 51.0,
+              "agreement": 0.8,
+              "reasoning": 0.4,
+              "risk_penalty": 0.2,
+              "explanation": "Agreement=0.80 Reasoning=0.40 RiskPenalty=0.20"
+            },
+            "final_confidence": 74.1,
+            "adapter_name": "DecisionAdapter",
+            "adapter_version": "5.2",
+            "normalized_at": "2026-07-27T14:48:59.291537+00:00",
+            "normalized_action": "HOLD",
+            "normalized_confidence": 74.1,
+            "source_fields": [
+              "action",
+              "confidence",
+              "created_at",
+              "market_state",
+              "metadata",
+              "price",
+              "risk_level",
+              "strategy",
+              "symbol"
+            ],
+            "market_loop_version": "8.0",
+            "raw_decision_type": "dict"
+          }
+        }
+      },
+      "last_executions": {
+        "BTCUSDT": {
+          "status": "SKIPPED",
+          "reason": "NON_EXECUTION_ACTION",
+          "symbol": "BTCUSDT",
+          "action": "HOLD",
+          "timestamp": "2026-07-27T14:48:59.291574+00:00"
+        }
+      }
+    },
+    {
+      "timestamp_utc": "2026-07-27T14:48:59.879413+00:00",
+      "stage": "application.stop.result",
+      "stopped": true,
+      "running": false,
+      "errors": []
+    }
+  ]
+}

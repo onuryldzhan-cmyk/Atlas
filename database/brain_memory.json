@@ -1,0 +1,18 @@
+{
+  "timestamp": "2026-07-20T12:31:10.426782",
+  "market_memory_keys": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "ADAUSDT",
+    "DOTUSDT"
+  ],
+  "signal_history_count": 0,
+  "decision_log_count": 1,
+  "market_regime": "unknown",
+  "active_strategies": [
+    "trend_following",
+    "mean_reversion",
+    "breakout"
+  ]
+}

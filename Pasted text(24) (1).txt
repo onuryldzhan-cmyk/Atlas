@@ -1,0 +1,211 @@
+PS C:\Users\HUAWEİ\OneDrive\Masaüstü\Project_Atlas_AI> python -c "import core.execution_manager as m; print(m.__file__); print(m.ExecutionManager.VERSION)"
+C:\Users\HUAWEİ\OneDrive\Masaüstü\Project_Atlas_AI\core\execution_manager.py
+28.0
+PS C:\Users\HUAWEİ\OneDrive\Masaüstü\Project_Atlas_AI> Copy-Item `
+>>     "$env:USERPROFILE\Downloads\execution_manager.py" `
+>>     ".\core\execution_manager.py" `
+>>     -Force
+Copy-Item : Cannot find path 'C:\Users\HUAWEİ\Downloads\execution_manager.py' bec
+ause it does not exist.
+At line:1 char:1
++ Copy-Item `
++ ~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (C:\Users\HUAWEİ...tion_manager.py 
+   :String) [Copy-Item], ItemNotFoundException
+    + FullyQualifiedErrorId : PathNotFound,Microsoft.PowerShell.Commands.CopyIte 
+   mCommand
+ 
+PS C:\Users\HUAWEİ\OneDrive\Masaüstü\Project_Atlas_AI> python -c "from core.execution_manager import ExecutionManager; print(ExecutionManager.VERSION)"
+28.0
+PS C:\Users\HUAWEİ\OneDrive\Masaüstü\Project_Atlas_AI> python -m py_compile `
+>>     .\core\execution_manager.py `
+>>     .\core\execution_models.py `
+>>     .\core\position_controller.py
+PS C:\Users\HUAWEİ\OneDrive\Masaüstü\Project_Atlas_AI> Get-ChildItem `
+>>     -Path . `
+>>     -Directory `
+>>     -Filter "__pycache__" `
+>>     -Recurse |
+>>     Remove-Item `
+>>         -Recurse `
+>>         -Force
+PS C:\Users\HUAWEİ\OneDrive\Masaüstü\Project_Atlas_AI> python main.py
+
+================================================================
+PROJECT ATLAS AI
+Institutional AI Investment Platform
+================================================================
+
+2026-07-26 18:41:19 | INFO     | AtlasAI.Main | Constructing AtlasApplication
+2026-07-26 18:41:19 | INFO     | AtlasAI.Application | Initializing AtlasApplication v13.0
+2026-07-26 18:41:19 | INFO     | AtlasAI.Runtime | Atlas Runtime initialized.
+2026-07-26 18:41:19 | INFO     | AtlasAI.EventBus | Event Bus v5.0 initialized
+2026-07-26 18:41:19 | INFO     | AtlasAI.Scheduler | Scheduler initialized.
+2026-07-26 18:41:19 | INFO     | AtlasAI.Lifecycle | Lifecycle Manager initialized.
+2026-07-26 18:41:19 | INFO     | AtlasAI.Container | Service Container initialized.
+2026-07-26 18:41:19 | INFO     | AtlasAI.Capital | Capital Manager v8.0 initialized capital=10000.0
+2026-07-26 18:41:19 | INFO     | AtlasAI.PaperTrader | Paper Trader v11.0 initialized
+2026-07-26 18:41:19 | INFO     | AtlasAI.PositionController | Atlas Position Controller v6.0 initialized
+[MEMORY] Atlas Memory Core v2.0 baslatildi
+[REASONING] Atlas Reasoning Engine v2.1 baslatildi
+[WORLD] Atlas World Model v2.0 baslatildi
+[AGENTS] Agent Fusion Engine v10.0 initialized
+[REASONING] Reasoning Adapter v10.0 initialized
+[MEMORY] Memory Adapter v10.0 initialized
+[CONFIDENCE] Confidence Engine v10.1 initialized
+[RISK] Atlas Risk Engine v10.0 initialized
+[DECISION] Decision Builder v10.0 initialized
+[ATLAS BRAIN] All intelligence modules loaded
+2026-07-26 18:41:19 | INFO     | AtlasAI.IntelligenceBrain | All intelligence modules loaded
+[ATLAS BRAIN] Intelligence Brain v10.2 active
+2026-07-26 18:41:19 | INFO     | AtlasAI.IntelligenceBrain | Atlas Intelligence Brain v10.2 initialized
+2026-07-26 18:41:19 | INFO     | AtlasAI.Brain | Intelligence Brain connected
+2026-07-26 18:41:19 | INFO     | AtlasAI.Brain | Atlas Executive Brain v9.0 initialized
+2026-07-26 18:41:19 | INFO     | AtlasAI.ExchangeManager | Using Binance Global
+2026-07-26 18:41:19 | INFO     | AtlasAI.BinanceGlobal | Binance Global Adapter initialized
+2026-07-26 18:41:19 | INFO     | AtlasAI.ExecutionManager | Execution Manager v28.0 initialized mode=PAPER
+2026-07-26 18:41:19 | INFO     | AtlasAI.MarketLoop | Atlas Market Loop v8.0 initialized
+2026-07-26 18:41:19 | INFO     | AtlasAI.Controller | Atlas Controller v2.0 initialized
+2026-07-26 18:41:19 | INFO     | AtlasAI.Container | Service registered: AtlasLogger
+2026-07-26 18:41:19 | INFO     | AtlasAI.Container | Service registered: AtlasRuntime
+2026-07-26 18:41:19 | INFO     | AtlasAI.Container | Service registered: EventBus
+2026-07-26 18:41:19 | INFO     | AtlasAI.Container | Service registered: Scheduler
+2026-07-26 18:41:19 | INFO     | AtlasAI.Container | Service registered: LifecycleManager
+2026-07-26 18:41:19 | INFO     | AtlasAI.Container | Service registered: CapitalManager
+2026-07-26 18:41:19 | INFO     | AtlasAI.Container | Service registered: PaperTrader
+2026-07-26 18:41:19 | INFO     | AtlasAI.Container | Service registered: PositionController
+2026-07-26 18:41:19 | INFO     | AtlasAI.Container | Service registered: AtlasBrain
+2026-07-26 18:41:19 | INFO     | AtlasAI.Container | Service registered: MarketFeed
+2026-07-26 18:41:19 | INFO     | AtlasAI.Container | Service registered: ExecutionManager
+2026-07-26 18:41:19 | INFO     | AtlasAI.Container | Service registered: MarketLoop
+2026-07-26 18:41:19 | INFO     | AtlasAI.Container | Service registered: AtlasController
+2026-07-26 18:41:19 | INFO     | AtlasAI.Application | Application services registered: ['AtlasLogger', 'AtlasRuntime', 'EventBus', 'Scheduler', 'LifecycleManager', 'CapitalManager', 'PaperTrader', 'PositionController', 'AtlasBrain', 'MarketFeed', 'ExecutionManager', 'MarketLoop', 'AtlasController']
+2026-07-26 18:41:19 | INFO     | AtlasAI.Application | AtlasApplication initialized successfully
+2026-07-26 18:41:19 | INFO     | AtlasAI.Main | Starting AtlasApplication
+2026-07-26 18:41:19 | INFO     | AtlasAI.Application | ==================================================
+2026-07-26 18:41:19 | INFO     | AtlasAI.Application | ATLAS STARTUP SEQUENCE
+2026-07-26 18:41:19 | INFO     | AtlasAI.Application | ==================================================
+2026-07-26 18:41:19 | INFO     | AtlasAI.Runtime | Runtime transition OFFLINE -> BOOTING | System boot started
+2026-07-26 18:41:19 | INFO     | AtlasAI.Runtime | Runtime transition BOOTING -> INITIALIZING | Core initialization
+2026-07-26 18:41:19 | INFO     | AtlasAI.ExecutionManager | Execution Manager ONLINE
+2026-07-26 18:41:19 | INFO     | AtlasAI.Runtime | Runtime transition INITIALIZING -> CONNECTING | Connecting infrastructure
+2026-07-26 18:41:19 | INFO     | AtlasAI.BinanceGlobal | Binance Global connected
+2026-07-26 18:41:19 | INFO     | AtlasAI.MarketFeed | Market Feed started.
+2026-07-26 18:41:19 | INFO     | AtlasAI.Runtime | Runtime transition CONNECTING -> READY | System ready
+2026-07-26 18:41:19 | INFO     | AtlasAI.MarketLoop | Market Loop started
+2026-07-26 18:41:19 | INFO     | AtlasAI.Controller | Atlas Controller started
+2026-07-26 18:41:19 | INFO     | AtlasAI.Runtime | Runtime transition READY -> RUNNING | Atlas running
+2026-07-26 18:41:19 | INFO     | AtlasAI.Application | ATLAS SYSTEM ONLINE
+2026-07-26 18:41:19 | INFO     | AtlasAI.Application | Started services: ['execution', 'market_feed', 'brain', 'market_loop', 'controller']
+
+================================================================
+PROJECT ATLAS AI — SYSTEM STATUS
+================================================================
+Application : AtlasApplication
+Version     : 13.0
+Mode        : PAPER
+Exchange    : binance_global
+Running     : True
+Runtime     : RUNNING
+Healthy     : True
+Registered  : 13
+Started     : execution, market_feed, brain, market_loop, controller
+================================================================
+
+2026-07-26 18:41:19 | INFO     | AtlasAI.Main | Atlas main process is active
+2026-07-26 18:41:19 | INFO     | AtlasAI.Main | Press Ctrl+C to stop Atlas safely
+
+============================================================
+ATLAS INTELLIGENCE v10.2 : BTCUSDT
+============================================================
+[WORLD] 2 related assets
+[AGENT] technical: BUY 0.70
+[AGENT] momentum: BUY 0.70
+[AGENT] risk: HOLD 0.50
+[AGENT] macro: HOLD 0.50
+[AGENT] sentiment: HOLD 0.50
+[REASONING] BTCUSDT -> BUY confidence=0.64
+[REASONING] BTCUSDT -> BUY confidence=0.64
+[MEMORY] trades=0 winrate=0.0
+[CONFIDENCE] 49.4%
+[DECISION] BTCUSDT | BUY | Confidence: 67.7%
+2026-07-26 18:41:20 | INFO     | AtlasAI.IntelligenceBrain | BTCUSDT intelligence completed action=BUY final_confidence=67.70 intermediate_confidence=49.40
+2026-07-26 18:41:20 | INFO     | AtlasAI.ExecutionManager | [PAPER ORDER] BUY BTCUSDT @ 64802.01000000 | confidence=67.70%
+2026-07-26 18:41:20 | INFO     | AtlasAI.PositionController | Position opened symbol=BTCUSDT side=LONG price=64802.01000000 amount=0.00000000
+2026-07-26 18:41:20 | INFO     | AtlasAI.MarketLoop | BTCUSDT execution PAPER_EXECUTED | action=BUY
+
+============================================================
+ATLAS INTELLIGENCE v10.2 : ETHUSDT
+============================================================
+[WORLD] 1 related assets
+[AGENT] technical: BUY 0.70
+[AGENT] momentum: BUY 0.70
+[AGENT] risk: HOLD 0.50
+[AGENT] macro: HOLD 0.50
+[AGENT] sentiment: HOLD 0.50
+[REASONING] ETHUSDT -> BUY confidence=0.64
+[REASONING] ETHUSDT -> BUY confidence=0.64
+[MEMORY] trades=0 winrate=0.0
+[CONFIDENCE] 49.4%
+[DECISION] ETHUSDT | BUY | Confidence: 67.7%
+2026-07-26 18:41:20 | INFO     | AtlasAI.IntelligenceBrain | ETHUSDT intelligence completed action=BUY final_confidence=67.70 intermediate_confidence=49.40
+2026-07-26 18:41:20 | INFO     | AtlasAI.ExecutionManager | [PAPER ORDER] BUY ETHUSDT @ 1913.33000000 | confidence=67.70%
+2026-07-26 18:41:20 | INFO     | AtlasAI.PositionController | Position opened symbol=ETHUSDT side=LONG price=1913.33000000 amount=0.00000000
+2026-07-26 18:41:20 | INFO     | AtlasAI.MarketLoop | ETHUSDT execution PAPER_EXECUTED | action=BUY
+
+============================================================
+ATLAS INTELLIGENCE v10.2 : BNBUSDT
+============================================================
+[WORLD] 0 related assets
+[AGENT] technical: BUY 0.85
+[AGENT] momentum: BUY 0.70
+[AGENT] risk: HOLD 0.50
+[AGENT] macro: HOLD 0.50
+[AGENT] sentiment: HOLD 0.50
+[REASONING] BNBUSDT -> BUY confidence=0.64
+[REASONING] BNBUSDT -> BUY confidence=0.64
+[MEMORY] trades=0 winrate=0.0
+[CONFIDENCE] 49.4%
+[DECISION] BNBUSDT | BUY | Confidence: 70.6%
+2026-07-26 18:41:20 | INFO     | AtlasAI.IntelligenceBrain | BNBUSDT intelligence completed action=BUY final_confidence=70.60 intermediate_confidence=49.40
+2026-07-26 18:41:20 | INFO     | AtlasAI.ExecutionManager | [PAPER ORDER] BUY BNBUSDT @ 573.28000000 | confidence=70.60%
+2026-07-26 18:41:20 | INFO     | AtlasAI.PositionController | Position opened symbol=BNBUSDT side=LONG price=573.28000000 amount=0.00000000
+2026-07-26 18:41:20 | INFO     | AtlasAI.MarketLoop | BNBUSDT execution PAPER_EXECUTED | action=BUY
+
+============================================================
+ATLAS INTELLIGENCE v10.2 : SOLUSDT
+============================================================
+[WORLD] 0 related assets
+[AGENT] technical: BUY 0.85
+[AGENT] momentum: BUY 0.70
+[AGENT] risk: HOLD 0.50
+[AGENT] macro: HOLD 0.50
+[AGENT] sentiment: HOLD 0.50
+[REASONING] SOLUSDT -> BUY confidence=0.64
+[REASONING] SOLUSDT -> BUY confidence=0.64
+[MEMORY] trades=0 winrate=0.0
+[CONFIDENCE] 49.4%
+[DECISION] SOLUSDT | BUY | Confidence: 70.6%
+2026-07-26 18:41:21 | INFO     | AtlasAI.IntelligenceBrain | SOLUSDT intelligence completed action=BUY final_confidence=70.60 intermediate_confidence=49.40
+2026-07-26 18:41:21 | INFO     | AtlasAI.ExecutionManager | [PAPER ORDER] BUY SOLUSDT @ 75.36000000 | confidence=70.60%
+2026-07-26 18:41:21 | INFO     | AtlasAI.PositionController | Position opened symbol=SOLUSDT side=LONG price=75.36000000 amount=0.00000000
+2026-07-26 18:41:21 | INFO     | AtlasAI.MarketLoop | SOLUSDT execution PAPER_EXECUTED | action=BUY
+
+============================================================
+ATLAS INTELLIGENCE v10.2 : XRPUSDT
+============================================================
+[WORLD] 0 related assets
+[AGENT] technical: BUY 0.85
+[AGENT] momentum: BUY 0.70
+[AGENT] risk: HOLD 0.50
+[AGENT] macro: HOLD 0.50
+[AGENT] sentiment: HOLD 0.50
+[REASONING] XRPUSDT -> BUY confidence=0.64
+[REASONING] XRPUSDT -> BUY confidence=0.64
+[MEMORY] trades=0 winrate=0.0
+[CONFIDENCE] 49.4%
+[DECISION] XRPUSDT | BUY | Confidence: 70.6%
+2026-07-26 18:41:21 | INFO     | AtlasAI.IntelligenceBrain | XRPUSDT intelligence completed action=BUY final_confidence=70.60 intermediate_confidence=49.40
+2026-07-26 18:41:21 | INFO     | AtlasAI.ExecutionManager | [PAPER ORDER] BUY XRPUSDT @ 1.10350000 | confidence=70.60%
+2026-07-26 18:41:21 | INFO     | AtlasAI.PositionController | Position opened symbol=XRPUSDT side=LONG price=1.10350000 amount=0.00000000
+2026-07-26 18:41:21 | INFO     | AtlasAI.MarketLoop | XRPUSDT execution PAPER_EXECUTED | action=BUY

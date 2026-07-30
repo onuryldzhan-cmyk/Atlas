@@ -1,0 +1,344 @@
+﻿"""
+core/decision_engine.py - Atlas AI Decision Engine
+"""
+
+import os, sys, json, logging
+from pathlib import Path
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional
+from dataclasses import dataclass, field
+from enum import Enum
+
+PROJECT_ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
+try:
+    from config.settings import TRADING, RISK, SIGNAL, SYSTEM
+except ImportError:
+    TRADING = type('obj', (object,), {'MODE': 'SIMULATION', 'PAPER_BALANCE': 10000.0, 'MAX_POSITIONS': 10, 'TIMEFRAME': '5m'})()
+    RISK = type('obj', (object,), {'RISK_PROFILE': 'medium', 'MAX_POSITIONS': 10, 'RISK_PER_TRADE_PCT': 0.01, 'MAX_DAILY_LOSS_PCT': 0.05, 'KILL_SWITCH_ENABLED': True})()
+    SYSTEM = type('obj', (object,), {'VERSION': '4.3.0', 'DEBUG_MODE': False})()
+
+logger = logging.getLogger("AtlasAI.DecisionEngine")
+
+class DecisionType(Enum):
+    APPROVE = "APPROVE"
+    REJECT = "REJECT"
+    HOLD = "HOLD"
+    MODIFY = "MODIFY"
+
+class RejectReason(Enum):
+    INSUFFICIENT_CONFIDENCE = "insufficient_confidence"
+    MAX_POSITIONS_REACHED = "max_positions_reached"
+    DAILY_LOSS_LIMIT = "daily_loss_limit"
+    HIGH_VOLATILITY = "high_volatility"
+    MARKET_REGIME_MISMATCH = "market_regime_mismatch"
+    RISK_LIMIT_EXCEEDED = "risk_limit_exceeded"
+    DUPLICATE_SIGNAL = "duplicate_signal"
+    COOLDOWN_ACTIVE = "cooldown_active"
+    PORTFOLIO_IMBALANCE = "portfolio_imbalance"
+
+@dataclass
+class Decision:
+    signal_id: str
+    symbol: str
+    decision: str
+    confidence: float
+    timestamp: str
+    reason: str
+    details: Dict = field(default_factory=dict)
+    modified_params: Optional[Dict] = None
+
+@dataclass
+class DecisionEngineState:
+    active: bool
+    total_evaluated: int
+    approved: int
+    rejected: int
+    held: int
+    modified: int
+    last_update: str
+    daily_stats: Dict = field(default_factory=dict)
+
+class DecisionEngine:
+    def __init__(self):
+        self.active = False
+        self.state = DecisionEngineState(
+            active=False, total_evaluated=0, approved=0, rejected=0,
+            held=0, modified=0, last_update=datetime.now().isoformat(),
+            daily_stats={"date": datetime.now().strftime("%Y-%m-%d"), "approved": 0, "rejected": 0}
+        )
+        self.min_confidence = SIGNAL.MIN_CONFIDENCE if hasattr(SIGNAL, 'MIN_CONFIDENCE') else 0.60
+        self.max_positions = RISK.MAX_POSITIONS
+        self.risk_per_trade = RISK.RISK_PER_TRADE_PCT if hasattr(RISK, 'RISK_PER_TRADE_PCT') else 0.01
+        self.approved_signals: List[str] = []
+        self.rejected_signals: List[str] = []
+        self.decision_history: List[Decision] = []
+        self.position_tracker: Dict[str, Dict] = {}
+        self.cooldowns: Dict[str, datetime] = {}
+        self.rules = self._initialize_rules()
+        logger.info("🎯 Decision Engine initialized")
+
+    def _initialize_rules(self) -> Dict:
+        return {
+            "min_confidence": self.min_confidence,
+            "max_positions": self.max_positions,
+            "risk_per_trade": self.risk_per_trade,
+            "max_daily_trades": 20,
+            "cooldown_minutes": 15,
+            "volatility_threshold": 0.8,
+            "portfolio_concentration_limit": 0.30,
+        }
+
+    def initialize(self) -> bool:
+        logger.info("🎯 Initializing Decision Engine...")
+        self.active = True
+        self.state.active = True
+        self.state.last_update = datetime.now().isoformat()
+        logger.info("✅ Decision Engine ready")
+        return True
+
+    def shutdown(self):
+        logger.info("🎯 Shutting down Decision Engine...")
+        self.active = False
+        self.state.active = False
+        self._save_history()
+        logger.info("✅ Decision Engine shutdown complete")
+
+    def _create_decision(self, signal: Dict, decision_type: DecisionType, reason: str, details: Dict = None, modified_params: Dict = None) -> Decision:
+        return Decision(
+            signal_id=signal.get("id", "unknown"),
+            symbol=signal.get("symbol", "unknown"),
+            decision=decision_type.value,
+            confidence=signal.get("confidence", 0),
+            timestamp=datetime.now().isoformat(),
+            reason=reason,
+            details=details or {},
+            modified_params=modified_params
+        )
+
+    def evaluate(self, signal: Dict, context: Dict = None) -> Decision:
+        if not self.active:
+            logger.warning("🎯 Decision Engine not active")
+            return self._create_decision(signal, DecisionType.REJECT, "engine_inactive")
+        
+        self.state.total_evaluated += 1
+        self.state.last_update = datetime.now().isoformat()
+        self._check_daily_reset()
+        
+        checks = [
+            self._check_confidence(signal),
+            self._check_positions_limit(context),
+            self._check_daily_loss(context),
+            self._check_cooldown(signal),
+            self._check_volatility(signal, context),
+            self._check_portfolio_concentration(signal, context),
+            self._check_duplicate(signal),
+            self._check_market_regime(signal, context),
+        ]
+        
+        failures = [check for check in checks if not check["passed"]]
+        
+        if failures:
+            primary = failures[0]
+            decision = self._create_decision(signal, DecisionType.REJECT, primary["reason"], details={"all_failures": [f["reason"] for f in failures]})
+            self.state.rejected += 1
+            self.state.daily_stats["rejected"] += 1
+            self.rejected_signals.append(signal.get("id", "unknown"))
+            logger.info(f"❌ REJECTED {signal.get('symbol', '?')} | {primary['reason']}")
+            return decision
+        
+        modified = self._calculate_position_size(signal, context)
+        
+        if modified.get("modified", False):
+            decision = self._create_decision(signal, DecisionType.MODIFY, "position_size_adjusted", modified_params=modified["params"])
+            self.state.modified += 1
+            logger.info(f"📝 MODIFIED {signal.get('symbol', '?')} | Size adjusted")
+        else:
+            decision = self._create_decision(signal, DecisionType.APPROVE, "all_checks_passed", details={"position_size": modified.get("size", 0)})
+            self.state.approved += 1
+            self.state.daily_stats["approved"] += 1
+            self.approved_signals.append(signal.get("id", "unknown"))
+            symbol = signal.get("symbol", "unknown")
+            self.position_tracker[symbol] = {"entry_time": datetime.now().isoformat(), "signal": signal}
+            self._set_cooldown(symbol)
+            logger.info(f"✅ APPROVED {signal.get('symbol', '?')} | {signal.get('direction', '?')} | Conf: {signal.get('confidence', 0):.1%}")
+        
+        self.decision_history.append(decision)
+        if len(self.decision_history) > 1000:
+            self.decision_history = self.decision_history[-1000:]
+        return decision
+
+    def evaluate_batch(self, signals: List[Dict], context: Dict = None) -> List[Decision]:
+        return [self.evaluate(s, context) for s in signals]
+
+    def _check_confidence(self, signal: Dict) -> Dict:
+        confidence = signal.get("confidence", 0)
+        passed = confidence >= self.min_confidence
+        return {"passed": passed, "reason": RejectReason.INSUFFICIENT_CONFIDENCE.value if not passed else None, "details": {"confidence": confidence, "required": self.min_confidence}}
+
+    def _check_positions_limit(self, context: Dict = None) -> Dict:
+        current = len(self.position_tracker)
+        passed = current < self.max_positions
+        return {"passed": passed, "reason": RejectReason.MAX_POSITIONS_REACHED.value if not passed else None, "details": {"current": current, "max": self.max_positions}}
+
+    def _check_daily_loss(self, context: Dict = None) -> Dict:
+        daily_pnl = context.get("daily_pnl", 0) if context else 0
+        daily_loss_pct = abs(daily_pnl) / TRADING.PAPER_BALANCE if TRADING.PAPER_BALANCE > 0 else 0
+        limit = RISK.MAX_DAILY_LOSS_PCT if hasattr(RISK, 'MAX_DAILY_LOSS_PCT') else 0.05
+        passed = daily_loss_pct < limit
+        return {"passed": passed, "reason": RejectReason.DAILY_LOSS_LIMIT.value if not passed else None, "details": {"daily_loss_pct": daily_loss_pct, "limit": limit}}
+
+    def _check_cooldown(self, signal: Dict) -> Dict:
+        symbol = signal.get("symbol", "unknown")
+        now = datetime.now()
+        if symbol in self.cooldowns and now < self.cooldowns[symbol]:
+            remaining = (self.cooldowns[symbol] - now).total_seconds() / 60
+            return {"passed": False, "reason": RejectReason.COOLDOWN_ACTIVE.value, "details": {"remaining_minutes": round(remaining, 1)}}
+        return {"passed": True, "reason": None, "details": {}}
+
+    def _check_volatility(self, signal: Dict, context: Dict = None) -> Dict:
+        volatility = signal.get("metadata", {}).get("volatility", 0)
+        threshold = self.rules["volatility_threshold"]
+        passed = volatility <= threshold
+        return {"passed": passed, "reason": RejectReason.HIGH_VOLATILITY.value if not passed else None, "details": {"volatility": volatility, "threshold": threshold}}
+
+    def _check_portfolio_concentration(self, signal: Dict, context: Dict = None) -> Dict:
+        symbol = signal.get("symbol", "unknown")
+        exposure = 0.0
+        passed = exposure < self.rules["portfolio_concentration_limit"]
+        return {"passed": passed, "reason": RejectReason.PORTFOLIO_IMBALANCE.value if not passed else None, "details": {"symbol_exposure": exposure, "limit": self.rules["portfolio_concentration_limit"]}}
+
+    def _check_duplicate(self, signal: Dict) -> Dict:
+        signal_id = signal.get("id", "")
+        passed = signal_id not in self.approved_signals and signal_id not in self.rejected_signals
+        return {"passed": passed, "reason": RejectReason.DUPLICATE_SIGNAL.value if not passed else None, "details": {"signal_id": signal_id}}
+
+    def _check_market_regime(self, signal: Dict, context: Dict = None) -> Dict:
+        regime = context.get("market_regime", "unknown") if context else "unknown"
+        direction = signal.get("direction", "HOLD")
+        allowed = {
+            "trending_up": ["BUY"], "trending_down": ["SELL"],
+            "ranging": ["BUY", "SELL"], "volatile": [],
+            "mixed": ["BUY", "SELL"], "unknown": ["BUY", "SELL", "HOLD"]
+        }.get(regime, ["BUY", "SELL", "HOLD"])
+        passed = direction in allowed or regime in ["unknown", "mixed"]
+        return {"passed": passed, "reason": RejectReason.MARKET_REGIME_MISMATCH.value if not passed else None, "details": {"regime": regime, "direction": direction, "allowed": allowed}}
+
+    def _calculate_position_size(self, signal: Dict, context: Dict = None) -> Dict:
+        confidence = signal.get("confidence", 0.5)
+        balance = context.get("balance", TRADING.PAPER_BALANCE) if context else TRADING.PAPER_BALANCE
+        base_size = balance * self.risk_per_trade
+        confidence_multiplier = 0.5 + (confidence * 0.5)
+        profile_multipliers = {"low": 0.7, "medium": 1.0, "high": 1.3}
+        profile = RISK.RISK_PROFILE if hasattr(RISK, 'RISK_PROFILE') else "medium"
+        profile_mult = profile_multipliers.get(profile, 1.0)
+        final_size = base_size * confidence_multiplier * profile_mult
+        max_size = balance * 0.10
+        if final_size > max_size:
+            final_size = max_size
+        return {"modified": True, "params": {"size": round(final_size, 2), "size_pct_of_balance": round(final_size / balance * 100, 2), "risk_profile": profile, "confidence_multiplier": round(confidence_multiplier, 2)}}
+
+    def _set_cooldown(self, symbol: str):
+        self.cooldowns[symbol] = datetime.now() + timedelta(minutes=self.rules["cooldown_minutes"])
+
+    def clear_cooldown(self, symbol: str):
+        if symbol in self.cooldowns:
+            del self.cooldowns[symbol]
+            logger.info(f"🔄 Cooldown cleared for {symbol}")
+
+    def register_position_closed(self, symbol: str, pnl: float = 0):
+        if symbol in self.position_tracker:
+            del self.position_tracker[symbol]
+            logger.info(f"📊 Position closed: {symbol} | P&L: ${pnl:.2f}")
+
+    def get_open_positions(self) -> List[str]:
+        return list(self.position_tracker.keys())
+
+    def _check_daily_reset(self):
+        today = datetime.now().strftime("%Y-%m-%d")
+        if self.state.daily_stats.get("date") != today:
+            self.state.daily_stats = {"date": today, "approved": 0, "rejected": 0}
+            logger.info(f"📅 Daily stats reset for {today}")
+
+    def _save_history(self):
+        try:
+            history_file = PROJECT_ROOT / "database" / "decision_history.json"
+            history_file.parent.mkdir(parents=True, exist_ok=True)
+            data = {
+                "timestamp": datetime.now().isoformat(),
+                "total_evaluated": self.state.total_evaluated,
+                "approved": self.state.approved,
+                "rejected": self.state.rejected,
+                "recent_decisions": [asdict(d) for d in self.decision_history[-50:]]
+            }
+            with open(history_file, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, default=str)
+            logger.info("💾 Decision history saved")
+        except Exception as e:
+            logger.error(f"❌ Failed to save history: {e}")
+
+    def get_stats(self) -> Dict:
+        return {
+            "active": self.active,
+            "total_evaluated": self.state.total_evaluated,
+            "approved": self.state.approved,
+            "rejected": self.state.rejected,
+            "held": self.state.held,
+            "modified": self.state.modified,
+            "approval_rate": round(self.state.approved / max(self.state.total_evaluated, 1) * 100, 1),
+            "open_positions": len(self.position_tracker),
+            "cooldowns_active": len(self.cooldowns),
+            "daily_stats": self.state.daily_stats,
+            "rules": self.rules,
+        }
+
+    def get_recent_decisions(self, count: int = 10) -> List[Decision]:
+        return self.decision_history[-count:]
+
+if __name__ == "__main__":
+    print("🎯 Atlas AI Decision Engine - Test Mode")
+    print("=" * 50)
+    
+    engine = DecisionEngine()
+    
+    print("\n📋 Initial Stats:")
+    for k, v in engine.get_stats().items():
+        print(f"   {k}: {v}")
+    
+    print("\n🔧 Initializing engine...")
+    engine.initialize()
+    
+    test_signals = [
+        {"id": "SIG_001", "symbol": "BTCUSDT", "direction": "BUY", "confidence": 0.85, "strategy": "trend_following", "metadata": {"volatility": 0.4, "trend": "bullish"}},
+        {"id": "SIG_002", "symbol": "ETHUSDT", "direction": "SELL", "confidence": 0.45, "strategy": "mean_reversion", "metadata": {"volatility": 0.3, "trend": "bearish"}},
+        {"id": "SIG_003", "symbol": "SOLUSDT", "direction": "BUY", "confidence": 0.92, "strategy": "breakout", "metadata": {"volatility": 0.9, "trend": "bullish"}},
+        {"id": "SIG_004", "symbol": "ADAUSDT", "direction": "BUY", "confidence": 0.78, "strategy": "momentum", "metadata": {"volatility": 0.5, "trend": "bullish"}}
+    ]
+    
+    print(f"\n📡 Evaluating {len(test_signals)} test signals...")
+    print("-" * 50)
+    
+    context = {"balance": 10000.0, "daily_pnl": 0, "market_regime": "trending_up"}
+    
+    for signal in test_signals:
+        decision = engine.evaluate(signal, context)
+        print(f"\n   Signal: {signal['symbol']} {signal['direction']} (conf: {signal['confidence']:.0%})")
+        print(f"   Decision: {decision.decision}")
+        print(f"   Reason: {decision.reason}")
+        if decision.modified_params:
+            print(f"   Modified: {decision.modified_params}")
+    
+    print("\n" + "=" * 50)
+    print("\n📋 Final Stats:")
+    for k, v in engine.get_stats().items():
+        print(f"   {k}: {v}")
+    
+    print("\n📜 Recent Decisions:")
+    for d in engine.get_recent_decisions():
+        print(f"   {d.symbol} -> {d.decision} | {d.reason}")
+    
+    print("\n🔒 Shutting down...")
+    engine.shutdown()
+    
+    print("\n✅ Decision Engine test completed!")

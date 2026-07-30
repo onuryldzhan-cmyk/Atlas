@@ -1,0 +1,19 @@
+============================================================
+ATLAS AUTO PATCH
+============================================================
+
+Date : 2026-07-18 17:57:32.467800
+Target : core\atlas_brain.py
+Priority : CRITICAL
+
+Reason
+----------------------------------------
+Atlas Brain çok fazla sorumluluk taşıyor.
+
+Suggested Split
+----------------------------------------
+- analysis_core.py
+- learning_core.py
+- execution_core.py
+- research_core.py
+- evolution_core.py

@@ -1,0 +1,2545 @@
+{
+  "phase": "6A1",
+  "generated_utc": "2026-07-27T13:54:22.670447+00:00",
+  "project_root": "C:\\Users\\HUAWEİ\\OneDrive\\Masaüstü\\Project_Atlas_AI",
+  "exact_targets": [
+    "core/market_feed.py",
+    "core/market_loop.py",
+    "core/candle_processor.py",
+    "core/technical_analyzer.py",
+    "analysis/world_analysis_engine.py",
+    "core/intelligence/loop/intelligence_loop.py",
+    "core/event_bus.py",
+    "core/events.py",
+    "config/settings.py",
+    "config/config.py"
+  ],
+  "search_patterns": [
+    "*market*feed*.py",
+    "*market*data*.py",
+    "*candle*.py",
+    "*exchange*.py",
+    "*binance*.py",
+    "*price*provider*.py",
+    "*websocket*.py",
+    "*data*validator*.py",
+    "*data*normalizer*.py",
+    "*market*cache*.py"
+  ],
+  "missing_exact_targets": [
+    "config/config.py"
+  ],
+  "files": [
+    {
+      "file": "analysis/world_analysis_engine.py",
+      "status": "OK",
+      "line_count": 122,
+      "sha256": "acb80ff30c185e86a307b05aada5b6f4513d24147a418c9906a351070b312910",
+      "imports": [
+        "datetime.datetime",
+        "datetime.timezone"
+      ],
+      "classes": [
+        {
+          "name": "WorldAnalysisEngine",
+          "line": 11,
+          "bases": [],
+          "methods": [
+            "__init__",
+            "build_market_data",
+            "build_market_state"
+          ],
+          "decorators": []
+        }
+      ],
+      "functions": [
+        {
+          "name": "__init__",
+          "line": 17,
+          "async": false
+        },
+        {
+          "name": "build_market_data",
+          "line": 22,
+          "async": false
+        },
+        {
+          "name": "build_market_state",
+          "line": 90,
+          "async": false
+        }
+      ],
+      "signals": {
+        "logging_detected": false,
+        "threading_detected": false,
+        "async_detected": false,
+        "requests_detected": false,
+        "websocket_detected": false,
+        "exchange_reference_detected": false,
+        "event_bus_reference_detected": false,
+        "retry_or_reconnect_detected": false,
+        "cache_detected": false,
+        "health_detected": false,
+        "timestamp_detected": true
+      },
+      "interesting_calls": [],
+      "string_markers": [
+        "market",
+        "price"
+      ]
+    },
+    {
+      "file": "archive_unused_2026-07-22/config/exchange_config.py",
+      "status": "OK",
+      "line_count": 9,
+      "sha256": "6aa5f03788249b657cd6e74f25bdf617fa5af9a8e40ecd9558620f508ecc63d1",
+      "imports": [],
+      "classes": [
+        {
+          "name": "ExchangeConfig",
+          "line": 1,
+          "bases": [],
+          "methods": [
+            "__init__"
+          ],
+          "decorators": []
+        }
+      ],
+      "functions": [
+        {
+          "name": "__init__",
+          "line": 3,
+          "async": false
+        }
+      ],
+      "signals": {
+        "logging_detected": false,
+        "threading_detected": false,
+        "async_detected": false,
+        "requests_detected": false,
+        "websocket_detected": false,
+        "exchange_reference_detected": true,
+        "event_bus_reference_detected": false,
+        "retry_or_reconnect_detected": false,
+        "cache_detected": false,
+        "health_detected": false,
+        "timestamp_detected": false
+      },
+      "interesting_calls": [],
+      "string_markers": []
+    },
+    {
+      "file": "archive_unused_2026-07-22/data/binance_provider.py",
+      "status": "OK",
+      "line_count": 49,
+      "sha256": "e58fdec819a50575c500f0dce5ac8669eceae3910f81ee3f13c39915885288ec",
+      "imports": [
+        "binance.client.Client"
+      ],
+      "classes": [
+        {
+          "name": "BinanceProvider",
+          "line": 4,
+          "bases": [],
+          "methods": [
+            "__init__",
+            "get_price",
+            "get_candles"
+          ],
+          "decorators": []
+        }
+      ],
+      "functions": [
+        {
+          "name": "__init__",
+          "line": 6,
+          "async": false
+        },
+        {
+          "name": "get_price",
+          "line": 10,
+          "async": false
+        },
+        {
+          "name": "get_candles",
+          "line": 16,
+          "async": false
+        }
+      ],
+      "signals": {
+        "logging_detected": false,
+        "threading_detected": false,
+        "async_detected": false,
+        "requests_detected": false,
+        "websocket_detected": false,
+        "exchange_reference_detected": true,
+        "event_bus_reference_detected": false,
+        "retry_or_reconnect_detected": false,
+        "cache_detected": false,
+        "health_detected": false,
+        "timestamp_detected": false
+      },
+      "interesting_calls": [
+        "Client",
+        "candles.append",
+        "provider.get_candles",
+        "self.client.get_klines",
+        "self.client.get_symbol_ticker"
+      ],
+      "string_markers": [
+        "binance",
+        "price"
+      ]
+    },
+    {
+      "file": "archive_unused_2026-07-22/data/candle_data.py",
+      "status": "OK",
+      "line_count": 53,
+      "sha256": "354b092693ee926b923c8348444163711d88b8ee2d26cb1aa56faf4a9104e362",
+      "imports": [
+        "random"
+      ],
+      "classes": [
+        {
+          "name": "CandleData",
+          "line": 4,
+          "bases": [],
+          "methods": [
+            "generate_candle"
+          ],
+          "decorators": []
+        }
+      ],
+      "functions": [
+        {
+          "name": "generate_candle",
+          "line": 7,
+          "async": false
+        }
+      ],
+      "signals": {
+        "logging_detected": false,
+        "threading_detected": false,
+        "async_detected": false,
+        "requests_detected": false,
+        "websocket_detected": false,
+        "exchange_reference_detected": false,
+        "event_bus_reference_detected": false,
+        "retry_or_reconnect_detected": false,
+        "cache_detected": false,
+        "health_detected": false,
+        "timestamp_detected": false
+      },
+      "interesting_calls": [
+        "CandleData",
+        "data.generate_candle"
+      ],
+      "string_markers": []
+    },
+    {
+      "file": "archive_unused_2026-07-22/data/market_data.py",
+      "status": "OK",
+      "line_count": 21,
+      "sha256": "cd718a1dfd4b36bd60e2220c273e35ae1c3b8b099ee575d362c68c0e96df8928",
+      "imports": [
+        "random",
+        "time"
+      ],
+      "classes": [
+        {
+          "name": "MarketData",
+          "line": 5,
+          "bases": [],
+          "methods": [
+            "__init__",
+            "get_price"
+          ],
+          "decorators": []
+        }
+      ],
+      "functions": [
+        {
+          "name": "__init__",
+          "line": 6,
+          "async": false
+        },
+        {
+          "name": "get_price",
+          "line": 9,
+          "async": false
+        }
+      ],
+      "signals": {
+        "logging_detected": false,
+        "threading_detected": false,
+        "async_detected": false,
+        "requests_detected": false,
+        "websocket_detected": false,
+        "exchange_reference_detected": false,
+        "event_bus_reference_detected": false,
+        "retry_or_reconnect_detected": false,
+        "cache_detected": false,
+        "health_detected": false,
+        "timestamp_detected": false
+      },
+      "interesting_calls": [
+        "time.sleep"
+      ],
+      "string_markers": []
+    },
+    {
+      "file": "archive_unused_2026-07-22/exchange/exchange_adapter.py",
+      "status": "OK",
+      "line_count": 316,
+      "sha256": "eeae53a99c773915de1486d56959ca3c16f13dbdd0e478dd08da88ae16eb3565",
+      "imports": [
+        "ccxt",
+        "config.settings.BASE_URL",
+        "config.settings.EXCHANGE",
+        "config.settings.MAX_COINS",
+        "config.settings.MIN_VOLUME_USDT",
+        "config.settings.TIMEFRAME",
+        "config.settings.USE_PUBLIC_API",
+        "pandas",
+        "time",
+        "typing.Any",
+        "typing.Dict",
+        "typing.List",
+        "typing.Optional"
+      ],
+      "classes": [
+        {
+          "name": "ExchangeAdapter",
+          "line": 18,
+          "bases": [],
+          "methods": [
+            "__init__",
+            "_load_markets",
+            "get_price",
+            "get_ohlcv",
+            "_validate_ohlcv",
+            "get_all_symbols",
+            "get_top_volume_coins",
+            "get_balance",
+            "test_connection"
+          ],
+          "decorators": []
+        }
+      ],
+      "functions": [
+        {
+          "name": "__init__",
+          "line": 30,
+          "async": false
+        },
+        {
+          "name": "_load_markets",
+          "line": 52,
+          "async": false
+        },
+        {
+          "name": "get_price",
+          "line": 65,
+          "async": false
+        },
+        {
+          "name": "get_ohlcv",
+          "line": 96,
+          "async": false
+        },
+        {
+          "name": "_validate_ohlcv",
+          "line": 131,
+          "async": false
+        },
+        {
+          "name": "get_all_symbols",
+          "line": 160,
+          "async": false
+        },
+        {
+          "name": "get_top_volume_coins",
+          "line": 213,
+          "async": false
+        },
+        {
+          "name": "get_balance",
+          "line": 250,
+          "async": false
+        },
+        {
+          "name": "test_connection",
+          "line": 266,
+          "async": false
+        }
+      ],
+      "signals": {
+        "logging_detected": false,
+        "threading_detected": false,
+        "async_detected": false,
+        "requests_detected": false,
+        "websocket_detected": false,
+        "exchange_reference_detected": true,
+        "event_bus_reference_detected": false,
+        "retry_or_reconnect_detected": false,
+        "cache_detected": true,
+        "health_detected": false,
+        "timestamp_detected": false
+      },
+      "interesting_calls": [
+        "adapter.test_connection",
+        "self.exchange.fetch_ticker",
+        "self.exchange.fetch_tickers",
+        "ticker.get",
+        "tickers.items"
+      ],
+      "string_markers": [
+        "binance",
+        "market",
+        "price"
+      ]
+    },
+    {
+      "file": "atlas_finance/market_data/binance_public_provider.py",
+      "status": "OK",
+      "line_count": 1308,
+      "sha256": "2c46ff3b5caf590940765b9a50b68416acb8ce2c54534160c39b572ceec55ae4",
+      "imports": [
+        "__future__.annotations",
+        "atlas_finance.market_data.contracts.MarketDataProviderProtocol",
+        "atlas_finance.market_data.exceptions.InvalidCandleError",
+        "atlas_finance.market_data.exceptions.InvalidCandleLimitError",
+        "atlas_finance.market_data.exceptions.InvalidPriceError",
+        "atlas_finance.market_data.exceptions.InvalidSymbolError",
+        "atlas_finance.market_data.exceptions.InvalidTimeframeError",
+        "atlas_finance.market_data.exceptions.MarketDataConfigurationError",
+        "atlas_finance.market_data.exceptions.MarketDataConnectionError",
+        "atlas_finance.market_data.exceptions.MarketDataRateLimitError",
+        "atlas_finance.market_data.exceptions.MarketDataRequestError",
+        "atlas_finance.market_data.exceptions.MarketDataResponseError",
+        "atlas_finance.market_data.exceptions.MarketDataTimeoutError",
+        "atlas_finance.market_data.models.MarketCandle",
+        "atlas_finance.market_data.models.MarketPrice",
+        "atlas_finance.market_data.models.utc_now",
+        "collections.abc.Mapping",
+        "datetime.UTC",
+        "datetime.datetime",
+        "logging",
+        "math",
+        "re",
+        "requests",
+        "requests.Response",
+        "requests.Session",
+        "requests.exceptions.ConnectionError",
+        "requests.exceptions.RequestException",
+        "requests.exceptions.Timeout",
+        "threading",
+        "time",
+        "typing.Any",
+        "typing.Final",
+        "typing.Sequence"
+      ],
+      "classes": [
+        {
+          "name": "BinancePublicDataProvider",
+          "line": 94,
+          "bases": [
+            "MarketDataProviderProtocol"
+          ],
+          "methods": [
+            "__init__",
+            "provider_name",
+            "connected",
+            "base_url",
+            "timeout_seconds",
+            "retry_attempts",
+            "retry_backoff_seconds",
+            "maximum_candle_limit",
+            "supported_timeframes",
+            "connect",
+            "disconnect",
+            "get_price",
+            "get_candles",
+            "_request_json",
+            "_perform_get",
+            "_validate_response",
+            "_parse_candle",
+            "_ensure_available",
+            "_normalize_symbol",
+            "_normalize_timeframe",
+            "_validate_candle_limit",
+            "_validate_base_url",
+            "_validate_retry_attempts",
+            "_validate_maximum_candle_limit",
+            "_validate_positive_float",
+            "_validate_non_negative_float",
+            "_parse_positive_float",
+            "_parse_non_negative_float",
+            "_milliseconds_to_datetime",
+            "_optional_float",
+            "_optional_integer"
+          ],
+          "decorators": []
+        }
+      ],
+      "functions": [
+        {
+          "name": "__init__",
+          "line": 164,
+          "async": false
+        },
+        {
+          "name": "provider_name",
+          "line": 248,
+          "async": false
+        },
+        {
+          "name": "connected",
+          "line": 254,
+          "async": false
+        },
+        {
+          "name": "base_url",
+          "line": 261,
+          "async": false
+        },
+        {
+          "name": "timeout_seconds",
+          "line": 267,
+          "async": false
+        },
+        {
+          "name": "retry_attempts",
+          "line": 273,
+          "async": false
+        },
+        {
+          "name": "retry_backoff_seconds",
+          "line": 279,
+          "async": false
+        },
+        {
+          "name": "maximum_candle_limit",
+          "line": 285,
+          "async": false
+        },
+        {
+          "name": "supported_timeframes",
+          "line": 291,
+          "async": false
+        },
+        {
+          "name": "connect",
+          "line": 300,
+          "async": false
+        },
+        {
+          "name": "disconnect",
+          "line": 342,
+          "async": false
+        },
+        {
+          "name": "get_price",
+          "line": 368,
+          "async": false
+        },
+        {
+          "name": "get_candles",
+          "line": 446,
+          "async": false
+        },
+        {
+          "name": "_request_json",
+          "line": 539,
+          "async": false
+        },
+        {
+          "name": "_perform_get",
+          "line": 628,
+          "async": false
+        },
+        {
+          "name": "_validate_response",
+          "line": 676,
+          "async": false
+        },
+        {
+          "name": "_parse_candle",
+          "line": 734,
+          "async": false
+        },
+        {
+          "name": "_ensure_available",
+          "line": 906,
+          "async": false
+        },
+        {
+          "name": "_normalize_symbol",
+          "line": 917,
+          "async": false
+        },
+        {
+          "name": "_normalize_timeframe",
+          "line": 962,
+          "async": false
+        },
+        {
+          "name": "_validate_candle_limit",
+          "line": 988,
+          "async": false
+        },
+        {
+          "name": "_validate_base_url",
+          "line": 1021,
+          "async": false
+        },
+        {
+          "name": "_validate_retry_attempts",
+          "line": 1050,
+          "async": false
+        },
+        {
+          "name": "_validate_maximum_candle_limit",
+          "line": 1076,
+          "async": false
+        },
+        {
+          "name": "_validate_positive_float",
+          "line": 1103,
+          "async": false
+        },
+        {
+          "name": "_validate_non_negative_float",
+          "line": 1135,
+          "async": false
+        },
+        {
+          "name": "_parse_positive_float",
+          "line": 1167,
+          "async": false
+        },
+        {
+          "name": "_parse_non_negative_float",
+          "line": 1200,
+          "async": false
+        },
+        {
+          "name": "_milliseconds_to_datetime",
+          "line": 1233,
+          "async": false
+        },
+        {
+          "name": "_optional_float",
+          "line": 1274,
+          "async": false
+        },
+        {
+          "name": "_optional_integer",
+          "line": 1296,
+          "async": false
+        }
+      ],
+      "signals": {
+        "logging_detected": true,
+        "threading_detected": true,
+        "async_detected": false,
+        "requests_detected": true,
+        "websocket_detected": false,
+        "exchange_reference_detected": true,
+        "event_bus_reference_detected": false,
+        "retry_or_reconnect_detected": true,
+        "cache_detected": false,
+        "health_detected": false,
+        "timestamp_detected": true
+      },
+      "interesting_calls": [
+        "InvalidCandleError",
+        "InvalidCandleLimitError",
+        "MarketCandle",
+        "MarketDataConnectionError",
+        "MarketDataRequestError",
+        "candles.append",
+        "candles.sort",
+        "requests.Session",
+        "self._parse_candle",
+        "self._request_json",
+        "self._session.close",
+        "self._validate_candle_limit",
+        "self._validate_maximum_candle_limit",
+        "threading.RLock",
+        "time.sleep"
+      ],
+      "string_markers": [
+        "binance",
+        "candle",
+        "kline",
+        "market",
+        "price",
+        "retry",
+        "ticker"
+      ]
+    },
+    {
+      "file": "atlas_finance/market_data/market_feed_service.py",
+      "status": "OK",
+      "line_count": 1930,
+      "sha256": "10d4db81b403bd30f36ef883e58fd0fba56d8ea95b9f3faa8806ee0868e1fe30",
+      "imports": [
+        "__future__.annotations",
+        "atlas_finance.market_data.contracts.MarketDataProviderProtocol",
+        "atlas_finance.market_data.exceptions.InvalidCandleLimitError",
+        "atlas_finance.market_data.exceptions.InvalidSymbolError",
+        "atlas_finance.market_data.exceptions.InvalidTimeframeError",
+        "atlas_finance.market_data.exceptions.MarketDataConfigurationError",
+        "atlas_finance.market_data.exceptions.MarketDataError",
+        "atlas_finance.market_data.exceptions.MarketDataProviderUnavailableError",
+        "atlas_finance.market_data.exceptions.MarketDataServiceNotRunningError",
+        "atlas_finance.market_data.exceptions.MarketDataServiceShutdownError",
+        "atlas_finance.market_data.exceptions.MarketDataServiceStartupError",
+        "atlas_finance.market_data.models.MarketCandle",
+        "atlas_finance.market_data.models.MarketDataRequestStatistics",
+        "atlas_finance.market_data.models.MarketFeedSnapshot",
+        "atlas_finance.market_data.models.MarketFeedStatistics",
+        "atlas_finance.market_data.models.MarketPrice",
+        "atlas_finance.market_data.models.utc_now",
+        "atlas_os.BaseAtlasService",
+        "atlas_os.EventBusService",
+        "atlas_os.EventSeverity",
+        "atlas_os.MetricsService",
+        "atlas_os.ServiceIdentity",
+        "dataclasses.dataclass",
+        "datetime.datetime",
+        "logging",
+        "math",
+        "threading",
+        "time.perf_counter",
+        "types.MappingProxyType",
+        "typing.Any",
+        "typing.Final",
+        "typing.Mapping",
+        "typing.Sequence"
+      ],
+      "classes": [
+        {
+          "name": "MarketFeedEventType",
+          "line": 111,
+          "bases": [],
+          "methods": [],
+          "decorators": []
+        },
+        {
+          "name": "_MutableRequestStatistics",
+          "line": 173,
+          "bases": [],
+          "methods": [
+            "record_success",
+            "record_failure",
+            "snapshot"
+          ],
+          "decorators": [
+            "dataclass"
+          ]
+        },
+        {
+          "name": "MarketFeedService",
+          "line": 293,
+          "bases": [
+            "BaseAtlasService"
+          ],
+          "methods": [
+            "__init__",
+            "provider",
+            "provider_name",
+            "provider_connected",
+            "failure_threshold",
+            "publish_events",
+            "collect_metrics",
+            "consecutive_failures",
+            "_on_start",
+            "_on_stop",
+            "get_price",
+            "get_candles",
+            "last_price",
+            "statistics",
+            "market_feed_snapshot",
+            "_health_details",
+            "_snapshot_metadata",
+            "_record_price_success",
+            "_record_candle_success",
+            "_record_failure",
+            "_publish_event",
+            "_increment_metric",
+            "_observe_metric",
+            "_set_metric",
+            "_set_provider_connected_metric",
+            "_require_running",
+            "_validate_failure_threshold",
+            "_normalize_symbol",
+            "_normalize_timeframe",
+            "_validate_limit",
+            "_validate_price_result",
+            "_validate_candle_results",
+            "_safe_latency"
+          ],
+          "decorators": []
+        }
+      ],
+      "functions": [
+        {
+          "name": "record_success",
+          "line": 193,
+          "async": false
+        },
+        {
+          "name": "record_failure",
+          "line": 222,
+          "async": false
+        },
+        {
+          "name": "snapshot",
+          "line": 251,
+          "async": false
+        },
+        {
+          "name": "__init__",
+          "line": 353,
+          "async": false
+        },
+        {
+          "name": "provider",
+          "line": 455,
+          "async": false
+        },
+        {
+          "name": "provider_name",
+          "line": 461,
+          "async": false
+        },
+        {
+          "name": "provider_connected",
+          "line": 467,
+          "async": false
+        },
+        {
+          "name": "failure_threshold",
+          "line": 475,
+          "async": false
+        },
+        {
+          "name": "publish_events",
+          "line": 481,
+          "async": false
+        },
+        {
+          "name": "collect_metrics",
+          "line": 487,
+          "async": false
+        },
+        {
+          "name": "consecutive_failures",
+          "line": 493,
+          "async": false
+        },
+        {
+          "name": "_on_start",
+          "line": 503,
+          "async": false
+        },
+        {
+          "name": "_on_stop",
+          "line": 576,
+          "async": false
+        },
+        {
+          "name": "get_price",
+          "line": 633,
+          "async": false
+        },
+        {
+          "name": "get_candles",
+          "line": 706,
+          "async": false
+        },
+        {
+          "name": "last_price",
+          "line": 815,
+          "async": false
+        },
+        {
+          "name": "statistics",
+          "line": 834,
+          "async": false
+        },
+        {
+          "name": "market_feed_snapshot",
+          "line": 871,
+          "async": false
+        },
+        {
+          "name": "_health_details",
+          "line": 949,
+          "async": false
+        },
+        {
+          "name": "_snapshot_metadata",
+          "line": 1016,
+          "async": false
+        },
+        {
+          "name": "_record_price_success",
+          "line": 1067,
+          "async": false
+        },
+        {
+          "name": "_record_candle_success",
+          "line": 1177,
+          "async": false
+        },
+        {
+          "name": "_record_failure",
+          "line": 1308,
+          "async": false
+        },
+        {
+          "name": "_publish_event",
+          "line": 1524,
+          "async": false
+        },
+        {
+          "name": "_increment_metric",
+          "line": 1565,
+          "async": false
+        },
+        {
+          "name": "_observe_metric",
+          "line": 1594,
+          "async": false
+        },
+        {
+          "name": "_set_metric",
+          "line": 1623,
+          "async": false
+        },
+        {
+          "name": "_set_provider_connected_metric",
+          "line": 1652,
+          "async": false
+        },
+        {
+          "name": "_require_running",
+          "line": 1670,
+          "async": false
+        },
+        {
+          "name": "_validate_failure_threshold",
+          "line": 1680,
+          "async": false
+        },
+        {
+          "name": "_normalize_symbol",
+          "line": 1707,
+          "async": false
+        },
+        {
+          "name": "_normalize_timeframe",
+          "line": 1742,
+          "async": false
+        },
+        {
+          "name": "_validate_limit",
+          "line": 1781,
+          "async": false
+        },
+        {
+          "name": "_validate_price_result",
+          "line": 1816,
+          "async": false
+        },
+        {
+          "name": "_validate_candle_results",
+          "line": 1847,
+          "async": false
+        },
+        {
+          "name": "_safe_latency",
+          "line": 1911,
+          "async": false
+        }
+      ],
+      "signals": {
+        "logging_detected": true,
+        "threading_detected": true,
+        "async_detected": false,
+        "requests_detected": false,
+        "websocket_detected": false,
+        "exchange_reference_detected": true,
+        "event_bus_reference_detected": true,
+        "retry_or_reconnect_detected": true,
+        "cache_detected": false,
+        "health_detected": true,
+        "timestamp_detected": true
+      },
+      "interesting_calls": [
+        "InvalidCandleLimitError",
+        "MarketDataRequestStatistics",
+        "_MutableRequestStatistics",
+        "self._candle_statistics.record_failure",
+        "self._candle_statistics.record_success",
+        "self._candle_statistics.snapshot",
+        "self._event_bus.publish_event",
+        "self._provider.connect",
+        "self._provider.disconnect",
+        "self._provider.get_candles",
+        "self._publish_event",
+        "self._record_candle_success",
+        "self._set_provider_connected_metric",
+        "self._validate_candle_results",
+        "snapshot.last_candle_counts.keys",
+        "statistics.last_request_at.isoformat",
+        "threading.RLock"
+      ],
+      "string_markers": [
+        "binance",
+        "candle",
+        "event",
+        "health",
+        "market",
+        "price",
+        "retry"
+      ]
+    },
+    {
+      "file": "config/settings.py",
+      "status": "OK",
+      "line_count": 550,
+      "sha256": "23b62b8e6b7062e67d4f015189c6ccae6df5077031300e6a623538bd04c63d39",
+      "imports": [
+        "dataclasses.dataclass",
+        "dataclasses.field",
+        "os",
+        "pathlib.Path",
+        "typing.Dict",
+        "typing.List"
+      ],
+      "classes": [
+        {
+          "name": "TradingConfig",
+          "line": 69,
+          "bases": [],
+          "methods": [],
+          "decorators": [
+            "dataclass"
+          ]
+        },
+        {
+          "name": "RiskConfig",
+          "line": 134,
+          "bases": [],
+          "methods": [],
+          "decorators": [
+            "dataclass"
+          ]
+        },
+        {
+          "name": "SignalConfig",
+          "line": 171,
+          "bases": [],
+          "methods": [],
+          "decorators": [
+            "dataclass"
+          ]
+        },
+        {
+          "name": "APIConfig",
+          "line": 196,
+          "bases": [],
+          "methods": [],
+          "decorators": [
+            "dataclass"
+          ]
+        },
+        {
+          "name": "LearningConfig",
+          "line": 230,
+          "bases": [],
+          "methods": [],
+          "decorators": [
+            "dataclass"
+          ]
+        },
+        {
+          "name": "SystemConfig",
+          "line": 250,
+          "bases": [],
+          "methods": [],
+          "decorators": [
+            "dataclass"
+          ]
+        }
+      ],
+      "functions": [
+        {
+          "name": "get_config_summary",
+          "line": 455,
+          "async": false
+        },
+        {
+          "name": "update_setting",
+          "line": 492,
+          "async": false
+        }
+      ],
+      "signals": {
+        "logging_detected": false,
+        "threading_detected": false,
+        "async_detected": false,
+        "requests_detected": false,
+        "websocket_detected": false,
+        "exchange_reference_detected": true,
+        "event_bus_reference_detected": false,
+        "retry_or_reconnect_detected": false,
+        "cache_detected": false,
+        "health_detected": false,
+        "timestamp_detected": false
+      },
+      "interesting_calls": [],
+      "string_markers": [
+        "binance",
+        "event"
+      ]
+    },
+    {
+      "file": "core/candle_processor.py",
+      "status": "OK",
+      "line_count": 261,
+      "sha256": "6f9f166a35d4934aecbcf275bdc7785d0d76308f6da0e83ca342d73a425d48b5",
+      "imports": [
+        "__future__.annotations",
+        "datetime.datetime",
+        "datetime.timezone",
+        "logging"
+      ],
+      "classes": [
+        {
+          "name": "CandleProcessor",
+          "line": 27,
+          "bases": [],
+          "methods": [
+            "__init__",
+            "normalize",
+            "_parse",
+            "_clean",
+            "latest_price",
+            "candle_count"
+          ],
+          "decorators": []
+        }
+      ],
+      "functions": [
+        {
+          "name": "__init__",
+          "line": 30,
+          "async": false
+        },
+        {
+          "name": "normalize",
+          "line": 36,
+          "async": false
+        },
+        {
+          "name": "_parse",
+          "line": 89,
+          "async": false
+        },
+        {
+          "name": "_clean",
+          "line": 193,
+          "async": false
+        },
+        {
+          "name": "latest_price",
+          "line": 238,
+          "async": false
+        },
+        {
+          "name": "candle_count",
+          "line": 253,
+          "async": false
+        }
+      ],
+      "signals": {
+        "logging_detected": true,
+        "threading_detected": false,
+        "async_detected": false,
+        "requests_detected": false,
+        "websocket_detected": false,
+        "exchange_reference_detected": true,
+        "event_bus_reference_detected": false,
+        "retry_or_reconnect_detected": false,
+        "cache_detected": false,
+        "health_detected": false,
+        "timestamp_detected": true
+      },
+      "interesting_calls": [
+        "candle.get"
+      ],
+      "string_markers": [
+        "binance",
+        "candle"
+      ]
+    },
+    {
+      "file": "core/data/price_provider.py",
+      "status": "OK",
+      "line_count": 197,
+      "sha256": "d12138f17abe45c1f61402ce0330a85af2fe4d85b2cd38ce549e39ee75657574",
+      "imports": [
+        "datetime.UTC",
+        "datetime.datetime",
+        "logging"
+      ],
+      "classes": [
+        {
+          "name": "PriceProvider",
+          "line": 26,
+          "bases": [],
+          "methods": [
+            "__init__",
+            "get_price",
+            "update",
+            "status"
+          ],
+          "decorators": []
+        }
+      ],
+      "functions": [
+        {
+          "name": "__init__",
+          "line": 34,
+          "async": false
+        },
+        {
+          "name": "get_price",
+          "line": 63,
+          "async": false
+        },
+        {
+          "name": "update",
+          "line": 157,
+          "async": false
+        },
+        {
+          "name": "status",
+          "line": 178,
+          "async": false
+        }
+      ],
+      "signals": {
+        "logging_detected": true,
+        "threading_detected": false,
+        "async_detected": false,
+        "requests_detected": false,
+        "websocket_detected": false,
+        "exchange_reference_detected": false,
+        "event_bus_reference_detected": false,
+        "retry_or_reconnect_detected": false,
+        "cache_detected": true,
+        "health_detected": false,
+        "timestamp_detected": true
+      },
+      "interesting_calls": [],
+      "string_markers": [
+        "cache",
+        "market",
+        "price"
+      ]
+    },
+    {
+      "file": "core/event_bus.py",
+      "status": "OK",
+      "line_count": 250,
+      "sha256": "99718af9d41eeeac431fc3fb69d3c3ab6ed73a31df9d97be9110805d8523b8c3",
+      "imports": [
+        "__future__.annotations",
+        "datetime.UTC",
+        "datetime.datetime",
+        "logging",
+        "threading"
+      ],
+      "classes": [
+        {
+          "name": "EventBus",
+          "line": 64,
+          "bases": [],
+          "methods": [
+            "__init__",
+            "subscribe",
+            "publish",
+            "get_history",
+            "status"
+          ],
+          "decorators": []
+        }
+      ],
+      "functions": [
+        {
+          "name": "__init__",
+          "line": 71,
+          "async": false
+        },
+        {
+          "name": "subscribe",
+          "line": 96,
+          "async": false
+        },
+        {
+          "name": "publish",
+          "line": 126,
+          "async": false
+        },
+        {
+          "name": "get_history",
+          "line": 205,
+          "async": false
+        },
+        {
+          "name": "status",
+          "line": 225,
+          "async": false
+        }
+      ],
+      "signals": {
+        "logging_detected": true,
+        "threading_detected": true,
+        "async_detected": false,
+        "requests_detected": false,
+        "websocket_detected": false,
+        "exchange_reference_detected": false,
+        "event_bus_reference_detected": true,
+        "retry_or_reconnect_detected": false,
+        "cache_detected": false,
+        "health_detected": false,
+        "timestamp_detected": true
+      },
+      "interesting_calls": [
+        "threading.Lock"
+      ],
+      "string_markers": [
+        "event",
+        "market"
+      ]
+    },
+    {
+      "file": "core/events.py",
+      "status": "OK",
+      "line_count": 212,
+      "sha256": "acf7ac016b0a4b3b08786d8667bf1be45bb372c1479459c087c50832b71b7a52",
+      "imports": [
+        "__future__.annotations",
+        "dataclasses.dataclass",
+        "dataclasses.field",
+        "datetime.datetime",
+        "datetime.timezone",
+        "enum.Enum",
+        "typing.Any",
+        "typing.Dict",
+        "uuid"
+      ],
+      "classes": [
+        {
+          "name": "EventType",
+          "line": 24,
+          "bases": [
+            "Enum"
+          ],
+          "methods": [],
+          "decorators": []
+        },
+        {
+          "name": "AtlasEvent",
+          "line": 90,
+          "bases": [],
+          "methods": [
+            "to_dict"
+          ],
+          "decorators": [
+            "dataclass"
+          ]
+        },
+        {
+          "name": "RuntimeStartedEvent",
+          "line": 147,
+          "bases": [
+            "AtlasEvent"
+          ],
+          "methods": [
+            "__init__"
+          ],
+          "decorators": []
+        },
+        {
+          "name": "RuntimeStoppedEvent",
+          "line": 165,
+          "bases": [
+            "AtlasEvent"
+          ],
+          "methods": [
+            "__init__"
+          ],
+          "decorators": []
+        },
+        {
+          "name": "TradeOpenedEvent",
+          "line": 183,
+          "bases": [
+            "AtlasEvent"
+          ],
+          "methods": [
+            "__init__"
+          ],
+          "decorators": []
+        }
+      ],
+      "functions": [
+        {
+          "name": "to_dict",
+          "line": 122,
+          "async": false
+        },
+        {
+          "name": "__init__",
+          "line": 151,
+          "async": false
+        },
+        {
+          "name": "__init__",
+          "line": 169,
+          "async": false
+        },
+        {
+          "name": "__init__",
+          "line": 187,
+          "async": false
+        }
+      ],
+      "signals": {
+        "logging_detected": false,
+        "threading_detected": false,
+        "async_detected": false,
+        "requests_detected": false,
+        "websocket_detected": false,
+        "exchange_reference_detected": false,
+        "event_bus_reference_detected": false,
+        "retry_or_reconnect_detected": false,
+        "cache_detected": false,
+        "health_detected": false,
+        "timestamp_detected": true
+      },
+      "interesting_calls": [],
+      "string_markers": [
+        "event",
+        "market",
+        "price"
+      ]
+    },
+    {
+      "file": "core/intelligence/loop/intelligence_loop.py",
+      "status": "OK",
+      "line_count": 142,
+      "sha256": "192429ae0ee65e67d8b9efdf04032f60e0f39663523916d7c10b2664370b9ee6",
+      "imports": [
+        "__future__.annotations",
+        "core.intelligence.atlas_brain_connector.AtlasBrainConnector",
+        "datetime.UTC",
+        "datetime.datetime",
+        "intelligence.trading.paper_bridge.PaperBridge",
+        "logging",
+        "time"
+      ],
+      "classes": [
+        {
+          "name": "IntelligenceLoop",
+          "line": 16,
+          "bases": [],
+          "methods": [
+            "__init__",
+            "run_cycle",
+            "start",
+            "stop"
+          ],
+          "decorators": []
+        }
+      ],
+      "functions": [
+        {
+          "name": "__init__",
+          "line": 23,
+          "async": false
+        },
+        {
+          "name": "run_cycle",
+          "line": 37,
+          "async": false
+        },
+        {
+          "name": "start",
+          "line": 94,
+          "async": false
+        },
+        {
+          "name": "stop",
+          "line": 138,
+          "async": false
+        }
+      ],
+      "signals": {
+        "logging_detected": true,
+        "threading_detected": false,
+        "async_detected": false,
+        "requests_detected": false,
+        "websocket_detected": false,
+        "exchange_reference_detected": false,
+        "event_bus_reference_detected": false,
+        "retry_or_reconnect_detected": false,
+        "cache_detected": false,
+        "health_detected": false,
+        "timestamp_detected": true
+      },
+      "interesting_calls": [
+        "AtlasBrainConnector",
+        "time.sleep"
+      ],
+      "string_markers": []
+    },
+    {
+      "file": "core/market_feed.py",
+      "status": "OK",
+      "line_count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "imports": [],
+      "classes": [],
+      "functions": [],
+      "signals": {
+        "logging_detected": false,
+        "threading_detected": false,
+        "async_detected": false,
+        "requests_detected": false,
+        "websocket_detected": false,
+        "exchange_reference_detected": false,
+        "event_bus_reference_detected": false,
+        "retry_or_reconnect_detected": false,
+        "cache_detected": false,
+        "health_detected": false,
+        "timestamp_detected": false
+      },
+      "interesting_calls": [],
+      "string_markers": []
+    },
+    {
+      "file": "core/market_loop.py",
+      "status": "OK",
+      "line_count": 1398,
+      "sha256": "fdb925672d68c0f52cb09f6b6992d711c6f23bcf43b6f59190fdf88d9ef9cf9f",
+      "imports": [
+        "__future__.annotations",
+        "analysis.world_analysis_engine.WorldAnalysisEngine",
+        "core.candle_processor.CandleProcessor",
+        "core.decision_adapter.DecisionAdapter",
+        "core.technical_analyzer.TechnicalAnalyzer",
+        "datetime.UTC",
+        "datetime.datetime",
+        "logging",
+        "threading",
+        "time",
+        "traceback",
+        "typing.Any"
+      ],
+      "classes": [
+        {
+          "name": "MarketLoop",
+          "line": 72,
+          "bases": [],
+          "methods": [
+            "__init__",
+            "start",
+            "stop",
+            "worker",
+            "run_cycle",
+            "process_symbol",
+            "_load_candles",
+            "normalize_decision",
+            "_decision_to_dict",
+            "_normalize_confidence",
+            "route_execution",
+            "_normalize_execution_result",
+            "calculate_score",
+            "publish",
+            "_increment_metric",
+            "_record_error",
+            "_normalize_symbols",
+            "_safe_float",
+            "_safe_payload",
+            "health",
+            "status",
+            "__repr__"
+          ],
+          "decorators": []
+        }
+      ],
+      "functions": [
+        {
+          "name": "__init__",
+          "line": 104,
+          "async": false
+        },
+        {
+          "name": "start",
+          "line": 172,
+          "async": false
+        },
+        {
+          "name": "stop",
+          "line": 214,
+          "async": false
+        },
+        {
+          "name": "worker",
+          "line": 272,
+          "async": false
+        },
+        {
+          "name": "run_cycle",
+          "line": 330,
+          "async": false
+        },
+        {
+          "name": "process_symbol",
+          "line": 347,
+          "async": false
+        },
+        {
+          "name": "_load_candles",
+          "line": 601,
+          "async": false
+        },
+        {
+          "name": "normalize_decision",
+          "line": 632,
+          "async": false
+        },
+        {
+          "name": "_decision_to_dict",
+          "line": 752,
+          "async": false
+        },
+        {
+          "name": "_normalize_confidence",
+          "line": 804,
+          "async": false
+        },
+        {
+          "name": "route_execution",
+          "line": 843,
+          "async": false
+        },
+        {
+          "name": "_normalize_execution_result",
+          "line": 954,
+          "async": false
+        },
+        {
+          "name": "calculate_score",
+          "line": 1006,
+          "async": false
+        },
+        {
+          "name": "publish",
+          "line": 1067,
+          "async": false
+        },
+        {
+          "name": "_increment_metric",
+          "line": 1135,
+          "async": false
+        },
+        {
+          "name": "_record_error",
+          "line": 1167,
+          "async": false
+        },
+        {
+          "name": "_normalize_symbols",
+          "line": 1209,
+          "async": false
+        },
+        {
+          "name": "_safe_float",
+          "line": 1239,
+          "async": false
+        },
+        {
+          "name": "_safe_payload",
+          "line": 1257,
+          "async": false
+        },
+        {
+          "name": "health",
+          "line": 1287,
+          "async": false
+        },
+        {
+          "name": "status",
+          "line": 1322,
+          "async": false
+        },
+        {
+          "name": "__repr__",
+          "line": 1392,
+          "async": false
+        }
+      ],
+      "signals": {
+        "logging_detected": true,
+        "threading_detected": true,
+        "async_detected": false,
+        "requests_detected": false,
+        "websocket_detected": false,
+        "exchange_reference_detected": true,
+        "event_bus_reference_detected": true,
+        "retry_or_reconnect_detected": false,
+        "cache_detected": false,
+        "health_detected": true,
+        "timestamp_detected": true
+      },
+      "interesting_calls": [
+        "CandleProcessor",
+        "candles_method",
+        "publish_method",
+        "self._load_candles",
+        "self.publish",
+        "self.thread.is_alive",
+        "self.thread.start",
+        "thread.is_alive",
+        "thread.join",
+        "threading.Event",
+        "threading.RLock",
+        "threading.Thread",
+        "threading.current_thread"
+      ],
+      "string_markers": [
+        "candle",
+        "event",
+        "health",
+        "market",
+        "price"
+      ]
+    },
+    {
+      "file": "core/technical_analyzer.py",
+      "status": "OK",
+      "line_count": 424,
+      "sha256": "270db178741a2174cfbd45d7222eb67af0ec0bc1752310e6bf6ea957b23bd3f9",
+      "imports": [
+        "__future__.annotations",
+        "logging",
+        "statistics"
+      ],
+      "classes": [
+        {
+          "name": "TechnicalAnalyzer",
+          "line": 36,
+          "bases": [],
+          "methods": [
+            "__init__",
+            "ema",
+            "rsi",
+            "volatility",
+            "momentum",
+            "volume_pressure",
+            "analyze"
+          ],
+          "decorators": []
+        }
+      ],
+      "functions": [
+        {
+          "name": "__init__",
+          "line": 39,
+          "async": false
+        },
+        {
+          "name": "ema",
+          "line": 50,
+          "async": false
+        },
+        {
+          "name": "rsi",
+          "line": 96,
+          "async": false
+        },
+        {
+          "name": "volatility",
+          "line": 180,
+          "async": false
+        },
+        {
+          "name": "momentum",
+          "line": 228,
+          "async": false
+        },
+        {
+          "name": "volume_pressure",
+          "line": 264,
+          "async": false
+        },
+        {
+          "name": "analyze",
+          "line": 327,
+          "async": false
+        }
+      ],
+      "signals": {
+        "logging_detected": true,
+        "threading_detected": false,
+        "async_detected": false,
+        "requests_detected": false,
+        "websocket_detected": false,
+        "exchange_reference_detected": false,
+        "event_bus_reference_detected": false,
+        "retry_or_reconnect_detected": false,
+        "cache_detected": false,
+        "health_detected": false,
+        "timestamp_detected": false
+      },
+      "interesting_calls": [],
+      "string_markers": [
+        "candle"
+      ]
+    },
+    {
+      "file": "data/binance_provider.py",
+      "status": "OK",
+      "line_count": 176,
+      "sha256": "d9c2972d14028ed3d8daf752347542f2914300a13d5b871a8ff9934e01eb2bf5",
+      "imports": [
+        "logging",
+        "requests"
+      ],
+      "classes": [
+        {
+          "name": "BinanceProvider",
+          "line": 19,
+          "bases": [],
+          "methods": [
+            "__init__",
+            "get_price",
+            "get_volume",
+            "get_candles"
+          ],
+          "decorators": []
+        }
+      ],
+      "functions": [
+        {
+          "name": "__init__",
+          "line": 31,
+          "async": false
+        },
+        {
+          "name": "get_price",
+          "line": 40,
+          "async": false
+        },
+        {
+          "name": "get_volume",
+          "line": 75,
+          "async": false
+        },
+        {
+          "name": "get_candles",
+          "line": 111,
+          "async": false
+        }
+      ],
+      "signals": {
+        "logging_detected": true,
+        "threading_detected": false,
+        "async_detected": false,
+        "requests_detected": true,
+        "websocket_detected": false,
+        "exchange_reference_detected": true,
+        "event_bus_reference_detected": false,
+        "retry_or_reconnect_detected": false,
+        "cache_detected": false,
+        "health_detected": false,
+        "timestamp_detected": false
+      },
+      "interesting_calls": [
+        "candles.append",
+        "requests.get"
+      ],
+      "string_markers": [
+        "binance",
+        "kline",
+        "market",
+        "price",
+        "ticker"
+      ]
+    },
+    {
+      "file": "data/candle_manager.py",
+      "status": "OK",
+      "line_count": 222,
+      "sha256": "efc846aec6093ecbb7fa8d7da467e23c5d08ccf599f11009328be17278cfd5dc",
+      "imports": [
+        "datetime.UTC",
+        "datetime.datetime",
+        "logging"
+      ],
+      "classes": [
+        {
+          "name": "CandleManager",
+          "line": 22,
+          "bases": [],
+          "methods": [
+            "__init__",
+            "get_candles",
+            "last_price",
+            "snapshot",
+            "status"
+          ],
+          "decorators": []
+        }
+      ],
+      "functions": [
+        {
+          "name": "__init__",
+          "line": 29,
+          "async": false
+        },
+        {
+          "name": "get_candles",
+          "line": 49,
+          "async": false
+        },
+        {
+          "name": "last_price",
+          "line": 98,
+          "async": false
+        },
+        {
+          "name": "snapshot",
+          "line": 136,
+          "async": false
+        },
+        {
+          "name": "status",
+          "line": 208,
+          "async": false
+        }
+      ],
+      "signals": {
+        "logging_detected": true,
+        "threading_detected": false,
+        "async_detected": false,
+        "requests_detected": false,
+        "websocket_detected": false,
+        "exchange_reference_detected": false,
+        "event_bus_reference_detected": false,
+        "retry_or_reconnect_detected": false,
+        "cache_detected": true,
+        "health_detected": false,
+        "timestamp_detected": true
+      },
+      "interesting_calls": [
+        "self.get_candles",
+        "self.provider.get_candles"
+      ],
+      "string_markers": [
+        "cache",
+        "candle",
+        "market",
+        "price"
+      ]
+    },
+    {
+      "file": "exchange/adapters/binance_global.py",
+      "status": "OK",
+      "line_count": 321,
+      "sha256": "1e6259b2e9203e572a121e184e2c302e227a4d8abbb047fa04019757e90c63ef",
+      "imports": [
+        "__future__.annotations",
+        "binance.spot.Spot",
+        "dotenv.load_dotenv",
+        "exchange.base_exchange.BaseExchange",
+        "logging",
+        "os",
+        "time"
+      ],
+      "classes": [
+        {
+          "name": "BinanceGlobalExchange",
+          "line": 45,
+          "bases": [
+            "BaseExchange"
+          ],
+          "methods": [
+            "__init__",
+            "connect",
+            "disconnect",
+            "_ensure_connection",
+            "get_price",
+            "get_klines",
+            "place_order"
+          ],
+          "decorators": []
+        }
+      ],
+      "functions": [
+        {
+          "name": "__init__",
+          "line": 52,
+          "async": false
+        },
+        {
+          "name": "connect",
+          "line": 88,
+          "async": false
+        },
+        {
+          "name": "disconnect",
+          "line": 152,
+          "async": false
+        },
+        {
+          "name": "_ensure_connection",
+          "line": 176,
+          "async": false
+        },
+        {
+          "name": "get_price",
+          "line": 210,
+          "async": false
+        },
+        {
+          "name": "get_klines",
+          "line": 244,
+          "async": false
+        },
+        {
+          "name": "place_order",
+          "line": 283,
+          "async": false
+        }
+      ],
+      "signals": {
+        "logging_detected": true,
+        "threading_detected": false,
+        "async_detected": false,
+        "requests_detected": false,
+        "websocket_detected": false,
+        "exchange_reference_detected": true,
+        "event_bus_reference_detected": false,
+        "retry_or_reconnect_detected": true,
+        "cache_detected": false,
+        "health_detected": false,
+        "timestamp_detected": false
+      },
+      "interesting_calls": [
+        "ConnectionError",
+        "self._ensure_connection",
+        "self.client.klines",
+        "self.client.ticker_price",
+        "self.client.time",
+        "self.connect"
+      ],
+      "string_markers": [
+        "binance",
+        "price",
+        "reconnect"
+      ]
+    },
+    {
+      "file": "exchange/adapters/binance_tr.py",
+      "status": "OK",
+      "line_count": 10,
+      "sha256": "98bd43c98a35d3509e91d7edd33ccf9c1472afd7d2801afc335b88e2113e2bfd",
+      "imports": [
+        "exchange.adapters.binance_global.BinanceGlobalExchange"
+      ],
+      "classes": [
+        {
+          "name": "BinanceTRExchange",
+          "line": 8,
+          "bases": [
+            "BinanceGlobalExchange"
+          ],
+          "methods": [],
+          "decorators": []
+        }
+      ],
+      "functions": [],
+      "signals": {
+        "logging_detected": false,
+        "threading_detected": false,
+        "async_detected": false,
+        "requests_detected": false,
+        "websocket_detected": false,
+        "exchange_reference_detected": true,
+        "event_bus_reference_detected": false,
+        "retry_or_reconnect_detected": false,
+        "cache_detected": false,
+        "health_detected": false,
+        "timestamp_detected": false
+      },
+      "interesting_calls": [],
+      "string_markers": [
+        "binance"
+      ]
+    },
+    {
+      "file": "exchange/base_exchange.py",
+      "status": "OK",
+      "line_count": 38,
+      "sha256": "391e227680f8b1709d9dbe747eec9fdbfd206dfee6e61b7e095a5f311a7f5937",
+      "imports": [
+        "abc.ABC",
+        "abc.abstractmethod"
+      ],
+      "classes": [
+        {
+          "name": "BaseExchange",
+          "line": 8,
+          "bases": [
+            "ABC"
+          ],
+          "methods": [
+            "connect",
+            "disconnect",
+            "get_price",
+            "get_klines",
+            "place_order"
+          ],
+          "decorators": []
+        }
+      ],
+      "functions": [
+        {
+          "name": "connect",
+          "line": 11,
+          "async": false
+        },
+        {
+          "name": "disconnect",
+          "line": 15,
+          "async": false
+        },
+        {
+          "name": "get_price",
+          "line": 19,
+          "async": false
+        },
+        {
+          "name": "get_klines",
+          "line": 23,
+          "async": false
+        },
+        {
+          "name": "place_order",
+          "line": 32,
+          "async": false
+        }
+      ],
+      "signals": {
+        "logging_detected": false,
+        "threading_detected": false,
+        "async_detected": false,
+        "requests_detected": false,
+        "websocket_detected": false,
+        "exchange_reference_detected": true,
+        "event_bus_reference_detected": false,
+        "retry_or_reconnect_detected": false,
+        "cache_detected": false,
+        "health_detected": false,
+        "timestamp_detected": false
+      },
+      "interesting_calls": [],
+      "string_markers": []
+    },
+    {
+      "file": "exchange/exchange_manager.py",
+      "status": "OK",
+      "line_count": 68,
+      "sha256": "bdcf49e0b7958c1c179c6f519b6fe95e6dea21a9201f95208c62e4be521a5e78",
+      "imports": [
+        "__future__.annotations",
+        "exchange.adapters.binance_global.BinanceGlobalExchange",
+        "exchange.adapters.binance_tr.BinanceTRExchange",
+        "logging"
+      ],
+      "classes": [
+        {
+          "name": "ExchangeManager",
+          "line": 16,
+          "bases": [],
+          "methods": [
+            "__init__",
+            "_create_exchange",
+            "connect",
+            "disconnect",
+            "get_price",
+            "get_klines",
+            "place_order"
+          ],
+          "decorators": []
+        }
+      ],
+      "functions": [
+        {
+          "name": "__init__",
+          "line": 18,
+          "async": false
+        },
+        {
+          "name": "_create_exchange",
+          "line": 23,
+          "async": false
+        },
+        {
+          "name": "connect",
+          "line": 32,
+          "async": false
+        },
+        {
+          "name": "disconnect",
+          "line": 36,
+          "async": false
+        },
+        {
+          "name": "get_price",
+          "line": 40,
+          "async": false
+        },
+        {
+          "name": "get_klines",
+          "line": 44,
+          "async": false
+        },
+        {
+          "name": "place_order",
+          "line": 57,
+          "async": false
+        }
+      ],
+      "signals": {
+        "logging_detected": true,
+        "threading_detected": false,
+        "async_detected": false,
+        "requests_detected": false,
+        "websocket_detected": false,
+        "exchange_reference_detected": true,
+        "event_bus_reference_detected": false,
+        "retry_or_reconnect_detected": false,
+        "cache_detected": false,
+        "health_detected": false,
+        "timestamp_detected": false
+      },
+      "interesting_calls": [
+        "self.exchange.connect",
+        "self.exchange.disconnect",
+        "self.exchange.get_klines"
+      ],
+      "string_markers": [
+        "binance"
+      ]
+    },
+    {
+      "file": "exchange/market_feed.py",
+      "status": "OK",
+      "line_count": 48,
+      "sha256": "15166b32cdb09f7b37607ed84ef9b39ff044842132e82ef20ec31d82038309ae",
+      "imports": [
+        "__future__.annotations",
+        "exchange.exchange_manager.ExchangeManager",
+        "logging"
+      ],
+      "classes": [
+        {
+          "name": "MarketFeed",
+          "line": 15,
+          "bases": [],
+          "methods": [
+            "__init__",
+            "start",
+            "stop",
+            "price",
+            "candles"
+          ],
+          "decorators": []
+        }
+      ],
+      "functions": [
+        {
+          "name": "__init__",
+          "line": 17,
+          "async": false
+        },
+        {
+          "name": "start",
+          "line": 21,
+          "async": false
+        },
+        {
+          "name": "stop",
+          "line": 27,
+          "async": false
+        },
+        {
+          "name": "price",
+          "line": 33,
+          "async": false
+        },
+        {
+          "name": "candles",
+          "line": 37,
+          "async": false
+        }
+      ],
+      "signals": {
+        "logging_detected": true,
+        "threading_detected": false,
+        "async_detected": false,
+        "requests_detected": false,
+        "websocket_detected": false,
+        "exchange_reference_detected": true,
+        "event_bus_reference_detected": false,
+        "retry_or_reconnect_detected": false,
+        "cache_detected": false,
+        "health_detected": false,
+        "timestamp_detected": false
+      },
+      "interesting_calls": [
+        "self.manager.connect",
+        "self.manager.disconnect",
+        "self.manager.get_klines"
+      ],
+      "string_markers": [
+        "binance",
+        "market"
+      ]
+    },
+    {
+      "file": "inspect_atlas_market_data.py",
+      "status": "OK",
+      "line_count": 501,
+      "sha256": "450927deccfcbda4bfb2cf9249c0f1ebadec88f23800759fd742c4e57802d9a4",
+      "imports": [
+        "__future__.annotations",
+        "importlib",
+        "inspect",
+        "pathlib.Path",
+        "sys",
+        "types.ModuleType",
+        "typing.Any"
+      ],
+      "classes": [],
+      "functions": [
+        {
+          "name": "separator",
+          "line": 93,
+          "async": false
+        },
+        {
+          "name": "is_ignored",
+          "line": 105,
+          "async": false
+        },
+        {
+          "name": "path_to_module",
+          "line": 121,
+          "async": false
+        },
+        {
+          "name": "candidate_files",
+          "line": 153,
+          "async": false
+        },
+        {
+          "name": "import_module_safely",
+          "line": 183,
+          "async": false
+        },
+        {
+          "name": "is_target_class",
+          "line": 206,
+          "async": false
+        },
+        {
+          "name": "printable_signature",
+          "line": 217,
+          "async": false
+        },
+        {
+          "name": "print_class_report",
+          "line": 234,
+          "async": false
+        },
+        {
+          "name": "main",
+          "line": 357,
+          "async": false
+        }
+      ],
+      "signals": {
+        "logging_detected": false,
+        "threading_detected": false,
+        "async_detected": false,
+        "requests_detected": false,
+        "websocket_detected": false,
+        "exchange_reference_detected": true,
+        "event_bus_reference_detected": false,
+        "retry_or_reconnect_detected": false,
+        "cache_detected": true,
+        "health_detected": false,
+        "timestamp_detected": false
+      },
+      "interesting_calls": [],
+      "string_markers": [
+        "binance",
+        "cache",
+        "candle",
+        "market",
+        "price",
+        "ticker"
+      ]
+    },
+    {
+      "file": "test_market_data.py",
+      "status": "OK",
+      "line_count": 36,
+      "sha256": "89d11e190aee49b19a0b128158e615e9199944a926d3435091346edace411c8a",
+      "imports": [
+        "data.binance_provider.BinanceProvider",
+        "data.candle_manager.CandleManager"
+      ],
+      "classes": [],
+      "functions": [],
+      "signals": {
+        "logging_detected": false,
+        "threading_detected": false,
+        "async_detected": false,
+        "requests_detected": false,
+        "websocket_detected": false,
+        "exchange_reference_detected": true,
+        "event_bus_reference_detected": false,
+        "retry_or_reconnect_detected": false,
+        "cache_detected": false,
+        "health_detected": false,
+        "timestamp_detected": false
+      },
+      "interesting_calls": [
+        "CandleManager"
+      ],
+      "string_markers": [
+        "market"
+      ]
+    },
+    {
+      "file": "tools/market_data_source_collector.py",
+      "status": "OK",
+      "line_count": 531,
+      "sha256": "fc33c47972b769e658f8759bb59e91c764b5a7f4385fe0ce10037c9174804612",
+      "imports": [
+        "__future__.annotations",
+        "ast",
+        "datetime.UTC",
+        "datetime.datetime",
+        "hashlib",
+        "json",
+        "pathlib.Path",
+        "shutil",
+        "typing.Iterable",
+        "zipfile"
+      ],
+      "classes": [],
+      "functions": [
+        {
+          "name": "normalize",
+          "line": 93,
+          "async": false
+        },
+        {
+          "name": "sha256",
+          "line": 97,
+          "async": false
+        },
+        {
+          "name": "excluded",
+          "line": 107,
+          "async": false
+        },
+        {
+          "name": "discover_targets",
+          "line": 115,
+          "async": false
+        },
+        {
+          "name": "decorator_name",
+          "line": 137,
+          "async": false
+        },
+        {
+          "name": "inspect_file",
+          "line": 160,
+          "async": false
+        },
+        {
+          "name": "write_architecture_summary",
+          "line": 361,
+          "async": false
+        },
+        {
+          "name": "main",
+          "line": 422,
+          "async": false
+        }
+      ],
+      "signals": {
+        "logging_detected": true,
+        "threading_detected": true,
+        "async_detected": false,
+        "requests_detected": false,
+        "websocket_detected": true,
+        "exchange_reference_detected": true,
+        "event_bus_reference_detected": true,
+        "retry_or_reconnect_detected": true,
+        "cache_detected": true,
+        "health_detected": true,
+        "timestamp_detected": true
+      },
+      "interesting_calls": [],
+      "string_markers": [
+        "binance",
+        "cache",
+        "candle",
+        "event",
+        "health",
+        "kline",
+        "market",
+        "price",
+        "reconnect",
+        "retry",
+        "ticker",
+        "websocket"
+      ]
+    }
+  ],
+  "safety": {
+    "source_files_modified": false,
+    "atlas_modules_imported": false,
+    "services_started": false,
+    "exchange_connections_opened": false,
+    "secret_values_read": false
+  },
+  "collected_files": 27
+}

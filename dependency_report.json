@@ -1,0 +1,1035 @@
+{
+    "check_project.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "main.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "technical_analyzer.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "test_architecture_analyzer.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "test_ast_parser.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "test_atlas_evolution.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "test_codebase_indexer.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "test_code_analyzer.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "test_dependency_graph.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "test_event.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "test_evolution_engine.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "test_experiment_manager.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "test_github_scanner.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "test_improvement_planner.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "test_patch_generator.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "test_performance_feedback.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "test_refactor_advisor.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "test_research_integration.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "test_research_manager.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "test_self_improvement.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "test_upgrade_advisor.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "test_version_memory.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "web_app.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "ai\\atlas_brain.py": {
+        "critical_score": 1,
+        "used_by": [
+            "database\\engine.py"
+        ]
+    },
+    "ai\\decision_engine.py": {
+        "critical_score": 1,
+        "used_by": [
+            "database\\engine.py"
+        ]
+    },
+    "ai\\intelligent_score.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "ai\\learning_brain.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "ai\\performance_analyzer.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "ai\\trade_analyzer.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "analysis\\analyzer.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "analysis\\performance.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "analysis\\technical_analyzer.py": {
+        "critical_score": 2,
+        "used_by": [
+            "backtest\\backtest_engine.py",
+            "data\\market_scanner.py"
+        ]
+    },
+    "analytics\\ai_performance.py": {
+        "critical_score": 2,
+        "used_by": [
+            "intelligence\\strategy_brain.py",
+            "simulation\\ai_simulator.py"
+        ]
+    },
+    "analytics\\dashboard.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "analytics\\performance.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "analytics\\performance_tracker.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "analytics\\trade_report.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "backtest\\backtest_engine.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "config\\exchange_config.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "config\\main.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "config\\settings.py": {
+        "critical_score": 3,
+        "used_by": [
+            "config\\main.py",
+            "exchange\\exchange_adapter.py",
+            "execution\\execution_manager.py"
+        ]
+    },
+    "config\\symbols.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "config\\__init__.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "core\\adaptive_decision.py": {
+        "critical_score": 1,
+        "used_by": [
+            "core\\atlas_brain.py"
+        ]
+    },
+    "core\\adaptive_learning.py": {
+        "critical_score": 1,
+        "used_by": [
+            "core\\atlas_brain.py"
+        ]
+    },
+    "core\\adaptive_weights.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "core\\ai_director.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "core\\ai_generator.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "core\\architecture_analyzer.py": {
+        "critical_score": 3,
+        "used_by": [
+            "test_architecture_analyzer.py",
+            "test_patch_generator.py",
+            "test_refactor_advisor.py"
+        ]
+    },
+    "core\\ast_parser.py": {
+        "critical_score": 1,
+        "used_by": [
+            "test_ast_parser.py"
+        ]
+    },
+    "core\\atlas_brain.py": {
+        "critical_score": 7,
+        "used_by": [
+            "main.py",
+            "test_atlas_evolution.py",
+            "test_evolution_engine.py",
+            "test_experiment_manager.py",
+            "test_improvement_planner.py",
+            "test_self_improvement.py",
+            "web_app.py"
+        ]
+    },
+    "core\\auth_panel.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "core\\auto_manager.py": {
+        "critical_score": 1,
+        "used_by": [
+            "core\\trading_cycle.py"
+        ]
+    },
+    "core\\auto_pilot.py": {
+        "critical_score": 1,
+        "used_by": [
+            "core\\atlas_brain.py"
+        ]
+    },
+    "core\\auto_scanner.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "core\\backtester.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "core\\base_ai_module.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "core\\capital_allocator.py": {
+        "critical_score": 1,
+        "used_by": [
+            "core\\trading_cycle.py"
+        ]
+    },
+    "core\\codebase_indexer.py": {
+        "critical_score": 1,
+        "used_by": [
+            "test_codebase_indexer.py"
+        ]
+    },
+    "core\\code_analyzer.py": {
+        "critical_score": 4,
+        "used_by": [
+            "test_code_analyzer.py",
+            "test_research_integration.py",
+            "test_research_manager.py",
+            "test_upgrade_advisor.py"
+        ]
+    },
+    "core\\confidence_engine.py": {
+        "critical_score": 2,
+        "used_by": [
+            "core\\atlas_brain.py",
+            "core\\trading_cycle.py"
+        ]
+    },
+    "core\\config_manager.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "core\\database.py": {
+        "critical_score": 6,
+        "used_by": [
+            "core\\atlas_brain.py",
+            "core\\auth_panel.py",
+            "core\\paper_trader.py",
+            "main.py",
+            "portfolio\\portfolio_manager.py",
+            "web_app.py"
+        ]
+    },
+    "core\\data_downloader.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "core\\data_provider.py": {
+        "critical_score": 3,
+        "used_by": [
+            "core\\atlas_brain.py",
+            "core\\engine.py",
+            "core\\trading_cycle.py"
+        ]
+    },
+    "core\\decision_engine.py": {
+        "critical_score": 2,
+        "used_by": [
+            "core\\atlas_brain.py",
+            "core\\trading_cycle.py"
+        ]
+    },
+    "core\\dependency_graph.py": {
+        "critical_score": 1,
+        "used_by": [
+            "test_dependency_graph.py"
+        ]
+    },
+    "core\\engine.py": {
+        "critical_score": 2,
+        "used_by": [
+            "core\\loop_engine.py",
+            "core\\main.py"
+        ]
+    },
+    "core\\event_bus.py": {
+        "critical_score": 2,
+        "used_by": [
+            "core\\event_manager.py",
+            "events\\__init__.py"
+        ]
+    },
+    "core\\event_listeners.py": {
+        "critical_score": 1,
+        "used_by": [
+            "core\\atlas_brain.py"
+        ]
+    },
+    "core\\event_manager.py": {
+        "critical_score": 1,
+        "used_by": [
+            "core\\atlas_brain.py"
+        ]
+    },
+    "core\\evolution_engine.py": {
+        "critical_score": 1,
+        "used_by": [
+            "core\\atlas_brain.py"
+        ]
+    },
+    "core\\executor.py": {
+        "critical_score": 1,
+        "used_by": [
+            "core\\trading_cycle.py"
+        ]
+    },
+    "core\\experiment_manager.py": {
+        "critical_score": 1,
+        "used_by": [
+            "core\\atlas_brain.py"
+        ]
+    },
+    "core\\github_intelligence.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "core\\github_scanner.py": {
+        "critical_score": 5,
+        "used_by": [
+            "test_code_analyzer.py",
+            "test_github_scanner.py",
+            "test_research_integration.py",
+            "test_research_manager.py",
+            "test_upgrade_advisor.py"
+        ]
+    },
+    "core\\improvement_planner.py": {
+        "critical_score": 1,
+        "used_by": [
+            "core\\atlas_brain.py"
+        ]
+    },
+    "core\\knowledge_graph.py": {
+        "critical_score": 1,
+        "used_by": [
+            "core\\atlas_brain.py"
+        ]
+    },
+    "core\\learning_engine.py": {
+        "critical_score": 2,
+        "used_by": [
+            "core\\atlas_brain.py",
+            "core\\paper_trader.py"
+        ]
+    },
+    "core\\learning_listener.py": {
+        "critical_score": 1,
+        "used_by": [
+            "core\\atlas_brain.py"
+        ]
+    },
+    "core\\live_trader.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "core\\loop_engine.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "core\\main.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "core\\market_intelligence.py": {
+        "critical_score": 2,
+        "used_by": [
+            "core\\atlas_brain.py",
+            "core\\trading_cycle.py"
+        ]
+    },
+    "core\\market_regime.py": {
+        "critical_score": 1,
+        "used_by": [
+            "core\\atlas_brain.py"
+        ]
+    },
+    "core\\market_scanner.py": {
+        "critical_score": 1,
+        "used_by": [
+            "core\\atlas_brain.py"
+        ]
+    },
+    "core\\memory.py": {
+        "critical_score": 1,
+        "used_by": [
+            "core\\engine.py"
+        ]
+    },
+    "core\\module_registry.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "core\\opportunity_engine.py": {
+        "critical_score": 1,
+        "used_by": [
+            "core\\atlas_brain.py"
+        ]
+    },
+    "core\\opportunity_scanner.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "core\\outcome_memory.py": {
+        "critical_score": 1,
+        "used_by": [
+            "core\\atlas_brain.py"
+        ]
+    },
+    "core\\paper_trader.py": {
+        "critical_score": 3,
+        "used_by": [
+            "core\\engine.py",
+            "main.py",
+            "web_app.py"
+        ]
+    },
+    "core\\patch_generator.py": {
+        "critical_score": 1,
+        "used_by": [
+            "test_patch_generator.py"
+        ]
+    },
+    "core\\pattern_memory.py": {
+        "critical_score": 1,
+        "used_by": [
+            "core\\atlas_brain.py"
+        ]
+    },
+    "core\\performance_analyzer.py": {
+        "critical_score": 1,
+        "used_by": [
+            "core\\atlas_brain.py"
+        ]
+    },
+    "core\\performance_feedback.py": {
+        "critical_score": 2,
+        "used_by": [
+            "core\\atlas_brain.py",
+            "test_performance_feedback.py"
+        ]
+    },
+    "core\\position_manager.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "core\\position_monitor.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "core\\profit_calculator.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "core\\refactor_advisor.py": {
+        "critical_score": 2,
+        "used_by": [
+            "test_patch_generator.py",
+            "test_refactor_advisor.py"
+        ]
+    },
+    "core\\research_integration.py": {
+        "critical_score": 1,
+        "used_by": [
+            "test_research_integration.py"
+        ]
+    },
+    "core\\research_manager.py": {
+        "critical_score": 2,
+        "used_by": [
+            "test_research_integration.py",
+            "test_research_manager.py"
+        ]
+    },
+    "core\\risk_manager.py": {
+        "critical_score": 3,
+        "used_by": [
+            "core\\atlas_brain.py",
+            "core\\engine.py",
+            "core\\trading_cycle.py"
+        ]
+    },
+    "core\\self_improvement.py": {
+        "critical_score": 1,
+        "used_by": [
+            "core\\atlas_brain.py"
+        ]
+    },
+    "core\\shared_context.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "core\\signal_fusion.py": {
+        "critical_score": 2,
+        "used_by": [
+            "core\\atlas_brain.py",
+            "core\\trading_cycle.py"
+        ]
+    },
+    "core\\strategy_brain.py": {
+        "critical_score": 1,
+        "used_by": [
+            "core\\engine.py"
+        ]
+    },
+    "core\\strategy_competition.py": {
+        "critical_score": 2,
+        "used_by": [
+            "core\\atlas_brain.py",
+            "core\\trading_cycle.py"
+        ]
+    },
+    "core\\strategy_config.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "core\\technical_analyzer.py": {
+        "critical_score": 3,
+        "used_by": [
+            "core\\atlas_brain.py",
+            "core\\engine.py",
+            "core\\trading_cycle.py"
+        ]
+    },
+    "core\\trade_lifecycle.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "core\\trade_memory.py": {
+        "critical_score": 1,
+        "used_by": [
+            "core\\atlas_brain.py"
+        ]
+    },
+    "core\\trade_tracker.py": {
+        "critical_score": 1,
+        "used_by": [
+            "core\\atlas_brain.py"
+        ]
+    },
+    "core\\trading_cycle.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "core\\trading_engine.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "core\\upgrade_advisor.py": {
+        "critical_score": 3,
+        "used_by": [
+            "test_research_integration.py",
+            "test_research_manager.py",
+            "test_upgrade_advisor.py"
+        ]
+    },
+    "core\\upgrade_approval.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "core\\upgrade_executor.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "core\\upgrade_manager.py": {
+        "critical_score": 1,
+        "used_by": [
+            "core\\atlas_brain.py"
+        ]
+    },
+    "core\\version_memory.py": {
+        "critical_score": 2,
+        "used_by": [
+            "core\\atlas_brain.py",
+            "test_version_memory.py"
+        ]
+    },
+    "core\\weight_optimizer.py": {
+        "critical_score": 1,
+        "used_by": [
+            "core\\strategy_competition.py"
+        ]
+    },
+    "core\\__init__.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "dashboard\\dashboard.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "dashboard\\portfolio_dashboard.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "data\\binance_provider.py": {
+        "critical_score": 2,
+        "used_by": [
+            "data\\live_provider.py",
+            "data\\price_monitor.py"
+        ]
+    },
+    "data\\candle_data.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "data\\data_provider.py": {
+        "critical_score": 3,
+        "used_by": [
+            "backtest\\backtest_engine.py",
+            "data\\market_scanner.py",
+            "database\\engine.py"
+        ]
+    },
+    "data\\live_provider.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "data\\market.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "data\\market_data.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "data\\market_scanner.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "data\\price_monitor.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "database\\engine.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "database\\learning_engine.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "database\\market_history.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "database\\trade_history.py": {
+        "critical_score": 1,
+        "used_by": [
+            "database\\engine.py"
+        ]
+    },
+    "events\\base_event.py": {
+        "critical_score": 2,
+        "used_by": [
+            "events\\market_events.py",
+            "events\\trade_events.py"
+        ]
+    },
+    "events\\event_bus.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "events\\market_events.py": {
+        "critical_score": 2,
+        "used_by": [
+            "events\\__init__.py",
+            "test_event.py"
+        ]
+    },
+    "events\\trade_events.py": {
+        "critical_score": 1,
+        "used_by": [
+            "events\\__init__.py"
+        ]
+    },
+    "events\\__init__.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "exchange\\exchange_adapter.py": {
+        "critical_score": 2,
+        "used_by": [
+            "data\\data_provider.py",
+            "intelligence\\execution_engine.py"
+        ]
+    },
+    "execution\\execution_manager.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "exit\\smart_exit.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "intelligence\\decision_engine.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "intelligence\\decision_logger.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "intelligence\\execution_engine.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "intelligence\\learning_memory.py": {
+        "critical_score": 1,
+        "used_by": [
+            "intelligence\\memory_analyzer.py"
+        ]
+    },
+    "intelligence\\market_score.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "intelligence\\memory_analyzer.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "intelligence\\strategy_brain.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "intelligence\\strategy_memory.py": {
+        "critical_score": 1,
+        "used_by": [
+            "intelligence\\strategy_brain.py"
+        ]
+    },
+    "intelligence\\volatility_manager.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "learning\\adaptive_engine.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "learning\\adaptive_learning.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "learning\\atlas_brain.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "learning\\learner.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "learning\\learning_engine.py": {
+        "critical_score": 2,
+        "used_by": [
+            "ai\\atlas_brain.py",
+            "learning\\atlas_brain.py"
+        ]
+    },
+    "learning\\model_memory.py": {
+        "critical_score": 2,
+        "used_by": [
+            "ai\\atlas_brain.py",
+            "learning\\atlas_brain.py"
+        ]
+    },
+    "learning\\performance_analyzer.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "logs\\trade_logger.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "portfolio\\capital_manager.py": {
+        "critical_score": 1,
+        "used_by": [
+            "portfolio\\portfolio_manager.py"
+        ]
+    },
+    "portfolio\\portfolio_manager.py": {
+        "critical_score": 1,
+        "used_by": [
+            "core\\paper_trader.py"
+        ]
+    },
+    "position\\position_manager.py": {
+        "critical_score": 1,
+        "used_by": [
+            "trading\\paper_trader.py"
+        ]
+    },
+    "quality\\trade_filter.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "risk\\position_manager.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "risk\\position_sizer.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "risk\\risk_manager.py": {
+        "critical_score": 1,
+        "used_by": [
+            "database\\engine.py"
+        ]
+    },
+    "risk\\risk_planner.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "risk\\trade_rules.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "scalping\\scalp_manager.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "signals\\base_signal.py": {
+        "critical_score": 3,
+        "used_by": [
+            "signals\\market\\market_signal.py",
+            "signals\\risk\\risk_signal.py",
+            "signals\\technical\\technical_signal.py"
+        ]
+    },
+    "simulation\\ai_simulator.py": {
+        "critical_score": 1,
+        "used_by": [
+            "simulation\\run_simulation.py"
+        ]
+    },
+    "simulation\\run_simulation.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "simulation\\simulator.py": {
+        "critical_score": 1,
+        "used_by": [
+            "database\\engine.py"
+        ]
+    },
+    "simulation\\__init__.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "strategy\\optimizer.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "strategy\\scalper.py": {
+        "critical_score": 2,
+        "used_by": [
+            "data\\market_scanner.py",
+            "database\\engine.py"
+        ]
+    },
+    "strategy\\scalping.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "strategy\\strategy_engine.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "timeframe\\multi_timeframe.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "trade\\simulator.py": {
+        "critical_score": 1,
+        "used_by": [
+            "backtest\\backtest_engine.py"
+        ]
+    },
+    "trading\\auto_manager.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "trading\\paper_trader.py": {
+        "critical_score": 1,
+        "used_by": [
+            "execution\\execution_manager.py"
+        ]
+    },
+    "signals\\market\\market_signal.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "signals\\risk\\risk_signal.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "signals\\technical\\technical_signal.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "intelligence\\confidence\\capital_allocator.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "intelligence\\confidence\\confidence_engine.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "intelligence\\confidence\\position_sizer.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "intelligence\\market\\breakout_analyzer.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "intelligence\\market\\market_intelligence.py": {
+        "critical_score": 1,
+        "used_by": [
+            "intelligence\\market_score.py"
+        ]
+    },
+    "intelligence\\market\\market_scoring_engine.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "intelligence\\market\\market_structure_analyzer.py": {
+        "critical_score": 1,
+        "used_by": [
+            "intelligence\\market\\market_intelligence.py"
+        ]
+    },
+    "intelligence\\market\\order_flow_analyzer.py": {
+        "critical_score": 1,
+        "used_by": [
+            "intelligence\\market\\market_intelligence.py"
+        ]
+    },
+    "intelligence\\market\\support_resistance_analyzer.py": {
+        "critical_score": 1,
+        "used_by": [
+            "intelligence\\market\\market_intelligence.py"
+        ]
+    },
+    "intelligence\\market\\volatility_analyzer.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "intelligence\\market\\volume_analyzer.py": {
+        "critical_score": 1,
+        "used_by": [
+            "intelligence\\market\\market_intelligence.py"
+        ]
+    },
+    "intelligence\\signals\\signal_fusion.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "intelligence\\strategy_competition\\strategy_competition.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "core\\strategies\\bollingerrsi.py": {
+        "critical_score": 0,
+        "used_by": []
+    },
+    "ai\\analytics\\performance.py": {
+        "critical_score": 0,
+        "used_by": []
+    }
+}

@@ -1,0 +1,16 @@
+============================================================
+ATLAS AUTO PATCH
+============================================================
+
+Date : 2026-07-18 17:57:32.468334
+Target : core\outcome_memory.py
+Priority : HIGH
+
+Reason
+----------------------------------------
+Outcome Memory iki farklı görevi yönetiyor.
+
+Suggested Split
+----------------------------------------
+- trade_memory.py
+- performance_memory.py

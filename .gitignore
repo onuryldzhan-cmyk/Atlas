@@ -1,0 +1,85 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment variables
+.env
+.env.local
+
+# Logs
+logs/
+*.log
+
+# Data (buyuk dosyalar)
+data/*.csv
+data/*.parquet
+!data/*.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Atlas AI specific
+backtest_results/
+paper_trading_logs/
+
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Private keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+
+# Credentials and secrets directories
+secrets/
+credentials/
+
+# Local secret variants
+.env.*
+!.env.example

@@ -1,0 +1,15 @@
+{
+  "phase": "6A6.2",
+  "generated_utc": "2026-07-27T14:37:05.918571+00:00",
+  "test_file": "tests\\phase6\\test_application_lifecycle_integration.py",
+  "compile_passed": true,
+  "compile_error": null,
+  "tests_passed": true,
+  "return_code": 0,
+  "stdout": "",
+  "stderr": "test_duplicate_start_is_idempotent (tests.phase6.test_application_lifecycle_integration.AtlasApplicationLifecycleTests.test_duplicate_start_is_idempotent) ... Atlas is already running\nok\ntest_market_feed_failure_triggers_runtime_fail_and_rollback (tests.phase6.test_application_lifecycle_integration.AtlasApplicationLifecycleTests.test_market_feed_failure_triggers_runtime_fail_and_rollback) ... Atlas startup failed\nTraceback (most recent call last):\n  File \"C:\\Users\\HUAWE�\\OneDrive\\Masa�st�\\Project_Atlas_AI\\core\\application.py\", line 314, in start\n    self.market_feed.start()\n    ~~~~~~~~~~~~~~~~~~~~~~^^\n  File \"C:\\Users\\HUAWE�\\OneDrive\\Masa�st�\\Project_Atlas_AI\\tests\\phase6\\test_application_lifecycle_integration.py\", line 92, in start\n    raise RuntimeError(f\"{self.name} startup failure\")\nRuntimeError: market_feed startup failure\nRolling back partial Atlas startup\nok\ntest_shutdown_order_is_reverse_dependency_safe (tests.phase6.test_application_lifecycle_integration.AtlasApplicationLifecycleTests.test_shutdown_order_is_reverse_dependency_safe) ... ok\ntest_startup_order_matches_runtime_contract (tests.phase6.test_application_lifecycle_integration.AtlasApplicationLifecycleTests.test_startup_order_matches_runtime_contract) ... ok\n\n----------------------------------------------------------------------\nRan 4 tests in 0.004s\n\nOK\n",
+  "backup": null,
+  "production_source_files_modified": false,
+  "network_used": false,
+  "trading_execution_used": false
+}

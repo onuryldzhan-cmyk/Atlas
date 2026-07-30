@@ -1,0 +1,787 @@
+{
+  "phase": "6A2",
+  "generated_utc": "2026-07-27T14:00:49.335960+00:00",
+  "project_root": "C:\\Users\\HUAWEİ\\OneDrive\\Masaüstü\\Project_Atlas_AI",
+  "summary": {
+    "python_files_scanned": 613,
+    "parse_failures": 53,
+    "high_findings": 1,
+    "medium_findings": 2,
+    "info_findings": 1,
+    "legacy_usage_files": 7,
+    "canonical_usage_files": 1
+  },
+  "class_definitions": {
+    "BinanceProvider": [
+      {
+        "file": "data/binance_provider.py",
+        "line": 19,
+        "methods": [
+          "__init__",
+          "get_price",
+          "get_volume",
+          "get_candles"
+        ]
+      },
+      {
+        "file": "archive_unused_2026-07-22/data/binance_provider.py",
+        "line": 4,
+        "methods": [
+          "__init__",
+          "get_price",
+          "get_candles"
+        ]
+      }
+    ],
+    "CandleManager": [
+      {
+        "file": "data/candle_manager.py",
+        "line": 22,
+        "methods": [
+          "__init__",
+          "get_candles",
+          "last_price",
+          "snapshot",
+          "status"
+        ]
+      }
+    ],
+    "ExchangeManager": [
+      {
+        "file": "exchange/exchange_manager.py",
+        "line": 16,
+        "methods": [
+          "__init__",
+          "_create_exchange",
+          "connect",
+          "disconnect",
+          "get_price",
+          "get_klines",
+          "place_order"
+        ]
+      }
+    ],
+    "MarketFeed": [
+      {
+        "file": "exchange/market_feed.py",
+        "line": 15,
+        "methods": [
+          "__init__",
+          "start",
+          "stop",
+          "price",
+          "candles"
+        ]
+      }
+    ],
+    "PriceProvider": [
+      {
+        "file": "core/data/price_provider.py",
+        "line": 26,
+        "methods": [
+          "__init__",
+          "get_price",
+          "update",
+          "status"
+        ]
+      }
+    ],
+    "BinancePublicDataProvider": [
+      {
+        "file": "atlas_finance/market_data/binance_public_provider.py",
+        "line": 94,
+        "methods": [
+          "__init__",
+          "provider_name",
+          "connected",
+          "base_url",
+          "timeout_seconds",
+          "retry_attempts",
+          "retry_backoff_seconds",
+          "maximum_candle_limit",
+          "supported_timeframes",
+          "connect",
+          "disconnect",
+          "get_price",
+          "get_candles",
+          "_request_json",
+          "_perform_get",
+          "_validate_response",
+          "_parse_candle",
+          "_ensure_available",
+          "_normalize_symbol",
+          "_normalize_timeframe",
+          "_validate_candle_limit",
+          "_validate_base_url",
+          "_validate_retry_attempts",
+          "_validate_maximum_candle_limit",
+          "_validate_positive_float",
+          "_validate_non_negative_float",
+          "_parse_positive_float",
+          "_parse_non_negative_float",
+          "_milliseconds_to_datetime",
+          "_optional_float",
+          "_optional_integer"
+        ]
+      }
+    ],
+    "MarketFeedService": [
+      {
+        "file": "atlas_finance/market_data/market_feed_service.py",
+        "line": 293,
+        "methods": [
+          "__init__",
+          "provider",
+          "provider_name",
+          "provider_connected",
+          "failure_threshold",
+          "publish_events",
+          "collect_metrics",
+          "consecutive_failures",
+          "_on_start",
+          "_on_stop",
+          "get_price",
+          "get_candles",
+          "last_price",
+          "statistics",
+          "market_feed_snapshot",
+          "_health_details",
+          "_snapshot_metadata",
+          "_record_price_success",
+          "_record_candle_success",
+          "_record_failure",
+          "_publish_event",
+          "_increment_metric",
+          "_observe_metric",
+          "_set_metric",
+          "_set_provider_connected_metric",
+          "_require_running",
+          "_validate_failure_threshold",
+          "_normalize_symbol",
+          "_normalize_timeframe",
+          "_validate_limit",
+          "_validate_price_result",
+          "_validate_candle_results",
+          "_safe_latency"
+        ]
+      }
+    ]
+  },
+  "findings": [
+    {
+      "severity": "HIGH",
+      "code": "LEGACY_COMPOSITION_ROOT",
+      "title": "Application still constructs legacy MarketFeed",
+      "evidence": "core/application.py imports exchange.market_feed.MarketFeed",
+      "recommendation": "Introduce a compatibility adapter or migrate the composition root to AtlasFinance MarketFeedService after contract tests."
+    },
+    {
+      "severity": "MEDIUM",
+      "code": "EMPTY_CORE_MARKET_FEED",
+      "title": "core/market_feed.py is empty",
+      "evidence": "The expected core feed module has zero bytes.",
+      "recommendation": "Keep it unused, remove references, or convert it into a deliberate compatibility export only after import analysis."
+    },
+    {
+      "severity": "MEDIUM",
+      "code": "DIRECT_EXCHANGE_ACCESS",
+      "title": "Active modules contain direct exchange access markers",
+      "evidence": [
+        {
+          "file": "web_app.py",
+          "markers": [
+            "requests.get(",
+            "api.binance.com"
+          ]
+        },
+        {
+          "file": "data/binance_provider.py",
+          "markers": [
+            "requests.get(",
+            "api.binance.com"
+          ]
+        },
+        {
+          "file": "exchange/base_exchange.py",
+          "markers": [
+            "get_klines("
+          ]
+        },
+        {
+          "file": "exchange/exchange_manager.py",
+          "markers": [
+            "get_klines("
+          ]
+        },
+        {
+          "file": "exchange/market_feed.py",
+          "markers": [
+            "get_klines("
+          ]
+        },
+        {
+          "file": "phase6a2_tool_backup_20260727_170020/phase6a2_market_data_architecture_audit.py",
+          "markers": [
+            "requests.get(",
+            "requests.post(",
+            "client.get_",
+            "get_klines(",
+            "get_ticker(",
+            "futures_",
+            "api.binance.com"
+          ]
+        },
+        {
+          "file": "phase6a2_tool_backup_20260727_170048/phase6a2_market_data_architecture_audit.py",
+          "markers": [
+            "requests.get(",
+            "requests.post(",
+            "client.get_",
+            "get_klines(",
+            "get_ticker(",
+            "futures_",
+            "api.binance.com"
+          ]
+        },
+        {
+          "file": "archive_unused_2026-07-22/ai/atlas_telegram_connector.py",
+          "markers": [
+            "requests.get(",
+            "requests.post("
+          ]
+        },
+        {
+          "file": "archive_unused_2026-07-22/core/data_downloader.py",
+          "markers": [
+            "requests.get(",
+            "api.binance.com"
+          ]
+        },
+        {
+          "file": "archive_unused_2026-07-22/core/data_provider.py",
+          "markers": [
+            "requests.get(",
+            "get_klines(",
+            "api.binance.com"
+          ]
+        },
+        {
+          "file": "archive_unused_2026-07-22/core/live_trader.py",
+          "markers": [
+            "client.get_",
+            "get_klines("
+          ]
+        },
+        {
+          "file": "archive_unused_2026-07-22/core/trading_cycle.py",
+          "markers": [
+            "get_klines("
+          ]
+        },
+        {
+          "file": "archive_unused_2026-07-22/data/binance_provider.py",
+          "markers": [
+            "client.get_",
+            "get_klines("
+          ]
+        },
+        {
+          "file": "archive_unused_2026-07-22/data/data_manager.py",
+          "markers": [
+            "client.get_",
+            "get_klines(",
+            "get_ticker(",
+            "futures_",
+            "api.binance.com"
+          ]
+        },
+        {
+          "file": "archive_unused_2026-07-22/ai/core/atlas_live_connector.py",
+          "markers": [
+            "get_klines(",
+            "api.binance.com"
+          ]
+        },
+        {
+          "file": "archive_unused_2026-07-22/ai/core/atlas_live_trading.py",
+          "markers": [
+            "requests.get(",
+            "api.binance.com"
+          ]
+        },
+        {
+          "file": "archive_unused_2026-07-22/ai/core/atlas_live_trading_v2.py",
+          "markers": [
+            "client.get_",
+            "get_klines(",
+            "api.binance.com"
+          ]
+        },
+        {
+          "file": "archive_unused_2026-07-22/ai/core/atlas_live_trading_v21.py",
+          "markers": [
+            "client.get_",
+            "get_klines(",
+            "api.binance.com"
+          ]
+        },
+        {
+          "file": "archive_unused_2026-07-22/ai/core/atlas_telegram_connector.py",
+          "markers": [
+            "requests.get(",
+            "requests.post("
+          ]
+        }
+      ],
+      "recommendation": "Restrict external market requests to provider/adapter modules."
+    },
+    {
+      "severity": "INFO",
+      "code": "CANONICAL_SERVICE_READY",
+      "title": "MarketFeedService exposes production service capabilities",
+      "evidence": [
+        "_health_details",
+        "_on_start",
+        "_on_stop",
+        "get_candles",
+        "get_price",
+        "market_feed_snapshot",
+        "statistics"
+      ],
+      "recommendation": "Proceed with adapter and composition migration tests."
+    }
+  ],
+  "usage": {
+    "legacy": [
+      {
+        "file": "test_feed.py",
+        "status": "OK",
+        "line_count": 9,
+        "classes": [],
+        "legacy_references": [
+          {
+            "module": "exchange.market_feed",
+            "class": "MarketFeed",
+            "lines": [
+              1
+            ]
+          }
+        ],
+        "canonical_references": [],
+        "direct_exchange_markers": [],
+        "event_bus_reference": false,
+        "health_reference": false,
+        "logging_reference": false
+      },
+      {
+        "file": "test_market_data.py",
+        "status": "OK",
+        "line_count": 36,
+        "classes": [],
+        "legacy_references": [
+          {
+            "module": "data.binance_provider",
+            "class": "BinanceProvider",
+            "lines": [
+              1
+            ]
+          },
+          {
+            "module": "data.candle_manager",
+            "class": "CandleManager",
+            "lines": [
+              2
+            ]
+          }
+        ],
+        "canonical_references": [],
+        "direct_exchange_markers": [],
+        "event_bus_reference": false,
+        "health_reference": false,
+        "logging_reference": false
+      },
+      {
+        "file": "test_market_intelligence.py",
+        "status": "OK",
+        "line_count": 51,
+        "classes": [],
+        "legacy_references": [
+          {
+            "module": "data.binance_provider",
+            "class": "BinanceProvider",
+            "lines": [
+              1
+            ]
+          },
+          {
+            "module": "data.candle_manager",
+            "class": "CandleManager",
+            "lines": [
+              2
+            ]
+          }
+        ],
+        "canonical_references": [],
+        "direct_exchange_markers": [],
+        "event_bus_reference": false,
+        "health_reference": false,
+        "logging_reference": false
+      },
+      {
+        "file": "core/application.py",
+        "status": "OK",
+        "line_count": 751,
+        "classes": [
+          {
+            "name": "AtlasApplication",
+            "line": 83,
+            "methods": [
+              "__init__",
+              "_build_infrastructure",
+              "_build_services",
+              "_register_services",
+              "start",
+              "_start_optional_service",
+              "_rollback_startup",
+              "stop",
+              "_stop_service",
+              "_record_error",
+              "_safe_status",
+              "health",
+              "status",
+              "__repr__"
+            ]
+          }
+        ],
+        "legacy_references": [
+          {
+            "module": "exchange.market_feed",
+            "class": "MarketFeed",
+            "lines": [
+              70
+            ]
+          }
+        ],
+        "canonical_references": [],
+        "direct_exchange_markers": [],
+        "event_bus_reference": true,
+        "health_reference": true,
+        "logging_reference": true
+      },
+      {
+        "file": "exchange/market_feed.py",
+        "status": "OK",
+        "line_count": 48,
+        "classes": [
+          {
+            "name": "MarketFeed",
+            "line": 15,
+            "methods": [
+              "__init__",
+              "start",
+              "stop",
+              "price",
+              "candles"
+            ]
+          }
+        ],
+        "legacy_references": [
+          {
+            "module": "exchange.exchange_manager",
+            "class": "ExchangeManager",
+            "lines": [
+              9
+            ]
+          }
+        ],
+        "canonical_references": [],
+        "direct_exchange_markers": [
+          "get_klines("
+        ],
+        "event_bus_reference": false,
+        "health_reference": false,
+        "logging_reference": true
+      },
+      {
+        "file": "archive_unused_2026-07-22/data/live_provider.py",
+        "status": "OK",
+        "line_count": 21,
+        "classes": [
+          {
+            "name": "LiveProvider",
+            "line": 4,
+            "methods": [
+              "__init__",
+              "get_candles"
+            ]
+          }
+        ],
+        "legacy_references": [
+          {
+            "module": "data.binance_provider",
+            "class": "BinanceProvider",
+            "lines": [
+              1
+            ]
+          }
+        ],
+        "canonical_references": [],
+        "direct_exchange_markers": [],
+        "event_bus_reference": false,
+        "health_reference": false,
+        "logging_reference": false
+      },
+      {
+        "file": "archive_unused_2026-07-22/data/price_monitor.py",
+        "status": "OK",
+        "line_count": 31,
+        "classes": [
+          {
+            "name": "PriceMonitor",
+            "line": 4,
+            "methods": [
+              "__init__",
+              "get_price"
+            ]
+          }
+        ],
+        "legacy_references": [
+          {
+            "module": "data.binance_provider",
+            "class": "BinanceProvider",
+            "lines": [
+              1
+            ]
+          }
+        ],
+        "canonical_references": [],
+        "direct_exchange_markers": [],
+        "event_bus_reference": false,
+        "health_reference": false,
+        "logging_reference": false
+      }
+    ],
+    "canonical": [
+      {
+        "file": "atlas_finance/market_data/__init__.py",
+        "status": "OK",
+        "line_count": 130,
+        "classes": [],
+        "legacy_references": [],
+        "canonical_references": [
+          {
+            "module": "atlas_finance.market_data.market_feed_service",
+            "class": "MarketFeedService",
+            "lines": [
+              68
+            ]
+          },
+          {
+            "module": "atlas_finance.market_data.binance_public_provider",
+            "class": "BinancePublicDataProvider",
+            "lines": [
+              38
+            ]
+          }
+        ],
+        "direct_exchange_markers": [],
+        "event_bus_reference": false,
+        "health_reference": false,
+        "logging_reference": false
+      }
+    ]
+  },
+  "composition_candidates": [
+    {
+      "file": "main.py",
+      "status": "OK",
+      "line_count": 593,
+      "classes": [
+        {
+          "name": "AtlasProcess",
+          "line": 255,
+          "methods": [
+            "__init__",
+            "install_signal_handlers",
+            "_handle_signal",
+            "start",
+            "run_forever",
+            "_display_latest_error",
+            "stop",
+            "execute"
+          ]
+        }
+      ],
+      "legacy_references": [],
+      "canonical_references": [],
+      "direct_exchange_markers": [],
+      "event_bus_reference": false,
+      "health_reference": true,
+      "logging_reference": true
+    },
+    {
+      "file": "core/application.py",
+      "status": "OK",
+      "line_count": 751,
+      "classes": [
+        {
+          "name": "AtlasApplication",
+          "line": 83,
+          "methods": [
+            "__init__",
+            "_build_infrastructure",
+            "_build_services",
+            "_register_services",
+            "start",
+            "_start_optional_service",
+            "_rollback_startup",
+            "stop",
+            "_stop_service",
+            "_record_error",
+            "_safe_status",
+            "health",
+            "status",
+            "__repr__"
+          ]
+        }
+      ],
+      "legacy_references": [
+        {
+          "module": "exchange.market_feed",
+          "class": "MarketFeed",
+          "lines": [
+            70
+          ]
+        }
+      ],
+      "canonical_references": [],
+      "direct_exchange_markers": [],
+      "event_bus_reference": true,
+      "health_reference": true,
+      "logging_reference": true
+    },
+    {
+      "file": "core/runtime.py",
+      "status": "OK",
+      "line_count": 270,
+      "classes": [
+        {
+          "name": "RuntimeState",
+          "line": 31,
+          "methods": []
+        },
+        {
+          "name": "RuntimeInfo",
+          "line": 53,
+          "methods": []
+        },
+        {
+          "name": "AtlasRuntime",
+          "line": 79,
+          "methods": [
+            "__init__",
+            "_transition",
+            "boot",
+            "initialize",
+            "connect",
+            "ready",
+            "start",
+            "pause",
+            "resume",
+            "degrade",
+            "fail",
+            "stop",
+            "shutdown",
+            "status",
+            "health"
+          ]
+        }
+      ],
+      "legacy_references": [],
+      "canonical_references": [],
+      "direct_exchange_markers": [],
+      "event_bus_reference": false,
+      "health_reference": true,
+      "logging_reference": true
+    },
+    {
+      "file": "atlas_os/kernel/kernel.py",
+      "status": "OK",
+      "line_count": 914,
+      "classes": [
+        {
+          "name": "KernelState",
+          "line": 76,
+          "methods": []
+        },
+        {
+          "name": "KernelLifecycleError",
+          "line": 90,
+          "methods": []
+        },
+        {
+          "name": "KernelIdentity",
+          "line": 97,
+          "methods": [
+            "__post_init__"
+          ]
+        },
+        {
+          "name": "KernelHealthReport",
+          "line": 134,
+          "methods": [
+            "is_operational"
+          ]
+        },
+        {
+          "name": "KernelSnapshot",
+          "line": 171,
+          "methods": []
+        },
+        {
+          "name": "AtlasOSKernel",
+          "line": 194,
+          "methods": [
+            "__init__",
+            "identity",
+            "state",
+            "service_manager",
+            "registry",
+            "service_count",
+            "created_at",
+            "started_at",
+            "stopped_at",
+            "last_error",
+            "is_running",
+            "uptime",
+            "uptime_seconds",
+            "register_service",
+            "unregister_service",
+            "validate",
+            "plan",
+            "start",
+            "stop",
+            "health",
+            "synchronize_state",
+            "set_metadata",
+            "metadata",
+            "snapshot",
+            "_ensure_configuration_state"
+          ]
+        }
+      ],
+      "legacy_references": [],
+      "canonical_references": [],
+      "direct_exchange_markers": [],
+      "event_bus_reference": false,
+      "health_reference": true,
+      "logging_reference": true
+    }
+  ],
+  "safety": {
+    "source_files_modified": false,
+    "atlas_modules_imported": false,
+    "exchange_connections_opened": false,
+    "secret_values_read": false
+  }
+}

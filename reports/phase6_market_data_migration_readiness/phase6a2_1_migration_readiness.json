@@ -1,0 +1,2593 @@
+{
+  "phase": "6A2.1",
+  "generated_utc": "2026-07-27T14:04:07.295793+00:00",
+  "summary": {
+    "python_files_scanned": 614,
+    "parse_failures_total": 53,
+    "parse_failures_active": 53,
+    "parse_failures_archived_like": 0,
+    "legacy_usage_files": 2,
+    "canonical_usage_files": 1,
+    "direct_access_files": 24,
+    "high_findings": 1
+  },
+  "contracts": {
+    "legacy_market_feed": {
+      "file": "exchange/market_feed.py",
+      "class": "MarketFeed",
+      "bases": [],
+      "constructor": {
+        "name": "__init__",
+        "line": 17,
+        "async": false,
+        "parameters": [
+          {
+            "name": "self",
+            "default": null
+          },
+          {
+            "name": "exchange_name",
+            "default": "'binance_global'"
+          }
+        ]
+      },
+      "public_methods": [
+        {
+          "name": "start",
+          "line": 21,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            }
+          ]
+        },
+        {
+          "name": "stop",
+          "line": 27,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            }
+          ]
+        },
+        {
+          "name": "price",
+          "line": 33,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            },
+            {
+              "name": "symbol",
+              "default": null
+            }
+          ]
+        },
+        {
+          "name": "candles",
+          "line": 37,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            },
+            {
+              "name": "symbol",
+              "default": null
+            },
+            {
+              "name": "interval",
+              "default": "'1m'"
+            },
+            {
+              "name": "limit",
+              "default": "500"
+            }
+          ]
+        }
+      ],
+      "lifecycle_methods": [
+        {
+          "name": "start",
+          "line": 21,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            }
+          ]
+        },
+        {
+          "name": "stop",
+          "line": 27,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            }
+          ]
+        }
+      ]
+    },
+    "canonical_market_feed_service": {
+      "file": "atlas_finance/market_data/market_feed_service.py",
+      "class": "MarketFeedService",
+      "bases": [
+        "BaseAtlasService"
+      ],
+      "constructor": {
+        "name": "__init__",
+        "line": 353,
+        "async": false,
+        "parameters": [
+          {
+            "name": "self",
+            "default": null
+          },
+          {
+            "name": "provider",
+            "default": null
+          },
+          {
+            "name": "event_bus",
+            "default": "None"
+          },
+          {
+            "name": "metrics",
+            "default": "None"
+          },
+          {
+            "name": "publish_events",
+            "default": "True"
+          },
+          {
+            "name": "collect_metrics",
+            "default": "True"
+          },
+          {
+            "name": "failure_threshold",
+            "default": "DEFAULT_FAILURE_THRESHOLD"
+          }
+        ]
+      },
+      "public_methods": [
+        {
+          "name": "provider",
+          "line": 455,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            }
+          ]
+        },
+        {
+          "name": "provider_name",
+          "line": 461,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            }
+          ]
+        },
+        {
+          "name": "provider_connected",
+          "line": 467,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            }
+          ]
+        },
+        {
+          "name": "failure_threshold",
+          "line": 475,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            }
+          ]
+        },
+        {
+          "name": "publish_events",
+          "line": 481,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            }
+          ]
+        },
+        {
+          "name": "collect_metrics",
+          "line": 487,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            }
+          ]
+        },
+        {
+          "name": "consecutive_failures",
+          "line": 493,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            }
+          ]
+        },
+        {
+          "name": "get_price",
+          "line": 633,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            },
+            {
+              "name": "symbol",
+              "default": null
+            },
+            {
+              "name": "correlation_id",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "name": "get_candles",
+          "line": 706,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            },
+            {
+              "name": "symbol",
+              "default": null
+            },
+            {
+              "name": "timeframe",
+              "default": "'5m'"
+            },
+            {
+              "name": "limit",
+              "default": "100"
+            },
+            {
+              "name": "correlation_id",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "name": "last_price",
+          "line": 815,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            },
+            {
+              "name": "symbol",
+              "default": null
+            }
+          ]
+        },
+        {
+          "name": "statistics",
+          "line": 834,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            }
+          ]
+        },
+        {
+          "name": "market_feed_snapshot",
+          "line": 871,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            }
+          ]
+        }
+      ],
+      "lifecycle_methods": [
+        {
+          "name": "_on_start",
+          "line": 503,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            }
+          ]
+        },
+        {
+          "name": "_on_stop",
+          "line": 576,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            }
+          ]
+        },
+        {
+          "name": "statistics",
+          "line": 834,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            }
+          ]
+        },
+        {
+          "name": "market_feed_snapshot",
+          "line": 871,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            }
+          ]
+        },
+        {
+          "name": "_health_details",
+          "line": 949,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            }
+          ]
+        }
+      ]
+    },
+    "canonical_provider": {
+      "file": "atlas_finance/market_data/binance_public_provider.py",
+      "class": "BinancePublicDataProvider",
+      "bases": [
+        "MarketDataProviderProtocol"
+      ],
+      "constructor": {
+        "name": "__init__",
+        "line": 164,
+        "async": false,
+        "parameters": [
+          {
+            "name": "self",
+            "default": null
+          },
+          {
+            "name": "base_url",
+            "default": "DEFAULT_BASE_URL"
+          },
+          {
+            "name": "timeout_seconds",
+            "default": "DEFAULT_TIMEOUT_SECONDS"
+          },
+          {
+            "name": "retry_attempts",
+            "default": "DEFAULT_RETRY_ATTEMPTS"
+          },
+          {
+            "name": "retry_backoff_seconds",
+            "default": "DEFAULT_RETRY_BACKOFF_SECONDS"
+          },
+          {
+            "name": "maximum_candle_limit",
+            "default": "DEFAULT_MAXIMUM_CANDLE_LIMIT"
+          },
+          {
+            "name": "session",
+            "default": "None"
+          },
+          {
+            "name": "connection_test_symbol",
+            "default": "'BTCUSDT'"
+          }
+        ]
+      },
+      "public_methods": [
+        {
+          "name": "provider_name",
+          "line": 248,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            }
+          ]
+        },
+        {
+          "name": "connected",
+          "line": 254,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            }
+          ]
+        },
+        {
+          "name": "base_url",
+          "line": 261,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            }
+          ]
+        },
+        {
+          "name": "timeout_seconds",
+          "line": 267,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            }
+          ]
+        },
+        {
+          "name": "retry_attempts",
+          "line": 273,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            }
+          ]
+        },
+        {
+          "name": "retry_backoff_seconds",
+          "line": 279,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            }
+          ]
+        },
+        {
+          "name": "maximum_candle_limit",
+          "line": 285,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            }
+          ]
+        },
+        {
+          "name": "supported_timeframes",
+          "line": 291,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            }
+          ]
+        },
+        {
+          "name": "connect",
+          "line": 300,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            }
+          ]
+        },
+        {
+          "name": "disconnect",
+          "line": 342,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            }
+          ]
+        },
+        {
+          "name": "get_price",
+          "line": 368,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            },
+            {
+              "name": "symbol",
+              "default": null
+            }
+          ]
+        },
+        {
+          "name": "get_candles",
+          "line": 446,
+          "async": false,
+          "parameters": [
+            {
+              "name": "self",
+              "default": null
+            },
+            {
+              "name": "symbol",
+              "default": null
+            },
+            {
+              "name": "timeframe",
+              "default": "'5m'"
+            },
+            {
+              "name": "limit",
+              "default": "100"
+            }
+          ]
+        }
+      ],
+      "lifecycle_methods": []
+    }
+  },
+  "core_application": {
+    "file": "core/application.py",
+    "status": "OK",
+    "soft_archived": false,
+    "line_count": 751,
+    "target_imports": [
+      {
+        "module": "exchange.market_feed",
+        "symbol": "MarketFeed",
+        "local_name": "MarketFeed",
+        "line": 70,
+        "target_module": "exchange.market_feed",
+        "target_class": "MarketFeed"
+      }
+    ],
+    "instantiations": [
+      {
+        "line": 184,
+        "called": "MarketFeed",
+        "target_module": "exchange.market_feed",
+        "target_class": "MarketFeed",
+        "args": [],
+        "keywords": {
+          "exchange_name": "self.exchange_name"
+        }
+      }
+    ],
+    "method_calls": [],
+    "direct_exchange_access": [],
+    "classes": [
+      {
+        "name": "AtlasApplication",
+        "line": 83,
+        "bases": [],
+        "methods": [
+          {
+            "name": "__init__",
+            "line": 96,
+            "async": false,
+            "parameters": [
+              {
+                "name": "self",
+                "default": null
+              },
+              {
+                "name": "exchange_name",
+                "default": "'binance_global'"
+              },
+              {
+                "name": "execution_mode",
+                "default": "'PAPER'"
+              },
+              {
+                "name": "symbols",
+                "default": "None"
+              },
+              {
+                "name": "market_interval",
+                "default": "10.0"
+              }
+            ]
+          },
+          {
+            "name": "_build_infrastructure",
+            "line": 140,
+            "async": false,
+            "parameters": [
+              {
+                "name": "self",
+                "default": null
+              }
+            ]
+          },
+          {
+            "name": "_build_services",
+            "line": 156,
+            "async": false,
+            "parameters": [
+              {
+                "name": "self",
+                "default": null
+              }
+            ]
+          },
+          {
+            "name": "_register_services",
+            "line": 227,
+            "async": false,
+            "parameters": [
+              {
+                "name": "self",
+                "default": null
+              }
+            ]
+          },
+          {
+            "name": "start",
+            "line": 267,
+            "async": false,
+            "parameters": [
+              {
+                "name": "self",
+                "default": null
+              }
+            ]
+          },
+          {
+            "name": "_start_optional_service",
+            "line": 385,
+            "async": false,
+            "parameters": [
+              {
+                "name": "self",
+                "default": null
+              },
+              {
+                "name": "name",
+                "default": null
+              },
+              {
+                "name": "service",
+                "default": null
+              }
+            ]
+          },
+          {
+            "name": "_rollback_startup",
+            "line": 410,
+            "async": false,
+            "parameters": [
+              {
+                "name": "self",
+                "default": null
+              }
+            ]
+          },
+          {
+            "name": "stop",
+            "line": 425,
+            "async": false,
+            "parameters": [
+              {
+                "name": "self",
+                "default": null
+              }
+            ]
+          },
+          {
+            "name": "_stop_service",
+            "line": 520,
+            "async": false,
+            "parameters": [
+              {
+                "name": "name",
+                "default": null
+              },
+              {
+                "name": "service",
+                "default": null
+              }
+            ]
+          },
+          {
+            "name": "_record_error",
+            "line": 556,
+            "async": false,
+            "parameters": [
+              {
+                "name": "self",
+                "default": null
+              },
+              {
+                "name": "phase",
+                "default": null
+              },
+              {
+                "name": "error",
+                "default": null
+              }
+            ]
+          },
+          {
+            "name": "_safe_status",
+            "line": 581,
+            "async": false,
+            "parameters": [
+              {
+                "name": "service",
+                "default": null
+              }
+            ]
+          },
+          {
+            "name": "health",
+            "line": 633,
+            "async": false,
+            "parameters": [
+              {
+                "name": "self",
+                "default": null
+              }
+            ]
+          },
+          {
+            "name": "status",
+            "line": 671,
+            "async": false,
+            "parameters": [
+              {
+                "name": "self",
+                "default": null
+              }
+            ]
+          },
+          {
+            "name": "__repr__",
+            "line": 745,
+            "async": false,
+            "parameters": [
+              {
+                "name": "self",
+                "default": null
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "self_method_calls": {
+      "_build_infrastructure": [
+        125
+      ],
+      "_build_services": [
+        126
+      ],
+      "_record_error": [
+        360,
+        446,
+        467,
+        481,
+        498
+      ],
+      "_register_services": [
+        127
+      ],
+      "_rollback_startup": [
+        378
+      ],
+      "_safe_status": [
+        638,
+        642,
+        646,
+        692,
+        696,
+        700,
+        704,
+        708,
+        712,
+        716,
+        720
+      ],
+      "_start_optional_service": [
+        321
+      ],
+      "_stop_service": [
+        461
+      ],
+      "container.list_services": [
+        260,
+        725
+      ],
+      "container.register": [
+        253
+      ],
+      "controller.start": [
+        343
+      ],
+      "errors.append": [
+        566
+      ],
+      "execution.start": [
+        305
+      ],
+      "health": [
+        729
+      ],
+      "lifecycle.stop_all": [
+        478
+      ],
+      "market_feed.start": [
+        314
+      ],
+      "market_loop.start": [
+        336
+      ],
+      "runtime.boot": [
+        296
+      ],
+      "runtime.connect": [
+        312
+      ],
+      "runtime.fail": [
+        370
+      ],
+      "runtime.initialize": [
+        297
+      ],
+      "runtime.ready": [
+        330
+      ],
+      "runtime.shutdown": [
+        495
+      ],
+      "runtime.start": [
+        346
+      ],
+      "runtime.stop": [
+        443
+      ],
+      "started_services.append": [
+        306,
+        315,
+        337,
+        344,
+        404
+      ],
+      "started_services.clear": [
+        282,
+        492
+      ],
+      "stop": [
+        419
+      ]
+    }
+  },
+  "legacy_usage": [
+    {
+      "file": "core/application.py",
+      "status": "OK",
+      "soft_archived": false,
+      "line_count": 751,
+      "target_imports": [
+        {
+          "module": "exchange.market_feed",
+          "symbol": "MarketFeed",
+          "local_name": "MarketFeed",
+          "line": 70,
+          "target_module": "exchange.market_feed",
+          "target_class": "MarketFeed"
+        }
+      ],
+      "instantiations": [
+        {
+          "line": 184,
+          "called": "MarketFeed",
+          "target_module": "exchange.market_feed",
+          "target_class": "MarketFeed",
+          "args": [],
+          "keywords": {
+            "exchange_name": "self.exchange_name"
+          }
+        }
+      ],
+      "method_calls": [],
+      "direct_exchange_access": [],
+      "classes": [
+        {
+          "name": "AtlasApplication",
+          "line": 83,
+          "bases": [],
+          "methods": [
+            {
+              "name": "__init__",
+              "line": 96,
+              "async": false,
+              "parameters": [
+                {
+                  "name": "self",
+                  "default": null
+                },
+                {
+                  "name": "exchange_name",
+                  "default": "'binance_global'"
+                },
+                {
+                  "name": "execution_mode",
+                  "default": "'PAPER'"
+                },
+                {
+                  "name": "symbols",
+                  "default": "None"
+                },
+                {
+                  "name": "market_interval",
+                  "default": "10.0"
+                }
+              ]
+            },
+            {
+              "name": "_build_infrastructure",
+              "line": 140,
+              "async": false,
+              "parameters": [
+                {
+                  "name": "self",
+                  "default": null
+                }
+              ]
+            },
+            {
+              "name": "_build_services",
+              "line": 156,
+              "async": false,
+              "parameters": [
+                {
+                  "name": "self",
+                  "default": null
+                }
+              ]
+            },
+            {
+              "name": "_register_services",
+              "line": 227,
+              "async": false,
+              "parameters": [
+                {
+                  "name": "self",
+                  "default": null
+                }
+              ]
+            },
+            {
+              "name": "start",
+              "line": 267,
+              "async": false,
+              "parameters": [
+                {
+                  "name": "self",
+                  "default": null
+                }
+              ]
+            },
+            {
+              "name": "_start_optional_service",
+              "line": 385,
+              "async": false,
+              "parameters": [
+                {
+                  "name": "self",
+                  "default": null
+                },
+                {
+                  "name": "name",
+                  "default": null
+                },
+                {
+                  "name": "service",
+                  "default": null
+                }
+              ]
+            },
+            {
+              "name": "_rollback_startup",
+              "line": 410,
+              "async": false,
+              "parameters": [
+                {
+                  "name": "self",
+                  "default": null
+                }
+              ]
+            },
+            {
+              "name": "stop",
+              "line": 425,
+              "async": false,
+              "parameters": [
+                {
+                  "name": "self",
+                  "default": null
+                }
+              ]
+            },
+            {
+              "name": "_stop_service",
+              "line": 520,
+              "async": false,
+              "parameters": [
+                {
+                  "name": "name",
+                  "default": null
+                },
+                {
+                  "name": "service",
+                  "default": null
+                }
+              ]
+            },
+            {
+              "name": "_record_error",
+              "line": 556,
+              "async": false,
+              "parameters": [
+                {
+                  "name": "self",
+                  "default": null
+                },
+                {
+                  "name": "phase",
+                  "default": null
+                },
+                {
+                  "name": "error",
+                  "default": null
+                }
+              ]
+            },
+            {
+              "name": "_safe_status",
+              "line": 581,
+              "async": false,
+              "parameters": [
+                {
+                  "name": "service",
+                  "default": null
+                }
+              ]
+            },
+            {
+              "name": "health",
+              "line": 633,
+              "async": false,
+              "parameters": [
+                {
+                  "name": "self",
+                  "default": null
+                }
+              ]
+            },
+            {
+              "name": "status",
+              "line": 671,
+              "async": false,
+              "parameters": [
+                {
+                  "name": "self",
+                  "default": null
+                }
+              ]
+            },
+            {
+              "name": "__repr__",
+              "line": 745,
+              "async": false,
+              "parameters": [
+                {
+                  "name": "self",
+                  "default": null
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "self_method_calls": {
+        "_build_infrastructure": [
+          125
+        ],
+        "_build_services": [
+          126
+        ],
+        "_record_error": [
+          360,
+          446,
+          467,
+          481,
+          498
+        ],
+        "_register_services": [
+          127
+        ],
+        "_rollback_startup": [
+          378
+        ],
+        "_safe_status": [
+          638,
+          642,
+          646,
+          692,
+          696,
+          700,
+          704,
+          708,
+          712,
+          716,
+          720
+        ],
+        "_start_optional_service": [
+          321
+        ],
+        "_stop_service": [
+          461
+        ],
+        "container.list_services": [
+          260,
+          725
+        ],
+        "container.register": [
+          253
+        ],
+        "controller.start": [
+          343
+        ],
+        "errors.append": [
+          566
+        ],
+        "execution.start": [
+          305
+        ],
+        "health": [
+          729
+        ],
+        "lifecycle.stop_all": [
+          478
+        ],
+        "market_feed.start": [
+          314
+        ],
+        "market_loop.start": [
+          336
+        ],
+        "runtime.boot": [
+          296
+        ],
+        "runtime.connect": [
+          312
+        ],
+        "runtime.fail": [
+          370
+        ],
+        "runtime.initialize": [
+          297
+        ],
+        "runtime.ready": [
+          330
+        ],
+        "runtime.shutdown": [
+          495
+        ],
+        "runtime.start": [
+          346
+        ],
+        "runtime.stop": [
+          443
+        ],
+        "started_services.append": [
+          306,
+          315,
+          337,
+          344,
+          404
+        ],
+        "started_services.clear": [
+          282,
+          492
+        ],
+        "stop": [
+          419
+        ]
+      }
+    },
+    {
+      "file": "test_feed.py",
+      "status": "OK",
+      "soft_archived": false,
+      "line_count": 9,
+      "target_imports": [
+        {
+          "module": "exchange.market_feed",
+          "symbol": "MarketFeed",
+          "local_name": "MarketFeed",
+          "line": 1,
+          "target_module": "exchange.market_feed",
+          "target_class": "MarketFeed"
+        }
+      ],
+      "instantiations": [
+        {
+          "line": 3,
+          "called": "MarketFeed",
+          "target_module": "exchange.market_feed",
+          "target_class": "MarketFeed",
+          "args": [],
+          "keywords": {}
+        }
+      ],
+      "method_calls": [],
+      "direct_exchange_access": [],
+      "classes": [],
+      "self_method_calls": {}
+    }
+  ],
+  "canonical_usage": [
+    {
+      "file": "atlas_finance/market_data/__init__.py",
+      "status": "OK",
+      "soft_archived": false,
+      "line_count": 130,
+      "target_imports": [
+        {
+          "module": "atlas_finance.market_data.binance_public_provider",
+          "symbol": "BinancePublicDataProvider",
+          "local_name": "BinancePublicDataProvider",
+          "line": 38,
+          "target_module": "atlas_finance.market_data.binance_public_provider",
+          "target_class": "BinancePublicDataProvider"
+        },
+        {
+          "module": "atlas_finance.market_data.market_feed_service",
+          "symbol": "MarketFeedService",
+          "local_name": "MarketFeedService",
+          "line": 68,
+          "target_module": "atlas_finance.market_data.market_feed_service",
+          "target_class": "MarketFeedService"
+        }
+      ],
+      "instantiations": [],
+      "method_calls": [],
+      "direct_exchange_access": [],
+      "classes": [],
+      "self_method_calls": {}
+    }
+  ],
+  "direct_exchange_access": [
+    {
+      "file": "archive_unused_2026-07-22/ai/atlas_telegram_connector.py",
+      "soft_archived": false,
+      "locations": [
+        {
+          "line": 35,
+          "called": "requests.get",
+          "markers": [
+            "requests.get"
+          ]
+        },
+        {
+          "line": 49,
+          "called": "requests.post",
+          "markers": [
+            "requests.post"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "archive_unused_2026-07-22/ai/core/atlas_live_connector.py",
+      "soft_archived": false,
+      "locations": [
+        {
+          "line": 33,
+          "called": "BASE_URL = \"https://api.binance.com\"",
+          "markers": [
+            "api.binance.com"
+          ]
+        },
+        {
+          "line": 40,
+          "called": "def get_ticker_24h(self, symbol: str) -> Optional[Dict]:",
+          "markers": [
+            "get_ticker"
+          ]
+        },
+        {
+          "line": 68,
+          "called": "def get_klines(self, symbol: str, interval: str = \"5m\", limit: int = 100) -> Optional[List]:",
+          "markers": [
+            "get_klines"
+          ]
+        },
+        {
+          "line": 259,
+          "called": "self.binance.get_ticker_24h",
+          "markers": [
+            "get_ticker"
+          ]
+        },
+        {
+          "line": 260,
+          "called": "self.binance.get_klines",
+          "markers": [
+            "get_klines"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "archive_unused_2026-07-22/ai/core/atlas_live_trading.py",
+      "soft_archived": false,
+      "locations": [
+        {
+          "line": 62,
+          "called": "url = \"https://api.binance.com/api/v3/klines\"",
+          "markers": [
+            "api.binance.com"
+          ]
+        },
+        {
+          "line": 64,
+          "called": "requests.get",
+          "markers": [
+            "requests.get"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "archive_unused_2026-07-22/ai/core/atlas_live_trading_v2.py",
+      "soft_archived": false,
+      "locations": [
+        {
+          "line": 27,
+          "called": "BINANCE_API_URL: str = \"https://api.binance.com\"",
+          "markers": [
+            "api.binance.com"
+          ]
+        },
+        {
+          "line": 28,
+          "called": "BINANCE_FAPI_URL: str = \"https://fapi.binance.com\"",
+          "markers": [
+            "api.binance.com"
+          ]
+        },
+        {
+          "line": 111,
+          "called": "def get_klines(self, symbol: str, interval: str = \"1h\", limit: int = 100) -> List[Dict]:",
+          "markers": [
+            "get_klines"
+          ]
+        },
+        {
+          "line": 614,
+          "called": "self.client.get_klines",
+          "markers": [
+            "get_klines"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "archive_unused_2026-07-22/ai/core/atlas_live_trading_v21.py",
+      "soft_archived": false,
+      "locations": [
+        {
+          "line": 27,
+          "called": "BINANCE_API_URL: str = \"https://api.binance.com\"",
+          "markers": [
+            "api.binance.com"
+          ]
+        },
+        {
+          "line": 28,
+          "called": "BINANCE_FAPI_URL: str = \"https://fapi.binance.com\"",
+          "markers": [
+            "api.binance.com"
+          ]
+        },
+        {
+          "line": 143,
+          "called": "def get_klines(self, symbol: str, interval: str = \"1h\", limit: int = 100) -> List[Dict]:",
+          "markers": [
+            "get_klines"
+          ]
+        },
+        {
+          "line": 681,
+          "called": "self.client.get_klines",
+          "markers": [
+            "get_klines"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "archive_unused_2026-07-22/ai/core/atlas_telegram_connector.py",
+      "soft_archived": false,
+      "locations": [
+        {
+          "line": 35,
+          "called": "requests.get",
+          "markers": [
+            "requests.get"
+          ]
+        },
+        {
+          "line": 49,
+          "called": "requests.post",
+          "markers": [
+            "requests.post"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "archive_unused_2026-07-22/core/data_downloader.py",
+      "soft_archived": false,
+      "locations": [
+        {
+          "line": 12,
+          "called": "self.base_url = \"https://api.binance.com/api/v3/klines\"",
+          "markers": [
+            "api.binance.com"
+          ]
+        },
+        {
+          "line": 38,
+          "called": "requests.get",
+          "markers": [
+            "requests.get"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "archive_unused_2026-07-22/core/data_provider.py",
+      "soft_archived": false,
+      "locations": [
+        {
+          "line": 12,
+          "called": "def get_klines(self, symbol: str, interval: str = \"1m\", limit: int = 100) -> List[Dict[str, Any]]:",
+          "markers": [
+            "get_klines"
+          ]
+        },
+        {
+          "line": 14,
+          "called": "url = f\"https://api.binance.com/api/v3/klines?symbol={symbol}&interval={interval}&limit={limit}\"",
+          "markers": [
+            "api.binance.com"
+          ]
+        },
+        {
+          "line": 15,
+          "called": "requests.get.json",
+          "markers": [
+            "requests.get"
+          ]
+        },
+        {
+          "line": 15,
+          "called": "requests.get",
+          "markers": [
+            "requests.get"
+          ]
+        },
+        {
+          "line": 42,
+          "called": "url = f\"https://api.binance.com/api/v3/klines\"",
+          "markers": [
+            "api.binance.com"
+          ]
+        },
+        {
+          "line": 51,
+          "called": "requests.get.json",
+          "markers": [
+            "requests.get"
+          ]
+        },
+        {
+          "line": 51,
+          "called": "requests.get",
+          "markers": [
+            "requests.get"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "archive_unused_2026-07-22/core/live_trader.py",
+      "soft_archived": false,
+      "locations": [
+        {
+          "line": 50,
+          "called": "self.client.get_klines",
+          "markers": [
+            "get_klines"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "archive_unused_2026-07-22/core/trading_cycle.py",
+      "soft_archived": false,
+      "locations": [
+        {
+          "line": 74,
+          "called": "self.data_provider.get_klines",
+          "markers": [
+            "get_klines"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "archive_unused_2026-07-22/data/binance_provider.py",
+      "soft_archived": false,
+      "locations": [
+        {
+          "line": 12,
+          "called": "self.client.get_symbol_ticker",
+          "markers": [
+            "get_symbol_ticker"
+          ]
+        },
+        {
+          "line": 23,
+          "called": "self.client.get_klines",
+          "markers": [
+            "get_klines"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "archive_unused_2026-07-22/data/data_manager.py",
+      "soft_archived": false,
+      "locations": [
+        {
+          "line": 256,
+          "called": "BASE_URL = \"https://api.binance.com\"",
+          "markers": [
+            "api.binance.com"
+          ]
+        },
+        {
+          "line": 257,
+          "called": "FUTURES_URL = \"https://fapi.binance.com\"",
+          "markers": [
+            "futures_"
+          ]
+        },
+        {
+          "line": 257,
+          "called": "FUTURES_URL = \"https://fapi.binance.com\"",
+          "markers": [
+            "api.binance.com"
+          ]
+        },
+        {
+          "line": 267,
+          "called": "self.base_url = self.FUTURES_URL if use_futures else self.BASE_URL",
+          "markers": [
+            "futures_"
+          ]
+        },
+        {
+          "line": 303,
+          "called": "import urllib.request",
+          "markers": [
+            "urllib.request"
+          ]
+        },
+        {
+          "line": 319,
+          "called": "urllib.request.Request",
+          "markers": [
+            "urllib.request"
+          ]
+        },
+        {
+          "line": 320,
+          "called": "urllib.request.urlopen",
+          "markers": [
+            "urllib.request"
+          ]
+        },
+        {
+          "line": 339,
+          "called": "def get_klines(self, symbol: str, interval: str = \"5m\", limit: int = 100) -> List[OHLCV]:",
+          "markers": [
+            "get_klines"
+          ]
+        },
+        {
+          "line": 367,
+          "called": "def get_ticker(self, symbol: str) -> Dict[str, Any]:",
+          "markers": [
+            "get_ticker"
+          ]
+        },
+        {
+          "line": 508,
+          "called": "self.client.get_klines",
+          "markers": [
+            "get_klines"
+          ]
+        },
+        {
+          "line": 557,
+          "called": "self.client.get_ticker",
+          "markers": [
+            "get_ticker"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "atlas_finance/market_data/binance_public_provider.py",
+      "soft_archived": false,
+      "locations": [
+        {
+          "line": 111,
+          "called": "\"https://api.binance.com\"",
+          "markers": [
+            "api.binance.com"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "data/binance_provider.py",
+      "soft_archived": false,
+      "locations": [
+        {
+          "line": 26,
+          "called": "\"https://api.binance.com\"",
+          "markers": [
+            "api.binance.com"
+          ]
+        },
+        {
+          "line": 52,
+          "called": "requests.get",
+          "markers": [
+            "requests.get"
+          ]
+        },
+        {
+          "line": 87,
+          "called": "requests.get",
+          "markers": [
+            "requests.get"
+          ]
+        },
+        {
+          "line": 125,
+          "called": "requests.get",
+          "markers": [
+            "requests.get"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "exchange/adapters/binance_global.py",
+      "soft_archived": false,
+      "locations": [
+        {
+          "line": 244,
+          "called": "def get_klines(",
+          "markers": [
+            "get_klines"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "exchange/base_exchange.py",
+      "soft_archived": false,
+      "locations": [
+        {
+          "line": 23,
+          "called": "def get_klines(",
+          "markers": [
+            "get_klines"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "exchange/exchange_manager.py",
+      "soft_archived": false,
+      "locations": [
+        {
+          "line": 44,
+          "called": "def get_klines(",
+          "markers": [
+            "get_klines"
+          ]
+        },
+        {
+          "line": 51,
+          "called": "self.exchange.get_klines",
+          "markers": [
+            "get_klines"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "exchange/market_feed.py",
+      "soft_archived": false,
+      "locations": [
+        {
+          "line": 44,
+          "called": "self.manager.get_klines",
+          "markers": [
+            "get_klines"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "phase6a2_tool_backup_20260727_170020/phase6a2_market_data_architecture_audit.py",
+      "soft_archived": false,
+      "locations": [
+        {
+          "line": 59,
+          "called": "\"requests.get(\",",
+          "markers": [
+            "requests.get"
+          ]
+        },
+        {
+          "line": 60,
+          "called": "\"requests.post(\",",
+          "markers": [
+            "requests.post"
+          ]
+        },
+        {
+          "line": 62,
+          "called": "\"get_klines(\",",
+          "markers": [
+            "get_klines"
+          ]
+        },
+        {
+          "line": 63,
+          "called": "\"get_ticker(\",",
+          "markers": [
+            "get_ticker"
+          ]
+        },
+        {
+          "line": 64,
+          "called": "\"futures_\",",
+          "markers": [
+            "futures_"
+          ]
+        },
+        {
+          "line": 65,
+          "called": "\"api.binance.com\",",
+          "markers": [
+            "api.binance.com"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "phase6a2_tool_backup_20260727_170048/phase6a2_market_data_architecture_audit.py",
+      "soft_archived": false,
+      "locations": [
+        {
+          "line": 59,
+          "called": "\"requests.get(\",",
+          "markers": [
+            "requests.get"
+          ]
+        },
+        {
+          "line": 60,
+          "called": "\"requests.post(\",",
+          "markers": [
+            "requests.post"
+          ]
+        },
+        {
+          "line": 62,
+          "called": "\"get_klines(\",",
+          "markers": [
+            "get_klines"
+          ]
+        },
+        {
+          "line": 63,
+          "called": "\"get_ticker(\",",
+          "markers": [
+            "get_ticker"
+          ]
+        },
+        {
+          "line": 64,
+          "called": "\"futures_\",",
+          "markers": [
+            "futures_"
+          ]
+        },
+        {
+          "line": 65,
+          "called": "\"api.binance.com\",",
+          "markers": [
+            "api.binance.com"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "tools/market_data_source_collector.py",
+      "soft_archived": false,
+      "locations": [
+        {
+          "line": 290,
+          "called": "or \"requests.get\" in calls",
+          "markers": [
+            "requests.get"
+          ]
+        },
+        {
+          "line": 291,
+          "called": "or \"requests.post\" in calls",
+          "markers": [
+            "requests.post"
+          ]
+        },
+        {
+          "line": 304,
+          "called": "\"futures_\",",
+          "markers": [
+            "futures_"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "tools/phase6a2_1_market_data_migration_readiness.py",
+      "soft_archived": false,
+      "locations": [
+        {
+          "line": 64,
+          "called": "\"requests.get\",",
+          "markers": [
+            "requests.get"
+          ]
+        },
+        {
+          "line": 65,
+          "called": "\"requests.post\",",
+          "markers": [
+            "requests.post"
+          ]
+        },
+        {
+          "line": 66,
+          "called": "\"httpx.get\",",
+          "markers": [
+            "httpx.get"
+          ]
+        },
+        {
+          "line": 67,
+          "called": "\"httpx.post\",",
+          "markers": [
+            "httpx.post"
+          ]
+        },
+        {
+          "line": 68,
+          "called": "\"urllib.request\",",
+          "markers": [
+            "urllib.request"
+          ]
+        },
+        {
+          "line": 69,
+          "called": "\"get_klines\",",
+          "markers": [
+            "get_klines"
+          ]
+        },
+        {
+          "line": 70,
+          "called": "\"get_ticker\",",
+          "markers": [
+            "get_ticker"
+          ]
+        },
+        {
+          "line": 71,
+          "called": "\"get_symbol_ticker\",",
+          "markers": [
+            "get_symbol_ticker"
+          ]
+        },
+        {
+          "line": 72,
+          "called": "\"futures_\",",
+          "markers": [
+            "futures_"
+          ]
+        },
+        {
+          "line": 73,
+          "called": "\"api.binance.com\",",
+          "markers": [
+            "api.binance.com"
+          ]
+        },
+        {
+          "line": 74,
+          "called": "\"api.binance.us\",",
+          "markers": [
+            "api.binance.us"
+          ]
+        },
+        {
+          "line": 75,
+          "called": "\"api.binance.me\",",
+          "markers": [
+            "api.binance.me"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "tools/phase6a2_market_data_architecture_audit.py",
+      "soft_archived": false,
+      "locations": [
+        {
+          "line": 59,
+          "called": "\"requests.get(\",",
+          "markers": [
+            "requests.get"
+          ]
+        },
+        {
+          "line": 60,
+          "called": "\"requests.post(\",",
+          "markers": [
+            "requests.post"
+          ]
+        },
+        {
+          "line": 62,
+          "called": "\"get_klines(\",",
+          "markers": [
+            "get_klines"
+          ]
+        },
+        {
+          "line": 63,
+          "called": "\"get_ticker(\",",
+          "markers": [
+            "get_ticker"
+          ]
+        },
+        {
+          "line": 64,
+          "called": "\"futures_\",",
+          "markers": [
+            "futures_"
+          ]
+        },
+        {
+          "line": 65,
+          "called": "\"api.binance.com\",",
+          "markers": [
+            "api.binance.com"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "web_app.py",
+      "soft_archived": false,
+      "locations": [
+        {
+          "line": 45,
+          "called": "requests.get.json",
+          "markers": [
+            "requests.get"
+          ]
+        },
+        {
+          "line": 45,
+          "called": "requests.get",
+          "markers": [
+            "requests.get"
+          ]
+        },
+        {
+          "line": 45,
+          "called": "price = float(requests.get(\"https://api.binance.com/api/v3/ticker/price?symbol=BTCTRY\", timeout=5).json()[\"price\"])",
+          "markers": [
+            "api.binance.com"
+          ]
+        }
+      ]
+    }
+  ],
+  "parse_failures": {
+    "active": [
+      {
+        "file": "archive_unused_2026-07-22/ai/atlas_brain.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿from learning.model_memory import ModelMemory"
+      },
+      {
+        "file": "archive_unused_2026-07-22/ai/core/create_faz1.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿import os"
+      },
+      {
+        "file": "archive_unused_2026-07-22/ai/decision_engine.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿class DecisionEngine:"
+      },
+      {
+        "file": "archive_unused_2026-07-22/ai/intelligent_score.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿import json"
+      },
+      {
+        "file": "archive_unused_2026-07-22/ai/pattern_memory.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\""
+      },
+      {
+        "file": "archive_unused_2026-07-22/atlas_memory_core (2).py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 216,
+        "offset": 15,
+        "message": "unterminated string literal (detected at line 216)",
+        "context": "print(\""
+      },
+      {
+        "file": "archive_unused_2026-07-22/atlas_paper_trading/indicators.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\"Atlas AI - Technical Indicators\"\"\""
+      },
+      {
+        "file": "archive_unused_2026-07-22/atlas_paper_trading/live_data_feed.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\"Atlas AI - Live Data Feed\"\"\""
+      },
+      {
+        "file": "archive_unused_2026-07-22/atlas_paper_trading/live_trading_engine.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿import asyncio"
+      },
+      {
+        "file": "archive_unused_2026-07-22/atlas_paper_trading/signal_generator.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\"Atlas AI - Signal Generator\"\"\""
+      },
+      {
+        "file": "archive_unused_2026-07-22/atlas_paper_trading/strategy_base.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\"Atlas AI - Strategy Base\"\"\""
+      },
+      {
+        "file": "archive_unused_2026-07-22/atlas_paper_trading/strategy_manager.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\"Atlas AI - Strategy Manager\"\"\""
+      },
+      {
+        "file": "archive_unused_2026-07-22/backtest/backtest_engine_v2.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\""
+      },
+      {
+        "file": "archive_unused_2026-07-22/backtest/better_backtest.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\""
+      },
+      {
+        "file": "archive_unused_2026-07-22/backtest/standalone_backtest.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\""
+      },
+      {
+        "file": "archive_unused_2026-07-22/cleanup_analyzer.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\""
+      },
+      {
+        "file": "archive_unused_2026-07-22/cleanup_analyzer_v2.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\""
+      },
+      {
+        "file": "archive_unused_2026-07-22/config/__init__.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\""
+      },
+      {
+        "file": "archive_unused_2026-07-22/core/architecture_analyzer.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\""
+      },
+      {
+        "file": "archive_unused_2026-07-22/core/atlas_brain_v2.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\""
+      },
+      {
+        "file": "archive_unused_2026-07-22/core/backtest/combined_backtest.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿"
+      },
+      {
+        "file": "archive_unused_2026-07-22/core/brain/context_manager.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\""
+      },
+      {
+        "file": "archive_unused_2026-07-22/core/brain/decision_maker.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\""
+      },
+      {
+        "file": "archive_unused_2026-07-22/core/brain/signal_processor.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\""
+      },
+      {
+        "file": "archive_unused_2026-07-22/core/data/fetch_enhanced.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\""
+      },
+      {
+        "file": "archive_unused_2026-07-22/core/dependency_graph.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\""
+      },
+      {
+        "file": "archive_unused_2026-07-22/core/loop.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\""
+      },
+      {
+        "file": "archive_unused_2026-07-22/data/fetch_simple.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿"
+      },
+      {
+        "file": "archive_unused_2026-07-22/data/live_data_connector.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\""
+      },
+      {
+        "file": "archive_unused_2026-07-22/execution/paper_trading.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\""
+      },
+      {
+        "file": "archive_unused_2026-07-22/execution/paper_trading_v2.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\""
+      },
+      {
+        "file": "archive_unused_2026-07-22/fix_bare_except.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\""
+      },
+      {
+        "file": "archive_unused_2026-07-22/fix_bom.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\""
+      },
+      {
+        "file": "archive_unused_2026-07-22/github/background_service.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\""
+      },
+      {
+        "file": "archive_unused_2026-07-22/github/github_integration.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\""
+      },
+      {
+        "file": "archive_unused_2026-07-22/github/run_all.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\""
+      },
+      {
+        "file": "archive_unused_2026-07-22/risk/position_manager.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 161,
+        "offset": 8,
+        "message": "unexpected indent",
+        "context": "print("
+      },
+      {
+        "file": "archive_unused_2026-07-22/simulation/__init__.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\""
+      },
+      {
+        "file": "archive_unused_2026-07-22/strategy/fix_bollinger.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿import os"
+      },
+      {
+        "file": "archive_unused_2026-07-22/strategy/scalping.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\""
+      },
+      {
+        "file": "phase3f_bom_backup_20260727_114104/atlas_os/configuration/__init__.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\""
+      },
+      {
+        "file": "phase3f_bom_backup_20260727_114104/atlas_os/secrets/__init__.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\""
+      },
+      {
+        "file": "phase3f_bom_backup_20260727_114104/atlas_paper_trading/paper_trading_engine.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\"Atlas AI - Paper Trading Engine\"\"\""
+      },
+      {
+        "file": "phase3f_bom_backup_20260727_114104/atlas_paper_trading/paper_trading_main.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\"Atlas AI - Paper Trading Main Engine\"\"\""
+      },
+      {
+        "file": "phase3f_bom_backup_20260727_114104/atlas_paper_trading/performance_report.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\"Atlas AI - Performance Report\"\"\""
+      },
+      {
+        "file": "phase3f_bom_backup_20260727_114104/atlas_paper_trading/position_tracker.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\"Atlas AI - Position Tracker\"\"\""
+      },
+      {
+        "file": "phase3f_bom_backup_20260727_114104/atlas_paper_trading/risk_guardian.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\"Atlas AI - Risk Guardian\"\"\""
+      },
+      {
+        "file": "phase3f_bom_backup_20260727_114104/inspect_atlas_os_lifecycle.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿from __future__ import annotations"
+      },
+      {
+        "file": "phase3f_bom_backup_20260727_114104/test_atlas_infrastructure.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿from __future__ import annotations"
+      },
+      {
+        "file": "phase3f_bom_backup_20260727_114104/test_atlas_runtime_empty.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿from atlas_runtime import AtlasRuntime"
+      },
+      {
+        "file": "phase3f_bom_backup_20260727_114104/test_atlas_secure_core.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿from atlas_os import SecretBindingMode"
+      },
+      {
+        "file": "phase3f_bom_backup_20260727_114104/test_configuration_secrets_service.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿from atlas_os import ("
+      },
+      {
+        "file": "phase3f_bom_backup_20260727_114104/web_app.py",
+        "status": "PARSE_FAILED",
+        "soft_archived": false,
+        "line": 1,
+        "offset": 1,
+        "message": "invalid non-printable character U+FEFF",
+        "context": "﻿\"\"\""
+      }
+    ],
+    "archived_like": []
+  },
+  "findings": [
+    {
+      "severity": "HIGH",
+      "code": "PUBLIC_METHOD_COMPATIBILITY_GAP",
+      "message": "Canonical service does not expose every public legacy method.",
+      "methods": [
+        "candles",
+        "price",
+        "start",
+        "stop"
+      ]
+    },
+    {
+      "severity": "INFO",
+      "code": "APPLICATION_CALLS_COMPATIBLE",
+      "message": "Detected application calls are available on canonical service."
+    },
+    {
+      "severity": "INFO",
+      "code": "MIGRATION_STRATEGY",
+      "message": "Prefer an explicit compatibility adapter and contract tests before changing core/application.py."
+    }
+  ],
+  "safety": {
+    "source_files_modified": false,
+    "atlas_modules_imported": false,
+    "exchange_connections_opened": false,
+    "secret_values_read": false
+  }
+}

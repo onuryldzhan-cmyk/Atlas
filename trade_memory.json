@@ -1,0 +1,5110 @@
+[
+    {
+        "time": "2026-07-17 14:23:49.442634",
+        "symbol": "BTCUSDT",
+        "action": "BEKLE",
+        "confidence": 54.11,
+        "strategy": "Trend-Follow",
+        "strategy_score": 56.45,
+        "reason": "Confidence d\u00fc\u015f\u00fck",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:23:49.925840",
+        "symbol": "ETHUSDT",
+        "action": "BEKLE",
+        "confidence": 46.61,
+        "strategy": "Trend-Follow",
+        "strategy_score": 56.45,
+        "reason": "Confidence d\u00fc\u015f\u00fck",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:23:50.369696",
+        "symbol": "SOLUSDT",
+        "action": "BEKLE",
+        "confidence": 54.11,
+        "strategy": "Trend-Follow",
+        "strategy_score": 56.45,
+        "reason": "Confidence d\u00fc\u015f\u00fck",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:24:38.665028",
+        "symbol": "BTCUSDT",
+        "action": "BEKLE",
+        "confidence": 46.61,
+        "strategy": "Trend-Follow",
+        "strategy_score": 56.45,
+        "reason": "Confidence d\u00fc\u015f\u00fck",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:24:39.121643",
+        "symbol": "ETHUSDT",
+        "action": "BEKLE",
+        "confidence": 46.61,
+        "strategy": "Trend-Follow",
+        "strategy_score": 56.45,
+        "reason": "Confidence d\u00fc\u015f\u00fck",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:24:39.666624",
+        "symbol": "SOLUSDT",
+        "action": "BEKLE",
+        "confidence": 46.61,
+        "strategy": "Trend-Follow",
+        "strategy_score": 56.45,
+        "reason": "Confidence d\u00fc\u015f\u00fck",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:25:31.308490",
+        "symbol": "BTCUSDT",
+        "action": "BEKLE",
+        "confidence": 57.76,
+        "strategy": "Trend-Follow",
+        "strategy_score": 56.45,
+        "reason": "Confidence d\u00fc\u015f\u00fck",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:25:31.760794",
+        "symbol": "ETHUSDT",
+        "action": "BEKLE",
+        "confidence": 57.76,
+        "strategy": "Trend-Follow",
+        "strategy_score": 56.45,
+        "reason": "Confidence d\u00fc\u015f\u00fck",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:25:32.211170",
+        "symbol": "SOLUSDT",
+        "action": "BEKLE",
+        "confidence": 57.76,
+        "strategy": "Trend-Follow",
+        "strategy_score": 56.45,
+        "reason": "Confidence d\u00fc\u015f\u00fck",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:26:17.568993",
+        "symbol": "BTCUSDT",
+        "action": "BEKLE",
+        "confidence": 57.76,
+        "strategy": "Trend-Follow",
+        "strategy_score": 56.45,
+        "reason": "Zay\u0131f sinyal",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:26:18.037665",
+        "symbol": "ETHUSDT",
+        "action": "SELL",
+        "confidence": 60.76,
+        "strategy": "Trend-Follow",
+        "strategy_score": 56.45,
+        "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:26:18.503578",
+        "symbol": "SOLUSDT",
+        "action": "SELL",
+        "confidence": 60.76,
+        "strategy": "Trend-Follow",
+        "strategy_score": 56.45,
+        "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:27:01.760520",
+        "symbol": "BTCUSDT",
+        "action": "BEKLE",
+        "confidence": 65.76,
+        "strategy": "Trend-Follow",
+        "strategy_score": 56.45,
+        "reason": "Strateji kalitesi d\u00fc\u015f\u00fck",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:27:02.230570",
+        "symbol": "ETHUSDT",
+        "action": "BEKLE",
+        "confidence": 60.76,
+        "strategy": "Trend-Follow",
+        "strategy_score": 56.45,
+        "reason": "Confidence d\u00fc\u015f\u00fck",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:27:02.677470",
+        "symbol": "SOLUSDT",
+        "action": "BEKLE",
+        "confidence": 62.26,
+        "strategy": "Trend-Follow",
+        "strategy_score": 56.45,
+        "reason": "Confidence d\u00fc\u015f\u00fck",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:30:04.444625",
+        "symbol": "BTCUSDT",
+        "action": "BEKLE",
+        "confidence": 62.26,
+        "strategy": "Trend-Follow",
+        "strategy_score": 56.45,
+        "reason": "Confidence d\u00fc\u015f\u00fck",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:30:04.891633",
+        "symbol": "ETHUSDT",
+        "action": "BEKLE",
+        "confidence": 62.26,
+        "strategy": "Trend-Follow",
+        "strategy_score": 56.45,
+        "reason": "Confidence d\u00fc\u015f\u00fck",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:30:05.348891",
+        "symbol": "SOLUSDT",
+        "action": "BEKLE",
+        "confidence": 72.25,
+        "strategy": "Trend-Follow",
+        "strategy_score": 100.0,
+        "reason": "Strateji ve piyasa uyumsuz",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:31:08.033470",
+        "symbol": "BTCUSDT",
+        "action": "BEKLE",
+        "confidence": 65.3,
+        "strategy": "Trend-Follow",
+        "strategy_score": 69.42,
+        "reason": "Sinyal g\u00fcc\u00fc zay\u0131f",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:31:09.385484",
+        "symbol": "ETHUSDT",
+        "action": "BEKLE",
+        "confidence": 66.8,
+        "strategy": "Trend-Follow",
+        "strategy_score": 69.42,
+        "reason": "Sinyal g\u00fcc\u00fc zay\u0131f",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:31:10.365331",
+        "symbol": "SOLUSDT",
+        "action": "BEKLE",
+        "confidence": 66.8,
+        "strategy": "Trend-Follow",
+        "strategy_score": 69.42,
+        "reason": "G\u00fc\u00e7l\u00fc onay bekleniyor",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:32:13.063174",
+        "symbol": "BTCUSDT",
+        "action": "BEKLE",
+        "confidence": 65.3,
+        "strategy": "Trend-Follow",
+        "strategy_score": 69.42,
+        "reason": "Zay\u0131f sinyal",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:32:13.533934",
+        "symbol": "ETHUSDT",
+        "action": "BEKLE",
+        "confidence": 65.3,
+        "strategy": "Trend-Follow",
+        "strategy_score": 69.42,
+        "reason": "Zay\u0131f sinyal",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:32:13.987860",
+        "symbol": "SOLUSDT",
+        "action": "BUY",
+        "confidence": 65.3,
+        "strategy": "Trend-Follow",
+        "strategy_score": 69.42,
+        "reason": "Y\u00fckseli\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:33:15.446759",
+        "symbol": "BTCUSDT",
+        "action": "BEKLE",
+        "confidence": 53.11,
+        "strategy": "Trend-Follow",
+        "strategy_score": 69.42,
+        "reason": "Confidence d\u00fc\u015f\u00fck",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:33:15.919800",
+        "symbol": "ETHUSDT",
+        "action": "BEKLE",
+        "confidence": 53.11,
+        "strategy": "Trend-Follow",
+        "strategy_score": 69.42,
+        "reason": "Confidence d\u00fc\u015f\u00fck",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:33:16.383961",
+        "symbol": "SOLUSDT",
+        "action": "BEKLE",
+        "confidence": 53.86,
+        "strategy": "Trend-Follow",
+        "strategy_score": 69.42,
+        "reason": "Confidence d\u00fc\u015f\u00fck",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:34:00.373484",
+        "symbol": "BTCUSDT",
+        "action": "BEKLE",
+        "confidence": 66.86,
+        "strategy": "Trend-Follow",
+        "strategy_score": 69.42,
+        "reason": "Zay\u0131f sinyal",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:34:00.825217",
+        "symbol": "ETHUSDT",
+        "action": "BEKLE",
+        "confidence": 66.86,
+        "strategy": "Trend-Follow",
+        "strategy_score": 69.42,
+        "reason": "Zay\u0131f sinyal",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:34:01.277723",
+        "symbol": "SOLUSDT",
+        "action": "BEKLE",
+        "confidence": 68.6,
+        "strategy": "Trend-Follow",
+        "strategy_score": 100.0,
+        "reason": "Strateji ve piyasa uyumsuz",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:34:48.660209",
+        "symbol": "BTCUSDT",
+        "action": "BEKLE",
+        "confidence": 66.86,
+        "strategy": "Trend-Follow",
+        "strategy_score": 69.42,
+        "reason": "Karar skoru yetersiz",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:34:49.263432",
+        "symbol": "ETHUSDT",
+        "action": "BEKLE",
+        "confidence": 69.26,
+        "strategy": "Trend-Follow",
+        "strategy_score": 69.42,
+        "reason": "Karar skoru yetersiz",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:34:49.726137",
+        "symbol": "SOLUSDT",
+        "action": "BEKLE",
+        "confidence": 68.6,
+        "strategy": "Trend-Follow",
+        "strategy_score": 100.0,
+        "reason": "Karar skoru yetersiz",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:35:40.517524",
+        "symbol": "BTCUSDT",
+        "action": "BUY",
+        "confidence": 68.86,
+        "strategy": "Trend-Follow",
+        "strategy_score": 69.42,
+        "reason": "Y\u00fckseli\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:35:41.050344",
+        "symbol": "ETHUSDT",
+        "action": "SELL",
+        "confidence": 69.26,
+        "strategy": "Trend-Follow",
+        "strategy_score": 69.42,
+        "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | A\u015f\u0131r\u0131 al\u0131m riski | Negatif piyasa bask\u0131s\u0131",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:35:41.510784",
+        "symbol": "SOLUSDT",
+        "action": "BEKLE",
+        "confidence": 68.6,
+        "strategy": "Trend-Follow",
+        "strategy_score": 100.0,
+        "reason": "Karar skoru yetersiz",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:36:39.104227",
+        "symbol": "BTCUSDT",
+        "action": "BEKLE",
+        "confidence": 59.17,
+        "strategy": "Trend-Follow",
+        "strategy_score": 62.29,
+        "reason": "Karar skoru yetersiz",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:36:39.546447",
+        "symbol": "ETHUSDT",
+        "action": "BEKLE",
+        "confidence": 59.17,
+        "strategy": "Trend-Follow",
+        "strategy_score": 62.29,
+        "reason": "Karar skoru yetersiz",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:36:40.012428",
+        "symbol": "SOLUSDT",
+        "action": "BEKLE",
+        "confidence": 59.17,
+        "strategy": "Trend-Follow",
+        "strategy_score": 62.29,
+        "reason": "Karar skoru yetersiz",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:40:12.115614",
+        "symbol": "BTCUSDT",
+        "action": "BEKLE",
+        "confidence": 59.66,
+        "strategy": "Trend-Follow",
+        "strategy_score": 64.25,
+        "reason": "Karar skoru yetersiz",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:40:12.591436",
+        "symbol": "ETHUSDT",
+        "action": "BEKLE",
+        "confidence": 59.66,
+        "strategy": "Trend-Follow",
+        "strategy_score": 64.25,
+        "reason": "Karar skoru yetersiz",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:40:13.038171",
+        "symbol": "SOLUSDT",
+        "action": "BEKLE",
+        "confidence": 59.66,
+        "strategy": "Trend-Follow",
+        "strategy_score": 64.25,
+        "reason": "Karar skoru yetersiz",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:41:27.446311",
+        "symbol": "BTCUSDT",
+        "action": "BEKLE",
+        "confidence": 59.66,
+        "strategy": "Trend-Follow",
+        "strategy_score": 64.25,
+        "reason": "Karar skoru yetersiz",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:41:27.923141",
+        "symbol": "ETHUSDT",
+        "action": "BEKLE",
+        "confidence": 59.66,
+        "strategy": "Trend-Follow",
+        "strategy_score": 64.25,
+        "reason": "Karar skoru yetersiz",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:41:28.915635",
+        "symbol": "SOLUSDT",
+        "action": "BEKLE",
+        "confidence": 68.08,
+        "strategy": "Trend-Follow",
+        "strategy_score": 77.91,
+        "reason": "Karar skoru yetersiz",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:43:33.002136",
+        "symbol": "BTCUSDT",
+        "action": "BEKLE",
+        "confidence": 59.66,
+        "strategy": "Trend-Follow",
+        "strategy_score": 64.25,
+        "reason": "Karar skoru yetersiz",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:43:33.505931",
+        "symbol": "ETHUSDT",
+        "action": "BEKLE",
+        "confidence": 63.08,
+        "strategy": "Trend-Follow",
+        "strategy_score": 77.91,
+        "reason": "Karar skoru yetersiz",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:43:34.024126",
+        "symbol": "SOLUSDT",
+        "action": "BEKLE",
+        "confidence": 57.72,
+        "strategy": "Trend-Follow",
+        "strategy_score": 75.86,
+        "reason": "Karar skoru yetersiz",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:45:20.355149",
+        "symbol": "BTCUSDT",
+        "action": "BEKLE",
+        "confidence": 59.66,
+        "strategy": "Trend-Follow",
+        "strategy_score": 64.25,
+        "reason": "Karar skoru yetersiz",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:45:20.865646",
+        "symbol": "ETHUSDT",
+        "action": "BEKLE",
+        "confidence": 59.66,
+        "strategy": "Trend-Follow",
+        "strategy_score": 64.25,
+        "reason": "Karar skoru yetersiz",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 14:45:21.391742",
+        "symbol": "SOLUSDT",
+        "action": "BUY",
+        "confidence": 78.86,
+        "strategy": "Trend-Follow",
+        "strategy_score": 89.42,
+        "reason": "Y\u00fckseli\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 17:43:15.310968",
+        "symbol": "BTCUSDT",
+        "action": "BEKLE",
+        "confidence": 69.25,
+        "strategy": "Trend-Follow",
+        "strategy_score": 100.0,
+        "reason": "Karar skoru yetersiz",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 17:43:15.761849",
+        "symbol": "ETHUSDT",
+        "action": "BEKLE",
+        "confidence": 63.75,
+        "strategy": "Trend-Follow",
+        "strategy_score": 100.0,
+        "reason": "Karar skoru yetersiz",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 17:43:16.276929",
+        "symbol": "SOLUSDT",
+        "action": "BEKLE",
+        "confidence": 56.25,
+        "strategy": "Trend-Follow",
+        "strategy_score": 100.0,
+        "reason": "Karar skoru yetersiz",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 17:47:12.872593",
+        "symbol": "BTCUSDT",
+        "action": "BEKLE",
+        "confidence": 61.75,
+        "strategy": "Trend-Follow",
+        "strategy_score": 100.0,
+        "reason": "Karar skoru yetersiz",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 17:47:13.424163",
+        "symbol": "ETHUSDT",
+        "action": "BEKLE",
+        "confidence": 56.67,
+        "strategy": "Trend-Follow",
+        "strategy_score": 51.69,
+        "reason": "D\u00fc\u015f\u00fc\u015f trendi | Zay\u0131f trend | Negatif piyasa bask\u0131s\u0131",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 17:47:14.120124",
+        "symbol": "SOLUSDT",
+        "action": "BEKLE",
+        "confidence": 50.22,
+        "strategy": "Trend-Follow",
+        "strategy_score": 75.86,
+        "reason": "Karar skoru yetersiz",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 17:57:58.710782",
+        "symbol": "BTCUSDT",
+        "action": "BUY",
+        "confidence": 70.44,
+        "strategy": "Trend-Follow",
+        "strategy_score": 75.74,
+        "reason": "Y\u00fckseli\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 17:57:59.178677",
+        "symbol": "ETHUSDT",
+        "action": "BEKLE",
+        "confidence": 59.17,
+        "strategy": "Trend-Follow",
+        "strategy_score": 51.69,
+        "reason": "D\u00fc\u015f\u00fc\u015f trendi | Negatif piyasa bask\u0131s\u0131",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 17:57:59.693926",
+        "symbol": "SOLUSDT",
+        "action": "BUY",
+        "confidence": 75.44,
+        "strategy": "Trend-Follow",
+        "strategy_score": 75.74,
+        "reason": "Y\u00fckseli\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 18:01:11.694909",
+        "symbol": "BTCUSDT",
+        "action": "BUY",
+        "confidence": 78.97,
+        "strategy": "Trend-Follow",
+        "strategy_score": 79.87,
+        "reason": "Y\u00fckseli\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 18:01:12.154448",
+        "symbol": "ETHUSDT",
+        "action": "SELL",
+        "confidence": 60.24,
+        "strategy": "Trend-Follow",
+        "strategy_score": 52.97,
+        "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 18:01:12.608240",
+        "symbol": "SOLUSDT",
+        "action": "BUY",
+        "confidence": 73.84,
+        "strategy": "Trend-Follow",
+        "strategy_score": 69.37,
+        "reason": "Y\u00fckseli\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 18:06:33.294763",
+        "symbol": "BTCUSDT",
+        "action": "SELL",
+        "confidence": 65.6,
+        "strategy": "Trend-Follow",
+        "strategy_score": 64.41,
+        "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 18:06:33.785533",
+        "symbol": "ETHUSDT",
+        "action": "SELL",
+        "confidence": 63.1,
+        "strategy": "Trend-Follow",
+        "strategy_score": 64.41,
+        "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 18:06:34.264576",
+        "symbol": "SOLUSDT",
+        "action": "SELL",
+        "confidence": 65.6,
+        "strategy": "Trend-Follow",
+        "strategy_score": 64.41,
+        "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 18:07:22.477344",
+        "symbol": "BTCUSDT",
+        "action": "SELL",
+        "confidence": 65.6,
+        "strategy": "Trend-Follow",
+        "strategy_score": 64.41,
+        "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 18:07:23.006806",
+        "symbol": "ETHUSDT",
+        "action": "SELL",
+        "confidence": 66.51,
+        "strategy": "Trend-Follow",
+        "strategy_score": 68.05,
+        "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+        "result": "UNKNOWN"
+    },
+    {
+        "time": "2026-07-17 18:07:23.527804",
+        "symbol": "SOLUSDT",
+        "action": "SELL",
+        "confidence": 66.51,
+        "strategy": "Trend-Follow",
+        "strategy_score": 68.05,
+        "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+        "result": "UNKNOWN"
+    },
+    {
+        "type": "decision",
+        "symbol": "BTCUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | A\u015f\u0131r\u0131 sat\u0131m f\u0131rsat\u0131 | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 78.96,
+            "signal_strength": -18,
+            "strategy": "Trend-Follow",
+            "strategy_score": 64.41,
+            "confidence": 62.0,
+            "adaptive_reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | A\u015f\u0131r\u0131 sat\u0131m f\u0131rsat\u0131 | Negatif piyasa bask\u0131s\u0131",
+            "opportunity": {
+                "score": 72,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 64286.4996,
+            "take_profit": 60504.9408,
+            "risk_amount": 5.0,
+            "position_size": 0.003967
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "BTCUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | A\u015f\u0131r\u0131 sat\u0131m f\u0131rsat\u0131 | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 78.96,
+            "signal_strength": -18,
+            "strategy": "Trend-Follow",
+            "strategy_score": 64.41,
+            "confidence": 62.0,
+            "adaptive_reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | A\u015f\u0131r\u0131 sat\u0131m f\u0131rsat\u0131 | Negatif piyasa bask\u0131s\u0131",
+            "opportunity": {
+                "score": 72,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 64286.4996,
+            "take_profit": 60504.9408,
+            "risk_amount": 5.0,
+            "position_size": 0.003967
+        },
+        "confidence": 62.0,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 64.41,
+            "final_vote": "SELL",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "SELL",
+                    "score": 100
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 60
+                },
+                "Momentum": {
+                    "vote": "SELL",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "BUY",
+                    "score": 80
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 80.0,
+                "SELL": 362.0,
+                "WAIT": 120.0
+            },
+            "strategy_confidence": 64.41,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "ETHUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 79.5,
+            "signal_strength": -30,
+            "strategy": "Trend-Follow",
+            "strategy_score": 64.41,
+            "confidence": 65.6,
+            "adaptive_reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "opportunity": {
+                "score": 72,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 1863.3167,
+            "take_profit": 1726.9765,
+            "risk_amount": 10.0,
+            "position_size": 0.220038
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "ETHUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 79.5,
+            "signal_strength": -30,
+            "strategy": "Trend-Follow",
+            "strategy_score": 64.41,
+            "confidence": 65.6,
+            "adaptive_reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "opportunity": {
+                "score": 72,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 1863.3167,
+            "take_profit": 1726.9765,
+            "risk_amount": 10.0,
+            "position_size": 0.220038
+        },
+        "confidence": 65.6,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 64.41,
+            "final_vote": "SELL",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "SELL",
+                    "score": 100
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 60
+                },
+                "Momentum": {
+                    "vote": "SELL",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "BUY",
+                    "score": 80
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 80.0,
+                "SELL": 362.0,
+                "WAIT": 120.0
+            },
+            "strategy_confidence": 64.41,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "SOLUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 79.5,
+            "signal_strength": -30,
+            "strategy": "Trend-Follow",
+            "strategy_score": 64.41,
+            "confidence": 65.6,
+            "adaptive_reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "opportunity": {
+                "score": 72,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 75.9423,
+            "take_profit": 70.3855,
+            "risk_amount": 10.0,
+            "position_size": 5.398839
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "SOLUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 79.5,
+            "signal_strength": -30,
+            "strategy": "Trend-Follow",
+            "strategy_score": 64.41,
+            "confidence": 65.6,
+            "adaptive_reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "opportunity": {
+                "score": 72,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 75.9423,
+            "take_profit": 70.3855,
+            "risk_amount": 10.0,
+            "position_size": 5.398839
+        },
+        "confidence": 65.6,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 64.41,
+            "final_vote": "SELL",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "SELL",
+                    "score": 100
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 60
+                },
+                "Momentum": {
+                    "vote": "SELL",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "BUY",
+                    "score": 80
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 80.0,
+                "SELL": 362.0,
+                "WAIT": 120.0
+            },
+            "strategy_confidence": 64.41,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "BTCUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 80.18,
+            "signal_strength": -30,
+            "strategy": "Trend-Follow",
+            "strategy_score": 68.05,
+            "confidence": 66.51,
+            "adaptive_reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "opportunity": {
+                "score": 72,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 64663.1397,
+            "take_profit": 59931.6905,
+            "risk_amount": 10.0,
+            "position_size": 0.006341
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "BTCUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 80.18,
+            "signal_strength": -30,
+            "strategy": "Trend-Follow",
+            "strategy_score": 68.05,
+            "confidence": 66.51,
+            "adaptive_reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "opportunity": {
+                "score": 72,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 64663.1397,
+            "take_profit": 59931.6905,
+            "risk_amount": 10.0,
+            "position_size": 0.006341
+        },
+        "confidence": 66.51,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 68.05,
+            "final_vote": "SELL",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "SELL",
+                    "score": 100
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 60
+                },
+                "Momentum": {
+                    "vote": "SELL",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 0,
+                "SELL": 362.0,
+                "WAIT": 170.0
+            },
+            "strategy_confidence": 68.05,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "ETHUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 76.62,
+            "signal_strength": -30,
+            "strategy": "Trend-Follow",
+            "strategy_score": 51.02,
+            "confidence": 59.76,
+            "adaptive_reason": "Adaptive confidence d\u00fc\u015f\u00fck",
+            "opportunity": {
+                "score": 26,
+                "rating": "LOW",
+                "trade_allowed": false,
+                "reasons": [
+                    "Zay\u0131f trend"
+                ]
+            }
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "ETHUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 76.62,
+            "signal_strength": -30,
+            "strategy": "Trend-Follow",
+            "strategy_score": 51.02,
+            "confidence": 59.76,
+            "adaptive_reason": "Adaptive confidence d\u00fc\u015f\u00fck",
+            "opportunity": {
+                "score": 26,
+                "rating": "LOW",
+                "trade_allowed": false,
+                "reasons": [
+                    "Zay\u0131f trend"
+                ]
+            }
+        },
+        "confidence": 59.76,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 51.02,
+            "final_vote": "SELL",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "SELL",
+                    "score": 100
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 60
+                },
+                "Momentum": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "RSI-Scalping": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 0,
+                "SELL": 250.0,
+                "WAIT": 240.0
+            },
+            "strategy_confidence": 51.02,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "SOLUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 76.99,
+            "signal_strength": -30,
+            "strategy": "Trend-Follow",
+            "strategy_score": 51.02,
+            "confidence": 62.26,
+            "adaptive_reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "opportunity": {
+                "score": 58,
+                "rating": "WATCH",
+                "trade_allowed": false,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 75.6534,
+            "take_profit": 71.2032,
+            "risk_amount": 5.0,
+            "position_size": 3.370635
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "SOLUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 76.99,
+            "signal_strength": -30,
+            "strategy": "Trend-Follow",
+            "strategy_score": 51.02,
+            "confidence": 62.26,
+            "adaptive_reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "opportunity": {
+                "score": 58,
+                "rating": "WATCH",
+                "trade_allowed": false,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 75.6534,
+            "take_profit": 71.2032,
+            "risk_amount": 5.0,
+            "position_size": 3.370635
+        },
+        "confidence": 62.26,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 51.02,
+            "final_vote": "SELL",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "SELL",
+                    "score": 100
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 60
+                },
+                "Momentum": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "RSI-Scalping": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 0,
+                "SELL": 250.0,
+                "WAIT": 240.0
+            },
+            "strategy_confidence": 51.02,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "BTCUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | A\u015f\u0131r\u0131 sat\u0131m f\u0131rsat\u0131 | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 78.96,
+            "signal_strength": -18,
+            "strategy": "Trend-Follow",
+            "strategy_score": 64.41,
+            "confidence": 62.0,
+            "adaptive_reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | A\u015f\u0131r\u0131 sat\u0131m f\u0131rsat\u0131 | Negatif piyasa bask\u0131s\u0131",
+            "opportunity": {
+                "score": 72,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 64260.5304,
+            "take_profit": 60480.4992,
+            "risk_amount": 5.0,
+            "position_size": 0.003968
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "BTCUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | A\u015f\u0131r\u0131 sat\u0131m f\u0131rsat\u0131 | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 78.96,
+            "signal_strength": -18,
+            "strategy": "Trend-Follow",
+            "strategy_score": 64.41,
+            "confidence": 62.0,
+            "adaptive_reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | A\u015f\u0131r\u0131 sat\u0131m f\u0131rsat\u0131 | Negatif piyasa bask\u0131s\u0131",
+            "opportunity": {
+                "score": 72,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 64260.5304,
+            "take_profit": 60480.4992,
+            "risk_amount": 5.0,
+            "position_size": 0.003968
+        },
+        "confidence": 62.0,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 64.41,
+            "final_vote": "SELL",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "SELL",
+                    "score": 100
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 60
+                },
+                "Momentum": {
+                    "vote": "SELL",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "BUY",
+                    "score": 80
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 80.0,
+                "SELL": 362.0,
+                "WAIT": 120.0
+            },
+            "strategy_confidence": 64.41,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "ETHUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 79.5,
+            "signal_strength": -30,
+            "strategy": "Trend-Follow",
+            "strategy_score": 64.41,
+            "confidence": 65.6,
+            "adaptive_reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "opportunity": {
+                "score": 72,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 1861.6767,
+            "take_profit": 1725.4565,
+            "risk_amount": 10.0,
+            "position_size": 0.220232
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "ETHUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 79.5,
+            "signal_strength": -30,
+            "strategy": "Trend-Follow",
+            "strategy_score": 64.41,
+            "confidence": 65.6,
+            "adaptive_reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "opportunity": {
+                "score": 72,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 1861.6767,
+            "take_profit": 1725.4565,
+            "risk_amount": 10.0,
+            "position_size": 0.220232
+        },
+        "confidence": 65.6,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 64.41,
+            "final_vote": "SELL",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "SELL",
+                    "score": 100
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 60
+                },
+                "Momentum": {
+                    "vote": "SELL",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "BUY",
+                    "score": 80
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 80.0,
+                "SELL": 362.0,
+                "WAIT": 120.0
+            },
+            "strategy_confidence": 64.41,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "SOLUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 79.5,
+            "signal_strength": -30,
+            "strategy": "Trend-Follow",
+            "strategy_score": 64.41,
+            "confidence": 65.6,
+            "adaptive_reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "opportunity": {
+                "score": 72,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 75.9217,
+            "take_profit": 70.3665,
+            "risk_amount": 10.0,
+            "position_size": 5.400297
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "SOLUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 79.5,
+            "signal_strength": -30,
+            "strategy": "Trend-Follow",
+            "strategy_score": 64.41,
+            "confidence": 65.6,
+            "adaptive_reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "opportunity": {
+                "score": 72,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 75.9217,
+            "take_profit": 70.3665,
+            "risk_amount": 10.0,
+            "position_size": 5.400297
+        },
+        "confidence": 65.6,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 64.41,
+            "final_vote": "SELL",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "SELL",
+                    "score": 100
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 60
+                },
+                "Momentum": {
+                    "vote": "SELL",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "BUY",
+                    "score": 80
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 80.0,
+                "SELL": 362.0,
+                "WAIT": 120.0
+            },
+            "strategy_confidence": 64.41,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "BTCUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | A\u015f\u0131r\u0131 sat\u0131m f\u0131rsat\u0131 | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 78.96,
+            "signal_strength": -18,
+            "strategy": "Trend-Follow",
+            "strategy_score": 64.41,
+            "confidence": 62.0,
+            "adaptive_reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | A\u015f\u0131r\u0131 sat\u0131m f\u0131rsat\u0131 | Negatif piyasa bask\u0131s\u0131",
+            "opportunity": {
+                "score": 72,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 64214.7426,
+            "take_profit": 60437.4048,
+            "risk_amount": 5.0,
+            "position_size": 0.003971
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "BTCUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | A\u015f\u0131r\u0131 sat\u0131m f\u0131rsat\u0131 | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 78.96,
+            "signal_strength": -18,
+            "strategy": "Trend-Follow",
+            "strategy_score": 64.41,
+            "confidence": 62.0,
+            "adaptive_reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | A\u015f\u0131r\u0131 sat\u0131m f\u0131rsat\u0131 | Negatif piyasa bask\u0131s\u0131",
+            "opportunity": {
+                "score": 72,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 64214.7426,
+            "take_profit": 60437.4048,
+            "risk_amount": 5.0,
+            "position_size": 0.003971
+        },
+        "confidence": 62.0,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 64.41,
+            "final_vote": "SELL",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "SELL",
+                    "score": 100
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 60
+                },
+                "Momentum": {
+                    "vote": "SELL",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "BUY",
+                    "score": 80
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 80.0,
+                "SELL": 362.0,
+                "WAIT": 120.0
+            },
+            "strategy_confidence": 64.41,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "ETHUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | A\u015f\u0131r\u0131 sat\u0131m f\u0131rsat\u0131 | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 78.96,
+            "signal_strength": -18,
+            "strategy": "Trend-Follow",
+            "strategy_score": 64.41,
+            "confidence": 62.0,
+            "adaptive_reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | A\u015f\u0131r\u0131 sat\u0131m f\u0131rsat\u0131 | Negatif piyasa bask\u0131s\u0131",
+            "opportunity": {
+                "score": 72,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 1850.5656,
+            "take_profit": 1741.7088,
+            "risk_amount": 5.0,
+            "position_size": 0.137796
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "ETHUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | A\u015f\u0131r\u0131 sat\u0131m f\u0131rsat\u0131 | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 78.96,
+            "signal_strength": -18,
+            "strategy": "Trend-Follow",
+            "strategy_score": 64.41,
+            "confidence": 62.0,
+            "adaptive_reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | A\u015f\u0131r\u0131 sat\u0131m f\u0131rsat\u0131 | Negatif piyasa bask\u0131s\u0131",
+            "opportunity": {
+                "score": 72,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 1850.5656,
+            "take_profit": 1741.7088,
+            "risk_amount": 5.0,
+            "position_size": 0.137796
+        },
+        "confidence": 62.0,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 64.41,
+            "final_vote": "SELL",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "SELL",
+                    "score": 100
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 60
+                },
+                "Momentum": {
+                    "vote": "SELL",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "BUY",
+                    "score": 80
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 80.0,
+                "SELL": 362.0,
+                "WAIT": 120.0
+            },
+            "strategy_confidence": 64.41,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "SOLUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 79.5,
+            "signal_strength": -30,
+            "strategy": "Trend-Follow",
+            "strategy_score": 64.41,
+            "confidence": 65.6,
+            "adaptive_reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "opportunity": {
+                "score": 72,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 75.8397,
+            "take_profit": 70.2905,
+            "risk_amount": 10.0,
+            "position_size": 5.406136
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "SOLUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 79.5,
+            "signal_strength": -30,
+            "strategy": "Trend-Follow",
+            "strategy_score": 64.41,
+            "confidence": 65.6,
+            "adaptive_reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "opportunity": {
+                "score": 72,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 75.8397,
+            "take_profit": 70.2905,
+            "risk_amount": 10.0,
+            "position_size": 5.406136
+        },
+        "confidence": 65.6,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 64.41,
+            "final_vote": "SELL",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "SELL",
+                    "score": 100
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 60
+                },
+                "Momentum": {
+                    "vote": "SELL",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "BUY",
+                    "score": 80
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 80.0,
+                "SELL": 362.0,
+                "WAIT": 120.0
+            },
+            "strategy_confidence": 64.41,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "BTCUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | A\u015f\u0131r\u0131 sat\u0131m f\u0131rsat\u0131 | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 78.96,
+            "signal_strength": -18,
+            "strategy": "Trend-Follow",
+            "strategy_score": 64.41,
+            "confidence": 62.0,
+            "adaptive_reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | A\u015f\u0131r\u0131 sat\u0131m f\u0131rsat\u0131 | Negatif piyasa bask\u0131s\u0131",
+            "opportunity": {
+                "score": 72,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 64200.84,
+            "take_profit": 60424.32,
+            "risk_amount": 5.0,
+            "position_size": 0.003972
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "BTCUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | A\u015f\u0131r\u0131 sat\u0131m f\u0131rsat\u0131 | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 78.96,
+            "signal_strength": -18,
+            "strategy": "Trend-Follow",
+            "strategy_score": 64.41,
+            "confidence": 62.0,
+            "adaptive_reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | A\u015f\u0131r\u0131 sat\u0131m f\u0131rsat\u0131 | Negatif piyasa bask\u0131s\u0131",
+            "opportunity": {
+                "score": 72,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 64200.84,
+            "take_profit": 60424.32,
+            "risk_amount": 5.0,
+            "position_size": 0.003972
+        },
+        "confidence": 62.0,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 64.41,
+            "final_vote": "SELL",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "SELL",
+                    "score": 100
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 60
+                },
+                "Momentum": {
+                    "vote": "SELL",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "BUY",
+                    "score": 80
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 80.0,
+                "SELL": 362.0,
+                "WAIT": 120.0
+            },
+            "strategy_confidence": 64.41,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "ETHUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | A\u015f\u0131r\u0131 sat\u0131m f\u0131rsat\u0131 | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 78.96,
+            "signal_strength": -18,
+            "strategy": "Trend-Follow",
+            "strategy_score": 64.41,
+            "confidence": 62.0,
+            "adaptive_reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | A\u015f\u0131r\u0131 sat\u0131m f\u0131rsat\u0131 | Negatif piyasa bask\u0131s\u0131",
+            "opportunity": {
+                "score": 72,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 1850.178,
+            "take_profit": 1741.344,
+            "risk_amount": 5.0,
+            "position_size": 0.137825
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "ETHUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | A\u015f\u0131r\u0131 sat\u0131m f\u0131rsat\u0131 | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 78.96,
+            "signal_strength": -18,
+            "strategy": "Trend-Follow",
+            "strategy_score": 64.41,
+            "confidence": 62.0,
+            "adaptive_reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | A\u015f\u0131r\u0131 sat\u0131m f\u0131rsat\u0131 | Negatif piyasa bask\u0131s\u0131",
+            "opportunity": {
+                "score": 72,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 1850.178,
+            "take_profit": 1741.344,
+            "risk_amount": 5.0,
+            "position_size": 0.137825
+        },
+        "confidence": 62.0,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 64.41,
+            "final_vote": "SELL",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "SELL",
+                    "score": 100
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 60
+                },
+                "Momentum": {
+                    "vote": "SELL",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "BUY",
+                    "score": 80
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 80.0,
+                "SELL": 362.0,
+                "WAIT": 120.0
+            },
+            "strategy_confidence": 64.41,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "SOLUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 79.5,
+            "signal_strength": -30,
+            "strategy": "Trend-Follow",
+            "strategy_score": 64.41,
+            "confidence": 65.6,
+            "adaptive_reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "opportunity": {
+                "score": 72,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 75.809,
+            "take_profit": 70.262,
+            "risk_amount": 10.0,
+            "position_size": 5.408329
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "SOLUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 79.5,
+            "signal_strength": -30,
+            "strategy": "Trend-Follow",
+            "strategy_score": 64.41,
+            "confidence": 65.6,
+            "adaptive_reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "opportunity": {
+                "score": 72,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 75.809,
+            "take_profit": 70.262,
+            "risk_amount": 10.0,
+            "position_size": 5.408329
+        },
+        "confidence": 65.6,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 64.41,
+            "final_vote": "SELL",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "SELL",
+                    "score": 100
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 60
+                },
+                "Momentum": {
+                    "vote": "SELL",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "BUY",
+                    "score": 80
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 80.0,
+                "SELL": 362.0,
+                "WAIT": 120.0
+            },
+            "strategy_confidence": 64.41,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "BTCUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Karar skoru yetersiz",
+            "strength": "NEUTRAL",
+            "decision_score": 10,
+            "signal_strength": 0,
+            "strategy": "NONE",
+            "strategy_score": 77.91,
+            "confidence": 63.08,
+            "adaptive_reason": "Karar skoru yetersiz",
+            "opportunity": {
+                "score": 82,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "G\u00fc\u00e7l\u00fc strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            }
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "BTCUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Karar skoru yetersiz",
+            "strength": "NEUTRAL",
+            "decision_score": 10,
+            "signal_strength": 0,
+            "strategy": "NONE",
+            "strategy_score": 77.91,
+            "confidence": 63.08,
+            "adaptive_reason": "Karar skoru yetersiz",
+            "opportunity": {
+                "score": 82,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "G\u00fc\u00e7l\u00fc strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            }
+        },
+        "confidence": 63.08,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 77.91,
+            "final_vote": "WAIT",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "WAIT",
+                    "score": 90
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 60
+                },
+                "Momentum": {
+                    "vote": "BUY",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 112.0,
+                "SELL": 0,
+                "WAIT": 395.0
+            },
+            "strategy_confidence": 77.91,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "ETHUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 76.24,
+            "signal_strength": -30,
+            "strategy": "Trend-Follow",
+            "strategy_score": 46.99,
+            "confidence": 61.25,
+            "adaptive_reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "opportunity": {
+                "score": 58,
+                "rating": "WATCH",
+                "trade_allowed": false,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 1876.9326,
+            "take_profit": 1766.5248,
+            "risk_amount": 5.0,
+            "position_size": 0.13586
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "ETHUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 76.24,
+            "signal_strength": -30,
+            "strategy": "Trend-Follow",
+            "strategy_score": 46.99,
+            "confidence": 61.25,
+            "adaptive_reason": "D\u00fc\u015f\u00fc\u015f trendi | G\u00fc\u00e7l\u00fc trend kalitesi | Negatif piyasa bask\u0131s\u0131",
+            "opportunity": {
+                "score": 58,
+                "rating": "WATCH",
+                "trade_allowed": false,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 1876.9326,
+            "take_profit": 1766.5248,
+            "risk_amount": 5.0,
+            "position_size": 0.13586
+        },
+        "confidence": 61.25,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 46.99,
+            "final_vote": "SELL",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "SELL",
+                    "score": 100
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 60
+                },
+                "Momentum": {
+                    "vote": "BUY",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 112.0,
+                "SELL": 250.0,
+                "WAIT": 170.0
+            },
+            "strategy_confidence": 46.99,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "SOLUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | Zay\u0131f trend | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 76.25,
+            "signal_strength": -50,
+            "strategy": "Trend-Follow",
+            "strategy_score": 51.69,
+            "confidence": 56.67,
+            "adaptive_reason": "Adaptive confidence d\u00fc\u015f\u00fck",
+            "opportunity": {
+                "score": 18,
+                "rating": "LOW",
+                "trade_allowed": false,
+                "reasons": [
+                    "Yatay piyasa"
+                ]
+            }
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "SOLUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "D\u00fc\u015f\u00fc\u015f trendi | Zay\u0131f trend | Negatif piyasa bask\u0131s\u0131",
+            "strength": "WEAK",
+            "decision_score": 76.25,
+            "signal_strength": -50,
+            "strategy": "Trend-Follow",
+            "strategy_score": 51.69,
+            "confidence": 56.67,
+            "adaptive_reason": "Adaptive confidence d\u00fc\u015f\u00fck",
+            "opportunity": {
+                "score": 18,
+                "rating": "LOW",
+                "trade_allowed": false,
+                "reasons": [
+                    "Yatay piyasa"
+                ]
+            }
+        },
+        "confidence": 56.67,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 51.69,
+            "final_vote": "SELL",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "SELL",
+                    "score": 95
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Momentum": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "RSI-Scalping": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 0,
+                "SELL": 237.5,
+                "WAIT": 222.0
+            },
+            "strategy_confidence": 51.69,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "BTCUSDT",
+        "decision": {
+            "action": "BUY",
+            "reason": "Sinyal uygun",
+            "signal": "AL",
+            "signal_score": 70,
+            "strength": "STRONG",
+            "strategy": "UNKNOWN",
+            "strategy_score": 89.42,
+            "confidence": 73.86,
+            "adaptive_reason": "Sinyal uygun",
+            "opportunity": {
+                "score": 82,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "G\u00fc\u00e7l\u00fc strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 62455.4677,
+            "take_profit": 67259.7345,
+            "risk_amount": 10.0,
+            "position_size": 0.006244
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "BTCUSDT",
+        "decision": {
+            "action": "BUY",
+            "reason": "Sinyal uygun",
+            "signal": "AL",
+            "signal_score": 70,
+            "strength": "STRONG",
+            "strategy": "UNKNOWN",
+            "strategy_score": 89.42,
+            "confidence": 73.86,
+            "adaptive_reason": "Sinyal uygun",
+            "opportunity": {
+                "score": 82,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "G\u00fc\u00e7l\u00fc strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 62455.4677,
+            "take_profit": 67259.7345,
+            "risk_amount": 10.0,
+            "position_size": 0.006244
+        },
+        "confidence": 73.86,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 89.42,
+            "final_vote": "BUY",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "BUY",
+                    "score": 100
+                },
+                "Breakout": {
+                    "vote": "BUY",
+                    "score": 90
+                },
+                "Momentum": {
+                    "vote": "BUY",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 524.0,
+                "SELL": 0,
+                "WAIT": 62.0
+            },
+            "strategy_confidence": 89.42,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "ETHUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Sinyal g\u00fcc\u00fc yetersiz",
+            "signal": "SAT",
+            "signal_score": 12,
+            "confidence": 63.65,
+            "adaptive_reason": "Sinyal g\u00fcc\u00fc yetersiz",
+            "opportunity": {
+                "score": 58,
+                "rating": "WATCH",
+                "trade_allowed": false,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Yeterli g\u00fcven"
+                ]
+            }
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "ETHUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Sinyal g\u00fcc\u00fc yetersiz",
+            "signal": "SAT",
+            "signal_score": 12,
+            "confidence": 63.65,
+            "adaptive_reason": "Sinyal g\u00fcc\u00fc yetersiz",
+            "opportunity": {
+                "score": 58,
+                "rating": "WATCH",
+                "trade_allowed": false,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Yeterli g\u00fcven"
+                ]
+            }
+        },
+        "confidence": 63.65,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 46.99,
+            "final_vote": "SELL",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "SELL",
+                    "score": 100
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 60
+                },
+                "Momentum": {
+                    "vote": "BUY",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 112.0,
+                "SELL": 250.0,
+                "WAIT": 170.0
+            },
+            "strategy_confidence": 46.99,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "SOLUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Confidence d\u00fc\u015f\u00fck",
+            "signal": "SAT",
+            "confidence": 56.67,
+            "adaptive_reason": "Adaptive confidence d\u00fc\u015f\u00fck",
+            "opportunity": {
+                "score": 18,
+                "rating": "LOW",
+                "trade_allowed": false,
+                "reasons": [
+                    "Yatay piyasa"
+                ]
+            }
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "SOLUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Confidence d\u00fc\u015f\u00fck",
+            "signal": "SAT",
+            "confidence": 56.67,
+            "adaptive_reason": "Adaptive confidence d\u00fc\u015f\u00fck",
+            "opportunity": {
+                "score": 18,
+                "rating": "LOW",
+                "trade_allowed": false,
+                "reasons": [
+                    "Yatay piyasa"
+                ]
+            }
+        },
+        "confidence": 56.67,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 51.69,
+            "final_vote": "SELL",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "SELL",
+                    "score": 95
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Momentum": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "RSI-Scalping": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 0,
+                "SELL": 237.5,
+                "WAIT": 222.0
+            },
+            "strategy_confidence": 51.69,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "BTCUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Confidence d\u00fc\u015f\u00fck",
+            "signal": "BEKLE",
+            "signal_score": 62,
+            "confidence": 59.66,
+            "strategy": "Trend-Follow",
+            "adaptive_reason": "Adaptive confidence d\u00fc\u015f\u00fck",
+            "opportunity": {
+                "score": 62,
+                "rating": "WATCH",
+                "trade_allowed": false,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji"
+                ]
+            }
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "BTCUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Confidence d\u00fc\u015f\u00fck",
+            "signal": "BEKLE",
+            "signal_score": 62,
+            "confidence": 59.66,
+            "strategy": "Trend-Follow",
+            "adaptive_reason": "Adaptive confidence d\u00fc\u015f\u00fck",
+            "opportunity": {
+                "score": 62,
+                "rating": "WATCH",
+                "trade_allowed": false,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji"
+                ]
+            }
+        },
+        "confidence": 59.66,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 64.25,
+            "final_vote": "WAIT",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "WAIT",
+                    "score": 90
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 60
+                },
+                "Momentum": {
+                    "vote": "BUY",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "SELL",
+                    "score": 80
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 112.0,
+                "SELL": 80.0,
+                "WAIT": 345.0
+            },
+            "strategy_confidence": 64.25,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "ETHUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Sinyal g\u00fcc\u00fc yetersiz",
+            "signal": "SAT",
+            "signal_score": 12,
+            "confidence": 66.58,
+            "strategy": "Trend-Follow",
+            "adaptive_reason": "Sinyal g\u00fcc\u00fc yetersiz",
+            "opportunity": {
+                "score": 58,
+                "rating": "WATCH",
+                "trade_allowed": false,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Yeterli g\u00fcven"
+                ]
+            }
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "ETHUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Sinyal g\u00fcc\u00fc yetersiz",
+            "signal": "SAT",
+            "signal_score": 12,
+            "confidence": 66.58,
+            "strategy": "Trend-Follow",
+            "adaptive_reason": "Sinyal g\u00fcc\u00fc yetersiz",
+            "opportunity": {
+                "score": 58,
+                "rating": "WATCH",
+                "trade_allowed": false,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Yeterli g\u00fcven"
+                ]
+            }
+        },
+        "confidence": 66.58,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 58.72,
+            "final_vote": "SELL",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "SELL",
+                    "score": 100
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 60
+                },
+                "Momentum": {
+                    "vote": "BUY",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "SELL",
+                    "score": 80
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 112.0,
+                "SELL": 330.0,
+                "WAIT": 120.0
+            },
+            "strategy_confidence": 58.72,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "SOLUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Confidence d\u00fc\u015f\u00fck",
+            "signal": "SAT",
+            "signal_score": 0,
+            "confidence": 56.67,
+            "strategy": "Trend-Follow",
+            "adaptive_reason": "Adaptive confidence d\u00fc\u015f\u00fck",
+            "opportunity": {
+                "score": 18,
+                "rating": "LOW",
+                "trade_allowed": false,
+                "reasons": [
+                    "Yatay piyasa"
+                ]
+            }
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "SOLUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Confidence d\u00fc\u015f\u00fck",
+            "signal": "SAT",
+            "signal_score": 0,
+            "confidence": 56.67,
+            "strategy": "Trend-Follow",
+            "adaptive_reason": "Adaptive confidence d\u00fc\u015f\u00fck",
+            "opportunity": {
+                "score": 18,
+                "rating": "LOW",
+                "trade_allowed": false,
+                "reasons": [
+                    "Yatay piyasa"
+                ]
+            }
+        },
+        "confidence": 56.67,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 51.69,
+            "final_vote": "SELL",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "SELL",
+                    "score": 95
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Momentum": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "RSI-Scalping": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 0,
+                "SELL": 237.5,
+                "WAIT": 222.0
+            },
+            "strategy_confidence": 51.69,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "BTCUSDT",
+        "decision": {
+            "action": "BUY",
+            "reason": "Sinyal uygun",
+            "signal": "AL",
+            "signal_score": 70,
+            "strength": "STRONG",
+            "strategy": "Trend-Follow",
+            "strategy_score": 89.42,
+            "confidence": 73.86,
+            "adaptive_reason": "Sinyal uygun",
+            "opportunity": {
+                "score": 82,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "G\u00fc\u00e7l\u00fc strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 62491.6402,
+            "take_profit": 67298.6895,
+            "risk_amount": 10.0,
+            "position_size": 0.006241
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "BTCUSDT",
+        "decision": {
+            "action": "BUY",
+            "reason": "Sinyal uygun",
+            "signal": "AL",
+            "signal_score": 70,
+            "strength": "STRONG",
+            "strategy": "Trend-Follow",
+            "strategy_score": 89.42,
+            "confidence": 73.86,
+            "adaptive_reason": "Sinyal uygun",
+            "opportunity": {
+                "score": 82,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "G\u00fc\u00e7l\u00fc strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 62491.6402,
+            "take_profit": 67298.6895,
+            "risk_amount": 10.0,
+            "position_size": 0.006241
+        },
+        "confidence": 73.86,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 89.42,
+            "final_vote": "BUY",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "BUY",
+                    "score": 100
+                },
+                "Breakout": {
+                    "vote": "BUY",
+                    "score": 90
+                },
+                "Momentum": {
+                    "vote": "BUY",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 524.0,
+                "SELL": 0,
+                "WAIT": 62.0
+            },
+            "strategy_confidence": 89.42,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "ETHUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "Sinyal uygun",
+            "signal": "SAT",
+            "signal_score": 20,
+            "strength": "WEAK",
+            "strategy": "Trend-Follow",
+            "strategy_score": 46.99,
+            "confidence": 61.25,
+            "adaptive_reason": "Sinyal uygun",
+            "opportunity": {
+                "score": 58,
+                "rating": "WATCH",
+                "trade_allowed": false,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 1877.2896,
+            "take_profit": 1766.8608,
+            "risk_amount": 5.0,
+            "position_size": 0.135834
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "ETHUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "Sinyal uygun",
+            "signal": "SAT",
+            "signal_score": 20,
+            "strength": "WEAK",
+            "strategy": "Trend-Follow",
+            "strategy_score": 46.99,
+            "confidence": 61.25,
+            "adaptive_reason": "Sinyal uygun",
+            "opportunity": {
+                "score": 58,
+                "rating": "WATCH",
+                "trade_allowed": false,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 1877.2896,
+            "take_profit": 1766.8608,
+            "risk_amount": 5.0,
+            "position_size": 0.135834
+        },
+        "confidence": 61.25,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 46.99,
+            "final_vote": "SELL",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "SELL",
+                    "score": 100
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 60
+                },
+                "Momentum": {
+                    "vote": "BUY",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 112.0,
+                "SELL": 250.0,
+                "WAIT": 170.0
+            },
+            "strategy_confidence": 46.99,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "SOLUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Confidence d\u00fc\u015f\u00fck",
+            "signal": "SAT",
+            "signal_score": 10,
+            "confidence": 59.17,
+            "strategy": "Trend-Follow",
+            "adaptive_reason": "Adaptive confidence d\u00fc\u015f\u00fck",
+            "opportunity": {
+                "score": 26,
+                "rating": "LOW",
+                "trade_allowed": false,
+                "reasons": [
+                    "Zay\u0131f trend"
+                ]
+            }
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "SOLUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Confidence d\u00fc\u015f\u00fck",
+            "signal": "SAT",
+            "signal_score": 10,
+            "confidence": 59.17,
+            "strategy": "Trend-Follow",
+            "adaptive_reason": "Adaptive confidence d\u00fc\u015f\u00fck",
+            "opportunity": {
+                "score": 26,
+                "rating": "LOW",
+                "trade_allowed": false,
+                "reasons": [
+                    "Zay\u0131f trend"
+                ]
+            }
+        },
+        "confidence": 59.17,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 51.69,
+            "final_vote": "SELL",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "SELL",
+                    "score": 95
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Momentum": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "RSI-Scalping": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 0,
+                "SELL": 237.5,
+                "WAIT": 222.0
+            },
+            "strategy_confidence": 51.69,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "BTCUSDT",
+        "decision": {
+            "action": "BUY",
+            "reason": "Sinyal uygun",
+            "signal": "AL",
+            "signal_score": 70,
+            "strength": "STRONG",
+            "strategy": "Trend-Follow",
+            "strategy_score": 89.42,
+            "confidence": 73.86,
+            "adaptive_reason": "Sinyal uygun",
+            "opportunity": {
+                "score": 82,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "G\u00fc\u00e7l\u00fc strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 62507.25,
+            "take_profit": 67315.5,
+            "risk_amount": 10.0,
+            "position_size": 0.006239
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "BTCUSDT",
+        "decision": {
+            "action": "BUY",
+            "reason": "Sinyal uygun",
+            "signal": "AL",
+            "signal_score": 70,
+            "strength": "STRONG",
+            "strategy": "Trend-Follow",
+            "strategy_score": 89.42,
+            "confidence": 73.86,
+            "adaptive_reason": "Sinyal uygun",
+            "opportunity": {
+                "score": 82,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "G\u00fc\u00e7l\u00fc strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 62507.25,
+            "take_profit": 67315.5,
+            "risk_amount": 10.0,
+            "position_size": 0.006239
+        },
+        "confidence": 73.86,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 89.42,
+            "final_vote": "BUY",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "BUY",
+                    "score": 100
+                },
+                "Breakout": {
+                    "vote": "BUY",
+                    "score": 90
+                },
+                "Momentum": {
+                    "vote": "BUY",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 524.0,
+                "SELL": 0,
+                "WAIT": 62.0
+            },
+            "strategy_confidence": 89.42,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "ETHUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Confidence d\u00fc\u015f\u00fck",
+            "signal": "SAT",
+            "signal_score": 20,
+            "confidence": 59.76,
+            "strategy": "Trend-Follow",
+            "adaptive_reason": "Adaptive confidence d\u00fc\u015f\u00fck",
+            "opportunity": {
+                "score": 26,
+                "rating": "LOW",
+                "trade_allowed": false,
+                "reasons": [
+                    "Zay\u0131f trend"
+                ]
+            }
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "ETHUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Confidence d\u00fc\u015f\u00fck",
+            "signal": "SAT",
+            "signal_score": 20,
+            "confidence": 59.76,
+            "strategy": "Trend-Follow",
+            "adaptive_reason": "Adaptive confidence d\u00fc\u015f\u00fck",
+            "opportunity": {
+                "score": 26,
+                "rating": "LOW",
+                "trade_allowed": false,
+                "reasons": [
+                    "Zay\u0131f trend"
+                ]
+            }
+        },
+        "confidence": 59.76,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 51.02,
+            "final_vote": "SELL",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "SELL",
+                    "score": 100
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 60
+                },
+                "Momentum": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "RSI-Scalping": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 0,
+                "SELL": 250.0,
+                "WAIT": 240.0
+            },
+            "strategy_confidence": 51.02,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "SOLUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "Sinyal uygun",
+            "signal": "SAT",
+            "signal_score": 20,
+            "strength": "WEAK",
+            "strategy": "Trend-Follow",
+            "strategy_score": 68.05,
+            "confidence": 66.51,
+            "adaptive_reason": "Sinyal uygun",
+            "opportunity": {
+                "score": 72,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 76.8955,
+            "take_profit": 71.269,
+            "risk_amount": 10.0,
+            "position_size": 5.331911
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "SOLUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "Sinyal uygun",
+            "signal": "SAT",
+            "signal_score": 20,
+            "strength": "WEAK",
+            "strategy": "Trend-Follow",
+            "strategy_score": 68.05,
+            "confidence": 66.51,
+            "adaptive_reason": "Sinyal uygun",
+            "opportunity": {
+                "score": 72,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 76.8955,
+            "take_profit": 71.269,
+            "risk_amount": 10.0,
+            "position_size": 5.331911
+        },
+        "confidence": 66.51,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 68.05,
+            "final_vote": "SELL",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "SELL",
+                    "score": 100
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 60
+                },
+                "Momentum": {
+                    "vote": "SELL",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 0,
+                "SELL": 362.0,
+                "WAIT": 170.0
+            },
+            "strategy_confidence": 68.05,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "BTCUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Confidence d\u00fc\u015f\u00fck",
+            "signal": "BEKLE",
+            "signal_score": 50,
+            "confidence": 50.22,
+            "strategy": "Trend-Follow",
+            "adaptive_reason": "Adaptive confidence d\u00fc\u015f\u00fck",
+            "opportunity": {
+                "score": 42,
+                "rating": "LOW",
+                "trade_allowed": false,
+                "reasons": [
+                    "Yatay piyasa",
+                    "G\u00fc\u00e7l\u00fc strateji"
+                ]
+            }
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "BTCUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Confidence d\u00fc\u015f\u00fck",
+            "signal": "BEKLE",
+            "signal_score": 50,
+            "confidence": 50.22,
+            "strategy": "Trend-Follow",
+            "adaptive_reason": "Adaptive confidence d\u00fc\u015f\u00fck",
+            "opportunity": {
+                "score": 42,
+                "rating": "LOW",
+                "trade_allowed": false,
+                "reasons": [
+                    "Yatay piyasa",
+                    "G\u00fc\u00e7l\u00fc strateji"
+                ]
+            }
+        },
+        "confidence": 50.22,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 75.86,
+            "final_vote": "WAIT",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "WAIT",
+                    "score": 80
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Momentum": {
+                    "vote": "BUY",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 112.0,
+                "SELL": 0,
+                "WAIT": 352.0
+            },
+            "strategy_confidence": 75.86,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "ETHUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Confidence d\u00fc\u015f\u00fck",
+            "signal": "SAT",
+            "signal_score": 0,
+            "confidence": 56.67,
+            "strategy": "Trend-Follow",
+            "adaptive_reason": "Adaptive confidence d\u00fc\u015f\u00fck",
+            "opportunity": {
+                "score": 18,
+                "rating": "LOW",
+                "trade_allowed": false,
+                "reasons": [
+                    "Yatay piyasa"
+                ]
+            }
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "ETHUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Confidence d\u00fc\u015f\u00fck",
+            "signal": "SAT",
+            "signal_score": 0,
+            "confidence": 56.67,
+            "strategy": "Trend-Follow",
+            "adaptive_reason": "Adaptive confidence d\u00fc\u015f\u00fck",
+            "opportunity": {
+                "score": 18,
+                "rating": "LOW",
+                "trade_allowed": false,
+                "reasons": [
+                    "Yatay piyasa"
+                ]
+            }
+        },
+        "confidence": 56.67,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 51.69,
+            "final_vote": "SELL",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "SELL",
+                    "score": 95
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Momentum": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "RSI-Scalping": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 0,
+                "SELL": 237.5,
+                "WAIT": 222.0
+            },
+            "strategy_confidence": 51.69,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "SOLUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "Sinyal uygun",
+            "signal": "SAT",
+            "signal_score": 20,
+            "strength": "WEAK",
+            "strategy": "Trend-Follow",
+            "strategy_score": 68.05,
+            "confidence": 66.51,
+            "adaptive_reason": "Sinyal uygun",
+            "opportunity": {
+                "score": 72,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 76.711,
+            "take_profit": 71.098,
+            "risk_amount": 10.0,
+            "position_size": 5.344735
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "SOLUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "Sinyal uygun",
+            "signal": "SAT",
+            "signal_score": 20,
+            "strength": "WEAK",
+            "strategy": "Trend-Follow",
+            "strategy_score": 68.05,
+            "confidence": 66.51,
+            "adaptive_reason": "Sinyal uygun",
+            "opportunity": {
+                "score": 72,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 76.711,
+            "take_profit": 71.098,
+            "risk_amount": 10.0,
+            "position_size": 5.344735
+        },
+        "confidence": 66.51,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 68.05,
+            "final_vote": "SELL",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "SELL",
+                    "score": 100
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 60
+                },
+                "Momentum": {
+                    "vote": "SELL",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 0,
+                "SELL": 362.0,
+                "WAIT": 170.0
+            },
+            "strategy_confidence": 68.05,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "BTCUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Confidence d\u00fc\u015f\u00fck",
+            "signal": "BEKLE",
+            "signal_score": 62,
+            "confidence": 59.66,
+            "strategy": "Trend-Follow",
+            "adaptive_reason": "Adaptive confidence d\u00fc\u015f\u00fck",
+            "opportunity": {
+                "score": 62,
+                "rating": "WATCH",
+                "trade_allowed": false,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji"
+                ]
+            }
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "BTCUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Confidence d\u00fc\u015f\u00fck",
+            "signal": "BEKLE",
+            "signal_score": 62,
+            "confidence": 59.66,
+            "strategy": "Trend-Follow",
+            "adaptive_reason": "Adaptive confidence d\u00fc\u015f\u00fck",
+            "opportunity": {
+                "score": 62,
+                "rating": "WATCH",
+                "trade_allowed": false,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji"
+                ]
+            }
+        },
+        "confidence": 59.66,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 64.25,
+            "final_vote": "WAIT",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "WAIT",
+                    "score": 90
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 60
+                },
+                "Momentum": {
+                    "vote": "BUY",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "SELL",
+                    "score": 80
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 112.0,
+                "SELL": 80.0,
+                "WAIT": 345.0
+            },
+            "strategy_confidence": 64.25,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "ETHUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Sinyal g\u00fcc\u00fc yetersiz",
+            "signal": "SAT",
+            "signal_score": 12,
+            "confidence": 63.65,
+            "strategy": "Trend-Follow",
+            "adaptive_reason": "Sinyal g\u00fcc\u00fc yetersiz",
+            "opportunity": {
+                "score": 58,
+                "rating": "WATCH",
+                "trade_allowed": false,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Yeterli g\u00fcven"
+                ]
+            }
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "ETHUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Sinyal g\u00fcc\u00fc yetersiz",
+            "signal": "SAT",
+            "signal_score": 12,
+            "confidence": 63.65,
+            "strategy": "Trend-Follow",
+            "adaptive_reason": "Sinyal g\u00fcc\u00fc yetersiz",
+            "opportunity": {
+                "score": 58,
+                "rating": "WATCH",
+                "trade_allowed": false,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Yeterli g\u00fcven"
+                ]
+            }
+        },
+        "confidence": 63.65,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 46.99,
+            "final_vote": "SELL",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "SELL",
+                    "score": 100
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 60
+                },
+                "Momentum": {
+                    "vote": "BUY",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 112.0,
+                "SELL": 250.0,
+                "WAIT": 170.0
+            },
+            "strategy_confidence": 46.99,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "SOLUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Sinyal uygun",
+            "signal": "BEKLE",
+            "signal_score": 60,
+            "strength": "NEUTRAL",
+            "strategy": "Trend-Follow",
+            "strategy_score": 100.0,
+            "confidence": 61.75,
+            "adaptive_reason": "Sinyal uygun",
+            "opportunity": {
+                "score": 61,
+                "rating": "WATCH",
+                "trade_allowed": false,
+                "reasons": [
+                    "Zay\u0131f trend",
+                    "G\u00fc\u00e7l\u00fc strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            }
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "SOLUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Sinyal uygun",
+            "signal": "BEKLE",
+            "signal_score": 60,
+            "strength": "NEUTRAL",
+            "strategy": "Trend-Follow",
+            "strategy_score": 100.0,
+            "confidence": 61.75,
+            "adaptive_reason": "Sinyal uygun",
+            "opportunity": {
+                "score": 61,
+                "rating": "WATCH",
+                "trade_allowed": false,
+                "reasons": [
+                    "Zay\u0131f trend",
+                    "G\u00fc\u00e7l\u00fc strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            }
+        },
+        "confidence": 61.75,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 100.0,
+            "final_vote": "WAIT",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "WAIT",
+                    "score": 80
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Momentum": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "RSI-Scalping": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 0,
+                "SELL": 0,
+                "WAIT": 422.0
+            },
+            "strategy_confidence": 100.0,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "BTCUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Confidence d\u00fc\u015f\u00fck",
+            "signal": "BEKLE",
+            "signal_score": 62,
+            "confidence": 59.66,
+            "strategy": "Trend-Follow",
+            "adaptive_reason": "Adaptive confidence d\u00fc\u015f\u00fck",
+            "opportunity": {
+                "score": 62,
+                "rating": "WATCH",
+                "trade_allowed": false,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji"
+                ]
+            }
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "BTCUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Confidence d\u00fc\u015f\u00fck",
+            "signal": "BEKLE",
+            "signal_score": 62,
+            "confidence": 59.66,
+            "strategy": "Trend-Follow",
+            "adaptive_reason": "Adaptive confidence d\u00fc\u015f\u00fck",
+            "opportunity": {
+                "score": 62,
+                "rating": "WATCH",
+                "trade_allowed": false,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji"
+                ]
+            }
+        },
+        "confidence": 59.66,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 64.25,
+            "final_vote": "WAIT",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "WAIT",
+                    "score": 90
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 60
+                },
+                "Momentum": {
+                    "vote": "BUY",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "SELL",
+                    "score": 80
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 112.0,
+                "SELL": 80.0,
+                "WAIT": 345.0
+            },
+            "strategy_confidence": 64.25,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "ETHUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Sinyal uygun",
+            "signal": "BEKLE",
+            "signal_score": 62,
+            "strength": "NEUTRAL",
+            "strategy": "Trend-Follow",
+            "strategy_score": 77.91,
+            "confidence": 63.08,
+            "adaptive_reason": "Sinyal uygun",
+            "opportunity": {
+                "score": 82,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "G\u00fc\u00e7l\u00fc strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            }
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "ETHUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Sinyal uygun",
+            "signal": "BEKLE",
+            "signal_score": 62,
+            "strength": "NEUTRAL",
+            "strategy": "Trend-Follow",
+            "strategy_score": 77.91,
+            "confidence": 63.08,
+            "adaptive_reason": "Sinyal uygun",
+            "opportunity": {
+                "score": 82,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "G\u00fc\u00e7l\u00fc strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            }
+        },
+        "confidence": 63.08,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 77.91,
+            "final_vote": "WAIT",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "WAIT",
+                    "score": 90
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 60
+                },
+                "Momentum": {
+                    "vote": "BUY",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 112.0,
+                "SELL": 0,
+                "WAIT": 395.0
+            },
+            "strategy_confidence": 77.91,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "SOLUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Confidence d\u00fc\u015f\u00fck",
+            "signal": "BEKLE",
+            "signal_score": 62,
+            "confidence": 59.66,
+            "strategy": "Trend-Follow",
+            "adaptive_reason": "Adaptive confidence d\u00fc\u015f\u00fck",
+            "opportunity": {
+                "score": 62,
+                "rating": "WATCH",
+                "trade_allowed": false,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji"
+                ]
+            }
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "SOLUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Confidence d\u00fc\u015f\u00fck",
+            "signal": "BEKLE",
+            "signal_score": 62,
+            "confidence": 59.66,
+            "strategy": "Trend-Follow",
+            "adaptive_reason": "Adaptive confidence d\u00fc\u015f\u00fck",
+            "opportunity": {
+                "score": 62,
+                "rating": "WATCH",
+                "trade_allowed": false,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji"
+                ]
+            }
+        },
+        "confidence": 59.66,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 64.25,
+            "final_vote": "WAIT",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "WAIT",
+                    "score": 90
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 60
+                },
+                "Momentum": {
+                    "vote": "BUY",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "SELL",
+                    "score": 80
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 112.0,
+                "SELL": 80.0,
+                "WAIT": 345.0
+            },
+            "strategy_confidence": 64.25,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "BTCUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Confidence d\u00fc\u015f\u00fck",
+            "signal": "BEKLE",
+            "signal_score": 62,
+            "confidence": 59.66,
+            "strategy": "Trend-Follow",
+            "adaptive_reason": "Adaptive confidence d\u00fc\u015f\u00fck",
+            "opportunity": {
+                "score": 62,
+                "rating": "WATCH",
+                "trade_allowed": false,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji"
+                ]
+            }
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "BTCUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Confidence d\u00fc\u015f\u00fck",
+            "signal": "BEKLE",
+            "signal_score": 62,
+            "confidence": 59.66,
+            "strategy": "Trend-Follow",
+            "adaptive_reason": "Adaptive confidence d\u00fc\u015f\u00fck",
+            "opportunity": {
+                "score": 62,
+                "rating": "WATCH",
+                "trade_allowed": false,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji"
+                ]
+            }
+        },
+        "confidence": 59.66,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 64.25,
+            "final_vote": "WAIT",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "WAIT",
+                    "score": 90
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 60
+                },
+                "Momentum": {
+                    "vote": "BUY",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "SELL",
+                    "score": 80
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 112.0,
+                "SELL": 80.0,
+                "WAIT": 345.0
+            },
+            "strategy_confidence": 64.25,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "ETHUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Sinyal uygun",
+            "signal": "BEKLE",
+            "signal_score": 60,
+            "strength": "NEUTRAL",
+            "strategy": "Trend-Follow",
+            "strategy_score": 100.0,
+            "confidence": 61.75,
+            "adaptive_reason": "Sinyal uygun",
+            "opportunity": {
+                "score": 61,
+                "rating": "WATCH",
+                "trade_allowed": false,
+                "reasons": [
+                    "Zay\u0131f trend",
+                    "G\u00fc\u00e7l\u00fc strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            }
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "ETHUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Sinyal uygun",
+            "signal": "BEKLE",
+            "signal_score": 60,
+            "strength": "NEUTRAL",
+            "strategy": "Trend-Follow",
+            "strategy_score": 100.0,
+            "confidence": 61.75,
+            "adaptive_reason": "Sinyal uygun",
+            "opportunity": {
+                "score": 61,
+                "rating": "WATCH",
+                "trade_allowed": false,
+                "reasons": [
+                    "Zay\u0131f trend",
+                    "G\u00fc\u00e7l\u00fc strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            }
+        },
+        "confidence": 61.75,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 100.0,
+            "final_vote": "WAIT",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "WAIT",
+                    "score": 80
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Momentum": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "RSI-Scalping": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 0,
+                "SELL": 0,
+                "WAIT": 422.0
+            },
+            "strategy_confidence": 100.0,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "SOLUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Sinyal uygun",
+            "signal": "BEKLE",
+            "signal_score": 62,
+            "strength": "NEUTRAL",
+            "strategy": "Trend-Follow",
+            "strategy_score": 77.91,
+            "confidence": 63.08,
+            "adaptive_reason": "Sinyal uygun",
+            "opportunity": {
+                "score": 82,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "G\u00fc\u00e7l\u00fc strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            }
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "SOLUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Sinyal uygun",
+            "signal": "BEKLE",
+            "signal_score": 62,
+            "strength": "NEUTRAL",
+            "strategy": "Trend-Follow",
+            "strategy_score": 77.91,
+            "confidence": 63.08,
+            "adaptive_reason": "Sinyal uygun",
+            "opportunity": {
+                "score": 82,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "G\u00fc\u00e7l\u00fc strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            }
+        },
+        "confidence": 63.08,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 77.91,
+            "final_vote": "WAIT",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "WAIT",
+                    "score": 90
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 60
+                },
+                "Momentum": {
+                    "vote": "BUY",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 112.0,
+                "SELL": 0,
+                "WAIT": 395.0
+            },
+            "strategy_confidence": 77.91,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "BTCUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Confidence d\u00fc\u015f\u00fck",
+            "signal": "BEKLE",
+            "signal_score": 50,
+            "confidence": 56.25,
+            "strategy": "Trend-Follow",
+            "adaptive_reason": "Adaptive confidence d\u00fc\u015f\u00fck",
+            "opportunity": {
+                "score": 42,
+                "rating": "LOW",
+                "trade_allowed": false,
+                "reasons": [
+                    "Yatay piyasa",
+                    "G\u00fc\u00e7l\u00fc strateji"
+                ]
+            }
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "BTCUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Confidence d\u00fc\u015f\u00fck",
+            "signal": "BEKLE",
+            "signal_score": 50,
+            "confidence": 56.25,
+            "strategy": "Trend-Follow",
+            "adaptive_reason": "Adaptive confidence d\u00fc\u015f\u00fck",
+            "opportunity": {
+                "score": 42,
+                "rating": "LOW",
+                "trade_allowed": false,
+                "reasons": [
+                    "Yatay piyasa",
+                    "G\u00fc\u00e7l\u00fc strateji"
+                ]
+            }
+        },
+        "confidence": 56.25,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 100.0,
+            "final_vote": "WAIT",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "WAIT",
+                    "score": 80
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Momentum": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "RSI-Scalping": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 0,
+                "SELL": 0,
+                "WAIT": 422.0
+            },
+            "strategy_confidence": 100.0,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "ETHUSDT",
+        "decision": {
+            "action": "BUY",
+            "reason": "Sinyal uygun",
+            "signal": "AL",
+            "signal_score": 70,
+            "strength": "STRONG",
+            "strategy": "Trend-Follow",
+            "strategy_score": 75.74,
+            "confidence": 70.44,
+            "adaptive_reason": "Sinyal uygun",
+            "opportunity": {
+                "score": 82,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "G\u00fc\u00e7l\u00fc strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 1799.6647,
+            "take_profit": 1938.1005,
+            "risk_amount": 10.0,
+            "position_size": 0.216707
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "ETHUSDT",
+        "decision": {
+            "action": "BUY",
+            "reason": "Sinyal uygun",
+            "signal": "AL",
+            "signal_score": 70,
+            "strength": "STRONG",
+            "strategy": "Trend-Follow",
+            "strategy_score": 75.74,
+            "confidence": 70.44,
+            "adaptive_reason": "Sinyal uygun",
+            "opportunity": {
+                "score": 82,
+                "rating": "MEDIUM",
+                "trade_allowed": true,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "G\u00fc\u00e7l\u00fc strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 1799.6647,
+            "take_profit": 1938.1005,
+            "risk_amount": 10.0,
+            "position_size": 0.216707
+        },
+        "confidence": 70.44,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 75.74,
+            "final_vote": "BUY",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "BUY",
+                    "score": 100
+                },
+                "Breakout": {
+                    "vote": "BUY",
+                    "score": 90
+                },
+                "Momentum": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "RSI-Scalping": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 412.0,
+                "SELL": 0,
+                "WAIT": 132.0
+            },
+            "strategy_confidence": 75.74,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "SOLUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Confidence d\u00fc\u015f\u00fck",
+            "signal": "BEKLE",
+            "signal_score": 62,
+            "confidence": 59.66,
+            "strategy": "Trend-Follow",
+            "adaptive_reason": "Adaptive confidence d\u00fc\u015f\u00fck",
+            "opportunity": {
+                "score": 62,
+                "rating": "WATCH",
+                "trade_allowed": false,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji"
+                ]
+            }
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "SOLUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Confidence d\u00fc\u015f\u00fck",
+            "signal": "BEKLE",
+            "signal_score": 62,
+            "confidence": 59.66,
+            "strategy": "Trend-Follow",
+            "adaptive_reason": "Adaptive confidence d\u00fc\u015f\u00fck",
+            "opportunity": {
+                "score": 62,
+                "rating": "WATCH",
+                "trade_allowed": false,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc trend",
+                    "Orta strateji"
+                ]
+            }
+        },
+        "confidence": 59.66,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 64.25,
+            "final_vote": "WAIT",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "WAIT",
+                    "score": 90
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 60
+                },
+                "Momentum": {
+                    "vote": "BUY",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "SELL",
+                    "score": 80
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 112.0,
+                "SELL": 80.0,
+                "WAIT": 345.0
+            },
+            "strategy_confidence": 64.25,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "BTCUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "Sinyal uygun",
+            "signal": "SAT",
+            "signal_score": 20,
+            "strength": "WEAK",
+            "strategy": "Trend-Follow",
+            "strategy_score": 66.54,
+            "confidence": 63.64,
+            "adaptive_reason": "Sinyal uygun",
+            "opportunity": {
+                "score": 51,
+                "rating": "WATCH",
+                "trade_allowed": false,
+                "reasons": [
+                    "Zay\u0131f trend",
+                    "Orta strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 65375.88,
+            "take_profit": 61530.24,
+            "risk_amount": 5.0,
+            "position_size": 0.003901
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "BTCUSDT",
+        "decision": {
+            "action": "SELL",
+            "reason": "Sinyal uygun",
+            "signal": "SAT",
+            "signal_score": 20,
+            "strength": "WEAK",
+            "strategy": "Trend-Follow",
+            "strategy_score": 66.54,
+            "confidence": 63.64,
+            "adaptive_reason": "Sinyal uygun",
+            "opportunity": {
+                "score": 51,
+                "rating": "WATCH",
+                "trade_allowed": false,
+                "reasons": [
+                    "Zay\u0131f trend",
+                    "Orta strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            },
+            "stop_loss": 65375.88,
+            "take_profit": 61530.24,
+            "risk_amount": 5.0,
+            "position_size": 0.003901
+        },
+        "confidence": 63.64,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 66.54,
+            "final_vote": "SELL",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "SELL",
+                    "score": 100
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Momentum": {
+                    "vote": "SELL",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "BUY",
+                    "score": 80
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 80.0,
+                "SELL": 362.0,
+                "WAIT": 102.0
+            },
+            "strategy_confidence": 66.54,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "ETHUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Confidence d\u00fc\u015f\u00fck",
+            "signal": "BEKLE",
+            "signal_score": 50,
+            "confidence": 56.25,
+            "strategy": "Trend-Follow",
+            "adaptive_reason": "Adaptive confidence d\u00fc\u015f\u00fck",
+            "opportunity": {
+                "score": 42,
+                "rating": "LOW",
+                "trade_allowed": false,
+                "reasons": [
+                    "Yatay piyasa",
+                    "G\u00fc\u00e7l\u00fc strateji"
+                ]
+            }
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "ETHUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Confidence d\u00fc\u015f\u00fck",
+            "signal": "BEKLE",
+            "signal_score": 50,
+            "confidence": 56.25,
+            "strategy": "Trend-Follow",
+            "adaptive_reason": "Adaptive confidence d\u00fc\u015f\u00fck",
+            "opportunity": {
+                "score": 42,
+                "rating": "LOW",
+                "trade_allowed": false,
+                "reasons": [
+                    "Yatay piyasa",
+                    "G\u00fc\u00e7l\u00fc strateji"
+                ]
+            }
+        },
+        "confidence": 56.25,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 100.0,
+            "final_vote": "WAIT",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "WAIT",
+                    "score": 80
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Momentum": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "RSI-Scalping": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 0,
+                "SELL": 0,
+                "WAIT": 422.0
+            },
+            "strategy_confidence": 100.0,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    },
+    {
+        "type": "decision",
+        "symbol": "SOLUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Sinyal uygun",
+            "signal": "BEKLE",
+            "signal_score": 60,
+            "strength": "NEUTRAL",
+            "strategy": "Trend-Follow",
+            "strategy_score": 75.86,
+            "confidence": 63.22,
+            "adaptive_reason": "Sinyal uygun",
+            "opportunity": {
+                "score": 52,
+                "rating": "WATCH",
+                "trade_allowed": false,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            }
+        }
+    },
+    {
+        "type": "analysis",
+        "symbol": "SOLUSDT",
+        "decision": {
+            "action": "BEKLE",
+            "reason": "Sinyal uygun",
+            "signal": "BEKLE",
+            "signal_score": 60,
+            "strength": "NEUTRAL",
+            "strategy": "Trend-Follow",
+            "strategy_score": 75.86,
+            "confidence": 63.22,
+            "adaptive_reason": "Sinyal uygun",
+            "opportunity": {
+                "score": 52,
+                "rating": "WATCH",
+                "trade_allowed": false,
+                "reasons": [
+                    "G\u00fc\u00e7l\u00fc strateji",
+                    "Yeterli g\u00fcven"
+                ]
+            }
+        },
+        "confidence": 63.22,
+        "strategy": {
+            "strategy": "Trend-Follow",
+            "score": 75.86,
+            "final_vote": "WAIT",
+            "strategies": {
+                "Trend-Follow": {
+                    "vote": "WAIT",
+                    "score": 80
+                },
+                "Breakout": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Momentum": {
+                    "vote": "SELL",
+                    "score": 80
+                },
+                "RSI-Scalping": {
+                    "vote": "WAIT",
+                    "score": 50
+                },
+                "Defensive": {
+                    "vote": "WAIT",
+                    "score": 40
+                }
+            },
+            "weighted_votes": {
+                "BUY": 0,
+                "SELL": 112.0,
+                "WAIT": 352.0
+            },
+            "strategy_confidence": 75.86,
+            "weights": {
+                "Trend-Follow": 2.5,
+                "Breakout": 1.8,
+                "Momentum": 1.4,
+                "RSI-Scalping": 1.0,
+                "Defensive": 0.3
+            }
+        }
+    }
+]

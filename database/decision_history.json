@@ -1,0 +1,38 @@
+{
+  "timestamp": "2026-07-20T12:58:13.867443",
+  "total_evaluated": 4,
+  "approved": 0,
+  "rejected": 2,
+  "recent_decisions": [
+    {
+      "signal_id": "SIG_001",
+      "symbol": "BTCUSDT",
+      "decision": "MODIFY",
+      "confidence": 0.85,
+      "timestamp": "2026-07-20T12:58:13.866251",
+      "reason": "position_size_adjusted",
+      "details": {},
+      "modified_params": {
+        "size": 92.5,
+        "size_pct_of_balance": 0.92,
+        "risk_profile": "medium",
+        "confidence_multiplier": 0.93
+      }
+    },
+    {
+      "signal_id": "SIG_004",
+      "symbol": "ADAUSDT",
+      "decision": "MODIFY",
+      "confidence": 0.78,
+      "timestamp": "2026-07-20T12:58:13.866728",
+      "reason": "position_size_adjusted",
+      "details": {},
+      "modified_params": {
+        "size": 89.0,
+        "size_pct_of_balance": 0.89,
+        "risk_profile": "medium",
+        "confidence_multiplier": 0.89
+      }
+    }
+  ]
+}

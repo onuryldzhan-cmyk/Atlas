@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Atlas AI | Operations</title>
+  <style>
+    :root{color-scheme:dark;--bg:#070b14;--panel:#0f1728;--line:#243047;--text:#edf3ff;--muted:#8ea0ba;--cyan:#45d7ff;--green:#41e2a2;--amber:#ffc857}
+    *{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at 70% -10%,#162e48 0,transparent 35%),var(--bg);color:var(--text);font:14px Inter,ui-sans-serif,system-ui}
+    main{max-width:1180px;margin:auto;padding:36px 24px} header{display:flex;justify-content:space-between;align-items:center;margin-bottom:34px}.brand{font-weight:800;letter-spacing:.18em}.brand span{color:var(--cyan)}
+    .pill{border:1px solid #275f59;background:#0d2a28;color:var(--green);padding:8px 12px;border-radius:999px;font-size:12px;font-weight:700}.hero{display:grid;grid-template-columns:2fr 1fr;gap:18px}
+    .card{background:linear-gradient(145deg,rgba(18,29,48,.94),rgba(10,17,30,.94));border:1px solid var(--line);border-radius:18px;padding:24px;box-shadow:0 16px 60px #0005}h1{font-size:40px;line-height:1.04;margin:10px 0 14px;max-width:700px}p{color:var(--muted);line-height:1.7}
+    .eyebrow{color:var(--cyan);font-size:11px;font-weight:800;letter-spacing:.16em}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:18px}.metric{padding:18px}.label{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.1em}.value{font-size:22px;font-weight:750;margin-top:9px}.line{height:1px;background:var(--line);margin:20px 0}.row{display:flex;justify-content:space-between;margin:13px 0;color:var(--muted)}.row strong{color:var(--text)}
+    a{color:var(--cyan);text-decoration:none}.error{color:#ff7b87}@media(max-width:760px){.hero,.grid{grid-template-columns:1fr}h1{font-size:32px}}
+  </style>
+</head>
+<body><main>
+  <header><div class="brand">ATLAS <span>AI</span></div><div id="health" class="pill">KONTROL EDİLİYOR</div></header>
+  <section class="hero">
+    <div class="card"><div class="eyebrow">INSTITUTIONAL INTELLIGENCE LAYER</div><h1>Piyasa zekâsı, risk disipliniyle bir arada.</h1><p>Atlas; karar, execution, pozisyon ve audit katmanlarını tek bir güvenli operasyon hattında birleştirir. Bu kontrol düzlemi salt okunurdur ve PAPER modunu zorunlu tutar.</p><div class="line"></div><a href="/docs">API dokümantasyonunu aç →</a></div>
+    <div class="card"><div class="eyebrow">RUNTIME</div><div class="row">Durum <strong id="runtime">—</strong></div><div class="row">Execution <strong id="mode">PAPER</strong></div><div class="row">Borsa <strong id="exchange">—</strong></div><div class="row">Sürüm <strong>{{ version }}</strong></div><div class="line"></div><p id="updated">Henüz güncellenmedi</p></div>
+  </section>
+  <section class="grid">
+    <div class="card metric"><div class="label">Kayıtlı servis</div><div class="value" id="services">—</div></div>
+    <div class="card metric"><div class="label">Çalışan servis</div><div class="value" id="started">—</div></div>
+    <div class="card metric"><div class="label">Hata sayısı</div><div class="value" id="errors">—</div></div>
+    <div class="card metric"><div class="label">Canlı işlem</div><div class="value" style="color:var(--amber)">KAPALI</div></div>
+  </section>
+</main><script>
+async function refresh(){try{const r=await fetch('/api/v1/health');const d=await r.json();if(!r.ok)throw new Error(d.detail||'Servis hatası');const a=d.atlas||{},ap=a.application||{},s=a.services||{};document.querySelector('#health').textContent=d.status==='ok'?'SİSTEM SAĞLIKLI':'DEGRADED';document.querySelector('#runtime').textContent=(a.runtime||{}).state||'OFFLINE';document.querySelector('#mode').textContent=ap.execution_mode||'PAPER';document.querySelector('#exchange').textContent=ap.exchange||'—';document.querySelector('#services').textContent=(s.registered||[]).length;document.querySelector('#started').textContent=(s.started||[]).length;document.querySelector('#errors').textContent=(a.errors||{}).count||0;document.querySelector('#updated').textContent='Son kontrol: '+new Date().toLocaleTimeString('tr-TR')}catch(e){const h=document.querySelector('#health');h.textContent='BAĞLANTI HATASI';h.classList.add('error')}}refresh();setInterval(refresh,15000);
+</script></body></html>

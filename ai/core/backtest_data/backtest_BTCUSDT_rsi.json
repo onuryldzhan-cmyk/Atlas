@@ -1,0 +1,12 @@
+{
+  "symbol": "BTCUSDT",
+  "strategy": "rsi",
+  "metrics": {
+    "total_return_pct": -6.624632749848771,
+    "win_rate": 28.07017543859649,
+    "max_drawdown_pct": 7.395831213342036,
+    "sharpe_ratio": -0.3562395595199206,
+    "profit_factor": 0.7044612623178584,
+    "total_trades": 57
+  }
+}

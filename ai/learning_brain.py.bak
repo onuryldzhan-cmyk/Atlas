@@ -1,0 +1,140 @@
+import json
+import os
+
+
+class LearningBrain:
+
+
+    def __init__(self):
+
+        self.memory_file = "../database/model_memory.json"
+
+
+
+    def load_memory(self):
+
+        if os.path.exists(self.memory_file):
+
+            try:
+
+                with open(
+                    self.memory_file,
+                    "r"
+                ) as file:
+
+                    return json.load(file)
+
+            except Exception:
+
+                return {}
+
+        return {}
+
+
+
+
+    def save_memory(self, memory):
+
+        with open(
+            self.memory_file,
+            "w"
+        ) as file:
+
+            json.dump(
+                memory,
+                file,
+                indent=4
+            )
+
+
+
+
+    def analyze_history(self, trades):
+
+
+        memory = self.load_memory()
+
+
+        al_profit = 0
+        sat_profit = 0
+
+        al_count = 0
+        sat_count = 0
+
+
+
+        for trade in trades:
+
+
+            profit = trade.get(
+                "profit",
+                0
+            )
+
+
+            signal = trade.get(
+                "signal",
+                ""
+            )
+
+
+
+            if signal == "AL":
+
+                al_profit += profit
+                al_count += 1
+
+
+
+            elif signal == "SAT":
+
+                sat_profit += profit
+                sat_count += 1
+
+
+
+
+        memory["AL_score"] = 50
+        memory["SAT_score"] = 50
+
+
+
+        if al_count > 0:
+
+            if al_profit > 0:
+
+                memory["AL_score"] += 20
+
+
+
+        if sat_count > 0:
+
+            if sat_profit > 0:
+
+                memory["SAT_score"] += 20
+
+
+
+        memory["total_trades"] = (
+            al_count + sat_count
+        )
+
+
+        memory["AL_profit"] = round(
+            al_profit,
+            2
+        )
+
+
+        memory["SAT_profit"] = round(
+            sat_profit,
+            2
+        )
+
+
+
+        self.save_memory(memory)
+
+
+
+        return memory

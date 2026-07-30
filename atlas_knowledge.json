@@ -1,0 +1,31 @@
+{
+    "facts": [
+        {
+            "time": "2026-07-23T15:04:53.873893+00:00",
+            "category": "architecture",
+            "information": "Atlas Self Awareness Engine aktif edildi"
+        },
+        {
+            "time": "2026-07-23T15:04:53.881909+00:00",
+            "category": "version",
+            "information": "Atlas Intelligence v8.0"
+        },
+        {
+            "time": "2026-07-23T15:05:53.866088+00:00",
+            "category": "system_analysis",
+            "information": {
+                "health": "DEVELOPING",
+                "score": 60
+            }
+        },
+        {
+            "time": "2026-07-23T15:06:29.509416+00:00",
+            "category": "system_analysis",
+            "information": {
+                "health": "DEVELOPING",
+                "score": 60
+            }
+        }
+    ],
+    "history": []
+}

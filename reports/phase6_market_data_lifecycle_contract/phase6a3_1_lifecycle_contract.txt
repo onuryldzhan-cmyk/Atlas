@@ -1,0 +1,993 @@
+==============================================================================
+ATLAS PHASE 6A3.1 — MARKET DATA LIFECYCLE CONTRACT AUDIT
+==============================================================================
+
+[CONTRACTS] atlas_finance\market_data\contracts.py
+------------------------------------------------------------------------------
+CLASS MarketDataProviderProtocol(Protocol) lines 38-94
+DOC: Public market-data provider contract.
+
+METHOD connect(self) -> bool lines 61-69
+    def connect(
+        self,
+    ) -> bool:
+        """
+        Initialize provider resources.
+
+        Public HTTP providers may implement this by validating
+        connectivity and preparing a reusable session.
+        """
+
+METHOD disconnect(self) -> None lines 71-76
+    def disconnect(
+        self,
+    ) -> None:
+        """
+        Release provider resources.
+        """
+
+METHOD get_price(self, symbol: str) -> MarketPrice lines 78-84
+    def get_price(
+        self,
+        symbol: str,
+    ) -> MarketPrice:
+        """
+        Return the latest normalized market price.
+        """
+
+METHOD get_candles(self, symbol: str, timeframe: str = '5m', limit: int = 100) -> Sequence[MarketCandle] lines 86-94
+    def get_candles(
+        self,
+        symbol: str,
+        timeframe: str = "5m",
+        limit: int = 100,
+    ) -> Sequence[MarketCandle]:
+        """
+        Return normalized OHLCV candles.
+        """
+
+[PROVIDER] atlas_finance\market_data\binance_public_provider.py
+------------------------------------------------------------------------------
+CLASS BinancePublicDataProvider(MarketDataProviderProtocol) lines 94-1308
+DOC: Public Binance REST market-data provider.
+
+The provider intentionally implements no authenticated or
+execution-related endpoint.
+
+METHOD __init__(self, *, base_url: str = DEFAULT_BASE_URL, timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS, retry_attempts: int = DEFAULT_RETRY_ATTEMPTS, retry_backoff_seconds: float = DEFAULT_RETRY_BACKOFF_SECONDS, maximum_candle_limit: int = DEFAULT_MAXIMUM_CANDLE_LIMIT, session: Session | None = None, connection_test_symbol: str = 'BTCUSDT') -> None lines 164-241
+    def __init__(
+        self,
+        *,
+        base_url: str = DEFAULT_BASE_URL,
+        timeout_seconds: float = (
+            DEFAULT_TIMEOUT_SECONDS
+        ),
+        retry_attempts: int = (
+            DEFAULT_RETRY_ATTEMPTS
+        ),
+        retry_backoff_seconds: float = (
+            DEFAULT_RETRY_BACKOFF_SECONDS
+        ),
+        maximum_candle_limit: int = (
+            DEFAULT_MAXIMUM_CANDLE_LIMIT
+        ),
+        session: Session | None = None,
+        connection_test_symbol: str = "BTCUSDT",
+    ) -> None:
+        self._base_url = self._validate_base_url(
+            base_url
+        )
+
+        self._timeout_seconds = (
+            self._validate_positive_float(
+                timeout_seconds,
+                field_name="timeout_seconds",
+            )
+        )
+
+        self._retry_attempts = (
+            self._validate_retry_attempts(
+                retry_attempts
+            )
+        )
+
+        self._retry_backoff_seconds = (
+            self._validate_non_negative_float(
+                retry_backoff_seconds,
+                field_name=(
+                    "retry_backoff_seconds"
+                ),
+            )
+        )
+
+        self._maximum_candle_limit = (
+            self._validate_maximum_candle_limit(
+                maximum_candle_limit
+            )
+        )
+
+        self._connection_test_symbol = (
+            self._normalize_symbol(
+                connection_test_symbol
+            )
+        )
+
+        self._session = (
+            session
+            if session is not None
+            else requests.Session()
+        )
+
+        self._owns_session = (
+            session is None
+        )
+
+        self._connected = False
+
+        self._closed = False
+
+        self._lock = threading.RLock()
+
+        logger.info(
+            "%s v%s initialized.",
+            self.PROVIDER_NAME,
+            self.VERSION,
+        )
+
+METHOD connect(self) -> bool lines 300-340
+    def connect(
+        self,
+    ) -> bool:
+        """
+        Validate public Binance connectivity.
+
+        No authentication or private account request is made.
+        """
+
+        with self._lock:
+            if self._closed:
+                raise MarketDataConnectionError(
+                    "Binance public provider has already "
+                    "been permanently closed."
+                )
+
+            if self._connected:
+                return True
+
+        try:
+            self.get_price(
+                self._connection_test_symbol
+            )
+
+        except Exception as error:
+            with self._lock:
+                self._connected = False
+
+            raise MarketDataConnectionError(
+                "Binance public connectivity test failed."
+            ) from error
+
+        with self._lock:
+            self._connected = True
+
+        logger.info(
+            "%s connected successfully.",
+            self.PROVIDER_NAME,
+        )
+
+        return True
+
+METHOD disconnect(self) -> None lines 342-362
+    def disconnect(
+        self,
+    ) -> None:
+        """
+        Disconnect and release owned HTTP resources.
+        """
+
+        with self._lock:
+            self._connected = False
+
+            if (
+                self._owns_session
+                and not self._closed
+            ):
+                self._session.close()
+                self._closed = True
+
+        logger.info(
+            "%s disconnected.",
+            self.PROVIDER_NAME,
+        )
+
+METHOD get_price(self, symbol: str) -> MarketPrice lines 368-440
+    def get_price(
+        self,
+        symbol: str,
+    ) -> MarketPrice:
+        """
+        Fetch and normalize the latest symbol price.
+        """
+
+        normalized_symbol = (
+            self._normalize_symbol(
+                symbol
+            )
+        )
+
+        payload = self._request_json(
+            endpoint="/api/v3/ticker/price",
+            params={
+                "symbol": normalized_symbol,
+            },
+        )
+
+        if not isinstance(
+            payload,
+            Mapping,
+        ):
+            raise MarketDataResponseError(
+                "Binance ticker response must be "
+                "a JSON object."
+            )
+
+        response_symbol = (
+            self._normalize_symbol(
+                str(
+                    payload.get(
+                        "symbol",
+                        normalized_symbol,
+                    )
+                )
+            )
+        )
+
+        if (
+            response_symbol
+            != normalized_symbol
+        ):
+            raise MarketDataResponseError(
+                "Binance ticker response symbol does "
+                "not match the requested symbol."
+            )
+
+        price = self._parse_positive_float(
+            payload.get(
+                "price"
+            ),
+            field_name="price",
+            exception_type=InvalidPriceError,
+        )
+
+        with self._lock:
+            self._connected = True
+
+        return MarketPrice(
+            symbol=normalized_symbol,
+            price=price,
+            provider=self.PROVIDER_NAME,
+            received_at=utc_now(),
+            source_timestamp=None,
+            metadata={
+                "endpoint": (
+                    "/api/v3/ticker/price"
+                ),
+            },
+        )
+
+METHOD get_candles(self, symbol: str, timeframe: str = '5m', limit: int = 100) -> Sequence[MarketCandle] lines 446-533
+    def get_candles(
+        self,
+        symbol: str,
+        timeframe: str = "5m",
+        limit: int = 100,
+    ) -> Sequence[MarketCandle]:
+        """
+        Fetch and normalize Binance OHLCV candles.
+        """
+
+        normalized_symbol = (
+            self._normalize_symbol(
+                symbol
+            )
+        )
+
+        normalized_timeframe = (
+            self._normalize_timeframe(
+                timeframe
+            )
+        )
+
+        normalized_limit = (
+            self._validate_candle_limit(
+                limit
+            )
+        )
+
+        payload = self._request_json(
+            endpoint="/api/v3/klines",
+            params={
+                "symbol": normalized_symbol,
+                "interval": normalized_timeframe,
+                "limit": normalized_limit,
+            },
+        )
+
+        if not isinstance(
+            payload,
+            list,
+        ):
+            raise MarketDataResponseError(
+                "Binance kline response must be "
+                "a JSON array."
+            )
+
+        candles: list[
+            MarketCandle
+        ] = []
+
+        for index, raw_candle in enumerate(
+            payload
+        ):
+            try:
+                candle = self._parse_candle(
+                    raw_candle,
+                    symbol=normalized_symbol,
+                    timeframe=(
+                        normalized_timeframe
+                    ),
+                )
+
+            except (
+                InvalidCandleError,
+                MarketDataResponseError,
+                TypeError,
+                ValueError,
+                IndexError,
+            ) as error:
+                raise InvalidCandleError(
+                    "Invalid Binance candle at index "
+                    f"{index}: {error}"
+                ) from error
+
+            candles.append(
+                candle
+            )
+
+        candles.sort(
+            key=lambda item: item.open_time
+        )
+
+        with self._lock:
+            self._connected = True
+
+        return tuple(
+            candles
+        )
+
+[SERVICE] atlas_finance\market_data\market_feed_service.py
+------------------------------------------------------------------------------
+CLASS MarketFeedEventType() lines 111-162
+DOC: MarketFeedService event identifiers.
+
+CLASS _MutableRequestStatistics() lines 173-285
+DOC: Internal mutable request statistics.
+
+CLASS MarketFeedService(BaseAtlasService) lines 293-1924
+DOC: AtlasOS-native public market-data service.
+
+METHOD __init__(self, *, provider: MarketDataProviderProtocol, event_bus: EventBusService | None = None, metrics: MetricsService | None = None, publish_events: bool = True, collect_metrics: bool = True, failure_threshold: int = DEFAULT_FAILURE_THRESHOLD) -> None lines 353-448
+    def __init__(
+        self,
+        *,
+        provider: MarketDataProviderProtocol,
+        event_bus: EventBusService | None = None,
+        metrics: MetricsService | None = None,
+        publish_events: bool = True,
+        collect_metrics: bool = True,
+        failure_threshold: int = (
+            DEFAULT_FAILURE_THRESHOLD
+        ),
+    ) -> None:
+        super().__init__(
+            ServiceIdentity(
+                name=self.SERVICE_NAME,
+                version=self.VERSION,
+                service_type=self.SERVICE_TYPE,
+                description=self.DESCRIPTION,
+            )
+        )
+
+        if not isinstance(
+            provider,
+            MarketDataProviderProtocol,
+        ):
+            raise MarketDataConfigurationError(
+                "provider must implement "
+                "MarketDataProviderProtocol."
+            )
+
+        self._failure_threshold = (
+            self._validate_failure_threshold(
+                failure_threshold
+            )
+        )
+
+        self._provider = provider
+
+        self._event_bus = event_bus
+
+        self._metrics = metrics
+
+        self._publish_events = bool(
+            publish_events
+        )
+
+        self._collect_metrics = bool(
+            collect_metrics
+        )
+
+        self._lock = threading.RLock()
+
+        self._price_statistics = (
+            _MutableRequestStatistics()
+        )
+
+        self._candle_statistics = (
+            _MutableRequestStatistics()
+        )
+
+        self._last_prices: dict[
+            str,
+            MarketPrice,
+        ] = {}
+
+        self._last_candle_counts: dict[
+            str,
+            int,
+        ] = {}
+
+        self._service_started_at: (
+            datetime | None
+        ) = None
+
+        self._last_request_at: (
+            datetime | None
+        ) = None
+
+        self._last_success_at: (
+            datetime | None
+        ) = None
+
+        self._last_failure_at: (
+            datetime | None
+        ) = None
+
+        self._consecutive_failures = 0
+
+        self._degradation_active = False
+
+        logger.info(
+            "%s v%s initialized with provider %s.",
+            self.SERVICE_NAME,
+            self.VERSION,
+            self._provider.provider_name,
+        )
+
+METHOD _on_start(self) -> None lines 503-574
+    def _on_start(
+        self,
+    ) -> None:
+        try:
+            connected = self._provider.connect()
+
+            if not connected:
+                raise MarketDataProviderUnavailableError(
+                    "Market-data provider returned "
+                    "an unsuccessful connection result."
+                )
+
+            started_at = utc_now()
+
+            with self._lock:
+                self._service_started_at = (
+                    started_at
+                )
+
+                self._consecutive_failures = 0
+
+                self._degradation_active = False
+
+            self._set_provider_connected_metric(
+                True
+            )
+
+            self._publish_event(
+                MarketFeedEventType.SERVICE_STARTED,
+                payload={
+                    "provider": (
+                        self.provider_name
+                    ),
+                    "version": self.VERSION,
+                    "started_at": (
+                        started_at.isoformat()
+                    ),
+                },
+            )
+
+            logger.info(
+                "%s started successfully.",
+                self.SERVICE_NAME,
+            )
+
+        except Exception as error:
+            self._set_provider_connected_metric(
+                False
+            )
+
+            self._publish_event(
+                (
+                    MarketFeedEventType
+                    .SERVICE_START_FAILED
+                ),
+                severity=EventSeverity.CRITICAL,
+                payload={
+                    "provider": (
+                        self.provider_name
+                    ),
+                    "error_type": (
+                        type(error).__name__
+                    ),
+                    "error": str(
+                        error
+                    ),
+                },
+            )
+
+            raise MarketDataServiceStartupError(
+                "MarketFeedService startup failed."
+            ) from error
+
+METHOD _on_stop(self) -> None lines 576-627
+    def _on_stop(
+        self,
+    ) -> None:
+        try:
+            self._provider.disconnect()
+
+            self._set_provider_connected_metric(
+                False
+            )
+
+            stopped_at = utc_now()
+
+            self._publish_event(
+                MarketFeedEventType.SERVICE_STOPPED,
+                payload={
+                    "provider": (
+                        self.provider_name
+                    ),
+                    "stopped_at": (
+                        stopped_at.isoformat()
+                    ),
+                },
+            )
+
+            logger.info(
+                "%s stopped successfully.",
+                self.SERVICE_NAME,
+            )
+
+        except Exception as error:
+            self._publish_event(
+                (
+                    MarketFeedEventType
+                    .SERVICE_STOP_FAILED
+                ),
+                severity=EventSeverity.ERROR,
+                payload={
+                    "provider": (
+                        self.provider_name
+                    ),
+                    "error_type": (
+                        type(error).__name__
+                    ),
+                    "error": str(
+                        error
+                    ),
+                },
+            )
+
+            raise MarketDataServiceShutdownError(
+                "MarketFeedService shutdown failed."
+            ) from error
+
+METHOD get_price(self, symbol: str, *, correlation_id: str | None = None) -> MarketPrice lines 633-704
+    def get_price(
+        self,
+        symbol: str,
+        *,
+        correlation_id: str | None = None,
+    ) -> MarketPrice:
+        """
+        Return the latest normalized market price.
+        """
+
+        self._require_running()
+
+        normalized_symbol = (
+            self._normalize_symbol(
+                symbol
+            )
+        )
+
+        requested_at = utc_now()
+
+        with self._lock:
+            self._last_request_at = requested_at
+
+        self._publish_event(
+            MarketFeedEventType.PRICE_REQUESTED,
+            payload={
+                "symbol": normalized_symbol,
+                "provider": self.provider_name,
+            },
+            correlation_id=correlation_id,
+        )
+
+        started = perf_counter()
+
+        try:
+            price = self._provider.get_price(
+                normalized_symbol
+            )
+
+            self._validate_price_result(
+                price,
+                expected_symbol=(
+                    normalized_symbol
+                ),
+            )
+
+        except Exception as error:
+            latency = self._safe_latency(
+                started
+            )
+
+            self._record_failure(
+                request_type="price",
+                symbol=normalized_symbol,
+                latency_seconds=latency,
+                error=error,
+                correlation_id=correlation_id,
+            )
+
+            raise
+
+        latency = self._safe_latency(
+            started
+        )
+
+        self._record_price_success(
+            price=price,
+            latency_seconds=latency,
+            correlation_id=correlation_id,
+        )
+
+        return price
+
+METHOD get_candles(self, symbol: str, timeframe: str = '5m', limit: int = 100, *, correlation_id: str | None = None) -> tuple[MarketCandle, ...] lines 706-813
+    def get_candles(
+        self,
+        symbol: str,
+        timeframe: str = "5m",
+        limit: int = 100,
+        *,
+        correlation_id: str | None = None,
+    ) -> tuple[MarketCandle, ...]:
+        """
+        Return normalized OHLCV candles.
+        """
+
+        self._require_running()
+
+        normalized_symbol = (
+            self._normalize_symbol(
+                symbol
+            )
+        )
+
+        normalized_timeframe = (
+            self._normalize_timeframe(
+                timeframe
+            )
+        )
+
+        normalized_limit = (
+            self._validate_limit(
+                limit
+            )
+        )
+
+        requested_at = utc_now()
+
+        with self._lock:
+            self._last_request_at = requested_at
+
+        self._publish_event(
+            MarketFeedEventType.CANDLES_REQUESTED,
+            payload={
+                "symbol": normalized_symbol,
+                "timeframe": normalized_timeframe,
+                "limit": normalized_limit,
+                "provider": self.provider_name,
+            },
+            correlation_id=correlation_id,
+        )
+
+        started = perf_counter()
+
+        try:
+            received = self._provider.get_candles(
+                normalized_symbol,
+                normalized_timeframe,
+                normalized_limit,
+            )
+
+            candles = tuple(
+                received
+            )
+
+            self._validate_candle_results(
+                candles,
+                expected_symbol=(
+                    normalized_symbol
+                ),
+                expected_timeframe=(
+                    normalized_timeframe
+                ),
+                maximum_count=(
+                    normalized_limit
+                ),
+            )
+
+        except Exception as error:
+            latency = self._safe_latency(
+                started
+            )
+
+            self._record_failure(
+                request_type="candles",
+                symbol=normalized_symbol,
+                latency_seconds=latency,
+                error=error,
+                correlation_id=correlation_id,
+                extra_payload={
+                    "timeframe": (
+                        normalized_timeframe
+                    ),
+                    "limit": normalized_limit,
+                },
+            )
+
+            raise
+
+        latency = self._safe_latency(
+            started
+        )
+
+        self._record_candle_success(
+            symbol=normalized_symbol,
+            timeframe=normalized_timeframe,
+            candles=candles,
+            latency_seconds=latency,
+            correlation_id=correlation_id,
+        )
+
+        return candles
+
+[BASE_SERVICE] atlas_os\services\base_service.py
+------------------------------------------------------------------------------
+CLASS ServiceLifecycleError(RuntimeError) lines 74-77
+DOC: Raised when a service receives an invalid lifecycle operation.
+
+CLASS BaseAtlasService(AtlasService) lines 80-458
+DOC: Reusable lifecycle implementation for AtlasOS services.
+
+Subclasses implement the following hooks:
+
+- _on_start()
+- _on_stop()
+- _health_details()
+- _snapshot_metadata()
+
+The public start and stop methods must not normally be overridden.
+
+METHOD __init__(self, identity: ServiceIdentity) -> None lines 94-108
+    def __init__(
+        self,
+        identity: ServiceIdentity,
+    ) -> None:
+
+        self._identity = identity
+
+        self._state = ServiceState.CREATED
+
+        self._started_at: datetime | None = None
+        self._stopped_at: datetime | None = None
+
+        self._last_error: str | None = None
+
+        self._lock = threading.RLock()
+
+METHOD start(self) -> None lines 170-222
+    def start(self) -> None:
+        """
+        Start the service safely.
+
+        Calling start while already running is treated as an
+        idempotent operation and produces no additional side effects.
+        """
+
+        with self._lock:
+
+            if self._state == ServiceState.RUNNING:
+                return
+
+            if self._state in {
+                ServiceState.STARTING,
+                ServiceState.STOPPING,
+            }:
+                raise ServiceLifecycleError(
+                    f"Service '{self.identity.name}' cannot start "
+                    f"while state is {self._state.value}."
+                )
+
+            self._state = ServiceState.STARTING
+            self._last_error = None
+
+            try:
+
+                self._on_start()
+
+                self._started_at = datetime.now(UTC)
+                self._stopped_at = None
+                self._state = ServiceState.RUNNING
+
+                logger.info(
+                    "AtlasOS service started: %s v%s",
+                    self.identity.name,
+                    self.identity.version,
+                )
+
+            except Exception as exc:
+
+                self._last_error = (
+                    f"{type(exc).__name__}: {exc}"
+                )
+
+                self._state = ServiceState.FAILED
+
+                logger.exception(
+                    "AtlasOS service start failed: %s",
+                    self.identity.name,
+                )
+
+                raise
+
+METHOD stop(self) -> None lines 228-285
+    def stop(self) -> None:
+        """
+        Stop the service safely.
+
+        Calling stop before startup or after shutdown is treated as
+        an idempotent operation.
+        """
+
+        with self._lock:
+
+            if self._state in {
+                ServiceState.CREATED,
+                ServiceState.STOPPED,
+            }:
+                self._state = ServiceState.STOPPED
+
+                if self._stopped_at is None:
+                    self._stopped_at = datetime.now(UTC)
+
+                return
+
+            if self._state == ServiceState.STOPPING:
+                return
+
+            if self._state == ServiceState.STARTING:
+                raise ServiceLifecycleError(
+                    f"Service '{self.identity.name}' cannot stop "
+                    "while startup is in progress."
+                )
+
+            self._state = ServiceState.STOPPING
+
+            try:
+
+                self._on_stop()
+
+                self._stopped_at = datetime.now(UTC)
+                self._state = ServiceState.STOPPED
+
+                logger.info(
+                    "AtlasOS service stopped: %s",
+                    self.identity.name,
+                )
+
+            except Exception as exc:
+
+                self._last_error = (
+                    f"{type(exc).__name__}: {exc}"
+                )
+
+                self._state = ServiceState.FAILED
+
+                logger.exception(
+                    "AtlasOS service stop failed: %s",
+                    self.identity.name,
+                )
+
+                raise
+
+METHOD health(self) -> HealthReport lines 291-345
+    def health(self) -> HealthReport:
+        """
+        Return a standardized service health report.
+        """
+
+        with self._lock:
+
+            state = self._state
+
+            if state == ServiceState.RUNNING:
+                status = HealthStatus.HEALTHY
+                message = "Service is operating normally."
+
+            elif state == ServiceState.DEGRADED:
+                status = HealthStatus.DEGRADED
+                message = "Service is operational but degraded."
+
+            elif state == ServiceState.FAILED:
+                status = HealthStatus.UNHEALTHY
+                message = (
+                    self._last_error
+                    or "Service lifecycle failed."
+                )
+
+            elif state in {
+                ServiceState.CREATED,
+                ServiceState.STOPPED,
+            }:
+                status = HealthStatus.UNKNOWN
+                message = "Service is not currently running."
+
+            else:
+                status = HealthStatus.UNKNOWN
+                message = (
+                    f"Service lifecycle transition: "
+                    f"{state.value}."
+                )
+
+            details = dict(
+                self._health_details()
+            )
+
+            if self._last_error is not None:
+                details.setdefault(
+                    "last_error",
+                    self._last_error,
+                )
+
+            return HealthReport(
+                service_name=self.identity.name,
+                status=status,
+                state=state,
+                message=message,
+                details=details,
+            )

@@ -1,0 +1,1292 @@
+[
+    {
+        "symbol": "BTCUSDT",
+        "fusion": {
+            "signal": "SAT",
+            "score": 32,
+            "strength": "WEAK",
+            "reasons": [
+                "D\u00fc\u015f\u00fc\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "A\u015f\u0131r\u0131 sat\u0131m f\u0131rsat\u0131",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 63125.3043,
+                "ema50": 63148.693,
+                "rsi": 28.51,
+                "adx": 62.9,
+                "last_close": 63025.98,
+                "trend": "BEARISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0157
+            }
+        }
+    },
+    {
+        "symbol": "ETHUSDT",
+        "fusion": {
+            "signal": "SAT",
+            "score": 20,
+            "strength": "WEAK",
+            "reasons": [
+                "D\u00fc\u015f\u00fc\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 1819.6472,
+                "ema50": 1820.7415,
+                "rsi": 34.12,
+                "adx": 49.47,
+                "last_close": 1817.87,
+                "trend": "BEARISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0172
+            }
+        }
+    },
+    {
+        "symbol": "SOLUSDT",
+        "fusion": {
+            "signal": "SAT",
+            "score": 20,
+            "strength": "WEAK",
+            "reasons": [
+                "D\u00fc\u015f\u00fc\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 74.228,
+                "ema50": 74.2724,
+                "rsi": 31.76,
+                "adx": 64.91,
+                "last_close": 74.09,
+                "trend": "BEARISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0193
+            }
+        }
+    },
+    {
+        "symbol": "BTCUSDT",
+        "fusion": {
+            "signal": "SAT",
+            "score": 20,
+            "strength": "WEAK",
+            "reasons": [
+                "D\u00fc\u015f\u00fc\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 63123.6244,
+                "ema50": 63146.5893,
+                "rsi": 39.07,
+                "adx": 49.41,
+                "last_close": 63085.99,
+                "trend": "BEARISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0157
+            }
+        }
+    },
+    {
+        "symbol": "ETHUSDT",
+        "fusion": {
+            "signal": "SAT",
+            "score": 20,
+            "strength": "WEAK",
+            "reasons": [
+                "D\u00fc\u015f\u00fc\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 1819.6651,
+                "ema50": 1820.6937,
+                "rsi": 40.37,
+                "adx": 36.77,
+                "last_close": 1819.43,
+                "trend": "BEARISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0172
+            }
+        }
+    },
+    {
+        "symbol": "SOLUSDT",
+        "fusion": {
+            "signal": "SAT",
+            "score": 20,
+            "strength": "WEAK",
+            "reasons": [
+                "D\u00fc\u015f\u00fc\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 74.2251,
+                "ema50": 74.269,
+                "rsi": 41.67,
+                "adx": 49.21,
+                "last_close": 74.17,
+                "trend": "BEARISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0193
+            }
+        }
+    },
+    {
+        "symbol": "BTCUSDT",
+        "fusion": {
+            "signal": "SAT",
+            "score": 32,
+            "strength": "WEAK",
+            "reasons": [
+                "D\u00fc\u015f\u00fc\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "A\u015f\u0131r\u0131 sat\u0131m f\u0131rsat\u0131",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 63104.9102,
+                "ema50": 63137.2365,
+                "rsi": 28.33,
+                "adx": 49.92,
+                "last_close": 63000.52,
+                "trend": "BEARISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0157
+            }
+        }
+    },
+    {
+        "symbol": "ETHUSDT",
+        "fusion": {
+            "signal": "SAT",
+            "score": 20,
+            "strength": "WEAK",
+            "reasons": [
+                "D\u00fc\u015f\u00fc\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 1819.0719,
+                "ema50": 1820.3843,
+                "rsi": 30.94,
+                "adx": 44.57,
+                "last_close": 1816.27,
+                "trend": "BEARISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0172
+            }
+        }
+    },
+    {
+        "symbol": "SOLUSDT",
+        "fusion": {
+            "signal": "SAT",
+            "score": 20,
+            "strength": "WEAK",
+            "reasons": [
+                "D\u00fc\u015f\u00fc\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 74.2008,
+                "ema50": 74.2564,
+                "rsi": 34.52,
+                "adx": 49.21,
+                "last_close": 74.07,
+                "trend": "BEARISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0193
+            }
+        }
+    },
+    {
+        "symbol": "BTCUSDT",
+        "fusion": {
+            "signal": "SAT",
+            "score": 32,
+            "strength": "WEAK",
+            "reasons": [
+                "D\u00fc\u015f\u00fc\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "A\u015f\u0131r\u0131 sat\u0131m f\u0131rsat\u0131",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 63089.4352,
+                "ema50": 63129.0828,
+                "rsi": 27.1,
+                "adx": 55.85,
+                "last_close": 62955.63,
+                "trend": "BEARISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0157
+            }
+        }
+    },
+    {
+        "symbol": "ETHUSDT",
+        "fusion": {
+            "signal": "SAT",
+            "score": 32,
+            "strength": "WEAK",
+            "reasons": [
+                "D\u00fc\u015f\u00fc\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "A\u015f\u0131r\u0131 sat\u0131m f\u0131rsat\u0131",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 1818.5411,
+                "ema50": 1820.0999,
+                "rsi": 29.82,
+                "adx": 46.43,
+                "last_close": 1814.28,
+                "trend": "BEARISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0172
+            }
+        }
+    },
+    {
+        "symbol": "SOLUSDT",
+        "fusion": {
+            "signal": "SAT",
+            "score": 20,
+            "strength": "WEAK",
+            "reasons": [
+                "D\u00fc\u015f\u00fc\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 74.1781,
+                "ema50": 74.2444,
+                "rsi": 31.46,
+                "adx": 51.52,
+                "last_close": 73.99,
+                "trend": "BEARISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0193
+            }
+        }
+    },
+    {
+        "symbol": "BTCUSDT",
+        "fusion": {
+            "signal": "SAT",
+            "score": 32,
+            "strength": "WEAK",
+            "reasons": [
+                "D\u00fc\u015f\u00fc\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "A\u015f\u0131r\u0131 sat\u0131m f\u0131rsat\u0131",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 63088.1371,
+                "ema50": 63128.5482,
+                "rsi": 26.44,
+                "adx": 57.07,
+                "last_close": 62942.0,
+                "trend": "BEARISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0157
+            }
+        }
+    },
+    {
+        "symbol": "ETHUSDT",
+        "fusion": {
+            "signal": "SAT",
+            "score": 32,
+            "strength": "WEAK",
+            "reasons": [
+                "D\u00fc\u015f\u00fc\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "A\u015f\u0131r\u0131 sat\u0131m f\u0131rsat\u0131",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 1818.505,
+                "ema50": 1820.085,
+                "rsi": 29.27,
+                "adx": 47.58,
+                "last_close": 1813.9,
+                "trend": "BEARISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0172
+            }
+        }
+    },
+    {
+        "symbol": "SOLUSDT",
+        "fusion": {
+            "signal": "SAT",
+            "score": 20,
+            "strength": "WEAK",
+            "reasons": [
+                "D\u00fc\u015f\u00fc\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 74.1753,
+                "ema50": 74.2432,
+                "rsi": 30.43,
+                "adx": 53.62,
+                "last_close": 73.96,
+                "trend": "BEARISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0193
+            }
+        }
+    },
+    {
+        "symbol": "BTCUSDT",
+        "fusion": {
+            "signal": "BEKLE",
+            "score": 62,
+            "strength": "NEUTRAL",
+            "reasons": [
+                "Y\u00fckseli\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "A\u015f\u0131r\u0131 al\u0131m riski",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 63994.437,
+                "ema50": 63993.8684,
+                "rsi": 70.04,
+                "adx": 58.06,
+                "last_close": 64064.29,
+                "trend": "BULLISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.01
+            }
+        }
+    },
+    {
+        "symbol": "ETHUSDT",
+        "fusion": {
+            "signal": "SAT",
+            "score": 20,
+            "strength": "WEAK",
+            "reasons": [
+                "D\u00fc\u015f\u00fc\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 1838.574,
+                "ema50": 1840.192,
+                "rsi": 68.74,
+                "adx": 49.73,
+                "last_close": 1840.13,
+                "trend": "BEARISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0114
+            }
+        }
+    },
+    {
+        "symbol": "SOLUSDT",
+        "fusion": {
+            "signal": "SAT",
+            "score": 0,
+            "strength": "WEAK",
+            "reasons": [
+                "D\u00fc\u015f\u00fc\u015f trendi",
+                "Zay\u0131f trend",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 75.0755,
+                "ema50": 75.134,
+                "rsi": 50.0,
+                "adx": 0.0,
+                "last_close": 75.06,
+                "trend": "BEARISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0088
+            }
+        }
+    },
+    {
+        "symbol": "BTCUSDT",
+        "fusion": {
+            "signal": "AL",
+            "score": 70,
+            "strength": "STRONG",
+            "reasons": [
+                "Y\u00fckseli\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 64006.5048,
+                "ema50": 64000.0366,
+                "rsi": 69.66,
+                "adx": 56.23,
+                "last_close": 64056.89,
+                "trend": "BULLISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0094
+            }
+        }
+    },
+    {
+        "symbol": "ETHUSDT",
+        "fusion": {
+            "signal": "SAT",
+            "score": 12,
+            "strength": "WEAK",
+            "reasons": [
+                "D\u00fc\u015f\u00fc\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "A\u015f\u0131r\u0131 al\u0131m riski",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 1838.8465,
+                "ema50": 1840.2211,
+                "rsi": 70.9,
+                "adx": 62.55,
+                "last_close": 1839.88,
+                "trend": "BEARISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0114
+            }
+        }
+    },
+    {
+        "symbol": "SOLUSDT",
+        "fusion": {
+            "signal": "SAT",
+            "score": 0,
+            "strength": "WEAK",
+            "reasons": [
+                "D\u00fc\u015f\u00fc\u015f trendi",
+                "Zay\u0131f trend",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 75.0661,
+                "ema50": 75.1268,
+                "rsi": 46.15,
+                "adx": 7.69,
+                "last_close": 75.0,
+                "trend": "BEARISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0084
+            }
+        }
+    },
+    {
+        "symbol": "BTCUSDT",
+        "fusion": {
+            "signal": "BEKLE",
+            "score": 62,
+            "strength": "NEUTRAL",
+            "reasons": [
+                "Y\u00fckseli\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "A\u015f\u0131r\u0131 al\u0131m riski",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 64016.1724,
+                "ema50": 64004.8555,
+                "rsi": 81.67,
+                "adx": 85.9,
+                "last_close": 64108.0,
+                "trend": "BULLISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0094
+            }
+        }
+    },
+    {
+        "symbol": "ETHUSDT",
+        "fusion": {
+            "signal": "SAT",
+            "score": 12,
+            "strength": "WEAK",
+            "reasons": [
+                "D\u00fc\u015f\u00fc\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "A\u015f\u0131r\u0131 al\u0131m riski",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 1839.0394,
+                "ema50": 1840.2651,
+                "rsi": 77.94,
+                "adx": 69.35,
+                "last_close": 1840.97,
+                "trend": "BEARISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0114
+            }
+        }
+    },
+    {
+        "symbol": "SOLUSDT",
+        "fusion": {
+            "signal": "SAT",
+            "score": 0,
+            "strength": "WEAK",
+            "reasons": [
+                "D\u00fc\u015f\u00fc\u015f trendi",
+                "Zay\u0131f trend",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 75.0646,
+                "ema50": 75.1245,
+                "rsi": 50.88,
+                "adx": 10.53,
+                "last_close": 75.05,
+                "trend": "BEARISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0084
+            }
+        }
+    },
+    {
+        "symbol": "BTCUSDT",
+        "fusion": {
+            "signal": "BEKLE",
+            "score": 62,
+            "strength": "NEUTRAL",
+            "reasons": [
+                "Y\u00fckseli\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "A\u015f\u0131r\u0131 al\u0131m riski",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 64022.0366,
+                "ema50": 64008.3831,
+                "rsi": 72.24,
+                "adx": 87.29,
+                "last_close": 64077.73,
+                "trend": "BULLISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0094
+            }
+        }
+    },
+    {
+        "symbol": "ETHUSDT",
+        "fusion": {
+            "signal": "SAT",
+            "score": 20,
+            "strength": "WEAK",
+            "reasons": [
+                "D\u00fc\u015f\u00fc\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 1839.1315,
+                "ema50": 1840.2742,
+                "rsi": 65.59,
+                "adx": 70.93,
+                "last_close": 1839.87,
+                "trend": "BEARISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0114
+            }
+        }
+    },
+    {
+        "symbol": "SOLUSDT",
+        "fusion": {
+            "signal": "SAT",
+            "score": 0,
+            "strength": "WEAK",
+            "reasons": [
+                "D\u00fc\u015f\u00fc\u015f trendi",
+                "Zay\u0131f trend",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 75.0585,
+                "ema50": 75.1205,
+                "rsi": 43.1,
+                "adx": 8.11,
+                "last_close": 75.0,
+                "trend": "BEARISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0084
+            }
+        }
+    },
+    {
+        "symbol": "BTCUSDT",
+        "fusion": {
+            "signal": "AL",
+            "score": 70,
+            "strength": "STRONG",
+            "reasons": [
+                "Y\u00fckseli\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 64026.9893,
+                "ema50": 64011.7509,
+                "rsi": 68.37,
+                "adx": 84.8,
+                "last_close": 64093.99,
+                "trend": "BULLISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0094
+            }
+        }
+    },
+    {
+        "symbol": "ETHUSDT",
+        "fusion": {
+            "signal": "SAT",
+            "score": 20,
+            "strength": "WEAK",
+            "reasons": [
+                "D\u00fc\u015f\u00fc\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 1839.211,
+                "ema50": 1840.2833,
+                "rsi": 63.76,
+                "adx": 50.72,
+                "last_close": 1840.48,
+                "trend": "BEARISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0114
+            }
+        }
+    },
+    {
+        "symbol": "SOLUSDT",
+        "fusion": {
+            "signal": "SAT",
+            "score": 10,
+            "strength": "WEAK",
+            "reasons": [
+                "D\u00fc\u015f\u00fc\u015f trendi",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 75.053,
+                "ema50": 75.1166,
+                "rsi": 41.38,
+                "adx": 23.53,
+                "last_close": 75.01,
+                "trend": "BEARISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0083
+            }
+        }
+    },
+    {
+        "symbol": "BTCUSDT",
+        "fusion": {
+            "signal": "AL",
+            "score": 70,
+            "strength": "STRONG",
+            "reasons": [
+                "Y\u00fckseli\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 64035.0713,
+                "ema50": 64016.5161,
+                "rsi": 67.5,
+                "adx": 82.71,
+                "last_close": 64110.0,
+                "trend": "BULLISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0087
+            }
+        }
+    },
+    {
+        "symbol": "ETHUSDT",
+        "fusion": {
+            "signal": "SAT",
+            "score": 20,
+            "strength": "WEAK",
+            "reasons": [
+                "D\u00fc\u015f\u00fc\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 1839.3572,
+                "ema50": 1840.3223,
+                "rsi": 59.66,
+                "adx": 34.97,
+                "last_close": 1840.89,
+                "trend": "BEARISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0114
+            }
+        }
+    },
+    {
+        "symbol": "SOLUSDT",
+        "fusion": {
+            "signal": "SAT",
+            "score": 20,
+            "strength": "WEAK",
+            "reasons": [
+                "D\u00fc\u015f\u00fc\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 75.0499,
+                "ema50": 75.1137,
+                "rsi": 35.85,
+                "adx": 55.56,
+                "last_close": 75.02,
+                "trend": "BEARISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0083
+            }
+        }
+    },
+    {
+        "symbol": "BTCUSDT",
+        "fusion": {
+            "signal": "BEKLE",
+            "score": 50,
+            "strength": "NEUTRAL",
+            "reasons": [
+                "Y\u00fckseli\u015f trendi",
+                "Zay\u0131f trend",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 63992.4712,
+                "ema50": 63987.3388,
+                "rsi": 69.1,
+                "adx": 10.74,
+                "last_close": 63995.0,
+                "trend": "BULLISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0019
+            }
+        }
+    },
+    {
+        "symbol": "ETHUSDT",
+        "fusion": {
+            "signal": "SAT",
+            "score": 0,
+            "strength": "WEAK",
+            "reasons": [
+                "D\u00fc\u015f\u00fc\u015f trendi",
+                "Zay\u0131f trend",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 1845.0678,
+                "ema50": 1845.1809,
+                "rsi": 50.97,
+                "adx": 6.06,
+                "last_close": 1845.52,
+                "trend": "BEARISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0028
+            }
+        }
+    },
+    {
+        "symbol": "SOLUSDT",
+        "fusion": {
+            "signal": "SAT",
+            "score": 20,
+            "strength": "WEAK",
+            "reasons": [
+                "D\u00fc\u015f\u00fc\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 74.8333,
+                "ema50": 74.8345,
+                "rsi": 35.29,
+                "adx": 42.86,
+                "last_close": 74.84,
+                "trend": "BEARISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.005
+            }
+        }
+    },
+    {
+        "symbol": "BTCUSDT",
+        "fusion": {
+            "signal": "BEKLE",
+            "score": 62,
+            "strength": "NEUTRAL",
+            "reasons": [
+                "Y\u00fckseli\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "A\u015f\u0131r\u0131 al\u0131m riski",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 63993.9672,
+                "ema50": 63988.3526,
+                "rsi": 99.94,
+                "adx": 100.0,
+                "last_close": 63999.0,
+                "trend": "BULLISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0019
+            }
+        }
+    },
+    {
+        "symbol": "ETHUSDT",
+        "fusion": {
+            "signal": "SAT",
+            "score": 12,
+            "strength": "WEAK",
+            "reasons": [
+                "D\u00fc\u015f\u00fc\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "A\u015f\u0131r\u0131 al\u0131m riski",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 1845.2261,
+                "ema50": 1845.2393,
+                "rsi": 73.19,
+                "adx": 61.72,
+                "last_close": 1845.79,
+                "trend": "BEARISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0028
+            }
+        }
+    },
+    {
+        "symbol": "SOLUSDT",
+        "fusion": {
+            "signal": "BEKLE",
+            "score": 60,
+            "strength": "NEUTRAL",
+            "reasons": [
+                "Y\u00fckseli\u015f trendi",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 74.8424,
+                "ema50": 74.8385,
+                "rsi": 58.82,
+                "adx": 23.08,
+                "last_close": 74.87,
+                "trend": "BULLISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.005
+            }
+        }
+    },
+    {
+        "symbol": "BTCUSDT",
+        "fusion": {
+            "signal": "BEKLE",
+            "score": 62,
+            "strength": "NEUTRAL",
+            "reasons": [
+                "Y\u00fckseli\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "A\u015f\u0131r\u0131 al\u0131m riski",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 64000.0395,
+                "ema50": 63991.8809,
+                "rsi": 99.94,
+                "adx": 100.0,
+                "last_close": 64011.39,
+                "trend": "BULLISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0021
+            }
+        }
+    },
+    {
+        "symbol": "ETHUSDT",
+        "fusion": {
+            "signal": "BEKLE",
+            "score": 62,
+            "strength": "NEUTRAL",
+            "reasons": [
+                "Y\u00fckseli\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "A\u015f\u0131r\u0131 al\u0131m riski",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 1845.6999,
+                "ema50": 1845.4371,
+                "rsi": 70.45,
+                "adx": 55.48,
+                "last_close": 1846.32,
+                "trend": "BULLISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0028
+            }
+        }
+    },
+    {
+        "symbol": "SOLUSDT",
+        "fusion": {
+            "signal": "BEKLE",
+            "score": 62,
+            "strength": "NEUTRAL",
+            "reasons": [
+                "Y\u00fckseli\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "A\u015f\u0131r\u0131 al\u0131m riski",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 74.8727,
+                "ema50": 74.8524,
+                "rsi": 81.25,
+                "adx": 73.33,
+                "last_close": 74.92,
+                "trend": "BULLISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0047
+            }
+        }
+    },
+    {
+        "symbol": "BTCUSDT",
+        "fusion": {
+            "signal": "BEKLE",
+            "score": 62,
+            "strength": "NEUTRAL",
+            "reasons": [
+                "Y\u00fckseli\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "A\u015f\u0131r\u0131 al\u0131m riski",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 64016.3973,
+                "ema50": 64008.0203,
+                "rsi": 99.55,
+                "adx": 100.0,
+                "last_close": 64023.0,
+                "trend": "BULLISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0022
+            }
+        }
+    },
+    {
+        "symbol": "ETHUSDT",
+        "fusion": {
+            "signal": "BEKLE",
+            "score": 60,
+            "strength": "NEUTRAL",
+            "reasons": [
+                "Y\u00fckseli\u015f trendi",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 1845.3697,
+                "ema50": 1845.2992,
+                "rsi": 55.81,
+                "adx": 21.24,
+                "last_close": 1845.51,
+                "trend": "BULLISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0018
+            }
+        }
+    },
+    {
+        "symbol": "SOLUSDT",
+        "fusion": {
+            "signal": "BEKLE",
+            "score": 62,
+            "strength": "NEUTRAL",
+            "reasons": [
+                "Y\u00fckseli\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "A\u015f\u0131r\u0131 al\u0131m riski",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 74.9104,
+                "ema50": 74.884,
+                "rsi": 73.33,
+                "adx": 77.78,
+                "last_close": 74.95,
+                "trend": "BULLISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.004
+            }
+        }
+    },
+    {
+        "symbol": "BTCUSDT",
+        "fusion": {
+            "signal": "BEKLE",
+            "score": 50,
+            "strength": "NEUTRAL",
+            "reasons": [
+                "Y\u00fckseli\u015f trendi",
+                "Zay\u0131f trend",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 64166.112,
+                "ema50": 64148.9386,
+                "rsi": 40.41,
+                "adx": 1.0,
+                "last_close": 64162.39,
+                "trend": "BULLISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0036
+            }
+        }
+    },
+    {
+        "symbol": "ETHUSDT",
+        "fusion": {
+            "signal": "AL",
+            "score": 70,
+            "strength": "STRONG",
+            "reasons": [
+                "Y\u00fckseli\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 1845.3953,
+                "ema50": 1844.4188,
+                "rsi": 57.25,
+                "adx": 40.18,
+                "last_close": 1845.81,
+                "trend": "BULLISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0047
+            }
+        }
+    },
+    {
+        "symbol": "SOLUSDT",
+        "fusion": {
+            "signal": "BEKLE",
+            "score": 62,
+            "strength": "NEUTRAL",
+            "reasons": [
+                "Y\u00fckseli\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "A\u015f\u0131r\u0131 al\u0131m riski",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 74.9354,
+                "ema50": 74.8694,
+                "rsi": 75.86,
+                "adx": 100.0,
+                "last_close": 75.0,
+                "trend": "BULLISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0068
+            }
+        }
+    },
+    {
+        "symbol": "BTCUSDT",
+        "fusion": {
+            "signal": "SAT",
+            "score": 20,
+            "strength": "WEAK",
+            "reasons": [
+                "D\u00fc\u015f\u00fc\u015f trendi",
+                "G\u00fc\u00e7l\u00fc trend kalitesi",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 64115.1702,
+                "ema50": 64126.862,
+                "rsi": 34.67,
+                "adx": 26.48,
+                "last_close": 64094.0,
+                "trend": "BEARISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0024
+            }
+        }
+    },
+    {
+        "symbol": "ETHUSDT",
+        "fusion": {
+            "signal": "BEKLE",
+            "score": 50,
+            "strength": "NEUTRAL",
+            "reasons": [
+                "Y\u00fckseli\u015f trendi",
+                "Zay\u0131f trend",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 1845.1157,
+                "ema50": 1844.886,
+                "rsi": 41.33,
+                "adx": 12.82,
+                "last_close": 1844.64,
+                "trend": "BULLISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0032
+            }
+        }
+    },
+    {
+        "symbol": "SOLUSDT",
+        "fusion": {
+            "signal": "BEKLE",
+            "score": 60,
+            "strength": "NEUTRAL",
+            "reasons": [
+                "Y\u00fckseli\u015f trendi",
+                "Negatif piyasa bask\u0131s\u0131"
+            ],
+            "technical": {
+                "ema20": 74.9396,
+                "ema50": 74.9129,
+                "rsi": 39.29,
+                "adx": 17.24,
+                "last_close": 74.9,
+                "trend": "BULLISH"
+            },
+            "market": {
+                "sentiment": "Negatif",
+                "volatility": 0.0048
+            }
+        }
+    }
+]

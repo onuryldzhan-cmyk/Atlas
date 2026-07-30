@@ -1,0 +1,13 @@
+{
+  "phase": "6A8.1",
+  "generated_utc": "2026-07-27T14:46:26.661577+00:00",
+  "events": [
+    {
+      "timestamp_utc": "2026-07-27T14:46:26.661544+00:00",
+      "stage": "phase.exception",
+      "error_type": "ModuleNotFoundError",
+      "error": "No module named 'core'",
+      "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\HUAWEİ\\OneDrive\\Masaüstü\\Project_Atlas_AI\\tools\\phase6a8_1_decision_execution_trace.py\", line 69, in main\n    from core.application import AtlasApplication\nModuleNotFoundError: No module named 'core'\n"
+    }
+  ]
+}

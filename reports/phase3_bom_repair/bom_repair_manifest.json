@@ -1,0 +1,155 @@
+{
+  "project_root": "C:\\Users\\HUAWEİ\\OneDrive\\Masaüstü\\Project_Atlas_AI",
+  "backup_root": "C:\\Users\\HUAWEİ\\OneDrive\\Masaüstü\\Project_Atlas_AI\\phase3f_bom_backup_20260727_114104",
+  "target_count": 13,
+  "processed_count": 13,
+  "failure_count": 0,
+  "parse_success_count": 13,
+  "parse_failure_count": 0,
+  "records": [
+    {
+      "path": "atlas_os/configuration/__init__.py",
+      "backup_path": "phase3f_bom_backup_20260727_114104/atlas_os/configuration/__init__.py",
+      "original_sha256": "e55d789bb05dbbbe45f6caf5265cd1609a33f8d0b94ebdeb2d75e29f4e605dd9",
+      "repaired_sha256": "2b6acf218eb26fcf55f3885d1bbab446f1c9d60e2df47c25795b70b41efc583e",
+      "changes": [
+        "REMOVED_UTF8_BOM_BYTES"
+      ],
+      "parse_ok": true,
+      "parse_error": ""
+    },
+    {
+      "path": "atlas_os/secrets/__init__.py",
+      "backup_path": "phase3f_bom_backup_20260727_114104/atlas_os/secrets/__init__.py",
+      "original_sha256": "9da902df44a5b037c0f3ce2230e31bd7d3df70f7a3bb30f1a3ebcb4856b2a2ed",
+      "repaired_sha256": "d0cff9b82a0a40f9b1200a19c20a09e29911756265ebc8ef34570fcc7d6712c8",
+      "changes": [
+        "REMOVED_UTF8_BOM_BYTES"
+      ],
+      "parse_ok": true,
+      "parse_error": ""
+    },
+    {
+      "path": "atlas_paper_trading/paper_trading_engine.py",
+      "backup_path": "phase3f_bom_backup_20260727_114104/atlas_paper_trading/paper_trading_engine.py",
+      "original_sha256": "7fe4287b7602e708711f7b2fc5cdee59eb0c8775550fb8404cf5e17407452554",
+      "repaired_sha256": "96406e493beabb63c9253ff8b69a0d349757ecdf5d83f81a749f4620d0cc52c9",
+      "changes": [
+        "REMOVED_UTF8_BOM_BYTES"
+      ],
+      "parse_ok": true,
+      "parse_error": ""
+    },
+    {
+      "path": "atlas_paper_trading/paper_trading_main.py",
+      "backup_path": "phase3f_bom_backup_20260727_114104/atlas_paper_trading/paper_trading_main.py",
+      "original_sha256": "8d7b28980b368b63ebd29515f6116e75fb8d112e8f75620dc59c6904902e756b",
+      "repaired_sha256": "0483f96c145c846356d0666fa5f08fce69d2bec1a2dee859fbcf1d7474064c35",
+      "changes": [
+        "REMOVED_UTF8_BOM_BYTES"
+      ],
+      "parse_ok": true,
+      "parse_error": ""
+    },
+    {
+      "path": "atlas_paper_trading/performance_report.py",
+      "backup_path": "phase3f_bom_backup_20260727_114104/atlas_paper_trading/performance_report.py",
+      "original_sha256": "57440a1a537e4a54b05a5f2438adbfef78d2d3dc4a97f7c8d554ef989d5d7239",
+      "repaired_sha256": "bbfd56116d15d8e298a2663e43c39fdbc8af6484b478c28ce5c5fd7707f7820f",
+      "changes": [
+        "REMOVED_UTF8_BOM_BYTES"
+      ],
+      "parse_ok": true,
+      "parse_error": ""
+    },
+    {
+      "path": "atlas_paper_trading/position_tracker.py",
+      "backup_path": "phase3f_bom_backup_20260727_114104/atlas_paper_trading/position_tracker.py",
+      "original_sha256": "7850686b387fefe3c690b026baf4de70a42cb32504d61ba011da8550485a4c75",
+      "repaired_sha256": "c1657be59f92c01af79a1ebbffa34eb394fc8af69553bc7600f59c4e4dd3a31f",
+      "changes": [
+        "REMOVED_UTF8_BOM_BYTES"
+      ],
+      "parse_ok": true,
+      "parse_error": ""
+    },
+    {
+      "path": "atlas_paper_trading/risk_guardian.py",
+      "backup_path": "phase3f_bom_backup_20260727_114104/atlas_paper_trading/risk_guardian.py",
+      "original_sha256": "f7858eb63b24e729e9bef2e9a6531cbeebc74cac732146c8c85ca18a063770d5",
+      "repaired_sha256": "239fac6cc64dbd916d3a21c9317dee6255426390167b06d0b66a0fe147c313cc",
+      "changes": [
+        "REMOVED_UTF8_BOM_BYTES"
+      ],
+      "parse_ok": true,
+      "parse_error": ""
+    },
+    {
+      "path": "inspect_atlas_os_lifecycle.py",
+      "backup_path": "phase3f_bom_backup_20260727_114104/inspect_atlas_os_lifecycle.py",
+      "original_sha256": "1405c09b830f24104051ab71053d07b26c9d672fe30be685fc12bee60d93cd66",
+      "repaired_sha256": "b5ad12d8876091c9b9a4fdee1d7529bb414e30fa30cc18ce606ea31cbda61e81",
+      "changes": [
+        "REMOVED_UTF8_BOM_BYTES"
+      ],
+      "parse_ok": true,
+      "parse_error": ""
+    },
+    {
+      "path": "test_atlas_infrastructure.py",
+      "backup_path": "phase3f_bom_backup_20260727_114104/test_atlas_infrastructure.py",
+      "original_sha256": "3a66e0a5cd1e54923fb6ee29725f74c0f558344b5553eb94b4095c5e348f911e",
+      "repaired_sha256": "062b4d5a153bfa390952ad09a9693569e6ae7c98c19ff05f9c58d1a11caff095",
+      "changes": [
+        "REMOVED_UTF8_BOM_BYTES"
+      ],
+      "parse_ok": true,
+      "parse_error": ""
+    },
+    {
+      "path": "test_atlas_runtime_empty.py",
+      "backup_path": "phase3f_bom_backup_20260727_114104/test_atlas_runtime_empty.py",
+      "original_sha256": "606a50cd3ab8ed28d79ae9734df40b4d12246617f472f9b33e7967081d30f5cd",
+      "repaired_sha256": "4616a4058b34bbbab39153e35d90a0e7aa61de2bd6cf9ca4a5aaa4b87498a1ec",
+      "changes": [
+        "REMOVED_UTF8_BOM_BYTES"
+      ],
+      "parse_ok": true,
+      "parse_error": ""
+    },
+    {
+      "path": "test_atlas_secure_core.py",
+      "backup_path": "phase3f_bom_backup_20260727_114104/test_atlas_secure_core.py",
+      "original_sha256": "9e7ca0ebed69ba616554d9512afc7b94694b75ef937fb520560be86734700ae9",
+      "repaired_sha256": "e2b83d86b7c289a412ba8f041546cc341f01eeae9fc52398d30ba97ae50603a0",
+      "changes": [
+        "REMOVED_UTF8_BOM_BYTES"
+      ],
+      "parse_ok": true,
+      "parse_error": ""
+    },
+    {
+      "path": "test_configuration_secrets_service.py",
+      "backup_path": "phase3f_bom_backup_20260727_114104/test_configuration_secrets_service.py",
+      "original_sha256": "39a3556169d75de8e8e04b84de1114b8588363cdd583b1f49d0db8b79881e7c1",
+      "repaired_sha256": "271333185b150f1ba7b8869d9afcd31f27b9f162c731b85e5015643928ceae00",
+      "changes": [
+        "REMOVED_UTF8_BOM_BYTES"
+      ],
+      "parse_ok": true,
+      "parse_error": ""
+    },
+    {
+      "path": "web_app.py",
+      "backup_path": "phase3f_bom_backup_20260727_114104/web_app.py",
+      "original_sha256": "3da97c287e403951082e376f92abf4eae883604570a95ccee6893aa95a3bbb60",
+      "repaired_sha256": "4b83b9480f8e279c4a666fe72f840f5c0fe746d79657052b681495dab782009f",
+      "changes": [
+        "REMOVED_UTF8_BOM_BYTES"
+      ],
+      "parse_ok": true,
+      "parse_error": ""
+    }
+  ],
+  "failures": []
+}

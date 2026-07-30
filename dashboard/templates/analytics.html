@@ -1,0 +1,73 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atlas AI - Analytics</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: "Segoe UI", sans-serif; background: #0a0e1a; color: #e0e6ed; }
+        .sidebar { width: 250px; background: #111827; height: 100vh; position: fixed; padding: 20px; }
+        .sidebar h2 { color: #3b82f6; margin-bottom: 30px; }
+        .sidebar a { display: block; color: #94a3b8; text-decoration: none; padding: 12px 15px; border-radius: 8px; margin-bottom: 5px; transition: 0.3s; }
+        .sidebar a:hover, .sidebar a.active { background: #3b82f6; color: white; }
+        .main { margin-left: 250px; padding: 30px; }
+        .card { background: #1e293b; border-radius: 12px; padding: 25px; margin-bottom: 20px; }
+        .card h3 { color: #60a5fa; margin-bottom: 15px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .metric { background: #0f172a; padding: 20px; border-radius: 10px; text-align: center; }
+        .metric-value { font-size: 2em; font-weight: bold; color: #3b82f6; }
+        .metric-label { color: #94a3b8; margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>🧠 Atlas AI</h2>
+        <a href="index.html">📊 Dashboard</a>
+        <a href="analytics.html" class="active">📈 Analytics</a>
+        <a href="signals.html">📡 Signals</a>
+        <a href="trades.html">💰 Trades</a>
+        <a href="settings.html">⚙️ Settings</a>
+    </div>
+    <div class="main">
+        <h1>📈 Analytics</h1>
+        <div class="grid">
+            <div class="card">
+                <h3>Performance Metrics</h3>
+                <div class="grid">
+                    <div class="metric">
+                        <div class="metric-value" id="winRate">--</div>
+                        <div class="metric-label">Win Rate %</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value" id="profitFactor">--</div>
+                        <div class="metric-label">Profit Factor</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value" id="sharpe">--</div>
+                        <div class="metric-label">Sharpe Ratio</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value" id="maxDrawdown">--</div>
+                        <div class="metric-label">Max Drawdown %</div>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Strategy Performance</h3>
+                <p>Strategy comparison chart will be displayed here.</p>
+            </div>
+            <div class="card">
+                <h3>Market Regime Analysis</h3>
+                <p>Market regime distribution will be shown here.</p>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.getElementById("winRate").textContent = "62.5%";
+        document.getElementById("profitFactor").textContent = "1.85";
+        document.getElementById("sharpe").textContent = "1.42";
+        document.getElementById("maxDrawdown").textContent = "-8.3%";
+    </script>
+</body>
+</html>

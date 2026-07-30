@@ -1,0 +1,31 @@
+ATLAS PHASE 6A3.1 CONTRACT SUMMARY
+
+[contracts] atlas_finance\market_data\contracts.py
+  class MarketDataProviderProtocol bases=['Protocol']
+    connect(self) -> bool [61-69]
+    disconnect(self) -> None [71-76]
+    get_price(self, symbol: str) -> MarketPrice [78-84]
+    get_candles(self, symbol: str, timeframe: str = '5m', limit: int = 100) -> Sequence[MarketCandle] [86-94]
+[provider] atlas_finance\market_data\binance_public_provider.py
+  class BinancePublicDataProvider bases=['MarketDataProviderProtocol']
+    __init__(self, *, base_url: str = DEFAULT_BASE_URL, timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS, retry_attempts: int = DEFAULT_RETRY_ATTEMPTS, retry_backoff_seconds: float = DEFAULT_RETRY_BACKOFF_SECONDS, maximum_candle_limit: int = DEFAULT_MAXIMUM_CANDLE_LIMIT, session: Session | None = None, connection_test_symbol: str = 'BTCUSDT') -> None [164-241]
+    connect(self) -> bool [300-340]
+    disconnect(self) -> None [342-362]
+    get_price(self, symbol: str) -> MarketPrice [368-440]
+    get_candles(self, symbol: str, timeframe: str = '5m', limit: int = 100) -> Sequence[MarketCandle] [446-533]
+[service] atlas_finance\market_data\market_feed_service.py
+  class MarketFeedEventType bases=[]
+  class _MutableRequestStatistics bases=[]
+  class MarketFeedService bases=['BaseAtlasService']
+    __init__(self, *, provider: MarketDataProviderProtocol, event_bus: EventBusService | None = None, metrics: MetricsService | None = None, publish_events: bool = True, collect_metrics: bool = True, failure_threshold: int = DEFAULT_FAILURE_THRESHOLD) -> None [353-448]
+    _on_start(self) -> None [503-574]
+    _on_stop(self) -> None [576-627]
+    get_price(self, symbol: str, *, correlation_id: str | None = None) -> MarketPrice [633-704]
+    get_candles(self, symbol: str, timeframe: str = '5m', limit: int = 100, *, correlation_id: str | None = None) -> tuple[MarketCandle, ...] [706-813]
+[base_service] atlas_os\services\base_service.py
+  class ServiceLifecycleError bases=['RuntimeError']
+  class BaseAtlasService bases=['AtlasService']
+    __init__(self, identity: ServiceIdentity) -> None [94-108]
+    start(self) -> None [170-222]
+    stop(self) -> None [228-285]
+    health(self) -> HealthReport [291-345]

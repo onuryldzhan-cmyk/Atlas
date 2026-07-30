@@ -1,0 +1,2 @@
+﻿area,severity,finding,recommendation
+OBSERVABILITY,MEDIUM,One or more runtime classes have no detectable logging.,Use component loggers and lifecycle event logging.

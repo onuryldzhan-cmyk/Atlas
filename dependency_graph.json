@@ -1,0 +1,5632 @@
+{
+  "modules": {
+    "check_project": {
+      "name": "check_project",
+      "file_path": "check_project.py",
+      "imports": [
+        "os",
+        "py_compile"
+      ],
+      "imported_by": [],
+      "classes": [],
+      "functions": [],
+      "lines_of_code": 48,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 4.800000000000001
+    },
+    "main": {
+      "name": "main",
+      "file_path": "main.py",
+      "imports": [
+        "logging",
+        "time",
+        "core.atlas_brain",
+        "core.paper_trader",
+        "core.database"
+      ],
+      "imported_by": [],
+      "classes": [],
+      "functions": [
+        "print_report",
+        "run_cycle",
+        "main"
+      ],
+      "lines_of_code": 291,
+      "docstring": "\nProject Atlas AI v4.3\nAuto Trading Cycle\n",
+      "has_main": true,
+      "complexity_score": 35.1
+    },
+    "technical_analyzer": {
+      "name": "technical_analyzer",
+      "file_path": "technical_analyzer.py",
+      "imports": [],
+      "imported_by": [],
+      "classes": [
+        "TechnicalAnalyzer"
+      ],
+      "functions": [
+        "ema",
+        "rsi",
+        "analyze"
+      ],
+      "lines_of_code": 66,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 15.600000000000001
+    },
+    "test_architecture_analyzer": {
+      "name": "test_architecture_analyzer",
+      "file_path": "test_architecture_analyzer.py",
+      "imports": [
+        "core.architecture_analyzer"
+      ],
+      "imported_by": [],
+      "classes": [],
+      "functions": [],
+      "lines_of_code": 27,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 2.7
+    },
+    "test_ast_parser": {
+      "name": "test_ast_parser",
+      "file_path": "test_ast_parser.py",
+      "imports": [
+        "core.ast_parser"
+      ],
+      "imported_by": [],
+      "classes": [],
+      "functions": [
+        "print_report",
+        "main"
+      ],
+      "lines_of_code": 79,
+      "docstring": "",
+      "has_main": true,
+      "complexity_score": 11.9
+    },
+    "test_atlas_evolution": {
+      "name": "test_atlas_evolution",
+      "file_path": "test_atlas_evolution.py",
+      "imports": [
+        "core.atlas_brain"
+      ],
+      "imported_by": [],
+      "classes": [],
+      "functions": [],
+      "lines_of_code": 41,
+      "docstring": "\nAtlas Evolution Test v6.6\n",
+      "has_main": false,
+      "complexity_score": 4.1000000000000005
+    },
+    "test_codebase_indexer": {
+      "name": "test_codebase_indexer",
+      "file_path": "test_codebase_indexer.py",
+      "imports": [
+        "core.codebase_indexer"
+      ],
+      "imported_by": [],
+      "classes": [],
+      "functions": [],
+      "lines_of_code": 21,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 2.1
+    },
+    "test_code_analyzer": {
+      "name": "test_code_analyzer",
+      "file_path": "test_code_analyzer.py",
+      "imports": [
+        "core.github_scanner",
+        "core.code_analyzer"
+      ],
+      "imported_by": [],
+      "classes": [],
+      "functions": [],
+      "lines_of_code": 33,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 3.3000000000000003
+    },
+    "test_dependency_graph": {
+      "name": "test_dependency_graph",
+      "file_path": "test_dependency_graph.py",
+      "imports": [
+        "core.dependency_graph"
+      ],
+      "imported_by": [],
+      "classes": [],
+      "functions": [],
+      "lines_of_code": 46,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 4.6000000000000005
+    },
+    "test_event": {
+      "name": "test_event",
+      "file_path": "test_event.py",
+      "imports": [
+        "events",
+        "events"
+      ],
+      "imported_by": [],
+      "classes": [],
+      "functions": [
+        "market_listener"
+      ],
+      "lines_of_code": 36,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 5.6
+    },
+    "test_evolution_engine": {
+      "name": "test_evolution_engine",
+      "file_path": "test_evolution_engine.py",
+      "imports": [
+        "core.atlas_brain"
+      ],
+      "imported_by": [],
+      "classes": [],
+      "functions": [],
+      "lines_of_code": 73,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 7.300000000000001
+    },
+    "test_experiment_manager": {
+      "name": "test_experiment_manager",
+      "file_path": "test_experiment_manager.py",
+      "imports": [
+        "core.atlas_brain"
+      ],
+      "imported_by": [],
+      "classes": [],
+      "functions": [],
+      "lines_of_code": 39,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 3.9000000000000004
+    },
+    "test_github_scanner": {
+      "name": "test_github_scanner",
+      "file_path": "test_github_scanner.py",
+      "imports": [
+        "core.github_scanner"
+      ],
+      "imported_by": [],
+      "classes": [],
+      "functions": [],
+      "lines_of_code": 20,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 2.0
+    },
+    "test_improvement_planner": {
+      "name": "test_improvement_planner",
+      "file_path": "test_improvement_planner.py",
+      "imports": [
+        "core.atlas_brain"
+      ],
+      "imported_by": [],
+      "classes": [],
+      "functions": [],
+      "lines_of_code": 24,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 2.4000000000000004
+    },
+    "test_patch_generator": {
+      "name": "test_patch_generator",
+      "file_path": "test_patch_generator.py",
+      "imports": [
+        "core.architecture_analyzer",
+        "core.refactor_advisor",
+        "core.patch_generator"
+      ],
+      "imported_by": [],
+      "classes": [],
+      "functions": [],
+      "lines_of_code": 19,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 1.9000000000000001
+    },
+    "test_performance_feedback": {
+      "name": "test_performance_feedback",
+      "file_path": "test_performance_feedback.py",
+      "imports": [
+        "core.performance_feedback"
+      ],
+      "imported_by": [],
+      "classes": [],
+      "functions": [],
+      "lines_of_code": 36,
+      "docstring": "\nAtlas Performance Feedback Test\n",
+      "has_main": false,
+      "complexity_score": 3.6
+    },
+    "test_refactor_advisor": {
+      "name": "test_refactor_advisor",
+      "file_path": "test_refactor_advisor.py",
+      "imports": [
+        "core.architecture_analyzer",
+        "core.refactor_advisor"
+      ],
+      "imported_by": [],
+      "classes": [],
+      "functions": [],
+      "lines_of_code": 15,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 1.5
+    },
+    "test_research_integration": {
+      "name": "test_research_integration",
+      "file_path": "test_research_integration.py",
+      "imports": [
+        "core.github_scanner",
+        "core.code_analyzer",
+        "core.upgrade_advisor",
+        "core.research_manager",
+        "core.research_integration"
+      ],
+      "imported_by": [],
+      "classes": [],
+      "functions": [],
+      "lines_of_code": 42,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 4.2
+    },
+    "test_research_manager": {
+      "name": "test_research_manager",
+      "file_path": "test_research_manager.py",
+      "imports": [
+        "core.github_scanner",
+        "core.code_analyzer",
+        "core.upgrade_advisor",
+        "core.research_manager"
+      ],
+      "imported_by": [],
+      "classes": [],
+      "functions": [],
+      "lines_of_code": 31,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 3.1
+    },
+    "test_self_improvement": {
+      "name": "test_self_improvement",
+      "file_path": "test_self_improvement.py",
+      "imports": [
+        "core.atlas_brain"
+      ],
+      "imported_by": [],
+      "classes": [],
+      "functions": [],
+      "lines_of_code": 12,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 1.2000000000000002
+    },
+    "test_upgrade_advisor": {
+      "name": "test_upgrade_advisor",
+      "file_path": "test_upgrade_advisor.py",
+      "imports": [
+        "core.github_scanner",
+        "core.code_analyzer",
+        "core.upgrade_advisor"
+      ],
+      "imported_by": [],
+      "classes": [],
+      "functions": [],
+      "lines_of_code": 35,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 3.5
+    },
+    "test_version_memory": {
+      "name": "test_version_memory",
+      "file_path": "test_version_memory.py",
+      "imports": [
+        "core.version_memory"
+      ],
+      "imported_by": [],
+      "classes": [],
+      "functions": [],
+      "lines_of_code": 26,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 2.6
+    },
+    "web_app": {
+      "name": "web_app",
+      "file_path": "web_app.py",
+      "imports": [
+        "logging",
+        "requests",
+        "fastapi",
+        "fastapi.responses",
+        "fastapi.templating",
+        "uvicorn",
+        "core.atlas_brain",
+        "core.database",
+        "core.paper_trader",
+        "core.backtest_engine",
+        "datetime"
+      ],
+      "imported_by": [],
+      "classes": [],
+      "functions": [],
+      "lines_of_code": 85,
+      "docstring": "\nweb_app.py\n\nFastAPI ile Atlas Brain Web Dashboard.\nAtlasBrain motorunu kullanır, gerçek zamanlı analiz ve portföy durumunu gösterir.\n",
+      "has_main": false,
+      "complexity_score": 8.5
+    },
+    "ai.atlas_brain": {
+      "name": "ai.atlas_brain",
+      "file_path": "ai\\atlas_brain.py",
+      "imports": [
+        "learning.model_memory",
+        "learning.learning_engine"
+      ],
+      "imported_by": [
+        "database.engine"
+      ],
+      "classes": [
+        "AtlasBrain"
+      ],
+      "functions": [
+        "__init__",
+        "think"
+      ],
+      "lines_of_code": 138,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 20.8
+    },
+    "ai.decision_engine": {
+      "name": "ai.decision_engine",
+      "file_path": "ai\\decision_engine.py",
+      "imports": [],
+      "imported_by": [
+        "database.engine"
+      ],
+      "classes": [
+        "DecisionEngine"
+      ],
+      "functions": [
+        "__init__",
+        "decide"
+      ],
+      "lines_of_code": 108,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 17.8
+    },
+    "ai.intelligent_score": {
+      "name": "ai.intelligent_score",
+      "file_path": "ai\\intelligent_score.py",
+      "imports": [
+        "json",
+        "os"
+      ],
+      "imported_by": [],
+      "classes": [
+        "IntelligentScore"
+      ],
+      "functions": [
+        "__init__",
+        "get_bonus"
+      ],
+      "lines_of_code": 46,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 11.600000000000001
+    },
+    "ai.learning_brain": {
+      "name": "ai.learning_brain",
+      "file_path": "ai\\learning_brain.py",
+      "imports": [
+        "json",
+        "os"
+      ],
+      "imported_by": [],
+      "classes": [
+        "LearningBrain"
+      ],
+      "functions": [
+        "__init__",
+        "load_memory",
+        "save_memory",
+        "analyze_history"
+      ],
+      "lines_of_code": 140,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 25.0
+    },
+    "ai.performance_analyzer": {
+      "name": "ai.performance_analyzer",
+      "file_path": "ai\\performance_analyzer.py",
+      "imports": [
+        "json"
+      ],
+      "imported_by": [],
+      "classes": [
+        "PerformanceAnalyzer"
+      ],
+      "functions": [
+        "__init__",
+        "analyze"
+      ],
+      "lines_of_code": 102,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 17.200000000000003
+    },
+    "ai.trade_analyzer": {
+      "name": "ai.trade_analyzer",
+      "file_path": "ai\\trade_analyzer.py",
+      "imports": [
+        "json"
+      ],
+      "imported_by": [],
+      "classes": [
+        "TradeAnalyzer"
+      ],
+      "functions": [
+        "__init__",
+        "analyze"
+      ],
+      "lines_of_code": 133,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 20.3
+    },
+    "analysis.analyzer": {
+      "name": "analysis.analyzer",
+      "file_path": "analysis\\analyzer.py",
+      "imports": [],
+      "imported_by": [],
+      "classes": [
+        "Analyzer"
+      ],
+      "functions": [
+        "analyze"
+      ],
+      "lines_of_code": 55,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 10.5
+    },
+    "analysis.performance": {
+      "name": "analysis.performance",
+      "file_path": "analysis\\performance.py",
+      "imports": [
+        "json"
+      ],
+      "imported_by": [],
+      "classes": [
+        "PerformanceAnalyzer"
+      ],
+      "functions": [
+        "__init__",
+        "report"
+      ],
+      "lines_of_code": 50,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 12.0
+    },
+    "analysis.technical_analyzer": {
+      "name": "analysis.technical_analyzer",
+      "file_path": "analysis\\technical_analyzer.py",
+      "imports": [
+        "pandas"
+      ],
+      "imported_by": [
+        "backtest.backtest_engine",
+        "data.market_scanner"
+      ],
+      "classes": [
+        "TechnicalAnalyzer"
+      ],
+      "functions": [
+        "analyze"
+      ],
+      "lines_of_code": 56,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 10.600000000000001
+    },
+    "analytics.ai_performance": {
+      "name": "analytics.ai_performance",
+      "file_path": "analytics\\ai_performance.py",
+      "imports": [
+        "json",
+        "os"
+      ],
+      "imported_by": [
+        "intelligence.strategy_brain",
+        "simulation.ai_simulator"
+      ],
+      "classes": [
+        "AIPerformance"
+      ],
+      "functions": [
+        "__init__",
+        "create",
+        "load",
+        "add_result",
+        "report"
+      ],
+      "lines_of_code": 124,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 25.4
+    },
+    "analytics.dashboard": {
+      "name": "analytics.dashboard",
+      "file_path": "analytics\\dashboard.py",
+      "imports": [
+        "csv",
+        "os"
+      ],
+      "imported_by": [],
+      "classes": [
+        "AnalyticsDashboard"
+      ],
+      "functions": [
+        "__init__",
+        "show"
+      ],
+      "lines_of_code": 130,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 20.0
+    },
+    "analytics.performance": {
+      "name": "analytics.performance",
+      "file_path": "analytics\\performance.py",
+      "imports": [
+        "csv",
+        "os"
+      ],
+      "imported_by": [],
+      "classes": [
+        "PerformanceCenter"
+      ],
+      "functions": [
+        "__init__",
+        "report"
+      ],
+      "lines_of_code": 59,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 12.9
+    },
+    "analytics.performance_tracker": {
+      "name": "analytics.performance_tracker",
+      "file_path": "analytics\\performance_tracker.py",
+      "imports": [
+        "json",
+        "os",
+        "datetime"
+      ],
+      "imported_by": [],
+      "classes": [
+        "PerformanceTracker"
+      ],
+      "functions": [
+        "__init__",
+        "load",
+        "save",
+        "add_trade",
+        "report"
+      ],
+      "lines_of_code": 184,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 31.400000000000002
+    },
+    "analytics.trade_report": {
+      "name": "analytics.trade_report",
+      "file_path": "analytics\\trade_report.py",
+      "imports": [
+        "json",
+        "os",
+        "datetime"
+      ],
+      "imported_by": [],
+      "classes": [
+        "TradeReport"
+      ],
+      "functions": [
+        "__init__",
+        "load_file",
+        "generate"
+      ],
+      "lines_of_code": 182,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 27.2
+    },
+    "backtest.backtest_engine": {
+      "name": "backtest.backtest_engine",
+      "file_path": "backtest\\backtest_engine.py",
+      "imports": [
+        "data.data_provider",
+        "analysis.technical_analyzer",
+        "trade.simulator"
+      ],
+      "imported_by": [],
+      "classes": [
+        "BacktestEngine"
+      ],
+      "functions": [
+        "__init__",
+        "run",
+        "report"
+      ],
+      "lines_of_code": 106,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 19.6
+    },
+    "config.exchange_config": {
+      "name": "config.exchange_config",
+      "file_path": "config\\exchange_config.py",
+      "imports": [],
+      "imported_by": [],
+      "classes": [
+        "ExchangeConfig"
+      ],
+      "functions": [
+        "__init__"
+      ],
+      "lines_of_code": 9,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 5.9
+    },
+    "config.main": {
+      "name": "config.main",
+      "file_path": "config\\main.py",
+      "imports": [
+        "config.settings"
+      ],
+      "imported_by": [],
+      "classes": [],
+      "functions": [],
+      "lines_of_code": 6,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 0.6000000000000001
+    },
+    "config.settings": {
+      "name": "config.settings",
+      "file_path": "config\\settings.py",
+      "imports": [
+        "os",
+        "pathlib",
+        "typing"
+      ],
+      "imported_by": [
+        "config.main",
+        "exchange.exchange_adapter",
+        "execution.execution_manager"
+      ],
+      "classes": [],
+      "functions": [
+        "get_risk_profile",
+        "get_all_risk_coins",
+        "is_valid_symbol",
+        "validate_settings"
+      ],
+      "lines_of_code": 210,
+      "docstring": "\nAtlas AI v4.3 — Konfigürasyon Dosyası\n=====================================\nTüm sistem ayarları burada tanımlanır.\nDeğişiklik yapmadan önce yedek alın.\n",
+      "has_main": false,
+      "complexity_score": 29.0
+    },
+    "config.symbols": {
+      "name": "config.symbols",
+      "file_path": "config\\symbols.py",
+      "imports": [],
+      "imported_by": [],
+      "classes": [],
+      "functions": [],
+      "lines_of_code": 11,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 1.1
+    },
+    "config.__init__": {
+      "name": "config.__init__",
+      "file_path": "config\\__init__.py",
+      "imports": [],
+      "imported_by": [],
+      "classes": [],
+      "functions": [],
+      "lines_of_code": 1,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 0.1
+    },
+    "core.adaptive_decision": {
+      "name": "core.adaptive_decision",
+      "file_path": "core\\adaptive_decision.py",
+      "imports": [],
+      "imported_by": [
+        "core.atlas_brain"
+      ],
+      "classes": [
+        "AdaptiveDecision"
+      ],
+      "functions": [
+        "__init__",
+        "evaluate"
+      ],
+      "lines_of_code": 164,
+      "docstring": "\nAtlas AI Adaptive Decision v5.1\n\nLearning Based Decision Adjustment\n",
+      "has_main": false,
+      "complexity_score": 23.400000000000002
+    },
+    "core.adaptive_learning": {
+      "name": "core.adaptive_learning",
+      "file_path": "core\\adaptive_learning.py",
+      "imports": [
+        "json",
+        "os"
+      ],
+      "imported_by": [
+        "core.atlas_brain"
+      ],
+      "classes": [
+        "AdaptiveLearning"
+      ],
+      "functions": [
+        "__init__",
+        "load",
+        "save",
+        "update",
+        "get_score",
+        "best_strategy"
+      ],
+      "lines_of_code": 248,
+      "docstring": "\nAtlas AI Adaptive Learning v4.6\n\nSelf Improving Strategy Weight System\n",
+      "has_main": false,
+      "complexity_score": 39.8
+    },
+    "core.adaptive_weights": {
+      "name": "core.adaptive_weights",
+      "file_path": "core\\adaptive_weights.py",
+      "imports": [],
+      "imported_by": [],
+      "classes": [
+        "AdaptiveWeights"
+      ],
+      "functions": [
+        "__init__",
+        "get_weights",
+        "get_best_strategy",
+        "explain"
+      ],
+      "lines_of_code": 113,
+      "docstring": "\nAtlas AI Adaptive Weight Engine v4.2\nSelf Optimizing Strategy Weights\n",
+      "has_main": false,
+      "complexity_score": 22.3
+    },
+    "core.ai_director": {
+      "name": "core.ai_director",
+      "file_path": "core\\ai_director.py",
+      "imports": [
+        "logging"
+      ],
+      "imported_by": [],
+      "classes": [
+        "AIDirector"
+      ],
+      "functions": [
+        "__init__",
+        "calculate_score",
+        "decide"
+      ],
+      "lines_of_code": 127,
+      "docstring": "\nAtlas AI Director\nMaster Decision Coordinator\n",
+      "has_main": false,
+      "complexity_score": 21.700000000000003
+    },
+    "core.ai_generator": {
+      "name": "core.ai_generator",
+      "file_path": "core\\ai_generator.py",
+      "imports": [
+        "os"
+      ],
+      "imported_by": [
+        "core.backtester"
+      ],
+      "classes": [
+        "AICodeGenerator"
+      ],
+      "functions": [
+        "__init__",
+        "discover_and_generate"
+      ],
+      "lines_of_code": 76,
+      "docstring": "\n        Strateji kodunu üretir. Eğer optimize=True ise, \n        parametreleri daha güvenli/dar hale getirerek kazanma oranını artırmayı hedefler.\n        ",
+      "has_main": false,
+      "complexity_score": 14.600000000000001
+    },
+    "core.architecture_analyzer": {
+      "name": "core.architecture_analyzer",
+      "file_path": "core\\architecture_analyzer.py",
+      "imports": [
+        "os",
+        "ast",
+        "logging"
+      ],
+      "imported_by": [
+        "test_architecture_analyzer",
+        "test_patch_generator",
+        "test_refactor_advisor"
+      ],
+      "classes": [
+        "ArchitectureAnalyzer"
+      ],
+      "functions": [
+        "__init__",
+        "analyze",
+        "large_files",
+        "large_classes",
+        "large_functions",
+        "generate_recommendations"
+      ],
+      "lines_of_code": 400,
+      "docstring": "\nAtlas Architecture Analyzer v2.0\n\nFeatures:\n- Dependency analysis\n- Architecture health\n- Critical modules\n- Large file detection\n- Large class detection\n- Refactor suggestions\n",
+      "has_main": false,
+      "complexity_score": 55.0
+    },
+    "core.ast_parser": {
+      "name": "core.ast_parser",
+      "file_path": "core\\ast_parser.py",
+      "imports": [
+        "__future__",
+        "ast",
+        "json",
+        "dataclasses",
+        "pathlib",
+        "typing"
+      ],
+      "imported_by": [
+        "test_ast_parser"
+      ],
+      "classes": [
+        "ClassInfo",
+        "ParseResult",
+        "ASTParser"
+      ],
+      "functions": [
+        "__init__",
+        "parse",
+        "export_json"
+      ],
+      "lines_of_code": 160,
+      "docstring": "\nAtlas AI AST Parser v1.0\nRead-only source code analyzer.\n",
+      "has_main": false,
+      "complexity_score": 31.0
+    },
+    "core.atlas_brain": {
+      "name": "core.atlas_brain",
+      "file_path": "core\\atlas_brain.py",
+      "imports": [
+        "logging",
+        "core.event_manager",
+        "core.event_listeners",
+        "core.learning_listener",
+        "core.evolution_engine",
+        "core.knowledge_graph",
+        "core.refactor_engine",
+        "core.data_provider",
+        "core.technical_analyzer",
+        "core.market_intelligence",
+        "core.market_regime",
+        "core.version_memory",
+        "core.signal_fusion",
+        "core.strategy_competition",
+        "core.confidence_engine",
+        "core.decision_engine",
+        "core.risk_manager",
+        "core.database",
+        "core.learning_engine",
+        "core.performance_analyzer",
+        "core.performance_feedback",
+        "core.improvement_planner",
+        "core.upgrade_manager",
+        "core.experiment_manager",
+        "core.adaptive_learning",
+        "core.adaptive_decision",
+        "core.trade_memory",
+        "core.pattern_memory",
+        "core.outcome_memory",
+        "core.trade_tracker",
+        "core.opportunity_engine",
+        "core.market_scanner",
+        "core.auto_pilot",
+        "core.self_improvement"
+      ],
+      "imported_by": [
+        "main",
+        "test_atlas_evolution",
+        "test_evolution_engine",
+        "test_experiment_manager",
+        "test_improvement_planner",
+        "test_self_improvement",
+        "web_app"
+      ],
+      "classes": [
+        "AtlasBrain"
+      ],
+      "functions": [
+        "__init__",
+        "run",
+        "check_improvements",
+        "analyze_codebase"
+      ],
+      "lines_of_code": 643,
+      "docstring": "\nAtlas Brain v6.4\nEvent Driven Professional Core\n\nPattern + Trade + Outcome\nAdaptive Learning\nOpportunity Engine\nPerformance Feedback\n",
+      "has_main": false,
+      "complexity_score": 75.3
+    },
+    "core.auth_panel": {
+      "name": "core.auth_panel",
+      "file_path": "core\\auth_panel.py",
+      "imports": [
+        "sys",
+        "os",
+        "core.database"
+      ],
+      "imported_by": [],
+      "classes": [
+        "AtlasAuthPanel"
+      ],
+      "functions": [
+        "__init__",
+        "clear_screen",
+        "run",
+        "login",
+        "show_admin_panel",
+        "admin_view_users",
+        "admin_create_user",
+        "admin_risk_settings",
+        "admin_monitor_live_trades",
+        "show_user_panel",
+        "user_update_api",
+        "user_check_api_status",
+        "user_view_trades",
+        "user_view_balance"
+      ],
+      "lines_of_code": 253,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 56.3
+    },
+    "core.auto_manager": {
+      "name": "core.auto_manager",
+      "file_path": "core\\auto_manager.py",
+      "imports": [],
+      "imported_by": [
+        "core.trading_cycle"
+      ],
+      "classes": [
+        "AutoManager"
+      ],
+      "functions": [
+        "monitor"
+      ],
+      "lines_of_code": 8,
+      "docstring": "\ncore/auto_manager.py\nOtomatik takip.\n",
+      "has_main": false,
+      "complexity_score": 5.8
+    },
+    "core.auto_pilot": {
+      "name": "core.auto_pilot",
+      "file_path": "core\\auto_pilot.py",
+      "imports": [
+        "logging",
+        "time"
+      ],
+      "imported_by": [
+        "core.atlas_brain"
+      ],
+      "classes": [
+        "AutoPilot"
+      ],
+      "functions": [
+        "__init__",
+        "select_opportunities",
+        "execute_cycle",
+        "start",
+        "stop"
+      ],
+      "lines_of_code": 216,
+      "docstring": "\nAtlas AI v6.0\nAuto Pilot Engine\n\nOpportunity Selection + Continuous Trading Logic\n",
+      "has_main": false,
+      "complexity_score": 34.6
+    },
+    "core.auto_scanner": {
+      "name": "core.auto_scanner",
+      "file_path": "core\\auto_scanner.py",
+      "imports": [
+        "time",
+        "json",
+        "os",
+        "datetime"
+      ],
+      "imported_by": [
+        "core.main"
+      ],
+      "classes": [
+        "AutoScanner"
+      ],
+      "functions": [
+        "__init__",
+        "save_result",
+        "analyze_coin",
+        "start"
+      ],
+      "lines_of_code": 227,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 33.7
+    },
+    "core.backtester": {
+      "name": "core.backtester",
+      "file_path": "core\\backtester.py",
+      "imports": [
+        "os",
+        "sys",
+        "pandas",
+        "importlib.util",
+        "core.ai_generator"
+      ],
+      "imported_by": [
+        "core.live_trader"
+      ],
+      "classes": [
+        "BacktestEngine"
+      ],
+      "functions": [
+        "__init__",
+        "reset_pools",
+        "load_strategy_dynamically",
+        "run_backtest",
+        "report_results"
+      ],
+      "lines_of_code": 201,
+      "docstring": "\n        commission_rate: %0.1 standart borsa komisyonu (0.001)\n        slippage_rate: %0.05 ortalama fiyat kayması (0.0005)\n        ",
+      "has_main": false,
+      "complexity_score": 33.1
+    },
+    "core.base_ai_module": {
+      "name": "core.base_ai_module",
+      "file_path": "core\\base_ai_module.py",
+      "imports": [
+        "logging",
+        "time"
+      ],
+      "imported_by": [],
+      "classes": [
+        "BaseAIModule"
+      ],
+      "functions": [
+        "__init__",
+        "before_run",
+        "process",
+        "after_run",
+        "run",
+        "enable",
+        "disable",
+        "statistics"
+      ],
+      "lines_of_code": 177,
+      "docstring": "\nAtlas Base AI Module\nAll AI modules inherit from this class.\n",
+      "has_main": false,
+      "complexity_score": 36.7
+    },
+    "core.capital_allocator": {
+      "name": "core.capital_allocator",
+      "file_path": "core\\capital_allocator.py",
+      "imports": [],
+      "imported_by": [
+        "core.trading_cycle"
+      ],
+      "classes": [
+        "CapitalAllocator"
+      ],
+      "functions": [
+        "allocate"
+      ],
+      "lines_of_code": 10,
+      "docstring": "\ncore/capital_allocator.py\nSermaye büyüklüğü hesaplar.\n",
+      "has_main": false,
+      "complexity_score": 6.0
+    },
+    "core.codebase_indexer": {
+      "name": "core.codebase_indexer",
+      "file_path": "core\\codebase_indexer.py",
+      "imports": [
+        "__future__",
+        "ast",
+        "json",
+        "logging",
+        "dataclasses",
+        "pathlib",
+        "typing"
+      ],
+      "imported_by": [
+        "test_codebase_indexer"
+      ],
+      "classes": [
+        "ClassInfo",
+        "FileIndex",
+        "CodebaseIndexer"
+      ],
+      "functions": [
+        "__init__",
+        "scan",
+        "index_file",
+        "save",
+        "summary",
+        "print_summary"
+      ],
+      "lines_of_code": 343,
+      "docstring": "\nAtlas Codebase Indexer v8.0\n\nScans the entire Atlas project and generates\na structural JSON index for architecture analysis.\n",
+      "has_main": false,
+      "complexity_score": 55.300000000000004
+    },
+    "core.code_analyzer": {
+      "name": "core.code_analyzer",
+      "file_path": "core\\code_analyzer.py",
+      "imports": [
+        "logging"
+      ],
+      "imported_by": [
+        "test_code_analyzer",
+        "test_research_integration",
+        "test_research_manager",
+        "test_upgrade_advisor"
+      ],
+      "classes": [
+        "CodeAnalyzer"
+      ],
+      "functions": [
+        "__init__",
+        "analyze"
+      ],
+      "lines_of_code": 154,
+      "docstring": "\nAtlas Code Analyzer v7.0\n\nAnalyzes external projects\nand finds useful upgrades.\n",
+      "has_main": false,
+      "complexity_score": 22.4
+    },
+    "core.code_smell_detector": {
+      "name": "core.code_smell_detector",
+      "file_path": "core\\code_smell_detector.py",
+      "imports": [
+        "__future__",
+        "json",
+        "logging",
+        "pathlib"
+      ],
+      "imported_by": [],
+      "classes": [
+        "CodeSmellDetector"
+      ],
+      "functions": [
+        "__init__",
+        "load",
+        "analyze",
+        "summary",
+        "save",
+        "print_report"
+      ],
+      "lines_of_code": 400,
+      "docstring": "\nAtlas Code Smell Detector v1.0\n\nDetects common code quality problems from\ncodebase_index.json.\n",
+      "has_main": false,
+      "complexity_score": 55.0
+    },
+    "core.confidence_engine": {
+      "name": "core.confidence_engine",
+      "file_path": "core\\confidence_engine.py",
+      "imports": [],
+      "imported_by": [
+        "core.atlas_brain",
+        "core.trading_cycle"
+      ],
+      "classes": [
+        "ConfidenceEngine"
+      ],
+      "functions": [
+        "__init__",
+        "normalize",
+        "calculate"
+      ],
+      "lines_of_code": 392,
+      "docstring": "\nAtlas AI Confidence Engine v6.1\n\nAdaptive Institutional Confidence System\n\nLayers:\n\n- Market Regime\n- Strategy Quality\n- Pattern Memory\n- Outcome Memory\n- Signal Strength\n- Learning Feedback\n\n",
+      "has_main": false,
+      "complexity_score": 48.2
+    },
+    "core.config_manager": {
+      "name": "core.config_manager",
+      "file_path": "core\\config_manager.py",
+      "imports": [
+        "json",
+        "os"
+      ],
+      "imported_by": [],
+      "classes": [
+        "ConfigManager"
+      ],
+      "functions": [
+        "__init__",
+        "get",
+        "set",
+        "load",
+        "save",
+        "all"
+      ],
+      "lines_of_code": 119,
+      "docstring": "\nAtlas Config Manager\nCentral Configuration System\n",
+      "has_main": false,
+      "complexity_score": 26.9
+    },
+    "core.database": {
+      "name": "core.database",
+      "file_path": "core\\database.py",
+      "imports": [
+        "json",
+        "os",
+        "datetime"
+      ],
+      "imported_by": [
+        "main",
+        "web_app",
+        "core.atlas_brain",
+        "core.auth_panel",
+        "core.paper_trader",
+        "portfolio.portfolio_manager"
+      ],
+      "classes": [
+        "DatabaseManager"
+      ],
+      "functions": [
+        "__init__",
+        "_ensure_file",
+        "save_trade",
+        "get_trades",
+        "update_trade",
+        "get_open_trades",
+        "_write",
+        "save_api_keys"
+      ],
+      "lines_of_code": 91,
+      "docstring": "\ncore/database.py\nAtlas AI Trade Database v2\n",
+      "has_main": false,
+      "complexity_score": 28.1
+    },
+    "core.data_downloader": {
+      "name": "core.data_downloader",
+      "file_path": "core\\data_downloader.py",
+      "imports": [
+        "os",
+        "time",
+        "pandas",
+        "requests",
+        "datetime"
+      ],
+      "imported_by": [],
+      "classes": [
+        "HistoricalDownloader"
+      ],
+      "functions": [
+        "__init__",
+        "download_data"
+      ],
+      "lines_of_code": 100,
+      "docstring": "\n        Belirtilen sembol ve zaman dilimi için geçmiş verileri indirir ve CSV olarak kaydeder.\n        Binance tek seferde maks 1000 mum verdiği için geriye doğru döngüsel (paginated) çekim yapar.\n  ",
+      "has_main": false,
+      "complexity_score": 17.0
+    },
+    "core.data_provider": {
+      "name": "core.data_provider",
+      "file_path": "core\\data_provider.py",
+      "imports": [
+        "requests",
+        "logging",
+        "datetime",
+        "typing"
+      ],
+      "imported_by": [
+        "core.atlas_brain",
+        "core.engine",
+        "core.trading_cycle"
+      ],
+      "classes": [
+        "DataProvider"
+      ],
+      "functions": [
+        "get_klines",
+        "get_historical_klines"
+      ],
+      "lines_of_code": 67,
+      "docstring": "\ncore/data_provider.py - Veri sağlayıcı (Düzeltildi)\n",
+      "has_main": false,
+      "complexity_score": 13.7
+    },
+    "core.decision_engine": {
+      "name": "core.decision_engine",
+      "file_path": "core\\decision_engine.py",
+      "imports": [
+        "logging"
+      ],
+      "imported_by": [
+        "core.atlas_brain",
+        "core.trading_cycle"
+      ],
+      "classes": [
+        "DecisionEngine"
+      ],
+      "functions": [
+        "__init__",
+        "decide"
+      ],
+      "lines_of_code": 254,
+      "docstring": "\nAtlas AI Decision Engine v6.4.1\n\nProfessional Decision Layer\n\nSignal\n+ Strategy\n+ Confidence\n+ Quality Filter\n",
+      "has_main": false,
+      "complexity_score": 32.400000000000006
+    },
+    "core.engine": {
+      "name": "core.engine",
+      "file_path": "core\\engine.py",
+      "imports": [
+        "os",
+        "json",
+        "pandas",
+        "datetime",
+        "core.technical_analyzer",
+        "core.memory",
+        "core.strategy_brain",
+        "core.risk_manager",
+        "core.data_provider",
+        "core.paper_trader"
+      ],
+      "imported_by": [
+        "core.loop_engine",
+        "core.main"
+      ],
+      "classes": [
+        "AtlasEngine"
+      ],
+      "functions": [
+        "__init__",
+        "start"
+      ],
+      "lines_of_code": 140,
+      "docstring": "\n    PROJECT ATLAS AI - Çok Katmanlı Yapay Zekâ İşlem Motoru\n    Canlı veri, teknik analiz, hafıza, strateji yarışması, risk yönetimi ve paper trading koordine eder.\n    ",
+      "has_main": false,
+      "complexity_score": 21.0
+    },
+    "core.event_bus": {
+      "name": "core.event_bus",
+      "file_path": "core\\event_bus.py",
+      "imports": [
+        "logging"
+      ],
+      "imported_by": [
+        "core.event_manager"
+      ],
+      "classes": [
+        "EventBus"
+      ],
+      "functions": [
+        "__init__",
+        "subscribe",
+        "publish",
+        "unsubscribe",
+        "clear",
+        "events"
+      ],
+      "lines_of_code": 103,
+      "docstring": "\nAtlas Event Bus\nProfessional Event System\n",
+      "has_main": false,
+      "complexity_score": 25.3
+    },
+    "core.event_listeners": {
+      "name": "core.event_listeners",
+      "file_path": "core\\event_listeners.py",
+      "imports": [
+        "logging"
+      ],
+      "imported_by": [
+        "core.atlas_brain"
+      ],
+      "classes": [
+        "AtlasEventListeners"
+      ],
+      "functions": [
+        "__init__",
+        "register_events",
+        "market_analyzed",
+        "decision_created"
+      ],
+      "lines_of_code": 99,
+      "docstring": "\nAtlas Event Listeners\nProfessional Event Reaction Layer\n",
+      "has_main": false,
+      "complexity_score": 20.9
+    },
+    "core.event_manager": {
+      "name": "core.event_manager",
+      "file_path": "core\\event_manager.py",
+      "imports": [
+        "logging",
+        "core.event_bus"
+      ],
+      "imported_by": [
+        "core.atlas_brain"
+      ],
+      "classes": [
+        "EventManager"
+      ],
+      "functions": [
+        "__init__",
+        "register",
+        "emit",
+        "remove",
+        "status"
+      ],
+      "lines_of_code": 96,
+      "docstring": "\nAtlas Event Manager\nCentral Event System Controller\n",
+      "has_main": false,
+      "complexity_score": 22.6
+    },
+    "core.evolution_engine": {
+      "name": "core.evolution_engine",
+      "file_path": "core\\evolution_engine.py",
+      "imports": [
+        "logging"
+      ],
+      "imported_by": [
+        "core.atlas_brain"
+      ],
+      "classes": [
+        "EvolutionEngine"
+      ],
+      "functions": [
+        "__init__",
+        "evaluate_experiment",
+        "should_upgrade"
+      ],
+      "lines_of_code": 158,
+      "docstring": "\nAtlas Evolution Engine v6.7\n\nResponsible for:\n- Running improvement experiments\n- Evaluating results\n- Deciding upgrade candidates\n- Evolution memory\n",
+      "has_main": false,
+      "complexity_score": 24.8
+    },
+    "core.executor": {
+      "name": "core.executor",
+      "file_path": "core\\executor.py",
+      "imports": [
+        "logging",
+        "datetime"
+      ],
+      "imported_by": [
+        "core.trading_cycle"
+      ],
+      "classes": [
+        "Executor"
+      ],
+      "functions": [
+        "__init__",
+        "execute"
+      ],
+      "lines_of_code": 219,
+      "docstring": "\nAtlas AI Executor v6.3\n\nAutonomous Execution Layer\n\nDecision\n    ↓\nExecutor\n    ↓\nTradeTracker\n    ↓\nPortfolio\n    ↓\nLearning\n",
+      "has_main": false,
+      "complexity_score": 28.900000000000002
+    },
+    "core.experiment_manager": {
+      "name": "core.experiment_manager",
+      "file_path": "core\\experiment_manager.py",
+      "imports": [
+        "json",
+        "os",
+        "logging",
+        "datetime"
+      ],
+      "imported_by": [
+        "core.atlas_brain"
+      ],
+      "classes": [
+        "ExperimentManager"
+      ],
+      "functions": [
+        "__init__",
+        "load",
+        "save",
+        "create_experiment",
+        "complete_experiment",
+        "get_testing",
+        "report"
+      ],
+      "lines_of_code": 270,
+      "docstring": "\nAtlas AI Experiment Manager v6.6\n\nManages AI improvement experiments.\n\nResponsibilities:\n- Create experiments\n- Track changes\n- Compare results\n- Store experiment history\n",
+      "has_main": false,
+      "complexity_score": 44.0
+    },
+    "core.github_intelligence": {
+      "name": "core.github_intelligence",
+      "file_path": "core\\github_intelligence.py",
+      "imports": [
+        "datetime",
+        "logging"
+      ],
+      "imported_by": [],
+      "classes": [
+        "GithubIntelligence"
+      ],
+      "functions": [
+        "__init__",
+        "scan",
+        "scan_trading_projects",
+        "scan_ai_projects",
+        "calculate_score",
+        "remove_duplicates",
+        "generate_upgrade_suggestions",
+        "summary"
+      ],
+      "lines_of_code": 346,
+      "docstring": "\nAtlas GitHub Intelligence v7.0\n\nProfessional research engine.\n\nResponsible for:\n\n- Scan trending AI repositories\n- Scan trading repositories\n- Detect useful technologies\n- Generate improvement sugges",
+      "has_main": false,
+      "complexity_score": 53.6
+    },
+    "core.github_scanner": {
+      "name": "core.github_scanner",
+      "file_path": "core\\github_scanner.py",
+      "imports": [
+        "logging"
+      ],
+      "imported_by": [
+        "test_code_analyzer",
+        "test_github_scanner",
+        "test_research_integration",
+        "test_research_manager",
+        "test_upgrade_advisor"
+      ],
+      "classes": [
+        "GithubScanner"
+      ],
+      "functions": [
+        "__init__",
+        "scan"
+      ],
+      "lines_of_code": 88,
+      "docstring": "\nAtlas GitHub Scanner v7.0\n\nResearches useful open source projects.\n",
+      "has_main": false,
+      "complexity_score": 15.8
+    },
+    "core.improvement_planner": {
+      "name": "core.improvement_planner",
+      "file_path": "core\\improvement_planner.py",
+      "imports": [
+        "logging"
+      ],
+      "imported_by": [
+        "core.atlas_brain"
+      ],
+      "classes": [
+        "ImprovementPlanner"
+      ],
+      "functions": [
+        "__init__",
+        "analyze",
+        "create_upgrade_plan"
+      ],
+      "lines_of_code": 166,
+      "docstring": "\nAtlas Improvement Planner v6.5\n\nPerformance analysis and improvement suggestion system.\n",
+      "has_main": false,
+      "complexity_score": 25.6
+    },
+    "core.knowledge_graph": {
+      "name": "core.knowledge_graph",
+      "file_path": "core\\knowledge_graph.py",
+      "imports": [
+        "json",
+        "os",
+        "logging"
+      ],
+      "imported_by": [
+        "core.atlas_brain"
+      ],
+      "classes": [
+        "KnowledgeGraph"
+      ],
+      "functions": [
+        "__init__",
+        "load",
+        "save",
+        "add_node",
+        "add_edge",
+        "find_node",
+        "neighbors",
+        "statistics"
+      ],
+      "lines_of_code": 150,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 34.0
+    },
+    "core.learning_engine": {
+      "name": "core.learning_engine",
+      "file_path": "core\\learning_engine.py",
+      "imports": [
+        "json",
+        "os",
+        "logging"
+      ],
+      "imported_by": [
+        "core.atlas_brain",
+        "core.paper_trader"
+      ],
+      "classes": [
+        "LearningEngine"
+      ],
+      "functions": [
+        "__init__",
+        "load",
+        "save",
+        "load_memory",
+        "save_memory",
+        "learn_market",
+        "get_strategy_score",
+        "get_insight"
+      ],
+      "lines_of_code": 286,
+      "docstring": "\nAtlas AI Learning Engine v6.2\nAdaptive Strategy Memory + Event Learning\n",
+      "has_main": false,
+      "complexity_score": 47.6
+    },
+    "core.learning_listener": {
+      "name": "core.learning_listener",
+      "file_path": "core\\learning_listener.py",
+      "imports": [
+        "logging"
+      ],
+      "imported_by": [
+        "core.atlas_brain"
+      ],
+      "classes": [
+        "LearningListener"
+      ],
+      "functions": [
+        "__init__",
+        "register_events",
+        "market_analyzed",
+        "decision_created"
+      ],
+      "lines_of_code": 192,
+      "docstring": "\nAtlas Learning Listener v6.3\nEvent Based Learning + Outcome Tracking\n",
+      "has_main": false,
+      "complexity_score": 30.200000000000003
+    },
+    "core.live_trader": {
+      "name": "core.live_trader",
+      "file_path": "core\\live_trader.py",
+      "imports": [
+        "os",
+        "sys",
+        "time",
+        "pandas",
+        "binance.client",
+        "dotenv",
+        "core.backtester"
+      ],
+      "imported_by": [],
+      "classes": [
+        "LiveTrader"
+      ],
+      "functions": [
+        "__init__",
+        "connect_to_binance",
+        "fetch_live_data",
+        "set_active_strategy",
+        "monitor_market",
+        "execute_mock_order"
+      ],
+      "lines_of_code": 145,
+      "docstring": "Binance TR API bağlantısını güvenli bir şekilde kurar.",
+      "has_main": false,
+      "complexity_score": 29.5
+    },
+    "core.loop_engine": {
+      "name": "core.loop_engine",
+      "file_path": "core\\loop_engine.py",
+      "imports": [
+        "time",
+        "sys",
+        "os",
+        "core.engine"
+      ],
+      "imported_by": [],
+      "classes": [
+        "LoopEngine"
+      ],
+      "functions": [
+        "__init__",
+        "start"
+      ],
+      "lines_of_code": 63,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 13.3
+    },
+    "core.main": {
+      "name": "core.main",
+      "file_path": "core\\main.py",
+      "imports": [
+        "core.engine",
+        "json",
+        "dashboard.dashboard",
+        "core.auto_scanner"
+      ],
+      "imported_by": [],
+      "classes": [],
+      "functions": [
+        "main"
+      ],
+      "lines_of_code": 99,
+      "docstring": "",
+      "has_main": true,
+      "complexity_score": 11.9
+    },
+    "core.market_intelligence": {
+      "name": "core.market_intelligence",
+      "file_path": "core\\market_intelligence.py",
+      "imports": [
+        "requests",
+        "logging",
+        "bs4"
+      ],
+      "imported_by": [
+        "core.atlas_brain",
+        "core.trading_cycle"
+      ],
+      "classes": [
+        "MarketIntelligence"
+      ],
+      "functions": [
+        "analyze",
+        "_calc_volatility"
+      ],
+      "lines_of_code": 31,
+      "docstring": "\ncore/market_intelligence.py\nPiyasa duyarlılığı, volatilite ve haber analizi.\n",
+      "has_main": false,
+      "complexity_score": 10.1
+    },
+    "core.market_regime": {
+      "name": "core.market_regime",
+      "file_path": "core\\market_regime.py",
+      "imports": [],
+      "imported_by": [
+        "core.atlas_brain"
+      ],
+      "classes": [
+        "MarketRegime"
+      ],
+      "functions": [
+        "__init__",
+        "detect"
+      ],
+      "lines_of_code": 188,
+      "docstring": "\nAtlas AI Market Regime Engine v1\n\nMarket condition classification system\n",
+      "has_main": false,
+      "complexity_score": 25.8
+    },
+    "core.market_scanner": {
+      "name": "core.market_scanner",
+      "file_path": "core\\market_scanner.py",
+      "imports": [
+        "logging"
+      ],
+      "imported_by": [
+        "core.atlas_brain"
+      ],
+      "classes": [
+        "MarketScanner"
+      ],
+      "functions": [
+        "__init__",
+        "calculate_score",
+        "scan",
+        "print_report"
+      ],
+      "lines_of_code": 228,
+      "docstring": "\nAtlas AI v6.0\nMarket Scanner Engine\n\nDaily Opportunity Discovery System\n",
+      "has_main": false,
+      "complexity_score": 33.8
+    },
+    "core.memory": {
+      "name": "core.memory",
+      "file_path": "core\\memory.py",
+      "imports": [
+        "os",
+        "json",
+        "datetime"
+      ],
+      "imported_by": [
+        "core.engine"
+      ],
+      "classes": [
+        "LearningMemory"
+      ],
+      "functions": [
+        "__init__",
+        "_ensure_file_exists",
+        "save_trade",
+        "get_stats"
+      ],
+      "lines_of_code": 89,
+      "docstring": "\n    PROJECT ATLAS AI - Hafıza ve Kendi Kendine Öğrenme Motoru\n    İşlem geçmişini kaydeder, analiz eder ve başarı oranlarını optimize eder.\n    ",
+      "has_main": false,
+      "complexity_score": 19.9
+    },
+    "core.module_registry": {
+      "name": "core.module_registry",
+      "file_path": "core\\module_registry.py",
+      "imports": [
+        "logging"
+      ],
+      "imported_by": [],
+      "classes": [
+        "ModuleRegistry"
+      ],
+      "functions": [
+        "__init__",
+        "register",
+        "get",
+        "exists",
+        "remove",
+        "names",
+        "execute",
+        "info",
+        "clear"
+      ],
+      "lines_of_code": 153,
+      "docstring": "\nAtlas Module Registry\nProfessional AI Module Manager\n",
+      "has_main": false,
+      "complexity_score": 36.3
+    },
+    "core.opportunity_engine": {
+      "name": "core.opportunity_engine",
+      "file_path": "core\\opportunity_engine.py",
+      "imports": [],
+      "imported_by": [
+        "core.atlas_brain"
+      ],
+      "classes": [
+        "OpportunityEngine"
+      ],
+      "functions": [
+        "__init__",
+        "evaluate"
+      ],
+      "lines_of_code": 267,
+      "docstring": "\nAtlas AI v6.0\nOpportunity Engine\n\nMarket Opportunity Detection\nProbability + Risk + Strategy Evaluation\n",
+      "has_main": false,
+      "complexity_score": 33.7
+    },
+    "core.opportunity_scanner": {
+      "name": "core.opportunity_scanner",
+      "file_path": "core\\opportunity_scanner.py",
+      "imports": [],
+      "imported_by": [],
+      "classes": [
+        "OpportunityScanner"
+      ],
+      "functions": [
+        "__init__",
+        "scan",
+        "best",
+        "report"
+      ],
+      "lines_of_code": 196,
+      "docstring": "\nAtlas AI Opportunity Scanner v4.4\nMulti Asset Opportunity Ranking Engine\n",
+      "has_main": false,
+      "complexity_score": 30.6
+    },
+    "core.outcome_memory": {
+      "name": "core.outcome_memory",
+      "file_path": "core\\outcome_memory.py",
+      "imports": [
+        "json",
+        "os",
+        "logging"
+      ],
+      "imported_by": [
+        "core.atlas_brain"
+      ],
+      "classes": [
+        "OutcomeMemory"
+      ],
+      "functions": [
+        "__init__",
+        "load",
+        "save",
+        "analyze",
+        "record_trade",
+        "update_group",
+        "get_strategy_name",
+        "get_strategy_score",
+        "get_regime_score",
+        "calculate_bonus",
+        "insight",
+        "create_trade"
+      ],
+      "lines_of_code": 514,
+      "docstring": "\nAtlas AI Outcome Memory v6.4\n\nTrade outcome analysis system.\nTracks:\n- Strategy performance\n- Market regime results\n- Win/Loss memory\n- Adaptive feedback\n",
+      "has_main": false,
+      "complexity_score": 78.4
+    },
+    "core.paper_trader": {
+      "name": "core.paper_trader",
+      "file_path": "core\\paper_trader.py",
+      "imports": [
+        "datetime",
+        "requests",
+        "core.database",
+        "core.learning_engine",
+        "portfolio.portfolio_manager"
+      ],
+      "imported_by": [
+        "main",
+        "web_app",
+        "core.engine"
+      ],
+      "classes": [
+        "PaperTrader"
+      ],
+      "functions": [
+        "__init__",
+        "load_portfolio",
+        "get_open_positions",
+        "has_position",
+        "open_trade",
+        "check_positions",
+        "close_trade",
+        "_get_price"
+      ],
+      "lines_of_code": 427,
+      "docstring": "\nAtlas AI Professional Paper Trader v4\nHedge Fund Simulation Engine\n",
+      "has_main": false,
+      "complexity_score": 61.7
+    },
+    "core.patch_generator": {
+      "name": "core.patch_generator",
+      "file_path": "core\\patch_generator.py",
+      "imports": [
+        "os",
+        "datetime"
+      ],
+      "imported_by": [
+        "test_patch_generator"
+      ],
+      "classes": [
+        "PatchGenerator"
+      ],
+      "functions": [
+        "__init__",
+        "generate"
+      ],
+      "lines_of_code": 44,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 11.4
+    },
+    "core.pattern_memory": {
+      "name": "core.pattern_memory",
+      "file_path": "core\\pattern_memory.py",
+      "imports": [
+        "json",
+        "os",
+        "datetime"
+      ],
+      "imported_by": [
+        "core.atlas_brain"
+      ],
+      "classes": [
+        "PatternMemory"
+      ],
+      "functions": [
+        "__init__",
+        "load",
+        "save",
+        "record",
+        "update_outcome",
+        "find_similar",
+        "insight"
+      ],
+      "lines_of_code": 427,
+      "docstring": "\nAtlas AI Pattern Memory v5.1\n\nPattern Recognition + Historical Success Memory\n",
+      "has_main": false,
+      "complexity_score": 59.7
+    },
+    "core.performance_analyzer": {
+      "name": "core.performance_analyzer",
+      "file_path": "core\\performance_analyzer.py",
+      "imports": [
+        "json",
+        "os"
+      ],
+      "imported_by": [
+        "core.atlas_brain"
+      ],
+      "classes": [
+        "PerformanceAnalyzer"
+      ],
+      "functions": [
+        "__init__",
+        "load",
+        "analyze"
+      ],
+      "lines_of_code": 223,
+      "docstring": "\nAtlas AI Performance Analyzer v5.1\n\nSelf Evaluation System\n",
+      "has_main": false,
+      "complexity_score": 31.3
+    },
+    "core.performance_feedback": {
+      "name": "core.performance_feedback",
+      "file_path": "core\\performance_feedback.py",
+      "imports": [
+        "logging"
+      ],
+      "imported_by": [
+        "test_performance_feedback",
+        "core.atlas_brain"
+      ],
+      "classes": [
+        "PerformanceFeedback"
+      ],
+      "functions": [
+        "__init__",
+        "add_result",
+        "analyze"
+      ],
+      "lines_of_code": 107,
+      "docstring": "\nAtlas Performance Feedback Engine v1.0\n\nPerformance evaluation layer.\nCollects results and creates feedback.\n",
+      "has_main": false,
+      "complexity_score": 19.700000000000003
+    },
+    "core.position_manager": {
+      "name": "core.position_manager",
+      "file_path": "core\\position_manager.py",
+      "imports": [
+        "__future__",
+        "datetime",
+        "typing",
+        "uuid"
+      ],
+      "imported_by": [],
+      "classes": [
+        "PositionManager"
+      ],
+      "functions": [
+        "__init__",
+        "open_position",
+        "close_position",
+        "update_price",
+        "calculate_pnl",
+        "has_open_position",
+        "get_position",
+        "get_open_positions",
+        "total_open_positions",
+        "total_risk",
+        "total_unrealized_pnl",
+        "summary"
+      ],
+      "lines_of_code": 177,
+      "docstring": "\nAtlas AI Position Manager v1\n\nCentral position management layer.\n",
+      "has_main": false,
+      "complexity_score": 44.7
+    },
+    "core.position_monitor": {
+      "name": "core.position_monitor",
+      "file_path": "core\\position_monitor.py",
+      "imports": [
+        "time",
+        "threading"
+      ],
+      "imported_by": [],
+      "classes": [
+        "PositionMonitor"
+      ],
+      "functions": [
+        "__init__",
+        "start",
+        "stop",
+        "_loop"
+      ],
+      "lines_of_code": 70,
+      "docstring": "\ncore/position_monitor.py\nAtlas AI Automatic Position Monitor v1\n",
+      "has_main": false,
+      "complexity_score": 18.0
+    },
+    "core.profit_calculator": {
+      "name": "core.profit_calculator",
+      "file_path": "core\\profit_calculator.py",
+      "imports": [],
+      "imported_by": [],
+      "classes": [
+        "ProfitCalculator"
+      ],
+      "functions": [
+        "calculate"
+      ],
+      "lines_of_code": 26,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 7.6
+    },
+    "core.refactor_advisor": {
+      "name": "core.refactor_advisor",
+      "file_path": "core\\refactor_advisor.py",
+      "imports": [],
+      "imported_by": [
+        "test_patch_generator",
+        "test_refactor_advisor"
+      ],
+      "classes": [
+        "RefactorAdvisor"
+      ],
+      "functions": [
+        "advise"
+      ],
+      "lines_of_code": 50,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 10.0
+    },
+    "core.refactor_engine": {
+      "name": "core.refactor_engine",
+      "file_path": "core\\refactor_engine.py",
+      "imports": [
+        "__future__",
+        "ast",
+        "json",
+        "logging",
+        "os",
+        "datetime",
+        "pathlib"
+      ],
+      "imported_by": [
+        "core.atlas_brain"
+      ],
+      "classes": [
+        "RefactorEngine"
+      ],
+      "functions": [
+        "__init__",
+        "load_memory",
+        "save_memory",
+        "scan_project",
+        "analyze_file",
+        "generate_suggestions",
+        "report",
+        "print_report",
+        "export_report",
+        "run"
+      ],
+      "lines_of_code": 506,
+      "docstring": "\nAtlas Refactor Engine v2.0\n\nCode Quality & Refactoring Analyzer\n\nFeatures\n--------\n- Project scanning\n- AST analysis\n- Code metrics\n- Issue detection\n- Quality score\n- Suggestion generation\n- JSON me",
+      "has_main": false,
+      "complexity_score": 73.6
+    },
+    "core.research_integration": {
+      "name": "core.research_integration",
+      "file_path": "core\\research_integration.py",
+      "imports": [
+        "logging"
+      ],
+      "imported_by": [
+        "test_research_integration"
+      ],
+      "classes": [
+        "ResearchIntegration"
+      ],
+      "functions": [
+        "__init__",
+        "add_research_results",
+        "get_queue"
+      ],
+      "lines_of_code": 101,
+      "docstring": "\nAtlas Research Integration v7.0\n\nConnects research findings\nwith improvement system.\n",
+      "has_main": false,
+      "complexity_score": 19.1
+    },
+    "core.research_manager": {
+      "name": "core.research_manager",
+      "file_path": "core\\research_manager.py",
+      "imports": [
+        "logging"
+      ],
+      "imported_by": [
+        "test_research_integration",
+        "test_research_manager"
+      ],
+      "classes": [
+        "ResearchManager"
+      ],
+      "functions": [
+        "__init__",
+        "research"
+      ],
+      "lines_of_code": 74,
+      "docstring": "\nAtlas Research Manager v7.0\n\nCombines external research\nwith Atlas improvement system.\n",
+      "has_main": false,
+      "complexity_score": 14.4
+    },
+    "core.risk_manager": {
+      "name": "core.risk_manager",
+      "file_path": "core\\risk_manager.py",
+      "imports": [],
+      "imported_by": [
+        "core.atlas_brain",
+        "core.engine",
+        "core.trading_cycle"
+      ],
+      "classes": [
+        "RiskManager"
+      ],
+      "functions": [
+        "__init__",
+        "calculate"
+      ],
+      "lines_of_code": 257,
+      "docstring": "\nAtlas AI Risk Manager v4\n\nAdaptive Hedge Fund Capital Protection\n",
+      "has_main": false,
+      "complexity_score": 32.7
+    },
+    "core.self_improvement": {
+      "name": "core.self_improvement",
+      "file_path": "core\\self_improvement.py",
+      "imports": [
+        "logging"
+      ],
+      "imported_by": [
+        "core.atlas_brain"
+      ],
+      "classes": [
+        "SelfImprovement"
+      ],
+      "functions": [
+        "__init__",
+        "analyze_system",
+        "generate_suggestions",
+        "report"
+      ],
+      "lines_of_code": 265,
+      "docstring": "\nAtlas Self Improvement Core v1.0\n\nSelf Analysis\nPerformance Evaluation\nStrategy Improvement Suggestions\n",
+      "has_main": false,
+      "complexity_score": 37.5
+    },
+    "core.shared_context": {
+      "name": "core.shared_context",
+      "file_path": "core\\shared_context.py",
+      "imports": [
+        "dataclasses",
+        "typing"
+      ],
+      "imported_by": [],
+      "classes": [
+        "SharedContext"
+      ],
+      "functions": [
+        "reset"
+      ],
+      "lines_of_code": 103,
+      "docstring": "\nAtlas Shared Context\nProfessional Context Object\n",
+      "has_main": false,
+      "complexity_score": 15.3
+    },
+    "core.signal_fusion": {
+      "name": "core.signal_fusion",
+      "file_path": "core\\signal_fusion.py",
+      "imports": [],
+      "imported_by": [
+        "core.atlas_brain",
+        "core.trading_cycle"
+      ],
+      "classes": [
+        "SignalFusion"
+      ],
+      "functions": [
+        "fuse"
+      ],
+      "lines_of_code": 288,
+      "docstring": "\nAtlas AI Signal Fusion Engine v5.1\n\nHedge Fund Adaptive Multi Factor Decision Layer\n",
+      "has_main": false,
+      "complexity_score": 33.8
+    },
+    "core.strategy_brain": {
+      "name": "core.strategy_brain",
+      "file_path": "core\\strategy_brain.py",
+      "imports": [
+        "pandas"
+      ],
+      "imported_by": [
+        "core.engine"
+      ],
+      "classes": [
+        "StrategyBrain"
+      ],
+      "functions": [
+        "__init__",
+        "evaluate_all",
+        "_scalping_strategy",
+        "_momentum_strategy",
+        "_trend_following_strategy",
+        "_mean_reversion_strategy"
+      ],
+      "lines_of_code": 116,
+      "docstring": "\n    PROJECT ATLAS AI - Strategy Brain & Strateji Yarışması\n    Birden fazla trading stratejisini aynı anda analiz eder, \n    puanlar ve en yüksek performansı gösteren stratejiyi belirler.\n    ",
+      "has_main": false,
+      "complexity_score": 26.6
+    },
+    "core.strategy_competition": {
+      "name": "core.strategy_competition",
+      "file_path": "core\\strategy_competition.py",
+      "imports": [
+        "core.weight_optimizer"
+      ],
+      "imported_by": [
+        "core.atlas_brain",
+        "core.trading_cycle"
+      ],
+      "classes": [
+        "StrategyCompetition"
+      ],
+      "functions": [
+        "__init__",
+        "update_weights",
+        "run"
+      ],
+      "lines_of_code": 548,
+      "docstring": "\nAtlas AI v5.6\nAdaptive Strategy Competition Engine\n\nInstitutional Multi Strategy Voting System\n\nFeatures:\n- Trend Priority\n- RSI Timing Filter\n- ADX Confirmation\n- Volatility Awareness\n- Learning Wei",
+      "has_main": false,
+      "complexity_score": 63.800000000000004
+    },
+    "core.strategy_config": {
+      "name": "core.strategy_config",
+      "file_path": "core\\strategy_config.py",
+      "imports": [
+        "dataclasses",
+        "typing"
+      ],
+      "imported_by": [],
+      "classes": [
+        "StrategyParams",
+        "StrategyConfig"
+      ],
+      "functions": [
+        "get_params",
+        "get_all_strategies",
+        "get_weights",
+        "get_decision_thresholds"
+      ],
+      "lines_of_code": 55,
+      "docstring": "\ncore/strategy_config.py\n\nTüm strateji parametrelerini merkezi olarak yönetir.\nDöngüsel import hatası giderildi.\n",
+      "has_main": false,
+      "complexity_score": 19.5
+    },
+    "core.technical_analyzer": {
+      "name": "core.technical_analyzer",
+      "file_path": "core\\technical_analyzer.py",
+      "imports": [],
+      "imported_by": [
+        "core.atlas_brain",
+        "core.engine",
+        "core.trading_cycle"
+      ],
+      "classes": [
+        "TechnicalAnalyzer"
+      ],
+      "functions": [
+        "ema",
+        "rsi",
+        "adx",
+        "analyze"
+      ],
+      "lines_of_code": 84,
+      "docstring": "\ncore/technical_analyzer.py\nTeknik analiz (EMA, RSI, ADX) - Liste tabanlı (pandas gerektirmez)\n",
+      "has_main": false,
+      "complexity_score": 19.4
+    },
+    "core.trade_lifecycle": {
+      "name": "core.trade_lifecycle",
+      "file_path": "core\\trade_lifecycle.py",
+      "imports": [
+        "time"
+      ],
+      "imported_by": [],
+      "classes": [
+        "TradeLifecycle"
+      ],
+      "functions": [
+        "__init__",
+        "calculate_profit",
+        "check_positions"
+      ],
+      "lines_of_code": 267,
+      "docstring": "\nAtlas AI Trade Lifecycle v4.2\nAdvanced Position Monitoring\nSL / TP / Learning Connector\n",
+      "has_main": false,
+      "complexity_score": 35.7
+    },
+    "core.trade_memory": {
+      "name": "core.trade_memory",
+      "file_path": "core\\trade_memory.py",
+      "imports": [
+        "json",
+        "os",
+        "logging"
+      ],
+      "imported_by": [
+        "core.atlas_brain"
+      ],
+      "classes": [
+        "TradeMemory"
+      ],
+      "functions": [
+        "__init__",
+        "load",
+        "save",
+        "record_analysis",
+        "record_decision",
+        "record_outcome",
+        "get_recent"
+      ],
+      "lines_of_code": 197,
+      "docstring": "\nAtlas AI Trade Memory v6.2\nDecision + Outcome Memory System\n",
+      "has_main": false,
+      "complexity_score": 36.7
+    },
+    "core.trade_tracker": {
+      "name": "core.trade_tracker",
+      "file_path": "core\\trade_tracker.py",
+      "imports": [
+        "json",
+        "os",
+        "logging",
+        "datetime"
+      ],
+      "imported_by": [
+        "core.atlas_brain"
+      ],
+      "classes": [
+        "TradeTracker"
+      ],
+      "functions": [
+        "__init__",
+        "load",
+        "save",
+        "open_trade",
+        "get_open_trades",
+        "calculate_profit",
+        "close_trade"
+      ],
+      "lines_of_code": 278,
+      "docstring": "\nAtlas AI Trade Tracker v6.0\n\nProfessional Trade Outcome System\n\nOpen Trade\nClose Trade\nProfit Calculation\nLearning Feedback\n",
+      "has_main": false,
+      "complexity_score": 44.8
+    },
+    "core.trading_cycle": {
+      "name": "core.trading_cycle",
+      "file_path": "core\\trading_cycle.py",
+      "imports": [
+        "logging",
+        "core.data_provider",
+        "core.technical_analyzer",
+        "core.market_intelligence",
+        "core.signal_fusion",
+        "core.strategy_competition",
+        "core.confidence_engine",
+        "core.decision_engine",
+        "core.capital_allocator",
+        "core.executor",
+        "core.risk_manager",
+        "core.auto_manager"
+      ],
+      "imported_by": [],
+      "classes": [
+        "TradingCycle"
+      ],
+      "functions": [
+        "__init__",
+        "run"
+      ],
+      "lines_of_code": 272,
+      "docstring": "\nAtlas AI Trading Cycle v4\n\nFull Decision Pipeline\nData -> Analysis -> Fusion -> Confidence -> Decision -> Risk -> Execution\n",
+      "has_main": false,
+      "complexity_score": 34.2
+    },
+    "core.trading_engine": {
+      "name": "core.trading_engine",
+      "file_path": "core\\trading_engine.py",
+      "imports": [
+        "datetime"
+      ],
+      "imported_by": [],
+      "classes": [
+        "TradingEngine"
+      ],
+      "functions": [
+        "__init__",
+        "decide",
+        "log_trade"
+      ],
+      "lines_of_code": 78,
+      "docstring": "\ncore/trading_engine.py\nAtlas AI Decision Engine\n",
+      "has_main": false,
+      "complexity_score": 16.8
+    },
+    "core.upgrade_advisor": {
+      "name": "core.upgrade_advisor",
+      "file_path": "core\\upgrade_advisor.py",
+      "imports": [
+        "logging"
+      ],
+      "imported_by": [
+        "test_research_integration",
+        "test_research_manager",
+        "test_upgrade_advisor"
+      ],
+      "classes": [
+        "UpgradeAdvisor"
+      ],
+      "functions": [
+        "__init__",
+        "generate"
+      ],
+      "lines_of_code": 106,
+      "docstring": "\nAtlas Upgrade Advisor v7.0\n\nConverts research findings\ninto upgrade proposals.\n",
+      "has_main": false,
+      "complexity_score": 17.6
+    },
+    "core.upgrade_approval": {
+      "name": "core.upgrade_approval",
+      "file_path": "core\\upgrade_approval.py",
+      "imports": [
+        "logging"
+      ],
+      "imported_by": [],
+      "classes": [
+        "UpgradeApproval"
+      ],
+      "functions": [
+        "__init__",
+        "request"
+      ],
+      "lines_of_code": 112,
+      "docstring": "\nAtlas Upgrade Approval v6.7\n\nUser controlled upgrade permission system\n",
+      "has_main": false,
+      "complexity_score": 18.200000000000003
+    },
+    "core.upgrade_executor": {
+      "name": "core.upgrade_executor",
+      "file_path": "core\\upgrade_executor.py",
+      "imports": [
+        "logging"
+      ],
+      "imported_by": [],
+      "classes": [
+        "UpgradeExecutor"
+      ],
+      "functions": [
+        "__init__",
+        "execute"
+      ],
+      "lines_of_code": 57,
+      "docstring": "\nAtlas Upgrade Executor v6.7\n\nExecutes approved AI upgrades.\n",
+      "has_main": false,
+      "complexity_score": 12.7
+    },
+    "core.upgrade_manager": {
+      "name": "core.upgrade_manager",
+      "file_path": "core\\upgrade_manager.py",
+      "imports": [
+        "logging"
+      ],
+      "imported_by": [
+        "core.atlas_brain"
+      ],
+      "classes": [
+        "UpgradeManager"
+      ],
+      "functions": [
+        "__init__",
+        "request_upgrade",
+        "approve"
+      ],
+      "lines_of_code": 123,
+      "docstring": "\nAtlas Upgrade Manager v6.6\n\nControls AI improvement approvals.\n\nFunctions:\n- Receive upgrade proposals\n- Ask user approval\n- Apply approved upgrades\n- Track results\n",
+      "has_main": false,
+      "complexity_score": 21.3
+    },
+    "core.version_memory": {
+      "name": "core.version_memory",
+      "file_path": "core\\version_memory.py",
+      "imports": [
+        "json",
+        "os",
+        "logging",
+        "datetime"
+      ],
+      "imported_by": [
+        "test_version_memory",
+        "core.atlas_brain"
+      ],
+      "classes": [
+        "VersionMemory"
+      ],
+      "functions": [
+        "__init__",
+        "load",
+        "save",
+        "add_upgrade",
+        "complete_upgrade",
+        "last_upgrade",
+        "statistics"
+      ],
+      "lines_of_code": 294,
+      "docstring": "\nAtlas Version Memory v6.6\n\nSelf Improvement History System\n\nTracks:\n- Upgrade history\n- Version changes\n- Performance comparison\n- Success / Failure memory\n",
+      "has_main": false,
+      "complexity_score": 46.400000000000006
+    },
+    "core.weight_optimizer": {
+      "name": "core.weight_optimizer",
+      "file_path": "core\\weight_optimizer.py",
+      "imports": [],
+      "imported_by": [
+        "core.strategy_competition"
+      ],
+      "classes": [
+        "WeightOptimizer"
+      ],
+      "functions": [
+        "__init__",
+        "optimize"
+      ],
+      "lines_of_code": 116,
+      "docstring": "\nAtlas AI v4.7\nStrategy Weight Optimizer\n\nAdaptive strategy performance based weighting\n",
+      "has_main": false,
+      "complexity_score": 18.6
+    },
+    "core.__init__": {
+      "name": "core.__init__",
+      "file_path": "core\\__init__.py",
+      "imports": [],
+      "imported_by": [],
+      "classes": [],
+      "functions": [],
+      "lines_of_code": 7,
+      "docstring": "\nAtlas AI Core Package\n\nCentral module package initializer.\n",
+      "has_main": false,
+      "complexity_score": 0.7000000000000001
+    },
+    "dashboard.dashboard": {
+      "name": "dashboard.dashboard",
+      "file_path": "dashboard\\dashboard.py",
+      "imports": [
+        "json",
+        "os"
+      ],
+      "imported_by": [
+        "core.main"
+      ],
+      "classes": [
+        "Dashboard"
+      ],
+      "functions": [
+        "__init__",
+        "show"
+      ],
+      "lines_of_code": 78,
+      "docstring": "\n    PROJECT ATLAS AI - Canlı Terminal Dashboard Modülü\n    Yapay zekânın performans verilerini, kâr/zarar durumunu ve aktif istatistiklerini raporlar.\n    ",
+      "has_main": false,
+      "complexity_score": 14.8
+    },
+    "dashboard.portfolio_dashboard": {
+      "name": "dashboard.portfolio_dashboard",
+      "file_path": "dashboard\\portfolio_dashboard.py",
+      "imports": [],
+      "imported_by": [],
+      "classes": [
+        "PortfolioDashboard"
+      ],
+      "functions": [
+        "__init__",
+        "show",
+        "position"
+      ],
+      "lines_of_code": 84,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 17.4
+    },
+    "data.binance_provider": {
+      "name": "data.binance_provider",
+      "file_path": "data\\binance_provider.py",
+      "imports": [
+        "binance.client"
+      ],
+      "imported_by": [
+        "data.live_provider",
+        "data.price_monitor"
+      ],
+      "classes": [
+        "BinanceProvider"
+      ],
+      "functions": [
+        "__init__",
+        "get_price",
+        "get_candles"
+      ],
+      "lines_of_code": 49,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 13.9
+    },
+    "data.candle_data": {
+      "name": "data.candle_data",
+      "file_path": "data\\candle_data.py",
+      "imports": [
+        "random"
+      ],
+      "imported_by": [],
+      "classes": [
+        "CandleData"
+      ],
+      "functions": [
+        "generate_candle"
+      ],
+      "lines_of_code": 53,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 10.3
+    },
+    "data.data_provider": {
+      "name": "data.data_provider",
+      "file_path": "data\\data_provider.py",
+      "imports": [
+        "exchange.exchange_adapter"
+      ],
+      "imported_by": [
+        "backtest.backtest_engine",
+        "data.market_scanner",
+        "database.engine"
+      ],
+      "classes": [
+        "DataProvider"
+      ],
+      "functions": [
+        "__init__",
+        "get_market_data"
+      ],
+      "lines_of_code": 37,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 10.7
+    },
+    "data.live_provider": {
+      "name": "data.live_provider",
+      "file_path": "data\\live_provider.py",
+      "imports": [
+        "data.binance_provider"
+      ],
+      "imported_by": [],
+      "classes": [
+        "LiveProvider"
+      ],
+      "functions": [
+        "__init__",
+        "get_candles"
+      ],
+      "lines_of_code": 21,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 9.1
+    },
+    "data.market": {
+      "name": "data.market",
+      "file_path": "data\\market.py",
+      "imports": [
+        "random"
+      ],
+      "imported_by": [],
+      "classes": [
+        "MarketData"
+      ],
+      "functions": [
+        "__init__",
+        "get_prices"
+      ],
+      "lines_of_code": 51,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 12.100000000000001
+    },
+    "data.market_data": {
+      "name": "data.market_data",
+      "file_path": "data\\market_data.py",
+      "imports": [
+        "random",
+        "time"
+      ],
+      "imported_by": [],
+      "classes": [
+        "MarketData"
+      ],
+      "functions": [
+        "__init__",
+        "get_price"
+      ],
+      "lines_of_code": 21,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 9.1
+    },
+    "data.market_scanner": {
+      "name": "data.market_scanner",
+      "file_path": "data\\market_scanner.py",
+      "imports": [
+        "data.data_provider",
+        "strategy.scalper",
+        "analysis.technical_analyzer"
+      ],
+      "imported_by": [],
+      "classes": [
+        "MarketScanner"
+      ],
+      "functions": [
+        "__init__",
+        "calculate_score",
+        "scan"
+      ],
+      "lines_of_code": 142,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 23.200000000000003
+    },
+    "data.price_monitor": {
+      "name": "data.price_monitor",
+      "file_path": "data\\price_monitor.py",
+      "imports": [
+        "data.binance_provider"
+      ],
+      "imported_by": [],
+      "classes": [
+        "PriceMonitor"
+      ],
+      "functions": [
+        "__init__",
+        "get_price"
+      ],
+      "lines_of_code": 31,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 10.1
+    },
+    "database.engine": {
+      "name": "database.engine",
+      "file_path": "database\\engine.py",
+      "imports": [
+        "strategy.scalper",
+        "ai.decision_engine",
+        "ai.atlas_brain",
+        "risk.risk_manager",
+        "simulation.simulator",
+        "database.trade_history",
+        "data.data_provider"
+      ],
+      "imported_by": [],
+      "classes": [
+        "AtlasEngine"
+      ],
+      "functions": [
+        "__init__",
+        "start"
+      ],
+      "lines_of_code": 207,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 27.700000000000003
+    },
+    "database.learning_engine": {
+      "name": "database.learning_engine",
+      "file_path": "database\\learning_engine.py",
+      "imports": [
+        "json"
+      ],
+      "imported_by": [],
+      "classes": [
+        "LearningEngine"
+      ],
+      "functions": [
+        "__init__",
+        "learn"
+      ],
+      "lines_of_code": 152,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 22.200000000000003
+    },
+    "database.market_history": {
+      "name": "database.market_history",
+      "file_path": "database\\market_history.py",
+      "imports": [
+        "json",
+        "os",
+        "datetime"
+      ],
+      "imported_by": [],
+      "classes": [
+        "MarketHistory"
+      ],
+      "functions": [
+        "__init__",
+        "save_candle",
+        "get_history"
+      ],
+      "lines_of_code": 40,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 13.0
+    },
+    "database.trade_history": {
+      "name": "database.trade_history",
+      "file_path": "database\\trade_history.py",
+      "imports": [
+        "json",
+        "os",
+        "datetime"
+      ],
+      "imported_by": [
+        "database.engine"
+      ],
+      "classes": [
+        "TradeHistory"
+      ],
+      "functions": [
+        "__init__",
+        "save",
+        "get_all"
+      ],
+      "lines_of_code": 79,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 16.9
+    },
+    "events.base_event": {
+      "name": "events.base_event",
+      "file_path": "events\\base_event.py",
+      "imports": [
+        "datetime"
+      ],
+      "imported_by": [
+        "test_event",
+        "test_event",
+        "events.market_events",
+        "events.trade_events"
+      ],
+      "classes": [
+        "BaseEvent"
+      ],
+      "functions": [
+        "__init__",
+        "info"
+      ],
+      "lines_of_code": 30,
+      "docstring": "\nAtlas AI Event System\nBase Event Definition\n",
+      "has_main": false,
+      "complexity_score": 10.0
+    },
+    "events.event_bus": {
+      "name": "events.event_bus",
+      "file_path": "events\\event_bus.py",
+      "imports": [
+        "logging"
+      ],
+      "imported_by": [
+        "test_event",
+        "test_event",
+        "events.__init__"
+      ],
+      "classes": [
+        "EventBus"
+      ],
+      "functions": [
+        "__init__",
+        "subscribe",
+        "publish"
+      ],
+      "lines_of_code": 64,
+      "docstring": "\nAtlas AI Event Bus\n\nCentral communication layer.\n",
+      "has_main": false,
+      "complexity_score": 15.4
+    },
+    "events.market_events": {
+      "name": "events.market_events",
+      "file_path": "events\\market_events.py",
+      "imports": [
+        "events.base_event"
+      ],
+      "imported_by": [
+        "test_event",
+        "test_event",
+        "events.__init__"
+      ],
+      "classes": [
+        "MarketUpdateEvent"
+      ],
+      "functions": [
+        "__init__",
+        "info"
+      ],
+      "lines_of_code": 46,
+      "docstring": "\nMarket Events\n",
+      "has_main": false,
+      "complexity_score": 11.600000000000001
+    },
+    "events.trade_events": {
+      "name": "events.trade_events",
+      "file_path": "events\\trade_events.py",
+      "imports": [
+        "events.base_event"
+      ],
+      "imported_by": [
+        "test_event",
+        "test_event",
+        "events.__init__"
+      ],
+      "classes": [
+        "TradeExecutedEvent"
+      ],
+      "functions": [
+        "__init__"
+      ],
+      "lines_of_code": 32,
+      "docstring": "\nTrade Events\n",
+      "has_main": false,
+      "complexity_score": 8.2
+    },
+    "events.__init__": {
+      "name": "events.__init__",
+      "file_path": "events\\__init__.py",
+      "imports": [
+        "events.event_bus",
+        "events.market_events",
+        "events.trade_events"
+      ],
+      "imported_by": [
+        "test_event",
+        "test_event"
+      ],
+      "classes": [],
+      "functions": [],
+      "lines_of_code": 5,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 0.5
+    },
+    "exchange.exchange_adapter": {
+      "name": "exchange.exchange_adapter",
+      "file_path": "exchange\\exchange_adapter.py",
+      "imports": [
+        "ccxt",
+        "pandas",
+        "time",
+        "typing",
+        "config.settings"
+      ],
+      "imported_by": [
+        "data.data_provider",
+        "intelligence.execution_engine"
+      ],
+      "classes": [
+        "ExchangeAdapter"
+      ],
+      "functions": [
+        "__init__",
+        "_load_markets",
+        "get_price",
+        "get_ohlcv",
+        "_validate_ohlcv",
+        "get_all_symbols",
+        "get_top_volume_coins",
+        "get_balance",
+        "test_connection"
+      ],
+      "lines_of_code": 316,
+      "docstring": "\nAtlas AI v4.3 — Borsa Bağlantı Adaptörü\n=======================================\nPublic API kullanarak Binance verisi çeker.\nŞu an sadece OKUMA, yazma yok (API key yok).\n",
+      "has_main": false,
+      "complexity_score": 52.6
+    },
+    "execution.execution_manager": {
+      "name": "execution.execution_manager",
+      "file_path": "execution\\execution_manager.py",
+      "imports": [
+        "config.settings",
+        "trading.paper_trader"
+      ],
+      "imported_by": [],
+      "classes": [
+        "ExecutionManager"
+      ],
+      "functions": [
+        "__init__",
+        "execute",
+        "get_positions"
+      ],
+      "lines_of_code": 107,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 19.700000000000003
+    },
+    "exit.smart_exit": {
+      "name": "exit.smart_exit",
+      "file_path": "exit\\smart_exit.py",
+      "imports": [],
+      "imported_by": [],
+      "classes": [
+        "SmartExit"
+      ],
+      "functions": [
+        "__init__",
+        "check_exit"
+      ],
+      "lines_of_code": 137,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 20.700000000000003
+    },
+    "intelligence.decision_engine": {
+      "name": "intelligence.decision_engine",
+      "file_path": "intelligence\\decision_engine.py",
+      "imports": [],
+      "imported_by": [],
+      "classes": [
+        "DecisionEngine"
+      ],
+      "functions": [
+        "__init__",
+        "decide"
+      ],
+      "lines_of_code": 179,
+      "docstring": "\nAtlas AI Decision Engine v10\n\nAdaptive Hedge Fund Decision Layer\n",
+      "has_main": false,
+      "complexity_score": 24.900000000000002
+    },
+    "intelligence.decision_logger": {
+      "name": "intelligence.decision_logger",
+      "file_path": "intelligence\\decision_logger.py",
+      "imports": [
+        "json",
+        "os",
+        "datetime"
+      ],
+      "imported_by": [],
+      "classes": [
+        "DecisionLogger"
+      ],
+      "functions": [
+        "__init__",
+        "save",
+        "history"
+      ],
+      "lines_of_code": 107,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 19.700000000000003
+    },
+    "intelligence.execution_engine": {
+      "name": "intelligence.execution_engine",
+      "file_path": "intelligence\\execution_engine.py",
+      "imports": [
+        "exchange.exchange_adapter"
+      ],
+      "imported_by": [],
+      "classes": [
+        "ExecutionEngine"
+      ],
+      "functions": [
+        "__init__",
+        "execute"
+      ],
+      "lines_of_code": 67,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 13.7
+    },
+    "intelligence.learning_memory": {
+      "name": "intelligence.learning_memory",
+      "file_path": "intelligence\\learning_memory.py",
+      "imports": [
+        "json",
+        "os",
+        "datetime"
+      ],
+      "imported_by": [
+        "intelligence.memory_analyzer"
+      ],
+      "classes": [
+        "LearningMemory"
+      ],
+      "functions": [
+        "__init__",
+        "save_trade",
+        "update_trade_result",
+        "get_history",
+        "statistics"
+      ],
+      "lines_of_code": 235,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 36.5
+    },
+    "intelligence.market_score": {
+      "name": "intelligence.market_score",
+      "file_path": "intelligence\\market_score.py",
+      "imports": [
+        "intelligence.market.market_intelligence"
+      ],
+      "imported_by": [],
+      "classes": [
+        "MarketScore"
+      ],
+      "functions": [
+        "__init__",
+        "calculate"
+      ],
+      "lines_of_code": 151,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 22.1
+    },
+    "intelligence.memory_analyzer": {
+      "name": "intelligence.memory_analyzer",
+      "file_path": "intelligence\\memory_analyzer.py",
+      "imports": [
+        "intelligence.learning_memory"
+      ],
+      "imported_by": [],
+      "classes": [
+        "MemoryAnalyzer"
+      ],
+      "functions": [
+        "__init__",
+        "analyze_coin",
+        "decision_score"
+      ],
+      "lines_of_code": 142,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 23.200000000000003
+    },
+    "intelligence.strategy_brain": {
+      "name": "intelligence.strategy_brain",
+      "file_path": "intelligence\\strategy_brain.py",
+      "imports": [
+        "intelligence.strategy_memory",
+        "analytics.ai_performance"
+      ],
+      "imported_by": [],
+      "classes": [
+        "StrategyBrain"
+      ],
+      "functions": [
+        "__init__",
+        "choose_strategy"
+      ],
+      "lines_of_code": 196,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 26.6
+    },
+    "intelligence.strategy_memory": {
+      "name": "intelligence.strategy_memory",
+      "file_path": "intelligence\\strategy_memory.py",
+      "imports": [
+        "json",
+        "os"
+      ],
+      "imported_by": [
+        "intelligence.strategy_brain"
+      ],
+      "classes": [
+        "StrategyMemory"
+      ],
+      "functions": [
+        "__init__",
+        "create",
+        "load",
+        "update",
+        "performance"
+      ],
+      "lines_of_code": 100,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 23.0
+    },
+    "intelligence.volatility_manager": {
+      "name": "intelligence.volatility_manager",
+      "file_path": "intelligence\\volatility_manager.py",
+      "imports": [],
+      "imported_by": [],
+      "classes": [
+        "VolatilityManager"
+      ],
+      "functions": [
+        "__init__",
+        "calculate_risk"
+      ],
+      "lines_of_code": 100,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 17.0
+    },
+    "learning.adaptive_engine": {
+      "name": "learning.adaptive_engine",
+      "file_path": "learning\\adaptive_engine.py",
+      "imports": [
+        "json",
+        "os"
+      ],
+      "imported_by": [],
+      "classes": [
+        "AdaptiveEngine"
+      ],
+      "functions": [
+        "__init__",
+        "load_trades",
+        "learn"
+      ],
+      "lines_of_code": 174,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 26.400000000000002
+    },
+    "learning.adaptive_learning": {
+      "name": "learning.adaptive_learning",
+      "file_path": "learning\\adaptive_learning.py",
+      "imports": [
+        "json"
+      ],
+      "imported_by": [],
+      "classes": [
+        "AdaptiveLearning"
+      ],
+      "functions": [
+        "__init__",
+        "learn"
+      ],
+      "lines_of_code": 204,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 27.400000000000002
+    },
+    "learning.atlas_brain": {
+      "name": "learning.atlas_brain",
+      "file_path": "learning\\atlas_brain.py",
+      "imports": [
+        "learning.model_memory",
+        "learning.learning_engine"
+      ],
+      "imported_by": [],
+      "classes": [
+        "AtlasBrain"
+      ],
+      "functions": [
+        "__init__",
+        "think"
+      ],
+      "lines_of_code": 154,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 22.4
+    },
+    "learning.learner": {
+      "name": "learning.learner",
+      "file_path": "learning\\learner.py",
+      "imports": [
+        "json"
+      ],
+      "imported_by": [],
+      "classes": [
+        "Learner"
+      ],
+      "functions": [
+        "__init__",
+        "analyze_history"
+      ],
+      "lines_of_code": 82,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 15.200000000000001
+    },
+    "learning.learning_engine": {
+      "name": "learning.learning_engine",
+      "file_path": "learning\\learning_engine.py",
+      "imports": [
+        "json",
+        "os",
+        "datetime"
+      ],
+      "imported_by": [
+        "ai.atlas_brain",
+        "learning.atlas_brain"
+      ],
+      "classes": [
+        "LearningEngine"
+      ],
+      "functions": [
+        "__init__",
+        "load",
+        "save",
+        "update_trade",
+        "get_learning_score",
+        "learning_message",
+        "get_brain"
+      ],
+      "lines_of_code": 331,
+      "docstring": "\nAtlas AI Learning Engine v4\nAdaptive Trading Memory System\n",
+      "has_main": false,
+      "complexity_score": 50.1
+    },
+    "learning.model_memory": {
+      "name": "learning.model_memory",
+      "file_path": "learning\\model_memory.py",
+      "imports": [
+        "json",
+        "os"
+      ],
+      "imported_by": [
+        "ai.atlas_brain",
+        "learning.atlas_brain"
+      ],
+      "classes": [
+        "ModelMemory"
+      ],
+      "functions": [
+        "__init__",
+        "add_trade",
+        "get_memory"
+      ],
+      "lines_of_code": 66,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 15.600000000000001
+    },
+    "learning.performance_analyzer": {
+      "name": "learning.performance_analyzer",
+      "file_path": "learning\\performance_analyzer.py",
+      "imports": [],
+      "imported_by": [],
+      "classes": [
+        "PerformanceAnalyzer"
+      ],
+      "functions": [
+        "__init__",
+        "analyze"
+      ],
+      "lines_of_code": 118,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 18.8
+    },
+    "logs.trade_logger": {
+      "name": "logs.trade_logger",
+      "file_path": "logs\\trade_logger.py",
+      "imports": [
+        "json",
+        "os"
+      ],
+      "imported_by": [],
+      "classes": [
+        "TradeLogger"
+      ],
+      "functions": [
+        "__init__",
+        "log_trade",
+        "update_trade_result",
+        "history",
+        "statistics"
+      ],
+      "lines_of_code": 170,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 30.0
+    },
+    "portfolio.capital_manager": {
+      "name": "portfolio.capital_manager",
+      "file_path": "portfolio\\capital_manager.py",
+      "imports": [],
+      "imported_by": [
+        "portfolio.portfolio_manager"
+      ],
+      "classes": [],
+      "functions": [],
+      "lines_of_code": 625,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 62.5
+    },
+    "portfolio.portfolio_manager": {
+      "name": "portfolio.portfolio_manager",
+      "file_path": "portfolio\\portfolio_manager.py",
+      "imports": [
+        "core.database",
+        "portfolio.capital_manager"
+      ],
+      "imported_by": [
+        "core.paper_trader"
+      ],
+      "classes": [
+        "PortfolioManager"
+      ],
+      "functions": [
+        "__init__",
+        "load_positions",
+        "calculate_position_size",
+        "add_position",
+        "remove_position",
+        "close_trade",
+        "has_position",
+        "get_position",
+        "get_open_positions",
+        "performance",
+        "report",
+        "reset",
+        "__len__",
+        "__repr__"
+      ],
+      "lines_of_code": 291,
+      "docstring": "\nAtlas AI Portfolio Manager v6.0\nProfessional Portfolio Management\n",
+      "has_main": false,
+      "complexity_score": 60.1
+    },
+    "position.position_manager": {
+      "name": "position.position_manager",
+      "file_path": "position\\position_manager.py",
+      "imports": [],
+      "imported_by": [
+        "trading.paper_trader"
+      ],
+      "classes": [
+        "PositionManager"
+      ],
+      "functions": [
+        "__init__",
+        "open_position",
+        "check_position",
+        "close_position",
+        "get_open_positions"
+      ],
+      "lines_of_code": 150,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 28.0
+    },
+    "quality.trade_filter": {
+      "name": "quality.trade_filter",
+      "file_path": "quality\\trade_filter.py",
+      "imports": [],
+      "imported_by": [],
+      "classes": [
+        "TradeQualityFilter"
+      ],
+      "functions": [
+        "__init__",
+        "evaluate"
+      ],
+      "lines_of_code": 140,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 21.0
+    },
+    "risk.capital_manager": {
+      "name": "risk.capital_manager",
+      "file_path": "risk\\capital_manager.py",
+      "imports": [
+        "typing",
+        "risk.position_manager"
+      ],
+      "imported_by": [],
+      "classes": [
+        "CapitalManager"
+      ],
+      "functions": [
+        "__init__",
+        "available_capital",
+        "open_trade",
+        "close_trade",
+        "portfolio_value",
+        "report"
+      ],
+      "lines_of_code": 301,
+      "docstring": "\nAtlas AI v5.0\nCapital Manager\n\nGörevler:\n- Sermaye yönetimi\n- Kullanılabilir bakiye\n- PnL takibi\n- PositionManager bağlantısı\n- Risk kontrolü\n",
+      "has_main": false,
+      "complexity_score": 45.1
+    },
+    "risk.position": {
+      "name": "risk.position",
+      "file_path": "risk\\position.py",
+      "imports": [
+        "dataclasses",
+        "typing"
+      ],
+      "imported_by": [
+        "risk.position_manager"
+      ],
+      "classes": [
+        "Position"
+      ],
+      "functions": [
+        "__post_init__",
+        "_initialize_stop",
+        "update_price",
+        "check_stop",
+        "calculate_pnl",
+        "partial_close",
+        "is_closed",
+        "to_dict"
+      ],
+      "lines_of_code": 276,
+      "docstring": "\nAtlas AI v5.0\nPosition Engine\n\nGörevler:\n- LONG / SHORT pozisyon yönetimi\n- Dynamic stop\n- Trailing stop\n- Partial close\n- PnL hesaplama\n",
+      "has_main": false,
+      "complexity_score": 46.6
+    },
+    "risk.position_manager": {
+      "name": "risk.position_manager",
+      "file_path": "risk\\position_manager.py",
+      "imports": [
+        "typing",
+        "risk.position"
+      ],
+      "imported_by": [
+        "risk.capital_manager"
+      ],
+      "classes": [
+        "PositionManager"
+      ],
+      "functions": [
+        "__init__",
+        "create_position",
+        "close_position",
+        "partial_close",
+        "update_prices",
+        "get_positions"
+      ],
+      "lines_of_code": 184,
+      "docstring": "\nAtlas AI v5.0\nPosition Manager\n\nGörevler:\n- Pozisyon kayıtları\n- Açma / kapama\n- Stop kontrolü\n- Partial close yönetimi\n",
+      "has_main": false,
+      "complexity_score": 33.400000000000006
+    },
+    "risk.position_sizer": {
+      "name": "risk.position_sizer",
+      "file_path": "risk\\position_sizer.py",
+      "imports": [],
+      "imported_by": [],
+      "classes": [
+        "PositionSizer"
+      ],
+      "functions": [
+        "calculate"
+      ],
+      "lines_of_code": 35,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 8.5
+    },
+    "risk.risk_manager": {
+      "name": "risk.risk_manager",
+      "file_path": "risk\\risk_manager.py",
+      "imports": [],
+      "imported_by": [
+        "database.engine"
+      ],
+      "classes": [
+        "RiskManager"
+      ],
+      "functions": [
+        "__init__",
+        "calculate_position",
+        "check_trade",
+        "calculate",
+        "get_trade_info"
+      ],
+      "lines_of_code": 85,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 21.5
+    },
+    "risk.risk_planner": {
+      "name": "risk.risk_planner",
+      "file_path": "risk\\risk_planner.py",
+      "imports": [],
+      "imported_by": [],
+      "classes": [
+        "RiskPlanner"
+      ],
+      "functions": [
+        "create"
+      ],
+      "lines_of_code": 28,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 7.800000000000001
+    },
+    "risk.trade_rules": {
+      "name": "risk.trade_rules",
+      "file_path": "risk\\trade_rules.py",
+      "imports": [],
+      "imported_by": [],
+      "classes": [
+        "TradeRules"
+      ],
+      "functions": [
+        "__init__",
+        "calculate_levels",
+        "check_exit"
+      ],
+      "lines_of_code": 69,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 15.9
+    },
+    "scalping.scalp_manager": {
+      "name": "scalping.scalp_manager",
+      "file_path": "scalping\\scalp_manager.py",
+      "imports": [],
+      "imported_by": [],
+      "classes": [
+        "ScalpManager"
+      ],
+      "functions": [
+        "__init__",
+        "calculate_targets",
+        "should_trade"
+      ],
+      "lines_of_code": 66,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 15.600000000000001
+    },
+    "signals.base_signal": {
+      "name": "signals.base_signal",
+      "file_path": "signals\\base_signal.py",
+      "imports": [
+        "abc"
+      ],
+      "imported_by": [
+        "signals.market.market_signal",
+        "signals.risk.risk_signal",
+        "signals.technical.technical_signal"
+      ],
+      "classes": [
+        "BaseSignal"
+      ],
+      "functions": [
+        "__init__",
+        "generate",
+        "result"
+      ],
+      "lines_of_code": 40,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 13.0
+    },
+    "simulation.ai_simulator": {
+      "name": "simulation.ai_simulator",
+      "file_path": "simulation\\ai_simulator.py",
+      "imports": [
+        "analytics.ai_performance",
+        "random"
+      ],
+      "imported_by": [
+        "simulation.run_simulation"
+      ],
+      "classes": [
+        "AISimulator"
+      ],
+      "functions": [
+        "__init__",
+        "simulate"
+      ],
+      "lines_of_code": 127,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 19.700000000000003
+    },
+    "simulation.run_simulation": {
+      "name": "simulation.run_simulation",
+      "file_path": "simulation\\run_simulation.py",
+      "imports": [
+        "json",
+        "simulation.ai_simulator"
+      ],
+      "imported_by": [],
+      "classes": [],
+      "functions": [
+        "main"
+      ],
+      "lines_of_code": 98,
+      "docstring": "",
+      "has_main": true,
+      "complexity_score": 11.8
+    },
+    "simulation.simulator": {
+      "name": "simulation.simulator",
+      "file_path": "simulation\\simulator.py",
+      "imports": [],
+      "imported_by": [
+        "database.engine"
+      ],
+      "classes": [
+        "Simulator"
+      ],
+      "functions": [
+        "__init__",
+        "run"
+      ],
+      "lines_of_code": 72,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 14.2
+    },
+    "simulation.__init__": {
+      "name": "simulation.__init__",
+      "file_path": "simulation\\__init__.py",
+      "imports": [],
+      "imported_by": [],
+      "classes": [],
+      "functions": [],
+      "lines_of_code": 1,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 0.1
+    },
+    "strategy.optimizer": {
+      "name": "strategy.optimizer",
+      "file_path": "strategy\\optimizer.py",
+      "imports": [
+        "json"
+      ],
+      "imported_by": [],
+      "classes": [
+        "StrategyOptimizer"
+      ],
+      "functions": [
+        "__init__",
+        "analyze"
+      ],
+      "lines_of_code": 74,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 14.4
+    },
+    "strategy.scalper": {
+      "name": "strategy.scalper",
+      "file_path": "strategy\\scalper.py",
+      "imports": [],
+      "imported_by": [
+        "data.market_scanner",
+        "database.engine"
+      ],
+      "classes": [
+        "Scalper"
+      ],
+      "functions": [
+        "__init__",
+        "analyze"
+      ],
+      "lines_of_code": 65,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 13.5
+    },
+    "strategy.scalping": {
+      "name": "strategy.scalping",
+      "file_path": "strategy\\scalping.py",
+      "imports": [],
+      "imported_by": [],
+      "classes": [],
+      "functions": [],
+      "lines_of_code": 1,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 0.1
+    },
+    "strategy.strategy_engine": {
+      "name": "strategy.strategy_engine",
+      "file_path": "strategy\\strategy_engine.py",
+      "imports": [],
+      "imported_by": [],
+      "classes": [
+        "StrategyEngine"
+      ],
+      "functions": [
+        "__init__",
+        "evaluate"
+      ],
+      "lines_of_code": 90,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 16.0
+    },
+    "timeframe.multi_timeframe": {
+      "name": "timeframe.multi_timeframe",
+      "file_path": "timeframe\\multi_timeframe.py",
+      "imports": [],
+      "imported_by": [],
+      "classes": [
+        "MultiTimeframeAnalyzer"
+      ],
+      "functions": [
+        "__init__",
+        "analyze"
+      ],
+      "lines_of_code": 170,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 24.0
+    },
+    "trade.simulator": {
+      "name": "trade.simulator",
+      "file_path": "trade\\simulator.py",
+      "imports": [],
+      "imported_by": [
+        "backtest.backtest_engine"
+      ],
+      "classes": [
+        "TradeSimulator"
+      ],
+      "functions": [
+        "__init__",
+        "open_trade",
+        "close_trade"
+      ],
+      "lines_of_code": 61,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 15.100000000000001
+    },
+    "trading.auto_manager": {
+      "name": "trading.auto_manager",
+      "file_path": "trading\\auto_manager.py",
+      "imports": [],
+      "imported_by": [],
+      "classes": [
+        "AutoManager"
+      ],
+      "functions": [
+        "__init__",
+        "check"
+      ],
+      "lines_of_code": 105,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 17.5
+    },
+    "trading.paper_trader": {
+      "name": "trading.paper_trader",
+      "file_path": "trading\\paper_trader.py",
+      "imports": [
+        "position.position_manager"
+      ],
+      "imported_by": [
+        "execution.execution_manager"
+      ],
+      "classes": [
+        "PaperTrader"
+      ],
+      "functions": [
+        "__init__",
+        "buy",
+        "sell",
+        "monitor",
+        "check_positions",
+        "get_positions"
+      ],
+      "lines_of_code": 238,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 38.8
+    },
+    "signals.market.market_signal": {
+      "name": "signals.market.market_signal",
+      "file_path": "signals\\market\\market_signal.py",
+      "imports": [
+        "signals.base_signal"
+      ],
+      "imported_by": [],
+      "classes": [
+        "MarketSignal"
+      ],
+      "functions": [
+        "__init__",
+        "generate"
+      ],
+      "lines_of_code": 146,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 21.6
+    },
+    "signals.risk.risk_signal": {
+      "name": "signals.risk.risk_signal",
+      "file_path": "signals\\risk\\risk_signal.py",
+      "imports": [
+        "signals.base_signal"
+      ],
+      "imported_by": [],
+      "classes": [
+        "RiskSignal"
+      ],
+      "functions": [
+        "__init__",
+        "generate"
+      ],
+      "lines_of_code": 105,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 17.5
+    },
+    "signals.technical.technical_signal": {
+      "name": "signals.technical.technical_signal",
+      "file_path": "signals\\technical\\technical_signal.py",
+      "imports": [
+        "signals.base_signal"
+      ],
+      "imported_by": [],
+      "classes": [
+        "TechnicalSignal"
+      ],
+      "functions": [
+        "__init__",
+        "generate"
+      ],
+      "lines_of_code": 145,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 21.5
+    },
+    "intelligence.confidence.capital_allocator": {
+      "name": "intelligence.confidence.capital_allocator",
+      "file_path": "intelligence\\confidence\\capital_allocator.py",
+      "imports": [],
+      "imported_by": [],
+      "classes": [
+        "CapitalAllocator"
+      ],
+      "functions": [
+        "allocate"
+      ],
+      "lines_of_code": 35,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 8.5
+    },
+    "intelligence.confidence.confidence_engine": {
+      "name": "intelligence.confidence.confidence_engine",
+      "file_path": "intelligence\\confidence\\confidence_engine.py",
+      "imports": [],
+      "imported_by": [],
+      "classes": [
+        "ConfidenceEngine"
+      ],
+      "functions": [
+        "__init__",
+        "calculate"
+      ],
+      "lines_of_code": 208,
+      "docstring": "\nAtlas AI Confidence Engine v11\n\nAdaptive Market Confidence Intelligence\n",
+      "has_main": false,
+      "complexity_score": 27.8
+    },
+    "intelligence.confidence.position_sizer": {
+      "name": "intelligence.confidence.position_sizer",
+      "file_path": "intelligence\\confidence\\position_sizer.py",
+      "imports": [],
+      "imported_by": [],
+      "classes": [
+        "PositionSizer"
+      ],
+      "functions": [
+        "calculate"
+      ],
+      "lines_of_code": 27,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 7.7
+    },
+    "intelligence.market.breakout_analyzer": {
+      "name": "intelligence.market.breakout_analyzer",
+      "file_path": "intelligence\\market\\breakout_analyzer.py",
+      "imports": [],
+      "imported_by": [],
+      "classes": [
+        "BreakoutAnalyzer"
+      ],
+      "functions": [
+        "analyze"
+      ],
+      "lines_of_code": 56,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 10.600000000000001
+    },
+    "intelligence.market.market_intelligence": {
+      "name": "intelligence.market.market_intelligence",
+      "file_path": "intelligence\\market\\market_intelligence.py",
+      "imports": [
+        "intelligence.market.volume_analyzer",
+        "intelligence.market.order_flow_analyzer",
+        "intelligence.market.market_structure_analyzer",
+        "intelligence.market.support_resistance_analyzer"
+      ],
+      "imported_by": [
+        "intelligence.market_score"
+      ],
+      "classes": [
+        "MarketIntelligence"
+      ],
+      "functions": [
+        "__init__",
+        "analyze"
+      ],
+      "lines_of_code": 130,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 20.0
+    },
+    "intelligence.market.market_scoring_engine": {
+      "name": "intelligence.market.market_scoring_engine",
+      "file_path": "intelligence\\market\\market_scoring_engine.py",
+      "imports": [],
+      "imported_by": [],
+      "classes": [
+        "MarketScoringEngine"
+      ],
+      "functions": [
+        "calculate"
+      ],
+      "lines_of_code": 91,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 14.1
+    },
+    "intelligence.market.market_structure_analyzer": {
+      "name": "intelligence.market.market_structure_analyzer",
+      "file_path": "intelligence\\market\\market_structure_analyzer.py",
+      "imports": [],
+      "imported_by": [
+        "intelligence.market.market_intelligence"
+      ],
+      "classes": [
+        "MarketStructureAnalyzer"
+      ],
+      "functions": [
+        "__init__",
+        "analyze"
+      ],
+      "lines_of_code": 129,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 19.9
+    },
+    "intelligence.market.order_flow_analyzer": {
+      "name": "intelligence.market.order_flow_analyzer",
+      "file_path": "intelligence\\market\\order_flow_analyzer.py",
+      "imports": [],
+      "imported_by": [
+        "intelligence.market.market_intelligence"
+      ],
+      "classes": [
+        "OrderFlowAnalyzer"
+      ],
+      "functions": [
+        "__init__",
+        "analyze"
+      ],
+      "lines_of_code": 171,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 24.1
+    },
+    "intelligence.market.support_resistance_analyzer": {
+      "name": "intelligence.market.support_resistance_analyzer",
+      "file_path": "intelligence\\market\\support_resistance_analyzer.py",
+      "imports": [],
+      "imported_by": [
+        "intelligence.market.market_intelligence"
+      ],
+      "classes": [
+        "SupportResistanceAnalyzer"
+      ],
+      "functions": [
+        "analyze"
+      ],
+      "lines_of_code": 78,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 12.8
+    },
+    "intelligence.market.volatility_analyzer": {
+      "name": "intelligence.market.volatility_analyzer",
+      "file_path": "intelligence\\market\\volatility_analyzer.py",
+      "imports": [],
+      "imported_by": [],
+      "classes": [
+        "VolatilityAnalyzer"
+      ],
+      "functions": [
+        "analyze"
+      ],
+      "lines_of_code": 66,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 11.600000000000001
+    },
+    "intelligence.market.volume_analyzer": {
+      "name": "intelligence.market.volume_analyzer",
+      "file_path": "intelligence\\market\\volume_analyzer.py",
+      "imports": [],
+      "imported_by": [
+        "intelligence.market.market_intelligence"
+      ],
+      "classes": [
+        "VolumeAnalyzer"
+      ],
+      "functions": [
+        "__init__",
+        "analyze"
+      ],
+      "lines_of_code": 83,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 15.3
+    },
+    "intelligence.signals.signal_fusion": {
+      "name": "intelligence.signals.signal_fusion",
+      "file_path": "intelligence\\signals\\signal_fusion.py",
+      "imports": [],
+      "imported_by": [],
+      "classes": [
+        "SignalFusion"
+      ],
+      "functions": [
+        "__init__",
+        "combine"
+      ],
+      "lines_of_code": 132,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 20.200000000000003
+    },
+    "intelligence.strategy_competition.strategy_competition": {
+      "name": "intelligence.strategy_competition.strategy_competition",
+      "file_path": "intelligence\\strategy_competition\\strategy_competition.py",
+      "imports": [],
+      "imported_by": [],
+      "classes": [
+        "StrategyCompetition"
+      ],
+      "functions": [
+        "choose"
+      ],
+      "lines_of_code": 35,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 8.5
+    },
+    "core.strategies.bollingerrsi": {
+      "name": "core.strategies.bollingerrsi",
+      "file_path": "core\\strategies\\bollingerrsi.py",
+      "imports": [],
+      "imported_by": [],
+      "classes": [
+        "BollingerRSI"
+      ],
+      "functions": [
+        "__init__",
+        "generate_signals"
+      ],
+      "lines_of_code": 34,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 10.4
+    },
+    "ai.analytics.performance": {
+      "name": "ai.analytics.performance",
+      "file_path": "ai\\analytics\\performance.py",
+      "imports": [
+        "datetime"
+      ],
+      "imported_by": [],
+      "classes": [
+        "PerformanceCenter"
+      ],
+      "functions": [
+        "__init__",
+        "add_trade",
+        "report"
+      ],
+      "lines_of_code": 93,
+      "docstring": "",
+      "has_main": false,
+      "complexity_score": 18.3
+    }
+  },
+  "dependency_matrix": {
+    "check_project": [
+      "os",
+      "py_compile"
+    ],
+    "main": [
+      "logging",
+      "time",
+      "core.atlas_brain",
+      "core.paper_trader",
+      "core.database"
+    ],
+    "technical_analyzer": [],
+    "test_architecture_analyzer": [
+      "core.architecture_analyzer"
+    ],
+    "test_ast_parser": [
+      "core.ast_parser"
+    ],
+    "test_atlas_evolution": [
+      "core.atlas_brain"
+    ],
+    "test_codebase_indexer": [
+      "core.codebase_indexer"
+    ],
+    "test_code_analyzer": [
+      "core.github_scanner",
+      "core.code_analyzer"
+    ],
+    "test_dependency_graph": [
+      "core.dependency_graph"
+    ],
+    "test_event": [
+      "events",
+      "events"
+    ],
+    "test_evolution_engine": [
+      "core.atlas_brain"
+    ],
+    "test_experiment_manager": [
+      "core.atlas_brain"
+    ],
+    "test_github_scanner": [
+      "core.github_scanner"
+    ],
+    "test_improvement_planner": [
+      "core.atlas_brain"
+    ],
+    "test_patch_generator": [
+      "core.architecture_analyzer",
+      "core.refactor_advisor",
+      "core.patch_generator"
+    ],
+    "test_performance_feedback": [
+      "core.performance_feedback"
+    ],
+    "test_refactor_advisor": [
+      "core.architecture_analyzer",
+      "core.refactor_advisor"
+    ],
+    "test_research_integration": [
+      "core.github_scanner",
+      "core.code_analyzer",
+      "core.upgrade_advisor",
+      "core.research_manager",
+      "core.research_integration"
+    ],
+    "test_research_manager": [
+      "core.github_scanner",
+      "core.code_analyzer",
+      "core.upgrade_advisor",
+      "core.research_manager"
+    ],
+    "test_self_improvement": [
+      "core.atlas_brain"
+    ],
+    "test_upgrade_advisor": [
+      "core.github_scanner",
+      "core.code_analyzer",
+      "core.upgrade_advisor"
+    ],
+    "test_version_memory": [
+      "core.version_memory"
+    ],
+    "web_app": [
+      "logging",
+      "requests",
+      "fastapi",
+      "fastapi.responses",
+      "fastapi.templating",
+      "uvicorn",
+      "core.atlas_brain",
+      "core.database",
+      "core.paper_trader",
+      "core.backtest_engine",
+      "datetime"
+    ],
+    "ai.atlas_brain": [
+      "learning.model_memory",
+      "learning.learning_engine"
+    ],
+    "ai.decision_engine": [],
+    "ai.intelligent_score": [
+      "json",
+      "os"
+    ],
+    "ai.learning_brain": [
+      "json",
+      "os"
+    ],
+    "ai.performance_analyzer": [
+      "json"
+    ],
+    "ai.trade_analyzer": [
+      "json"
+    ],
+    "analysis.analyzer": [],
+    "analysis.performance": [
+      "json"
+    ],
+    "analysis.technical_analyzer": [
+      "pandas"
+    ],
+    "analytics.ai_performance": [
+      "json",
+      "os"
+    ],
+    "analytics.dashboard": [
+      "csv",
+      "os"
+    ],
+    "analytics.performance": [
+      "csv",
+      "os"
+    ],
+    "analytics.performance_tracker": [
+      "json",
+      "os",
+      "datetime"
+    ],
+    "analytics.trade_report": [
+      "json",
+      "os",
+      "datetime"
+    ],
+    "backtest.backtest_engine": [
+      "data.data_provider",
+      "analysis.technical_analyzer",
+      "trade.simulator"
+    ],
+    "config.exchange_config": [],
+    "config.main": [
+      "config.settings"
+    ],
+    "config.settings": [
+      "os",
+      "pathlib",
+      "typing"
+    ],
+    "config.symbols": [],
+    "config.__init__": [],
+    "core.adaptive_decision": [],
+    "core.adaptive_learning": [
+      "json",
+      "os"
+    ],
+    "core.adaptive_weights": [],
+    "core.ai_director": [
+      "logging"
+    ],
+    "core.ai_generator": [
+      "os"
+    ],
+    "core.architecture_analyzer": [
+      "os",
+      "ast",
+      "logging"
+    ],
+    "core.ast_parser": [
+      "__future__",
+      "ast",
+      "json",
+      "dataclasses",
+      "pathlib",
+      "typing"
+    ],
+    "core.atlas_brain": [
+      "logging",
+      "core.event_manager",
+      "core.event_listeners",
+      "core.learning_listener",
+      "core.evolution_engine",
+      "core.knowledge_graph",
+      "core.refactor_engine",
+      "core.data_provider",
+      "core.technical_analyzer",
+      "core.market_intelligence",
+      "core.market_regime",
+      "core.version_memory",
+      "core.signal_fusion",
+      "core.strategy_competition",
+      "core.confidence_engine",
+      "core.decision_engine",
+      "core.risk_manager",
+      "core.database",
+      "core.learning_engine",
+      "core.performance_analyzer",
+      "core.performance_feedback",
+      "core.improvement_planner",
+      "core.upgrade_manager",
+      "core.experiment_manager",
+      "core.adaptive_learning",
+      "core.adaptive_decision",
+      "core.trade_memory",
+      "core.pattern_memory",
+      "core.outcome_memory",
+      "core.trade_tracker",
+      "core.opportunity_engine",
+      "core.market_scanner",
+      "core.auto_pilot",
+      "core.self_improvement"
+    ],
+    "core.auth_panel": [
+      "sys",
+      "os",
+      "core.database"
+    ],
+    "core.auto_manager": [],
+    "core.auto_pilot": [
+      "logging",
+      "time"
+    ],
+    "core.auto_scanner": [
+      "time",
+      "json",
+      "os",
+      "datetime"
+    ],
+    "core.backtester": [
+      "os",
+      "sys",
+      "pandas",
+      "importlib.util",
+      "core.ai_generator"
+    ],
+    "core.base_ai_module": [
+      "logging",
+      "time"
+    ],
+    "core.capital_allocator": [],
+    "core.codebase_indexer": [
+      "__future__",
+      "ast",
+      "json",
+      "logging",
+      "dataclasses",
+      "pathlib",
+      "typing"
+    ],
+    "core.code_analyzer": [
+      "logging"
+    ],
+    "core.code_smell_detector": [
+      "__future__",
+      "json",
+      "logging",
+      "pathlib"
+    ],
+    "core.confidence_engine": [],
+    "core.config_manager": [
+      "json",
+      "os"
+    ],
+    "core.database": [
+      "json",
+      "os",
+      "datetime"
+    ],
+    "core.data_downloader": [
+      "os",
+      "time",
+      "pandas",
+      "requests",
+      "datetime"
+    ],
+    "core.data_provider": [
+      "requests",
+      "logging",
+      "datetime",
+      "typing"
+    ],
+    "core.decision_engine": [
+      "logging"
+    ],
+    "core.engine": [
+      "os",
+      "json",
+      "pandas",
+      "datetime",
+      "core.technical_analyzer",
+      "core.memory",
+      "core.strategy_brain",
+      "core.risk_manager",
+      "core.data_provider",
+      "core.paper_trader"
+    ],
+    "core.event_bus": [
+      "logging"
+    ],
+    "core.event_listeners": [
+      "logging"
+    ],
+    "core.event_manager": [
+      "logging",
+      "core.event_bus"
+    ],
+    "core.evolution_engine": [
+      "logging"
+    ],
+    "core.executor": [
+      "logging",
+      "datetime"
+    ],
+    "core.experiment_manager": [
+      "json",
+      "os",
+      "logging",
+      "datetime"
+    ],
+    "core.github_intelligence": [
+      "datetime",
+      "logging"
+    ],
+    "core.github_scanner": [
+      "logging"
+    ],
+    "core.improvement_planner": [
+      "logging"
+    ],
+    "core.knowledge_graph": [
+      "json",
+      "os",
+      "logging"
+    ],
+    "core.learning_engine": [
+      "json",
+      "os",
+      "logging"
+    ],
+    "core.learning_listener": [
+      "logging"
+    ],
+    "core.live_trader": [
+      "os",
+      "sys",
+      "time",
+      "pandas",
+      "binance.client",
+      "dotenv",
+      "core.backtester"
+    ],
+    "core.loop_engine": [
+      "time",
+      "sys",
+      "os",
+      "core.engine"
+    ],
+    "core.main": [
+      "core.engine",
+      "json",
+      "dashboard.dashboard",
+      "core.auto_scanner"
+    ],
+    "core.market_intelligence": [
+      "requests",
+      "logging",
+      "bs4"
+    ],
+    "core.market_regime": [],
+    "core.market_scanner": [
+      "logging"
+    ],
+    "core.memory": [
+      "os",
+      "json",
+      "datetime"
+    ],
+    "core.module_registry": [
+      "logging"
+    ],
+    "core.opportunity_engine": [],
+    "core.opportunity_scanner": [],
+    "core.outcome_memory": [
+      "json",
+      "os",
+      "logging"
+    ],
+    "core.paper_trader": [
+      "datetime",
+      "requests",
+      "core.database",
+      "core.learning_engine",
+      "portfolio.portfolio_manager"
+    ],
+    "core.patch_generator": [
+      "os",
+      "datetime"
+    ],
+    "core.pattern_memory": [
+      "json",
+      "os",
+      "datetime"
+    ],
+    "core.performance_analyzer": [
+      "json",
+      "os"
+    ],
+    "core.performance_feedback": [
+      "logging"
+    ],
+    "core.position_manager": [
+      "__future__",
+      "datetime",
+      "typing",
+      "uuid"
+    ],
+    "core.position_monitor": [
+      "time",
+      "threading"
+    ],
+    "core.profit_calculator": [],
+    "core.refactor_advisor": [],
+    "core.refactor_engine": [
+      "__future__",
+      "ast",
+      "json",
+      "logging",
+      "os",
+      "datetime",
+      "pathlib"
+    ],
+    "core.research_integration": [
+      "logging"
+    ],
+    "core.research_manager": [
+      "logging"
+    ],
+    "core.risk_manager": [],
+    "core.self_improvement": [
+      "logging"
+    ],
+    "core.shared_context": [
+      "dataclasses",
+      "typing"
+    ],
+    "core.signal_fusion": [],
+    "core.strategy_brain": [
+      "pandas"
+    ],
+    "core.strategy_competition": [
+      "core.weight_optimizer"
+    ],
+    "core.strategy_config": [
+      "dataclasses",
+      "typing"
+    ],
+    "core.technical_analyzer": [],
+    "core.trade_lifecycle": [
+      "time"
+    ],
+    "core.trade_memory": [
+      "json",
+      "os",
+      "logging"
+    ],
+    "core.trade_tracker": [
+      "json",
+      "os",
+      "logging",
+      "datetime"
+    ],
+    "core.trading_cycle": [
+      "logging",
+      "core.data_provider",
+      "core.technical_analyzer",
+      "core.market_intelligence",
+      "core.signal_fusion",
+      "core.strategy_competition",
+      "core.confidence_engine",
+      "core.decision_engine",
+      "core.capital_allocator",
+      "core.executor",
+      "core.risk_manager",
+      "core.auto_manager"
+    ],
+    "core.trading_engine": [
+      "datetime"
+    ],
+    "core.upgrade_advisor": [
+      "logging"
+    ],
+    "core.upgrade_approval": [
+      "logging"
+    ],
+    "core.upgrade_executor": [
+      "logging"
+    ],
+    "core.upgrade_manager": [
+      "logging"
+    ],
+    "core.version_memory": [
+      "json",
+      "os",
+      "logging",
+      "datetime"
+    ],
+    "core.weight_optimizer": [],
+    "core.__init__": [],
+    "dashboard.dashboard": [
+      "json",
+      "os"
+    ],
+    "dashboard.portfolio_dashboard": [],
+    "data.binance_provider": [
+      "binance.client"
+    ],
+    "data.candle_data": [
+      "random"
+    ],
+    "data.data_provider": [
+      "exchange.exchange_adapter"
+    ],
+    "data.live_provider": [
+      "data.binance_provider"
+    ],
+    "data.market": [
+      "random"
+    ],
+    "data.market_data": [
+      "random",
+      "time"
+    ],
+    "data.market_scanner": [
+      "data.data_provider",
+      "strategy.scalper",
+      "analysis.technical_analyzer"
+    ],
+    "data.price_monitor": [
+      "data.binance_provider"
+    ],
+    "database.engine": [
+      "strategy.scalper",
+      "ai.decision_engine",
+      "ai.atlas_brain",
+      "risk.risk_manager",
+      "simulation.simulator",
+      "database.trade_history",
+      "data.data_provider"
+    ],
+    "database.learning_engine": [
+      "json"
+    ],
+    "database.market_history": [
+      "json",
+      "os",
+      "datetime"
+    ],
+    "database.trade_history": [
+      "json",
+      "os",
+      "datetime"
+    ],
+    "events.base_event": [
+      "datetime"
+    ],
+    "events.event_bus": [
+      "logging"
+    ],
+    "events.market_events": [
+      "events.base_event"
+    ],
+    "events.trade_events": [
+      "events.base_event"
+    ],
+    "events.__init__": [
+      "events.event_bus",
+      "events.market_events",
+      "events.trade_events"
+    ],
+    "exchange.exchange_adapter": [
+      "ccxt",
+      "pandas",
+      "time",
+      "typing",
+      "config.settings"
+    ],
+    "execution.execution_manager": [
+      "config.settings",
+      "trading.paper_trader"
+    ],
+    "exit.smart_exit": [],
+    "intelligence.decision_engine": [],
+    "intelligence.decision_logger": [
+      "json",
+      "os",
+      "datetime"
+    ],
+    "intelligence.execution_engine": [
+      "exchange.exchange_adapter"
+    ],
+    "intelligence.learning_memory": [
+      "json",
+      "os",
+      "datetime"
+    ],
+    "intelligence.market_score": [
+      "intelligence.market.market_intelligence"
+    ],
+    "intelligence.memory_analyzer": [
+      "intelligence.learning_memory"
+    ],
+    "intelligence.strategy_brain": [
+      "intelligence.strategy_memory",
+      "analytics.ai_performance"
+    ],
+    "intelligence.strategy_memory": [
+      "json",
+      "os"
+    ],
+    "intelligence.volatility_manager": [],
+    "learning.adaptive_engine": [
+      "json",
+      "os"
+    ],
+    "learning.adaptive_learning": [
+      "json"
+    ],
+    "learning.atlas_brain": [
+      "learning.model_memory",
+      "learning.learning_engine"
+    ],
+    "learning.learner": [
+      "json"
+    ],
+    "learning.learning_engine": [
+      "json",
+      "os",
+      "datetime"
+    ],
+    "learning.model_memory": [
+      "json",
+      "os"
+    ],
+    "learning.performance_analyzer": [],
+    "logs.trade_logger": [
+      "json",
+      "os"
+    ],
+    "portfolio.capital_manager": [],
+    "portfolio.portfolio_manager": [
+      "core.database",
+      "portfolio.capital_manager"
+    ],
+    "position.position_manager": [],
+    "quality.trade_filter": [],
+    "risk.capital_manager": [
+      "typing",
+      "risk.position_manager"
+    ],
+    "risk.position": [
+      "dataclasses",
+      "typing"
+    ],
+    "risk.position_manager": [
+      "typing",
+      "risk.position"
+    ],
+    "risk.position_sizer": [],
+    "risk.risk_manager": [],
+    "risk.risk_planner": [],
+    "risk.trade_rules": [],
+    "scalping.scalp_manager": [],
+    "signals.base_signal": [
+      "abc"
+    ],
+    "simulation.ai_simulator": [
+      "analytics.ai_performance",
+      "random"
+    ],
+    "simulation.run_simulation": [
+      "json",
+      "simulation.ai_simulator"
+    ],
+    "simulation.simulator": [],
+    "simulation.__init__": [],
+    "strategy.optimizer": [
+      "json"
+    ],
+    "strategy.scalper": [],
+    "strategy.scalping": [],
+    "strategy.strategy_engine": [],
+    "timeframe.multi_timeframe": [],
+    "trade.simulator": [],
+    "trading.auto_manager": [],
+    "trading.paper_trader": [
+      "position.position_manager"
+    ],
+    "signals.market.market_signal": [
+      "signals.base_signal"
+    ],
+    "signals.risk.risk_signal": [
+      "signals.base_signal"
+    ],
+    "signals.technical.technical_signal": [
+      "signals.base_signal"
+    ],
+    "intelligence.confidence.capital_allocator": [],
+    "intelligence.confidence.confidence_engine": [],
+    "intelligence.confidence.position_sizer": [],
+    "intelligence.market.breakout_analyzer": [],
+    "intelligence.market.market_intelligence": [
+      "intelligence.market.volume_analyzer",
+      "intelligence.market.order_flow_analyzer",
+      "intelligence.market.market_structure_analyzer",
+      "intelligence.market.support_resistance_analyzer"
+    ],
+    "intelligence.market.market_scoring_engine": [],
+    "intelligence.market.market_structure_analyzer": [],
+    "intelligence.market.order_flow_analyzer": [],
+    "intelligence.market.support_resistance_analyzer": [],
+    "intelligence.market.volatility_analyzer": [],
+    "intelligence.market.volume_analyzer": [],
+    "intelligence.signals.signal_fusion": [],
+    "intelligence.strategy_competition.strategy_competition": [],
+    "core.strategies.bollingerrsi": [],
+    "ai.analytics.performance": [
+      "datetime"
+    ]
+  },
+  "reverse_dependencies": {
+    "core.atlas_brain": [
+      "main",
+      "test_atlas_evolution",
+      "test_evolution_engine",
+      "test_experiment_manager",
+      "test_improvement_planner",
+      "test_self_improvement",
+      "web_app"
+    ],
+    "core.paper_trader": [
+      "main",
+      "web_app",
+      "core.engine"
+    ],
+    "core.database": [
+      "main",
+      "web_app",
+      "core.atlas_brain",
+      "core.auth_panel",
+      "core.paper_trader",
+      "portfolio.portfolio_manager"
+    ],
+    "core.architecture_analyzer": [
+      "test_architecture_analyzer",
+      "test_patch_generator",
+      "test_refactor_advisor"
+    ],
+    "core.ast_parser": [
+      "test_ast_parser"
+    ],
+    "core.codebase_indexer": [
+      "test_codebase_indexer"
+    ],
+    "core.github_scanner": [
+      "test_code_analyzer",
+      "test_github_scanner",
+      "test_research_integration",
+      "test_research_manager",
+      "test_upgrade_advisor"
+    ],
+    "core.code_analyzer": [
+      "test_code_analyzer",
+      "test_research_integration",
+      "test_research_manager",
+      "test_upgrade_advisor"
+    ],
+    "events.base_event": [
+      "test_event",
+      "test_event",
+      "events.market_events",
+      "events.trade_events"
+    ],
+    "events.event_bus": [
+      "test_event",
+      "test_event",
+      "events.__init__"
+    ],
+    "events.market_events": [
+      "test_event",
+      "test_event",
+      "events.__init__"
+    ],
+    "events.trade_events": [
+      "test_event",
+      "test_event",
+      "events.__init__"
+    ],
+    "events.__init__": [
+      "test_event",
+      "test_event"
+    ],
+    "core.refactor_advisor": [
+      "test_patch_generator",
+      "test_refactor_advisor"
+    ],
+    "core.patch_generator": [
+      "test_patch_generator"
+    ],
+    "core.performance_feedback": [
+      "test_performance_feedback",
+      "core.atlas_brain"
+    ],
+    "core.upgrade_advisor": [
+      "test_research_integration",
+      "test_research_manager",
+      "test_upgrade_advisor"
+    ],
+    "core.research_manager": [
+      "test_research_integration",
+      "test_research_manager"
+    ],
+    "core.research_integration": [
+      "test_research_integration"
+    ],
+    "core.version_memory": [
+      "test_version_memory",
+      "core.atlas_brain"
+    ],
+    "learning.model_memory": [
+      "ai.atlas_brain",
+      "learning.atlas_brain"
+    ],
+    "learning.learning_engine": [
+      "ai.atlas_brain",
+      "learning.atlas_brain"
+    ],
+    "data.data_provider": [
+      "backtest.backtest_engine",
+      "data.market_scanner",
+      "database.engine"
+    ],
+    "analysis.technical_analyzer": [
+      "backtest.backtest_engine",
+      "data.market_scanner"
+    ],
+    "trade.simulator": [
+      "backtest.backtest_engine"
+    ],
+    "config.settings": [
+      "config.main",
+      "exchange.exchange_adapter",
+      "execution.execution_manager"
+    ],
+    "core.event_manager": [
+      "core.atlas_brain"
+    ],
+    "core.event_listeners": [
+      "core.atlas_brain"
+    ],
+    "core.learning_listener": [
+      "core.atlas_brain"
+    ],
+    "core.evolution_engine": [
+      "core.atlas_brain"
+    ],
+    "core.knowledge_graph": [
+      "core.atlas_brain"
+    ],
+    "core.refactor_engine": [
+      "core.atlas_brain"
+    ],
+    "core.data_provider": [
+      "core.atlas_brain",
+      "core.engine",
+      "core.trading_cycle"
+    ],
+    "core.technical_analyzer": [
+      "core.atlas_brain",
+      "core.engine",
+      "core.trading_cycle"
+    ],
+    "core.market_intelligence": [
+      "core.atlas_brain",
+      "core.trading_cycle"
+    ],
+    "core.market_regime": [
+      "core.atlas_brain"
+    ],
+    "core.signal_fusion": [
+      "core.atlas_brain",
+      "core.trading_cycle"
+    ],
+    "core.strategy_competition": [
+      "core.atlas_brain",
+      "core.trading_cycle"
+    ],
+    "core.confidence_engine": [
+      "core.atlas_brain",
+      "core.trading_cycle"
+    ],
+    "core.decision_engine": [
+      "core.atlas_brain",
+      "core.trading_cycle"
+    ],
+    "core.risk_manager": [
+      "core.atlas_brain",
+      "core.engine",
+      "core.trading_cycle"
+    ],
+    "core.learning_engine": [
+      "core.atlas_brain",
+      "core.paper_trader"
+    ],
+    "core.performance_analyzer": [
+      "core.atlas_brain"
+    ],
+    "core.improvement_planner": [
+      "core.atlas_brain"
+    ],
+    "core.upgrade_manager": [
+      "core.atlas_brain"
+    ],
+    "core.experiment_manager": [
+      "core.atlas_brain"
+    ],
+    "core.adaptive_learning": [
+      "core.atlas_brain"
+    ],
+    "core.adaptive_decision": [
+      "core.atlas_brain"
+    ],
+    "core.trade_memory": [
+      "core.atlas_brain"
+    ],
+    "core.pattern_memory": [
+      "core.atlas_brain"
+    ],
+    "core.outcome_memory": [
+      "core.atlas_brain"
+    ],
+    "core.trade_tracker": [
+      "core.atlas_brain"
+    ],
+    "core.opportunity_engine": [
+      "core.atlas_brain"
+    ],
+    "core.market_scanner": [
+      "core.atlas_brain"
+    ],
+    "core.auto_pilot": [
+      "core.atlas_brain"
+    ],
+    "core.self_improvement": [
+      "core.atlas_brain"
+    ],
+    "core.ai_generator": [
+      "core.backtester"
+    ],
+    "core.memory": [
+      "core.engine"
+    ],
+    "core.strategy_brain": [
+      "core.engine"
+    ],
+    "core.event_bus": [
+      "core.event_manager"
+    ],
+    "core.backtester": [
+      "core.live_trader"
+    ],
+    "core.engine": [
+      "core.loop_engine",
+      "core.main"
+    ],
+    "dashboard.dashboard": [
+      "core.main"
+    ],
+    "core.auto_scanner": [
+      "core.main"
+    ],
+    "portfolio.portfolio_manager": [
+      "core.paper_trader"
+    ],
+    "core.weight_optimizer": [
+      "core.strategy_competition"
+    ],
+    "core.capital_allocator": [
+      "core.trading_cycle"
+    ],
+    "core.executor": [
+      "core.trading_cycle"
+    ],
+    "core.auto_manager": [
+      "core.trading_cycle"
+    ],
+    "exchange.exchange_adapter": [
+      "data.data_provider",
+      "intelligence.execution_engine"
+    ],
+    "data.binance_provider": [
+      "data.live_provider",
+      "data.price_monitor"
+    ],
+    "strategy.scalper": [
+      "data.market_scanner",
+      "database.engine"
+    ],
+    "ai.decision_engine": [
+      "database.engine"
+    ],
+    "ai.atlas_brain": [
+      "database.engine"
+    ],
+    "risk.risk_manager": [
+      "database.engine"
+    ],
+    "simulation.simulator": [
+      "database.engine"
+    ],
+    "database.trade_history": [
+      "database.engine"
+    ],
+    "trading.paper_trader": [
+      "execution.execution_manager"
+    ],
+    "intelligence.market.market_intelligence": [
+      "intelligence.market_score"
+    ],
+    "intelligence.learning_memory": [
+      "intelligence.memory_analyzer"
+    ],
+    "intelligence.strategy_memory": [
+      "intelligence.strategy_brain"
+    ],
+    "analytics.ai_performance": [
+      "intelligence.strategy_brain",
+      "simulation.ai_simulator"
+    ],
+    "portfolio.capital_manager": [
+      "portfolio.portfolio_manager"
+    ],
+    "risk.position_manager": [
+      "risk.capital_manager"
+    ],
+    "risk.position": [
+      "risk.position_manager"
+    ],
+    "simulation.ai_simulator": [
+      "simulation.run_simulation"
+    ],
+    "position.position_manager": [
+      "trading.paper_trader"
+    ],
+    "signals.base_signal": [
+      "signals.market.market_signal",
+      "signals.risk.risk_signal",
+      "signals.technical.technical_signal"
+    ],
+    "intelligence.market.volume_analyzer": [
+      "intelligence.market.market_intelligence"
+    ],
+    "intelligence.market.order_flow_analyzer": [
+      "intelligence.market.market_intelligence"
+    ],
+    "intelligence.market.market_structure_analyzer": [
+      "intelligence.market.market_intelligence"
+    ],
+    "intelligence.market.support_resistance_analyzer": [
+      "intelligence.market.market_intelligence"
+    ]
+  },
+  "circular_dependencies": [],
+  "critical_modules": [
+    "core.atlas_brain",
+    "core.database",
+    "core.github_scanner",
+    "core.code_analyzer",
+    "events.base_event",
+    "config.settings",
+    "core.architecture_analyzer",
+    "core.data_provider",
+    "core.paper_trader",
+    "core.risk_manager",
+    "core.technical_analyzer",
+    "core.upgrade_advisor",
+    "data.data_provider",
+    "events.event_bus",
+    "events.market_events",
+    "events.trade_events",
+    "signals.base_signal",
+    "analysis.technical_analyzer",
+    "analytics.ai_performance",
+    "core.confidence_engine",
+    "core.decision_engine",
+    "core.engine",
+    "core.learning_engine",
+    "core.market_intelligence",
+    "core.performance_feedback",
+    "core.refactor_advisor",
+    "core.research_manager",
+    "core.signal_fusion",
+    "core.strategy_competition",
+    "core.version_memory",
+    "data.binance_provider",
+    "events.__init__",
+    "exchange.exchange_adapter",
+    "learning.learning_engine",
+    "learning.model_memory",
+    "strategy.scalper"
+  ],
+  "health_report": {
+    "total_modules": 205,
+    "total_imports": 382,
+    "circular_dependencies": 0,
+    "critical_modules_count": 36,
+    "orphan_modules": 113,
+    "average_complexity": 21.95,
+    "critical_modules": [
+      "core.atlas_brain",
+      "core.database",
+      "core.github_scanner",
+      "core.code_analyzer",
+      "events.base_event",
+      "config.settings",
+      "core.architecture_analyzer",
+      "core.data_provider",
+      "core.paper_trader",
+      "core.risk_manager"
+    ],
+    "circular_dependency_details": [],
+    "orphan_module_names": [
+      "check_project",
+      "main",
+      "technical_analyzer",
+      "test_architecture_analyzer",
+      "test_ast_parser",
+      "test_atlas_evolution",
+      "test_codebase_indexer",
+      "test_code_analyzer",
+      "test_dependency_graph",
+      "test_event",
+      "test_evolution_engine",
+      "test_experiment_manager",
+      "test_github_scanner",
+      "test_improvement_planner",
+      "test_patch_generator",
+      "test_performance_feedback",
+      "test_refactor_advisor",
+      "test_research_integration",
+      "test_research_manager",
+      "test_self_improvement",
+      "test_upgrade_advisor",
+      "test_version_memory",
+      "web_app",
+      "ai.intelligent_score",
+      "ai.learning_brain",
+      "ai.performance_analyzer",
+      "ai.trade_analyzer",
+      "analysis.analyzer",
+      "analysis.performance",
+      "analytics.dashboard",
+      "analytics.performance",
+      "analytics.performance_tracker",
+      "analytics.trade_report",
+      "backtest.backtest_engine",
+      "config.exchange_config",
+      "config.main",
+      "config.symbols",
+      "config.__init__",
+      "core.adaptive_weights",
+      "core.ai_director",
+      "core.auth_panel",
+      "core.base_ai_module",
+      "core.code_smell_detector",
+      "core.config_manager",
+      "core.data_downloader",
+      "core.github_intelligence",
+      "core.live_trader",
+      "core.loop_engine",
+      "core.main",
+      "core.module_registry",
+      "core.opportunity_scanner",
+      "core.position_manager",
+      "core.position_monitor",
+      "core.profit_calculator",
+      "core.shared_context",
+      "core.strategy_config",
+      "core.trade_lifecycle",
+      "core.trading_cycle",
+      "core.trading_engine",
+      "core.upgrade_approval",
+      "core.upgrade_executor",
+      "core.__init__",
+      "dashboard.portfolio_dashboard",
+      "data.candle_data",
+      "data.live_provider",
+      "data.market",
+      "data.market_data",
+      "data.market_scanner",
+      "data.price_monitor",
+      "database.engine",
+      "database.learning_engine",
+      "database.market_history",
+      "execution.execution_manager",
+      "exit.smart_exit",
+      "intelligence.decision_engine",
+      "intelligence.decision_logger",
+      "intelligence.execution_engine",
+      "intelligence.market_score",
+      "intelligence.memory_analyzer",
+      "intelligence.strategy_brain",
+      "intelligence.volatility_manager",
+      "learning.adaptive_engine",
+      "learning.adaptive_learning",
+      "learning.atlas_brain",
+      "learning.learner",
+      "learning.performance_analyzer",
+      "logs.trade_logger",
+      "quality.trade_filter",
+      "risk.capital_manager",
+      "risk.position_sizer",
+      "risk.risk_planner",
+      "risk.trade_rules",
+      "scalping.scalp_manager",
+      "simulation.run_simulation",
+      "simulation.__init__",
+      "strategy.optimizer",
+      "strategy.scalping",
+      "strategy.strategy_engine",
+      "timeframe.multi_timeframe",
+      "trading.auto_manager",
+      "signals.market.market_signal",
+      "signals.risk.risk_signal",
+      "signals.technical.technical_signal",
+      "intelligence.confidence.capital_allocator",
+      "intelligence.confidence.confidence_engine",
+      "intelligence.confidence.position_sizer",
+      "intelligence.market.breakout_analyzer",
+      "intelligence.market.market_scoring_engine",
+      "intelligence.market.volatility_analyzer",
+      "intelligence.signals.signal_fusion",
+      "intelligence.strategy_competition.strategy_competition",
+      "core.strategies.bollingerrsi",
+      "ai.analytics.performance"
+    ]
+  }
+}

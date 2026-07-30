@@ -1,0 +1,489 @@
+Evet. Önceki listelerde çok sayıda gelişmiş özellik vardı; ancak bazı konular var ki bunlar olmadan Atlas ne kadar akıllı görünürse görünsün gerçek para için güvenilir ve profesyonel sayılmaz.
+
+1. Tek ve net bir mimari sözleşme
+
+Atlas’ta her modülün görevi kesin olarak ayrılmalı:
+
+Veri toplama
+Analiz
+Karar üretme
+Risk kontrolü
+Sermaye tahsisi
+Emir yürütme
+Pozisyon yönetimi
+Öğrenme
+Raporlama
+
+Örneğin AtlasBrain, doğrudan pozisyon açmamalı. Yalnızca karar üretmeli. İşlem yetkisi Execution katmanında olmalı.
+
+En kritik prensip:
+
+Analiz yapan bileşen para hareket ettirememeli; para hareket ettiren bileşen stratejik karar verememeli.
+
+Bu ayrım hataların bütün sisteme yayılmasını önler.
+
+2. Tek bir doğruluk kaynağı
+
+Atlas’ın aynı pozisyonu farklı dosyalarda farklı şekilde görmesi büyük bir risktir.
+
+Şunların tek sahibi olmalı:
+
+Açık pozisyonlar
+Kullanılabilir nakit
+Toplam sermaye
+Gerçekleşen kâr-zarar
+Bekleyen emirler
+Günlük kayıp
+Kullanılan marjin
+
+PositionController, PortfolioManager, PaperExecutionEngine ve ExecutionManager aynı bilgiyi ayrı ayrı tutarsa zamanla tutarsızlık çıkar.
+
+Atlas’ta bir Portfolio Ledger kurulmalı. Diğer tüm modüller buradan okumalıdır.
+
+3. Para muhasebesinin kesin olması
+
+Finansal sistemlerde küçük hesap hataları ciddi sorunlara dönüşür.
+
+Atlas şu ayrımı kusursuz yapmalı:
+
+Miktar mı, parasal tutar mı?
+Coin adedi mi, USDT karşılığı mı?
+Brüt kâr mı, net kâr mı?
+Fee girişte mi, çıkışta mı?
+Ortalama giriş fiyatı nasıl hesaplanıyor?
+Kısmi kapanışta kalan maliyet nedir?
+Marjin ve kaldıraç nasıl işleniyor?
+
+Özellikle amount, quantity, notional, capital, size alanlarının anlamları standartlaştırılmalı.
+
+Mümkün olduğunda finansal hesaplarda doğrudan float yerine kontrollü hassasiyet kullanılmalı.
+
+4. Emir ve pozisyon yaşam döngüsü
+
+Bir emir yalnızca “başarılı” veya “başarısız” değildir.
+
+Emir durumları şöyle yönetilmeli:
+
+CREATED
+VALIDATED
+RISK_APPROVED
+SUBMITTED
+ACKNOWLEDGED
+PARTIALLY_FILLED
+FILLED
+CANCEL_PENDING
+CANCELLED
+REJECTED
+EXPIRED
+UNKNOWN
+
+Pozisyonun da ayrı yaşam döngüsü olmalı:
+
+PENDING
+OPEN
+PARTIALLY_CLOSED
+CLOSING
+CLOSED
+LIQUIDATED
+ERROR
+
+Bu olmadan bağlantı kesintilerinde Atlas emrin gerçekleşip gerçekleşmediğini yanlış anlayabilir.
+
+5. İdempotency ve çift emir koruması
+
+Atlas aynı BUY kararını bağlantı hatası nedeniyle iki kere göndermemeli.
+
+Her işlem isteğinde benzersiz bir:
+
+decision_id
+request_id
+execution_id
+client_order_id
+
+olmalı.
+
+Aynı istek tekrar gelirse sistem yeni emir açmak yerine önceki sonucu döndürmeli.
+
+Bu, gerçek para aşamasındaki en kritik güvenliklerden biridir.
+
+6. Borsa ile uzlaştırma sistemi
+
+Atlas’ın kendi hafızası doğru kabul edilmemeli. Düzenli olarak borsanın gerçek durumu ile karşılaştırılmalı.
+
+Kontrol edilecekler:
+
+Atlas’taki açık pozisyon
+Borsadaki gerçek pozisyon
+Atlas’taki nakit
+Borsadaki gerçek bakiye
+Bekleyen emirler
+Gerçekleşen işlemler
+Komisyonlar
+
+Fark bulunursa sistem yeni işlem açmayı durdurmalı ve uzlaştırma raporu üretmeli.
+
+Buna reconciliation engine denir.
+
+7. Tarihsel veri hatalarına karşı koruma
+
+Backtest sırasında en tehlikeli hatalar:
+
+Gelecekteki veriyi geçmişte kullanmak
+Sadece bugün hayatta olan varlıkları test etmek
+Eksik mumları görmezden gelmek
+Yanlış zaman dilimleri
+UTC ve yerel saat karışıklığı
+Haber zamanının yanlış kullanılması
+Borsa listeleme tarihinden önce veri kullanılması
+
+Atlas’ın backtest sistemi bu hatalara karşı otomatik kontroller içermeli.
+
+Yoksa test sonucu mükemmel görünür ama canlıda başarısız olur.
+
+8. Backtest–paper–live eşitliği
+
+Backtestte kullanılan strateji ile canlı sistemde çalışan strateji farklı kod olmamalı.
+
+Aynı karar motoru şu ortamlarda çalışmalı:
+
+Backtest
+Replay
+Paper
+Shadow
+Live
+
+Yalnızca veri ve execution adaptörü değişmeli.
+
+Bu yaklaşım olmadan backtestte başarılı olan kodun canlıda gerçekten aynı şekilde çalıştığı kanıtlanamaz.
+
+9. Simülasyon gerçekçiliği
+
+Paper trading yalnızca mevcut fiyattan anında işlem açarsa yanıltıcı olur.
+
+Simülasyon şunları içermeli:
+
+Spread
+Slippage
+Komisyon
+Funding
+Emir gecikmesi
+Kısmi dolum
+Likidite
+Emir reddi
+Fiyat boşlukları
+Stop emrinin beklenenden kötü fiyatta dolması
+Minimum emir büyüklüğü
+
+Gerçekçi olmayan paper trading başarısı, gerçek para için kanıt değildir.
+
+10. Overfitting ve veri sızıntısı kontrolü
+
+Atlas geçmiş veriye aşırı uyum sağlayabilir.
+
+Bu nedenle:
+
+Eğitim verisi
+Doğrulama verisi
+Test verisi
+Tamamen görülmemiş final veri
+Walk-forward test
+Farklı piyasa dönemleri
+
+ayrı tutulmalı.
+
+Strateji geçmişte çok iyi görünüyorsa ilk soru şu olmalı:
+
+Gerçekten piyasa yapısını mı öğrendi, yoksa geçmiş veriyi mi ezberledi?
+
+11. Strateji kabul kriterleri
+
+Her yeni strateji doğrudan sisteme alınmamalı.
+
+Minimum kabul kriterleri belirlenmeli:
+
+Yeterli işlem sayısı
+Farklı piyasa rejimlerinde başarı
+Maksimum drawdown sınırı
+Net pozitif beklenti
+Komisyon sonrası kârlılık
+Out-of-sample başarı
+Walk-forward dayanıklılığı
+Stres testi başarısı
+Mevcut stratejilerle düşük veya faydalı korelasyon
+
+Yalnızca yüksek win rate yeterli değildir.
+
+12. Risk bütçesi sistemi
+
+Atlas yalnızca “bir işlemde ne kadar para kullanacağım?” sorusunu cevaplamamalı.
+
+Şunları da yönetmeli:
+
+İşlem başına risk
+Strateji başına risk
+Varlık başına risk
+Sektör başına risk
+Günlük risk
+Toplam portföy riski
+Açık pozisyonların birleşik riski
+Korelasyon ayarlı risk
+
+Örneğin beş pozisyonun her biri güvenli görünse bile hepsi aynı piyasa faktörüne bağlıysa toplam risk tehlikeli olabilir.
+
+13. Risk limitlerinin kod dışında korunması
+
+Risk limitleri yalnızca Python kodunun içinde bulunmamalı.
+
+Ayrı ve korumalı bir politika katmanı olmalı:
+
+max_daily_loss
+max_drawdown
+max_position_size
+max_total_exposure
+max_open_positions
+max_leverage
+allowed_symbols
+blocked_symbols
+minimum_confidence
+
+Strateji veya AI bu limitleri değiştirememeli. Değişiklik kullanıcı onayı ve kayıt gerektirmeli.
+
+14. Kill switch
+
+Tek komutla Atlas’ın davranışı kontrol edilebilmeli:
+
+Yeni işlem açmayı durdur
+Tüm bekleyen emirleri iptal et
+Yalnızca pozisyon kapatmaya izin ver
+Kaldıracı sıfırla
+Sistemi güvenli moda geçir
+Tüm pozisyonları kontrollü kapat
+
+Kill switch, analiz motorundan ve AI katmanından bağımsız çalışmalıdır.
+
+15. Canlı sistemde güvenli varsayılanlar
+
+Her belirsizlikte Atlas’ın tercihi güvenli taraf olmalı.
+
+Örneğin:
+
+Fiyat verisi şüpheliyse işlem açma
+Bakiye doğrulanamıyorsa işlem açma
+Pozisyon durumu bilinmiyorsa işlem açma
+Risk motoru cevap vermiyorsa işlem açma
+AI modeli ulaşılamıyorsa risk limitlerini gevşetme
+Saat senkronizasyonu bozuksa emir gönderme
+
+Prensip:
+
+Emin değilsen işlem yapma.
+
+16. Zaman ve saat senkronizasyonu
+
+Finans sistemlerinde zaman kritik bir veridir.
+
+Atlas şunları standartlaştırmalı:
+
+Sistem genelinde UTC
+Mum kapanış zamanı
+Borsa sunucu zamanı
+Haber yayın zamanı
+Emir gönderme zamanı
+Emir gerçekleşme zamanı
+Monotonik işlem sırası
+
+Bilgisayar saati kayarsa mumlar, emirler ve haberler yanlış eşleşebilir.
+
+17. Event ordering ve tekrar eden event kontrolü
+
+Event Bus kullanıyorsak şu sorunlar çözülmeli:
+
+Aynı event iki kez gelirse ne olur?
+Eventler yanlış sırada gelirse ne olur?
+Listener hata verirse event kaybolur mu?
+Event işlendikten sonra kayıt tutuluyor mu?
+Sistem yeniden başladığında yarım kalan event devam eder mi?
+
+Event sistemi yalnızca mesaj gönderme mekanizması değil, güvenilir bir işlem altyapısı olmalıdır.
+
+18. İşlem kayıtlarının yeniden oynatılabilmesi
+
+Atlas geçmişte ne olduğunu yeniden oluşturabilmeli.
+
+Örneğin belirli bir işlem için:
+
+Hangi veri geldi?
+Hangi sinyal üretildi?
+Brain ne düşündü?
+Risk Engine ne dedi?
+Capital Manager ne kadar ayırdı?
+Hangi emir gönderildi?
+Borsa ne cevap verdi?
+Pozisyon nasıl kapandı?
+
+Bu zincir tekrar oynatılabilirse hata araştırması çok daha profesyonel olur.
+
+19. Konfigürasyon yönetimi
+
+Ayarların kod içinde dağınık kalması tehlikelidir.
+
+Atlas’ta şunlar ayrılmalı:
+
+Development config
+Test config
+Paper config
+Shadow config
+Live config
+
+Canlı ortam, test ortamının dosyalarını veya anahtarlarını kullanamamalı.
+
+Canlı moda geçiş tek bir MODE=LIVE değişikliği kadar kolay olmamalı; çok aşamalı güvenlik kontrolü gerektirmeli.
+
+20. Test piramidi
+
+Atlas yalnızca py_compile ile doğrulanmış sayılmaz.
+
+Gerekli test seviyeleri:
+
+Unit test
+Contract test
+Integration test
+End-to-end test
+Replay test
+Backtest
+Paper test
+Failure test
+Recovery test
+Security test
+Performance test
+
+py_compile yalnızca sözdiziminin geçerli olduğunu gösterir; sistemin doğru çalıştığını göstermez.
+
+21. Bağımlılık ve paket güvenliği
+
+Atlas’ın kullandığı Python paketleri de risk oluşturur.
+
+Gerekli kontroller:
+
+Sürüm sabitleme
+Lock file
+Güvenlik açığı taraması
+Lisans kontrolü
+Zararlı paket kontrolü
+Paket bütünlüğü
+Güncelleme öncesi sandbox testi
+
+Yeni bir GitHub projesi yalnızca faydalı göründüğü için Atlas’a eklenmemeli.
+
+22. Veri ve model sürümleme
+
+Bir kararın hangi verilerle ve hangi modelle üretildiği bilinmeli.
+
+Kayıt örneği:
+
+decision_engine_version: 11.2
+risk_engine_version: 4.1
+strategy_version: momentum_3.6
+dataset_version: market_data_2026_07_28
+feature_set_version: features_5.0
+config_version: live_policy_2.3
+
+Böylece performans değişikliğinin kaynağı bulunabilir.
+
+23. AI’nin yetki sınırı
+
+Yapay zekâ şu görevleri yapabilir:
+
+Analiz
+Araştırma
+Kod taslağı
+Risk açıklaması
+Strateji önerisi
+Hata incelemesi
+Geliştirme önerisi
+
+Ancak tek başına şunları yapmamalı:
+
+Canlı risk limitini artırmak
+API yetkisini değiştirmek
+Yeni kodu canlıya almak
+Bakiye transfer etmek
+Para çekmek
+Kill switch’i kapatmak
+Kendi denetim mekanizmasını devre dışı bırakmak
+
+AI yardımcı ve karar destekleyici olmalı; sınırsız yönetici olmamalı.
+
+24. Başarı ölçütünün doğru belirlenmesi
+
+Atlas’ın başarısı yalnızca toplam kâr değildir.
+
+Ana göstergeler şunlar olmalı:
+
+Net getiri
+Maksimum drawdown
+Sharpe / Sortino
+Profit factor
+Beklenen değer
+Volatilite
+Sermaye kullanım verimliliği
+İşlem maliyeti
+Sistem çalışma süresi
+Emir başarısızlık oranı
+Veri kalite oranı
+Risk ihlali sayısı
+Tahmin kalibrasyonu
+Rejim bazlı performans
+
+Yüksek getiri ama kontrolsüz drawdown profesyonel başarı değildir.
+
+25. Canlı paraya geçiş kapıları
+
+Gerçek para için açık bir kabul süreci olmalı.
+
+Aşama 1 — Teknik doğrulama
+Kritik testler geçiyor
+Muhasebe tutarlı
+Emir yaşam döngüsü çalışıyor
+Reconciliation başarılı
+Kill switch doğrulandı
+Aşama 2 — Stratejik doğrulama
+Gerçekçi backtest
+Out-of-sample başarı
+Walk-forward başarı
+Farklı rejimlerde dayanıklılık
+Aşama 3 — Paper doğrulama
+Uzun süreli kesintisiz çalışma
+Gerçekçi maliyetler
+Risk ihlali olmaması
+Beklenen ile gerçekleşen farkının kabul edilebilir olması
+Aşama 4 — Shadow mode
+Gerçek piyasa ile paralel karar
+Emir göndermeden performans ölçümü
+Aşama 5 — Çok küçük canlı sermaye
+Sıkı limit
+Kaldıraçsız veya minimum kaldıraç
+Manuel gözetim
+Otomatik durdurma
+Aşama 6 — Kademeli büyütme
+
+Sermaye yalnızca ölçülebilir başarı devam ettikçe artırılmalı.
+
+Bence şu anda en kritik 10 konu
+
+Atlas geliştirmesinde önce şu sıra izlenmeli:
+
+Tek ve net mimari
+Tek Portfolio Ledger
+Finansal hesapların standartlaştırılması
+Emir ve pozisyon state machine
+Çift emir koruması
+Borsa reconciliation sistemi
+Risk politika katmanı ve kill switch
+Backtest–paper–live aynı kod yapısı
+Kapsamlı otomatik test altyapısı
+Canlıya geçiş kabul kriterleri
+
+Bunlar tamamlanmadan çoklu ajan, kendi modelini geliştirme veya tam otonom şirket yapısı eklemek Atlas’ı daha profesyonel değil, yalnızca daha karmaşık yapar.
+
+Temel hedefimiz önce akıllı Atlas değil; hata yaptığında sermayeyi koruyan, her kararını kanıtlayabilen ve sonucu tekrar üretilebilen Atlas olmalıdır.

@@ -1,0 +1,876 @@
+==============================================================================
+ATLAS PHASE 6A6.1 — APPLICATION RUNTIME WIRING AUDIT
+==============================================================================
+
+[MAIN] main.py
+------------------------------------------------------------------------------
+CLASS AtlasProcess()
+
+METHOD __init__(self) -> None [265-276]
+    def __init__(self) -> None:
+        self.application: AtlasApplication | None = None
+
+        self.shutdown_event = threading.Event()
+
+        self.shutdown_reason = ""
+
+        self.started_at = datetime.now(
+            UTC
+        ).isoformat()
+
+        self.exit_code = 0
+
+METHOD start(self) -> bool [336-370]
+    def start(self) -> bool:
+        """
+        Construct and start Atlas.
+        """
+
+        logger.info(
+            "Constructing AtlasApplication"
+        )
+
+        self.application = AtlasApplication(
+            execution_mode="PAPER",
+        )
+
+        logger.info(
+            "Starting AtlasApplication"
+        )
+
+        started = self.application.start()
+
+        if not started:
+            self.exit_code = 1
+
+            logger.error(
+                "AtlasApplication reported startup failure"
+            )
+
+            self._display_latest_error()
+
+            return False
+
+        display_startup_status(
+            self.application
+        )
+
+        return True
+
+METHOD stop(self) -> bool [469-493]
+    def stop(self) -> bool:
+        """
+        Stop Atlas safely.
+        """
+
+        if self.application is None:
+            return True
+
+        logger.info(
+            "Stopping AtlasApplication"
+        )
+
+        stopped = self.application.stop()
+
+        if not stopped:
+            self.exit_code = max(
+                self.exit_code,
+                1,
+            )
+
+            logger.warning(
+                "Atlas stopped with one or more shutdown errors"
+            )
+
+        return stopped
+
+METHOD execute(self) -> int [499-558]
+    def execute(self) -> int:
+        """
+        Run the full Atlas process lifecycle.
+        """
+
+        self.install_signal_handlers()
+
+        try:
+            if not self.start():
+                return self.exit_code
+
+            self.run_forever()
+
+        except KeyboardInterrupt:
+            self.shutdown_reason = (
+                "Keyboard interrupt"
+            )
+
+            logger.warning(
+                "Keyboard interrupt received"
+            )
+
+        except Exception as exc:
+            self.exit_code = 1
+
+            self.shutdown_reason = (
+                f"Fatal error: {exc}"
+            )
+
+            logger.critical(
+                "Fatal Atlas error: %s",
+                exc,
+            )
+
+            logger.debug(
+                "Fatal traceback:\n%s",
+                traceback.format_exc(),
+            )
+
+        finally:
+            try:
+                self.stop()
+            except Exception:
+                self.exit_code = 1
+
+                logger.exception(
+                    "Fatal error during Atlas shutdown"
+                )
+
+            logger.info(
+                "Atlas process finished | "
+                "exit_code=%s | reason=%s",
+                self.exit_code,
+                (
+                    self.shutdown_reason
+                    or "Normal shutdown"
+                ),
+            )
+
+        return self.exit_code
+
+FUNCTION main() -> int [566-582]
+def main() -> int:
+    """
+    Atlas command-line entry point.
+    """
+
+    configure_logging()
+
+    print()
+    print("=" * 64)
+    print("PROJECT ATLAS AI")
+    print("Institutional AI Investment Platform")
+    print("=" * 64)
+    print()
+
+    process = AtlasProcess()
+
+    return process.execute()
+
+[APPLICATION] core\application.py
+------------------------------------------------------------------------------
+CLASS AtlasApplication()
+
+METHOD __init__(self, *, exchange_name: str = 'binance_global', execution_mode: str = 'PAPER', symbols: list[str] | None = None, market_interval: float = 10.0) -> None [96-134]
+    def __init__(
+        self,
+        *,
+        exchange_name: str = "binance_global",
+        execution_mode: str = "PAPER",
+        symbols: list[str] | None = None,
+        market_interval: float = 10.0,
+    ) -> None:
+        logger.info(
+            "Initializing %s v%s",
+            self.NAME,
+            self.VERSION,
+        )
+
+        self.exchange_name = str(exchange_name)
+        self.execution_mode = str(execution_mode).upper()
+        self.symbols = list(symbols) if symbols else None
+        self.market_interval = float(market_interval)
+
+        self.running = False
+        self.initialized = False
+
+        self.created_at = datetime.now(UTC).isoformat()
+        self.started_at: str | None = None
+        self.stopped_at: str | None = None
+
+        self.errors: list[dict[str, Any]] = []
+        self.started_services: list[str] = []
+
+        self._build_infrastructure()
+        self._build_services()
+        self._register_services()
+
+        self.initialized = True
+
+        logger.info(
+            "%s initialized successfully",
+            self.NAME,
+        )
+
+METHOD _build_services(self) -> None [156-221]
+    def _build_services(self) -> None:
+        """
+        Create and connect Atlas business services.
+        """
+
+        # -----------------------------------------------------
+        # Portfolio
+        # -----------------------------------------------------
+
+        self.capital = CapitalManager()
+        self.paper_trader = PaperTrader()
+
+        self.position_controller = PositionController(
+            event_bus=self.event_bus,
+        )
+
+        # -----------------------------------------------------
+        # Intelligence
+        # -----------------------------------------------------
+
+        self.brain = AtlasBrain(
+            event_bus=self.event_bus,
+        )
+
+        # -----------------------------------------------------
+        # Market data
+        # -----------------------------------------------------
+
+        self.market_feed = MarketFeed(
+            exchange_name=self.exchange_name,
+        )
+
+        # -----------------------------------------------------
+        # Execution
+        # -----------------------------------------------------
+
+        self.execution = ExecutionManager(
+            capital_manager=self.capital,
+            position_controller=self.position_controller,
+            paper_trader=self.paper_trader,
+            event_bus=self.event_bus,
+            mode=self.execution_mode,
+        )
+
+        # -----------------------------------------------------
+        # Market loop
+        # -----------------------------------------------------
+
+        self.market_loop = MarketLoop(
+            brain=self.brain,
+            market_feed=self.market_feed,
+            execution=self.execution,
+            event_bus=self.event_bus,
+            symbols=self.symbols,
+            interval=self.market_interval,
+        )
+
+        # -----------------------------------------------------
+        # Controller
+        # -----------------------------------------------------
+
+        self.controller = AtlasController(
+            brain=self.brain,
+            market_loop=self.market_loop,
+            execution=self.execution,
+        )
+
+METHOD start(self) -> bool [267-379]
+    def start(self) -> bool:
+        """
+        Start Atlas services in dependency-safe order.
+
+        Returns:
+            True when Atlas starts successfully.
+            False when startup fails.
+        """
+
+        if self.running:
+            logger.warning(
+                "Atlas is already running",
+            )
+            return True
+
+        self.started_services.clear()
+        self.stopped_at = None
+
+        try:
+            logger.info(
+                "=================================================="
+            )
+            logger.info(
+                "ATLAS STARTUP SEQUENCE"
+            )
+            logger.info(
+                "=================================================="
+            )
+
+            self.runtime.boot()
+            self.runtime.initialize()
+
+            self.started_at = datetime.now(UTC).isoformat()
+
+            # -------------------------------------------------
+            # Execution subsystem
+            # -------------------------------------------------
+
+            self.execution.start()
+            self.started_services.append("execution")
+
+            # -------------------------------------------------
+            # Exchange connection
+            # -------------------------------------------------
+
+            self.runtime.connect()
+
+            self.market_feed.start()
+            self.started_services.append("market_feed")
+
+            # -------------------------------------------------
+            # Intelligence
+            # -------------------------------------------------
+
+            self._start_optional_service(
+                name="brain",
+                service=self.brain,
+            )
+
+            # -------------------------------------------------
+            # Runtime ready
+            # -------------------------------------------------
+
+            self.runtime.ready()
+
+            # -------------------------------------------------
+            # Market loop
+            # -------------------------------------------------
+
+            self.market_loop.start()
+            self.started_services.append("market_loop")
+
+            # -------------------------------------------------
+            # Controller
+            # -------------------------------------------------
+
+            self.controller.start()
+            self.started_services.append("controller")
+
+            self.runtime.start()
+            self.running = True
+
+            logger.info(
+                "ATLAS SYSTEM ONLINE"
+            )
+            logger.info(
+                "Started services: %s",
+                self.started_services,
+            )
+
+            return True
+
+        except Exception as exc:
+            self._record_error(
+                phase="startup",
+                error=exc,
+            )
+
+            logger.exception(
+                "Atlas startup failed"
+            )
+
+            try:
+                self.runtime.fail(
+                    str(exc),
+                )
+            except Exception:
+                logger.exception(
+                    "Runtime failure transition failed"
+                )
+
+            self._rollback_startup()
+            return False
+
+METHOD _start_optional_service(self, *, name: str, service: Any) -> None [385-404]
+    def _start_optional_service(
+        self,
+        *,
+        name: str,
+        service: Any,
+    ) -> None:
+        """
+        Start a service only when it exposes a callable start method.
+        """
+
+        start_method = getattr(
+            service,
+            "start",
+            None,
+        )
+
+        if callable(start_method):
+            start_method()
+
+        self.started_services.append(name)
+
+METHOD _rollback_startup(self) -> None [410-419]
+    def _rollback_startup(self) -> None:
+        """
+        Stop any service that may have started before startup failed.
+        """
+
+        logger.warning(
+            "Rolling back partial Atlas startup"
+        )
+
+        self.stop()
+
+METHOD stop(self) -> bool [425-513]
+    def stop(self) -> bool:
+        """
+        Stop Atlas services in reverse dependency order.
+        """
+
+        logger.info(
+            "=================================================="
+        )
+        logger.info(
+            "ATLAS SHUTDOWN SEQUENCE"
+        )
+        logger.info(
+            "=================================================="
+        )
+
+        shutdown_errors = 0
+
+        try:
+            self.runtime.stop()
+        except Exception as exc:
+            shutdown_errors += 1
+            self._record_error(
+                phase="runtime_stop",
+                error=exc,
+            )
+
+        shutdown_order = (
+            ("controller", self.controller),
+            ("market_loop", self.market_loop),
+            ("execution", self.execution),
+            ("market_feed", self.market_feed),
+            ("scheduler", self.scheduler),
+        )
+
+        for name, service in shutdown_order:
+            try:
+                self._stop_service(
+                    name=name,
+                    service=service,
+                )
+            except Exception as exc:
+                shutdown_errors += 1
+                self._record_error(
+                    phase=f"shutdown:{name}",
+                    error=exc,
+                )
+
+                logger.exception(
+                    "Service shutdown failed: %s",
+                    name,
+                )
+
+        try:
+            self.lifecycle.stop_all()
+        except Exception as exc:
+            shutdown_errors += 1
+            self._record_error(
+                phase="lifecycle_stop_all",
+                error=exc,
+            )
+
+            logger.exception(
+                "Lifecycle shutdown failed"
+            )
+
+        self.running = False
+        self.stopped_at = datetime.now(UTC).isoformat()
+        self.started_services.clear()
+
+        try:
+            self.runtime.shutdown()
+        except Exception as exc:
+            shutdown_errors += 1
+            self._record_error(
+                phase="runtime_shutdown",
+                error=exc,
+            )
+
+        if shutdown_errors:
+            logger.warning(
+                "Atlas stopped with %s shutdown error(s)",
+                shutdown_errors,
+            )
+            return False
+
+        logger.info(
+            "ATLAS SYSTEM OFFLINE"
+        )
+        return True
+
+[MARKET_LOOP] core\market_loop.py
+------------------------------------------------------------------------------
+CLASS MarketLoop()
+
+METHOD __init__(self, brain: Any, market_feed: Any, execution: Any | None = None, event_bus: Any | None = None, symbols: list[str] | tuple[str, ...] | None = None, interval: float = 10.0) -> None [104-166]
+    def __init__(
+        self,
+        brain: Any,
+        market_feed: Any,
+        execution: Any | None = None,
+        event_bus: Any | None = None,
+        symbols: list[str] | tuple[str, ...] | None = None,
+        interval: float = 10.0,
+    ) -> None:
+        self.brain = brain
+        self.market_feed = market_feed
+        self.execution = execution
+        self.event_bus = event_bus
+
+        self.symbols = self._normalize_symbols(
+            symbols or self.DEFAULT_SYMBOLS
+        )
+
+        self.interval = max(
+            1.0,
+            float(interval),
+        )
+
+        self.processor = CandleProcessor()
+        self.technical = TechnicalAnalyzer()
+        self.world = WorldAnalysisEngine()
+        self.decision_adapter = DecisionAdapter()
+
+        self.running = False
+        self.stop_event = threading.Event()
+        self.thread: threading.Thread | None = None
+        self.lock = threading.RLock()
+
+        self.started_at: str | None = None
+        self.stopped_at: str | None = None
+        self.last_cycle: str | None = None
+        self.last_cycle_duration = 0.0
+
+        self.last_signals: dict[str, dict[str, Any]] = {}
+        self.last_executions: dict[str, dict[str, Any]] = {}
+
+        self.metrics: dict[str, int | float] = {
+            "cycles": 0,
+            "symbols_scanned": 0,
+            "symbols_skipped": 0,
+            "decisions_received": 0,
+            "decisions_normalized": 0,
+            "decisions_rejected": 0,
+            "hold_decisions": 0,
+            "execution_requests": 0,
+            "executions_completed": 0,
+            "executions_rejected": 0,
+            "execution_failures": 0,
+            "errors": 0,
+            "latency": 0.0,
+        }
+
+        self.errors: list[dict[str, Any]] = []
+
+        logger.info(
+            "Atlas Market Loop v%s initialized",
+            self.VERSION,
+        )
+
+METHOD start(self) -> bool [172-208]
+    def start(self) -> bool:
+        """
+        Start the market worker thread.
+
+        Returns:
+            True when the loop starts or is already running.
+        """
+
+        with self.lock:
+            if self.running:
+                logger.warning(
+                    "Market Loop is already running"
+                )
+                return True
+
+            self.running = True
+            self.stop_event.clear()
+
+            self.started_at = datetime.now(
+                UTC
+            ).isoformat()
+
+            self.stopped_at = None
+
+            self.thread = threading.Thread(
+                target=self.worker,
+                name="AtlasMarketLoop",
+                daemon=True,
+            )
+
+            self.thread.start()
+
+        logger.info(
+            "Market Loop started"
+        )
+
+        return True
+
+METHOD stop(self) -> bool [214-266]
+    def stop(self) -> bool:
+        """
+        Stop the worker thread gracefully.
+        """
+
+        with self.lock:
+            if not self.running:
+                logger.info(
+                    "Market Loop is already stopped"
+                )
+                return True
+
+            self.running = False
+            self.stop_event.set()
+
+            thread = self.thread
+
+        if (
+            thread is not None
+            and thread.is_alive()
+            and thread is not threading.current_thread()
+        ):
+            thread.join(
+                timeout=max(
+                    5.0,
+                    self.interval + 1.0,
+                )
+            )
+
+        with self.lock:
+            still_alive = bool(
+                self.thread
+                and self.thread.is_alive()
+            )
+
+            self.stopped_at = datetime.now(
+                UTC
+            ).isoformat()
+
+            if not still_alive:
+                self.thread = None
+
+        if still_alive:
+            logger.warning(
+                "Market Loop thread did not stop within timeout"
+            )
+            return False
+
+        logger.info(
+            "Market Loop stopped"
+        )
+
+        return True
+
+METHOD worker(self) -> None [272-324]
+    def worker(self) -> None:
+        """
+        Execute continuous market cycles until shutdown.
+        """
+
+        logger.debug(
+            "Market Loop worker entered"
+        )
+
+        while self.running:
+            cycle_started = time.perf_counter()
+
+            try:
+                self.run_cycle()
+
+            except Exception as exc:
+                self._record_error(
+                    phase="cycle",
+                    error=exc,
+                )
+
+                logger.exception(
+                    "Market cycle failed"
+                )
+
+            cycle_duration = (
+                time.perf_counter()
+                - cycle_started
+            )
+
+            with self.lock:
+                self.metrics["cycles"] += 1
+                self.metrics["latency"] = round(
+                    cycle_duration,
+                    4,
+                )
+
+                self.last_cycle_duration = round(
+                    cycle_duration,
+                    4,
+                )
+
+                self.last_cycle = datetime.now(
+                    UTC
+                ).isoformat()
+
+            self.stop_event.wait(
+                self.interval
+            )
+
+        logger.debug(
+            "Market Loop worker exited"
+        )
+
+[MARKET_FEED] exchange\market_feed.py
+------------------------------------------------------------------------------
+CLASS MarketFeed()
+
+METHOD __init__(self, exchange_name: str = 'binance_global', *, provider: MarketDataProviderProtocol | None = None, event_bus: Any | None = None, metrics: Any | None = None, publish_events: bool = True, collect_metrics: bool = True, failure_threshold: int = MarketFeedService.DEFAULT_FAILURE_THRESHOLD) -> None [81-128]
+    def __init__(
+        self,
+        exchange_name: str = "binance_global",
+        *,
+        provider: MarketDataProviderProtocol | None = None,
+        event_bus: Any | None = None,
+        metrics: Any | None = None,
+        publish_events: bool = True,
+        collect_metrics: bool = True,
+        failure_threshold: int = (
+            MarketFeedService.DEFAULT_FAILURE_THRESHOLD
+        ),
+    ) -> None:
+        normalized_exchange = (
+            str(exchange_name)
+            .strip()
+            .lower()
+        )
+
+        if normalized_exchange not in self.SUPPORTED_EXCHANGES:
+            raise ValueError(
+                "MarketFeed v2 supports public Binance Global data only. "
+                f"Unsupported exchange_name={exchange_name!r}."
+            )
+
+        self.exchange_name = normalized_exchange
+
+        self.provider = (
+            provider
+            if provider is not None
+            else BinancePublicDataProvider()
+        )
+
+        self.service = MarketFeedService(
+            provider=self.provider,
+            event_bus=event_bus,
+            metrics=metrics,
+            publish_events=publish_events,
+            collect_metrics=collect_metrics,
+            failure_threshold=failure_threshold,
+        )
+
+        logger.info(
+            "MarketFeed compatibility adapter initialized: "
+            "exchange=%s provider=%s",
+            self.exchange_name,
+            self.service.provider_name,
+        )
+
+METHOD start(self) -> None [142-153]
+    def start(
+        self,
+    ) -> None:
+        """
+        Start MarketFeedService and its public-data provider.
+        """
+
+        self.service.start()
+
+        logger.info(
+            "Market Feed started through MarketFeedService."
+        )
+
+METHOD stop(self) -> None [155-166]
+    def stop(
+        self,
+    ) -> None:
+        """
+        Stop MarketFeedService and disconnect its provider.
+        """
+
+        self.service.stop()
+
+        logger.info(
+            "Market Feed stopped through MarketFeedService."
+        )
+
+METHOD market_feed_snapshot(self) [273-276]
+    def market_feed_snapshot(
+        self,
+    ):
+        return self.service.market_feed_snapshot()
+
+METHOD _to_legacy_candle_row(candle: MarketCandle) -> list[Any] [288-336]
+    def _to_legacy_candle_row(
+        candle: MarketCandle,
+    ) -> list[Any]:
+        metadata = dict(
+            candle.metadata or {}
+        )
+
+        return [
+            MarketFeed._to_milliseconds(
+                candle.open_time
+            ),
+            str(candle.open),
+            str(candle.high),
+            str(candle.low),
+            str(candle.close),
+            str(candle.volume),
+            MarketFeed._to_milliseconds(
+                candle.close_time
+                or candle.open_time
+            ),
+            str(
+                metadata.get(
+                    "quote_asset_volume",
+                    0.0,
+                )
+            ),
+            int(
+                metadata.get(
+                    "number_of_trades",
+                    0,
+                )
+            ),
+            str(
+                metadata.get(
+                    "taker_buy_base_volume",
+                    0.0,
+                )
+            ),
+            str(
+                metadata.get(
+                    "taker_buy_quote_volume",
+                    0.0,
+                )
+            ),
+            metadata.get(
+                "ignore",
+                "0",
+            ),
+        ]

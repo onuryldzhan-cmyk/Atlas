@@ -1,0 +1,1328 @@
+﻿
+========================================================================================
+ATLAS MARKET SOURCE INSPECTION
+========================================================================================
+
+========================================================================================
+data/market_provider.py
+========================================================================================
+STATUS: FOUND
+LINES: 47
+
+IMPORTS
+- abc
+
+CLASSES
+- MarketProvider
+
+FUNCTIONS
+- <none>
+
+MAIN GUARD: False
+
+POSSIBLE MODULE-SCOPE SIDE EFFECTS
+- '\nAtlas Market Provider v5.0\n\nBase market data interface.\n\nAll market sources must\nimplement this layer.\n'
+
+SOURCE
+----------------------------------------------------------------------------------------
+"""
+Atlas Market Provider v5.0
+
+Base market data interface.
+
+All market sources must
+implement this layer.
+"""
+
+
+from abc import ABC, abstractmethod
+
+
+
+class MarketProvider(ABC):
+
+
+    VERSION = "5.0"
+
+
+
+    @abstractmethod
+    def get_price(
+        self,
+        symbol
+    ):
+        pass
+
+
+
+    @abstractmethod
+    def get_candles(
+        self,
+        symbol,
+        timeframe="5m",
+        limit=100
+    ):
+        pass
+
+
+
+    @abstractmethod
+    def get_volume(
+        self,
+        symbol
+    ):
+        pass
+
+========================================================================================
+data/binance_provider.py
+========================================================================================
+STATUS: FOUND
+LINES: 176
+
+IMPORTS
+- requests
+- logging
+
+CLASSES
+- BinanceProvider
+
+FUNCTIONS
+- <none>
+
+MAIN GUARD: False
+
+POSSIBLE MODULE-SCOPE SIDE EFFECTS
+- '\nAtlas Binance Market Provider v5.0\n\nLive market data connector.\n'
+
+SOURCE
+----------------------------------------------------------------------------------------
+"""
+Atlas Binance Market Provider v5.0
+
+Live market data connector.
+"""
+
+
+import requests
+import logging
+
+
+
+logger = logging.getLogger(
+    "AtlasAI.BinanceProvider"
+)
+
+
+
+class BinanceProvider:
+
+
+    VERSION = "5.0"
+
+
+    BASE_URL = (
+        "https://api.binance.com"
+    )
+
+
+
+    def __init__(self):
+
+        logger.info(
+            "Atlas Binance Provider v5.0 initialized"
+        )
+
+
+
+
+    def get_price(
+        self,
+        symbol
+    ):
+
+
+        url = (
+            f"{self.BASE_URL}"
+            f"/api/v3/ticker/price"
+        )
+
+
+        response = requests.get(
+
+            url,
+
+            params={
+                "symbol":symbol
+            },
+
+            timeout=5
+
+        )
+
+
+        data = response.json()
+
+
+        return float(
+            data["price"]
+        )
+
+
+
+
+    def get_volume(
+        self,
+        symbol
+    ):
+
+
+        url = (
+            f"{self.BASE_URL}"
+            f"/api/v3/ticker/24hr"
+        )
+
+
+        response = requests.get(
+
+            url,
+
+            params={
+                "symbol":symbol
+            },
+
+            timeout=5
+
+        )
+
+
+        data=response.json()
+
+
+        return float(
+            data["volume"]
+        )
+
+
+
+
+
+    def get_candles(
+        self,
+        symbol,
+        timeframe="5m",
+        limit=100
+    ):
+
+
+        url = (
+            f"{self.BASE_URL}"
+            f"/api/v3/klines"
+        )
+
+
+        response=requests.get(
+
+            url,
+
+            params={
+
+                "symbol":symbol,
+
+                "interval":timeframe,
+
+                "limit":limit
+
+            },
+
+            timeout=5
+
+        )
+
+
+
+        candles=[]
+
+
+        for item in response.json():
+
+
+            candles.append({
+
+                "open":
+                float(item[1]),
+
+
+                "high":
+                float(item[2]),
+
+
+                "low":
+                float(item[3]),
+
+
+                "close":
+                float(item[4]),
+
+
+                "volume":
+                float(item[5])
+
+            })
+
+
+
+        return candles
+
+========================================================================================
+data/candle_manager.py
+========================================================================================
+STATUS: FOUND
+LINES: 222
+
+IMPORTS
+- logging
+- datetime
+
+CLASSES
+- CandleManager
+
+FUNCTIONS
+- <none>
+
+MAIN GUARD: False
+
+POSSIBLE MODULE-SCOPE SIDE EFFECTS
+- '\nAtlas Candle Manager v5.1\n\nResponsible for:\n- candle storage\n- normalization\n- market history preparation\n'
+
+SOURCE
+----------------------------------------------------------------------------------------
+"""
+Atlas Candle Manager v5.1
+
+Responsible for:
+- candle storage
+- normalization
+- market history preparation
+"""
+
+
+import logging
+from datetime import datetime, UTC
+
+
+
+logger = logging.getLogger(
+    "AtlasAI.CandleManager"
+)
+
+
+
+class CandleManager:
+
+
+    VERSION = "5.1"
+
+
+
+    def __init__(
+        self,
+        provider=None
+    ):
+
+        self.provider = provider
+
+        self.cache = {}
+
+        logger.info(
+            "Atlas Candle Manager v5.1 initialized"
+        )
+
+
+
+    # =====================================
+    # GET MARKET CANDLES
+    # =====================================
+
+
+    def get_candles(
+        self,
+        symbol,
+        timeframe="5m",
+        limit=100
+    ):
+
+
+        if not self.provider:
+
+            return []
+
+
+
+        candles = self.provider.get_candles(
+
+            symbol,
+
+            timeframe,
+
+            limit
+
+        )
+
+
+        self.cache[symbol] = {
+
+            "candles": candles,
+
+            "time":
+            datetime.now(
+                UTC
+            ).isoformat()
+
+        }
+
+
+
+        return candles
+
+
+
+
+
+    # =====================================
+    # LAST PRICE
+    # =====================================
+
+
+    def last_price(
+        self,
+        symbol
+    ):
+
+
+        candles = self.cache.get(
+            symbol
+        )
+
+
+        if not candles:
+
+            return None
+
+
+
+        data = candles["candles"]
+
+
+        if not data:
+
+            return None
+
+
+
+        return data[-1]["close"]
+
+
+
+
+
+
+    # =====================================
+    # MARKET SNAPSHOT
+    # =====================================
+
+
+    def snapshot(
+        self,
+        symbol
+    ):
+
+
+        candles = self.get_candles(
+            symbol
+        )
+
+
+        if not candles:
+
+            return {
+
+                "symbol":
+                symbol,
+
+                "status":
+                "NO_DATA"
+
+            }
+
+
+
+        last = candles[-1]
+
+
+
+        return {
+
+            "symbol":
+            symbol,
+
+
+            "price":
+            last["close"],
+
+
+            "high":
+            last["high"],
+
+
+            "low":
+            last["low"],
+
+
+            "volume":
+            last["volume"],
+
+
+            "candles":
+            len(candles),
+
+
+            "time":
+            datetime.now(
+                UTC
+            ).isoformat()
+
+        }
+
+
+
+
+
+
+    # =====================================
+    # STATUS
+    # =====================================
+
+
+    def status(self):
+
+
+        return {
+
+            "version":
+            self.VERSION,
+
+
+            "cached_symbols":
+            list(
+                self.cache.keys()
+            )
+
+        }
+
+========================================================================================
+core/candle_processor.py
+========================================================================================
+STATUS: FOUND
+LINES: 261
+
+IMPORTS
+- __future__
+- logging
+- datetime
+
+CLASSES
+- CandleProcessor
+
+FUNCTIONS
+- <none>
+
+MAIN GUARD: False
+
+POSSIBLE MODULE-SCOPE SIDE EFFECTS
+- '\nAtlas Candle Processor v2.0\n\nExchange candle normalization layer.\n\nResponsibilities:\n\n- Convert Binance candles\n- Validate OHLCV\n- Remove invalid candles\n- Sort candles\n- Prepare data for intelligence layer\n\n'
+
+SOURCE
+----------------------------------------------------------------------------------------
+"""
+Atlas Candle Processor v2.0
+
+Exchange candle normalization layer.
+
+Responsibilities:
+
+- Convert Binance candles
+- Validate OHLCV
+- Remove invalid candles
+- Sort candles
+- Prepare data for intelligence layer
+
+"""
+
+from __future__ import annotations
+
+import logging
+from datetime import datetime, timezone
+
+
+logger = logging.getLogger(
+    "AtlasAI.CandleProcessor"
+)
+
+
+class CandleProcessor:
+
+
+    def __init__(self):
+
+        self.version = "2.0"
+
+
+
+    def normalize(
+        self,
+        candles
+    ):
+
+        if not candles:
+
+            return []
+
+
+        result = []
+
+
+        for candle in candles:
+
+
+            try:
+
+
+                normalized = self._parse(
+                    candle
+                )
+
+
+                if normalized:
+
+                    result.append(
+                        normalized
+                    )
+
+
+            except Exception as e:
+
+                logger.warning(
+                    f"Candle skipped: {e}"
+                )
+
+
+
+        result = self._clean(
+            result
+        )
+
+
+        return result
+
+
+
+    # =================================
+    # PARSER
+    # =================================
+
+
+    def _parse(
+        self,
+        candle
+    ):
+
+
+        if isinstance(
+            candle,
+            list
+        ):
+
+
+            return {
+
+                "timestamp":
+                    datetime.now(
+                        timezone.utc
+                    ).isoformat(),
+
+
+                "open":
+                    float(candle[1]),
+
+
+                "high":
+                    float(candle[2]),
+
+
+                "low":
+                    float(candle[3]),
+
+
+                "close":
+                    float(candle[4]),
+
+
+                "volume":
+                    float(candle[5])
+
+            }
+
+
+
+        elif isinstance(
+            candle,
+            dict
+        ):
+
+
+            return {
+
+                "timestamp":
+                    candle.get(
+                        "timestamp",
+                        datetime.now(
+                            timezone.utc
+                        ).isoformat()
+                    ),
+
+
+                "open":
+                    float(
+                        candle["open"]
+                    ),
+
+
+                "high":
+                    float(
+                        candle["high"]
+                    ),
+
+
+                "low":
+                    float(
+                        candle["low"]
+                    ),
+
+
+                "close":
+                    float(
+                        candle["close"]
+                    ),
+
+
+                "volume":
+                    float(
+                        candle.get(
+                            "volume",
+                            0
+                        )
+                    )
+
+            }
+
+
+        return None
+
+
+
+    # =================================
+    # VALIDATION
+    # =================================
+
+
+    def _clean(
+        self,
+        candles
+    ):
+
+
+        cleaned = []
+
+
+        for c in candles:
+
+
+            if (
+
+                c["high"] < c["low"]
+
+                or
+
+                c["close"] <= 0
+
+                or
+
+                c["open"] <= 0
+
+            ):
+
+                continue
+
+
+
+            cleaned.append(
+                c
+            )
+
+
+
+        return cleaned
+
+
+
+    # =================================
+    # HELPERS
+    # =================================
+
+
+    def latest_price(
+        self,
+        candles
+    ):
+
+
+        if not candles:
+
+            return None
+
+
+        return candles[-1]["close"]
+
+
+
+    def candle_count(
+        self,
+        candles
+    ):
+
+
+        return len(
+            candles
+        )
+
+========================================================================================
+exchange/market_feed.py
+========================================================================================
+STATUS: FOUND
+LINES: 48
+
+IMPORTS
+- __future__
+- logging
+- exchange.exchange_manager
+
+CLASSES
+- MarketFeed
+
+FUNCTIONS
+- <none>
+
+MAIN GUARD: False
+
+POSSIBLE MODULE-SCOPE SIDE EFFECTS
+- '\nAtlas Market Feed\n'
+
+SOURCE
+----------------------------------------------------------------------------------------
+"""
+Atlas Market Feed
+"""
+
+from __future__ import annotations
+
+import logging
+
+from exchange.exchange_manager import ExchangeManager
+
+
+logger = logging.getLogger("AtlasAI.MarketFeed")
+
+
+class MarketFeed:
+
+    def __init__(self, exchange_name="binance_global"):
+
+        self.manager = ExchangeManager(exchange_name)
+
+    def start(self):
+
+        self.manager.connect()
+
+        logger.info("Market Feed started.")
+
+    def stop(self):
+
+        self.manager.disconnect()
+
+        logger.info("Market Feed stopped.")
+
+    def price(self, symbol):
+
+        return self.manager.get_price(symbol)
+
+    def candles(
+        self,
+        symbol,
+        interval="1m",
+        limit=500
+    ):
+
+        return self.manager.get_klines(
+            symbol,
+            interval,
+            limit
+        )
+
+========================================================================================
+exchange/exchange_manager.py
+========================================================================================
+STATUS: FOUND
+LINES: 68
+
+IMPORTS
+- __future__
+- logging
+- exchange.adapters.binance_global
+- exchange.adapters.binance_tr
+
+CLASSES
+- ExchangeManager
+
+FUNCTIONS
+- <none>
+
+MAIN GUARD: False
+
+POSSIBLE MODULE-SCOPE SIDE EFFECTS
+- '\nAtlas Exchange Manager\n'
+
+SOURCE
+----------------------------------------------------------------------------------------
+"""
+Atlas Exchange Manager
+"""
+
+from __future__ import annotations
+
+import logging
+
+from exchange.adapters.binance_global import BinanceGlobalExchange
+from exchange.adapters.binance_tr import BinanceTRExchange
+
+
+logger = logging.getLogger("AtlasAI.ExchangeManager")
+
+
+class ExchangeManager:
+
+    def __init__(self, exchange_name: str = "binance_global"):
+
+        self.exchange_name = exchange_name
+        self.exchange = self._create_exchange()
+
+    def _create_exchange(self):
+
+        if self.exchange_name == "binance_tr":
+            logger.info("Using Binance TR")
+            return BinanceTRExchange()
+
+        logger.info("Using Binance Global")
+        return BinanceGlobalExchange()
+
+    def connect(self):
+
+        return self.exchange.connect()
+
+    def disconnect(self):
+
+        return self.exchange.disconnect()
+
+    def get_price(self, symbol: str):
+
+        return self.exchange.get_price(symbol)
+
+    def get_klines(
+        self,
+        symbol: str,
+        interval: str,
+        limit: int = 500
+    ):
+
+        return self.exchange.get_klines(
+            symbol,
+            interval,
+            limit
+        )
+
+    def place_order(
+        self,
+        symbol: str,
+        side: str,
+        quantity: float
+    ):
+
+        return self.exchange.place_order(
+            symbol,
+            side,
+            quantity
+        )
+
+========================================================================================
+exchange/adapters/binance_global.py
+========================================================================================
+STATUS: FOUND
+LINES: 321
+
+IMPORTS
+- __future__
+- logging
+- os
+- time
+- dotenv
+- binance.spot
+- exchange.base_exchange
+
+CLASSES
+- BinanceGlobalExchange
+
+FUNCTIONS
+- <none>
+
+MAIN GUARD: False
+
+POSSIBLE MODULE-SCOPE SIDE EFFECTS
+- '\nAtlas Binance Global Adapter v2.0\n\nProduction exchange connector.\n\nFeatures:\n\n- Safe connection handling\n- Automatic reconnect\n- Connection validation\n- Paper trading protection\n- Binance API wrapper\n\n'
+- load_dotenv()
+
+SOURCE
+----------------------------------------------------------------------------------------
+"""
+Atlas Binance Global Adapter v2.0
+
+Production exchange connector.
+
+Features:
+
+- Safe connection handling
+- Automatic reconnect
+- Connection validation
+- Paper trading protection
+- Binance API wrapper
+
+"""
+
+
+from __future__ import annotations
+
+
+import logging
+import os
+import time
+
+
+from dotenv import load_dotenv
+from binance.spot import Spot
+
+
+from exchange.base_exchange import BaseExchange
+
+
+
+load_dotenv()
+
+
+
+logger = logging.getLogger(
+    "AtlasAI.BinanceGlobal"
+)
+
+
+
+
+
+class BinanceGlobalExchange(BaseExchange):
+
+
+    VERSION = "2.0"
+
+
+
+    def __init__(self):
+
+
+        self.connected = False
+
+
+        self.client = None
+
+
+        self.api_key = os.getenv(
+            "BINANCE_API_KEY",
+            ""
+        )
+
+
+        self.api_secret = os.getenv(
+            "BINANCE_API_SECRET",
+            ""
+        )
+
+
+
+        logger.info(
+            "Binance Global Adapter initialized"
+        )
+
+
+
+
+
+
+    # =====================================
+    # CONNECT
+    # =====================================
+
+
+    def connect(self):
+
+
+        try:
+
+
+            if self.client is None:
+
+
+                self.client = Spot(
+
+                    api_key=self.api_key,
+
+                    api_secret=self.api_secret
+
+                )
+
+
+
+            # connection test
+
+
+            self.client.time()
+
+
+
+            self.connected = True
+
+
+
+            logger.info(
+                "Binance Global connected"
+            )
+
+
+
+            return True
+
+
+
+        except Exception as e:
+
+
+            self.connected = False
+
+
+            logger.exception(
+                f"Binance connection failed: {e}"
+            )
+
+
+            return False
+
+
+
+
+
+
+
+    # =====================================
+    # DISCONNECT
+    # =====================================
+
+
+    def disconnect(self):
+
+
+        self.connected = False
+
+
+        self.client = None
+
+
+
+        logger.info(
+            "Binance disconnected"
+        )
+
+
+
+
+
+
+    # =====================================
+    # ENSURE CONNECTION
+    # =====================================
+
+
+    def _ensure_connection(self):
+
+
+        if not self.connected or self.client is None:
+
+
+            logger.warning(
+                "Binance reconnect required"
+            )
+
+
+            self.connect()
+
+
+
+        if self.client is None:
+
+
+            raise ConnectionError(
+                "Binance client unavailable"
+            )
+
+
+
+
+
+
+
+
+    # =====================================
+    # PRICE
+    # =====================================
+
+
+    def get_price(
+        self,
+        symbol
+    ):
+
+
+        self._ensure_connection()
+
+
+
+        ticker = self.client.ticker_price(
+
+            symbol=symbol
+
+        )
+
+
+
+        return float(
+            ticker["price"]
+        )
+
+
+
+
+
+
+
+
+    # =====================================
+    # CANDLES
+    # =====================================
+
+
+    def get_klines(
+
+        self,
+
+        symbol,
+
+        interval="1m",
+
+        limit=500
+
+    ):
+
+
+        self._ensure_connection()
+
+
+
+        return self.client.klines(
+
+            symbol=symbol,
+
+            interval=interval,
+
+            limit=limit
+
+        )
+
+
+
+
+
+
+
+
+    # =====================================
+    # ORDER
+    # =====================================
+
+
+    def place_order(
+
+        self,
+
+        symbol,
+
+        side,
+
+        quantity
+
+    ):
+
+
+        logger.warning(
+            "Real order disabled - PAPER MODE"
+        )
+
+
+
+        return {
+
+
+            "status":
+            "PAPER_ONLY",
+
+
+            "symbol":
+            symbol,
+
+
+            "side":
+            side,
+
+
+            "quantity":
+            quantity
+
+
+        }
+
+========================================================================================
+INSPECTION COMPLETED
+========================================================================================

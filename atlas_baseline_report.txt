@@ -1,0 +1,954 @@
+﻿============================================================
+ATLAS AI ENTERPRISE BASELINE REPORT v1.0
+============================================================
+
+Generated : 2026-07-26 18:57:05
+Project   : C:\Users\HUAWEİ\OneDrive\Masaüstü\Project_Atlas_AI
+
+============================================================
+1. ENVIRONMENT
+============================================================
+PowerShell: 5.1.26100.8875
+Python:
+Python 3.14.6
+
+Pip:
+pip 26.1.2 from C:\Users\HUAWE¦\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\pip (python 3.14)
+
+
+============================================================
+2. ROOT DIRECTORY
+============================================================
+
+Mode   LastWriteTime       Length  Name                              
+----   -------------       ------  ----                              
+dar--l 26.07.2026 14:33:11         .git                              
+dar--l 22.07.2026 02:36:15         .github                           
+dar--l 26.07.2026 18:41:13         ai                                
+dar--l 26.07.2026 18:41:18         analysis                          
+dar--l 26.07.2026 18:41:13         analytics                         
+dar--l 26.07.2026 18:41:13         archive_unused_2026-07-22         
+dar--l 26.07.2026 18:41:13         assistant                         
+dar--l 26.07.2026 18:41:13         atlas_paper_trading               
+dar--l 26.07.2026 18:41:13         backtest                          
+dar--l 26.07.2026 18:41:13         config                            
+dar--l 26.07.2026 18:41:18         core                              
+dar--l 26.07.2026 18:41:13         dashboard                         
+dar--l 26.07.2026 18:41:13         data                              
+dar--l 24.07.2026 18:23:36         database                          
+dar--l 22.07.2026 02:36:15         events                            
+dar--l 26.07.2026 18:41:18         exchange                          
+dar--l 22.07.2026 02:36:15         execution                         
+dar--l 22.07.2026 02:36:15         exit                              
+dar--l 22.07.2026 02:36:15         github                            
+dar--l 26.07.2026 18:41:13         intelligence                      
+dar--l 22.07.2026 02:36:14         learning                          
+dar--l 22.07.2026 03:15:41         logs                              
+dar--l 22.07.2026 02:36:15         memory_data                       
+dar--l 22.07.2026 02:36:14         patches                           
+dar--l 26.07.2026 18:41:19         portfolio                         
+dar--l 22.07.2026 02:36:15         position                          
+dar--l 22.07.2026 02:36:15         quality                           
+dar--l 22.07.2026 02:36:15         risk                              
+dar--l 22.07.2026 02:36:15         scalping                          
+dar--l 22.07.2026 02:36:15         signals                           
+dar--l 22.07.2026 02:36:15         simulation                        
+dar--l 26.07.2026 18:41:13         strategy                          
+dar--l 22.07.2026 02:36:14         templates                         
+dar--l 22.07.2026 02:36:15         tests                             
+dar--l 22.07.2026 02:36:15         timeframe                         
+dar--l 22.07.2026 02:36:15         trade                             
+dar--l 22.07.2026 02:36:15         trading                           
+-a---l 16.07.2026 05:39:02 134     .env                              
+-a---l 19.07.2026 10:44:34 553     .gitignore                        
+-a---l 19.07.2026 01:31:00 14508   architecture_report.json          
+-a---l 16.07.2026 06:38:12 8192    atlas_ai.db                       
+-a---l 19.07.2026 10:53:28 1897446 Atlas_AI_Yedek_20260719_1353.zip  
+-a---l 18.07.2026 15:04:26 2728    atlas_ast_report.json             
+-a---l 26.07.2026 13:30:39 30222   Atlas_Audit_Reports.zip           
+-a---- 26.07.2026 18:57:06 722     atlas_baseline_report.txt         
+-a---l 23.07.2026 14:44:20 106     atlas_brain_structure.txt         
+-a---l 18.07.2026 23:33:42 8788    atlas_check.txt                   
+-a---l 23.07.2026 18:06:29 1375    atlas_evolution_memory.json       
+-a---l 26.07.2026 14:40:30 41880   atlas_execution_diagnosis.txt     
+-a---l 23.07.2026 18:07:23 235     atlas_experiments.json            
+-a---l 23.07.2026 18:06:29 886     atlas_knowledge.json              
+-a---l 23.07.2026 14:40:51 15812   atlas_module_report.json          
+-a---l 23.07.2026 18:00:37 6877    atlas_self_awareness.json         
+-a---l 23.07.2026 18:06:29 404     atlas_self_improvement_report.json
+-a---l 22.07.2026 03:25:05 50820   atlas_structure.txt               
+-a---l 26.07.2026 12:31:43 82064   atlas_tree.txt                    
+-a---l 18.07.2026 11:01:24 391     atlas_version_history.json        
+-a---l 20.07.2026 10:57:28 72792   backtest_best_strategy.json       
+-a---l 20.07.2026 10:57:28 85178   backtest_trend_following.json     
+-a---l 23.07.2026 14:39:34 1821    brain_analysis.json               
+-a---l 16.07.2026 09:46:28 819     check_project.py                  
+-a---l 18.07.2026 15:07:48 106019  codebase_index.json               
+-a---l 18.07.2026 15:15:30 1445    code_smell_report.json            
+-a---l 22.07.2026 03:27:04 205886  complexity_report.txt             
+-a---l 22.07.2026 08:44:34 205886  complexity_report_clean.txt       
+-a---l 16.07.2026 08:51:20 7938    create_atlas_modules.ps1          
+-a---l 16.07.2026 06:31:42 20480   database.db                       
+-a---l 26.07.2026 14:53:27 16219   decision_adapter_v5_1.py          
+-a---l 19.07.2026 00:57:42 144972  dependency_graph.json             
+-a---l 18.07.2026 15:10:58 26013   dependency_report.json            
+-a---l 24.07.2026 11:09:18 0       error.txt                         
+-a---l 26.07.2026 18:43:52 71752   execution_manager.py              
+-a---l 18.07.2026 11:25:32 955     experiment_memory.json            
+-a---l 22.07.2026 08:44:55 1052    halstead_report.txt               
+-a---l 20.07.2026 10:20:26 3436    health_report.json                
+-a---l 26.07.2026 12:32:44 153628  imports_report.txt                
+-a---l 18.07.2026 14:55:10 444     knowledge_memory.json             
+-a---l 26.07.2026 12:32:49 16414   legacy_files.txt                  
+-a---l 26.07.2026 14:39:34 13052   main.py                           
+-a---l 22.07.2026 08:44:42 41044   maintainability_report.txt        
+-a---l 18.07.2026 15:19:56 38572   market_learning.json              
+-a---l 26.07.2026 18:07:24 2586    paper_trades.json                 
+-a---l 26.07.2026 18:42:31 12782   Pasted text(24) (1).txt           
+-a---l 18.07.2026 15:19:56 35294   pattern_memory.json               
+-a---l 21.07.2026 23:30:48 136     performance.json                  
+-a---l 19.07.2026 01:11:34 855     positions.json                    
+-a---l 23.07.2026 17:58:36 49112   project_snapshot.json             
+-a---l 26.07.2026 12:32:36 45094   python_files.txt                  
+-a---l 26.07.2026 12:32:39 50889   python_file_sizes.csv             
+-a---l 22.07.2026 08:44:46 160786  raw_metrics.txt                   
+-a---l 19.07.2026 10:50:28 679     README.md                         
+-a---l 19.07.2026 23:59:56 138480  refactor_memory.json              
+-a---l 19.07.2026 10:35:04 3       requirements.txt                  
+-a---l 23.07.2026 18:15:40 477     test_adaptive_learning.py         
+-a---l 23.07.2026 18:02:49 937     test_advisor.py                   
+-a---l 24.07.2026 09:56:41 232     test_application.py               
+-a---l 24.07.2026 13:35:40 7683    test_atlas_pipeline.py            
+-a---l 23.07.2026 18:00:31 505     test_awareness.py                 
+-a---l 23.07.2026 18:22:04 233     test_brain_connector.py           
+-a---l 24.07.2026 13:40:21 8536    test_buy_execution.py             
+-a---l 24.07.2026 11:43:25 297     test_capital.py                   
+-a---l 23.07.2026 18:09:57 253     test_coin_scanner.py              
+-a---l 24.07.2026 09:53:38 319     test_controller.py                
+-a---l 23.07.2026 18:18:25 296     test_decision.py                  
+-a---l 24.07.2026 11:50:22 546     test_decision_adapter.py          
+-a---l 23.07.2026 18:07:49 187     test_evaluator.py                 
+-a---l 23.07.2026 18:01:44 330     test_evolution.py                 
+-a---l 23.07.2026 18:19:55 332     test_execution.py                 
+-a---l 24.07.2026 18:23:49 2688    test_execution_manager_v21.py     
+-a---l 24.07.2026 18:07:48 5093    test_execution_pipeline.py        
+-a---l 24.07.2026 11:38:33 407     test_executor.py                  
+-a---l 23.07.2026 18:06:54 209     test_experiment.py                
+-a---l 22.07.2026 17:26:00 129     test_feed.py                      
+-a---l 24.07.2026 18:26:17 3357    test_full_execution_lifecycle.py  
+-a---l 23.07.2026 18:01:06 586     test_improvement.py               
+-a---l 23.07.2026 18:21:12 215     test_intelligence_core.py         
+-a---l 23.07.2026 18:27:15 279     test_intelligence_loop.py         
+-a---l 23.07.2026 18:03:56 313     test_knowledge.py                 
+-a---l 24.07.2026 10:00:50 298     test_live_loop.py                 
+-a---l 24.07.2026 12:49:51 377     test_market_data.py               
+-a---l 24.07.2026 12:56:13 608     test_market_intelligence.py       
+-a---l 23.07.2026 18:11:16 362     test_opportunity.py               
+-a---l 23.07.2026 18:27:55 288     test_paper_bridge.py              
+-a---l 23.07.2026 18:17:03 476     test_portfolio_intelligence.py    
+-a---l 24.07.2026 18:08:57 3372    test_position_database.py         
+-a---l 24.07.2026 18:08:19 3297    test_position_lifecycle.py        
+-a---l 23.07.2026 18:14:01 293     test_regime.py                    
+-a---l 24.07.2026 11:42:45 258     test_risk.py                      
+-a---l 23.07.2026 18:29:45 340     test_risk_intelligence.py         
+-a---l 23.07.2026 18:06:26 481     test_self_improvement.py          
+-a---l 23.07.2026 18:14:54 305     test_strategy_selector.py         
+-a---l 23.07.2026 18:05:21 555     test_supervisor.py                
+-a---l 24.07.2026 18:09:49 687     test_trade_memory.py              
+-a---l 24.07.2026 11:36:50 352     test_validator.py                 
+-a---l 15.07.2026 06:29:38 957     trades.json                       
+-a---l 13.07.2026 07:55:32 777     trades_backup.json                
+-a---l 15.07.2026 00:47:02 756     trade_history.csv                 
+-a---l 17.07.2026 14:43:18 944     trade_history.json                
+-a---l 18.07.2026 15:19:56 165721  trade_memory.json                 
+-a---l 21.07.2026 23:30:36 3513    web_app.py                        
+
+
+
+
+============================================================
+3. PYTHON SOURCE INVENTORY
+============================================================
+Python file count: 230
+ai\chat_assistant.py
+ai\cognition\state.py
+ai\core\atlas_brain.py
+ai\core\atlas_brain_backup_v6.py
+ai\core\atlas_brain_old_v8.py
+ai\core\atlas_memory_core.py
+ai\core\atlas_multi_agent.py
+ai\core\atlas_reasoning_engine.py
+ai\core\atlas_world_model.py
+ai\core\decision\decision_builder.py
+ai\core\intelligence\agent_analyzer.py
+ai\core\intelligence\agent_fusion.py
+ai\core\intelligence\confidence\confidence_engine.py
+ai\core\intelligence\decision_builder.py
+ai\core\intelligence\fusion_engine.py
+ai\core\intelligence\memory_adapter.py
+ai\core\intelligence\reasoning_adapter.py
+ai\core\intelligence\risk_engine.py
+ai\core\intelligence\risk_model.py
+ai\core\intelligence\world_analyzer.py
+ai\core\validation\__init__.py
+ai\core\validation\decision_validator.py
+ai\execution\__init__.py
+ai\execution\paper_executor.py
+ai\lstm_predictor.py
+ai\target_prediction_engine.py
+analysis\__init__.py
+analysis\technical_analyzer.py
+analysis\world_analysis_engine.py
+analytics\performance_tracker.py
+assistant\__init__.py
+assistant\advisor\__init__.py
+assistant\advisor\advisor_engine.py
+assistant\awareness\self_awareness_engine.py
+assistant\evaluator\__init__.py
+assistant\evaluator\performance_evaluator.py
+assistant\evolution\__init__.py
+assistant\evolution\evolution_engine.py
+assistant\experiment\__init__.py
+assistant\experiment\experiment_engine.py
+assistant\improvement\improvement_planner.py
+assistant\knowledge\__init__.py
+assistant\knowledge\knowledge_core.py
+assistant\loop\self_improvement_loop.py
+assistant\project_analyzer.py
+assistant\project_snapshot.py
+assistant\supervisor\__init__.py
+assistant\supervisor\intelligence_supervisor.py
+atlas_paper_trading\paper_trading_engine.py
+atlas_paper_trading\paper_trading_main.py
+atlas_paper_trading\performance_report.py
+atlas_paper_trading\position_tracker.py
+atlas_paper_trading\risk_guardian.py
+backtest\backtest_engine.py
+backtest\portfolio_backtest.py
+check_project.py
+config\settings.py
+core\adapters\__init__.py
+core\adapters\market_adapter.py
+core\adaptive_profit_engine.py
+core\application.py
+core\brain.py
+core\brain_analyzer.py
+core\brain_compare.py
+core\brain_dependency_scan.py
+core\candle_processor.py
+core\capital_allocator.py
+core\capital_manager.py
+core\class_registry_scan.py
+core\code_cleanup_analyzer.py
+core\controller\__init__.py
+core\controller\atlas_controller.py
+core\data\price_provider.py
+core\database.py
+core\decision.py
+core\decision_adapter.py
+core\decision_adapter_backup.py
+core\decision_engine.py
+core\dynamic_profit_engine.py
+core\event_bus.py
+core\events.py
+core\execution_audit.py
+core\execution_bridge.py
+core\execution_contracts.py
+core\execution_controller.py
+core\execution_event.py
+core\execution_manager.py
+core\execution_manager_backup.py
+core\execution_manager_v1_backup.py
+core\execution_manager_v28_backup.py
+core\execution_manager_v7_backup.py
+core\execution_manager_v9_backup.py
+core\execution_models.py
+core\execution_models_v21_backup.py
+core\execution_risk_gate.py
+core\execution_router.py
+core\execution_state.py
+core\execution_state_v1_backup.py
+core\health_monitor.py
+core\import_graph_brain.py
+core\intelligence\__init__.py
+core\intelligence\atlas_brain_connector.py
+core\intelligence\loop\__init__.py
+core\intelligence\loop\intelligence_loop.py
+core\intelligence\position\__init__.py
+core\intelligence\position\position_manager.py
+core\intelligence\position\position_monitor.py
+core\interfaces.py
+core\learning_engine.py
+core\lifecycle.py
+core\logger.py
+core\market_feed.py
+core\market_intelligence.py
+core\market_loop.py
+core\market_pipeline.py
+core\market_scanner.py
+core\memory.py
+core\module.py
+core\module_classifier.py
+core\module_manager.py
+core\opportunity_engine.py
+core\order_validator.py
+core\paper_execution_engine.py
+core\paper_trader.py
+core\pipeline.py
+core\portfolio_manager.py
+core\position_controller.py
+core\position_lifecycle.py
+core\position_reentry_engine.py
+core\position_state.py
+core\profit_manager.py
+core\project_snapshot.py
+core\reentry_engine.py
+core\risk_engine.py
+core\runtime.py
+core\scheduler.py
+core\service_container.py
+core\service_registry.py
+core\signal_pipeline.py
+core\technical_analyzer.py
+core\test_position_manager.py
+core\test_snapshot.py
+core\trade_memory.py
+core\trade_plan_engine.py
+dashboard\app.py
+data\binance_provider.py
+data\candle_manager.py
+data\market_provider.py
+decision_adapter_v5_1.py
+exchange\__init__.py
+exchange\adapters\__init__.py
+exchange\adapters\binance_global.py
+exchange\adapters\binance_tr.py
+exchange\base_exchange.py
+exchange\exchange_manager.py
+exchange\market_feed.py
+execution_manager.py
+intelligence\core\__init__.py
+intelligence\core\intelligence_core.py
+intelligence\core\intelligence_core_backup.py
+intelligence\decision\__init__.py
+intelligence\decision\decision_engine.py
+intelligence\execution\__init__.py
+intelligence\execution\execution_engine.py
+intelligence\learning\__init__.py
+intelligence\learning\adaptive_learning_engine.py
+intelligence\market_intelligence.py
+intelligence\memory\__init__.py
+intelligence\memory\trade_memory.py
+intelligence\opportunity\__init__.py
+intelligence\opportunity\opportunity_engine.py
+intelligence\pipeline\__init__.py
+intelligence\pipeline\atlas_intelligence_pipeline.py
+intelligence\portfolio\__init__.py
+intelligence\portfolio\portfolio_intelligence.py
+intelligence\regime\__init__.py
+intelligence\regime\market_regime_engine.py
+intelligence\risk\__init__.py
+intelligence\risk\risk_intelligence.py
+intelligence\scanner\coin_scanner.py
+intelligence\strategy\__init__.py
+intelligence\strategy\strategy_selector.py
+intelligence\trading\__init__.py
+intelligence\trading\paper_bridge.py
+main.py
+portfolio\capital_manager.py
+portfolio\portfolio_manager.py
+strategy\strategy_base.py
+test_adaptive_learning.py
+test_advisor.py
+test_application.py
+test_atlas_pipeline.py
+test_awareness.py
+test_brain_connector.py
+test_buy_execution.py
+test_capital.py
+test_coin_scanner.py
+test_controller.py
+test_decision.py
+test_decision_adapter.py
+test_evaluator.py
+test_evolution.py
+test_execution.py
+test_execution_manager_v21.py
+test_execution_pipeline.py
+test_executor.py
+test_experiment.py
+test_feed.py
+test_full_execution_lifecycle.py
+test_improvement.py
+test_intelligence_core.py
+test_intelligence_loop.py
+test_knowledge.py
+test_live_loop.py
+test_market_data.py
+test_market_intelligence.py
+test_opportunity.py
+test_paper_bridge.py
+test_portfolio_intelligence.py
+test_position_database.py
+test_position_lifecycle.py
+test_regime.py
+test_risk.py
+test_risk_intelligence.py
+test_self_improvement.py
+test_strategy_selector.py
+test_supervisor.py
+test_trade_memory.py
+test_validator.py
+web_app.py
+
+============================================================
+4. PACKAGE DIRECTORIES
+============================================================
+.git                                Python files: 0
+.github                             Python files: 0
+ai                                  Python files: 26
+analysis                            Python files: 3
+analytics                           Python files: 1
+archive_unused_2026-07-22           Python files: 276
+assistant                           Python files: 18
+atlas_paper_trading                 Python files: 5
+backtest                            Python files: 2
+config                              Python files: 1
+core                                Python files: 87
+dashboard                           Python files: 1
+data                                Python files: 3
+database                            Python files: 0
+events                              Python files: 0
+exchange                            Python files: 7
+execution                           Python files: 0
+exit                                Python files: 0
+github                              Python files: 0
+intelligence                        Python files: 27
+learning                            Python files: 0
+logs                                Python files: 0
+memory_data                         Python files: 0
+patches                             Python files: 0
+portfolio                           Python files: 2
+position                            Python files: 0
+quality                             Python files: 0
+risk                                Python files: 0
+scalping                            Python files: 0
+signals                             Python files: 0
+simulation                          Python files: 0
+strategy                            Python files: 1
+templates                           Python files: 0
+tests                               Python files: 0
+timeframe                           Python files: 0
+trade                               Python files: 0
+trading                             Python files: 0
+
+============================================================
+5. PYTHON COMPILE AUDIT
+============================================================
+Successful files : 230
+Failed files     : 0
+
+ALL PYTHON FILES COMPILED SUCCESSFULLY.
+
+============================================================
+6. IMPORTANT ENTRY FILES
+============================================================
+[FOUND]   main.py
+[FOUND]   requirements.txt
+[MISSING] pyproject.toml
+[MISSING] setup.py
+[MISSING] .env.example
+[FOUND]   README.md
+[MISSING] docker-compose.yml
+[MISSING] Dockerfile
+
+============================================================
+7. TEST INVENTORY
+============================================================
+Test file count: 43
+core\test_position_manager.py
+core\test_snapshot.py
+test_adaptive_learning.py
+test_advisor.py
+test_application.py
+test_atlas_pipeline.py
+test_awareness.py
+test_brain_connector.py
+test_buy_execution.py
+test_capital.py
+test_coin_scanner.py
+test_controller.py
+test_decision.py
+test_decision_adapter.py
+test_evaluator.py
+test_evolution.py
+test_execution.py
+test_execution_manager_v21.py
+test_execution_pipeline.py
+test_executor.py
+test_experiment.py
+test_feed.py
+test_full_execution_lifecycle.py
+test_improvement.py
+test_intelligence_core.py
+test_intelligence_loop.py
+test_knowledge.py
+test_live_loop.py
+test_market_data.py
+test_market_intelligence.py
+test_opportunity.py
+test_paper_bridge.py
+test_portfolio_intelligence.py
+test_position_database.py
+test_position_lifecycle.py
+test_regime.py
+test_risk.py
+test_risk_intelligence.py
+test_self_improvement.py
+test_strategy_selector.py
+test_supervisor.py
+test_trade_memory.py
+test_validator.py
+
+============================================================
+8. GIT STATUS
+============================================================
+git version 2.55.0.windows.2
+
+Repository status:
+ D ai/analytics/performance.py
+ D ai/atlas_brain.py
+ D ai/decision_engine.py
+ D ai/intelligent_score.py
+ D ai/learning_brain.py
+ D ai/performance_analyzer.py
+ D ai/trade_analyzer.py
+ D analysis/analyzer.py
+ D analysis/performance.py
+ M analysis/technical_analyzer.py
+ D analytics/ai_performance.py
+ D analytics/dashboard.py
+ D analytics/performance.py
+ D analytics/trade_report.py
+ M backtest/backtest_engine.py
+ D backtest/backtest_engine_v2.py
+ D backtest/better_backtest.py
+ D backtest/standalone_backtest.py
+ M backtest_best_strategy.json
+ M backtest_trend_following.json
+ D cleanup_analyzer.py
+ D config/__init__.py
+ D config/exchange_config.py
+ D config/main.py
+ M config/settings.py
+ D config/symbols.py
+ D core/__init__.py
+ D core/adaptive_decision.py
+ D core/adaptive_learning.py
+ D core/adaptive_weights.py
+ D core/ai_director.py
+ D core/ai_generator.py
+ D core/architecture_analyzer.py
+ D core/ast_parser.py
+ D core/atlas_brain.py
+ D core/auth_panel.py
+ D core/auto_manager.py
+ D core/auto_pilot.py
+ D core/auto_scanner.py
+ D core/backtest/combined_backtest.py
+ D core/backtester.py
+ D core/base_ai_module.py
+ D core/brain/context_manager.py
+ D core/brain/decision_maker.py
+ D core/brain/signal_processor.py
+ M core/capital_allocator.py
+ D core/code_analyzer.py
+ D core/code_smell_detector.py
+ D core/codebase_indexer.py
+ D core/confidence_engine.py
+ D core/config_manager.py
+ D core/data/fetch_enhanced.py
+ D core/data_downloader.py
+ D core/data_provider.py
+ M core/decision_engine.py
+ D core/dependency_graph.py
+ D core/engine.py
+ M core/event_bus.py
+ D core/event_listeners.py
+ D core/event_manager.py
+ D core/evolution_engine.py
+ D core/executor.py
+ D core/experiment_manager.py
+ D core/github_intelligence.py
+ D core/github_scanner.py
+ D core/improvement_planner.py
+ D core/knowledge_graph.py
+ D core/learning_listener.py
+ D core/live_trader.py
+ D core/loop_engine.py
+ D core/main.py
+ M core/market_intelligence.py
+ D core/market_regime.py
+ M core/market_scanner.py
+ M core/memory.py
+ D core/module_health_monitor.py
+ D core/module_registry.py
+ M core/opportunity_engine.py
+ D core/opportunity_scanner.py
+ D core/outcome_memory.py
+ M core/paper_trader.py
+ D core/patch_generator.py
+ D core/pattern_memory.py
+ D core/performance_analyzer.py
+ D core/performance_feedback.py
+ D core/position_manager.py
+ D core/position_monitor.py
+ D core/profit_calculator.py
+ D core/refactor_advisor.py
+ D core/refactor_engine.py
+ D core/research_integration.py
+ D core/research_manager.py
+ D core/risk_manager.py
+ D core/self_improvement.py
+ D core/shared_context.py
+ D core/signal_fusion.py
+ D core/strategies/bollingerrsi.py
+ D core/strategy_brain.py
+ D core/strategy_competition.py
+ D core/strategy_config.py
+ M core/technical_analyzer.py
+ D core/trade_lifecycle.py
+ M core/trade_memory.py
+ D core/trade_tracker.py
+ D core/trading_cycle.py
+ D core/trading_engine.py
+ D core/upgrade_advisor.py
+ D core/upgrade_approval.py
+ D core/upgrade_executor.py
+ D core/upgrade_manager.py
+ D core/version_memory.py
+ D core/weight_optimizer.py
+ D dashboard/dashboard.py
+ D dashboard/portfolio_dashboard.py
+ M data/atlas_memory.json
+ M data/binance_provider.py
+ M data/btcusdt_1h.json
+ D data/candle_data.py
+ D data/data_provider.py
+ D data/fetch_simple.py
+ D data/live_provider.py
+ D data/market.py
+ D data/market_data.py
+ D data/market_scanner.py
+ D data/price_monitor.py
+ M data/trades.json
+ D database/engine.py
+ D database/learning_engine.py
+ D database/market_history.py
+ D database/trade_history.py
+ D events/__init__.py
+ D events/base_event.py
+ D events/event_bus.py
+ D events/market_events.py
+ D events/trade_events.py
+ D exchange/exchange_adapter.py
+ D execution/execution_manager.py
+ D execution/paper_trading.py
+ D execution/paper_trading_v2.py
+ D exit/smart_exit.py
+ D fix_bare_except.py
+ D fix_bom.py
+ D github/background_service.py
+ D github/github_integration.py
+ D github/run_all.py
+ M health_report.json
+ D intelligence/confidence/capital_allocator.py
+ D intelligence/confidence/confidence_engine.py
+ D intelligence/confidence/position_sizer.py
+ D intelligence/decision_engine.py
+ D intelligence/decision_logger.py
+ D intelligence/execution_engine.py
+ D intelligence/learning_memory.py
+ D intelligence/market/breakout_analyzer.py
+ D intelligence/market/market_intelligence.py
+ D intelligence/market/market_scoring_engine.py
+ D intelligence/market/market_structure_analyzer.py
+ D intelligence/market/order_flow_analyzer.py
+ D intelligence/market/support_resistance_analyzer.py
+ D intelligence/market/volatility_analyzer.py
+ D intelligence/market/volume_analyzer.py
+ D intelligence/market_score.py
+ D intelligence/memory_analyzer.py
+ D intelligence/signals/signal_fusion.py
+ D intelligence/strategy_brain.py
+ D intelligence/strategy_competition/strategy_competition.py
+ D intelligence/strategy_memory.py
+ D intelligence/volatility_manager.py
+ D learning/adaptive_engine.py
+ D learning/adaptive_learning.py
+ D learning/atlas_brain.py
+ D learning/learner.py
+ D learning/learning_engine.py
+ D learning/model_memory.py
+ D learning/performance_analyzer.py
+ D logs/trade_logger.py
+ M main.py
+ M portfolio/capital_manager.py
+ M portfolio/portfolio_manager.py
+ D position/position_manager.py
+ D quality/trade_filter.py
+ M refactor_memory.json
+ D risk/capital_manager.py
+ D risk/position.py
+ D risk/position_manager.py
+ D risk/position_sizer.py
+ D risk/risk_manager.py
+ D risk/risk_planner.py
+ D risk/trade_rules.py
+ D scalping/scalp_manager.py
+ D signals/base_signal.py
+ D signals/market/market_signal.py
+ D signals/risk/risk_signal.py
+ D signals/technical/technical_signal.py
+ D simulation/__init__.py
+ D simulation/ai_simulator.py
+ D simulation/run_simulation.py
+ D simulation/simulator.py
+ D strategy/optimizer.py
+ D strategy/scalper.py
+ D strategy/scalping.py
+ D strategy/strategy_engine.py
+ D technical_analyzer.py
+ D test_architecture_analyzer.py
+ D test_ast_parser.py
+ D test_atlas_evolution.py
+ D test_code_analyzer.py
+ D test_codebase_indexer.py
+ D test_dependency_graph.py
+ D test_event.py
+ D test_evolution_engine.py
+ D test_experiment_manager.py
+ D test_github_scanner.py
+ D test_improvement_planner.py
+ D test_patch_generator.py
+ D test_performance_feedback.py
+ D test_refactor_advisor.py
+ D test_research_integration.py
+ D test_research_manager.py
+ M test_self_improvement.py
+ D test_upgrade_advisor.py
+ D test_version_memory.py
+ D timeframe/multi_timeframe.py
+ D trade/simulator.py
+ D trading/auto_manager.py
+ D trading/paper_trader.py
+ M web_app.py
+?? Atlas_Audit_Reports.zip
+?? "Pasted text(24) (1).txt"
+?? ai/ai/
+?? ai/chat_assistant.py
+?? ai/cognition/
+?? ai/core/
+?? ai/data/
+?? ai/execution/
+?? ai/learning_brain.py.bak
+?? ai/lstm_predictor.py
+?? ai/models/
+?? ai/target_prediction_engine.py
+?? analysis/__init__.py
+?? analysis/world_analysis_engine.py
+?? archive_unused_2026-07-22/
+?? assistant/
+?? atlas_baseline_report.txt
+?? atlas_brain_structure.txt
+?? atlas_evolution_memory.json
+?? atlas_execution_diagnosis.txt
+?? atlas_experiments.json
+?? atlas_knowledge.json
+?? atlas_module_report.json
+?? atlas_paper_trading/
+?? atlas_self_awareness.json
+?? atlas_self_improvement_report.json
+?? atlas_structure.txt
+?? atlas_tree.txt
+?? backtest/backtest_engine.py.bak
+?? backtest/backtest_enhanced.py.bak
+?? backtest/portfolio_backtest.py
+?? brain_analysis.json
+?? complexity_report.txt
+?? complexity_report_clean.txt
+?? core/adapters/
+?? core/adaptive_profit_engine.py
+?? core/application.py
+?? core/atlas_brain.py.bak
+?? core/atlas_tree.txt
+?? core/brain.py
+?? core/brain.py.backup_v5
+?? core/brain_analyzer.py
+?? core/brain_compare.py
+?? core/brain_dependency_scan.py
+?? core/candle_processor.py
+?? core/capital_manager.py
+?? core/class_registry_scan.py
+?? core/code_cleanup_analyzer.py
+?? core/controller/
+?? core/data/price_provider.py
+?? core/decision.py
+?? core/decision_adapter.py
+?? core/decision_adapter_backup.py
+?? core/decision_engine.py.bak
+?? core/dynamic_profit_engine.py
+?? core/events.py
+?? core/execution_audit.py
+?? core/execution_bridge.py
+?? core/execution_contracts.py
+?? core/execution_controller.py
+?? core/execution_event.py
+?? core/execution_manager.py
+?? core/execution_manager_backup.py
+?? core/execution_manager_v1_backup.py
+?? core/execution_manager_v28_backup.py
+?? core/execution_manager_v7_backup.py
+?? core/execution_manager_v9_backup.py
+?? core/execution_models.py
+?? core/execution_models_v21_backup.py
+?? core/execution_risk_gate.py
+?? core/execution_router.py
+?? core/execution_state.py
+?? core/execution_state_v1_backup.py
+?? core/health_monitor.py
+?? core/import_graph_brain.py
+?? core/intelligence/
+?? core/interfaces.py
+?? core/lifecycle.py
+?? core/logger.py
+?? core/market_feed.py
+?? core/market_loop.py
+?? core/market_pipeline.py
+?? core/memory.py.bak
+?? core/module.py
+?? core/module_classifier.py
+?? core/module_manager.py
+?? core/order_validator.py
+?? core/paper_execution_engine.py
+?? core/pipeline.py
+?? core/portfolio_manager.py
+?? core/position_controller.py
+?? core/position_lifecycle.py
+?? core/position_reentry_engine.py
+?? core/position_state.py
+?? core/profit_manager.py
+?? core/project_snapshot.py
+?? core/python_files.txt
+?? core/reentry_engine.py
+?? core/risk_engine.py
+?? core/runtime.py
+?? core/scheduler.py
+?? core/service_container.py
+?? core/service_registry.py
+?? core/signal_pipeline.py
+?? core/test_position_manager.py
+?? core/test_snapshot.py
+?? core/trade_plan_engine.py
+?? core/trading_engine.py.bak
+?? dashboard/app.py
+?? dashboard/templates/
+?? data/cache/
+?? data/candle_manager.py
+?? data/chat_memory/
+?? data/market_provider.py
+?? data/pattern_memory.json
+?? data/test_memory.json
+?? database/brain_memory.json
+?? database/decision_history.json
+?? database/execution_audit.json
+?? database/execution_state.json
+?? database/positions.json
+?? database/trade_memory.json
+?? decision_adapter_v5_1.py
+?? error.txt
+?? exchange/__init__.py
+?? exchange/adapters/
+?? exchange/base_exchange.py
+?? exchange/exchange_manager.py
+?? exchange/market_feed.py
+?? execution_manager.py
+?? halstead_report.txt
+?? imports_report.txt
+?? intelligence/core/
+?? intelligence/decision/
+?? intelligence/execution/
+?? intelligence/learning/
+?? intelligence/market_intelligence.py
+?? intelligence/memory/
+?? intelligence/opportunity/
+?? intelligence/pipeline/
+?? intelligence/portfolio/
+?? intelligence/regime/
+?? intelligence/risk/
+?? intelligence/scanner/
+?? intelligence/strategy/
+?? intelligence/trading/
+?? legacy_files.txt
+?? maintainability_report.txt
+?? paper_trades.json
+?? performance.json
+?? project_snapshot.json
+?? python_file_sizes.csv
+?? python_files.txt
+?? raw_metrics.txt
+?? strategy/strategy_base.py
+?? strategy/strategy_base.py.bak
+?? test_adaptive_learning.py
+?? test_advisor.py
+?? test_application.py
+?? test_atlas_pipeline.py
+?? test_awareness.py
+?? test_brain_connector.py
+?? test_buy_execution.py
+?? test_capital.py
+?? test_coin_scanner.py
+?? test_controller.py
+?? test_decision.py
+?? test_decision_adapter.py
+?? test_evaluator.py
+?? test_evolution.py
+?? test_execution.py
+?? test_execution_manager_v21.py
+?? test_execution_pipeline.py
+?? test_executor.py
+?? test_experiment.py
+?? test_feed.py
+?? test_full_execution_lifecycle.py
+?? test_improvement.py
+?? test_intelligence_core.py
+?? test_intelligence_loop.py
+?? test_knowledge.py
+?? test_live_loop.py
+?? test_market_data.py
+?? test_market_intelligence.py
+?? test_opportunity.py
+?? test_paper_bridge.py
+?? test_portfolio_intelligence.py
+?? test_position_database.py
+?? test_position_lifecycle.py
+?? test_regime.py
+?? test_risk.py
+?? test_risk_intelligence.py
+?? test_strategy_selector.py
+?? test_supervisor.py
+?? test_trade_memory.py
+?? test_validator.py
+
+============================================================
+9. BASELINE VERDICT
+============================================================
+COMPILE STATUS: PASS
+Python files : 230
+Test files   : 43
+Compile pass : 230
+Compile fail : 0
+
+============================================================
+END OF REPORT
+============================================================

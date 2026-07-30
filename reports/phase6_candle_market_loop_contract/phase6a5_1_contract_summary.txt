@@ -1,0 +1,53 @@
+ATLAS PHASE 6A5.1 — CANDLE / MARKET LOOP CONTRACT SUMMARY
+
+[market_feed] exchange\market_feed.py
+  class MarketFeed bases=[]
+    candles(self, symbol: str, interval: str = '1m', limit: int = 500) -> list[list[Any]] [195-236]
+      CALL line 225: self.service.get_candles args=['symbol'] kwargs={'timeframe': 'interval', 'limit': 'limit'}
+      CALL line 232: self._to_legacy_candle_row args=['candle'] kwargs={}
+    get_candles(self, symbol: str, timeframe: str = '5m', limit: int = 100) -> tuple[MarketCandle, ...] [250-266]
+      CALL line 261: self.service.get_candles args=['symbol'] kwargs={'timeframe': 'timeframe', 'limit': 'limit'}
+    market_feed_snapshot(self) [273-276]
+      CALL line 276: self.service.market_feed_snapshot args=[] kwargs={}
+[candle_processor] core\candle_processor.py
+  class CandleProcessor bases=[]
+    __init__(self) [30-32]
+    normalize(self, candles) [36-80]
+    _parse(self, candle) [89-184]
+      CALL line 141: candle.get args=["'timestamp'", 'datetime.now(timezone.utc).isoformat()'] kwargs={}
+      CALL line 175: candle.get args=["'volume'", '0'] kwargs={}
+[market_loop] core\market_loop.py
+  class MarketLoop bases=[]
+    __init__(self, brain: Any, market_feed: Any, execution: Any | None = None, event_bus: Any | None = None, symbols: list[str] | tuple[str, ...] | None = None, interval: float = 10.0) -> None [104-166]
+      CALL line 127: CandleProcessor args=[] kwargs={}
+      CALL line 128: TechnicalAnalyzer args=[] kwargs={}
+      CALL line 129: WorldAnalysisEngine args=[] kwargs={}
+      CALL line 130: DecisionAdapter args=[] kwargs={}
+    start(self) -> bool [172-208]
+    stop(self) -> bool [214-266]
+    process_symbol(self, symbol: str) -> dict[str, Any] | None [347-595]
+      CALL line 360: self._load_candles args=['symbol'] kwargs={}
+      CALL line 393: self.technical.analyze args=['normalized_candles'] kwargs={}
+      CALL line 444: self.brain.analyze_and_decide args=['symbol', 'market_data'] kwargs={}
+      CALL line 454: self.normalize_decision args=[] kwargs={'raw_decision': 'raw_decision', 'symbol': 'symbol', 'price': 'price', 'market_data': 'market_data'}
+      CALL line 501: normalized_decision.get args=["'action'", "'HOLD'"] kwargs={}
+    _load_candles(self, symbol: str) -> Any [601-626]
+      CALL line 622: candles_method args=['symbol'] kwargs={'interval': "'1m'", 'limit': '200'}
+    normalize_decision(self, *, raw_decision: Any, symbol: str, price: float, market_data: Any) -> dict[str, Any] | None [632-745]
+      CALL line 644: self._decision_to_dict args=['raw_decision'] kwargs={}
+      CALL line 670: self.decision_adapter.normalize args=['enriched_decision'] kwargs={}
+    route_execution(self, *, decision: dict[str, Any], market_state: Any) -> dict[str, Any] [843-947]
+      CALL line 875: decision.get args=["'symbol'", "'UNKNOWN'"] kwargs={}
+      CALL line 887: decision.get args=["'symbol'", "'UNKNOWN'"] kwargs={}
+      CALL line 891: decision.get args=["'action'", "'UNKNOWN'"] kwargs={}
+      CALL line 936: decision.get args=["'symbol'", "'UNKNOWN'"] kwargs={}
+      CALL line 941: decision.get args=["'action'", "'UNKNOWN'"] kwargs={}
+    calculate_score(analysis: dict[str, Any]) -> float [1006-1061]
+      CALL line 1015: analysis.get args=["'rsi'"] kwargs={}
+      CALL line 1019: str(analysis.get('trend', '')).upper args=[] kwargs={}
+      CALL line 1020: analysis.get args=["'trend'", "''"] kwargs={}
+    health(self) -> dict[str, Any] [1287-1316]
+[technical_analyzer] core\technical_analyzer.py
+  class TechnicalAnalyzer bases=[]
+    __init__(self) [39-41]
+    analyze(self, candles) [327-424]

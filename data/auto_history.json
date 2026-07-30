@@ -1,0 +1,20 @@
+[
+  {
+    "time": "2026-07-15 12:08:13.235141",
+    "symbol": "BTCUSDT",
+    "price": 64783.11,
+    "decision": "HOLD",
+    "confidence": 22.5,
+    "strategy": "scalping",
+    "risk": "MEDIUM"
+  },
+  {
+    "time": "2026-07-15 12:08:16.603637",
+    "symbol": "ETHUSDT",
+    "price": 1881.37,
+    "decision": "HOLD",
+    "confidence": 57.5,
+    "strategy": "reversal",
+    "risk": "MEDIUM"
+  }
+]

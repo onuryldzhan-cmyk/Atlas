@@ -1,0 +1,744 @@
+"""
+Atlas AI - Backtest Engine v3.1 Enhanced
+Walk-forward Analysis + Monte Carlo Simulation eklendi.
+
+Özellikler:
+- Walk-forward Analysis (In-sample / Out-of-sample)
+- Monte Carlo Simulation (1000+ simülasyon)
+- Robustness Metrics (System Quality Number, K-Ratio)
+- Parameter Sensitivity Analysis
+- Equity Curve Confidence Intervals
+"""
+
+import json
+import math
+import random
+import logging
+import statistics
+from datetime import datetime, timedelta
+from dataclasses import dataclass, field, asdict
+from typing import Dict, List, Optional, Tuple, Any, Callable
+from enum import Enum
+from pathlib import Path
+
+logger = logging.getLogger("AtlasAI.BacktestEnhanced")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DATA CLASSES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@dataclass
+class MonteCarloResult:
+    """Monte Carlo simülasyon sonuçları"""
+    simulations: int
+    median_final_equity: float
+    mean_final_equity: float
+    std_final_equity: float
+    worst_case_equity: float
+    best_case_equity: float
+    prob_of_profit: float  # %50 üzeri getiri olasılığı
+    prob_of_ruin: float    # %50 altı düşme olasılığı
+    median_max_drawdown: float
+    worst_max_drawdown: float
+    confidence_interval_95: Tuple[float, float]
+    equity_curves: List[List[float]] = field(default_factory=list)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "simulations": self.simulations,
+            "median_final_equity": round(self.median_final_equity, 2),
+            "mean_final_equity": round(self.mean_final_equity, 2),
+            "std_final_equity": round(self.std_final_equity, 2),
+            "worst_case_equity": round(self.worst_case_equity, 2),
+            "best_case_equity": round(self.best_case_equity, 2),
+            "prob_of_profit": round(self.prob_of_profit, 2),
+            "prob_of_ruin": round(self.prob_of_ruin, 2),
+            "median_max_drawdown": round(self.median_max_drawdown, 2),
+            "worst_max_drawdown": round(self.worst_max_drawdown, 2),
+            "confidence_interval_95": [round(x, 2) for x in self.confidence_interval_95]
+        }
+
+
+@dataclass
+class WalkForwardResult:
+    """Walk-forward analiz sonuçları"""
+    windows: int
+    in_sample_results: List[Dict]
+    out_of_sample_results: List[Dict]
+    is_win_rate: float
+    oos_win_rate: float
+    robustness_score: float  # OOS / IS oranı
+    overfitting_detected: bool
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "windows": self.windows,
+            "is_win_rate": round(self.is_win_rate, 2),
+            "oos_win_rate": round(self.oos_win_rate, 2),
+            "robustness_score": round(self.robustness_score, 2),
+            "overfitting_detected": self.overfitting_detected,
+            "in_sample_count": len(self.in_sample_results),
+            "out_of_sample_count": len(self.out_of_sample_results)
+        }
+
+
+@dataclass
+class RobustnessMetrics:
+    """Robustness (sağlamlık) metrikleri"""
+    system_quality_number: float  # SQN = (expectancy / std_dev) * sqrt(trades)
+    k_ratio: float  # Kestner Ratio
+    ulcer_index: float  # Drawdown derinliği ve süresi
+    serenity_index: float  # Sharpe + Sortino + Ulcer birleşimi
+    payoff_ratio: float  # avg_win / abs(avg_loss)
+    recovery_factor: float  # total_return / max_drawdown
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "system_quality_number": round(self.system_quality_number, 2),
+            "k_ratio": round(self.k_ratio, 2),
+            "ulcer_index": round(self.ulcer_index, 2),
+            "serenity_index": round(self.serenity_index, 2),
+            "payoff_ratio": round(self.payoff_ratio, 2),
+            "recovery_factor": round(self.recovery_factor, 2)
+        }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# MONTE CARLO SIMULATOR
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class MonteCarloSimulator:
+    """
+    Monte Carlo Simülatörü
+
+    Tarihsel trade sonuçlarını karıştırarak gelecekteki olası senaryoları simüle eder.
+    """
+
+    def __init__(self, confidence_level: float = 0.95):
+        self.confidence = confidence_level
+
+    def run(self, trade_returns: List[float], initial_capital: float = 10000.0,
+            num_simulations: int = 1000, trades_per_simulation: int = None) -> MonteCarloResult:
+        """
+        Monte Carlo simülasyonu çalıştır.
+
+        Args:
+            trade_returns: Tarihsel trade getirileri (%) — [2.5, -1.2, 0.8, ...]
+            initial_capital: Başlangıç sermayesi
+            num_simulations: Simülasyon sayısı
+            trades_per_simulation: Her simülasyondaki trade sayısı (None = hepsi)
+
+        Returns:
+            MonteCarloResult
+        """
+        if not trade_returns:
+            logger.warning("Trade getirisi yok — Monte Carlo yapılamıyor.")
+            return MonteCarloResult(simulations=0, median_final_equity=initial_capital,
+                                   mean_final_equity=initial_capital, std_final_equity=0,
+                                   worst_case_equity=initial_capital, best_case_equity=initial_capital,
+                                   prob_of_profit=0, prob_of_ruin=0, median_max_drawdown=0,
+                                   worst_max_drawdown=0, confidence_interval_95=(initial_capital, initial_capital))
+
+        trades_per_simulation = trades_per_simulation or len(trade_returns)
+
+        final_equities = []
+        max_drawdowns = []
+        equity_curves = []
+
+        for sim in range(num_simulations):
+            equity = initial_capital
+            peak = equity
+            max_dd = 0.0
+            curve = [equity]
+
+            # Trade'leri karıştır (bootstrap)
+            sampled_returns = random.choices(trade_returns, k=trades_per_simulation)
+
+            for ret in sampled_returns:
+                equity *= (1 + ret / 100)
+                curve.append(equity)
+
+                if equity > peak:
+                    peak = equity
+
+                dd = (peak - equity) / peak * 100 if peak > 0 else 0
+                max_dd = max(max_dd, dd)
+
+            final_equities.append(equity)
+            max_drawdowns.append(max_dd)
+            equity_curves.append(curve)
+
+        # İstatistikler
+        final_equities.sort()
+        max_drawdowns.sort()
+
+        median_equity = statistics.median(final_equities)
+        mean_equity = statistics.mean(final_equities)
+        std_equity = statistics.stdev(final_equities) if len(final_equities) > 1 else 0
+
+        # Confidence interval
+        lower_idx = int(num_simulations * (1 - self.confidence) / 2)
+        upper_idx = int(num_simulations * (1 + self.confidence) / 2)
+        ci_lower = final_equities[lower_idx]
+        ci_upper = final_equities[upper_idx]
+
+        # Olasılıklar
+        profitable = sum(1 for e in final_equities if e > initial_capital)
+        ruined = sum(1 for e in final_equities if e < initial_capital * 0.5)
+
+        return MonteCarloResult(
+            simulations=num_simulations,
+            median_final_equity=median_equity,
+            mean_final_equity=mean_equity,
+            std_final_equity=std_equity,
+            worst_case_equity=final_equities[0],
+            best_case_equity=final_equities[-1],
+            prob_of_profit=(profitable / num_simulations) * 100,
+            prob_of_ruin=(ruined / num_simulations) * 100,
+            median_max_drawdown=statistics.median(max_drawdowns),
+            worst_max_drawdown=max_drawdowns[-1],
+            confidence_interval_95=(ci_lower, ci_upper),
+            equity_curves=equity_curves[:10]  # İlk 10 curve'i sakla
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# WALK-FORWARD ANALYZER
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class WalkForwardAnalyzer:
+    """
+    Walk-forward Analizörü
+
+    Veriyi In-sample (eğitim) ve Out-of-sample (test) olarak böler.
+    Stratejinin overfitting yapıp yapmadığını tespit eder.
+    """
+
+    def __init__(self, in_sample_pct: float = 0.7, min_trades: int = 10):
+        self.is_pct = in_sample_pct
+        self.min_trades = min_trades
+
+    def analyze(self, ohlcv_data: List[Dict], strategy_factory: Callable,
+                window_size: int = 100, step_size: int = 50) -> WalkForwardResult:
+        """
+        Walk-forward analiz çalıştır.
+
+        Args:
+            ohlcv_data: Tam veri seti
+            strategy_factory: Strateji oluşturma fonksiyonu — fn() -> strategy
+            window_size: Her penceredeki bar sayısı
+            step_size: Pencere kaydırma adımı
+
+        Returns:
+            WalkForwardResult
+        """
+        if len(ohlcv_data) < window_size * 2:
+            logger.warning("Yetersiz veri — walk-forward yapılamıyor.")
+            return WalkForwardResult(windows=0, in_sample_results=[], out_of_sample_results=[],
+                                    is_win_rate=0, oos_win_rate=0, robustness_score=0,
+                                    overfitting_detected=False)
+
+        is_results = []
+        oos_results = []
+
+        # Kayan pencere
+        for start in range(0, len(ohlcv_data) - window_size, step_size):
+            end = start + window_size
+
+            # In-sample (eğitim)
+            is_end = start + int(window_size * self.is_pct)
+            is_data = ohlcv_data[start:is_end]
+
+            # Out-of-sample (test)
+            oos_data = ohlcv_data[is_end:end]
+
+            if len(is_data) < self.min_trades or len(oos_data) < self.min_trades:
+                continue
+
+            # Strateji oluştur ve IS'de eğit
+            strategy = strategy_factory()
+
+            # IS backtest
+            is_result = self._quick_backtest(is_data, strategy)
+            is_results.append(is_result)
+
+            # OOS backtest (aynı parametrelerle)
+            oos_result = self._quick_backtest(oos_data, strategy)
+            oos_results.append(oos_result)
+
+        # Sonuçları değerlendir
+        if not is_results or not oos_results:
+            return WalkForwardResult(windows=0, in_sample_results=[], out_of_sample_results=[],
+                                    is_win_rate=0, oos_win_rate=0, robustness_score=0,
+                                    overfitting_detected=False)
+
+        is_win_rates = [r.get("win_rate", 0) for r in is_results]
+        oos_win_rates = [r.get("win_rate", 0) for r in oos_results]
+
+        avg_is = statistics.mean(is_win_rates) if is_win_rates else 0
+        avg_oos = statistics.mean(oos_win_rates) if oos_win_rates else 0
+
+        # Robustness skoru — OOS / IS oranı
+        robustness = (avg_oos / avg_is) if avg_is > 0 else 0
+
+        # Overfitting tespiti
+        overfitting = robustness < 0.5  # OOS IS'nin yarısından kötüyse
+
+        return WalkForwardResult(
+            windows=len(is_results),
+            in_sample_results=is_results,
+            out_of_sample_results=oos_results,
+            is_win_rate=avg_is,
+            oos_win_rate=avg_oos,
+            robustness_score=robustness,
+            overfitting_detected=overfitting
+        )
+
+    def _quick_backtest(self, data: List[Dict], strategy) -> Dict:
+        """Hızlı backtest — sadece temel metrikler"""
+        trades = 0
+        wins = 0
+        pnl = 0.0
+
+        for i in range(50, len(data)):
+            closes = [d["close"] for d in data[:i+1]]
+            highs = [d["high"] for d in data[:i+1]]
+            lows = [d["low"] for d in data[:i+1]]
+
+            try:
+                indicators = strategy.analyze(closes, highs, lows)
+                signal = strategy.generate_signal(indicators, closes[-1])
+
+                if signal and signal.action in ["BUY", "SELL"]:
+                    # Basit simülasyon — sonraki bar kapanışı
+                    if i + 1 < len(data):
+                        entry = closes[-1]
+                        exit_p = data[i+1]["close"]
+
+                        if signal.action == "BUY":
+                            ret = (exit_p - entry) / entry * 100
+                        else:
+                            ret = (entry - exit_p) / entry * 100
+
+                        trades += 1
+                        if ret > 0:
+                            wins += 1
+                        pnl += ret
+            except:
+                pass
+
+        return {
+            "trades": trades,
+            "wins": wins,
+            "win_rate": (wins / trades * 100) if trades > 0 else 0,
+            "total_return": pnl
+        }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ROBUSTNESS CALCULATOR
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class RobustnessCalculator:
+    """
+    Robustness (sağlamlık) metrikleri hesaplayıcı.
+    """
+
+    @staticmethod
+    def calculate(trades: List[Any], equity_curve: List[Any], 
+                  total_return_pct: float, max_drawdown_pct: float,
+                  annualized_return_pct: float, sharpe_ratio: float,
+                  sortino_ratio: float) -> RobustnessMetrics:
+        """
+        Tüm robustness metriklerini hesapla.
+
+        Args:
+            trades: Trade kayıtları listesi
+            equity_curve: Equity curve noktaları
+            total_return_pct: Toplam getiri
+            max_drawdown_pct: Max drawdown
+            annualized_return_pct: Yıllık getiri
+            sharpe_ratio: Sharpe oranı
+            sortino_ratio: Sortino oranı
+        """
+        # Trade getirileri
+        trade_returns = [t.net_pnl for t in trades] if hasattr(trades[0], 'net_pnl') else trades
+
+        if not trade_returns:
+            return RobustnessMetrics(0, 0, 0, 0, 0, 0)
+
+        # Expectancy
+        wins = [r for r in trade_returns if r > 0]
+        losses = [r for r in trade_returns if r < 0]
+
+        avg_win = statistics.mean(wins) if wins else 0
+        avg_loss = statistics.mean(losses) if losses else 0
+
+        win_prob = len(wins) / len(trade_returns)
+        loss_prob = len(losses) / len(trade_returns)
+
+        expectancy = (win_prob * avg_win) - (loss_prob * abs(avg_loss))
+
+        # Std dev of returns
+        std_dev = statistics.stdev(trade_returns) if len(trade_returns) > 1 else 0.001
+
+        # System Quality Number
+        sqn = (expectancy / std_dev) * math.sqrt(len(trade_returns)) if std_dev > 0 else 0
+
+        # K-Ratio (Kestner)
+        if equity_curve and len(equity_curve) > 1:
+            equity_values = [e.equity for e in equity_curve] if hasattr(equity_curve[0], 'equity') else equity_curve
+
+            # Linear regression slope
+            n = len(equity_values)
+            x_mean = (n - 1) / 2
+            y_mean = statistics.mean(equity_values)
+
+            numerator = sum((i - x_mean) * (equity_values[i] - y_mean) for i in range(n))
+            denominator = sum((i - x_mean) ** 2 for i in range(n))
+
+            slope = numerator / denominator if denominator != 0 else 0
+
+            # Residuals
+            residuals = [equity_values[i] - (y_mean + slope * (i - x_mean)) for i in range(n)]
+            residual_std = statistics.stdev(residuals) if len(residuals) > 1 else 0.001
+
+            k_ratio = (slope * math.sqrt(n)) / residual_std if residual_std > 0 else 0
+        else:
+            k_ratio = 0
+
+        # Ulcer Index
+        if equity_curve and len(equity_curve) > 1:
+            equity_values = [e.equity for e in equity_curve] if hasattr(equity_curve[0], 'equity') else equity_curve
+            peak = equity_values[0]
+            ulcer_squared = []
+
+            for val in equity_values:
+                if val > peak:
+                    peak = val
+                dd = ((peak - val) / peak * 100) ** 2 if peak > 0 else 0
+                ulcer_squared.append(dd)
+
+            ulcer_index = math.sqrt(statistics.mean(ulcer_squared)) if ulcer_squared else 0
+        else:
+            ulcer_index = 0
+
+        # Serenity Index
+        serenity = 0
+        if ulcer_index > 0 and sharpe_ratio != 0 and sortino_ratio != 0:
+            serenity = (sharpe_ratio * sortino_ratio) / (ulcer_index + 1)
+
+        # Payoff Ratio
+        payoff = avg_win / abs(avg_loss) if avg_loss != 0 else (avg_win if avg_win > 0 else 0)
+
+        # Recovery Factor
+        recovery = abs(total_return_pct / max_drawdown_pct) if max_drawdown_pct != 0 else 0
+
+        return RobustnessMetrics(
+            system_quality_number=sqn,
+            k_ratio=k_ratio,
+            ulcer_index=ulcer_index,
+            serenity_index=serenity,
+            payoff_ratio=payoff,
+            recovery_factor=recovery
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ENHANCED BACKTEST REPORTER
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class EnhancedBacktestReporter:
+    """Gelişmiş backtest raporlayıcı"""
+
+    @staticmethod
+    def generate_full_report(backtest_result: Any, mc_result: MonteCarloResult = None,
+                              wf_result: WalkForwardResult = None,
+                              robustness: RobustnessMetrics = None) -> Dict[str, Any]:
+        """Tam rapor oluştur"""
+        report = {
+            "generated_at": datetime.now().isoformat(),
+            "version": "3.1",
+            "backtest": backtest_result.to_dict() if hasattr(backtest_result, 'to_dict') else backtest_result,
+        }
+
+        if mc_result:
+            report["monte_carlo"] = mc_result.to_dict()
+
+        if wf_result:
+            report["walk_forward"] = wf_result.to_dict()
+
+        if robustness:
+            report["robustness"] = robustness.to_dict()
+
+        # Overall grade
+        report["overall_grade"] = EnhancedBacktestReporter._calculate_grade(
+            backtest_result, mc_result, wf_result, robustness
+        )
+
+        return report
+
+    @staticmethod
+    def _calculate_grade(bt, mc, wf, robust) -> str:
+        """Genel not hesapla"""
+        score = 0
+
+        # Backtest metrikleri
+        if hasattr(bt, 'sharpe_ratio') and bt.sharpe_ratio > 1.5:
+            score += 2
+        elif hasattr(bt, 'sharpe_ratio') and bt.sharpe_ratio > 1.0:
+            score += 1
+
+        if hasattr(bt, 'max_drawdown_pct') and bt.max_drawdown_pct < 10:
+            score += 2
+        elif hasattr(bt, 'max_drawdown_pct') and bt.max_drawdown_pct < 20:
+            score += 1
+
+        if hasattr(bt, 'profit_factor') and bt.profit_factor > 2:
+            score += 2
+        elif hasattr(bt, 'profit_factor') and bt.profit_factor > 1.5:
+            score += 1
+
+        # Monte Carlo
+        if mc and mc.prob_of_profit > 80:
+            score += 2
+        elif mc and mc.prob_of_profit > 60:
+            score += 1
+
+        # Walk-forward
+        if wf and not wf.overfitting_detected and wf.robustness_score > 0.7:
+            score += 2
+        elif wf and wf.robustness_score > 0.5:
+            score += 1
+
+        # Robustness
+        if robust and robust.system_quality_number > 2:
+            score += 2
+        elif robust and robust.system_quality_number > 1:
+            score += 1
+
+        # Not
+        if score >= 9:
+            return "A+ (Mükemmel — Canlı ticarete hazır)"
+        elif score >= 7:
+            return "A (Çok iyi — Küçük riskle canlı)"
+        elif score >= 5:
+            return "B (İyi — Paper trading önerilir)"
+        elif score >= 3:
+            return "C (Orta — Geliştirme gerekli)"
+        else:
+            return "D (Zayıf — Strateji yeniden düşünülmeli)"
+
+    @staticmethod
+    def print_report(report: Dict[str, Any]):
+        """Konsola rapor yazdır"""
+        print("\n" + "=" * 70)
+        print("📊 ATLAS AI — GELİŞMİŞ BACKTEST RAPORU v3.1")
+        print("=" * 70)
+
+        bt = report.get("backtest", {})
+        mc = report.get("monte_carlo")
+        wf = report.get("walk_forward")
+        robust = report.get("robustness")
+
+        print(f"\n🏆 GENEL NOT: {report.get('overall_grade', 'N/A')}")
+
+        print(f"\n📈 TEMEL METRİKLER:")
+        print(f"   Strateji: {bt.get('strategy_name', 'N/A')}")
+        print(f"   Toplam Getiri: %{bt.get('total_return_pct', 0)}")
+        print(f"   Yıllık Getiri: %{bt.get('annualized_return_pct', 0)}")
+        print(f"   Win Rate: %{bt.get('win_rate', 0)}")
+        print(f"   Profit Factor: {bt.get('profit_factor', 0)}")
+
+        print(f"\n⚠️  RİSK METRİKLERİ:")
+        print(f"   Max Drawdown: %{bt.get('max_drawdown_pct', 0)}")
+        print(f"   Sharpe Ratio: {bt.get('sharpe_ratio', 0)}")
+        print(f"   Sortino Ratio: {bt.get('sortino_ratio', 0)}")
+        print(f"   Calmar Ratio: {bt.get('calmar_ratio', 0)}")
+
+        if mc:
+            print(f"\n🎲 MONTE CARLO ({mc['simulations']} simülasyon):")
+            print(f"   Median Final Equity: ${mc['median_final_equity']:,.2f}")
+            print(f"   Worst Case: ${mc['worst_case_equity']:,.2f}")
+            print(f"   Best Case: ${mc['best_case_equity']:,.2f}")
+            print(f"   Profit Olasılığı: %{mc['prob_of_profit']}")
+            print(f"   Ruin Olasılığı: %{mc['prob_of_ruin']}")
+            print(f"   95% CI: [${mc['confidence_interval_95'][0]:,.2f}, ${mc['confidence_interval_95'][1]:,.2f}]")
+
+        if wf:
+            print(f"\n🔄 WALK-FORWARD ({wf['windows']} pencere):")
+            print(f"   IS Win Rate: %{wf['is_win_rate']}")
+            print(f"   OOS Win Rate: %{wf['oos_win_rate']}")
+            print(f"   Robustness: {wf['robustness_score']:.2f}")
+            print(f"   Overfitting: {'EVET ⚠️' if wf['overfitting_detected'] else 'Hayır ✅'}")
+
+        if robust:
+            print(f"\n💪 ROBUSTNESS:")
+            print(f"   System Quality Number: {robust['system_quality_number']}")
+            print(f"   K-Ratio: {robust['k_ratio']}")
+            print(f"   Ulcer Index: {robust['ulcer_index']}")
+            print(f"   Serenity Index: {robust['serenity_index']}")
+            print(f"   Payoff Ratio: {robust['payoff_ratio']}")
+            print(f"   Recovery Factor: {robust['recovery_factor']}")
+
+        print("\n" + "=" * 70)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TEST
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def test_enhanced_backtest():
+    """Enhanced backtest test fonksiyonu"""
+    print("🚀 Atlas AI Enhanced Backtest v3.1 - Test Mode")
+    print("=" * 70)
+
+    import random
+    random.seed(42)
+
+    # Test trade getirileri (%)
+    print("\n📊 Test verisi oluşturuluyor...")
+    trade_returns = []
+    for _ in range(100):
+        if random.random() > 0.45:  # %45 win rate
+            trade_returns.append(random.uniform(0.5, 3.0))  # Kazanç
+        else:
+            trade_returns.append(random.uniform(-2.0, -0.5))  # Kayıp
+
+    print(f"   {len(trade_returns)} trade getirisi oluşturuldu.")
+    print(f"   Win Rate: %{sum(1 for r in trade_returns if r > 0) / len(trade_returns) * 100:.1f}")
+
+    # 1. Monte Carlo
+    print("\n🎲 Monte Carlo Simülasyonu başlatılıyor...")
+    mc = MonteCarloSimulator(confidence_level=0.95)
+    mc_result = mc.run(trade_returns, initial_capital=10000, num_simulations=1000)
+
+    print(f"   Simülasyon: {mc_result.simulations}")
+    print(f"   Median Equity: ${mc_result.median_final_equity:,.2f}")
+    print(f"   Profit Olasılığı: %{mc_result.prob_of_profit:.1f}")
+    print(f"   Worst Case: ${mc_result.worst_case_equity:,.2f}")
+
+    # 2. Walk-forward (basit)
+    print("\n🔄 Walk-forward Analizi...")
+
+    # Basit OHLCV verisi
+    ohlcv = []
+    price = 65000.0
+    for i in range(300):
+        trend = 0.0005 if i < 150 else -0.0005
+        noise = random.uniform(-0.003, 0.003)
+        close = price * (1 + trend + noise)
+        high = close * (1 + random.uniform(0, 0.001))
+        low = close * (1 - random.uniform(0, 0.001))
+        open_p = close * (1 + random.uniform(-0.0005, 0.0005))
+
+        ohlcv.append({
+            "timestamp": (datetime.now() + timedelta(minutes=5*i)).isoformat(),
+            "open": open_p, "high": high, "low": low, "close": close,
+            "volume": random.uniform(100, 1000)
+        })
+        price = close
+
+    class SimpleStrategy:
+        def analyze(self, closes, highs=None, lows=None):
+            return type('I', (), {
+                'ema_20': sum(closes[-20:]) / 20 if len(closes) >= 20 else closes[-1],
+                'ema_50': sum(closes[-50:]) / 50 if len(closes) >= 50 else closes[-1],
+                'rsi': 50.0,
+                'atr': (max(highs[-20:]) - min(lows[-20:])) / 20 if highs and lows else closes[-1] * 0.02
+            })()
+
+        def generate_signal(self, indicators, current_price, symbol="BTCUSDT"):
+            if indicators.ema_20 > indicators.ema_50 * 1.001:
+                return type('S', (), {'action': 'BUY', 'confidence': 0.7, 'risk': type('R', (), {'stop_loss': current_price * 0.98, 'take_profit': current_price * 1.03})()})()
+            elif indicators.ema_20 < indicators.ema_50 * 0.999:
+                return type('S', (), {'action': 'SELL', 'confidence': 0.7, 'risk': type('R', (), {'stop_loss': current_price * 1.02, 'take_profit': current_price * 0.97})()})()
+            return type('S', (), {'action': 'HOLD', 'confidence': 0.0})()
+
+    wf = WalkForwardAnalyzer(in_sample_pct=0.7)
+    wf_result = wf.analyze(ohlcv, lambda: SimpleStrategy(), window_size=100, step_size=50)
+
+    print(f"   Pencereler: {wf_result.windows}")
+    print(f"   IS Win Rate: %{wf_result.is_win_rate:.1f}")
+    print(f"   OOS Win Rate: %{wf_result.oos_win_rate:.1f}")
+    print(f"   Robustness: {wf_result.robustness_score:.2f}")
+    print(f"   Overfitting: {'EVET' if wf_result.overfitting_detected else 'Hayır'}")
+
+    # 3. Robustness
+    print("\n💪 Robustness Metrikleri...")
+
+    # Mock trade listesi
+    class MockTrade:
+        def __init__(self, pnl):
+            self.net_pnl = pnl
+
+    mock_trades = [MockTrade(r * 10) for r in trade_returns]  # $10 başına
+
+    # Mock equity curve
+    class MockEquity:
+        def __init__(self, eq):
+            self.equity = eq
+
+    equity = 10000
+    mock_equity = [MockEquity(equity)]
+    for r in trade_returns:
+        equity *= (1 + r / 100)
+        mock_equity.append(MockEquity(equity))
+
+    robust = RobustnessCalculator.calculate(
+        mock_trades, mock_equity,
+        total_return_pct=(equity - 10000) / 10000 * 100,
+        max_drawdown_pct=5.0,
+        annualized_return_pct=15.0,
+        sharpe_ratio=1.2,
+        sortino_ratio=1.5
+    )
+
+    print(f"   SQN: {robust.system_quality_number:.2f}")
+    print(f"   K-Ratio: {robust.k_ratio:.2f}")
+    print(f"   Ulcer Index: {robust.ulcer_index:.2f}")
+    print(f"   Serenity Index: {robust.serenity_index:.2f}")
+    print(f"   Payoff Ratio: {robust.payoff_ratio:.2f}")
+    print(f"   Recovery Factor: {robust.recovery_factor:.2f}")
+
+    # 4. Tam rapor
+    print("\n📋 Tam Rapor...")
+
+    # Mock backtest result
+    mock_bt = type('BT', (), {
+        'to_dict': lambda: {
+            'strategy_name': 'TestStrategy',
+            'total_return_pct': (equity - 10000) / 10000 * 100,
+            'annualized_return_pct': 15.0,
+            'win_rate': 45.0,
+            'profit_factor': 1.8,
+            'max_drawdown_pct': 5.0,
+            'sharpe_ratio': 1.2,
+            'sortino_ratio': 1.5,
+            'calmar_ratio': 3.0
+        },
+        'sharpe_ratio': 1.2,
+        'max_drawdown_pct': 5.0,
+        'profit_factor': 1.8
+    })()
+
+    report = EnhancedBacktestReporter.generate_full_report(
+        mock_bt, mc_result, wf_result, robust
+    )
+
+    EnhancedBacktestReporter.print_report(report)
+
+    # Kaydet
+    Path("logs").mkdir(exist_ok=True)
+    with open("logs/enhanced_backtest_report.json", "w", encoding="utf-8") as f:
+        json.dump(report, f, indent=2, default=str, ensure_ascii=False)
+
+    print("\n💾 Rapor kaydedildi: logs/enhanced_backtest_report.json")
+    print("\n✅ Enhanced Backtest v3.1 test completed!")
+
+    return report
+
+
+if __name__ == "__main__":
+    test_enhanced_backtest()

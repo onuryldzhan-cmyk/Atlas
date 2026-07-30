@@ -1,0 +1,33 @@
+{
+    "version": "1.0",
+    "trades": [
+        {
+            "id": "MEMORY_TEST_001",
+            "symbol": "BTCUSDT",
+            "side": "BUY",
+            "strategy": "Atlas_Test",
+            "confidence": 85,
+            "risk": "MEDIUM",
+            "entry": 65000,
+            "amount": 1500,
+            "result": "WIN",
+            "pnl": 2.5,
+            "created": "2026-07-24T15:09:54.308853+00:00",
+            "closed": "2026-07-24T15:09:54.311563+00:00"
+        },
+        {
+            "id": "ff99418d-8d9d-45b5-b8fc-dcdc68807885",
+            "symbol": "BTCUSDT",
+            "side": "BUY",
+            "strategy": "Atlas_Test",
+            "confidence": 85,
+            "risk": "MEDIUM",
+            "entry": 65000,
+            "amount": 1593.75,
+            "result": null,
+            "pnl": null,
+            "created": "2026-07-24T15:23:36.744950+00:00"
+        }
+    ],
+    "updated": "2026-07-24T15:23:36.744962+00:00"
+}

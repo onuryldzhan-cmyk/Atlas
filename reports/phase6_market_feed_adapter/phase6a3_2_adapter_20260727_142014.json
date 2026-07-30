@@ -1,0 +1,19 @@
+{
+  "phase": "6A3.2",
+  "generated_utc": "2026-07-27T14:20:14.577410+00:00",
+  "target": "exchange\\market_feed.py",
+  "before_sha256": "15166b32cdb09f7b37607ed84ef9b39ff044842132e82ef20ec31d82038309ae",
+  "backup": "C:\\Users\\HUAWEİ\\OneDrive\\Masaüstü\\Project_Atlas_AI\\backups\\phase6a3_market_feed_adapter\\20260727_142014",
+  "status": "COMPLETED",
+  "checks": {
+    "compilation": "PASSED",
+    "ast_validation": "PASSED",
+    "contract_tests": {
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "test_canonical_methods_remain_available (tests.phase6.test_market_feed_compatibility.MarketFeedCompatibilityTests.test_canonical_methods_remain_available) ... ok\ntest_legacy_candles_return_binance_rows (tests.phase6.test_market_feed_compatibility.MarketFeedCompatibilityTests.test_legacy_candles_return_binance_rows) ... ok\ntest_legacy_price_returns_float (tests.phase6.test_market_feed_compatibility.MarketFeedCompatibilityTests.test_legacy_price_returns_float) ... ok\ntest_lifecycle_routes_to_provider (tests.phase6.test_market_feed_compatibility.MarketFeedCompatibilityTests.test_lifecycle_routes_to_provider) ... ok\ntest_unsupported_exchange_is_rejected (tests.phase6.test_market_feed_compatibility.MarketFeedCompatibilityTests.test_unsupported_exchange_is_rejected) ... ok\n\n----------------------------------------------------------------------\nRan 5 tests in 0.001s\n\nOK\n",
+      "status": "PASSED"
+    }
+  },
+  "after_sha256": "a765f6ab0ebaf922984de653aafda88bb5fb9a8544a23d1f800afd112b52cd0d"
+}

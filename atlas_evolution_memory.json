@@ -1,0 +1,48 @@
+[
+    {
+        "id": 1,
+        "time": "2026-07-23T15:02:12.442156+00:00",
+        "status": "planned",
+        "recommendation": {
+            "type": "refactor",
+            "target": "core.market_loop",
+            "goal": "pipeline iyileştirme"
+        }
+    },
+    {
+        "id": 2,
+        "time": "2026-07-23T15:06:29.510293+00:00",
+        "status": "planned",
+        "recommendation": {
+            "source": "SelfImprovementLoop",
+            "recommendation": "Kod tabanı büyük. Mimari iyileştirme gerekli."
+        }
+    },
+    {
+        "id": 3,
+        "time": "2026-07-23T15:06:29.517118+00:00",
+        "status": "planned",
+        "recommendation": {
+            "source": "SelfImprovementLoop",
+            "recommendation": "Büyük dosyalar refactor edilmeli."
+        }
+    },
+    {
+        "id": 4,
+        "time": "2026-07-23T15:06:29.523302+00:00",
+        "status": "planned",
+        "recommendation": {
+            "source": "SelfImprovementLoop",
+            "recommendation": "Teknik borç azaltılmalı."
+        }
+    },
+    {
+        "id": 5,
+        "time": "2026-07-23T15:06:29.529525+00:00",
+        "status": "planned",
+        "recommendation": {
+            "source": "SelfImprovementLoop",
+            "recommendation": "Planlanan geliştirmeler takip edilmeli."
+        }
+    }
+]

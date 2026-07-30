@@ -1,0 +1,4115 @@
+{
+    "check_project.py": {
+        "path": "check_project.py",
+        "imports": [
+            "os",
+            "py_compile"
+        ],
+        "classes": [],
+        "functions": [],
+        "globals": [
+            "errors"
+        ],
+        "line_count": 48,
+        "complexity": 4
+    },
+    "main.py": {
+        "path": "main.py",
+        "imports": [
+            "logging",
+            "time",
+            "core.atlas_brain",
+            "core.paper_trader",
+            "core.database"
+        ],
+        "classes": [],
+        "functions": [
+            "print_report",
+            "run_cycle",
+            "main"
+        ],
+        "globals": [
+            "AUTO_INTERVAL",
+            "SYMBOLS"
+        ],
+        "line_count": 291,
+        "complexity": 35
+    },
+    "technical_analyzer.py": {
+        "path": "technical_analyzer.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "TechnicalAnalyzer",
+                "methods": [
+                    "ema",
+                    "rsi",
+                    "analyze"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 66,
+        "complexity": 25
+    },
+    "test_architecture_analyzer.py": {
+        "path": "test_architecture_analyzer.py",
+        "imports": [
+            "core.architecture_analyzer"
+        ],
+        "classes": [],
+        "functions": [],
+        "globals": [
+            "analyzer",
+            "report"
+        ],
+        "line_count": 27,
+        "complexity": 2
+    },
+    "test_ast_parser.py": {
+        "path": "test_ast_parser.py",
+        "imports": [
+            "core.ast_parser"
+        ],
+        "classes": [],
+        "functions": [
+            "print_report",
+            "main"
+        ],
+        "globals": [],
+        "line_count": 79,
+        "complexity": 11
+    },
+    "test_atlas_evolution.py": {
+        "path": "test_atlas_evolution.py",
+        "imports": [
+            "core.atlas_brain"
+        ],
+        "classes": [],
+        "functions": [],
+        "globals": [
+            "brain",
+            "result"
+        ],
+        "line_count": 41,
+        "complexity": 4
+    },
+    "test_codebase_indexer.py": {
+        "path": "test_codebase_indexer.py",
+        "imports": [
+            "core.codebase_indexer"
+        ],
+        "classes": [],
+        "functions": [],
+        "globals": [
+            "indexer",
+            "index"
+        ],
+        "line_count": 21,
+        "complexity": 2
+    },
+    "test_code_analyzer.py": {
+        "path": "test_code_analyzer.py",
+        "imports": [
+            "core.github_scanner",
+            "core.code_analyzer"
+        ],
+        "classes": [],
+        "functions": [],
+        "globals": [
+            "scanner",
+            "analyzer",
+            "projects"
+        ],
+        "line_count": 33,
+        "complexity": 3
+    },
+    "test_dependency_graph.py": {
+        "path": "test_dependency_graph.py",
+        "imports": [
+            "core.dependency_graph"
+        ],
+        "classes": [],
+        "functions": [],
+        "globals": [
+            "graph",
+            "report",
+            "count"
+        ],
+        "line_count": 46,
+        "complexity": 4
+    },
+    "test_event.py": {
+        "path": "test_event.py",
+        "imports": [
+            "events",
+            "events"
+        ],
+        "classes": [],
+        "functions": [
+            "market_listener"
+        ],
+        "globals": [
+            "bus",
+            "event"
+        ],
+        "line_count": 36,
+        "complexity": 5
+    },
+    "test_evolution_engine.py": {
+        "path": "test_evolution_engine.py",
+        "imports": [
+            "core.atlas_brain"
+        ],
+        "classes": [],
+        "functions": [],
+        "globals": [
+            "brain",
+            "experiment",
+            "result",
+            "decision"
+        ],
+        "line_count": 73,
+        "complexity": 7
+    },
+    "test_experiment_manager.py": {
+        "path": "test_experiment_manager.py",
+        "imports": [
+            "core.atlas_brain"
+        ],
+        "classes": [],
+        "functions": [],
+        "globals": [
+            "brain",
+            "experiment"
+        ],
+        "line_count": 39,
+        "complexity": 3
+    },
+    "test_github_scanner.py": {
+        "path": "test_github_scanner.py",
+        "imports": [
+            "core.github_scanner"
+        ],
+        "classes": [],
+        "functions": [],
+        "globals": [
+            "scanner",
+            "projects"
+        ],
+        "line_count": 20,
+        "complexity": 2
+    },
+    "test_improvement_planner.py": {
+        "path": "test_improvement_planner.py",
+        "imports": [
+            "core.atlas_brain"
+        ],
+        "classes": [],
+        "functions": [],
+        "globals": [
+            "brain",
+            "report",
+            "plan"
+        ],
+        "line_count": 24,
+        "complexity": 2
+    },
+    "test_patch_generator.py": {
+        "path": "test_patch_generator.py",
+        "imports": [
+            "core.architecture_analyzer",
+            "core.refactor_advisor",
+            "core.patch_generator"
+        ],
+        "classes": [],
+        "functions": [],
+        "globals": [
+            "architecture",
+            "advisor",
+            "patcher"
+        ],
+        "line_count": 19,
+        "complexity": 1
+    },
+    "test_performance_feedback.py": {
+        "path": "test_performance_feedback.py",
+        "imports": [
+            "core.performance_feedback"
+        ],
+        "classes": [],
+        "functions": [],
+        "globals": [
+            "feedback"
+        ],
+        "line_count": 36,
+        "complexity": 3
+    },
+    "test_refactor_advisor.py": {
+        "path": "test_refactor_advisor.py",
+        "imports": [
+            "core.architecture_analyzer",
+            "core.refactor_advisor"
+        ],
+        "classes": [],
+        "functions": [],
+        "globals": [
+            "architecture",
+            "advisor",
+            "report"
+        ],
+        "line_count": 15,
+        "complexity": 1
+    },
+    "test_research_integration.py": {
+        "path": "test_research_integration.py",
+        "imports": [
+            "core.github_scanner",
+            "core.code_analyzer",
+            "core.upgrade_advisor",
+            "core.research_manager",
+            "core.research_integration"
+        ],
+        "classes": [],
+        "functions": [],
+        "globals": [
+            "research",
+            "results",
+            "integration",
+            "queue"
+        ],
+        "line_count": 42,
+        "complexity": 4
+    },
+    "test_research_manager.py": {
+        "path": "test_research_manager.py",
+        "imports": [
+            "core.github_scanner",
+            "core.code_analyzer",
+            "core.upgrade_advisor",
+            "core.research_manager"
+        ],
+        "classes": [],
+        "functions": [],
+        "globals": [
+            "manager",
+            "result"
+        ],
+        "line_count": 31,
+        "complexity": 3
+    },
+    "test_self_improvement.py": {
+        "path": "test_self_improvement.py",
+        "imports": [
+            "core.atlas_brain"
+        ],
+        "classes": [],
+        "functions": [],
+        "globals": [
+            "brain",
+            "report"
+        ],
+        "line_count": 12,
+        "complexity": 1
+    },
+    "test_upgrade_advisor.py": {
+        "path": "test_upgrade_advisor.py",
+        "imports": [
+            "core.github_scanner",
+            "core.code_analyzer",
+            "core.upgrade_advisor"
+        ],
+        "classes": [],
+        "functions": [],
+        "globals": [
+            "scanner",
+            "analyzer",
+            "advisor",
+            "projects"
+        ],
+        "line_count": 35,
+        "complexity": 3
+    },
+    "test_version_memory.py": {
+        "path": "test_version_memory.py",
+        "imports": [
+            "core.version_memory"
+        ],
+        "classes": [],
+        "functions": [],
+        "globals": [
+            "memory"
+        ],
+        "line_count": 26,
+        "complexity": 2
+    },
+    "web_app.py": {
+        "path": "web_app.py",
+        "imports": [
+            "logging",
+            "requests",
+            "fastapi",
+            "fastapi.responses",
+            "fastapi.templating",
+            "uvicorn",
+            "core.atlas_brain",
+            "core.database",
+            "core.paper_trader"
+        ],
+        "classes": [],
+        "functions": [
+            "root",
+            "dashboard",
+            "api_analysis",
+            "api_backtest",
+            "login"
+        ],
+        "globals": [
+            "logger",
+            "app",
+            "templates",
+            "db",
+            "trader",
+            "brain"
+        ],
+        "line_count": 85,
+        "complexity": 18
+    },
+    "ai\\atlas_brain.py": {
+        "path": "ai\\atlas_brain.py",
+        "imports": [
+            "learning.model_memory",
+            "learning.learning_engine"
+        ],
+        "classes": [
+            {
+                "name": "AtlasBrain",
+                "methods": [
+                    "__init__",
+                    "think"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 138,
+        "complexity": 29
+    },
+    "ai\\decision_engine.py": {
+        "path": "ai\\decision_engine.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "DecisionEngine",
+                "methods": [
+                    "__init__",
+                    "decide"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 108,
+        "complexity": 26
+    },
+    "ai\\intelligent_score.py": {
+        "path": "ai\\intelligent_score.py",
+        "imports": [
+            "json",
+            "os"
+        ],
+        "classes": [
+            {
+                "name": "IntelligentScore",
+                "methods": [
+                    "__init__",
+                    "get_bonus"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 46,
+        "complexity": 20
+    },
+    "ai\\learning_brain.py": {
+        "path": "ai\\learning_brain.py",
+        "imports": [
+            "json",
+            "os"
+        ],
+        "classes": [
+            {
+                "name": "LearningBrain",
+                "methods": [
+                    "__init__",
+                    "load_memory",
+                    "save_memory",
+                    "analyze_history"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 140,
+        "complexity": 36
+    },
+    "ai\\performance_analyzer.py": {
+        "path": "ai\\performance_analyzer.py",
+        "imports": [
+            "json"
+        ],
+        "classes": [
+            {
+                "name": "PerformanceAnalyzer",
+                "methods": [
+                    "__init__",
+                    "analyze"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 102,
+        "complexity": 26
+    },
+    "ai\\trade_analyzer.py": {
+        "path": "ai\\trade_analyzer.py",
+        "imports": [
+            "json"
+        ],
+        "classes": [
+            {
+                "name": "TradeAnalyzer",
+                "methods": [
+                    "__init__",
+                    "analyze"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 133,
+        "complexity": 29
+    },
+    "analysis\\analyzer.py": {
+        "path": "analysis\\analyzer.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "Analyzer",
+                "methods": [
+                    "analyze"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 55,
+        "complexity": 18
+    },
+    "analysis\\performance.py": {
+        "path": "analysis\\performance.py",
+        "imports": [
+            "json"
+        ],
+        "classes": [
+            {
+                "name": "PerformanceAnalyzer",
+                "methods": [
+                    "__init__",
+                    "report"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 50,
+        "complexity": 21
+    },
+    "analysis\\technical_analyzer.py": {
+        "path": "analysis\\technical_analyzer.py",
+        "imports": [
+            "pandas"
+        ],
+        "classes": [
+            {
+                "name": "TechnicalAnalyzer",
+                "methods": [
+                    "analyze"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 56,
+        "complexity": 18
+    },
+    "analytics\\ai_performance.py": {
+        "path": "analytics\\ai_performance.py",
+        "imports": [
+            "json",
+            "os"
+        ],
+        "classes": [
+            {
+                "name": "AIPerformance",
+                "methods": [
+                    "__init__",
+                    "create",
+                    "load",
+                    "add_result",
+                    "report"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 124,
+        "complexity": 37
+    },
+    "analytics\\dashboard.py": {
+        "path": "analytics\\dashboard.py",
+        "imports": [
+            "csv",
+            "os"
+        ],
+        "classes": [
+            {
+                "name": "AnalyticsDashboard",
+                "methods": [
+                    "__init__",
+                    "show"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 130,
+        "complexity": 29
+    },
+    "analytics\\performance.py": {
+        "path": "analytics\\performance.py",
+        "imports": [
+            "csv",
+            "os"
+        ],
+        "classes": [
+            {
+                "name": "PerformanceCenter",
+                "methods": [
+                    "__init__",
+                    "report"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 59,
+        "complexity": 21
+    },
+    "analytics\\performance_tracker.py": {
+        "path": "analytics\\performance_tracker.py",
+        "imports": [
+            "json",
+            "os",
+            "datetime"
+        ],
+        "classes": [
+            {
+                "name": "PerformanceTracker",
+                "methods": [
+                    "__init__",
+                    "load",
+                    "save",
+                    "add_trade",
+                    "report"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 184,
+        "complexity": 43
+    },
+    "analytics\\trade_report.py": {
+        "path": "analytics\\trade_report.py",
+        "imports": [
+            "json",
+            "os",
+            "datetime"
+        ],
+        "classes": [
+            {
+                "name": "TradeReport",
+                "methods": [
+                    "__init__",
+                    "load_file",
+                    "generate"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 182,
+        "complexity": 37
+    },
+    "backtest\\backtest_engine.py": {
+        "path": "backtest\\backtest_engine.py",
+        "imports": [
+            "data.data_provider",
+            "analysis.technical_analyzer",
+            "trade.simulator"
+        ],
+        "classes": [
+            {
+                "name": "BacktestEngine",
+                "methods": [
+                    "__init__",
+                    "run",
+                    "report"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 106,
+        "complexity": 29
+    },
+    "config\\exchange_config.py": {
+        "path": "config\\exchange_config.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "ExchangeConfig",
+                "methods": [
+                    "__init__"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 9,
+        "complexity": 13
+    },
+    "config\\main.py": {
+        "path": "config\\main.py",
+        "imports": [
+            "config.settings"
+        ],
+        "classes": [],
+        "functions": [],
+        "globals": [],
+        "line_count": 5,
+        "complexity": 0
+    },
+    "config\\settings.py": {
+        "path": "config\\settings.py",
+        "imports": [],
+        "classes": [],
+        "functions": [],
+        "globals": [
+            "PROJECT_NAME",
+            "VERSION",
+            "MODE",
+            "MARKET",
+            "SYMBOL",
+            "TIMEFRAME",
+            "LOOP_TIME",
+            "START_BALANCE",
+            "RISK_PERCENT"
+        ],
+        "line_count": 24,
+        "complexity": 2
+    },
+    "config\\symbols.py": {
+        "path": "config\\symbols.py",
+        "imports": [],
+        "classes": [],
+        "functions": [],
+        "globals": [
+            "SYMBOLS"
+        ],
+        "line_count": 11,
+        "complexity": 1
+    },
+    "config\\__init__.py": {
+        "path": "config\\__init__.py",
+        "imports": [],
+        "classes": [],
+        "functions": [],
+        "globals": [],
+        "line_count": 0,
+        "complexity": 0
+    },
+    "core\\adaptive_decision.py": {
+        "path": "core\\adaptive_decision.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "AdaptiveDecision",
+                "methods": [
+                    "__init__",
+                    "evaluate"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 164,
+        "complexity": 32
+    },
+    "core\\adaptive_learning.py": {
+        "path": "core\\adaptive_learning.py",
+        "imports": [
+            "json",
+            "os"
+        ],
+        "classes": [
+            {
+                "name": "AdaptiveLearning",
+                "methods": [
+                    "__init__",
+                    "load",
+                    "save",
+                    "update",
+                    "get_score",
+                    "best_strategy"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 248,
+        "complexity": 52
+    },
+    "core\\adaptive_weights.py": {
+        "path": "core\\adaptive_weights.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "AdaptiveWeights",
+                "methods": [
+                    "__init__",
+                    "get_weights",
+                    "get_best_strategy",
+                    "explain"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 113,
+        "complexity": 33
+    },
+    "core\\ai_director.py": {
+        "path": "core\\ai_director.py",
+        "imports": [
+            "logging"
+        ],
+        "classes": [
+            {
+                "name": "AIDirector",
+                "methods": [
+                    "__init__",
+                    "calculate_score",
+                    "decide"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 127,
+        "complexity": 31
+    },
+    "core\\ai_generator.py": {
+        "path": "core\\ai_generator.py",
+        "imports": [
+            "os"
+        ],
+        "classes": [
+            {
+                "name": "AICodeGenerator",
+                "methods": [
+                    "__init__",
+                    "discover_and_generate"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 76,
+        "complexity": 23
+    },
+    "core\\architecture_analyzer.py": {
+        "path": "core\\architecture_analyzer.py",
+        "imports": [
+            "os",
+            "ast"
+        ],
+        "classes": [
+            {
+                "name": "ArchitectureAnalyzer",
+                "methods": [
+                    "__init__",
+                    "analyze"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 99,
+        "complexity": 25
+    },
+    "core\\ast_parser.py": {
+        "path": "core\\ast_parser.py",
+        "imports": [
+            "__future__",
+            "ast",
+            "json",
+            "dataclasses",
+            "pathlib",
+            "typing"
+        ],
+        "classes": [
+            {
+                "name": "ClassInfo",
+                "methods": []
+            },
+            {
+                "name": "ParseResult",
+                "methods": []
+            },
+            {
+                "name": "ASTParser",
+                "methods": [
+                    "__init__",
+                    "parse",
+                    "export_json"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 160,
+        "complexity": 55
+    },
+    "core\\atlas_brain.py": {
+        "path": "core\\atlas_brain.py",
+        "imports": [
+            "logging",
+            "core.event_manager",
+            "core.event_listeners",
+            "core.learning_listener",
+            "core.evolution_engine",
+            "core.knowledge_graph",
+            "core.data_provider",
+            "core.technical_analyzer",
+            "core.market_intelligence",
+            "core.market_regime",
+            "core.version_memory",
+            "core.signal_fusion",
+            "core.strategy_competition",
+            "core.confidence_engine",
+            "core.decision_engine",
+            "core.risk_manager",
+            "core.database",
+            "core.learning_engine",
+            "core.performance_analyzer",
+            "core.performance_feedback",
+            "core.improvement_planner",
+            "core.upgrade_manager",
+            "core.experiment_manager",
+            "core.adaptive_learning",
+            "core.adaptive_decision",
+            "core.trade_memory",
+            "core.pattern_memory",
+            "core.outcome_memory",
+            "core.trade_tracker",
+            "core.opportunity_engine",
+            "core.market_scanner",
+            "core.auto_pilot",
+            "core.self_improvement"
+        ],
+        "classes": [
+            {
+                "name": "AtlasBrain",
+                "methods": [
+                    "__init__",
+                    "run",
+                    "check_improvements"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 584,
+        "complexity": 77
+    },
+    "core\\auth_panel.py": {
+        "path": "core\\auth_panel.py",
+        "imports": [
+            "sys",
+            "os",
+            "core.database"
+        ],
+        "classes": [
+            {
+                "name": "AtlasAuthPanel",
+                "methods": [
+                    "__init__",
+                    "clear_screen",
+                    "run",
+                    "login",
+                    "show_admin_panel",
+                    "admin_view_users",
+                    "admin_create_user",
+                    "admin_risk_settings",
+                    "admin_monitor_live_trades",
+                    "show_user_panel",
+                    "user_update_api",
+                    "user_check_api_status",
+                    "user_view_trades",
+                    "user_view_balance"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 253,
+        "complexity": 77
+    },
+    "core\\auto_manager.py": {
+        "path": "core\\auto_manager.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "AutoManager",
+                "methods": [
+                    "monitor"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 7,
+        "complexity": 13
+    },
+    "core\\auto_pilot.py": {
+        "path": "core\\auto_pilot.py",
+        "imports": [
+            "logging",
+            "time"
+        ],
+        "classes": [
+            {
+                "name": "AutoPilot",
+                "methods": [
+                    "__init__",
+                    "select_opportunities",
+                    "execute_cycle",
+                    "start",
+                    "stop"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 216,
+        "complexity": 46
+    },
+    "core\\auto_scanner.py": {
+        "path": "core\\auto_scanner.py",
+        "imports": [
+            "time",
+            "json",
+            "os",
+            "datetime"
+        ],
+        "classes": [
+            {
+                "name": "AutoScanner",
+                "methods": [
+                    "__init__",
+                    "save_result",
+                    "analyze_coin",
+                    "start"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 227,
+        "complexity": 44
+    },
+    "core\\backtester.py": {
+        "path": "core\\backtester.py",
+        "imports": [
+            "os",
+            "sys",
+            "pandas",
+            "importlib.util"
+        ],
+        "classes": [
+            {
+                "name": "BacktestEngine",
+                "methods": [
+                    "__init__",
+                    "reset_pools",
+                    "load_strategy_dynamically",
+                    "run_backtest",
+                    "report_results"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 201,
+        "complexity": 45
+    },
+    "core\\base_ai_module.py": {
+        "path": "core\\base_ai_module.py",
+        "imports": [
+            "logging",
+            "time"
+        ],
+        "classes": [
+            {
+                "name": "BaseAIModule",
+                "methods": [
+                    "__init__",
+                    "before_run",
+                    "process",
+                    "after_run",
+                    "run",
+                    "enable",
+                    "disable",
+                    "statistics"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 177,
+        "complexity": 51
+    },
+    "core\\capital_allocator.py": {
+        "path": "core\\capital_allocator.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "CapitalAllocator",
+                "methods": [
+                    "allocate"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 9,
+        "complexity": 13
+    },
+    "core\\codebase_indexer.py": {
+        "path": "core\\codebase_indexer.py",
+        "imports": [
+            "__future__",
+            "ast",
+            "json",
+            "logging",
+            "dataclasses",
+            "pathlib",
+            "typing"
+        ],
+        "classes": [
+            {
+                "name": "ClassInfo",
+                "methods": []
+            },
+            {
+                "name": "FileIndex",
+                "methods": []
+            },
+            {
+                "name": "CodebaseIndexer",
+                "methods": [
+                    "__init__",
+                    "scan",
+                    "index_file",
+                    "save",
+                    "summary",
+                    "print_summary"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 343,
+        "complexity": 82
+    },
+    "core\\code_analyzer.py": {
+        "path": "core\\code_analyzer.py",
+        "imports": [
+            "logging"
+        ],
+        "classes": [
+            {
+                "name": "CodeAnalyzer",
+                "methods": [
+                    "__init__",
+                    "analyze"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 154,
+        "complexity": 31
+    },
+    "core\\confidence_engine.py": {
+        "path": "core\\confidence_engine.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "ConfidenceEngine",
+                "methods": [
+                    "__init__",
+                    "normalize",
+                    "calculate"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 392,
+        "complexity": 58
+    },
+    "core\\config_manager.py": {
+        "path": "core\\config_manager.py",
+        "imports": [
+            "json",
+            "os"
+        ],
+        "classes": [
+            {
+                "name": "ConfigManager",
+                "methods": [
+                    "__init__",
+                    "get",
+                    "set",
+                    "load",
+                    "save",
+                    "all"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 119,
+        "complexity": 39
+    },
+    "core\\database.py": {
+        "path": "core\\database.py",
+        "imports": [
+            "json",
+            "os",
+            "datetime"
+        ],
+        "classes": [
+            {
+                "name": "DatabaseManager",
+                "methods": [
+                    "__init__",
+                    "_ensure_file",
+                    "save_trade",
+                    "get_trades",
+                    "update_trade",
+                    "get_open_trades",
+                    "_write",
+                    "save_api_keys"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 91,
+        "complexity": 43
+    },
+    "core\\data_downloader.py": {
+        "path": "core\\data_downloader.py",
+        "imports": [
+            "os",
+            "time",
+            "pandas",
+            "requests",
+            "datetime"
+        ],
+        "classes": [
+            {
+                "name": "HistoricalDownloader",
+                "methods": [
+                    "__init__",
+                    "download_data"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 100,
+        "complexity": 26
+    },
+    "core\\data_provider.py": {
+        "path": "core\\data_provider.py",
+        "imports": [
+            "requests",
+            "logging",
+            "datetime",
+            "typing"
+        ],
+        "classes": [
+            {
+                "name": "DataProvider",
+                "methods": [
+                    "get_klines",
+                    "get_historical_klines"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 67,
+        "complexity": 22
+    },
+    "core\\decision_engine.py": {
+        "path": "core\\decision_engine.py",
+        "imports": [
+            "logging"
+        ],
+        "classes": [
+            {
+                "name": "DecisionEngine",
+                "methods": [
+                    "__init__",
+                    "decide"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 254,
+        "complexity": 41
+    },
+    "core\\dependency_graph.py": {
+        "path": "core\\dependency_graph.py",
+        "imports": [
+            "__future__",
+            "json",
+            "logging",
+            "pathlib",
+            "typing"
+        ],
+        "classes": [
+            {
+                "name": "DependencyGraph",
+                "methods": [
+                    "__init__",
+                    "load",
+                    "build",
+                    "used_by",
+                    "critical_score",
+                    "unused_modules",
+                    "impact",
+                    "report",
+                    "save_report",
+                    "print_report",
+                    "summary"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 326,
+        "complexity": 75
+    },
+    "core\\engine.py": {
+        "path": "core\\engine.py",
+        "imports": [
+            "os",
+            "json",
+            "pandas",
+            "datetime",
+            "core.technical_analyzer",
+            "core.memory",
+            "core.strategy_brain",
+            "core.risk_manager",
+            "core.data_provider",
+            "core.paper_trader"
+        ],
+        "classes": [
+            {
+                "name": "AtlasEngine",
+                "methods": [
+                    "__init__",
+                    "start"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 140,
+        "complexity": 30
+    },
+    "core\\event_bus.py": {
+        "path": "core\\event_bus.py",
+        "imports": [
+            "logging"
+        ],
+        "classes": [
+            {
+                "name": "EventBus",
+                "methods": [
+                    "__init__",
+                    "subscribe",
+                    "publish",
+                    "unsubscribe",
+                    "clear",
+                    "events"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 103,
+        "complexity": 38
+    },
+    "core\\event_listeners.py": {
+        "path": "core\\event_listeners.py",
+        "imports": [
+            "logging"
+        ],
+        "classes": [
+            {
+                "name": "AtlasEventListeners",
+                "methods": [
+                    "__init__",
+                    "register_events",
+                    "market_analyzed",
+                    "decision_created"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 99,
+        "complexity": 31
+    },
+    "core\\event_manager.py": {
+        "path": "core\\event_manager.py",
+        "imports": [
+            "logging",
+            "core.event_bus"
+        ],
+        "classes": [
+            {
+                "name": "EventManager",
+                "methods": [
+                    "__init__",
+                    "register",
+                    "emit",
+                    "remove",
+                    "status"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger",
+            "event_manager"
+        ],
+        "line_count": 96,
+        "complexity": 34
+    },
+    "core\\evolution_engine.py": {
+        "path": "core\\evolution_engine.py",
+        "imports": [
+            "logging"
+        ],
+        "classes": [
+            {
+                "name": "EvolutionEngine",
+                "methods": [
+                    "__init__",
+                    "evaluate_experiment",
+                    "should_upgrade"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 158,
+        "complexity": 34
+    },
+    "core\\executor.py": {
+        "path": "core\\executor.py",
+        "imports": [
+            "logging",
+            "datetime"
+        ],
+        "classes": [
+            {
+                "name": "Executor",
+                "methods": [
+                    "__init__",
+                    "execute"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 219,
+        "complexity": 37
+    },
+    "core\\experiment_manager.py": {
+        "path": "core\\experiment_manager.py",
+        "imports": [
+            "json",
+            "os",
+            "logging",
+            "datetime"
+        ],
+        "classes": [
+            {
+                "name": "ExperimentManager",
+                "methods": [
+                    "__init__",
+                    "load",
+                    "save",
+                    "create_experiment",
+                    "complete_experiment",
+                    "get_testing",
+                    "report"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 270,
+        "complexity": 58
+    },
+    "core\\github_intelligence.py": {
+        "path": "core\\github_intelligence.py",
+        "imports": [
+            "datetime",
+            "logging"
+        ],
+        "classes": [
+            {
+                "name": "GithubIntelligence",
+                "methods": [
+                    "__init__",
+                    "scan",
+                    "scan_trading_projects",
+                    "scan_ai_projects",
+                    "calculate_score",
+                    "remove_duplicates",
+                    "generate_upgrade_suggestions",
+                    "summary"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 346,
+        "complexity": 68
+    },
+    "core\\github_scanner.py": {
+        "path": "core\\github_scanner.py",
+        "imports": [
+            "logging"
+        ],
+        "classes": [
+            {
+                "name": "GithubScanner",
+                "methods": [
+                    "__init__",
+                    "scan"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 88,
+        "complexity": 24
+    },
+    "core\\improvement_planner.py": {
+        "path": "core\\improvement_planner.py",
+        "imports": [
+            "logging"
+        ],
+        "classes": [
+            {
+                "name": "ImprovementPlanner",
+                "methods": [
+                    "__init__",
+                    "analyze",
+                    "create_upgrade_plan"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 166,
+        "complexity": 35
+    },
+    "core\\knowledge_graph.py": {
+        "path": "core\\knowledge_graph.py",
+        "imports": [
+            "json",
+            "os",
+            "logging"
+        ],
+        "classes": [
+            {
+                "name": "KnowledgeGraph",
+                "methods": [
+                    "__init__",
+                    "load",
+                    "save",
+                    "add_node",
+                    "add_edge",
+                    "find_node",
+                    "neighbors",
+                    "statistics"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 150,
+        "complexity": 49
+    },
+    "core\\learning_engine.py": {
+        "path": "core\\learning_engine.py",
+        "imports": [
+            "json",
+            "os",
+            "logging"
+        ],
+        "classes": [
+            {
+                "name": "LearningEngine",
+                "methods": [
+                    "__init__",
+                    "load",
+                    "save",
+                    "load_memory",
+                    "save_memory",
+                    "learn_market",
+                    "get_strategy_score",
+                    "get_insight"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 286,
+        "complexity": 62
+    },
+    "core\\learning_listener.py": {
+        "path": "core\\learning_listener.py",
+        "imports": [
+            "logging"
+        ],
+        "classes": [
+            {
+                "name": "LearningListener",
+                "methods": [
+                    "__init__",
+                    "register_events",
+                    "market_analyzed",
+                    "decision_created"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 192,
+        "complexity": 41
+    },
+    "core\\live_trader.py": {
+        "path": "core\\live_trader.py",
+        "imports": [
+            "os",
+            "sys",
+            "time",
+            "pandas",
+            "binance.client",
+            "dotenv"
+        ],
+        "classes": [
+            {
+                "name": "LiveTrader",
+                "methods": [
+                    "__init__",
+                    "connect_to_binance",
+                    "fetch_live_data",
+                    "set_active_strategy",
+                    "monitor_market",
+                    "execute_mock_order"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 145,
+        "complexity": 42
+    },
+    "core\\loop_engine.py": {
+        "path": "core\\loop_engine.py",
+        "imports": [
+            "time",
+            "sys",
+            "os",
+            "core.engine"
+        ],
+        "classes": [
+            {
+                "name": "LoopEngine",
+                "methods": [
+                    "__init__",
+                    "start"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 63,
+        "complexity": 22
+    },
+    "core\\main.py": {
+        "path": "core\\main.py",
+        "imports": [
+            "core.engine",
+            "json"
+        ],
+        "classes": [],
+        "functions": [
+            "main"
+        ],
+        "globals": [],
+        "line_count": 98,
+        "complexity": 11
+    },
+    "core\\market_intelligence.py": {
+        "path": "core\\market_intelligence.py",
+        "imports": [
+            "requests",
+            "logging",
+            "bs4"
+        ],
+        "classes": [
+            {
+                "name": "MarketIntelligence",
+                "methods": [
+                    "analyze",
+                    "_calc_volatility"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 31,
+        "complexity": 19
+    },
+    "core\\market_regime.py": {
+        "path": "core\\market_regime.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "MarketRegime",
+                "methods": [
+                    "__init__",
+                    "detect"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 188,
+        "complexity": 34
+    },
+    "core\\market_scanner.py": {
+        "path": "core\\market_scanner.py",
+        "imports": [
+            "logging"
+        ],
+        "classes": [
+            {
+                "name": "MarketScanner",
+                "methods": [
+                    "__init__",
+                    "calculate_score",
+                    "scan",
+                    "print_report"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 228,
+        "complexity": 44
+    },
+    "core\\memory.py": {
+        "path": "core\\memory.py",
+        "imports": [
+            "os",
+            "json",
+            "datetime"
+        ],
+        "classes": [
+            {
+                "name": "LearningMemory",
+                "methods": [
+                    "__init__",
+                    "_ensure_file_exists",
+                    "save_trade",
+                    "get_stats"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 89,
+        "complexity": 30
+    },
+    "core\\module_registry.py": {
+        "path": "core\\module_registry.py",
+        "imports": [
+            "logging"
+        ],
+        "classes": [
+            {
+                "name": "ModuleRegistry",
+                "methods": [
+                    "__init__",
+                    "register",
+                    "get",
+                    "exists",
+                    "remove",
+                    "names",
+                    "execute",
+                    "info",
+                    "clear"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 153,
+        "complexity": 52
+    },
+    "core\\opportunity_engine.py": {
+        "path": "core\\opportunity_engine.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "OpportunityEngine",
+                "methods": [
+                    "__init__",
+                    "evaluate"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 267,
+        "complexity": 42
+    },
+    "core\\opportunity_scanner.py": {
+        "path": "core\\opportunity_scanner.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "OpportunityScanner",
+                "methods": [
+                    "__init__",
+                    "scan",
+                    "best",
+                    "report"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 196,
+        "complexity": 41
+    },
+    "core\\outcome_memory.py": {
+        "path": "core\\outcome_memory.py",
+        "imports": [
+            "json",
+            "os",
+            "logging"
+        ],
+        "classes": [
+            {
+                "name": "OutcomeMemory",
+                "methods": [
+                    "__init__",
+                    "load",
+                    "save",
+                    "analyze",
+                    "record_trade",
+                    "update_group",
+                    "get_strategy_name",
+                    "get_strategy_score",
+                    "get_regime_score",
+                    "calculate_bonus",
+                    "insight",
+                    "create_trade"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 514,
+        "complexity": 97
+    },
+    "core\\paper_trader.py": {
+        "path": "core\\paper_trader.py",
+        "imports": [
+            "datetime",
+            "requests",
+            "core.database",
+            "core.learning_engine",
+            "portfolio.portfolio_manager"
+        ],
+        "classes": [
+            {
+                "name": "PaperTrader",
+                "methods": [
+                    "__init__",
+                    "load_portfolio",
+                    "get_open_positions",
+                    "has_position",
+                    "open_trade",
+                    "check_positions",
+                    "close_trade",
+                    "_get_price"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 427,
+        "complexity": 76
+    },
+    "core\\patch_generator.py": {
+        "path": "core\\patch_generator.py",
+        "imports": [
+            "os",
+            "datetime"
+        ],
+        "classes": [
+            {
+                "name": "PatchGenerator",
+                "methods": [
+                    "__init__",
+                    "generate"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 44,
+        "complexity": 20
+    },
+    "core\\pattern_memory.py": {
+        "path": "core\\pattern_memory.py",
+        "imports": [
+            "json",
+            "os",
+            "datetime"
+        ],
+        "classes": [
+            {
+                "name": "PatternMemory",
+                "methods": [
+                    "__init__",
+                    "load",
+                    "save",
+                    "record",
+                    "update_outcome",
+                    "find_similar",
+                    "insight"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 427,
+        "complexity": 73
+    },
+    "core\\performance_analyzer.py": {
+        "path": "core\\performance_analyzer.py",
+        "imports": [
+            "json",
+            "os"
+        ],
+        "classes": [
+            {
+                "name": "PerformanceAnalyzer",
+                "methods": [
+                    "__init__",
+                    "load",
+                    "analyze"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 223,
+        "complexity": 41
+    },
+    "core\\performance_feedback.py": {
+        "path": "core\\performance_feedback.py",
+        "imports": [
+            "logging"
+        ],
+        "classes": [
+            {
+                "name": "PerformanceFeedback",
+                "methods": [
+                    "__init__",
+                    "add_result",
+                    "analyze"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 107,
+        "complexity": 29
+    },
+    "core\\position_manager.py": {
+        "path": "core\\position_manager.py",
+        "imports": [
+            "__future__",
+            "datetime",
+            "typing",
+            "uuid"
+        ],
+        "classes": [
+            {
+                "name": "PositionManager",
+                "methods": [
+                    "__init__",
+                    "open_position",
+                    "close_position",
+                    "update_price",
+                    "calculate_pnl",
+                    "has_open_position",
+                    "get_position",
+                    "get_open_positions",
+                    "total_open_positions",
+                    "total_risk",
+                    "total_unrealized_pnl",
+                    "summary"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 177,
+        "complexity": 63
+    },
+    "core\\position_monitor.py": {
+        "path": "core\\position_monitor.py",
+        "imports": [
+            "time",
+            "threading"
+        ],
+        "classes": [
+            {
+                "name": "PositionMonitor",
+                "methods": [
+                    "__init__",
+                    "start",
+                    "stop",
+                    "_loop"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 70,
+        "complexity": 29
+    },
+    "core\\profit_calculator.py": {
+        "path": "core\\profit_calculator.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "ProfitCalculator",
+                "methods": [
+                    "calculate"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 26,
+        "complexity": 15
+    },
+    "core\\refactor_advisor.py": {
+        "path": "core\\refactor_advisor.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "RefactorAdvisor",
+                "methods": [
+                    "advise"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 50,
+        "complexity": 18
+    },
+    "core\\research_integration.py": {
+        "path": "core\\research_integration.py",
+        "imports": [
+            "logging"
+        ],
+        "classes": [
+            {
+                "name": "ResearchIntegration",
+                "methods": [
+                    "__init__",
+                    "add_research_results",
+                    "get_queue"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 101,
+        "complexity": 29
+    },
+    "core\\research_manager.py": {
+        "path": "core\\research_manager.py",
+        "imports": [
+            "logging"
+        ],
+        "classes": [
+            {
+                "name": "ResearchManager",
+                "methods": [
+                    "__init__",
+                    "research"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 74,
+        "complexity": 23
+    },
+    "core\\risk_manager.py": {
+        "path": "core\\risk_manager.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "RiskManager",
+                "methods": [
+                    "__init__",
+                    "calculate"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 257,
+        "complexity": 41
+    },
+    "core\\self_improvement.py": {
+        "path": "core\\self_improvement.py",
+        "imports": [
+            "logging"
+        ],
+        "classes": [
+            {
+                "name": "SelfImprovement",
+                "methods": [
+                    "__init__",
+                    "analyze_system",
+                    "generate_suggestions",
+                    "report"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 265,
+        "complexity": 48
+    },
+    "core\\shared_context.py": {
+        "path": "core\\shared_context.py",
+        "imports": [
+            "dataclasses",
+            "typing"
+        ],
+        "classes": [
+            {
+                "name": "SharedContext",
+                "methods": [
+                    "reset"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 103,
+        "complexity": 23
+    },
+    "core\\signal_fusion.py": {
+        "path": "core\\signal_fusion.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "SignalFusion",
+                "methods": [
+                    "fuse"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 288,
+        "complexity": 41
+    },
+    "core\\strategy_brain.py": {
+        "path": "core\\strategy_brain.py",
+        "imports": [
+            "pandas"
+        ],
+        "classes": [
+            {
+                "name": "StrategyBrain",
+                "methods": [
+                    "__init__",
+                    "evaluate_all",
+                    "_scalping_strategy",
+                    "_momentum_strategy",
+                    "_trend_following_strategy",
+                    "_mean_reversion_strategy"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 116,
+        "complexity": 39
+    },
+    "core\\strategy_competition.py": {
+        "path": "core\\strategy_competition.py",
+        "imports": [
+            "core.weight_optimizer"
+        ],
+        "classes": [
+            {
+                "name": "StrategyCompetition",
+                "methods": [
+                    "__init__",
+                    "update_weights",
+                    "run"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 548,
+        "complexity": 73
+    },
+    "core\\strategy_config.py": {
+        "path": "core\\strategy_config.py",
+        "imports": [
+            "dataclasses",
+            "typing"
+        ],
+        "classes": [
+            {
+                "name": "StrategyParams",
+                "methods": []
+            },
+            {
+                "name": "StrategyConfig",
+                "methods": [
+                    "get_params",
+                    "get_all_strategies",
+                    "get_weights",
+                    "get_decision_thresholds"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 55,
+        "complexity": 37
+    },
+    "core\\technical_analyzer.py": {
+        "path": "core\\technical_analyzer.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "TechnicalAnalyzer",
+                "methods": [
+                    "ema",
+                    "rsi",
+                    "adx",
+                    "analyze"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 84,
+        "complexity": 30
+    },
+    "core\\trade_lifecycle.py": {
+        "path": "core\\trade_lifecycle.py",
+        "imports": [
+            "time"
+        ],
+        "classes": [
+            {
+                "name": "TradeLifecycle",
+                "methods": [
+                    "__init__",
+                    "calculate_profit",
+                    "check_positions"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 267,
+        "complexity": 45
+    },
+    "core\\trade_memory.py": {
+        "path": "core\\trade_memory.py",
+        "imports": [
+            "json",
+            "os",
+            "logging"
+        ],
+        "classes": [
+            {
+                "name": "TradeMemory",
+                "methods": [
+                    "__init__",
+                    "load",
+                    "save",
+                    "record_analysis",
+                    "record_decision",
+                    "record_outcome",
+                    "get_recent"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 197,
+        "complexity": 50
+    },
+    "core\\trade_tracker.py": {
+        "path": "core\\trade_tracker.py",
+        "imports": [
+            "json",
+            "os",
+            "logging",
+            "datetime"
+        ],
+        "classes": [
+            {
+                "name": "TradeTracker",
+                "methods": [
+                    "__init__",
+                    "load",
+                    "save",
+                    "open_trade",
+                    "get_open_trades",
+                    "calculate_profit",
+                    "close_trade"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 278,
+        "complexity": 58
+    },
+    "core\\trading_cycle.py": {
+        "path": "core\\trading_cycle.py",
+        "imports": [
+            "logging",
+            "core.data_provider",
+            "core.technical_analyzer",
+            "core.market_intelligence",
+            "core.signal_fusion",
+            "core.strategy_competition",
+            "core.confidence_engine",
+            "core.decision_engine",
+            "core.capital_allocator",
+            "core.executor",
+            "core.risk_manager",
+            "core.auto_manager"
+        ],
+        "classes": [
+            {
+                "name": "TradingCycle",
+                "methods": [
+                    "__init__",
+                    "run"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 272,
+        "complexity": 43
+    },
+    "core\\trading_engine.py": {
+        "path": "core\\trading_engine.py",
+        "imports": [
+            "datetime"
+        ],
+        "classes": [
+            {
+                "name": "TradingEngine",
+                "methods": [
+                    "__init__",
+                    "decide",
+                    "log_trade"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 78,
+        "complexity": 26
+    },
+    "core\\upgrade_advisor.py": {
+        "path": "core\\upgrade_advisor.py",
+        "imports": [
+            "logging"
+        ],
+        "classes": [
+            {
+                "name": "UpgradeAdvisor",
+                "methods": [
+                    "__init__",
+                    "generate"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 106,
+        "complexity": 26
+    },
+    "core\\upgrade_approval.py": {
+        "path": "core\\upgrade_approval.py",
+        "imports": [
+            "logging"
+        ],
+        "classes": [
+            {
+                "name": "UpgradeApproval",
+                "methods": [
+                    "__init__",
+                    "request"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 112,
+        "complexity": 27
+    },
+    "core\\upgrade_executor.py": {
+        "path": "core\\upgrade_executor.py",
+        "imports": [
+            "logging"
+        ],
+        "classes": [
+            {
+                "name": "UpgradeExecutor",
+                "methods": [
+                    "__init__",
+                    "execute"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 57,
+        "complexity": 21
+    },
+    "core\\upgrade_manager.py": {
+        "path": "core\\upgrade_manager.py",
+        "imports": [
+            "logging"
+        ],
+        "classes": [
+            {
+                "name": "UpgradeManager",
+                "methods": [
+                    "__init__",
+                    "request_upgrade",
+                    "approve"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 123,
+        "complexity": 31
+    },
+    "core\\version_memory.py": {
+        "path": "core\\version_memory.py",
+        "imports": [
+            "json",
+            "os",
+            "logging",
+            "datetime"
+        ],
+        "classes": [
+            {
+                "name": "VersionMemory",
+                "methods": [
+                    "__init__",
+                    "load",
+                    "save",
+                    "add_upgrade",
+                    "complete_upgrade",
+                    "last_upgrade",
+                    "statistics"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 294,
+        "complexity": 60
+    },
+    "core\\weight_optimizer.py": {
+        "path": "core\\weight_optimizer.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "WeightOptimizer",
+                "methods": [
+                    "__init__",
+                    "optimize"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 116,
+        "complexity": 27
+    },
+    "core\\__init__.py": {
+        "path": "core\\__init__.py",
+        "imports": [],
+        "classes": [],
+        "functions": [],
+        "globals": [
+            "__version__"
+        ],
+        "line_count": 7,
+        "complexity": 0
+    },
+    "dashboard\\dashboard.py": {
+        "path": "dashboard\\dashboard.py",
+        "imports": [
+            "json",
+            "os"
+        ],
+        "classes": [
+            {
+                "name": "Dashboard",
+                "methods": [
+                    "__init__",
+                    "show"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 78,
+        "complexity": 23
+    },
+    "dashboard\\portfolio_dashboard.py": {
+        "path": "dashboard\\portfolio_dashboard.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "PortfolioDashboard",
+                "methods": [
+                    "__init__",
+                    "show",
+                    "position"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 84,
+        "complexity": 27
+    },
+    "data\\binance_provider.py": {
+        "path": "data\\binance_provider.py",
+        "imports": [
+            "binance.client"
+        ],
+        "classes": [
+            {
+                "name": "BinanceProvider",
+                "methods": [
+                    "__init__",
+                    "get_price",
+                    "get_candles"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 49,
+        "complexity": 23
+    },
+    "data\\candle_data.py": {
+        "path": "data\\candle_data.py",
+        "imports": [
+            "random"
+        ],
+        "classes": [
+            {
+                "name": "CandleData",
+                "methods": [
+                    "generate_candle"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 53,
+        "complexity": 18
+    },
+    "data\\data_provider.py": {
+        "path": "data\\data_provider.py",
+        "imports": [
+            "exchange.exchange_adapter"
+        ],
+        "classes": [
+            {
+                "name": "DataProvider",
+                "methods": [
+                    "__init__",
+                    "get_market_data"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 37,
+        "complexity": 19
+    },
+    "data\\live_provider.py": {
+        "path": "data\\live_provider.py",
+        "imports": [
+            "data.binance_provider"
+        ],
+        "classes": [
+            {
+                "name": "LiveProvider",
+                "methods": [
+                    "__init__",
+                    "get_candles"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 21,
+        "complexity": 18
+    },
+    "data\\market.py": {
+        "path": "data\\market.py",
+        "imports": [
+            "random"
+        ],
+        "classes": [
+            {
+                "name": "MarketData",
+                "methods": [
+                    "__init__",
+                    "get_prices"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 51,
+        "complexity": 21
+    },
+    "data\\market_data.py": {
+        "path": "data\\market_data.py",
+        "imports": [
+            "random",
+            "time"
+        ],
+        "classes": [
+            {
+                "name": "MarketData",
+                "methods": [
+                    "__init__",
+                    "get_price"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 21,
+        "complexity": 18
+    },
+    "data\\market_scanner.py": {
+        "path": "data\\market_scanner.py",
+        "imports": [
+            "data.data_provider",
+            "strategy.scalper",
+            "analysis.technical_analyzer"
+        ],
+        "classes": [
+            {
+                "name": "MarketScanner",
+                "methods": [
+                    "__init__",
+                    "calculate_score",
+                    "scan"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 142,
+        "complexity": 33
+    },
+    "data\\price_monitor.py": {
+        "path": "data\\price_monitor.py",
+        "imports": [
+            "data.binance_provider"
+        ],
+        "classes": [
+            {
+                "name": "PriceMonitor",
+                "methods": [
+                    "__init__",
+                    "get_price"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 31,
+        "complexity": 19
+    },
+    "database\\engine.py": {
+        "path": "database\\engine.py",
+        "imports": [
+            "strategy.scalper",
+            "ai.decision_engine",
+            "ai.atlas_brain",
+            "risk.risk_manager",
+            "simulation.simulator",
+            "database.trade_history",
+            "data.data_provider"
+        ],
+        "classes": [
+            {
+                "name": "AtlasEngine",
+                "methods": [
+                    "__init__",
+                    "start"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 207,
+        "complexity": 36
+    },
+    "database\\learning_engine.py": {
+        "path": "database\\learning_engine.py",
+        "imports": [
+            "json"
+        ],
+        "classes": [
+            {
+                "name": "LearningEngine",
+                "methods": [
+                    "__init__",
+                    "learn"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 152,
+        "complexity": 31
+    },
+    "database\\market_history.py": {
+        "path": "database\\market_history.py",
+        "imports": [
+            "json",
+            "os",
+            "datetime"
+        ],
+        "classes": [
+            {
+                "name": "MarketHistory",
+                "methods": [
+                    "__init__",
+                    "save_candle",
+                    "get_history"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 40,
+        "complexity": 23
+    },
+    "database\\trade_history.py": {
+        "path": "database\\trade_history.py",
+        "imports": [
+            "json",
+            "os",
+            "datetime"
+        ],
+        "classes": [
+            {
+                "name": "TradeHistory",
+                "methods": [
+                    "__init__",
+                    "save",
+                    "get_all"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 79,
+        "complexity": 26
+    },
+    "events\\base_event.py": {
+        "path": "events\\base_event.py",
+        "imports": [
+            "datetime"
+        ],
+        "classes": [
+            {
+                "name": "BaseEvent",
+                "methods": [
+                    "__init__",
+                    "info"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 30,
+        "complexity": 19
+    },
+    "events\\event_bus.py": {
+        "path": "events\\event_bus.py",
+        "imports": [
+            "logging"
+        ],
+        "classes": [
+            {
+                "name": "EventBus",
+                "methods": [
+                    "__init__",
+                    "subscribe",
+                    "publish"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [
+            "logger"
+        ],
+        "line_count": 64,
+        "complexity": 25
+    },
+    "events\\market_events.py": {
+        "path": "events\\market_events.py",
+        "imports": [
+            "base_event"
+        ],
+        "classes": [
+            {
+                "name": "MarketUpdateEvent",
+                "methods": [
+                    "__init__",
+                    "info"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 46,
+        "complexity": 20
+    },
+    "events\\trade_events.py": {
+        "path": "events\\trade_events.py",
+        "imports": [
+            "base_event"
+        ],
+        "classes": [
+            {
+                "name": "TradeExecutedEvent",
+                "methods": [
+                    "__init__"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 32,
+        "complexity": 16
+    },
+    "events\\__init__.py": {
+        "path": "events\\__init__.py",
+        "imports": [
+            "event_bus",
+            "market_events",
+            "trade_events"
+        ],
+        "classes": [],
+        "functions": [],
+        "globals": [],
+        "line_count": 5,
+        "complexity": 0
+    },
+    "exchange\\exchange_adapter.py": {
+        "path": "exchange\\exchange_adapter.py",
+        "imports": [
+            "ccxt",
+            "pandas",
+            "config.settings"
+        ],
+        "classes": [
+            {
+                "name": "ExchangeAdapter",
+                "methods": [
+                    "__init__",
+                    "get_price",
+                    "get_ohlcv",
+                    "place_order",
+                    "get_balance"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 201,
+        "complexity": 45
+    },
+    "execution\\execution_manager.py": {
+        "path": "execution\\execution_manager.py",
+        "imports": [
+            "config.settings",
+            "trading.paper_trader"
+        ],
+        "classes": [
+            {
+                "name": "ExecutionManager",
+                "methods": [
+                    "__init__",
+                    "execute",
+                    "get_positions"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 107,
+        "complexity": 29
+    },
+    "exit\\smart_exit.py": {
+        "path": "exit\\smart_exit.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "SmartExit",
+                "methods": [
+                    "__init__",
+                    "check_exit"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 137,
+        "complexity": 29
+    },
+    "intelligence\\decision_engine.py": {
+        "path": "intelligence\\decision_engine.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "DecisionEngine",
+                "methods": [
+                    "__init__",
+                    "decide"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 179,
+        "complexity": 33
+    },
+    "intelligence\\decision_logger.py": {
+        "path": "intelligence\\decision_logger.py",
+        "imports": [
+            "json",
+            "os",
+            "datetime"
+        ],
+        "classes": [
+            {
+                "name": "DecisionLogger",
+                "methods": [
+                    "__init__",
+                    "save",
+                    "history"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 107,
+        "complexity": 29
+    },
+    "intelligence\\execution_engine.py": {
+        "path": "intelligence\\execution_engine.py",
+        "imports": [
+            "exchange.exchange_adapter"
+        ],
+        "classes": [
+            {
+                "name": "ExecutionEngine",
+                "methods": [
+                    "__init__",
+                    "execute"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 67,
+        "complexity": 22
+    },
+    "intelligence\\learning_memory.py": {
+        "path": "intelligence\\learning_memory.py",
+        "imports": [
+            "json",
+            "os",
+            "datetime"
+        ],
+        "classes": [
+            {
+                "name": "LearningMemory",
+                "methods": [
+                    "__init__",
+                    "save_trade",
+                    "update_trade_result",
+                    "get_history",
+                    "statistics"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 235,
+        "complexity": 48
+    },
+    "intelligence\\market_score.py": {
+        "path": "intelligence\\market_score.py",
+        "imports": [
+            "intelligence.market.market_intelligence"
+        ],
+        "classes": [
+            {
+                "name": "MarketScore",
+                "methods": [
+                    "__init__",
+                    "calculate"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 151,
+        "complexity": 31
+    },
+    "intelligence\\memory_analyzer.py": {
+        "path": "intelligence\\memory_analyzer.py",
+        "imports": [
+            "intelligence.learning_memory"
+        ],
+        "classes": [
+            {
+                "name": "MemoryAnalyzer",
+                "methods": [
+                    "__init__",
+                    "analyze_coin",
+                    "decision_score"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 142,
+        "complexity": 33
+    },
+    "intelligence\\strategy_brain.py": {
+        "path": "intelligence\\strategy_brain.py",
+        "imports": [
+            "intelligence.strategy_memory",
+            "analytics.ai_performance"
+        ],
+        "classes": [
+            {
+                "name": "StrategyBrain",
+                "methods": [
+                    "__init__",
+                    "choose_strategy"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 196,
+        "complexity": 35
+    },
+    "intelligence\\strategy_memory.py": {
+        "path": "intelligence\\strategy_memory.py",
+        "imports": [
+            "json",
+            "os"
+        ],
+        "classes": [
+            {
+                "name": "StrategyMemory",
+                "methods": [
+                    "__init__",
+                    "create",
+                    "load",
+                    "update",
+                    "performance"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 100,
+        "complexity": 35
+    },
+    "intelligence\\volatility_manager.py": {
+        "path": "intelligence\\volatility_manager.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "VolatilityManager",
+                "methods": [
+                    "__init__",
+                    "calculate_risk"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 100,
+        "complexity": 26
+    },
+    "learning\\adaptive_engine.py": {
+        "path": "learning\\adaptive_engine.py",
+        "imports": [
+            "json",
+            "os"
+        ],
+        "classes": [
+            {
+                "name": "AdaptiveEngine",
+                "methods": [
+                    "__init__",
+                    "load_trades",
+                    "learn"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 174,
+        "complexity": 36
+    },
+    "learning\\adaptive_learning.py": {
+        "path": "learning\\adaptive_learning.py",
+        "imports": [
+            "json"
+        ],
+        "classes": [
+            {
+                "name": "AdaptiveLearning",
+                "methods": [
+                    "__init__",
+                    "learn"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 204,
+        "complexity": 36
+    },
+    "learning\\atlas_brain.py": {
+        "path": "learning\\atlas_brain.py",
+        "imports": [
+            "learning.model_memory",
+            "learning.learning_engine"
+        ],
+        "classes": [
+            {
+                "name": "AtlasBrain",
+                "methods": [
+                    "__init__",
+                    "think"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 154,
+        "complexity": 31
+    },
+    "learning\\learner.py": {
+        "path": "learning\\learner.py",
+        "imports": [
+            "json"
+        ],
+        "classes": [
+            {
+                "name": "Learner",
+                "methods": [
+                    "__init__",
+                    "analyze_history"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 82,
+        "complexity": 24
+    },
+    "learning\\learning_engine.py": {
+        "path": "learning\\learning_engine.py",
+        "imports": [
+            "json",
+            "os",
+            "datetime"
+        ],
+        "classes": [
+            {
+                "name": "LearningEngine",
+                "methods": [
+                    "__init__",
+                    "load",
+                    "save",
+                    "update_trade",
+                    "get_learning_score",
+                    "learning_message",
+                    "get_brain"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 331,
+        "complexity": 64
+    },
+    "learning\\model_memory.py": {
+        "path": "learning\\model_memory.py",
+        "imports": [
+            "json",
+            "os"
+        ],
+        "classes": [
+            {
+                "name": "ModelMemory",
+                "methods": [
+                    "__init__",
+                    "add_trade",
+                    "get_memory"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 66,
+        "complexity": 25
+    },
+    "learning\\performance_analyzer.py": {
+        "path": "learning\\performance_analyzer.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "PerformanceAnalyzer",
+                "methods": [
+                    "__init__",
+                    "analyze"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 118,
+        "complexity": 27
+    },
+    "logs\\trade_logger.py": {
+        "path": "logs\\trade_logger.py",
+        "imports": [
+            "json",
+            "os"
+        ],
+        "classes": [
+            {
+                "name": "TradeLogger",
+                "methods": [
+                    "__init__",
+                    "log_trade",
+                    "update_trade_result",
+                    "history",
+                    "statistics"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 170,
+        "complexity": 42
+    },
+    "portfolio\\capital_manager.py": {
+        "path": "portfolio\\capital_manager.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "CapitalManager",
+                "methods": [
+                    "__init__",
+                    "available",
+                    "use_capital",
+                    "release_capital",
+                    "report"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 111,
+        "complexity": 36
+    },
+    "portfolio\\portfolio_manager.py": {
+        "path": "portfolio\\portfolio_manager.py",
+        "imports": [
+            "core.database",
+            "portfolio.capital_manager"
+        ],
+        "classes": [
+            {
+                "name": "PortfolioManager",
+                "methods": [
+                    "__init__",
+                    "load_positions",
+                    "calculate_position_size",
+                    "add_position",
+                    "remove_position",
+                    "close_trade",
+                    "has_position",
+                    "get_position",
+                    "get_open_positions",
+                    "performance",
+                    "report",
+                    "reset",
+                    "__len__",
+                    "__repr__"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 291,
+        "complexity": 81
+    },
+    "position\\position_manager.py": {
+        "path": "position\\position_manager.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "PositionManager",
+                "methods": [
+                    "__init__",
+                    "open_position",
+                    "check_position",
+                    "close_position",
+                    "get_open_positions"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 150,
+        "complexity": 40
+    },
+    "quality\\trade_filter.py": {
+        "path": "quality\\trade_filter.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "TradeQualityFilter",
+                "methods": [
+                    "__init__",
+                    "evaluate"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 140,
+        "complexity": 30
+    },
+    "risk\\position_manager.py": {
+        "path": "risk\\position_manager.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "PositionManager",
+                "methods": [
+                    "__init__",
+                    "levels",
+                    "check_position",
+                    "trailing_stop"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 99,
+        "complexity": 31
+    },
+    "risk\\position_sizer.py": {
+        "path": "risk\\position_sizer.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "PositionSizer",
+                "methods": [
+                    "calculate"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 35,
+        "complexity": 16
+    },
+    "risk\\risk_manager.py": {
+        "path": "risk\\risk_manager.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "RiskManager",
+                "methods": [
+                    "__init__",
+                    "calculate_position",
+                    "check_trade",
+                    "calculate",
+                    "get_trade_info"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 85,
+        "complexity": 33
+    },
+    "risk\\risk_planner.py": {
+        "path": "risk\\risk_planner.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "RiskPlanner",
+                "methods": [
+                    "create"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 28,
+        "complexity": 15
+    },
+    "risk\\trade_rules.py": {
+        "path": "risk\\trade_rules.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "TradeRules",
+                "methods": [
+                    "__init__",
+                    "calculate_levels",
+                    "check_exit"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 69,
+        "complexity": 25
+    },
+    "scalping\\scalp_manager.py": {
+        "path": "scalping\\scalp_manager.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "ScalpManager",
+                "methods": [
+                    "__init__",
+                    "calculate_targets",
+                    "should_trade"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 66,
+        "complexity": 25
+    },
+    "signals\\base_signal.py": {
+        "path": "signals\\base_signal.py",
+        "imports": [
+            "abc"
+        ],
+        "classes": [
+            {
+                "name": "BaseSignal",
+                "methods": [
+                    "__init__",
+                    "generate",
+                    "result"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 40,
+        "complexity": 23
+    },
+    "simulation\\ai_simulator.py": {
+        "path": "simulation\\ai_simulator.py",
+        "imports": [
+            "analytics.ai_performance",
+            "random"
+        ],
+        "classes": [
+            {
+                "name": "AISimulator",
+                "methods": [
+                    "__init__",
+                    "simulate"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 127,
+        "complexity": 28
+    },
+    "simulation\\run_simulation.py": {
+        "path": "simulation\\run_simulation.py",
+        "imports": [
+            "json",
+            "simulation.ai_simulator"
+        ],
+        "classes": [],
+        "functions": [
+            "main"
+        ],
+        "globals": [],
+        "line_count": 98,
+        "complexity": 11
+    },
+    "simulation\\simulator.py": {
+        "path": "simulation\\simulator.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "Simulator",
+                "methods": [
+                    "__init__",
+                    "run"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 72,
+        "complexity": 23
+    },
+    "simulation\\__init__.py": {
+        "path": "simulation\\__init__.py",
+        "imports": [],
+        "classes": [],
+        "functions": [],
+        "globals": [],
+        "line_count": 0,
+        "complexity": 0
+    },
+    "strategy\\optimizer.py": {
+        "path": "strategy\\optimizer.py",
+        "imports": [
+            "json"
+        ],
+        "classes": [
+            {
+                "name": "StrategyOptimizer",
+                "methods": [
+                    "__init__",
+                    "analyze"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 74,
+        "complexity": 23
+    },
+    "strategy\\scalper.py": {
+        "path": "strategy\\scalper.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "Scalper",
+                "methods": [
+                    "__init__",
+                    "analyze"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 65,
+        "complexity": 22
+    },
+    "strategy\\scalping.py": {
+        "path": "strategy\\scalping.py",
+        "imports": [],
+        "classes": [],
+        "functions": [],
+        "globals": [],
+        "line_count": 0,
+        "complexity": 0
+    },
+    "strategy\\strategy_engine.py": {
+        "path": "strategy\\strategy_engine.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "StrategyEngine",
+                "methods": [
+                    "__init__",
+                    "evaluate"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 90,
+        "complexity": 25
+    },
+    "timeframe\\multi_timeframe.py": {
+        "path": "timeframe\\multi_timeframe.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "MultiTimeframeAnalyzer",
+                "methods": [
+                    "__init__",
+                    "analyze"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 170,
+        "complexity": 33
+    },
+    "trade\\simulator.py": {
+        "path": "trade\\simulator.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "TradeSimulator",
+                "methods": [
+                    "__init__",
+                    "open_trade",
+                    "close_trade"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 61,
+        "complexity": 25
+    },
+    "trading\\auto_manager.py": {
+        "path": "trading\\auto_manager.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "AutoManager",
+                "methods": [
+                    "__init__",
+                    "check"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 105,
+        "complexity": 26
+    },
+    "trading\\paper_trader.py": {
+        "path": "trading\\paper_trader.py",
+        "imports": [
+            "position.position_manager"
+        ],
+        "classes": [
+            {
+                "name": "PaperTrader",
+                "methods": [
+                    "__init__",
+                    "buy",
+                    "sell",
+                    "monitor",
+                    "check_positions",
+                    "get_positions"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 238,
+        "complexity": 51
+    },
+    "signals\\market\\market_signal.py": {
+        "path": "signals\\market\\market_signal.py",
+        "imports": [
+            "signals.base_signal"
+        ],
+        "classes": [
+            {
+                "name": "MarketSignal",
+                "methods": [
+                    "__init__",
+                    "generate"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 146,
+        "complexity": 30
+    },
+    "signals\\risk\\risk_signal.py": {
+        "path": "signals\\risk\\risk_signal.py",
+        "imports": [
+            "signals.base_signal"
+        ],
+        "classes": [
+            {
+                "name": "RiskSignal",
+                "methods": [
+                    "__init__",
+                    "generate"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 105,
+        "complexity": 26
+    },
+    "signals\\technical\\technical_signal.py": {
+        "path": "signals\\technical\\technical_signal.py",
+        "imports": [
+            "signals.base_signal"
+        ],
+        "classes": [
+            {
+                "name": "TechnicalSignal",
+                "methods": [
+                    "__init__",
+                    "generate"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 145,
+        "complexity": 30
+    },
+    "intelligence\\confidence\\capital_allocator.py": {
+        "path": "intelligence\\confidence\\capital_allocator.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "CapitalAllocator",
+                "methods": [
+                    "allocate"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 35,
+        "complexity": 16
+    },
+    "intelligence\\confidence\\confidence_engine.py": {
+        "path": "intelligence\\confidence\\confidence_engine.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "ConfidenceEngine",
+                "methods": [
+                    "__init__",
+                    "calculate"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 208,
+        "complexity": 36
+    },
+    "intelligence\\confidence\\position_sizer.py": {
+        "path": "intelligence\\confidence\\position_sizer.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "PositionSizer",
+                "methods": [
+                    "calculate"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 27,
+        "complexity": 15
+    },
+    "intelligence\\market\\breakout_analyzer.py": {
+        "path": "intelligence\\market\\breakout_analyzer.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "BreakoutAnalyzer",
+                "methods": [
+                    "analyze"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 56,
+        "complexity": 18
+    },
+    "intelligence\\market\\market_intelligence.py": {
+        "path": "intelligence\\market\\market_intelligence.py",
+        "imports": [
+            "intelligence.market.volume_analyzer",
+            "intelligence.market.order_flow_analyzer",
+            "intelligence.market.market_structure_analyzer",
+            "intelligence.market.support_resistance_analyzer"
+        ],
+        "classes": [
+            {
+                "name": "MarketIntelligence",
+                "methods": [
+                    "__init__",
+                    "analyze"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 130,
+        "complexity": 29
+    },
+    "intelligence\\market\\market_scoring_engine.py": {
+        "path": "intelligence\\market\\market_scoring_engine.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "MarketScoringEngine",
+                "methods": [
+                    "calculate"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 91,
+        "complexity": 22
+    },
+    "intelligence\\market\\market_structure_analyzer.py": {
+        "path": "intelligence\\market\\market_structure_analyzer.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "MarketStructureAnalyzer",
+                "methods": [
+                    "__init__",
+                    "analyze"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 129,
+        "complexity": 28
+    },
+    "intelligence\\market\\order_flow_analyzer.py": {
+        "path": "intelligence\\market\\order_flow_analyzer.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "OrderFlowAnalyzer",
+                "methods": [
+                    "__init__",
+                    "analyze"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 171,
+        "complexity": 33
+    },
+    "intelligence\\market\\support_resistance_analyzer.py": {
+        "path": "intelligence\\market\\support_resistance_analyzer.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "SupportResistanceAnalyzer",
+                "methods": [
+                    "analyze"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 78,
+        "complexity": 20
+    },
+    "intelligence\\market\\volatility_analyzer.py": {
+        "path": "intelligence\\market\\volatility_analyzer.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "VolatilityAnalyzer",
+                "methods": [
+                    "analyze"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 66,
+        "complexity": 19
+    },
+    "intelligence\\market\\volume_analyzer.py": {
+        "path": "intelligence\\market\\volume_analyzer.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "VolumeAnalyzer",
+                "methods": [
+                    "__init__",
+                    "analyze"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 83,
+        "complexity": 24
+    },
+    "intelligence\\signals\\signal_fusion.py": {
+        "path": "intelligence\\signals\\signal_fusion.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "SignalFusion",
+                "methods": [
+                    "__init__",
+                    "combine"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 132,
+        "complexity": 29
+    },
+    "intelligence\\strategy_competition\\strategy_competition.py": {
+        "path": "intelligence\\strategy_competition\\strategy_competition.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "StrategyCompetition",
+                "methods": [
+                    "choose"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 35,
+        "complexity": 16
+    },
+    "core\\strategies\\bollingerrsi.py": {
+        "path": "core\\strategies\\bollingerrsi.py",
+        "imports": [],
+        "classes": [
+            {
+                "name": "BollingerRSI",
+                "methods": [
+                    "__init__",
+                    "generate_signals"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 33,
+        "complexity": 19
+    },
+    "ai\\analytics\\performance.py": {
+        "path": "ai\\analytics\\performance.py",
+        "imports": [
+            "datetime"
+        ],
+        "classes": [
+            {
+                "name": "PerformanceCenter",
+                "methods": [
+                    "__init__",
+                    "add_trade",
+                    "report"
+                ]
+            }
+        ],
+        "functions": [],
+        "globals": [],
+        "line_count": 93,
+        "complexity": 28
+    }
+}

@@ -1,0 +1,82 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atlas AI - Signals</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: "Segoe UI", sans-serif; background: #0a0e1a; color: #e0e6ed; }
+        .sidebar { width: 250px; background: #111827; height: 100vh; position: fixed; padding: 20px; }
+        .sidebar h2 { color: #3b82f6; margin-bottom: 30px; }
+        .sidebar a { display: block; color: #94a3b8; text-decoration: none; padding: 12px 15px; border-radius: 8px; margin-bottom: 5px; transition: 0.3s; }
+        .sidebar a:hover, .sidebar a.active { background: #3b82f6; color: white; }
+        .main { margin-left: 250px; padding: 30px; }
+        .card { background: #1e293b; border-radius: 12px; padding: 25px; margin-bottom: 20px; }
+        .card h3 { color: #60a5fa; margin-bottom: 15px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #334155; }
+        th { color: #94a3b8; font-weight: 600; }
+        .signal-buy { color: #22c55e; font-weight: bold; }
+        .signal-sell { color: #ef4444; font-weight: bold; }
+        .signal-hold { color: #f59e0b; }
+        .confidence-high { background: #22c55e20; color: #22c55e; padding: 4px 12px; border-radius: 20px; font-size: 0.85em; }
+        .confidence-med { background: #f59e0b20; color: #f59e0b; padding: 4px 12px; border-radius: 20px; font-size: 0.85em; }
+        .confidence-low { background: #ef444420; color: #ef4444; padding: 4px 12px; border-radius: 20px; font-size: 0.85em; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>🧠 Atlas AI</h2>
+        <a href="index.html">📊 Dashboard</a>
+        <a href="analytics.html">📈 Analytics</a>
+        <a href="signals.html" class="active">📡 Signals</a>
+        <a href="trades.html">💰 Trades</a>
+        <a href="settings.html">⚙️ Settings</a>
+    </div>
+    <div class="main">
+        <h1>📡 Trading Signals</h1>
+        <div class="card">
+            <h3>Active Signals</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Symbol</th>
+                        <th>Signal</th>
+                        <th>Price</th>
+                        <th>Confidence</th>
+                        <th>Strategy</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody id="signalsTable">
+                    <tr>
+                        <td>BTC/USDT</td>
+                        <td class="signal-buy">BUY</td>
+                        <td>$67,420.50</td>
+                        <td><span class="confidence-high">High (87%)</span></td>
+                        <td>Trend Following</td>
+                        <td>2026-07-20 04:00</td>
+                    </tr>
+                    <tr>
+                        <td>ETH/USDT</td>
+                        <td class="signal-hold">HOLD</td>
+                        <td>$3,245.80</td>
+                        <td><span class="confidence-med">Medium (54%)</span></td>
+                        <td>Mean Reversion</td>
+                        <td>2026-07-20 03:55</td>
+                    </tr>
+                    <tr>
+                        <td>SOL/USDT</td>
+                        <td class="signal-sell">SELL</td>
+                        <td>$145.20</td>
+                        <td><span class="confidence-high">High (91%)</span></td>
+                        <td>Breakout</td>
+                        <td>2026-07-20 03:50</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

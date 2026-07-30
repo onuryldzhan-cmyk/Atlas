@@ -1,0 +1,2 @@
+# Atlas quarantine restore map
+# Generated before any move operation.

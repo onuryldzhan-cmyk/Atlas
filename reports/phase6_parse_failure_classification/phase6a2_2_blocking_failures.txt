@@ -1,0 +1,3 @@
+[HIGH] archive_unused_2026-07-22/atlas_paper_trading/live_data_feed.py:1 invalid non-printable character U+FEFF | ﻿"""Atlas AI - Live Data Feed"""
+[HIGH] phase3f_bom_backup_20260727_114104/atlas_paper_trading/paper_trading_main.py:1 invalid non-printable character U+FEFF | ﻿"""Atlas AI - Paper Trading Main Engine"""
+[HIGH] phase3f_bom_backup_20260727_114104/test_atlas_runtime_empty.py:1 invalid non-printable character U+FEFF | ﻿from atlas_runtime import AtlasRuntime

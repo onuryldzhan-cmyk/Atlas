@@ -1,0 +1,5 @@
+﻿priority,file,class,line,bases,lifecycle_methods,public_methods,recommended_logger
+MEDIUM,core/brain_analyzer.py,BrainAnalyzer,13,,run,analyze_file | run,"logging.getLogger(""AtlasAI.BrainAnalyzer"")"
+MEDIUM,core/code_cleanup_analyzer.py,CodeCleanupAnalyzer,24,,run,analyze_imports | find_backups | find_large_files | find_unused_candidates | print_report | run | scan_files,"logging.getLogger(""AtlasAI.CodeCleanupAnalyzer"")"
+MEDIUM,core/execution_contracts.py,SupportsHealth,80,Protocol,health,health,"logging.getLogger(""AtlasAI.SupportsHealth"")"
+LOW,core/project_snapshot.py,ProjectSnapshotEngine,36,,,create_snapshot | save,"logging.getLogger(""AtlasAI.ProjectSnapshotEngine"")"

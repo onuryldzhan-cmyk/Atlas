@@ -1,0 +1,78 @@
+"""
+core/trading_engine.py
+Atlas AI Decision Engine
+"""
+
+
+import datetime
+
+
+
+class TradingEngine:
+
+
+    def __init__(self):
+
+        self.strategy = "Trend-Follow"
+        self.is_active = True
+
+
+
+    def decide(self, sentiment, price):
+
+        decision = {
+            "action": "HOLD",
+            "confidence": "LOW",
+            "reason": "Neutral Market"
+        }
+
+
+        if sentiment == "Pozitif" and price > 0:
+
+            decision = {
+                "action": "BUY",
+                "confidence": "HIGH",
+                "reason": "Bullish Trend"
+            }
+
+
+        elif sentiment == "Negatif":
+
+            decision = {
+                "action": "SELL",
+                "confidence": "MEDIUM",
+                "reason": "Bearish Pressure"
+            }
+
+
+
+        if decision["action"] != "HOLD":
+
+            self.log_trade(
+                decision,
+                price
+            )
+
+
+        return decision
+
+
+
+    def log_trade(self, decision, price):
+
+        timestamp = datetime.datetime.now().strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+
+
+        with open(
+            "trade_history.log",
+            "a"
+        ) as f:
+
+            f.write(
+                f"[{timestamp}] "
+                f"ACTION:{decision['action']} "
+                f"PRICE:{price} "
+                f"REASON:{decision['reason']}\n"
+            )

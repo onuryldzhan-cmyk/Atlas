@@ -1,0 +1,22 @@
+{
+    "total_tests": 300,
+    "wins": 166,
+    "losses": 134,
+    "strategies": {
+        "scalping": {
+            "tests": 99,
+            "wins": 58,
+            "losses": 41
+        },
+        "trend": {
+            "tests": 86,
+            "wins": 46,
+            "losses": 40
+        },
+        "reversal": {
+            "tests": 115,
+            "wins": 62,
+            "losses": 53
+        }
+    }
+}

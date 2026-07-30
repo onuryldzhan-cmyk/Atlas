@@ -1,0 +1,121 @@
+{
+  "portfolio_value": 10000.0,
+  "cash": 5834.0,
+  "active_positions": {
+    "BNBUSDT": {
+      "entry_price": 562.6,
+      "quantity": 2.0689655172413794,
+      "investment": 1164.0,
+      "stop_loss": 534.47,
+      "take_profit": 618.8600000000001,
+      "timestamp": "2026-07-21T10:30:38.409674",
+      "last_price": 562.6
+    },
+    "XRPUSDT": {
+      "entry_price": 0.606,
+      "quantity": 1712.871287128713,
+      "investment": 1038.0,
+      "stop_loss": 0.5757,
+      "take_profit": 0.6666000000000001,
+      "timestamp": "2026-07-21T10:30:38.409769",
+      "last_price": 0.606
+    },
+    "ADAUSDT": {
+      "entry_price": 0.459,
+      "quantity": 2169.9346405228753,
+      "investment": 995.9999999999999,
+      "stop_loss": 0.43605,
+      "take_profit": 0.5049,
+      "timestamp": "2026-07-21T10:30:38.409838",
+      "last_price": 0.459
+    },
+    "VETUSDT": {
+      "entry_price": 0.0306,
+      "quantity": 31633.986928104576,
+      "investment": 968.0,
+      "stop_loss": 0.02907,
+      "take_profit": 0.03366,
+      "timestamp": "2026-07-21T10:30:38.409899",
+      "last_price": 0.0306
+    }
+  },
+  "decisions_history": [
+    {
+      "symbol": "BNBUSDT",
+      "action": "buy",
+      "confidence": 0.52,
+      "position_size": 0.1164,
+      "stop_loss": 534.47,
+      "take_profit": 618.8600000000001,
+      "reasoning": "Guclu AL sinyali (skor: 0.52) | [CIO: sideways, moderate]",
+      "agents_votes": {
+        "TechnicalAnalyst": "buy",
+        "MacroAnalyst": "buy",
+        "RiskManager": "reduce",
+        "SentimentAnalyzer": "hold",
+        "QuantStrategist": "buy"
+      },
+      "risk_level": "medium",
+      "cio_approved": true,
+      "timestamp": "2026-07-21T10:30:38.408050"
+    },
+    {
+      "symbol": "XRPUSDT",
+      "action": "buy",
+      "confidence": 0.34,
+      "position_size": 0.1038,
+      "stop_loss": 0.5757,
+      "take_profit": 0.6666000000000001,
+      "reasoning": "Guclu AL sinyali (skor: 0.34) | [CIO: sideways, moderate]",
+      "agents_votes": {
+        "TechnicalAnalyst": "buy",
+        "MacroAnalyst": "buy",
+        "RiskManager": "hold",
+        "SentimentAnalyzer": "sell",
+        "QuantStrategist": "buy"
+      },
+      "risk_level": "low",
+      "cio_approved": true,
+      "timestamp": "2026-07-21T10:30:38.408273"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "action": "buy",
+      "confidence": 0.28,
+      "position_size": 0.0996,
+      "stop_loss": 0.43605,
+      "take_profit": 0.5049,
+      "reasoning": "Guclu AL sinyali (skor: 0.28) | [CIO: sideways, moderate]",
+      "agents_votes": {
+        "TechnicalAnalyst": "sell",
+        "MacroAnalyst": "buy",
+        "RiskManager": "reduce",
+        "SentimentAnalyzer": "hold",
+        "QuantStrategist": "buy"
+      },
+      "risk_level": "low",
+      "cio_approved": true,
+      "timestamp": "2026-07-21T10:30:38.408157"
+    },
+    {
+      "symbol": "VETUSDT",
+      "action": "buy",
+      "confidence": 0.24,
+      "position_size": 0.0968,
+      "stop_loss": 0.02907,
+      "take_profit": 0.03366,
+      "reasoning": "Guclu AL sinyali (skor: 0.24) | [CIO: sideways, moderate]",
+      "agents_votes": {
+        "TechnicalAnalyst": "sell",
+        "MacroAnalyst": "hold",
+        "RiskManager": "hold",
+        "SentimentAnalyzer": "buy",
+        "QuantStrategist": "buy"
+      },
+      "risk_level": "low",
+      "cio_approved": true,
+      "timestamp": "2026-07-21T10:30:38.409437"
+    }
+  ],
+  "cycle_count": 1
+}

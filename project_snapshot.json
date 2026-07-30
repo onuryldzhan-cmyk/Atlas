@@ -1,0 +1,1612 @@
+{
+    "version": "1.0",
+    "created_at": "2026-07-23T14:58:36.702758",
+    "project_root": "C:\\Users\\HUAWEİ\\OneDrive\\Masaüstü\\Project_Atlas_AI",
+    "folders": [
+        ".github",
+        "ai",
+        "analysis",
+        "analytics",
+        "archive_unused_2026-07-22",
+        "assistant",
+        "atlas_paper_trading",
+        "backtest",
+        "config",
+        "core",
+        "dashboard",
+        "data",
+        "database",
+        "events",
+        "exchange",
+        "execution",
+        "exit",
+        "github",
+        "intelligence",
+        "learning",
+        "logs",
+        "memory_data",
+        "patches",
+        "portfolio",
+        "position",
+        "quality",
+        "risk",
+        "scalping",
+        "signals",
+        "simulation",
+        "strategy",
+        "templates",
+        "tests",
+        "timeframe",
+        "trade",
+        "trading",
+        ".github\\workflows",
+        "ai\\ai",
+        "ai\\analytics",
+        "ai\\cognition",
+        "ai\\core",
+        "ai\\data",
+        "ai\\models",
+        "archive_unused_2026-07-22\\ai",
+        "archive_unused_2026-07-22\\analysis",
+        "archive_unused_2026-07-22\\analytics",
+        "archive_unused_2026-07-22\\atlas_paper_trading",
+        "archive_unused_2026-07-22\\backtest",
+        "archive_unused_2026-07-22\\config",
+        "archive_unused_2026-07-22\\core",
+        "archive_unused_2026-07-22\\dashboard",
+        "archive_unused_2026-07-22\\data",
+        "archive_unused_2026-07-22\\database",
+        "archive_unused_2026-07-22\\events",
+        "archive_unused_2026-07-22\\exchange",
+        "archive_unused_2026-07-22\\execution",
+        "archive_unused_2026-07-22\\exit",
+        "archive_unused_2026-07-22\\github",
+        "archive_unused_2026-07-22\\intelligence",
+        "archive_unused_2026-07-22\\learning",
+        "archive_unused_2026-07-22\\logs",
+        "archive_unused_2026-07-22\\position",
+        "archive_unused_2026-07-22\\quality",
+        "archive_unused_2026-07-22\\risk",
+        "archive_unused_2026-07-22\\scalping",
+        "archive_unused_2026-07-22\\signals",
+        "archive_unused_2026-07-22\\simulation",
+        "archive_unused_2026-07-22\\strategy",
+        "archive_unused_2026-07-22\\timeframe",
+        "archive_unused_2026-07-22\\trade",
+        "archive_unused_2026-07-22\\trading",
+        "atlas_paper_trading\\core",
+        "core\\adapters",
+        "core\\backtest",
+        "core\\brain",
+        "core\\data",
+        "core\\strategies",
+        "dashboard\\static",
+        "dashboard\\templates",
+        "data\\cache",
+        "data\\chat_memory",
+        "data\\historical",
+        "exchange\\adapters",
+        "intelligence\\confidence",
+        "intelligence\\market",
+        "intelligence\\signals",
+        "intelligence\\strategy_competition",
+        "signals\\market",
+        "signals\\risk",
+        "signals\\technical",
+        "dashboard\\static\\css",
+        "dashboard\\static\\js",
+        "atlas_paper_trading\\core\\database",
+        "archive_unused_2026-07-22\\ai\\analytics",
+        "archive_unused_2026-07-22\\ai\\core",
+        "archive_unused_2026-07-22\\atlas_paper_trading\\core",
+        "archive_unused_2026-07-22\\core\\backtest",
+        "archive_unused_2026-07-22\\core\\brain",
+        "archive_unused_2026-07-22\\core\\data",
+        "archive_unused_2026-07-22\\core\\strategies",
+        "archive_unused_2026-07-22\\intelligence\\confidence",
+        "archive_unused_2026-07-22\\intelligence\\market",
+        "archive_unused_2026-07-22\\intelligence\\signals",
+        "archive_unused_2026-07-22\\intelligence\\strategy_competition",
+        "archive_unused_2026-07-22\\signals\\market",
+        "archive_unused_2026-07-22\\signals\\risk",
+        "archive_unused_2026-07-22\\signals\\technical",
+        "archive_unused_2026-07-22\\ai\\core\\tests",
+        "archive_unused_2026-07-22\\ai\\core\\tests\\e2e",
+        "archive_unused_2026-07-22\\ai\\core\\tests\\integration",
+        "archive_unused_2026-07-22\\ai\\core\\tests\\unit",
+        "ai\\ai\\models",
+        "ai\\core\\backtest_data",
+        "ai\\core\\data",
+        "ai\\core\\memory_data",
+        "ai\\core\\reports",
+        "ai\\core\\tests",
+        "ai\\core\\test_reports",
+        "ai\\data\\chat_memory",
+        "ai\\core\\tests\\e2e",
+        "ai\\core\\tests\\integration",
+        "ai\\core\\tests\\unit"
+    ],
+    "python_files": [
+        {
+            "file": "check_project.py",
+            "lines": 48
+        },
+        {
+            "file": "main.py",
+            "lines": 75
+        },
+        {
+            "file": "test_feed.py",
+            "lines": 9
+        },
+        {
+            "file": "web_app.py",
+            "lines": 93
+        },
+        {
+            "file": "ai\\chat_assistant.py",
+            "lines": 213
+        },
+        {
+            "file": "ai\\lstm_predictor.py",
+            "lines": 183
+        },
+        {
+            "file": "ai\\target_prediction_engine.py",
+            "lines": 313
+        },
+        {
+            "file": "analysis\\technical_analyzer.py",
+            "lines": 351
+        },
+        {
+            "file": "analysis\\world_analysis_engine.py",
+            "lines": 122
+        },
+        {
+            "file": "analysis\\__init__.py",
+            "lines": 7
+        },
+        {
+            "file": "analytics\\performance_tracker.py",
+            "lines": 184
+        },
+        {
+            "file": "archive_unused_2026-07-22\\atlas_memory_core (2).py",
+            "lines": 280
+        },
+        {
+            "file": "archive_unused_2026-07-22\\cleanup_analyzer.py",
+            "lines": 135
+        },
+        {
+            "file": "archive_unused_2026-07-22\\cleanup_analyzer_v2.py",
+            "lines": 152
+        },
+        {
+            "file": "archive_unused_2026-07-22\\fix_bare_except.py",
+            "lines": 62
+        },
+        {
+            "file": "archive_unused_2026-07-22\\fix_bom.py",
+            "lines": 70
+        },
+        {
+            "file": "archive_unused_2026-07-22\\technical_analyzer.py",
+            "lines": 66
+        },
+        {
+            "file": "archive_unused_2026-07-22\\test_architecture_analyzer.py",
+            "lines": 27
+        },
+        {
+            "file": "archive_unused_2026-07-22\\test_ast_parser.py",
+            "lines": 79
+        },
+        {
+            "file": "archive_unused_2026-07-22\\test_atlas_evolution.py",
+            "lines": 41
+        },
+        {
+            "file": "archive_unused_2026-07-22\\test_codebase_indexer.py",
+            "lines": 21
+        },
+        {
+            "file": "archive_unused_2026-07-22\\test_code_analyzer.py",
+            "lines": 33
+        },
+        {
+            "file": "archive_unused_2026-07-22\\test_dependency_graph.py",
+            "lines": 46
+        },
+        {
+            "file": "archive_unused_2026-07-22\\test_event.py",
+            "lines": 36
+        },
+        {
+            "file": "archive_unused_2026-07-22\\test_evolution_engine.py",
+            "lines": 73
+        },
+        {
+            "file": "archive_unused_2026-07-22\\test_experiment_manager.py",
+            "lines": 39
+        },
+        {
+            "file": "archive_unused_2026-07-22\\test_github_scanner.py",
+            "lines": 20
+        },
+        {
+            "file": "archive_unused_2026-07-22\\test_improvement_planner.py",
+            "lines": 24
+        },
+        {
+            "file": "archive_unused_2026-07-22\\test_patch_generator.py",
+            "lines": 19
+        },
+        {
+            "file": "archive_unused_2026-07-22\\test_performance_feedback.py",
+            "lines": 36
+        },
+        {
+            "file": "archive_unused_2026-07-22\\test_refactor_advisor.py",
+            "lines": 15
+        },
+        {
+            "file": "archive_unused_2026-07-22\\test_research_integration.py",
+            "lines": 42
+        },
+        {
+            "file": "archive_unused_2026-07-22\\test_research_manager.py",
+            "lines": 31
+        },
+        {
+            "file": "archive_unused_2026-07-22\\test_self_improvement.py",
+            "lines": 12
+        },
+        {
+            "file": "archive_unused_2026-07-22\\test_server.py",
+            "lines": 10
+        },
+        {
+            "file": "archive_unused_2026-07-22\\test_upgrade_advisor.py",
+            "lines": 35
+        },
+        {
+            "file": "archive_unused_2026-07-22\\test_version_memory.py",
+            "lines": 26
+        },
+        {
+            "file": "assistant\\project_snapshot.py",
+            "lines": 113
+        },
+        {
+            "file": "assistant\\__init__.py",
+            "lines": 0
+        },
+        {
+            "file": "atlas_paper_trading\\paper_trading_engine.py",
+            "lines": 171
+        },
+        {
+            "file": "atlas_paper_trading\\paper_trading_main.py",
+            "lines": 115
+        },
+        {
+            "file": "atlas_paper_trading\\performance_report.py",
+            "lines": 98
+        },
+        {
+            "file": "atlas_paper_trading\\position_tracker.py",
+            "lines": 147
+        },
+        {
+            "file": "atlas_paper_trading\\risk_guardian.py",
+            "lines": 111
+        },
+        {
+            "file": "backtest\\backtest_engine.py",
+            "lines": 871
+        },
+        {
+            "file": "backtest\\portfolio_backtest.py",
+            "lines": 386
+        },
+        {
+            "file": "config\\settings.py",
+            "lines": 550
+        },
+        {
+            "file": "core\\adaptive_profit_engine.py",
+            "lines": 351
+        },
+        {
+            "file": "core\\application.py",
+            "lines": 463
+        },
+        {
+            "file": "core\\brain.py",
+            "lines": 551
+        },
+        {
+            "file": "core\\brain_analyzer.py",
+            "lines": 237
+        },
+        {
+            "file": "core\\brain_compare.py",
+            "lines": 183
+        },
+        {
+            "file": "core\\brain_dependency_scan.py",
+            "lines": 198
+        },
+        {
+            "file": "core\\candle_processor.py",
+            "lines": 261
+        },
+        {
+            "file": "core\\capital_allocator.py",
+            "lines": 161
+        },
+        {
+            "file": "core\\class_registry_scan.py",
+            "lines": 151
+        },
+        {
+            "file": "core\\code_cleanup_analyzer.py",
+            "lines": 349
+        },
+        {
+            "file": "core\\database.py",
+            "lines": 91
+        },
+        {
+            "file": "core\\decision.py",
+            "lines": 377
+        },
+        {
+            "file": "core\\decision_adapter.py",
+            "lines": 380
+        },
+        {
+            "file": "core\\dynamic_profit_engine.py",
+            "lines": 385
+        },
+        {
+            "file": "core\\events.py",
+            "lines": 212
+        },
+        {
+            "file": "core\\event_bus.py",
+            "lines": 208
+        },
+        {
+            "file": "core\\execution_bridge.py",
+            "lines": 252
+        },
+        {
+            "file": "core\\execution_manager.py",
+            "lines": 626
+        },
+        {
+            "file": "core\\execution_manager_backup.py",
+            "lines": 184
+        },
+        {
+            "file": "core\\execution_manager_v1_backup.py",
+            "lines": 184
+        },
+        {
+            "file": "core\\health_monitor.py",
+            "lines": 210
+        },
+        {
+            "file": "core\\import_graph_brain.py",
+            "lines": 154
+        },
+        {
+            "file": "core\\interfaces.py",
+            "lines": 123
+        },
+        {
+            "file": "core\\learning_engine.py",
+            "lines": 286
+        },
+        {
+            "file": "core\\lifecycle.py",
+            "lines": 233
+        },
+        {
+            "file": "core\\logger.py",
+            "lines": 118
+        },
+        {
+            "file": "core\\market_feed.py",
+            "lines": 0
+        },
+        {
+            "file": "core\\market_intelligence.py",
+            "lines": 31
+        },
+        {
+            "file": "core\\market_loop.py",
+            "lines": 543
+        },
+        {
+            "file": "core\\market_scanner.py",
+            "lines": 172
+        },
+        {
+            "file": "core\\memory.py",
+            "lines": 186
+        },
+        {
+            "file": "core\\module.py",
+            "lines": 91
+        },
+        {
+            "file": "core\\module_classifier.py",
+            "lines": 361
+        },
+        {
+            "file": "core\\module_manager.py",
+            "lines": 91
+        },
+        {
+            "file": "core\\opportunity_engine.py",
+            "lines": 301
+        },
+        {
+            "file": "core\\paper_trader.py",
+            "lines": 511
+        },
+        {
+            "file": "core\\pipeline.py",
+            "lines": 154
+        },
+        {
+            "file": "core\\position_controller.py",
+            "lines": 359
+        },
+        {
+            "file": "core\\position_lifecycle.py",
+            "lines": 369
+        },
+        {
+            "file": "core\\position_reentry_engine.py",
+            "lines": 186
+        },
+        {
+            "file": "core\\position_state.py",
+            "lines": 62
+        },
+        {
+            "file": "core\\profit_manager.py",
+            "lines": 304
+        },
+        {
+            "file": "core\\project_snapshot.py",
+            "lines": 154
+        },
+        {
+            "file": "core\\reentry_engine.py",
+            "lines": 234
+        },
+        {
+            "file": "core\\runtime.py",
+            "lines": 270
+        },
+        {
+            "file": "core\\scheduler.py",
+            "lines": 266
+        },
+        {
+            "file": "core\\service_container.py",
+            "lines": 194
+        },
+        {
+            "file": "core\\service_registry.py",
+            "lines": 185
+        },
+        {
+            "file": "core\\signal_pipeline.py",
+            "lines": 684
+        },
+        {
+            "file": "core\\technical_analyzer.py",
+            "lines": 424
+        },
+        {
+            "file": "core\\test_snapshot.py",
+            "lines": 7
+        },
+        {
+            "file": "core\\trade_plan_engine.py",
+            "lines": 477
+        },
+        {
+            "file": "dashboard\\app.py",
+            "lines": 617
+        },
+        {
+            "file": "exchange\\base_exchange.py",
+            "lines": 38
+        },
+        {
+            "file": "exchange\\exchange_manager.py",
+            "lines": 68
+        },
+        {
+            "file": "exchange\\market_feed.py",
+            "lines": 48
+        },
+        {
+            "file": "exchange\\__init__.py",
+            "lines": 0
+        },
+        {
+            "file": "portfolio\\capital_manager.py",
+            "lines": 658
+        },
+        {
+            "file": "portfolio\\portfolio_manager.py",
+            "lines": 380
+        },
+        {
+            "file": "strategy\\strategy_base.py",
+            "lines": 705
+        },
+        {
+            "file": "exchange\\adapters\\binance_global.py",
+            "lines": 83
+        },
+        {
+            "file": "exchange\\adapters\\binance_tr.py",
+            "lines": 10
+        },
+        {
+            "file": "exchange\\adapters\\__init__.py",
+            "lines": 0
+        },
+        {
+            "file": "core\\adapters\\market_adapter.py",
+            "lines": 95
+        },
+        {
+            "file": "core\\adapters\\__init__.py",
+            "lines": 0
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\atlas_brain.py",
+            "lines": 66
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\atlas_orchestrator.py",
+            "lines": 0
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\atlas_telegram_connector.py",
+            "lines": 222
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\backtest_runner.py",
+            "lines": 134
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\decision_engine.py",
+            "lines": 108
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\intelligent_score.py",
+            "lines": 46
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\learning_brain.py",
+            "lines": 347
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\pattern_memory.py",
+            "lines": 354
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\performance_analyzer.py",
+            "lines": 102
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\trade_analyzer.py",
+            "lines": 133
+        },
+        {
+            "file": "archive_unused_2026-07-22\\analysis\\analyzer.py",
+            "lines": 55
+        },
+        {
+            "file": "archive_unused_2026-07-22\\analysis\\performance.py",
+            "lines": 50
+        },
+        {
+            "file": "archive_unused_2026-07-22\\analysis\\technical_analyzer.py",
+            "lines": 56
+        },
+        {
+            "file": "archive_unused_2026-07-22\\analytics\\ai_performance.py",
+            "lines": 124
+        },
+        {
+            "file": "archive_unused_2026-07-22\\analytics\\dashboard.py",
+            "lines": 130
+        },
+        {
+            "file": "archive_unused_2026-07-22\\analytics\\performance.py",
+            "lines": 59
+        },
+        {
+            "file": "archive_unused_2026-07-22\\analytics\\trade_report.py",
+            "lines": 182
+        },
+        {
+            "file": "archive_unused_2026-07-22\\atlas_paper_trading\\indicators.py",
+            "lines": 87
+        },
+        {
+            "file": "archive_unused_2026-07-22\\atlas_paper_trading\\live_data_feed.py",
+            "lines": 78
+        },
+        {
+            "file": "archive_unused_2026-07-22\\atlas_paper_trading\\live_trading_engine.py",
+            "lines": 110
+        },
+        {
+            "file": "archive_unused_2026-07-22\\atlas_paper_trading\\signal_generator.py",
+            "lines": 216
+        },
+        {
+            "file": "archive_unused_2026-07-22\\atlas_paper_trading\\strategy_base.py",
+            "lines": 65
+        },
+        {
+            "file": "archive_unused_2026-07-22\\atlas_paper_trading\\strategy_manager.py",
+            "lines": 197
+        },
+        {
+            "file": "archive_unused_2026-07-22\\backtest\\backtest_engine_v2.py",
+            "lines": 445
+        },
+        {
+            "file": "archive_unused_2026-07-22\\backtest\\backtest_enhanced.py",
+            "lines": 668
+        },
+        {
+            "file": "archive_unused_2026-07-22\\backtest\\backtest_runner.py",
+            "lines": 127
+        },
+        {
+            "file": "archive_unused_2026-07-22\\backtest\\better_backtest.py",
+            "lines": 303
+        },
+        {
+            "file": "archive_unused_2026-07-22\\backtest\\standalone_backtest.py",
+            "lines": 258
+        },
+        {
+            "file": "archive_unused_2026-07-22\\config\\exchange_config.py",
+            "lines": 9
+        },
+        {
+            "file": "archive_unused_2026-07-22\\config\\main.py",
+            "lines": 5
+        },
+        {
+            "file": "archive_unused_2026-07-22\\config\\symbols.py",
+            "lines": 11
+        },
+        {
+            "file": "archive_unused_2026-07-22\\config\\__init__.py",
+            "lines": 8
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\adaptive_decision.py",
+            "lines": 164
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\adaptive_learning.py",
+            "lines": 248
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\adaptive_weights.py",
+            "lines": 113
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\ai_director.py",
+            "lines": 127
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\ai_generator.py",
+            "lines": 76
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\architecture_analyzer.py",
+            "lines": 435
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\ast_parser.py",
+            "lines": 160
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\atlas_brain.py",
+            "lines": 358
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\atlas_brain_v2.py",
+            "lines": 402
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\auth_panel.py",
+            "lines": 253
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\auto_manager.py",
+            "lines": 7
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\auto_pilot.py",
+            "lines": 216
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\auto_scanner.py",
+            "lines": 227
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\backtester.py",
+            "lines": 201
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\base_ai_module.py",
+            "lines": 177
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\capital_allocator.py",
+            "lines": 9
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\codebase_indexer.py",
+            "lines": 343
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\code_analyzer.py",
+            "lines": 154
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\code_smell_detector.py",
+            "lines": 400
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\confidence_engine.py",
+            "lines": 392
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\config_manager.py",
+            "lines": 119
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\data_downloader.py",
+            "lines": 100
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\data_provider.py",
+            "lines": 67
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\decision_engine.py",
+            "lines": 415
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\dependency_graph.py",
+            "lines": 293
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\engine.py",
+            "lines": 140
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\event_bus.py",
+            "lines": 103
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\event_listeners.py",
+            "lines": 99
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\event_manager.py",
+            "lines": 96
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\evolution_engine.py",
+            "lines": 158
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\executor.py",
+            "lines": 219
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\experiment_manager.py",
+            "lines": 270
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\github_intelligence.py",
+            "lines": 346
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\github_scanner.py",
+            "lines": 88
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\improvement_planner.py",
+            "lines": 166
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\knowledge_graph.py",
+            "lines": 150
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\learning_listener.py",
+            "lines": 192
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\live_trader.py",
+            "lines": 145
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\loop.py",
+            "lines": 588
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\loop_engine.py",
+            "lines": 63
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\main.py",
+            "lines": 98
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\main_loop_v2.py",
+            "lines": 603
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\market_regime.py",
+            "lines": 188
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\market_scanner.py",
+            "lines": 228
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\memory.py",
+            "lines": 264
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\module_health_monitor.py",
+            "lines": 424
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\module_registry.py",
+            "lines": 153
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\opportunity_engine.py",
+            "lines": 267
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\opportunity_scanner.py",
+            "lines": 196
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\outcome_memory.py",
+            "lines": 514
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\patch_generator.py",
+            "lines": 44
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\pattern_memory.py",
+            "lines": 427
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\performance_analyzer.py",
+            "lines": 223
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\performance_feedback.py",
+            "lines": 107
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\position_manager.py",
+            "lines": 177
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\position_monitor.py",
+            "lines": 70
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\profit_calculator.py",
+            "lines": 26
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\refactor_advisor.py",
+            "lines": 50
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\refactor_engine.py",
+            "lines": 506
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\research_integration.py",
+            "lines": 101
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\research_manager.py",
+            "lines": 74
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\risk_manager.py",
+            "lines": 257
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\self_improvement.py",
+            "lines": 265
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\shared_context.py",
+            "lines": 103
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\signal_fusion.py",
+            "lines": 288
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\strategy_brain.py",
+            "lines": 116
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\strategy_competition.py",
+            "lines": 548
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\strategy_config.py",
+            "lines": 55
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\technical_analyzer.py",
+            "lines": 84
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\trade_lifecycle.py",
+            "lines": 267
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\trade_memory.py",
+            "lines": 197
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\trade_tracker.py",
+            "lines": 278
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\trading_cycle.py",
+            "lines": 272
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\trading_engine.py",
+            "lines": 216
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\upgrade_advisor.py",
+            "lines": 106
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\upgrade_approval.py",
+            "lines": 112
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\upgrade_executor.py",
+            "lines": 57
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\upgrade_manager.py",
+            "lines": 123
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\version_memory.py",
+            "lines": 294
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\weight_optimizer.py",
+            "lines": 116
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\__init__.py",
+            "lines": 7
+        },
+        {
+            "file": "archive_unused_2026-07-22\\dashboard\\app_old.py",
+            "lines": 812
+        },
+        {
+            "file": "archive_unused_2026-07-22\\dashboard\\dashboard.py",
+            "lines": 78
+        },
+        {
+            "file": "archive_unused_2026-07-22\\dashboard\\portfolio_dashboard.py",
+            "lines": 84
+        },
+        {
+            "file": "archive_unused_2026-07-22\\data\\binance_provider.py",
+            "lines": 49
+        },
+        {
+            "file": "archive_unused_2026-07-22\\data\\candle_data.py",
+            "lines": 53
+        },
+        {
+            "file": "archive_unused_2026-07-22\\data\\data_manager.py",
+            "lines": 647
+        },
+        {
+            "file": "archive_unused_2026-07-22\\data\\data_provider.py",
+            "lines": 37
+        },
+        {
+            "file": "archive_unused_2026-07-22\\data\\fetch_simple.py",
+            "lines": 1
+        },
+        {
+            "file": "archive_unused_2026-07-22\\data\\live_data_connector.py",
+            "lines": 272
+        },
+        {
+            "file": "archive_unused_2026-07-22\\data\\live_provider.py",
+            "lines": 21
+        },
+        {
+            "file": "archive_unused_2026-07-22\\data\\market.py",
+            "lines": 51
+        },
+        {
+            "file": "archive_unused_2026-07-22\\data\\market_data.py",
+            "lines": 21
+        },
+        {
+            "file": "archive_unused_2026-07-22\\data\\market_scanner.py",
+            "lines": 142
+        },
+        {
+            "file": "archive_unused_2026-07-22\\data\\price_monitor.py",
+            "lines": 31
+        },
+        {
+            "file": "archive_unused_2026-07-22\\database\\engine.py",
+            "lines": 207
+        },
+        {
+            "file": "archive_unused_2026-07-22\\database\\learning_engine.py",
+            "lines": 152
+        },
+        {
+            "file": "archive_unused_2026-07-22\\database\\market_history.py",
+            "lines": 40
+        },
+        {
+            "file": "archive_unused_2026-07-22\\database\\trade_history.py",
+            "lines": 79
+        },
+        {
+            "file": "archive_unused_2026-07-22\\events\\base_event.py",
+            "lines": 30
+        },
+        {
+            "file": "archive_unused_2026-07-22\\events\\event_bus.py",
+            "lines": 64
+        },
+        {
+            "file": "archive_unused_2026-07-22\\events\\event_system_v2.py",
+            "lines": 585
+        },
+        {
+            "file": "archive_unused_2026-07-22\\events\\market_events.py",
+            "lines": 46
+        },
+        {
+            "file": "archive_unused_2026-07-22\\events\\trade_events.py",
+            "lines": 32
+        },
+        {
+            "file": "archive_unused_2026-07-22\\events\\__init__.py",
+            "lines": 5
+        },
+        {
+            "file": "archive_unused_2026-07-22\\exchange\\exchange_adapter.py",
+            "lines": 316
+        },
+        {
+            "file": "archive_unused_2026-07-22\\execution\\execution_manager.py",
+            "lines": 107
+        },
+        {
+            "file": "archive_unused_2026-07-22\\execution\\paper_trading.py",
+            "lines": 430
+        },
+        {
+            "file": "archive_unused_2026-07-22\\execution\\paper_trading_v2.py",
+            "lines": 571
+        },
+        {
+            "file": "archive_unused_2026-07-22\\exit\\smart_exit.py",
+            "lines": 137
+        },
+        {
+            "file": "archive_unused_2026-07-22\\github\\background_service.py",
+            "lines": 199
+        },
+        {
+            "file": "archive_unused_2026-07-22\\github\\github_integration.py",
+            "lines": 182
+        },
+        {
+            "file": "archive_unused_2026-07-22\\github\\run_all.py",
+            "lines": 46
+        },
+        {
+            "file": "archive_unused_2026-07-22\\intelligence\\decision_engine.py",
+            "lines": 179
+        },
+        {
+            "file": "archive_unused_2026-07-22\\intelligence\\decision_logger.py",
+            "lines": 107
+        },
+        {
+            "file": "archive_unused_2026-07-22\\intelligence\\execution_engine.py",
+            "lines": 67
+        },
+        {
+            "file": "archive_unused_2026-07-22\\intelligence\\learning_memory.py",
+            "lines": 235
+        },
+        {
+            "file": "archive_unused_2026-07-22\\intelligence\\market_score.py",
+            "lines": 151
+        },
+        {
+            "file": "archive_unused_2026-07-22\\intelligence\\memory_analyzer.py",
+            "lines": 142
+        },
+        {
+            "file": "archive_unused_2026-07-22\\intelligence\\strategy_brain.py",
+            "lines": 196
+        },
+        {
+            "file": "archive_unused_2026-07-22\\intelligence\\strategy_memory.py",
+            "lines": 100
+        },
+        {
+            "file": "archive_unused_2026-07-22\\intelligence\\volatility_manager.py",
+            "lines": 100
+        },
+        {
+            "file": "archive_unused_2026-07-22\\learning\\adaptive_engine.py",
+            "lines": 174
+        },
+        {
+            "file": "archive_unused_2026-07-22\\learning\\adaptive_learning.py",
+            "lines": 204
+        },
+        {
+            "file": "archive_unused_2026-07-22\\learning\\atlas_brain.py",
+            "lines": 154
+        },
+        {
+            "file": "archive_unused_2026-07-22\\learning\\learner.py",
+            "lines": 82
+        },
+        {
+            "file": "archive_unused_2026-07-22\\learning\\learning_engine.py",
+            "lines": 331
+        },
+        {
+            "file": "archive_unused_2026-07-22\\learning\\model_memory.py",
+            "lines": 66
+        },
+        {
+            "file": "archive_unused_2026-07-22\\learning\\performance_analyzer.py",
+            "lines": 118
+        },
+        {
+            "file": "archive_unused_2026-07-22\\logs\\trade_logger.py",
+            "lines": 170
+        },
+        {
+            "file": "archive_unused_2026-07-22\\position\\position_manager.py",
+            "lines": 150
+        },
+        {
+            "file": "archive_unused_2026-07-22\\quality\\trade_filter.py",
+            "lines": 140
+        },
+        {
+            "file": "archive_unused_2026-07-22\\risk\\capital_manager.py",
+            "lines": 377
+        },
+        {
+            "file": "archive_unused_2026-07-22\\risk\\position.py",
+            "lines": 354
+        },
+        {
+            "file": "archive_unused_2026-07-22\\risk\\position_manager.py",
+            "lines": 386
+        },
+        {
+            "file": "archive_unused_2026-07-22\\risk\\position_sizer.py",
+            "lines": 35
+        },
+        {
+            "file": "archive_unused_2026-07-22\\risk\\risk_manager.py",
+            "lines": 85
+        },
+        {
+            "file": "archive_unused_2026-07-22\\risk\\risk_planner.py",
+            "lines": 28
+        },
+        {
+            "file": "archive_unused_2026-07-22\\risk\\trade_rules.py",
+            "lines": 69
+        },
+        {
+            "file": "archive_unused_2026-07-22\\scalping\\scalp_manager.py",
+            "lines": 66
+        },
+        {
+            "file": "archive_unused_2026-07-22\\signals\\base_signal.py",
+            "lines": 40
+        },
+        {
+            "file": "archive_unused_2026-07-22\\simulation\\ai_simulator.py",
+            "lines": 127
+        },
+        {
+            "file": "archive_unused_2026-07-22\\simulation\\run_simulation.py",
+            "lines": 98
+        },
+        {
+            "file": "archive_unused_2026-07-22\\simulation\\simulator.py",
+            "lines": 72
+        },
+        {
+            "file": "archive_unused_2026-07-22\\simulation\\__init__.py",
+            "lines": 9
+        },
+        {
+            "file": "archive_unused_2026-07-22\\strategy\\bollinger_squeeze_empty_backup.py",
+            "lines": 0
+        },
+        {
+            "file": "archive_unused_2026-07-22\\strategy\\fix_bollinger.py",
+            "lines": 282
+        },
+        {
+            "file": "archive_unused_2026-07-22\\strategy\\optimizer.py",
+            "lines": 74
+        },
+        {
+            "file": "archive_unused_2026-07-22\\strategy\\scalper.py",
+            "lines": 65
+        },
+        {
+            "file": "archive_unused_2026-07-22\\strategy\\scalping.py",
+            "lines": 103
+        },
+        {
+            "file": "archive_unused_2026-07-22\\strategy\\strategy_engine.py",
+            "lines": 90
+        },
+        {
+            "file": "archive_unused_2026-07-22\\timeframe\\multi_timeframe.py",
+            "lines": 170
+        },
+        {
+            "file": "archive_unused_2026-07-22\\trade\\simulator.py",
+            "lines": 61
+        },
+        {
+            "file": "archive_unused_2026-07-22\\trading\\auto_manager.py",
+            "lines": 105
+        },
+        {
+            "file": "archive_unused_2026-07-22\\trading\\paper_trader.py",
+            "lines": 238
+        },
+        {
+            "file": "archive_unused_2026-07-22\\signals\\market\\market_signal.py",
+            "lines": 146
+        },
+        {
+            "file": "archive_unused_2026-07-22\\signals\\risk\\risk_signal.py",
+            "lines": 105
+        },
+        {
+            "file": "archive_unused_2026-07-22\\signals\\technical\\technical_signal.py",
+            "lines": 145
+        },
+        {
+            "file": "archive_unused_2026-07-22\\intelligence\\confidence\\capital_allocator.py",
+            "lines": 35
+        },
+        {
+            "file": "archive_unused_2026-07-22\\intelligence\\confidence\\confidence_engine.py",
+            "lines": 208
+        },
+        {
+            "file": "archive_unused_2026-07-22\\intelligence\\confidence\\position_sizer.py",
+            "lines": 27
+        },
+        {
+            "file": "archive_unused_2026-07-22\\intelligence\\market\\breakout_analyzer.py",
+            "lines": 56
+        },
+        {
+            "file": "archive_unused_2026-07-22\\intelligence\\market\\market_intelligence.py",
+            "lines": 130
+        },
+        {
+            "file": "archive_unused_2026-07-22\\intelligence\\market\\market_scoring_engine.py",
+            "lines": 91
+        },
+        {
+            "file": "archive_unused_2026-07-22\\intelligence\\market\\market_structure_analyzer.py",
+            "lines": 129
+        },
+        {
+            "file": "archive_unused_2026-07-22\\intelligence\\market\\order_flow_analyzer.py",
+            "lines": 171
+        },
+        {
+            "file": "archive_unused_2026-07-22\\intelligence\\market\\support_resistance_analyzer.py",
+            "lines": 78
+        },
+        {
+            "file": "archive_unused_2026-07-22\\intelligence\\market\\volatility_analyzer.py",
+            "lines": 66
+        },
+        {
+            "file": "archive_unused_2026-07-22\\intelligence\\market\\volume_analyzer.py",
+            "lines": 83
+        },
+        {
+            "file": "archive_unused_2026-07-22\\intelligence\\signals\\signal_fusion.py",
+            "lines": 132
+        },
+        {
+            "file": "archive_unused_2026-07-22\\intelligence\\strategy_competition\\strategy_competition.py",
+            "lines": 35
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\backtest\\combined_backtest.py",
+            "lines": 1
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\brain\\context_manager.py",
+            "lines": 76
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\brain\\decision_maker.py",
+            "lines": 73
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\brain\\signal_processor.py",
+            "lines": 67
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\data\\fetch_enhanced.py",
+            "lines": 180
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\strategies\\bollingerrsi.py",
+            "lines": 33
+        },
+        {
+            "file": "archive_unused_2026-07-22\\atlas_paper_trading\\core\\atlas_memory_core.py",
+            "lines": 904
+        },
+        {
+            "file": "archive_unused_2026-07-22\\atlas_paper_trading\\core\\atlas_multi_agent.py",
+            "lines": 1059
+        },
+        {
+            "file": "archive_unused_2026-07-22\\atlas_paper_trading\\core\\atlas_reasoning_engine.py",
+            "lines": 825
+        },
+        {
+            "file": "archive_unused_2026-07-22\\atlas_paper_trading\\core\\atlas_world_model.py",
+            "lines": 728
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\analytics\\performance.py",
+            "lines": 93
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\atlas_alpha_factory.py",
+            "lines": 496
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\atlas_backtesting_engine.py",
+            "lines": 832
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\atlas_backtest_engine.py",
+            "lines": 490
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\atlas_brain_backtest.py",
+            "lines": 259
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\atlas_cio.py",
+            "lines": 449
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\atlas_digital_twin.py",
+            "lines": 515
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\atlas_execution_optimizer.py",
+            "lines": 561
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\atlas_explainability.py",
+            "lines": 450
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\atlas_live_connector.py",
+            "lines": 460
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\atlas_live_trading.py",
+            "lines": 394
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\atlas_live_trading_v2.py",
+            "lines": 1199
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\atlas_live_trading_v21.py",
+            "lines": 1305
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\atlas_macro_engine.py",
+            "lines": 416
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\atlas_master_orchestrator.py",
+            "lines": 252
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\atlas_memory_core_old.py",
+            "lines": 271
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\atlas_orchestrator.py",
+            "lines": 809
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\atlas_orchestrator_old.py",
+            "lines": 761
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\atlas_orchestrator_old_20260721_0851.py",
+            "lines": 791
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\atlas_planner.py",
+            "lines": 487
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\atlas_research_engine.py",
+            "lines": 510
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\atlas_self_coding.py",
+            "lines": 539
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\atlas_strategy_evolution.py",
+            "lines": 460
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\atlas_telegram_connector.py",
+            "lines": 222
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\create_faz1.py",
+            "lines": 23
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\run_faz2.py",
+            "lines": 54
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\run_live.py",
+            "lines": 219
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\run_live_old.py",
+            "lines": 24
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\run_live_v2.py",
+            "lines": 145
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\run_live_v2_backup.py",
+            "lines": 191
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\run_live_v2_broken.py",
+            "lines": 495
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\run_live_v3_fixed2.py",
+            "lines": 419
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\tests\\__init__.py",
+            "lines": 1
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\tests\\e2e\\__init__.py",
+            "lines": 1
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\tests\\integration\\__init__.py",
+            "lines": 1
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\tests\\unit\\test_memory_core.py",
+            "lines": 99
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\tests\\unit\\__init__.py",
+            "lines": 1
+        },
+        {
+            "file": "ai\\cognition\\state.py",
+            "lines": 35
+        },
+        {
+            "file": "ai\\core\\atlas_brain.py",
+            "lines": 1567
+        },
+        {
+            "file": "ai\\core\\atlas_brain_backup_v6.py",
+            "lines": 291
+        },
+        {
+            "file": "ai\\core\\atlas_memory_core.py",
+            "lines": 271
+        },
+        {
+            "file": "ai\\core\\atlas_multi_agent.py",
+            "lines": 310
+        },
+        {
+            "file": "ai\\core\\atlas_reasoning_engine.py",
+            "lines": 927
+        },
+        {
+            "file": "ai\\core\\atlas_world_model.py",
+            "lines": 271
+        }
+    ],
+    "statistics": {
+        "folders": 122,
+        "python_files": 369,
+        "total_lines": 78647
+    }
+}

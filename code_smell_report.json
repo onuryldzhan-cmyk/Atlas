@@ -1,0 +1,62 @@
+[
+    {
+        "file": "core\\atlas_brain.py",
+        "issues": [
+            {
+                "level": "CRITICAL",
+                "type": "Long File",
+                "value": 584
+            },
+            {
+                "level": "WARNING",
+                "type": "Too Many Imports",
+                "value": 33
+            }
+        ]
+    },
+    {
+        "file": "core\\codebase_indexer.py",
+        "issues": [
+            {
+                "level": "CRITICAL",
+                "type": "High Complexity",
+                "value": 82
+            }
+        ]
+    },
+    {
+        "file": "core\\outcome_memory.py",
+        "issues": [
+            {
+                "level": "CRITICAL",
+                "type": "Long File",
+                "value": 514
+            },
+            {
+                "level": "CRITICAL",
+                "type": "High Complexity",
+                "value": 97
+            }
+        ]
+    },
+    {
+        "file": "core\\strategy_competition.py",
+        "issues": [
+            {
+                "level": "CRITICAL",
+                "type": "Long File",
+                "value": 548
+            }
+        ]
+    },
+    {
+        "file": "portfolio\\portfolio_manager.py",
+        "issues": [
+            {
+                "level": "CRITICAL",
+                "type": "High Complexity",
+                "value": 81
+            }
+        ]
+    }
+]

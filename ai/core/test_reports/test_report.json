@@ -1,0 +1,44 @@
+{
+  "timestamp": "2026-07-21T09:04:48.178404",
+  "cycle": 5,
+  "portfolio": {
+    "value": 10500.5,
+    "cash": 7000.0,
+    "positions": 2
+  },
+  "cio": {
+    "regime": "bull",
+    "risk_profile": "aggressive",
+    "cash_target": 0.1,
+    "max_positions": 7
+  },
+  "decisions": [
+    {
+      "symbol": "BTCUSDT",
+      "action": "BUY",
+      "confidence": 0.75,
+      "reasoning": "Guclu AL sinyali (skor: 0.75) | RSI asiri satim | MACD pozitif",
+      "agents_votes": {
+        "TechnicalAnalyst": "buy",
+        "MacroAnalyst": "buy",
+        "RiskManager": "hold",
+        "SentimentAnalyzer": "buy",
+        "QuantStrategist": "buy"
+      },
+      "risk_level": "medium",
+      "cio_approved": true
+    }
+  ],
+  "executed": [
+    {
+      "symbol": "BTCUSDT",
+      "executed": true,
+      "message": "Pozisyon acildi: 0.05 @ 68000",
+      "pnl": 0
+    }
+  ],
+  "modules": {
+    "faz1": true,
+    "cio": true
+  }
+}

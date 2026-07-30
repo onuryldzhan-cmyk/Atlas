@@ -1,0 +1,205 @@
+[
+  {
+    "source_path": "execution_manager.py",
+    "original_status": "DUPLICATE_REMOVE_CANDIDATE",
+    "module_name": "execution_manager",
+    "sha256": "d2b66eabc8fae2660778641abba2cb0acaa6cd03755d3d25168a673c606c118b",
+    "python_import_references": [],
+    "runtime_string_references": [],
+    "documentation_mentions": [
+      "Pasted text(24) (1).txt",
+      "atlas_baseline_report.txt",
+      "atlas_core_audit_report.txt",
+      "atlas_execution_diagnosis.txt",
+      "atlas_file_inventory.txt"
+    ],
+    "decision": "APPROVE_WITH_DOC_MENTIONS",
+    "reason": "No code dependency found. Only documentation or script mentions remain; safe for reversible quarantine."
+  },
+  {
+    "source_path": "ai/core/atlas_brain_backup_v6.py",
+    "original_status": "QUARANTINE_SAFE",
+    "module_name": "ai.core.atlas_brain_backup_v6",
+    "sha256": "9a06b61fbc52cd7fac892d7a997ccfa6d1e3e8c8642f575edaba17bcc6e76038",
+    "python_import_references": [],
+    "runtime_string_references": [],
+    "documentation_mentions": [
+      "atlas_baseline_report.txt",
+      "atlas_file_inventory.txt"
+    ],
+    "decision": "APPROVE_WITH_DOC_MENTIONS",
+    "reason": "No code dependency found. Only documentation or script mentions remain; safe for reversible quarantine."
+  },
+  {
+    "source_path": "ai/core/atlas_brain_old_v8.py",
+    "original_status": "QUARANTINE_SAFE",
+    "module_name": "ai.core.atlas_brain_old_v8",
+    "sha256": "dbe36a0b3bd4ea45eca750de4043961f099c0c17c35058aa6f4ea6ea23adc180",
+    "python_import_references": [],
+    "runtime_string_references": [],
+    "documentation_mentions": [
+      "atlas_baseline_report.txt",
+      "atlas_file_inventory.txt"
+    ],
+    "decision": "APPROVE_WITH_DOC_MENTIONS",
+    "reason": "No code dependency found. Only documentation or script mentions remain; safe for reversible quarantine."
+  },
+  {
+    "source_path": "core/decision_adapter_backup.py",
+    "original_status": "QUARANTINE_SAFE",
+    "module_name": "core.decision_adapter_backup",
+    "sha256": "0a94df0abcaa3649d1e9dc4136b32cc6e3eb8d2c4934939677d45a5a95e6e2a5",
+    "python_import_references": [],
+    "runtime_string_references": [],
+    "documentation_mentions": [
+      "atlas_baseline_report.txt",
+      "atlas_file_inventory.txt"
+    ],
+    "decision": "APPROVE_WITH_DOC_MENTIONS",
+    "reason": "No code dependency found. Only documentation or script mentions remain; safe for reversible quarantine."
+  },
+  {
+    "source_path": "core/execution_manager_backup.py",
+    "original_status": "QUARANTINE_SAFE",
+    "module_name": "core.execution_manager_backup",
+    "sha256": "3e786960f95194451b9e3cf3f1ac0690dd940a72fe32f599a74d0b7dc4bb3cf2",
+    "python_import_references": [],
+    "runtime_string_references": [],
+    "documentation_mentions": [
+      "atlas_baseline_report.txt",
+      "atlas_file_inventory.txt"
+    ],
+    "decision": "APPROVE_WITH_DOC_MENTIONS",
+    "reason": "No code dependency found. Only documentation or script mentions remain; safe for reversible quarantine."
+  },
+  {
+    "source_path": "core/execution_manager_v1_backup.py",
+    "original_status": "QUARANTINE_SAFE",
+    "module_name": "core.execution_manager_v1_backup",
+    "sha256": "3e786960f95194451b9e3cf3f1ac0690dd940a72fe32f599a74d0b7dc4bb3cf2",
+    "python_import_references": [],
+    "runtime_string_references": [],
+    "documentation_mentions": [
+      "atlas_baseline_report.txt",
+      "atlas_file_inventory.txt"
+    ],
+    "decision": "APPROVE_WITH_DOC_MENTIONS",
+    "reason": "No code dependency found. Only documentation or script mentions remain; safe for reversible quarantine."
+  },
+  {
+    "source_path": "core/execution_manager_v28_backup.py",
+    "original_status": "QUARANTINE_SAFE",
+    "module_name": "core.execution_manager_v28_backup",
+    "sha256": "d7900e261c93a002dd554d3d4f47788e45d89d5ce89ab569f05b642033511b04",
+    "python_import_references": [],
+    "runtime_string_references": [],
+    "documentation_mentions": [
+      "atlas_baseline_report.txt",
+      "atlas_file_inventory.txt"
+    ],
+    "decision": "APPROVE_WITH_DOC_MENTIONS",
+    "reason": "No code dependency found. Only documentation or script mentions remain; safe for reversible quarantine."
+  },
+  {
+    "source_path": "core/execution_manager_v7_backup.py",
+    "original_status": "QUARANTINE_SAFE",
+    "module_name": "core.execution_manager_v7_backup",
+    "sha256": "9f613641ca183aabd3a735086e449d6554410ae2be3cb549215aee20ae1192f5",
+    "python_import_references": [],
+    "runtime_string_references": [],
+    "documentation_mentions": [
+      "atlas_baseline_report.txt",
+      "atlas_file_inventory.txt"
+    ],
+    "decision": "APPROVE_WITH_DOC_MENTIONS",
+    "reason": "No code dependency found. Only documentation or script mentions remain; safe for reversible quarantine."
+  },
+  {
+    "source_path": "core/execution_manager_v9_backup.py",
+    "original_status": "QUARANTINE_SAFE",
+    "module_name": "core.execution_manager_v9_backup",
+    "sha256": "39c2090fd9503c59f52efd3c078191a5236eaffeec5a193a8cf5ce9286ac61f7",
+    "python_import_references": [],
+    "runtime_string_references": [],
+    "documentation_mentions": [
+      "atlas_baseline_report.txt",
+      "atlas_file_inventory.txt"
+    ],
+    "decision": "APPROVE_WITH_DOC_MENTIONS",
+    "reason": "No code dependency found. Only documentation or script mentions remain; safe for reversible quarantine."
+  },
+  {
+    "source_path": "core/execution_models_v21_backup.py",
+    "original_status": "QUARANTINE_SAFE",
+    "module_name": "core.execution_models_v21_backup",
+    "sha256": "184a1c7dbaffc3d3e59bb4f3acb700e1d15f4f59d78d1355d2e00aa600254446",
+    "python_import_references": [],
+    "runtime_string_references": [],
+    "documentation_mentions": [
+      "atlas_baseline_report.txt",
+      "atlas_file_inventory.txt"
+    ],
+    "decision": "APPROVE_WITH_DOC_MENTIONS",
+    "reason": "No code dependency found. Only documentation or script mentions remain; safe for reversible quarantine."
+  },
+  {
+    "source_path": "core/execution_state_v1_backup.py",
+    "original_status": "QUARANTINE_SAFE",
+    "module_name": "core.execution_state_v1_backup",
+    "sha256": "358ca9f2c0a85e6e7724b96be77e78461298f8ba1f53f073348f28e5ae904107",
+    "python_import_references": [],
+    "runtime_string_references": [],
+    "documentation_mentions": [
+      "atlas_baseline_report.txt",
+      "atlas_file_inventory.txt"
+    ],
+    "decision": "APPROVE_WITH_DOC_MENTIONS",
+    "reason": "No code dependency found. Only documentation or script mentions remain; safe for reversible quarantine."
+  },
+  {
+    "source_path": "intelligence/core/intelligence_core_backup.py",
+    "original_status": "QUARANTINE_SAFE",
+    "module_name": "intelligence.core.intelligence_core_backup",
+    "sha256": "bd6f53168d79e34f43b6bccc952edd645f5abe26108dfd1400303ad7cefd1229",
+    "python_import_references": [],
+    "runtime_string_references": [],
+    "documentation_mentions": [
+      "atlas_baseline_report.txt",
+      "atlas_file_inventory.txt"
+    ],
+    "decision": "APPROVE_WITH_DOC_MENTIONS",
+    "reason": "No code dependency found. Only documentation or script mentions remain; safe for reversible quarantine."
+  },
+  {
+    "source_path": "phase1_backup_20260727_132959/atlas_os/__init__.py",
+    "original_status": "QUARANTINE_SAFE",
+    "module_name": "phase1_backup_20260727_132959.atlas_os",
+    "sha256": "0450ef53d682d365d9a17d1a0746555db717b336618f9b9eb0a9c08fe75c6c9b",
+    "python_import_references": [],
+    "runtime_string_references": [],
+    "documentation_mentions": [
+      "atlas_baseline_report.txt",
+      "atlas_core_usage_report.txt",
+      "atlas_file_inventory.txt",
+      "atlas_os_python_files.txt"
+    ],
+    "decision": "APPROVE_WITH_DOC_MENTIONS",
+    "reason": "No code dependency found. Only documentation or script mentions remain; safe for reversible quarantine."
+  },
+  {
+    "source_path": "phase1_backup_20260727_133009/atlas_os/__init__.py",
+    "original_status": "QUARANTINE_SAFE",
+    "module_name": "phase1_backup_20260727_133009.atlas_os",
+    "sha256": "dc06c4f8fbd447bde465bdfdf267d2c126434d1017162176189fe5954a19b57b",
+    "python_import_references": [],
+    "runtime_string_references": [],
+    "documentation_mentions": [
+      "atlas_baseline_report.txt",
+      "atlas_core_usage_report.txt",
+      "atlas_file_inventory.txt",
+      "atlas_os_python_files.txt"
+    ],
+    "decision": "APPROVE_WITH_DOC_MENTIONS",
+    "reason": "No code dependency found. Only documentation or script mentions remain; safe for reversible quarantine."
+  }
+]

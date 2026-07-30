@@ -1,0 +1,33 @@
+{
+    "version": "2.1",
+    "active": {},
+    "history": [
+        {
+            "event": "OPEN",
+            "symbol": "BTCUSDT",
+            "trade": {
+                "execution_id": "ff99418d-8d9d-45b5-b8fc-dcdc68807885",
+                "symbol": "BTCUSDT",
+                "side": "BUY",
+                "price": 65000,
+                "amount": 1593.75,
+                "confidence": 85,
+                "strategy": "Atlas_Test",
+                "risk": "MEDIUM",
+                "mode": "PAPER",
+                "created": "2026-07-24T15:23:36.744149+00:00"
+            },
+            "time": "2026-07-24T15:23:36.744177+00:00"
+        },
+        {
+            "event": "CLOSE",
+            "symbol": "BTCUSDT",
+            "result": {
+                "exit_price": 66000,
+                "transaction_id": "ATLAS-TXN-e85a6127-5f6c-42d3-87ad-9d86b6d9cc48"
+            },
+            "time": "2026-07-24T15:26:24.847451+00:00"
+        }
+    ],
+    "updated": "2026-07-24T15:26:24.847923+00:00"
+}

@@ -1,0 +1,13 @@
+{
+    "engine": "Atlas Self Improvement Loop",
+    "version": "1.0",
+    "time": "2026-07-23T15:06:29.529933+00:00",
+    "health": "DEVELOPING",
+    "score": 60,
+    "recommendations": [
+        "Kod tabanı büyük. Mimari iyileştirme gerekli.",
+        "Büyük dosyalar refactor edilmeli.",
+        "Teknik borç azaltılmalı.",
+        "Planlanan geliştirmeler takip edilmeli."
+    ]
+}

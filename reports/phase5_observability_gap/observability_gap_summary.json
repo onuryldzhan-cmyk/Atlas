@@ -1,0 +1,72 @@
+{
+  "actionable_gaps": 4,
+  "high": 0,
+  "medium": 3,
+  "low": 1,
+  "gaps": [
+    {
+      "priority": "MEDIUM",
+      "file": "core/brain_analyzer.py",
+      "class": "BrainAnalyzer",
+      "line": 13,
+      "bases": [],
+      "lifecycle_methods": [
+        "run"
+      ],
+      "public_methods": [
+        "analyze_file",
+        "run"
+      ],
+      "recommended_logger": "logging.getLogger(\"AtlasAI.BrainAnalyzer\")"
+    },
+    {
+      "priority": "MEDIUM",
+      "file": "core/code_cleanup_analyzer.py",
+      "class": "CodeCleanupAnalyzer",
+      "line": 24,
+      "bases": [],
+      "lifecycle_methods": [
+        "run"
+      ],
+      "public_methods": [
+        "analyze_imports",
+        "find_backups",
+        "find_large_files",
+        "find_unused_candidates",
+        "print_report",
+        "run",
+        "scan_files"
+      ],
+      "recommended_logger": "logging.getLogger(\"AtlasAI.CodeCleanupAnalyzer\")"
+    },
+    {
+      "priority": "MEDIUM",
+      "file": "core/execution_contracts.py",
+      "class": "SupportsHealth",
+      "line": 80,
+      "bases": [
+        "Protocol"
+      ],
+      "lifecycle_methods": [
+        "health"
+      ],
+      "public_methods": [
+        "health"
+      ],
+      "recommended_logger": "logging.getLogger(\"AtlasAI.SupportsHealth\")"
+    },
+    {
+      "priority": "LOW",
+      "file": "core/project_snapshot.py",
+      "class": "ProjectSnapshotEngine",
+      "line": 36,
+      "bases": [],
+      "lifecycle_methods": [],
+      "public_methods": [
+        "create_snapshot",
+        "save"
+      ],
+      "recommended_logger": "logging.getLogger(\"AtlasAI.ProjectSnapshotEngine\")"
+    }
+  ]
+}

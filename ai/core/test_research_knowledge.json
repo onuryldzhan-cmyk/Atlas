@@ -1,0 +1,357 @@
+{
+  "patterns": [
+    {
+      "id": "pattern_sector_momentum_2450",
+      "pattern_type": "sector_momentum",
+      "description": "layer1 sektorunde birlikte yukari hareket",
+      "confidence": 0.95,
+      "assets": [
+        "SOLUSDT",
+        "AVAXUSDT",
+        "ADAUSDT"
+      ],
+      "discovery_date": "2026-07-21T09:38:21.696320",
+      "occurrence_count": 1,
+      "last_seen": "2026-07-21T09:38:21.696321",
+      "validated": false
+    },
+    {
+      "id": "pattern_leader_follower_4110",
+      "pattern_type": "leader_follower",
+      "description": "DOGEUSDT lider, SOLUSDT takip ediyor",
+      "confidence": 0.7,
+      "assets": [
+        "DOGEUSDT",
+        "SOLUSDT"
+      ],
+      "discovery_date": "2026-07-21T09:38:21.696333",
+      "occurrence_count": 1,
+      "last_seen": "2026-07-21T09:38:21.696334",
+      "validated": false
+    },
+    {
+      "id": "pattern_sector_momentum_8128",
+      "pattern_type": "sector_momentum",
+      "description": "layer1 sektorunde birlikte yukari hareket",
+      "confidence": 0.95,
+      "assets": [
+        "SOLUSDT",
+        "AVAXUSDT",
+        "ADAUSDT"
+      ],
+      "discovery_date": "2026-07-21T09:38:21.697231",
+      "occurrence_count": 1,
+      "last_seen": "2026-07-21T09:38:21.697232",
+      "validated": false
+    },
+    {
+      "id": "pattern_leader_follower_4697",
+      "pattern_type": "leader_follower",
+      "description": "DOGEUSDT lider, SOLUSDT takip ediyor",
+      "confidence": 0.7,
+      "assets": [
+        "DOGEUSDT",
+        "SOLUSDT"
+      ],
+      "discovery_date": "2026-07-21T09:38:21.697244",
+      "occurrence_count": 1,
+      "last_seen": "2026-07-21T09:38:21.697245",
+      "validated": false
+    }
+  ],
+  "anomalies": [
+    {
+      "id": "anomaly_price_spike_6932",
+      "anomaly_type": "price_spike",
+      "description": "BTCUSDT anormal fiyat hareketi: +8.00%",
+      "severity": 0.8,
+      "asset": "BTCUSDT",
+      "expected_value": 0.0,
+      "actual_value": 0.08,
+      "deviation_pct": 0.0,
+      "timestamp": "2026-07-21T09:38:21.696226",
+      "resolved": false
+    },
+    {
+      "id": "anomaly_volume_spike_8035",
+      "anomaly_type": "volume_spike",
+      "description": "BTCUSDT anormal hacim: 2.5x normal",
+      "severity": 0.5,
+      "asset": "BTCUSDT",
+      "expected_value": 1.0,
+      "actual_value": 2.5,
+      "deviation_pct": 150.0,
+      "timestamp": "2026-07-21T09:38:21.696259",
+      "resolved": false
+    },
+    {
+      "id": "anomaly_price_spike_1461",
+      "anomaly_type": "price_spike",
+      "description": "ETHUSDT anormal fiyat hareketi: +6.00%",
+      "severity": 0.6,
+      "asset": "ETHUSDT",
+      "expected_value": 0.0,
+      "actual_value": 0.06,
+      "deviation_pct": 0.0,
+      "timestamp": "2026-07-21T09:38:21.696270",
+      "resolved": false
+    },
+    {
+      "id": "anomaly_price_spike_7191",
+      "anomaly_type": "price_spike",
+      "description": "SOLUSDT anormal fiyat hareketi: +12.00%",
+      "severity": 1.0,
+      "asset": "SOLUSDT",
+      "expected_value": 0.0,
+      "actual_value": 0.12,
+      "deviation_pct": 0.0,
+      "timestamp": "2026-07-21T09:38:21.696277",
+      "resolved": false
+    },
+    {
+      "id": "anomaly_volume_spike_2030",
+      "anomaly_type": "volume_spike",
+      "description": "SOLUSDT anormal hacim: 3.2x normal",
+      "severity": 0.64,
+      "asset": "SOLUSDT",
+      "expected_value": 1.0,
+      "actual_value": 3.2,
+      "deviation_pct": 220.00000000000003,
+      "timestamp": "2026-07-21T09:38:21.696281",
+      "resolved": false
+    },
+    {
+      "id": "anomaly_high_volatility_4676",
+      "anomaly_type": "high_volatility",
+      "description": "SOLUSDT yuksek volatilite: 9.00%",
+      "severity": 0.44999999999999996,
+      "asset": "SOLUSDT",
+      "expected_value": 0.03,
+      "actual_value": 0.09,
+      "deviation_pct": 200.0,
+      "timestamp": "2026-07-21T09:38:21.696285",
+      "resolved": false
+    },
+    {
+      "id": "anomaly_price_spike_2448",
+      "anomaly_type": "price_spike",
+      "description": "AVAXUSDT anormal fiyat hareketi: +9.00%",
+      "severity": 0.8999999999999999,
+      "asset": "AVAXUSDT",
+      "expected_value": 0.0,
+      "actual_value": 0.09,
+      "deviation_pct": 0.0,
+      "timestamp": "2026-07-21T09:38:21.696290",
+      "resolved": false
+    },
+    {
+      "id": "anomaly_price_spike_7743",
+      "anomaly_type": "price_spike",
+      "description": "DOGEUSDT anormal fiyat hareketi: +15.00%",
+      "severity": 1.0,
+      "asset": "DOGEUSDT",
+      "expected_value": 0.0,
+      "actual_value": 0.15,
+      "deviation_pct": 0.0,
+      "timestamp": "2026-07-21T09:38:21.696294",
+      "resolved": false
+    },
+    {
+      "id": "anomaly_volume_spike_8209",
+      "anomaly_type": "volume_spike",
+      "description": "DOGEUSDT anormal hacim: 4.0x normal",
+      "severity": 0.8,
+      "asset": "DOGEUSDT",
+      "expected_value": 1.0,
+      "actual_value": 4.0,
+      "deviation_pct": 300.0,
+      "timestamp": "2026-07-21T09:38:21.696297",
+      "resolved": false
+    },
+    {
+      "id": "anomaly_high_volatility_2252",
+      "anomaly_type": "high_volatility",
+      "description": "DOGEUSDT yuksek volatilite: 12.00%",
+      "severity": 0.6,
+      "asset": "DOGEUSDT",
+      "expected_value": 0.03,
+      "actual_value": 0.12,
+      "deviation_pct": 300.0,
+      "timestamp": "2026-07-21T09:38:21.696301",
+      "resolved": false
+    },
+    {
+      "id": "anomaly_price_spike_2470",
+      "anomaly_type": "price_spike",
+      "description": "BTCUSDT anormal fiyat hareketi: +8.00%",
+      "severity": 0.8,
+      "asset": "BTCUSDT",
+      "expected_value": 0.0,
+      "actual_value": 0.08,
+      "deviation_pct": 0.0,
+      "timestamp": "2026-07-21T09:38:21.697176",
+      "resolved": false
+    },
+    {
+      "id": "anomaly_volume_spike_5411",
+      "anomaly_type": "volume_spike",
+      "description": "BTCUSDT anormal hacim: 2.5x normal",
+      "severity": 0.5,
+      "asset": "BTCUSDT",
+      "expected_value": 1.0,
+      "actual_value": 2.5,
+      "deviation_pct": 150.0,
+      "timestamp": "2026-07-21T09:38:21.697185",
+      "resolved": false
+    },
+    {
+      "id": "anomaly_price_spike_9135",
+      "anomaly_type": "price_spike",
+      "description": "ETHUSDT anormal fiyat hareketi: +6.00%",
+      "severity": 0.6,
+      "asset": "ETHUSDT",
+      "expected_value": 0.0,
+      "actual_value": 0.06,
+      "deviation_pct": 0.0,
+      "timestamp": "2026-07-21T09:38:21.697189",
+      "resolved": false
+    },
+    {
+      "id": "anomaly_price_spike_2927",
+      "anomaly_type": "price_spike",
+      "description": "SOLUSDT anormal fiyat hareketi: +12.00%",
+      "severity": 1.0,
+      "asset": "SOLUSDT",
+      "expected_value": 0.0,
+      "actual_value": 0.12,
+      "deviation_pct": 0.0,
+      "timestamp": "2026-07-21T09:38:21.697193",
+      "resolved": false
+    },
+    {
+      "id": "anomaly_volume_spike_6426",
+      "anomaly_type": "volume_spike",
+      "description": "SOLUSDT anormal hacim: 3.2x normal",
+      "severity": 0.64,
+      "asset": "SOLUSDT",
+      "expected_value": 1.0,
+      "actual_value": 3.2,
+      "deviation_pct": 220.00000000000003,
+      "timestamp": "2026-07-21T09:38:21.697196",
+      "resolved": false
+    },
+    {
+      "id": "anomaly_high_volatility_6761",
+      "anomaly_type": "high_volatility",
+      "description": "SOLUSDT yuksek volatilite: 9.00%",
+      "severity": 0.44999999999999996,
+      "asset": "SOLUSDT",
+      "expected_value": 0.03,
+      "actual_value": 0.09,
+      "deviation_pct": 200.0,
+      "timestamp": "2026-07-21T09:38:21.697200",
+      "resolved": false
+    },
+    {
+      "id": "anomaly_price_spike_2266",
+      "anomaly_type": "price_spike",
+      "description": "AVAXUSDT anormal fiyat hareketi: +9.00%",
+      "severity": 0.8999999999999999,
+      "asset": "AVAXUSDT",
+      "expected_value": 0.0,
+      "actual_value": 0.09,
+      "deviation_pct": 0.0,
+      "timestamp": "2026-07-21T09:38:21.697203",
+      "resolved": false
+    },
+    {
+      "id": "anomaly_price_spike_1559",
+      "anomaly_type": "price_spike",
+      "description": "DOGEUSDT anormal fiyat hareketi: +15.00%",
+      "severity": 1.0,
+      "asset": "DOGEUSDT",
+      "expected_value": 0.0,
+      "actual_value": 0.15,
+      "deviation_pct": 0.0,
+      "timestamp": "2026-07-21T09:38:21.697207",
+      "resolved": false
+    },
+    {
+      "id": "anomaly_volume_spike_4729",
+      "anomaly_type": "volume_spike",
+      "description": "DOGEUSDT anormal hacim: 4.0x normal",
+      "severity": 0.8,
+      "asset": "DOGEUSDT",
+      "expected_value": 1.0,
+      "actual_value": 4.0,
+      "deviation_pct": 300.0,
+      "timestamp": "2026-07-21T09:38:21.697210",
+      "resolved": false
+    },
+    {
+      "id": "anomaly_high_volatility_8864",
+      "anomaly_type": "high_volatility",
+      "description": "DOGEUSDT yuksek volatilite: 12.00%",
+      "severity": 0.6,
+      "asset": "DOGEUSDT",
+      "expected_value": 0.03,
+      "actual_value": 0.12,
+      "deviation_pct": 300.0,
+      "timestamp": "2026-07-21T09:38:21.697214",
+      "resolved": false
+    }
+  ],
+  "reports": [
+    {
+      "id": "report_93831",
+      "title": "Piyasa Analiz Raporu",
+      "findings": [
+        {
+          "type": "CORRELATION",
+          "description": "En guclu korelasyon: SOLUSDT - DOGEUSDT",
+          "detail": "Korelasyon: 0.27, Guclu: positive"
+        },
+        {
+          "type": "ANOMALY",
+          "description": "5 kritik anomali tespit edildi",
+          "detail": "BTCUSDT (price_spike), SOLUSDT (price_spike), AVAXUSDT (price_spike)"
+        },
+        {
+          "type": "PATTERN",
+          "description": "layer1 sektorunde birlikte yukari hareket",
+          "detail": "Guven: 95.0%, Varliklar: SOLUSDT, AVAXUSDT, ADAUSDT"
+        },
+        {
+          "type": "PATTERN",
+          "description": "DOGEUSDT lider, SOLUSDT takip ediyor",
+          "detail": "Guven: 70.0%, Varliklar: DOGEUSDT, SOLUSDT"
+        },
+        {
+          "type": "VOLATILITY",
+          "description": "Piyasa volatilite rejimi: HIGH",
+          "detail": "Ortalama: 5.65%, En yuksek: DOGEUSDT"
+        },
+        {
+          "type": "MOMENTUM",
+          "description": "En guclu momentum: DOGEUSDT",
+          "detail": "Skor: 0.1329, En zayif: DOTUSDT (-0.0177)"
+        }
+      ],
+      "recommendations": [
+        "BTCUSDT: BTCUSDT anormal fiyat hareketi: +8.00%. Dikkatli izle.",
+        "SOLUSDT: SOLUSDT anormal fiyat hareketi: +12.00%. Dikkatli izle.",
+        "Yuksek volatilite rejimi - pozisyon boyutlarini kucult, stop-loss'lari genislet.",
+        "DOGEUSDT guclu momentum - trend takip stratejisi degerlendir."
+      ],
+      "confidence": 0.95,
+      "timestamp": "2026-07-21T09:38:21.697286"
+    }
+  ],
+  "knowledge_base": {
+    "correlations": {},
+    "seasonal_patterns": {},
+    "lead_lag_relationships": {},
+    "volatility_regimes": {}
+  },
+  "last_updated": "2026-07-21T09:38:21.697577"
+}

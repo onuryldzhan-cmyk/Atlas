@@ -1,0 +1,2616 @@
+{
+  "generation": 3,
+  "timestamp": "2026-07-21T09:37:14.136628",
+  "population": [
+    {
+      "strategy_id": "80b57289feb3",
+      "name": "Mean_Reversion_845",
+      "genes": [
+        {
+          "indicator": "rsi",
+          "params": {
+            "period": 16,
+            "overbought": 83,
+            "oversold": 21
+          },
+          "weight": 0.86,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "bollinger",
+          "params": {
+            "period": 14,
+            "std": 1.76
+          },
+          "weight": 0.9,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "cci",
+          "params": {
+            "period": 14,
+            "overbought": 155,
+            "oversold": -196
+          },
+          "weight": 1.3,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "AND",
+      "exit_logic": "OR",
+      "age": 2,
+      "generation": 1,
+      "energy": 198,
+      "reproduction_count": 0,
+      "win_count": 3,
+      "loss_count": 0,
+      "total_profit": 103.36759760735573,
+      "total_loss": 0.0,
+      "max_drawdown": 0.08962922386415315,
+      "birth_date": "2026-07-21T09:37:14.127812",
+      "parents": [],
+      "children": [
+        "cross_746df3_80b572_6528",
+        "mut_80b57289_3881"
+      ],
+      "is_alive": true,
+      "fitness": 0.8840741552271694
+    },
+    {
+      "strategy_id": "42252458086c",
+      "name": "Contrarian_Dip_626",
+      "genes": [
+        {
+          "indicator": "rsi",
+          "params": {
+            "period": 9,
+            "overbought": 77,
+            "oversold": 21
+          },
+          "weight": 1.36,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "williams_r",
+          "params": {
+            "period": 20,
+            "overbought": -15,
+            "oversold": -82
+          },
+          "weight": 0.83,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "obv",
+          "params": {
+            "trend_period": 10
+          },
+          "weight": 0.86,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "AND",
+      "exit_logic": "OR",
+      "age": 2,
+      "generation": 1,
+      "energy": 198,
+      "reproduction_count": 0,
+      "win_count": 8,
+      "loss_count": 0,
+      "total_profit": 175.91601029590075,
+      "total_loss": 0.0,
+      "max_drawdown": 0.09099599104810853,
+      "birth_date": "2026-07-21T09:37:14.128346",
+      "parents": [],
+      "children": [
+        "cross_0580b1_422524_5206",
+        "cross_422524_0580b1_6963"
+      ],
+      "is_alive": true,
+      "fitness": 0.8838008017903782
+    },
+    {
+      "strategy_id": "4e290f179d4f",
+      "name": "Contrarian_Dip_382",
+      "genes": [
+        {
+          "indicator": "rsi",
+          "params": {
+            "period": 12,
+            "overbought": 79,
+            "oversold": 29
+          },
+          "weight": 1.19,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "williams_r",
+          "params": {
+            "period": 19,
+            "overbought": -18,
+            "oversold": -84
+          },
+          "weight": 1.25,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "obv",
+          "params": {
+            "trend_period": 18
+          },
+          "weight": 0.88,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "AND",
+      "exit_logic": "OR",
+      "age": 1,
+      "generation": 2,
+      "energy": 199,
+      "reproduction_count": 0,
+      "win_count": 4,
+      "loss_count": 0,
+      "total_profit": 199.96709118257957,
+      "total_loss": 0.0,
+      "max_drawdown": 0.09285761738826522,
+      "birth_date": "2026-07-21T09:37:14.133565",
+      "parents": [],
+      "children": [],
+      "is_alive": true,
+      "fitness": 0.8824284765223469
+    },
+    {
+      "strategy_id": "0580b1f54a7b",
+      "name": "Volatility_Breakout_843",
+      "genes": [
+        {
+          "indicator": "bollinger",
+          "params": {
+            "period": 24,
+            "std": 2.04
+          },
+          "weight": 1.1,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "atr",
+          "params": {
+            "period": 20,
+            "multiplier": 2.8
+          },
+          "weight": 0.86,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "volume_sma",
+          "params": {
+            "period": 24,
+            "threshold": 1.27
+          },
+          "weight": 1.47,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "AND",
+      "exit_logic": "OR",
+      "age": 1,
+      "generation": 2,
+      "energy": 199,
+      "reproduction_count": 0,
+      "win_count": 5,
+      "loss_count": 2,
+      "total_profit": 284.6690027416796,
+      "total_loss": -34.34699442760557,
+      "max_drawdown": 0.08080894917002489,
+      "birth_date": "2026-07-21T09:37:14.133098",
+      "parents": [],
+      "children": [
+        "cross_0580b1_422524_5206",
+        "cross_422524_0580b1_6963",
+        "mut_0580b1f5_5390"
+      ],
+      "is_alive": true,
+      "fitness": 0.8134096387374236
+    },
+    {
+      "strategy_id": "cross_0580b1_422524_5206",
+      "name": "Cross_Volatility_Contrarian",
+      "genes": [
+        {
+          "indicator": "obv",
+          "params": {
+            "trend_period": 10
+          },
+          "weight": 0.86,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "williams_r",
+          "params": {
+            "period": 20,
+            "overbought": -15,
+            "oversold": -82
+          },
+          "weight": 0.83,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "bollinger",
+          "params": {
+            "period": 24,
+            "std": 2.04
+          },
+          "weight": 1.1,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "AND",
+      "exit_logic": "OR",
+      "age": 0,
+      "generation": 3,
+      "energy": 200,
+      "reproduction_count": 0,
+      "win_count": 6,
+      "loss_count": 0,
+      "total_profit": 205.42595982632923,
+      "total_loss": 0.0,
+      "max_drawdown": 0.0954789997402531,
+      "birth_date": "2026-07-21T09:37:14.134565",
+      "parents": [
+        "0580b1f54a7b",
+        "42252458086c"
+      ],
+      "children": [],
+      "is_alive": true,
+      "fitness": 0.8809042000519494
+    },
+    {
+      "strategy_id": "cross_422524_0580b1_6963",
+      "name": "Cross_Contrarian_Volatility",
+      "genes": [
+        {
+          "indicator": "williams_r",
+          "params": {
+            "period": 20,
+            "overbought": -15,
+            "oversold": -82
+          },
+          "weight": 0.83,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "obv",
+          "params": {
+            "trend_period": 10
+          },
+          "weight": 0.86,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "atr",
+          "params": {
+            "period": 20,
+            "multiplier": 2.8
+          },
+          "weight": 0.86,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "bollinger",
+          "params": {
+            "period": 24,
+            "std": 2.04
+          },
+          "weight": 1.1,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "rsi",
+          "params": {
+            "period": 9,
+            "overbought": 77,
+            "oversold": 21
+          },
+          "weight": 1.36,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "AND",
+      "exit_logic": "OR",
+      "age": 0,
+      "generation": 3,
+      "energy": 153.53532200435558,
+      "reproduction_count": 0,
+      "win_count": 2,
+      "loss_count": 2,
+      "total_profit": 67.52558648780774,
+      "total_loss": -40.75792548562994,
+      "max_drawdown": 0.09131113402997822,
+      "birth_date": "2026-07-21T09:37:14.134614",
+      "parents": [
+        "42252458086c",
+        "0580b1f54a7b"
+      ],
+      "children": [],
+      "is_alive": true,
+      "fitness": 0.4983353773255815
+    },
+    {
+      "strategy_id": "mut_80b57289_3881",
+      "name": "Mutated_Mean_Reversion_",
+      "genes": [
+        {
+          "indicator": "rsi",
+          "params": {
+            "period": 14,
+            "overbought": 89,
+            "oversold": 21
+          },
+          "weight": 0.86,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "bollinger",
+          "params": {
+            "period": 14,
+            "std": 1.76
+          },
+          "weight": 0.9,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "cci",
+          "params": {
+            "period": 14,
+            "overbought": 155,
+            "oversold": -196
+          },
+          "weight": 1.3,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "AND",
+      "exit_logic": "OR",
+      "age": 0,
+      "generation": 2,
+      "energy": 147.60610642236236,
+      "reproduction_count": 0,
+      "win_count": 4,
+      "loss_count": 3,
+      "total_profit": 128.4968083663663,
+      "total_loss": -51.96892897397218,
+      "max_drawdown": 0.08552238559521519,
+      "birth_date": "2026-07-21T09:37:14.134640",
+      "parents": [
+        "80b57289feb3"
+      ],
+      "children": [],
+      "is_alive": true,
+      "fitness": 0.6848559143456402
+    },
+    {
+      "strategy_id": "mut_0580b1f5_5390",
+      "name": "Mutated_Volatility_Brea",
+      "genes": [
+        {
+          "indicator": "bollinger",
+          "params": {
+            "period": 24,
+            "std": 2.04
+          },
+          "weight": 1.1,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "atr",
+          "params": {
+            "period": 20,
+            "multiplier": 2.8
+          },
+          "weight": 0.86,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "volume_sma",
+          "params": {
+            "period": 24,
+            "threshold": 1.27
+          },
+          "weight": 1.47,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "rsi",
+          "params": {
+            "period": 24
+          },
+          "weight": 0.83,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "AND",
+      "exit_logic": "OR",
+      "age": 0,
+      "generation": 3,
+      "energy": 200,
+      "reproduction_count": 0,
+      "win_count": 4,
+      "loss_count": 2,
+      "total_profit": 135.1530864195256,
+      "total_loss": -29.047771523006677,
+      "max_drawdown": 0.08270540487229079,
+      "birth_date": "2026-07-21T09:37:14.134665",
+      "parents": [
+        "0580b1f54a7b"
+      ],
+      "children": [],
+      "is_alive": true,
+      "fitness": 0.8001255856922085
+    },
+    {
+      "strategy_id": "64a25db8da41",
+      "name": "Hybrid_Signal_947",
+      "genes": [
+        {
+          "indicator": "ema",
+          "params": {
+            "period": 20
+          },
+          "weight": 1.09,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "rsi",
+          "params": {
+            "period": 20,
+            "overbought": 73,
+            "oversold": 29
+          },
+          "weight": 1.1,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "macd",
+          "params": {
+            "fast": 13,
+            "slow": 25,
+            "signal": 9
+          },
+          "weight": 0.88,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "volume_sma",
+          "params": {
+            "period": 14,
+            "threshold": 2.42
+          },
+          "weight": 1.12,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "MAJORITY",
+      "exit_logic": "MAJORITY",
+      "age": 0,
+      "generation": 3,
+      "energy": 200,
+      "reproduction_count": 0,
+      "win_count": 4,
+      "loss_count": 0,
+      "total_profit": 223.18133708210684,
+      "total_loss": 0.0,
+      "max_drawdown": 0.07674052946521374,
+      "birth_date": "2026-07-21T09:37:14.134877",
+      "parents": [],
+      "children": [],
+      "is_alive": true,
+      "fitness": 0.8846518941069572
+    },
+    {
+      "strategy_id": "2c18da571967",
+      "name": "Momentum_Burst_779",
+      "genes": [
+        {
+          "indicator": "macd",
+          "params": {
+            "fast": 8,
+            "slow": 20,
+            "signal": 9
+          },
+          "weight": 1.06,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "volume_sma",
+          "params": {
+            "period": 28,
+            "threshold": 2.33
+          },
+          "weight": 0.96,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "stochastic",
+          "params": {
+            "k_period": 19,
+            "d_period": 5
+          },
+          "weight": 1.39,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "MAJORITY",
+      "exit_logic": "AND",
+      "age": 0,
+      "generation": 3,
+      "energy": 188.09870703783116,
+      "reproduction_count": 0,
+      "win_count": 5,
+      "loss_count": 1,
+      "total_profit": 280.23527697105885,
+      "total_loss": -5.950646481084426,
+      "max_drawdown": 0.07876377767484047,
+      "birth_date": "2026-07-21T09:37:14.135181",
+      "parents": [],
+      "children": [],
+      "is_alive": true,
+      "fitness": 0.8425805777983654
+    },
+    {
+      "strategy_id": "61a53e2657eb",
+      "name": "Volatility_Breakout_121",
+      "genes": [
+        {
+          "indicator": "bollinger",
+          "params": {
+            "period": 22,
+            "std": 1.6
+          },
+          "weight": 0.99,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "atr",
+          "params": {
+            "period": 11,
+            "multiplier": 2.11
+          },
+          "weight": 1.46,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "volume_sma",
+          "params": {
+            "period": 29,
+            "threshold": 2.38
+          },
+          "weight": 0.84,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "AND",
+      "exit_logic": "OR",
+      "age": 0,
+      "generation": 3,
+      "energy": 186.83046998417313,
+      "reproduction_count": 0,
+      "win_count": 3,
+      "loss_count": 2,
+      "total_profit": 99.20998804071404,
+      "total_loss": -25.309191989897347,
+      "max_drawdown": 0.06688996076383134,
+      "birth_date": "2026-07-21T09:37:14.135400",
+      "parents": [],
+      "children": [],
+      "is_alive": true,
+      "fitness": 0.7344235999488672
+    },
+    {
+      "strategy_id": "5e34b3c709f5",
+      "name": "Mean_Reversion_584",
+      "genes": [
+        {
+          "indicator": "rsi",
+          "params": {
+            "period": 15,
+            "overbought": 77,
+            "oversold": 24
+          },
+          "weight": 1.23,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "bollinger",
+          "params": {
+            "period": 14,
+            "std": 2.0
+          },
+          "weight": 1.06,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "cci",
+          "params": {
+            "period": 22,
+            "overbought": 108,
+            "oversold": -168
+          },
+          "weight": 1.47,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "AND",
+      "exit_logic": "OR",
+      "age": 0,
+      "generation": 3,
+      "energy": 200,
+      "reproduction_count": 0,
+      "win_count": 2,
+      "loss_count": 1,
+      "total_profit": 89.72259477187802,
+      "total_loss": -22.536979418020813,
+      "max_drawdown": 0.09042770437352204,
+      "birth_date": "2026-07-21T09:37:14.135582",
+      "parents": [],
+      "children": [],
+      "is_alive": true,
+      "fitness": 0.7329523564996766
+    },
+    {
+      "strategy_id": "dfc5e0253e62",
+      "name": "Hybrid_Signal_659",
+      "genes": [
+        {
+          "indicator": "ema",
+          "params": {
+            "period": 7
+          },
+          "weight": 0.87,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "rsi",
+          "params": {
+            "period": 16,
+            "overbought": 79,
+            "oversold": 23
+          },
+          "weight": 1.02,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "macd",
+          "params": {
+            "fast": 12,
+            "slow": 30,
+            "signal": 10
+          },
+          "weight": 0.99,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "volume_sma",
+          "params": {
+            "period": 27,
+            "threshold": 2.27
+          },
+          "weight": 0.91,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "MAJORITY",
+      "exit_logic": "MAJORITY",
+      "age": 0,
+      "generation": 3,
+      "energy": 200,
+      "reproduction_count": 0,
+      "win_count": 3,
+      "loss_count": 3,
+      "total_profit": 153.70914724301943,
+      "total_loss": -53.171852773980305,
+      "max_drawdown": 0.0942402170226497,
+      "birth_date": "2026-07-21T09:37:14.135764",
+      "parents": [],
+      "children": [],
+      "is_alive": true,
+      "fitness": 0.7470518864518374
+    },
+    {
+      "strategy_id": "bee545925ea1",
+      "name": "Smart_Money_703",
+      "genes": [
+        {
+          "indicator": "volume_sma",
+          "params": {
+            "period": 13,
+            "threshold": 1.52
+          },
+          "weight": 1.32,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "obv",
+          "params": {
+            "trend_period": 17
+          },
+          "weight": 1.01,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "adx",
+          "params": {
+            "period": 18,
+            "threshold": 22
+          },
+          "weight": 1.45,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "ema",
+          "params": {
+            "period": 13
+          },
+          "weight": 1.09,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "MAJORITY",
+      "exit_logic": "AND",
+      "age": 0,
+      "generation": 3,
+      "energy": 200,
+      "reproduction_count": 0,
+      "win_count": 3,
+      "loss_count": 0,
+      "total_profit": 133.2062504832659,
+      "total_loss": 0.0,
+      "max_drawdown": 0.09786368227610816,
+      "birth_date": "2026-07-21T09:37:14.135916",
+      "parents": [],
+      "children": [],
+      "is_alive": true,
+      "fitness": 0.8804272635447783
+    },
+    {
+      "strategy_id": "12dce9e0e722",
+      "name": "Contrarian_Dip_497",
+      "genes": [
+        {
+          "indicator": "rsi",
+          "params": {
+            "period": 17,
+            "overbought": 85,
+            "oversold": 18
+          },
+          "weight": 1.33,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "williams_r",
+          "params": {
+            "period": 20,
+            "overbought": -14,
+            "oversold": -82
+          },
+          "weight": 1.27,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "obv",
+          "params": {
+            "trend_period": 24
+          },
+          "weight": 1.23,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "AND",
+      "exit_logic": "OR",
+      "age": 0,
+      "generation": 3,
+      "energy": 185.04648059081768,
+      "reproduction_count": 0,
+      "win_count": 4,
+      "loss_count": 5,
+      "total_profit": 153.6172216552227,
+      "total_loss": -71.48981369561294,
+      "max_drawdown": 0.09562314650409232,
+      "birth_date": "2026-07-21T09:37:14.136155",
+      "parents": [],
+      "children": [],
+      "is_alive": true,
+      "fitness": 0.635307859469913
+    }
+  ],
+  "extinct": [
+    {
+      "strategy_id": "55eda1277bd7",
+      "name": "Mean_Reversion_190",
+      "genes": [
+        {
+          "indicator": "rsi",
+          "params": {
+            "period": 11,
+            "overbought": 73,
+            "oversold": 33
+          },
+          "weight": 0.92,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "bollinger",
+          "params": {
+            "period": 16,
+            "std": 2.23
+          },
+          "weight": 1.32,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "cci",
+          "params": {
+            "period": 17,
+            "overbought": 129,
+            "oversold": -149
+          },
+          "weight": 0.8,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "AND",
+      "exit_logic": "OR",
+      "age": 1,
+      "generation": 0,
+      "energy": 199,
+      "reproduction_count": 0,
+      "win_count": 10,
+      "loss_count": 3,
+      "total_profit": 435.78563074483026,
+      "total_loss": -88.42720262692168,
+      "max_drawdown": 0.13887318800190762,
+      "birth_date": "2026-07-21T09:37:14.125253",
+      "parents": [],
+      "children": [],
+      "is_alive": false,
+      "fitness": 0.8155330547073107
+    },
+    {
+      "strategy_id": "f2374528cb21",
+      "name": "Contrarian_Dip_792",
+      "genes": [
+        {
+          "indicator": "rsi",
+          "params": {
+            "period": 10,
+            "overbought": 75,
+            "oversold": 22
+          },
+          "weight": 1.15,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "williams_r",
+          "params": {
+            "period": 15,
+            "overbought": -17,
+            "oversold": -87
+          },
+          "weight": 1.35,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "obv",
+          "params": {
+            "trend_period": 17
+          },
+          "weight": 1.26,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "AND",
+      "exit_logic": "OR",
+      "age": 1,
+      "generation": 0,
+      "energy": 32.16595468681611,
+      "reproduction_count": 0,
+      "win_count": 12,
+      "loss_count": 4,
+      "total_profit": 508.5107481978096,
+      "total_loss": -135.2695879621355,
+      "max_drawdown": 0.12418560009704137,
+      "birth_date": "2026-07-21T09:37:14.125277",
+      "parents": [],
+      "children": [],
+      "is_alive": false,
+      "fitness": 0.8136628799805917
+    },
+    {
+      "strategy_id": "6a5e410467f4",
+      "name": "Volatility_Breakout_568",
+      "genes": [
+        {
+          "indicator": "bollinger",
+          "params": {
+            "period": 20,
+            "std": 2.35
+          },
+          "weight": 1.32,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "atr",
+          "params": {
+            "period": 20,
+            "multiplier": 1.61
+          },
+          "weight": 1.24,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "volume_sma",
+          "params": {
+            "period": 27,
+            "threshold": 2.14
+          },
+          "weight": 0.98,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "AND",
+      "exit_logic": "OR",
+      "age": 1,
+      "generation": 0,
+      "energy": 199,
+      "reproduction_count": 0,
+      "win_count": 12,
+      "loss_count": 4,
+      "total_profit": 614.3014953765205,
+      "total_loss": -88.01047250374425,
+      "max_drawdown": 0.14051810814155066,
+      "birth_date": "2026-07-21T09:37:14.125287",
+      "parents": [],
+      "children": [],
+      "is_alive": false,
+      "fitness": 0.8103963783716899
+    },
+    {
+      "strategy_id": "46053e661e86",
+      "name": "Smart_Money_892",
+      "genes": [
+        {
+          "indicator": "volume_sma",
+          "params": {
+            "period": 14,
+            "threshold": 2.09
+          },
+          "weight": 1.0,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "obv",
+          "params": {
+            "trend_period": 30
+          },
+          "weight": 0.99,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "adx",
+          "params": {
+            "period": 14,
+            "threshold": 28
+          },
+          "weight": 1.06,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "ema",
+          "params": {
+            "period": 49
+          },
+          "weight": 0.89,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "MAJORITY",
+      "exit_logic": "AND",
+      "age": 1,
+      "generation": 0,
+      "energy": 199,
+      "reproduction_count": 0,
+      "win_count": 7,
+      "loss_count": 3,
+      "total_profit": 415.22294638693046,
+      "total_loss": -51.83814851714517,
+      "max_drawdown": 0.12107735944188469,
+      "birth_date": "2026-07-21T09:37:14.125291",
+      "parents": [],
+      "children": [],
+      "is_alive": false,
+      "fitness": 0.801784528111623
+    },
+    {
+      "strategy_id": "40c650f13e02",
+      "name": "Smart_Money_414",
+      "genes": [
+        {
+          "indicator": "volume_sma",
+          "params": {
+            "period": 23,
+            "threshold": 1.73
+          },
+          "weight": 0.87,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "obv",
+          "params": {
+            "trend_period": 21
+          },
+          "weight": 1.05,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "adx",
+          "params": {
+            "period": 19,
+            "threshold": 25
+          },
+          "weight": 1.39,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "ema",
+          "params": {
+            "period": 42
+          },
+          "weight": 1.38,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "MAJORITY",
+      "exit_logic": "AND",
+      "age": 1,
+      "generation": 0,
+      "energy": 199,
+      "reproduction_count": 0,
+      "win_count": 9,
+      "loss_count": 4,
+      "total_profit": 342.28141383328307,
+      "total_loss": -45.63045215554512,
+      "max_drawdown": 0.14494240233780997,
+      "birth_date": "2026-07-21T09:37:14.125260",
+      "parents": [],
+      "children": [],
+      "is_alive": false,
+      "fitness": 0.7950884426093611
+    },
+    {
+      "strategy_id": "452736893795",
+      "name": "Trend_Follower_788",
+      "genes": [
+        {
+          "indicator": "ema",
+          "params": {
+            "period": 37
+          },
+          "weight": 1.33,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "adx",
+          "params": {
+            "period": 18,
+            "threshold": 20
+          },
+          "weight": 1.1,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "volume_sma",
+          "params": {
+            "period": 11,
+            "threshold": 1.91
+          },
+          "weight": 1.28,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "AND",
+      "exit_logic": "OR",
+      "age": 1,
+      "generation": 0,
+      "energy": 199,
+      "reproduction_count": 0,
+      "win_count": 7,
+      "loss_count": 4,
+      "total_profit": 313.81153416712147,
+      "total_loss": -81.16940271027838,
+      "max_drawdown": 0.1459141984580488,
+      "birth_date": "2026-07-21T09:37:14.125299",
+      "parents": [],
+      "children": [],
+      "is_alive": false,
+      "fitness": 0.7809080693992994
+    },
+    {
+      "strategy_id": "de0276cd13df",
+      "name": "Volatility_Breakout_773",
+      "genes": [
+        {
+          "indicator": "bollinger",
+          "params": {
+            "period": 19,
+            "std": 2.92
+          },
+          "weight": 0.98,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "atr",
+          "params": {
+            "period": 20,
+            "multiplier": 1.52
+          },
+          "weight": 1.48,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "volume_sma",
+          "params": {
+            "period": 14,
+            "threshold": 2.34
+          },
+          "weight": 1.1,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "AND",
+      "exit_logic": "OR",
+      "age": 1,
+      "generation": 0,
+      "energy": 112.85811156690491,
+      "reproduction_count": 0,
+      "win_count": 3,
+      "loss_count": 2,
+      "total_profit": 189.44773109922852,
+      "total_loss": -50.59099277587981,
+      "max_drawdown": 0.12848123651188936,
+      "birth_date": "2026-07-21T09:37:14.125272",
+      "parents": [],
+      "children": [],
+      "is_alive": false,
+      "fitness": 0.7753037526976222
+    },
+    {
+      "strategy_id": "6d7385ee1aca",
+      "name": "Volatility_Breakout_251",
+      "genes": [
+        {
+          "indicator": "bollinger",
+          "params": {
+            "period": 25,
+            "std": 2.14
+          },
+          "weight": 1.29,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "atr",
+          "params": {
+            "period": 20,
+            "multiplier": 2.29
+          },
+          "weight": 1.41,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "volume_sma",
+          "params": {
+            "period": 30,
+            "threshold": 2.44
+          },
+          "weight": 1.0,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "AND",
+      "exit_logic": "OR",
+      "age": 1,
+      "generation": 0,
+      "energy": 199,
+      "reproduction_count": 0,
+      "win_count": 11,
+      "loss_count": 7,
+      "total_profit": 623.343090833857,
+      "total_loss": -222.40072552346652,
+      "max_drawdown": 0.1370483544841209,
+      "birth_date": "2026-07-21T09:37:14.125264",
+      "parents": [],
+      "children": [],
+      "is_alive": false,
+      "fitness": 0.7599341505493099
+    },
+    {
+      "strategy_id": "0da97ab12d3e",
+      "name": "Contrarian_Dip_282",
+      "genes": [
+        {
+          "indicator": "rsi",
+          "params": {
+            "period": 12,
+            "overbought": 73,
+            "oversold": 24
+          },
+          "weight": 1.07,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "williams_r",
+          "params": {
+            "period": 12,
+            "overbought": -17,
+            "oversold": -86
+          },
+          "weight": 1.36,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "obv",
+          "params": {
+            "trend_period": 30
+          },
+          "weight": 0.97,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "AND",
+      "exit_logic": "OR",
+      "age": 1,
+      "generation": 0,
+      "energy": 119.40654742697875,
+      "reproduction_count": 0,
+      "win_count": 6,
+      "loss_count": 5,
+      "total_profit": 280.54569779519136,
+      "total_loss": -92.87867015342775,
+      "max_drawdown": 0.14402522763944445,
+      "birth_date": "2026-07-21T09:37:14.125281",
+      "parents": [],
+      "children": [],
+      "is_alive": false,
+      "fitness": 0.7585585908357475
+    },
+    {
+      "strategy_id": "f4bbdb1bb72c",
+      "name": "Momentum_Burst_566",
+      "genes": [
+        {
+          "indicator": "macd",
+          "params": {
+            "fast": 10,
+            "slow": 29,
+            "signal": 9
+          },
+          "weight": 1.2,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "volume_sma",
+          "params": {
+            "period": 12,
+            "threshold": 1.4
+          },
+          "weight": 0.95,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "stochastic",
+          "params": {
+            "k_period": 14,
+            "d_period": 7
+          },
+          "weight": 1.28,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "MAJORITY",
+      "exit_logic": "AND",
+      "age": 1,
+      "generation": 0,
+      "energy": 183.84464172096116,
+      "reproduction_count": 0,
+      "win_count": 7,
+      "loss_count": 5,
+      "total_profit": 341.5952657299551,
+      "total_loss": -167.51496362370995,
+      "max_drawdown": 0.12875242350795285,
+      "birth_date": "2026-07-21T09:37:14.125302",
+      "parents": [],
+      "children": [],
+      "is_alive": false,
+      "fitness": 0.6910155610794911
+    },
+    {
+      "strategy_id": "4f7147b2f2ed",
+      "name": "Volatility_Breakout_763",
+      "genes": [
+        {
+          "indicator": "bollinger",
+          "params": {
+            "period": 14,
+            "std": 2.72
+          },
+          "weight": 1.15,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "atr",
+          "params": {
+            "period": 13,
+            "multiplier": 1.84
+          },
+          "weight": 0.97,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "volume_sma",
+          "params": {
+            "period": 11,
+            "threshold": 1.96
+          },
+          "weight": 1.11,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "AND",
+      "exit_logic": "OR",
+      "age": 1,
+      "generation": 0,
+      "energy": 88.21044705314426,
+      "reproduction_count": 0,
+      "win_count": 5,
+      "loss_count": 10,
+      "total_profit": 325.8486153456663,
+      "total_loss": -273.02098590098285,
+      "max_drawdown": 0.1447233117713001,
+      "birth_date": "2026-07-21T09:37:14.125268",
+      "parents": [],
+      "children": [],
+      "is_alive": false,
+      "fitness": 0.4605016737088846
+    },
+    {
+      "strategy_id": "e2dd942ea96a",
+      "name": "Trend_Follower_997",
+      "genes": [
+        {
+          "indicator": "ema",
+          "params": {
+            "period": 16
+          },
+          "weight": 1.49,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "adx",
+          "params": {
+            "period": 19,
+            "threshold": 30
+          },
+          "weight": 1.41,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "volume_sma",
+          "params": {
+            "period": 17,
+            "threshold": 1.85
+          },
+          "weight": 0.86,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "AND",
+      "exit_logic": "OR",
+      "age": 2,
+      "generation": 0,
+      "energy": 198,
+      "reproduction_count": 0,
+      "win_count": 12,
+      "loss_count": 1,
+      "total_profit": 715.9478896204762,
+      "total_loss": -12.708626889303396,
+      "max_drawdown": 0.14325563301412594,
+      "birth_date": "2026-07-21T09:37:14.125309",
+      "parents": [],
+      "children": [
+        "cross_e2dd94_3b4fd2_3916",
+        "mut_e2dd942e_3433"
+      ],
+      "is_alive": false,
+      "fitness": 0.8541181041664057
+    },
+    {
+      "strategy_id": "8118f0063640",
+      "name": "Mean_Reversion_175",
+      "genes": [
+        {
+          "indicator": "rsi",
+          "params": {
+            "period": 12,
+            "overbought": 66,
+            "oversold": 23
+          },
+          "weight": 1.06,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "bollinger",
+          "params": {
+            "period": 21,
+            "std": 2.43
+          },
+          "weight": 1.07,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "cci",
+          "params": {
+            "period": 20,
+            "overbought": 120,
+            "oversold": -196
+          },
+          "weight": 0.9,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "AND",
+      "exit_logic": "OR",
+      "age": 1,
+      "generation": 1,
+      "energy": 199,
+      "reproduction_count": 0,
+      "win_count": 6,
+      "loss_count": 1,
+      "total_profit": 307.71528996312117,
+      "total_loss": -14.726304533616027,
+      "max_drawdown": 0.09511912236409116,
+      "birth_date": "2026-07-21T09:37:14.129119",
+      "parents": [],
+      "children": [],
+      "is_alive": false,
+      "fitness": 0.8462618898128962
+    },
+    {
+      "strategy_id": "8e92eee432c2",
+      "name": "Smart_Money_683",
+      "genes": [
+        {
+          "indicator": "volume_sma",
+          "params": {
+            "period": 21,
+            "threshold": 1.87
+          },
+          "weight": 1.12,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "obv",
+          "params": {
+            "trend_period": 29
+          },
+          "weight": 0.91,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "adx",
+          "params": {
+            "period": 16,
+            "threshold": 22
+          },
+          "weight": 0.99,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "ema",
+          "params": {
+            "period": 8
+          },
+          "weight": 1.19,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "MAJORITY",
+      "exit_logic": "AND",
+      "age": 1,
+      "generation": 1,
+      "energy": 199,
+      "reproduction_count": 0,
+      "win_count": 5,
+      "loss_count": 1,
+      "total_profit": 182.6288018179066,
+      "total_loss": -11.002593255532979,
+      "max_drawdown": 0.09648416825147783,
+      "birth_date": "2026-07-21T09:37:14.128643",
+      "parents": [],
+      "children": [],
+      "is_alive": false,
+      "fitness": 0.8400364996830378
+    },
+    {
+      "strategy_id": "a0083eba1c10",
+      "name": "Mean_Reversion_974",
+      "genes": [
+        {
+          "indicator": "rsi",
+          "params": {
+            "period": 9,
+            "overbought": 68,
+            "oversold": 25
+          },
+          "weight": 0.93,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "bollinger",
+          "params": {
+            "period": 23,
+            "std": 2.44
+          },
+          "weight": 0.94,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "cci",
+          "params": {
+            "period": 16,
+            "overbought": 140,
+            "oversold": -106
+          },
+          "weight": 0.92,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "AND",
+      "exit_logic": "OR",
+      "age": 1,
+      "generation": 1,
+      "energy": 199,
+      "reproduction_count": 0,
+      "win_count": 4,
+      "loss_count": 1,
+      "total_profit": 194.54588615747332,
+      "total_loss": -12.725530973878577,
+      "max_drawdown": 0.08291821044005548,
+      "birth_date": "2026-07-21T09:37:14.128911",
+      "parents": [],
+      "children": [],
+      "is_alive": false,
+      "fitness": 0.834416357911989
+    },
+    {
+      "strategy_id": "282402c05fda",
+      "name": "Smart_Money_973",
+      "genes": [
+        {
+          "indicator": "volume_sma",
+          "params": {
+            "period": 21,
+            "threshold": 1.74
+          },
+          "weight": 1.0,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "obv",
+          "params": {
+            "trend_period": 18
+          },
+          "weight": 1.28,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "adx",
+          "params": {
+            "period": 13,
+            "threshold": 27
+          },
+          "weight": 1.07,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "ema",
+          "params": {
+            "period": 7
+          },
+          "weight": 1.23,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "MAJORITY",
+      "exit_logic": "AND",
+      "age": 2,
+      "generation": 0,
+      "energy": 198,
+      "reproduction_count": 0,
+      "win_count": 5,
+      "loss_count": 1,
+      "total_profit": 219.49126625111438,
+      "total_loss": -0.8305324627279091,
+      "max_drawdown": 0.1401267800930192,
+      "birth_date": "2026-07-21T09:37:14.125295",
+      "parents": [],
+      "children": [
+        "cross_282402_3b4fd2_1877"
+      ],
+      "is_alive": false,
+      "fitness": 0.8323079773147296
+    },
+    {
+      "strategy_id": "3b4fd21e329f",
+      "name": "Volatility_Breakout_397",
+      "genes": [
+        {
+          "indicator": "bollinger",
+          "params": {
+            "period": 24,
+            "std": 1.8
+          },
+          "weight": 1.46,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "atr",
+          "params": {
+            "period": 11,
+            "multiplier": 1.62
+          },
+          "weight": 1.01,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "volume_sma",
+          "params": {
+            "period": 27,
+            "threshold": 1.67
+          },
+          "weight": 1.28,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "AND",
+      "exit_logic": "OR",
+      "age": 2,
+      "generation": 0,
+      "energy": 198,
+      "reproduction_count": 0,
+      "win_count": 14,
+      "loss_count": 4,
+      "total_profit": 544.5436490031344,
+      "total_loss": -88.6080121043835,
+      "max_drawdown": 0.1429274160151198,
+      "birth_date": "2026-07-21T09:37:14.125243",
+      "parents": [],
+      "children": [
+        "cross_282402_3b4fd2_1877",
+        "cross_e2dd94_3b4fd2_3916"
+      ],
+      "is_alive": false,
+      "fitness": 0.8178589612414204
+    },
+    {
+      "strategy_id": "mut_e2dd942e_3433",
+      "name": "Mutated_Trend_Follower_",
+      "genes": [
+        {
+          "indicator": "ema",
+          "params": {
+            "period": 16
+          },
+          "weight": 1.49,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "adx",
+          "params": {
+            "period": 19,
+            "threshold": 30
+          },
+          "weight": 1.41,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "volume_sma",
+          "params": {
+            "period": 17,
+            "threshold": 1.85
+          },
+          "weight": 0.86,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "AND",
+      "exit_logic": "OR",
+      "age": 1,
+      "generation": 1,
+      "energy": 175.96695163126316,
+      "reproduction_count": 0,
+      "win_count": 5,
+      "loss_count": 2,
+      "total_profit": 136.6769443286792,
+      "total_loss": -26.43501874687171,
+      "max_drawdown": 0.07998188696925605,
+      "birth_date": "2026-07-21T09:37:14.127318",
+      "parents": [
+        "e2dd942ea96a"
+      ],
+      "children": [],
+      "is_alive": false,
+      "fitness": 0.8135750511775773
+    },
+    {
+      "strategy_id": "2bc5b8399f60",
+      "name": "Smart_Money_565",
+      "genes": [
+        {
+          "indicator": "volume_sma",
+          "params": {
+            "period": 30,
+            "threshold": 1.69
+          },
+          "weight": 0.91,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "obv",
+          "params": {
+            "trend_period": 30
+          },
+          "weight": 0.94,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "adx",
+          "params": {
+            "period": 13,
+            "threshold": 21
+          },
+          "weight": 1.39,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "ema",
+          "params": {
+            "period": 17
+          },
+          "weight": 1.2,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "MAJORITY",
+      "exit_logic": "AND",
+      "age": 1,
+      "generation": 1,
+      "energy": 199,
+      "reproduction_count": 0,
+      "win_count": 4,
+      "loss_count": 2,
+      "total_profit": 182.9429594644286,
+      "total_loss": -44.80530373121887,
+      "max_drawdown": 0.08334645690609976,
+      "birth_date": "2026-07-21T09:37:14.128016",
+      "parents": [],
+      "children": [],
+      "is_alive": false,
+      "fitness": 0.8009973752854468
+    },
+    {
+      "strategy_id": "7a9ffebc17dd",
+      "name": "Momentum_Burst_222",
+      "genes": [
+        {
+          "indicator": "macd",
+          "params": {
+            "fast": 9,
+            "slow": 23,
+            "signal": 9
+          },
+          "weight": 1.44,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "volume_sma",
+          "params": {
+            "period": 20,
+            "threshold": 2.34
+          },
+          "weight": 1.05,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "stochastic",
+          "params": {
+            "k_period": 12,
+            "d_period": 6
+          },
+          "weight": 1.15,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "MAJORITY",
+      "exit_logic": "AND",
+      "age": 1,
+      "generation": 1,
+      "energy": 199,
+      "reproduction_count": 0,
+      "win_count": 5,
+      "loss_count": 3,
+      "total_profit": 184.10568474598418,
+      "total_loss": -32.11130465419123,
+      "max_drawdown": 0.08818491072349904,
+      "birth_date": "2026-07-21T09:37:14.127531",
+      "parents": [],
+      "children": [],
+      "is_alive": false,
+      "fitness": 0.7896130178553001
+    },
+    {
+      "strategy_id": "cross_e2dd94_3b4fd2_3916",
+      "name": "Cross_Trend_Foll_Volatility",
+      "genes": [
+        {
+          "indicator": "volume_sma",
+          "params": {
+            "period": 17,
+            "threshold": 1.85
+          },
+          "weight": 0.86,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "ema",
+          "params": {
+            "period": 16
+          },
+          "weight": 1.49,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "volume_sma",
+          "params": {
+            "period": 27,
+            "threshold": 1.67
+          },
+          "weight": 1.28,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "AND",
+      "exit_logic": "OR",
+      "age": 1,
+      "generation": 1,
+      "energy": 199,
+      "reproduction_count": 0,
+      "win_count": 4,
+      "loss_count": 3,
+      "total_profit": 194.82921214614947,
+      "total_loss": -32.910292352625866,
+      "max_drawdown": 0.06748112209669001,
+      "birth_date": "2026-07-21T09:37:14.127302",
+      "parents": [
+        "e2dd942ea96a",
+        "3b4fd21e329f"
+      ],
+      "children": [],
+      "is_alive": false,
+      "fitness": 0.7803609184378049
+    },
+    {
+      "strategy_id": "2369ae23e393",
+      "name": "Contrarian_Dip_702",
+      "genes": [
+        {
+          "indicator": "rsi",
+          "params": {
+            "period": 7,
+            "overbought": 85,
+            "oversold": 19
+          },
+          "weight": 1.09,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "williams_r",
+          "params": {
+            "period": 13,
+            "overbought": -13,
+            "oversold": -81
+          },
+          "weight": 1.43,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "obv",
+          "params": {
+            "trend_period": 27
+          },
+          "weight": 1.49,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "AND",
+      "exit_logic": "OR",
+      "age": 2,
+      "generation": 0,
+      "energy": 167.09818012820045,
+      "reproduction_count": 0,
+      "win_count": 5,
+      "loss_count": 3,
+      "total_profit": 240.2387933236078,
+      "total_loss": -96.09908765013282,
+      "max_drawdown": 0.12713771982250927,
+      "birth_date": "2026-07-21T09:37:14.125306",
+      "parents": [],
+      "children": [],
+      "is_alive": false,
+      "fitness": 0.7411480492661049
+    },
+    {
+      "strategy_id": "cross_282402_3b4fd2_1877",
+      "name": "Cross_Smart_Mone_Volatility",
+      "genes": [
+        {
+          "indicator": "volume_sma",
+          "params": {
+            "period": 27,
+            "threshold": 1.67
+          },
+          "weight": 1.28,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "ema",
+          "params": {
+            "period": 7
+          },
+          "weight": 1.23,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "bollinger",
+          "params": {
+            "period": 24,
+            "std": 1.8
+          },
+          "weight": 1.46,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "obv",
+          "params": {
+            "trend_period": 18
+          },
+          "weight": 1.28,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "AND",
+      "exit_logic": "OR",
+      "age": 1,
+      "generation": 1,
+      "energy": 90.85716741632442,
+      "reproduction_count": 0,
+      "win_count": 2,
+      "loss_count": 2,
+      "total_profit": 31.354535938468963,
+      "total_loss": -35.42595223030675,
+      "max_drawdown": 0.08206098694003777,
+      "birth_date": "2026-07-21T09:37:14.127276",
+      "parents": [
+        "282402c05fda",
+        "3b4fd21e329f"
+      ],
+      "children": [],
+      "is_alive": false,
+      "fitness": 0.375201011302406
+    },
+    {
+      "strategy_id": "746df3a8879b",
+      "name": "Momentum_Burst_648",
+      "genes": [
+        {
+          "indicator": "macd",
+          "params": {
+            "fast": 15,
+            "slow": 24,
+            "signal": 12
+          },
+          "weight": 0.96,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "volume_sma",
+          "params": {
+            "period": 23,
+            "threshold": 2.37
+          },
+          "weight": 0.99,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "stochastic",
+          "params": {
+            "k_period": 17,
+            "d_period": 5
+          },
+          "weight": 0.85,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "MAJORITY",
+      "exit_logic": "AND",
+      "age": 2,
+      "generation": 1,
+      "energy": 198,
+      "reproduction_count": 0,
+      "win_count": 8,
+      "loss_count": 1,
+      "total_profit": 344.1319209053453,
+      "total_loss": -21.935104383254746,
+      "max_drawdown": 0.06172923595363629,
+      "birth_date": "2026-07-21T09:37:14.128171",
+      "parents": [],
+      "children": [
+        "cross_746df3_80b572_6528"
+      ],
+      "is_alive": false,
+      "fitness": 0.8618763750314951
+    },
+    {
+      "strategy_id": "4a9feb058e2d",
+      "name": "Hybrid_Signal_154",
+      "genes": [
+        {
+          "indicator": "ema",
+          "params": {
+            "period": 43
+          },
+          "weight": 0.9,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "rsi",
+          "params": {
+            "period": 20,
+            "overbought": 75,
+            "oversold": 28
+          },
+          "weight": 1.2,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "macd",
+          "params": {
+            "fast": 15,
+            "slow": 26,
+            "signal": 7
+          },
+          "weight": 1.26,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "volume_sma",
+          "params": {
+            "period": 18,
+            "threshold": 1.82
+          },
+          "weight": 0.84,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "MAJORITY",
+      "exit_logic": "MAJORITY",
+      "age": 1,
+      "generation": 2,
+      "energy": 199,
+      "reproduction_count": 0,
+      "win_count": 8,
+      "loss_count": 1,
+      "total_profit": 289.15409544275906,
+      "total_loss": -15.50386933698264,
+      "max_drawdown": 0.09110235498055691,
+      "birth_date": "2026-07-21T09:37:14.132178",
+      "parents": [],
+      "children": [],
+      "is_alive": false,
+      "fitness": 0.8550017512261109
+    },
+    {
+      "strategy_id": "719468172b00",
+      "name": "Mean_Reversion_143",
+      "genes": [
+        {
+          "indicator": "rsi",
+          "params": {
+            "period": 18,
+            "overbought": 67,
+            "oversold": 18
+          },
+          "weight": 1.4,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "bollinger",
+          "params": {
+            "period": 24,
+            "std": 1.77
+          },
+          "weight": 1.28,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "cci",
+          "params": {
+            "period": 15,
+            "overbought": 104,
+            "oversold": -137
+          },
+          "weight": 1.38,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "AND",
+      "exit_logic": "OR",
+      "age": 1,
+      "generation": 2,
+      "energy": 199,
+      "reproduction_count": 0,
+      "win_count": 6,
+      "loss_count": 1,
+      "total_profit": 289.16555783393625,
+      "total_loss": -17.136920248265586,
+      "max_drawdown": 0.08132691160790705,
+      "birth_date": "2026-07-21T09:37:14.130503",
+      "parents": [],
+      "children": [],
+      "is_alive": false,
+      "fitness": 0.849020331964133
+    },
+    {
+      "strategy_id": "cross_746df3_80b572_6528",
+      "name": "Cross_Momentum_B_Mean_Rever",
+      "genes": [
+        {
+          "indicator": "cci",
+          "params": {
+            "period": 14,
+            "overbought": 155,
+            "oversold": -196
+          },
+          "weight": 1.3,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "stochastic",
+          "params": {
+            "k_period": 17,
+            "d_period": 5
+          },
+          "weight": 0.85,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "bollinger",
+          "params": {
+            "period": 14,
+            "std": 1.76
+          },
+          "weight": 0.9,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "MAJORITY",
+      "exit_logic": "AND",
+      "age": 1,
+      "generation": 2,
+      "energy": 199,
+      "reproduction_count": 0,
+      "win_count": 4,
+      "loss_count": 1,
+      "total_profit": 144.8588423899589,
+      "total_loss": -17.96305014046966,
+      "max_drawdown": 0.082231763567655,
+      "birth_date": "2026-07-21T09:37:14.129946",
+      "parents": [
+        "746df3a8879b",
+        "80b57289feb3"
+      ],
+      "children": [],
+      "is_alive": false,
+      "fitness": 0.8345536472864691
+    },
+    {
+      "strategy_id": "d8ae10138bd5",
+      "name": "Smart_Money_911",
+      "genes": [
+        {
+          "indicator": "volume_sma",
+          "params": {
+            "period": 24,
+            "threshold": 2.48
+          },
+          "weight": 1.48,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "obv",
+          "params": {
+            "trend_period": 13
+          },
+          "weight": 1.39,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "adx",
+          "params": {
+            "period": 10,
+            "threshold": 22
+          },
+          "weight": 1.22,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "ema",
+          "params": {
+            "period": 5
+          },
+          "weight": 0.97,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "MAJORITY",
+      "exit_logic": "AND",
+      "age": 1,
+      "generation": 2,
+      "energy": 199,
+      "reproduction_count": 0,
+      "win_count": 7,
+      "loss_count": 2,
+      "total_profit": 289.03197477440057,
+      "total_loss": -18.430460987242785,
+      "max_drawdown": 0.08924863834198182,
+      "birth_date": "2026-07-21T09:37:14.131472",
+      "parents": [],
+      "children": [],
+      "is_alive": false,
+      "fitness": 0.827594716776048
+    },
+    {
+      "strategy_id": "74f9dec38e3e",
+      "name": "Momentum_Burst_720",
+      "genes": [
+        {
+          "indicator": "macd",
+          "params": {
+            "fast": 9,
+            "slow": 23,
+            "signal": 10
+          },
+          "weight": 1.21,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "volume_sma",
+          "params": {
+            "period": 30,
+            "threshold": 1.21
+          },
+          "weight": 0.95,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "stochastic",
+          "params": {
+            "k_period": 16,
+            "d_period": 4
+          },
+          "weight": 1.34,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "MAJORITY",
+      "exit_logic": "AND",
+      "age": 1,
+      "generation": 2,
+      "energy": 199,
+      "reproduction_count": 0,
+      "win_count": 5,
+      "loss_count": 1,
+      "total_profit": 109.40302294341168,
+      "total_loss": -19.19339590206944,
+      "max_drawdown": 0.09148344540025885,
+      "birth_date": "2026-07-21T09:37:14.131172",
+      "parents": [],
+      "children": [],
+      "is_alive": false,
+      "fitness": 0.821455898335966
+    },
+    {
+      "strategy_id": "7fd1cf2cdf5b",
+      "name": "Mean_Reversion_929",
+      "genes": [
+        {
+          "indicator": "rsi",
+          "params": {
+            "period": 18,
+            "overbought": 72,
+            "oversold": 24
+          },
+          "weight": 0.92,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "bollinger",
+          "params": {
+            "period": 19,
+            "std": 1.68
+          },
+          "weight": 0.83,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "cci",
+          "params": {
+            "period": 14,
+            "overbought": 148,
+            "oversold": -127
+          },
+          "weight": 1.02,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "AND",
+      "exit_logic": "OR",
+      "age": 1,
+      "generation": 2,
+      "energy": 199,
+      "reproduction_count": 0,
+      "win_count": 7,
+      "loss_count": 3,
+      "total_profit": 193.6707781421437,
+      "total_loss": -37.69779710726976,
+      "max_drawdown": 0.09324643849684677,
+      "birth_date": "2026-07-21T09:37:14.133322",
+      "parents": [],
+      "children": [],
+      "is_alive": false,
+      "fitness": 0.8073507123006306
+    },
+    {
+      "strategy_id": "dbde83b544e9",
+      "name": "Mean_Reversion_478",
+      "genes": [
+        {
+          "indicator": "rsi",
+          "params": {
+            "period": 8,
+            "overbought": 76,
+            "oversold": 18
+          },
+          "weight": 0.94,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "bollinger",
+          "params": {
+            "period": 20,
+            "std": 2.14
+          },
+          "weight": 1.22,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "cci",
+          "params": {
+            "period": 22,
+            "overbought": 200,
+            "oversold": -108
+          },
+          "weight": 1.48,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "AND",
+      "exit_logic": "OR",
+      "age": 1,
+      "generation": 2,
+      "energy": 159.02294235674535,
+      "reproduction_count": 0,
+      "win_count": 3,
+      "loss_count": 1,
+      "total_profit": 108.69852343997142,
+      "total_loss": -19.988528821627327,
+      "max_drawdown": 0.056528347344159714,
+      "birth_date": "2026-07-21T09:37:14.132635",
+      "parents": [],
+      "children": [],
+      "is_alive": false,
+      "fitness": 0.8046143197678562
+    },
+    {
+      "strategy_id": "33290bb0ff1a",
+      "name": "Trend_Follower_224",
+      "genes": [
+        {
+          "indicator": "ema",
+          "params": {
+            "period": 5
+          },
+          "weight": 0.97,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "adx",
+          "params": {
+            "period": 15,
+            "threshold": 20
+          },
+          "weight": 1.21,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "volume_sma",
+          "params": {
+            "period": 17,
+            "threshold": 1.51
+          },
+          "weight": 1.14,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "AND",
+      "exit_logic": "OR",
+      "age": 1,
+      "generation": 2,
+      "energy": 199,
+      "reproduction_count": 0,
+      "win_count": 4,
+      "loss_count": 1,
+      "total_profit": 68.65239540221383,
+      "total_loss": -2.3694150559344926,
+      "max_drawdown": 0.040419375050943056,
+      "birth_date": "2026-07-21T09:37:14.131738",
+      "parents": [],
+      "children": [],
+      "is_alive": false,
+      "fitness": 0.77548208568237
+    },
+    {
+      "strategy_id": "1f814ce0c6e5",
+      "name": "Mean_Reversion_621",
+      "genes": [
+        {
+          "indicator": "rsi",
+          "params": {
+            "period": 18,
+            "overbought": 80,
+            "oversold": 26
+          },
+          "weight": 1.35,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "bollinger",
+          "params": {
+            "period": 19,
+            "std": 2.77
+          },
+          "weight": 1.27,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "cci",
+          "params": {
+            "period": 20,
+            "overbought": 183,
+            "oversold": -162
+          },
+          "weight": 1.49,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "AND",
+      "exit_logic": "OR",
+      "age": 1,
+      "generation": 2,
+      "energy": 199,
+      "reproduction_count": 0,
+      "win_count": 2,
+      "loss_count": 1,
+      "total_profit": 91.8265732595996,
+      "total_loss": -13.109644420817638,
+      "max_drawdown": 0.09125218953756027,
+      "birth_date": "2026-07-21T09:37:14.130784",
+      "parents": [],
+      "children": [],
+      "is_alive": false,
+      "fitness": 0.7568500864367185
+    },
+    {
+      "strategy_id": "8c909fd68c52",
+      "name": "Volatility_Breakout_982",
+      "genes": [
+        {
+          "indicator": "bollinger",
+          "params": {
+            "period": 21,
+            "std": 2.63
+          },
+          "weight": 1.12,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "atr",
+          "params": {
+            "period": 15,
+            "multiplier": 2.96
+          },
+          "weight": 1.31,
+          "fitness": 0.0
+        },
+        {
+          "indicator": "volume_sma",
+          "params": {
+            "period": 15,
+            "threshold": 2.26
+          },
+          "weight": 1.24,
+          "fitness": 0.0
+        }
+      ],
+      "entry_logic": "AND",
+      "exit_logic": "OR",
+      "age": 1,
+      "generation": 2,
+      "energy": 86.42264600981542,
+      "reproduction_count": 0,
+      "win_count": 5,
+      "loss_count": 5,
+      "total_profit": 206.93810478047243,
+      "total_loss": -56.28867699509229,
+      "max_drawdown": 0.09621814268277683,
+      "birth_date": "2026-07-21T09:37:14.132849",
+      "parents": [],
+      "children": [],
+      "is_alive": false,
+      "fitness": 0.7567563714634445
+    }
+  ],
+  "history": [
+    {
+      "generation": 1,
+      "population_size": 15,
+      "avg_fitness": 0.7669413449359728,
+      "best_fitness": 0.8531181041664057,
+      "extinct_count": 11,
+      "timestamp": "2026-07-21T09:37:14.129127"
+    },
+    {
+      "generation": 2,
+      "population_size": 15,
+      "avg_fitness": 0.7968431030336107,
+      "best_fitness": 0.8830741552271694,
+      "extinct_count": 23,
+      "timestamp": "2026-07-21T09:37:14.133574"
+    },
+    {
+      "generation": 3,
+      "population_size": 15,
+      "avg_fitness": 0.8276179579032373,
+      "best_fitness": 0.8840741552271694,
+      "extinct_count": 34,
+      "timestamp": "2026-07-21T09:37:14.136160"
+    }
+  ]
+}

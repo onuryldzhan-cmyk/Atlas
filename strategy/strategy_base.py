@@ -1,0 +1,705 @@
+"""
+Atlas AI - Strategy Base Class v2.0
+Aşama 2.3: Tüm stratejiler için ortak arayüz, indikatör hesaplama, performans metrikleri.
+
+Özellikler:
+- BaseStrategy abstract class
+- Teknik indikatör kütüphanesi (RSI, EMA, SMA, Bollinger, MACD)
+- Standart TradingSignal çıktısı
+- Backtest arayüzü
+- Performans metrikleri (Win Rate, Sharpe, Max Drawdown)
+"""
+
+import json
+import math
+import logging
+import sys
+from abc import ABC, abstractmethod
+from datetime import datetime
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Tuple, Any
+from enum import Enum
+from pathlib import Path
+
+# Signal Pipeline'dan import — proje root'a göre path ayarla
+PROJECT_ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
+try:
+    from core.signal_pipeline import TradingSignal, SignalRisk, SignalContext, SignalMetadata, SignalFactory
+except ImportError:
+    # Fallback — eğer signal_pipeline yoksa kendi içinde tanımla
+    @dataclass
+    class TradingSignal:
+        signal_id: str = ""
+        timestamp: str = ""
+        symbol: str = ""
+        action: str = "HOLD"
+        confidence: float = 0.0
+        source: str = "unknown"
+        source_version: str = "1.0"
+        entry_price: float = 0.0
+        current_price: float = 0.0
+        risk: Any = None
+        context: Any = None
+        metadata: Any = None
+        status: str = "pending"
+        status_history: List = field(default_factory=list)
+        errors: List = field(default_factory=list)
+        notes: List = field(default_factory=list)
+
+    @dataclass
+    class SignalRisk:
+        stop_loss: float = 0.0
+        take_profit: float = 0.0
+        risk_reward_ratio: float = 0.0
+        position_size_pct: float = 0.01
+        max_slippage_pct: float = 0.5
+        trailing_stop: bool = False
+        trailing_stop_distance: float = 0.0
+
+    @dataclass
+    class SignalContext:
+        trend: str = "neutral"
+        trend_strength: float = 0.0
+        volatility: float = 0.0
+        volume_profile: str = "normal"
+        market_regime: str = "unknown"
+        indicators: Dict = field(default_factory=dict)
+
+    @dataclass
+    class SignalMetadata:
+        timeframe: str = "5m"
+        exchange: str = "binance"
+        market_type: str = "spot"
+        strategy_version: str = "1.0"
+        backtested: bool = False
+        backtest_win_rate: float = 0.0
+        custom: Dict = field(default_factory=dict)
+
+    class SignalFactory:
+        @staticmethod
+        def buy(symbol, confidence, entry, stop, target, source="manual", timeframe="5m"):
+            return TradingSignal(
+                symbol=symbol, action="BUY", confidence=confidence,
+                source=source, entry_price=entry, current_price=entry,
+                risk=SignalRisk(stop_loss=stop, take_profit=target, position_size_pct=0.01),
+                metadata=SignalMetadata(timeframe=timeframe)
+            )
+
+        @staticmethod
+        def sell(symbol, confidence, entry, stop, target, source="manual", timeframe="5m"):
+            return TradingSignal(
+                symbol=symbol, action="SELL", confidence=confidence,
+                source=source, entry_price=entry, current_price=entry,
+                risk=SignalRisk(stop_loss=stop, take_profit=target, position_size_pct=0.01),
+                metadata=SignalMetadata(timeframe=timeframe)
+            )
+
+        @staticmethod
+        def hold(symbol, reason="", source="manual"):
+            return TradingSignal(
+                symbol=symbol, action="HOLD", confidence=1.0,
+                source=source, notes=[reason] if reason else []
+            )
+
+logger = logging.getLogger("AtlasAI.Strategy")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ENUMS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class StrategyType(Enum):
+    """Strateji türleri"""
+    TREND_FOLLOWING = "trend_following"
+    MEAN_REVERSION = "mean_reversion"
+    MOMENTUM = "momentum"
+    BREAKOUT = "breakout"
+    SCALPING = "scalping"
+    AI_BASED = "ai_based"
+    COMPOSITE = "composite"
+
+
+class MarketRegime(Enum):
+    """Piyasa rejimleri"""
+    TRENDING_UP = "trending_up"
+    TRENDING_DOWN = "trending_down"
+    RANGING = "ranging"
+    VOLATILE = "volatile"
+    UNKNOWN = "unknown"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DATA CLASSES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@dataclass
+class IndicatorValues:
+    """Teknik indikatör değerleri"""
+    rsi: float = 50.0
+    ema_20: float = 0.0
+    ema_50: float = 0.0
+    sma_20: float = 0.0
+    sma_50: float = 0.0
+    bb_upper: float = 0.0
+    bb_lower: float = 0.0
+    bb_middle: float = 0.0
+    macd_line: float = 0.0
+    macd_signal: float = 0.0
+    macd_histogram: float = 0.0
+    atr: float = 0.0
+
+    def to_dict(self) -> Dict[str, float]:
+        return {
+            "rsi": self.rsi, "ema_20": self.ema_20, "ema_50": self.ema_50,
+            "sma_20": self.sma_20, "sma_50": self.sma_50,
+            "bb_upper": self.bb_upper, "bb_lower": self.bb_lower, "bb_middle": self.bb_middle,
+            "macd_line": self.macd_line, "macd_signal": self.macd_signal,
+            "macd_histogram": self.macd_histogram, "atr": self.atr
+        }
+
+
+@dataclass
+class BacktestResult:
+    """Backtest sonuçları"""
+    strategy_name: str
+    symbol: str
+    timeframe: str
+    total_trades: int = 0
+    winning_trades: int = 0
+    losing_trades: int = 0
+    win_rate: float = 0.0
+    total_return_pct: float = 0.0
+    avg_return_per_trade: float = 0.0
+    max_drawdown_pct: float = 0.0
+    sharpe_ratio: float = 0.0
+    profit_factor: float = 0.0
+    trades: List[Dict] = field(default_factory=list)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "strategy_name": self.strategy_name,
+            "symbol": self.symbol,
+            "timeframe": self.timeframe,
+            "total_trades": self.total_trades,
+            "winning_trades": self.winning_trades,
+            "losing_trades": self.losing_trades,
+            "win_rate": round(self.win_rate, 2),
+            "total_return_pct": round(self.total_return_pct, 2),
+            "avg_return_per_trade": round(self.avg_return_per_trade, 4),
+            "max_drawdown_pct": round(self.max_drawdown_pct, 2),
+            "sharpe_ratio": round(self.sharpe_ratio, 2),
+            "profit_factor": round(self.profit_factor, 2)
+        }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# INDICATOR LIBRARY
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class Indicators:
+    """
+    Teknik indikatör kütüphanesi.
+    Saf Python — dış bağımlılık yok.
+    """
+
+    @staticmethod
+    def sma(prices: List[float], period: int) -> List[float]:
+        """Simple Moving Average"""
+        if len(prices) < period:
+            return [sum(prices) / len(prices)] * len(prices)
+
+        result = []
+        for i in range(len(prices)):
+            if i < period - 1:
+                result.append(sum(prices[:i+1]) / (i+1))
+            else:
+                result.append(sum(prices[i-period+1:i+1]) / period)
+        return result
+
+    @staticmethod
+    def ema(prices: List[float], period: int) -> List[float]:
+        """Exponential Moving Average"""
+        if len(prices) < 2:
+            return prices.copy()
+
+        multiplier = 2 / (period + 1)
+        result = [prices[0]]
+
+        for i in range(1, len(prices)):
+            ema_val = prices[i] * multiplier + result[i-1] * (1 - multiplier)
+            result.append(ema_val)
+
+        return result
+
+    @staticmethod
+    def rsi(prices: List[float], period: int = 14) -> List[float]:
+        """Relative Strength Index"""
+        if len(prices) < period + 1:
+            return [50.0] * len(prices)
+
+        gains = []
+        losses = []
+
+        for i in range(1, len(prices)):
+            change = prices[i] - prices[i-1]
+            gains.append(max(change, 0))
+            losses.append(max(-change, 0))
+
+        avg_gain = sum(gains[:period]) / period
+        avg_loss = sum(losses[:period]) / period
+
+        rsi_values = [50.0] * period
+
+        for i in range(period, len(gains)):
+            avg_gain = (avg_gain * (period - 1) + gains[i]) / period
+            avg_loss = (avg_loss * (period - 1) + losses[i]) / period
+
+            if avg_loss == 0:
+                rsi_values.append(100.0)
+            else:
+                rs = avg_gain / avg_loss
+                rsi_values.append(100 - (100 / (1 + rs)))
+
+        while len(rsi_values) < len(prices):
+            rsi_values.insert(0, rsi_values[0])
+
+        return rsi_values
+
+    @staticmethod
+    def bollinger_bands(prices: List[float], period: int = 20, std_dev: float = 2.0) -> Tuple[List[float], List[float], List[float]]:
+        """Bollinger Bands — (upper, middle, lower)"""
+        middle = Indicators.sma(prices, period)
+        upper = []
+        lower = []
+
+        for i in range(len(prices)):
+            if i < period - 1:
+                std = 0
+            else:
+                window = prices[i-period+1:i+1]
+                mean = sum(window) / period
+                variance = sum((p - mean) ** 2 for p in window) / period
+                std = math.sqrt(variance)
+
+            upper.append(middle[i] + std_dev * std)
+            lower.append(middle[i] - std_dev * std)
+
+        return upper, middle, lower
+
+    @staticmethod
+    def macd(prices: List[float], fast: int = 12, slow: int = 26, signal: int = 9) -> Tuple[List[float], List[float], List[float]]:
+        """MACD — (macd_line, signal_line, histogram)"""
+        ema_fast = Indicators.ema(prices, fast)
+        ema_slow = Indicators.ema(prices, slow)
+
+        macd_line = [f - s for f, s in zip(ema_fast, ema_slow)]
+        signal_line = Indicators.ema(macd_line, signal)
+        histogram = [m - s for m, s in zip(macd_line, signal_line)]
+
+        return macd_line, signal_line, histogram
+
+    @staticmethod
+    def atr(highs: List[float], lows: List[float], closes: List[float], period: int = 14) -> List[float]:
+        """Average True Range"""
+        if len(closes) < 2:
+            return [0.0] * len(closes)
+
+        tr_values = []
+        for i in range(len(closes)):
+            if i == 0:
+                tr_values.append(highs[i] - lows[i])
+            else:
+                tr1 = highs[i] - lows[i]
+                tr2 = abs(highs[i] - closes[i-1])
+                tr3 = abs(lows[i] - closes[i-1])
+                tr_values.append(max(tr1, tr2, tr3))
+
+        return Indicators.sma(tr_values, period)
+
+    @classmethod
+    def calculate_all(cls, closes: List[float], highs: List[float] = None, lows: List[float] = None) -> IndicatorValues:
+        """Tüm indikatörleri hesapla"""
+        if not closes:
+            return IndicatorValues()
+
+        highs = highs or closes
+        lows = lows or closes
+
+        rsi_vals = cls.rsi(closes)
+        ema_20_vals = cls.ema(closes, 20)
+        ema_50_vals = cls.ema(closes, 50)
+        sma_20_vals = cls.sma(closes, 20)
+        sma_50_vals = cls.sma(closes, 50)
+        bb_up, bb_mid, bb_low = cls.bollinger_bands(closes)
+        macd_line, macd_sig, macd_hist = cls.macd(closes)
+        atr_vals = cls.atr(highs, lows, closes)
+
+        return IndicatorValues(
+            rsi=round(rsi_vals[-1], 2) if rsi_vals else 50.0,
+            ema_20=round(ema_20_vals[-1], 2) if ema_20_vals else 0.0,
+            ema_50=round(ema_50_vals[-1], 2) if ema_50_vals else 0.0,
+            sma_20=round(sma_20_vals[-1], 2) if sma_20_vals else 0.0,
+            sma_50=round(sma_50_vals[-1], 2) if sma_50_vals else 0.0,
+            bb_upper=round(bb_up[-1], 2) if bb_up else 0.0,
+            bb_lower=round(bb_low[-1], 2) if bb_low else 0.0,
+            bb_middle=round(bb_mid[-1], 2) if bb_mid else 0.0,
+            macd_line=round(macd_line[-1], 4) if macd_line else 0.0,
+            macd_signal=round(macd_sig[-1], 4) if macd_sig else 0.0,
+            macd_histogram=round(macd_hist[-1], 4) if macd_hist else 0.0,
+            atr=round(atr_vals[-1], 2) if atr_vals else 0.0
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# BASE STRATEGY
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class BaseStrategy(ABC):
+    """
+    Atlas AI Strateji Temel Sınıfı.
+
+    Tüm stratejiler bu sınıftan türetilmelidir.
+    """
+
+    def __init__(self, name: str, strategy_type: StrategyType, 
+                 timeframe: str = "5m", params: Dict[str, Any] = None):
+        self.name = name
+        self.strategy_type = strategy_type
+        self.timeframe = timeframe
+        self.params = params or {}
+        self.version = "1.0"
+
+        self.stats = {
+            "signals_generated": 0,
+            "trades_taken": 0,
+            "winning_trades": 0,
+            "losing_trades": 0,
+            "total_pnl": 0.0
+        }
+
+        logger.info(f"[{self.name}] Strateji başlatıldı ({strategy_type.value}).")
+
+    @abstractmethod
+    def analyze(self, closes: List[float], highs: List[float] = None, 
+                lows: List[float] = None, volumes: List[float] = None) -> IndicatorValues:
+        """Piyasa verilerini analiz et."""
+        pass
+
+    @abstractmethod
+    def generate_signal(self, indicators: IndicatorValues, current_price: float,
+                       symbol: str = "UNKNOWN") -> Optional[TradingSignal]:
+        """Analiz sonuçlarına göre sinyal üret."""
+        pass
+
+    def detect_regime(self, indicators: IndicatorValues) -> MarketRegime:
+        """Piyasa rejimini tespit et"""
+        if indicators.ema_20 > indicators.ema_50 * 1.01:
+            return MarketRegime.TRENDING_UP
+        elif indicators.ema_20 < indicators.ema_50 * 0.99:
+            return MarketRegime.TRENDING_DOWN
+        elif abs(indicators.bb_upper - indicators.bb_lower) / max(indicators.bb_middle, 0.001) < 0.05:
+            return MarketRegime.RANGING
+        return MarketRegime.UNKNOWN
+
+    def calculate_position_size(self, confidence: float, portfolio_value: float,
+                                risk_per_trade: float = 0.01) -> float:
+        """Pozisyon büyüklüğü hesapla"""
+        return portfolio_value * risk_per_trade * confidence
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Strateji istatistiklerini döndür"""
+        total = self.stats["winning_trades"] + self.stats["losing_trades"]
+        win_rate = (self.stats["winning_trades"] / total * 100) if total > 0 else 0
+
+        return {
+            "name": self.name,
+            "type": self.strategy_type.value,
+            "version": self.version,
+            "timeframe": self.timeframe,
+            "signals_generated": self.stats["signals_generated"],
+            "trades_taken": self.stats["trades_taken"],
+            "win_rate": round(win_rate, 2),
+            "total_pnl": round(self.stats["total_pnl"], 2)
+        }
+
+    def backtest(self, closes: List[float], highs: List[float] = None,
+                 lows: List[float] = None, initial_capital: float = 10000.0) -> BacktestResult:
+        """Basit backtest"""
+        result = BacktestResult(
+            strategy_name=self.name,
+            symbol="BACKTEST",
+            timeframe=self.timeframe
+        )
+
+        capital = initial_capital
+        max_capital = capital
+        max_drawdown = 0.0
+        returns = []
+
+        for i in range(50, len(closes), 5):
+            window = closes[:i+1]
+            h_window = highs[:i+1] if highs else window
+            l_window = lows[:i+1] if lows else window
+
+            indicators = self.analyze(window, h_window, l_window)
+            signal = self.generate_signal(indicators, closes[i])
+
+            if signal and signal.action in ["BUY", "SELL"]:
+                if i + 5 < len(closes):
+                    entry = closes[i]
+                    exit_price = closes[i + 5]
+
+                    if signal.action == "BUY":
+                        pnl = (exit_price - entry) / entry * 100
+                    else:
+                        pnl = (entry - exit_price) / entry * 100
+
+                    trade = {
+                        "entry": entry,
+                        "exit": exit_price,
+                        "pnl_pct": round(pnl, 2),
+                        "action": signal.action,
+                        "confidence": signal.confidence
+                    }
+
+                    result.trades.append(trade)
+                    result.total_trades += 1
+
+                    if pnl > 0:
+                        result.winning_trades += 1
+                    else:
+                        result.losing_trades += 1
+
+                    capital *= (1 + pnl / 100)
+                    returns.append(pnl)
+
+                    if capital > max_capital:
+                        max_capital = capital
+
+                    dd = (max_capital - capital) / max_capital * 100
+                    if dd > max_drawdown:
+                        max_drawdown = dd
+
+        if result.total_trades > 0:
+            result.win_rate = result.winning_trades / result.total_trades * 100
+            result.total_return_pct = (capital - initial_capital) / initial_capital * 100
+            result.avg_return_per_trade = sum(returns) / len(returns) if returns else 0
+            result.max_drawdown_pct = max_drawdown
+
+            if len(returns) > 1:
+                avg_return = sum(returns) / len(returns)
+                variance = sum((r - avg_return) ** 2 for r in returns) / len(returns)
+                std_dev = math.sqrt(variance) if variance > 0 else 0.001
+                result.sharpe_ratio = avg_return / std_dev * math.sqrt(252)
+
+            gross_profit = sum(r for r in returns if r > 0)
+            gross_loss = abs(sum(r for r in returns if r < 0))
+            result.profit_factor = gross_profit / gross_loss if gross_loss > 0 else gross_profit
+
+        return result
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ÖRNEK STRATEJİ: Trend Following
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TrendFollowingStrategy(BaseStrategy):
+    """Trend Following Stratejisi — EMA crossover + RSI"""
+
+    def __init__(self, timeframe: str = "5m"):
+        super().__init__(
+            name="TrendFollower",
+            strategy_type=StrategyType.TREND_FOLLOWING,
+            timeframe=timeframe,
+            params={"ema_fast": 20, "ema_slow": 50, "rsi_period": 14}
+        )
+
+    def analyze(self, closes, highs=None, lows=None, volumes=None):
+        return Indicators.calculate_all(closes, highs, lows)
+
+    def generate_signal(self, indicators, current_price, symbol="UNKNOWN"):
+        self.stats["signals_generated"] += 1
+
+        ema_bullish = indicators.ema_20 > indicators.ema_50 * 1.005
+        ema_bearish = indicators.ema_20 < indicators.ema_50 * 0.995
+        rsi_valid = 30 < indicators.rsi < 70
+
+        confidence = 0.5
+
+        if ema_bullish and indicators.rsi > 50:
+            confidence = min(0.95, 0.6 + (indicators.rsi - 50) / 100)
+            action = "BUY"
+        elif ema_bearish and indicators.rsi < 50:
+            confidence = min(0.95, 0.6 + (50 - indicators.rsi) / 100)
+            action = "SELL"
+        else:
+            return SignalFactory.hold(symbol, "Trend belirsiz", self.name)
+
+        if not rsi_valid:
+            confidence *= 0.8
+
+        atr = indicators.atr if indicators.atr > 0 else current_price * 0.02
+
+        if action == "BUY":
+            stop = current_price - 2 * atr
+            target = current_price + 3 * atr
+        else:
+            stop = current_price + 2 * atr
+            target = current_price - 3 * atr
+
+        return SignalFactory.buy(
+            symbol=symbol,
+            confidence=round(confidence, 2),
+            entry=current_price,
+            stop=round(stop, 2),
+            target=round(target, 2),
+            source=self.name,
+            timeframe=self.timeframe
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ÖRNEK STRATEJİ: Mean Reversion
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class MeanReversionStrategy(BaseStrategy):
+    """Mean Reversion Stratejisi — Bollinger Bands + RSI"""
+
+    def __init__(self, timeframe: str = "5m"):
+        super().__init__(
+            name="MeanReverter",
+            strategy_type=StrategyType.MEAN_REVERSION,
+            timeframe=timeframe,
+            params={"bb_period": 20, "bb_std": 2.0, "rsi_period": 14}
+        )
+
+    def analyze(self, closes, highs=None, lows=None, volumes=None):
+        return Indicators.calculate_all(closes, highs, lows)
+
+    def generate_signal(self, indicators, current_price, symbol="UNKNOWN"):
+        self.stats["signals_generated"] += 1
+
+        if current_price < indicators.bb_lower and indicators.rsi < 35:
+            confidence = min(0.9, 0.6 + (35 - indicators.rsi) / 50)
+            stop = indicators.bb_lower * 0.98
+            target = indicators.bb_middle
+
+            return SignalFactory.buy(
+                symbol=symbol,
+                confidence=round(confidence, 2),
+                entry=current_price,
+                stop=round(stop, 2),
+                target=round(target, 2),
+                source=self.name,
+                timeframe=self.timeframe
+            )
+
+        elif current_price > indicators.bb_upper and indicators.rsi > 65:
+            confidence = min(0.9, 0.6 + (indicators.rsi - 65) / 50)
+            stop = indicators.bb_upper * 1.02
+            target = indicators.bb_middle
+
+            return SignalFactory.sell(
+                symbol=symbol,
+                confidence=round(confidence, 2),
+                entry=current_price,
+                stop=round(stop, 2),
+                target=round(target, 2),
+                source=self.name,
+                timeframe=self.timeframe
+            )
+
+        return SignalFactory.hold(symbol, "Mean reversion koşulu yok", self.name)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TEST
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def test_strategy_base():
+    """Strategy Base Class test fonksiyonu"""
+    print("📈 Atlas AI Strategy Base Class v2.0 - Test Mode")
+    print("=" * 60)
+
+    import random
+    random.seed(42)
+
+    base_price = 65000.0
+    prices = [base_price]
+    for i in range(200):
+        trend = 0.001 if i < 100 else -0.001
+        noise = random.uniform(-0.005, 0.005)
+        new_price = prices[-1] * (1 + trend + noise)
+        prices.append(new_price)
+
+    highs = [p * (1 + random.uniform(0, 0.002)) for p in prices]
+    lows = [p * (1 - random.uniform(0, 0.002)) for p in prices]
+
+    print(f"\n📊 Test verisi: {len(prices)} candle")
+    print(f"   Başlangıç: ${prices[0]:,.2f}")
+    print(f"   Bitiş: ${prices[-1]:,.2f}")
+
+    # Trend Following
+    print("\n" + "-" * 60)
+    print("🚀 Trend Following Stratejisi Testi")
+    print("-" * 60)
+
+    trend_strat = TrendFollowingStrategy(timeframe="5m")
+    indicators = trend_strat.analyze(prices, highs, lows)
+
+    print(f"\n📈 İndikatörler:")
+    for k, v in indicators.to_dict().items():
+        print(f"   {k}: {v}")
+
+    signal = trend_strat.generate_signal(indicators, prices[-1], "BTCUSDT")
+    print(f"\n📡 Sinyal:")
+    print(f"   Aksiyon: {signal.action}")
+    print(f"   Güven: {signal.confidence}")
+    print(f"   Giriş: ${signal.entry_price:,.2f}")
+    print(f"   Stop: ${signal.risk.stop_loss:,.2f}")
+    print(f"   Hedef: ${signal.risk.take_profit:,.2f}")
+
+    print(f"\n📊 Backtest başlatılıyor...")
+    bt_result = trend_strat.backtest(prices, highs, lows, initial_capital=10000)
+
+    print(f"\n📈 Backtest Sonuçları:")
+    for k, v in bt_result.to_dict().items():
+        if k != "trades":
+            print(f"   {k}: {v}")
+
+    # Mean Reversion
+    print("\n" + "-" * 60)
+    print("🔄 Mean Reversion Stratejisi Testi")
+    print("-" * 60)
+
+    mean_strat = MeanReversionStrategy(timeframe="5m")
+    mr_signal = mean_strat.generate_signal(indicators, prices[-1], "BTCUSDT")
+
+    print(f"\n📡 Sinyal:")
+    print(f"   Aksiyon: {mr_signal.action}")
+    print(f"   Güven: {mr_signal.confidence}")
+    print(f"   Notlar: {mr_signal.notes}")
+
+    # Karşılaştırma
+    print("\n" + "=" * 60)
+    print("📊 Strateji Karşılaştırması")
+    print("=" * 60)
+
+    print(f"\n   TrendFollowing:")
+    for k, v in trend_strat.get_stats().items():
+        print(f"      {k}: {v}")
+
+    print(f"\n   MeanReversion:")
+    for k, v in mean_strat.get_stats().items():
+        print(f"      {k}: {v}")
+
+    print("\n" + "=" * 60)
+    print("✅ Strategy Base Class v2.0 test completed!")
+
+    return trend_strat, mean_strat
+
+
+if __name__ == "__main__":
+    test_strategy_base()

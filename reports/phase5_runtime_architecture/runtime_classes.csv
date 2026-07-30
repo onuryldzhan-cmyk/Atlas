@@ -1,0 +1,198 @@
+﻿file,class,bases,lifecycle,health,metrics,shutdown,recovery,dependencies,logging,threading,async,event_bus
+test_atlas_os_audit_log.py,AuditDemoService,BaseAtlasService,_on_start | _on_stop,,,_on_stop,,name,False,False,False,True
+test_atlas_os_event_integration.py,DemoService,BaseAtlasService,_on_start | _on_stop,,,_on_stop,,name,False,False,False,True
+test_atlas_os_health_monitor.py,DemoMarketService,BaseAtlasService,_on_start | _on_stop,,,_on_stop,,,False,False,False,False
+test_atlas_os_kernel.py,DemoService,BaseAtlasService,_on_start | _on_stop,,,_on_stop,,name,False,False,False,False
+test_full_execution_lifecycle.py,TestRisk,,,,,,,,False,False,False,False
+test_full_execution_lifecycle.py,TestCapital,,,,,,,,False,False,False,False
+test_full_execution_lifecycle.py,TestPaper,,,,,,,,False,False,False,False
+atlas_os/contracts.py,ServiceState,StrEnum,,,,,,,False,True,False,False
+atlas_os/contracts.py,HealthStatus,StrEnum,,,,,,,False,True,False,False
+atlas_os/contracts.py,ServiceIdentity,,,,,,,,False,True,False,False
+atlas_os/contracts.py,HealthReport,,,,,,,,False,True,False,False
+atlas_os/contracts.py,ServiceSnapshot,,,,,,,,False,True,False,False
+atlas_os/contracts.py,AtlasService,ABC,start | stop,health | snapshot,,stop,,,False,True,False,False
+atlas_runtime/bootstrap.py,AtlasBootstrapError,RuntimeError,,,,,,,True,False,False,True
+atlas_runtime/bootstrap.py,AtlasBootstrapConfigurationError,AtlasBootstrapError,,,,,,,True,False,False,True
+atlas_runtime/bootstrap.py,AtlasSecureCore,,,,,,,,True,False,False,True
+atlas_runtime/bootstrap.py,AtlasInfrastructure,,,,,,,,True,False,False,True
+atlas_runtime/runtime.py,AtlasRuntimeState,str | Enum,,,,,,,True,True,False,True
+atlas_runtime/runtime.py,AtlasRuntimeError,RuntimeError,,,,,,,True,True,False,True
+atlas_runtime/runtime.py,AtlasRuntimeStateError,AtlasRuntimeError,,,,,,,True,True,False,True
+atlas_runtime/runtime.py,AtlasRuntimeConfigurationError,AtlasRuntimeError,,,,,,,True,True,False,True
+atlas_runtime/runtime.py,AtlasRuntimeStartupError,AtlasRuntimeError,,,,,,,True,True,False,True
+atlas_runtime/runtime.py,AtlasRuntimeShutdownError,AtlasRuntimeError,,,,,,,True,True,False,True
+atlas_runtime/runtime.py,RuntimeServiceRegistration,,,,,,,,True,True,False,True
+atlas_runtime/runtime.py,AtlasRuntimeSnapshot,,,,,,,,True,True,False,True
+atlas_runtime/runtime.py,AtlasRuntime,,start | stop,snapshot,,stop,,_kernel | _shutdown_event | install_signal_handlers | kernel | metadata,True,True,False,True
+core/application.py,AtlasApplication,,start | stop,health | status,,stop,,event_bus | exchange_name | execution_mode | logger_manager | market_interval | runtime | scheduler | started_services | symbols,True,False,False,True
+core/events.py,EventType,Enum,,,,,,,False,False,False,False
+core/events.py,AtlasEvent,,,,,,,,False,False,False,False
+core/events.py,RuntimeStartedEvent,AtlasEvent,,,,,,source,False,False,False,False
+core/events.py,RuntimeStoppedEvent,AtlasEvent,,,,,,source,False,False,False,False
+core/events.py,TradeOpenedEvent,AtlasEvent,,,,,,price | side | symbol,False,False,False,False
+core/event_bus.py,EventBus,,,status,,,,,True,True,False,True
+core/execution_contracts.py,SupportsHealth,Protocol,,health,,,,,False,False,False,False
+core/execution_event.py,ExecutionEvent,,,,,,,event | payload,False,False,False,False
+core/health_monitor.py,HealthMonitor,,,is_healthy,,,,container | runtime | scheduler,True,False,False,False
+core/lifecycle.py,LifecycleManager,,,health_check,,,,services,True,False,False,False
+core/position_lifecycle.py,PositionLifecycle,,close,,,close,,,True,False,False,False
+core/runtime.py,RuntimeState,Enum,,,,,,,True,True,False,False
+core/runtime.py,RuntimeInfo,,,,,,,,True,True,False,False
+core/runtime.py,AtlasRuntime,,initialize | shutdown | start | stop,health | status,,shutdown | stop,,,True,True,False,False
+core/scheduler.py,ScheduledTask,,,,,,,,True,True,False,False
+core/scheduler.py,Scheduler,,start | stop,status,,stop,,_stop_event,True,True,False,False
+core/service_container.py,ServiceContainer,,,,,,,_services,True,True,False,False
+core/service_registry.py,ServiceInfo,,,,,,,,True,False,False,False
+core/service_registry.py,ServiceRegistry,,,,,,,services,True,False,False,False
+tools/runtime_architecture_auditor.py,ClassRecord,,,,,,,,True,True,False,True
+tests/atlas_os/test_audit_log.py,AuditLogServiceTests,unittest.TestCase,,,,,,event_bus,False,False,False,True
+tests/atlas_os/test_base_service.py,DummyService,BaseAtlasService,_on_start | _on_stop,,,_on_stop,,fail_start | fail_stop,False,False,False,False
+tests/atlas_os/test_base_service.py,BaseAtlasServiceTests,unittest.TestCase,,,,,,,False,False,False,False
+tests/atlas_os/test_contracts.py,ServiceIdentityTests,unittest.TestCase,,,,,,,False,False,False,False
+tests/atlas_os/test_contracts.py,HealthReportTests,unittest.TestCase,,,,,,,False,False,False,False
+tests/atlas_os/test_dependency_manager.py,DependencyTestService,BaseAtlasService,_on_start | _on_stop,,,_on_stop,,fail_start | fail_stop | name,False,False,False,False
+tests/atlas_os/test_dependency_manager.py,DependencyServiceManagerTests,unittest.TestCase,,,,,,manager,False,False,False,False
+tests/atlas_os/test_event_bus.py,EventBusServiceTests,unittest.TestCase,,,,,,event_bus | received_events,False,False,False,True
+tests/atlas_os/test_event_integration.py,IntegrationTestService,BaseAtlasService,_on_start | _on_stop,,,_on_stop,,fail_start | fail_stop | name,False,False,False,True
+tests/atlas_os/test_event_integration.py,EventIntegrationTests,unittest.TestCase,,,,,,event_bus | kernel | received_events,False,False,False,True
+tests/atlas_os/test_health_monitor.py,MonitorTestService,BaseAtlasService,_on_start | _on_stop,,,_on_stop,,name,False,False,False,False
+tests/atlas_os/test_health_monitor.py,HealthMonitorServiceTests,unittest.TestCase,,,,,,kernel | service,False,False,False,False
+tests/atlas_os/test_kernel.py,TestService,AtlasService,initialize | start | stop,health_check | snapshot,,stop,,dependencies | name,False,False,False,True
+tests/atlas_os/test_metrics.py,MetricsServiceTests,unittest.TestCase,,,,,,metrics,False,False,False,True
+tests/atlas_os/test_metrics.py,MetricsEventBusTests,unittest.TestCase,,,,,,event_bus | metrics,False,False,False,True
+tests/atlas_os/test_scheduler.py,SchedulerServiceTests,unittest.TestCase,,,,,,scheduler,False,True,False,True
+tests/atlas_os/test_scheduler.py,SchedulerEventBusTests,unittest.TestCase,,,,,,event_bus | scheduler,False,True,False,True
+tests/atlas_os/test_service_registry.py,RegistryTestService,BaseAtlasService,_on_start | _on_stop,,,_on_stop,,fail_start | fail_stop | name,False,False,False,False
+tests/atlas_os/test_service_registry.py,ServiceRegistryTests,unittest.TestCase,,,,,,registry,False,False,False,False
+atlas_os/audit/audit_log.py,AuditLogService,BaseAtlasService,_on_start | _on_stop,,,_on_stop,,_event_bus | _last_recorded_event_type | audit_file | event_bus | history_limit | load_existing_records | raise_on_persistence_failure | rotation_size_bytes,True,True,False,True
+atlas_os/configuration/configuration_service.py,ConfigurationValueType,StrEnum,,,,,,,True,True,False,True
+atlas_os/configuration/configuration_service.py,ConfigurationSource,StrEnum,,,,,,,True,True,False,True
+atlas_os/configuration/configuration_service.py,ConfigurationEnvironment,StrEnum,,,,,,,True,True,False,True
+atlas_os/configuration/configuration_service.py,ConfigurationEventType,StrEnum,,,,,,,True,True,False,True
+atlas_os/configuration/configuration_service.py,ConfigurationError,RuntimeError,,,,,,,True,True,False,True
+atlas_os/configuration/configuration_service.py,ConfigurationKeyNotFoundError,ConfigurationError,,,,,,,True,True,False,True
+atlas_os/configuration/configuration_service.py,DuplicateConfigurationKeyError,ConfigurationError,,,,,,,True,True,False,True
+atlas_os/configuration/configuration_service.py,ConfigurationValidationError,ConfigurationError,,,,,,,True,True,False,True
+atlas_os/configuration/configuration_service.py,ConfigurationConversionError,ConfigurationError,,,,,,,True,True,False,True
+atlas_os/configuration/configuration_service.py,ConfigurationSourceError,ConfigurationError,,,,,,,True,True,False,True
+atlas_os/configuration/configuration_service.py,ProductionSafetyError,ConfigurationError,,,,,,,True,True,False,True
+atlas_os/configuration/configuration_service.py,ConfigurationSchema,,,,,,,,True,True,False,True
+atlas_os/configuration/configuration_service.py,ConfigurationEntry,,,,,,,,True,True,False,True
+atlas_os/configuration/configuration_service.py,ConfigurationChange,,,,,,,,True,True,False,True
+atlas_os/configuration/configuration_service.py,ConfigurationStatistics,,,,,,,,True,True,False,True
+atlas_os/configuration/configuration_service.py,ConfigurationSnapshot,,,,,,,,True,True,False,True
+atlas_os/configuration/configuration_service.py,_ConfigurationValue,,,,,,,,True,True,False,True
+atlas_os/configuration/configuration_service.py,ConfigurationService,BaseAtlasService,_on_start | _on_stop,,,_on_stop,,_configuration_lock | _event_bus | _event_publication_failures | _publish_events | _runtime_overrides | environment | event_bus | history_limit | publish_events | secret_mask | strict_mode,True,True,False,True
+atlas_os/core/contracts.py,ServiceState,StrEnum,,,,,,,False,False,False,False
+atlas_os/core/contracts.py,HealthState,StrEnum,,,,,,,False,False,False,False
+atlas_os/core/contracts.py,ServiceMetadata,,,,,,,,False,False,False,False
+atlas_os/core/contracts.py,HealthReport,,,,,,,,False,False,False,False
+atlas_os/core/contracts.py,ServiceSnapshot,,,,,,,,False,False,False,False
+atlas_os/core/contracts.py,AtlasService,ABC,initialize | start | stop,health_check | snapshot,,stop,,,False,False,False,False
+atlas_os/core/kernel.py,KernelState,StrEnum,,,,,,,True,True,False,False
+atlas_os/core/kernel.py,KernelError,RuntimeError,,,,,,,True,True,False,False
+atlas_os/core/kernel.py,InvalidKernelStateError,KernelError,,,,,,,True,True,False,False
+atlas_os/core/kernel.py,KernelStartupError,KernelError,,,,,,,True,True,False,False
+atlas_os/core/kernel.py,KernelSnapshot,,,,,,,,True,True,False,False
+atlas_os/core/kernel.py,AtlasKernel,,initialize | start | stop,health | snapshot,,stop,,_started_services | registry,True,True,False,False
+atlas_os/core/service_registry.py,ServiceRegistryError,RuntimeError,,,,,,,True,True,False,False
+atlas_os/core/service_registry.py,DuplicateServiceError,ServiceRegistryError,,,,,,,True,True,False,False
+atlas_os/core/service_registry.py,ServiceNotFoundError,ServiceRegistryError,,,,,,,True,True,False,False
+atlas_os/core/service_registry.py,MissingDependencyError,ServiceRegistryError,,,,,,,True,True,False,False
+atlas_os/core/service_registry.py,CircularDependencyError,ServiceRegistryError,,,,,,,True,True,False,False
+atlas_os/core/service_registry.py,ServiceRegistry,,,,,,,_services,True,True,False,False
+atlas_os/events/event_bus.py,EventSeverity,StrEnum,,,,,,,True,True,False,True
+atlas_os/events/event_bus.py,EventBusError,RuntimeError,,,,,,,True,True,False,True
+atlas_os/events/event_bus.py,EventBusNotRunningError,EventBusError,,,,,,,True,True,False,True
+atlas_os/events/event_bus.py,SubscriptionNotFoundError,EventBusError,,,,,,,True,True,False,True
+atlas_os/events/event_bus.py,AtlasEvent,,,,,,,,True,True,False,True
+atlas_os/events/event_bus.py,Subscription,,,,,,,,True,True,False,True
+atlas_os/events/event_bus.py,DeliveryFailure,,,,,,,,True,True,False,True
+atlas_os/events/event_bus.py,PublishResult,,,,,,,,True,True,False,True
+atlas_os/events/event_bus.py,EventBusSnapshot,,,,,,,,True,True,False,True
+atlas_os/events/event_bus.py,_SubscriberRecord,,,,,,,,True,True,False,True
+atlas_os/events/event_bus.py,EventBusService,BaseAtlasService,_on_start | _on_stop,,,_on_stop,,_event_history | _event_lock | _published_events | failure_history_limit | history_limit | require_running,True,True,False,True
+atlas_os/integration/configuration_secrets_service.py,ConfigurationSecretsServiceError,RuntimeError,,,,,,,True,True,False,False
+atlas_os/integration/configuration_secrets_service.py,ConfigurationServiceUnavailableError,ConfigurationSecretsServiceError,,,,,,,True,True,False,False
+atlas_os/integration/configuration_secrets_service.py,SecretsManagerUnavailableError,ConfigurationSecretsServiceError,,,,,,,True,True,False,False
+atlas_os/integration/configuration_secrets_service.py,RequiredSecretResolutionError,ConfigurationSecretsServiceError,,,,,,,True,True,False,False
+atlas_os/integration/configuration_secrets_service.py,ConfigurationSecretsValidationError,ConfigurationSecretsServiceError,,,,,,,True,True,False,False
+atlas_os/integration/configuration_secrets_service.py,ConfigurationSecretsService,BaseAtlasService,_on_start | _on_stop,,,_on_stop,,bridge | caller | configuration_service | continue_on_error | identity | reject_plaintext_configuration | require_running_dependencies | secrets_manager | validate_on_start,True,True,False,False
+atlas_os/integrations/event_integration.py,AtlasSystemEventType,StrEnum,,,,,,,True,True,False,True
+atlas_os/integrations/event_integration.py,EventIntegrationStatistics,,,,,,,,True,True,False,True
+atlas_os/integrations/event_integration.py,_SafeEventPublisher,,,,,,,_event_bus | _last_published_event_type,True,True,False,True
+atlas_os/integrations/event_integration.py,EventAwareAtlasOSKernel,_SafeEventPublisher | AtlasOSKernel,start | stop,,,stop,,event_bus | identity | metadata | service_manager,True,True,False,True
+atlas_os/integrations/event_integration.py,EventAwareHealthMonitorService,_SafeEventPublisher | HealthMonitorService,,,,,,auto_synchronize_kernel | daemon | event_bus | history_limit | interval_seconds | kernel,True,True,False,True
+atlas_os/kernel/kernel.py,KernelState,StrEnum,,,,,,,True,True,False,False
+atlas_os/kernel/kernel.py,KernelLifecycleError,RuntimeError,,,,,,,True,True,False,False
+atlas_os/kernel/kernel.py,KernelIdentity,,,,,,,,True,True,False,False
+atlas_os/kernel/kernel.py,KernelHealthReport,,,,,,,,True,True,False,False
+atlas_os/kernel/kernel.py,KernelSnapshot,,,,,,,,True,True,False,False
+atlas_os/kernel/kernel.py,AtlasOSKernel,,start | stop,health | snapshot,,stop,,_service_manager | identity | metadata | service_manager,True,True,False,False
+atlas_os/observability/health_monitor.py,HealthTransitionType,StrEnum,,,,,,,True,True,False,False
+atlas_os/observability/health_monitor.py,HealthObservation,,,,,,,,True,True,False,False
+atlas_os/observability/health_monitor.py,HealthTransition,,,,,,,,True,True,False,False
+atlas_os/observability/health_monitor.py,HealthMonitorSnapshot,,,,,,,,True,True,False,False
+atlas_os/observability/health_monitor.py,HealthMonitorService,BaseAtlasService,_on_start | _on_stop,,,_on_stop,,_auto_synchronize_kernel | _kernel | _stop_event | auto_synchronize_kernel | daemon | history_limit | interval_seconds | kernel,True,True,False,False
+atlas_os/observability/metrics.py,MetricType,StrEnum,,,,,,,False,True,False,True
+atlas_os/observability/metrics.py,MetricsError,RuntimeError,,,,,,,False,True,False,True
+atlas_os/observability/metrics.py,InvalidMetricNameError,MetricsError,,,,,,,False,True,False,True
+atlas_os/observability/metrics.py,MetricTypeConflictError,MetricsError,,,,,,,False,True,False,True
+atlas_os/observability/metrics.py,MetricIdentity,,,,,,,,False,True,False,True
+atlas_os/observability/metrics.py,CounterMetric,,,,,,,,False,True,False,True
+atlas_os/observability/metrics.py,GaugeMetric,,,,,,,,False,True,False,True
+atlas_os/observability/metrics.py,HistogramMetric,,,,,,,,False,True,False,True
+atlas_os/observability/metrics.py,MetricsStatistics,,,,,,,,False,True,False,True
+atlas_os/observability/metrics.py,MetricsSnapshot,,,,,,,,False,True,False,True
+atlas_os/observability/metrics.py,_CounterState,,,,,,,,False,True,False,True
+atlas_os/observability/metrics.py,_GaugeState,,,,,,,,False,True,False,True
+atlas_os/observability/metrics.py,_HistogramState,,,,,,,,False,True,False,True
+atlas_os/observability/metrics.py,MetricTimer,,,,,,,_metric_name | _metrics | labels | metric_name | metrics,False,True,False,True
+atlas_os/observability/metrics.py,MetricsService,BaseAtlasService,_on_start | _on_stop,,increment | observe,_on_stop,,_collect_event_metrics | _event_bus | _event_observations | _event_subscription | _last_metric_name | _metric_types | _metrics_lock | collect_event_metrics | event_bus | histogram_history_limit,False,True,False,True
+atlas_os/scheduling/scheduler.py,TaskScheduleType,StrEnum,,,,,,,True,True,False,True
+atlas_os/scheduling/scheduler.py,ScheduledTaskState,StrEnum,,,,,,,True,True,False,True
+atlas_os/scheduling/scheduler.py,TaskExecutionStatus,StrEnum,,,,,,,True,True,False,True
+atlas_os/scheduling/scheduler.py,SchedulerEventType,StrEnum,,,,,,,True,True,False,True
+atlas_os/scheduling/scheduler.py,SchedulerError,RuntimeError,,,,,,,True,True,False,True
+atlas_os/scheduling/scheduler.py,TaskNotFoundError,SchedulerError,,,,,,,True,True,False,True
+atlas_os/scheduling/scheduler.py,DuplicateTaskError,SchedulerError,,,,,,,True,True,False,True
+atlas_os/scheduling/scheduler.py,InvalidTaskConfigurationError,SchedulerError,,,,,,,True,True,False,True
+atlas_os/scheduling/scheduler.py,TaskExecutionError,SchedulerError,,,,,,,True,True,False,True
+atlas_os/scheduling/scheduler.py,RetryPolicy,,,,,,,,True,True,False,True
+atlas_os/scheduling/scheduler.py,TaskConfiguration,,,,,,,,True,True,False,True
+atlas_os/scheduling/scheduler.py,TaskExecutionRecord,,,,,,,,True,True,False,True
+atlas_os/scheduling/scheduler.py,ScheduledTaskSnapshot,,,,,,,,True,True,False,True
+atlas_os/scheduling/scheduler.py,SchedulerStatistics,,,,,,,,True,True,False,True
+atlas_os/scheduling/scheduler.py,SchedulerSnapshot,,,,,,,,True,True,False,True
+atlas_os/scheduling/scheduler.py,_ScheduledTask,,,,,,,,True,True,False,True
+atlas_os/scheduling/scheduler.py,SchedulerService,BaseAtlasService,_on_start | _on_stop,,,_on_stop,,_event_bus | _event_publication_failures | _publish_events | _scheduler_lock | _stop_event | _wake_event | event_bus | history_limit | polling_interval_seconds | publish_events,True,True,False,True
+atlas_os/secrets/secrets_manager.py,SecretEventType,StrEnum,,,,,,,True,True,False,True
+atlas_os/services/base_service.py,ServiceLifecycleError,RuntimeError,,,,,,,True,True,False,False
+atlas_os/services/base_service.py,BaseAtlasService,AtlasService,_on_start | _on_stop | start | stop,health | snapshot,,_on_stop | stop,recover,identity,True,True,False,False
+atlas_os/services/dependency_manager.py,DependencyManagerError,RuntimeError,,,,,,,True,True,False,False
+atlas_os/services/dependency_manager.py,MissingDependencyError,DependencyManagerError,,,,,,,True,True,False,False
+atlas_os/services/dependency_manager.py,CircularDependencyError,DependencyManagerError,,,,,,,True,True,False,False
+atlas_os/services/dependency_manager.py,InvalidDependencyError,DependencyManagerError,,,,,,,True,True,False,False
+atlas_os/services/dependency_manager.py,ServiceBlockedError,DependencyManagerError,,,,,,,True,True,False,False
+atlas_os/services/dependency_manager.py,OrchestrationAction,StrEnum,,,,,,,True,True,False,False
+atlas_os/services/dependency_manager.py,DependencyDeclaration,,,,,,,,True,True,False,False
+atlas_os/services/dependency_manager.py,OrchestrationStep,,,,,,,,True,True,False,False
+atlas_os/services/dependency_manager.py,OrchestrationPlan,,,,,,,,True,True,False,False
+atlas_os/services/dependency_manager.py,OrchestrationResult,,,,,,,,True,True,False,False
+atlas_os/services/dependency_manager.py,DependencyServiceManager,,start | stop,,,stop,,_registry | registry,True,True,False,False
+atlas_os/services/registry.py,ServiceRegistryError,RuntimeError,,,,,,,True,True,False,False
+atlas_os/services/registry.py,DuplicateServiceError,ServiceRegistryError,,,,,,,True,True,False,False
+atlas_os/services/registry.py,ServiceNotFoundError,ServiceRegistryError,,,,,,,True,True,False,False
+atlas_os/services/registry.py,ServiceRemovalError,ServiceRegistryError,,,,,,,True,True,False,False
+atlas_os/services/registry.py,ServiceOperationResult,,,,,,,,True,True,False,False
+atlas_os/services/registry.py,RegistryHealthReport,,,,,,,,True,True,False,False
+atlas_os/services/registry.py,RegistrySnapshot,,,,,,,,True,True,False,False
+atlas_os/services/registry.py,ServiceRegistry,,start | stop,health | snapshot,,stop,,_services,True,True,False,False
+atlas_finance/market_data/exceptions.py,MarketDataServiceError,MarketDataError,,,,,,,False,False,False,False
+atlas_finance/market_data/exceptions.py,MarketDataServiceNotRunningError,MarketDataServiceError,,,,,,,False,False,False,False
+atlas_finance/market_data/exceptions.py,MarketDataServiceStartupError,MarketDataServiceError,,,,,,,False,False,False,False
+atlas_finance/market_data/exceptions.py,MarketDataServiceShutdownError,MarketDataServiceError,,,,,,,False,False,False,False
+atlas_finance/market_data/market_feed_service.py,MarketFeedEventType,,,,,,,,True,True,False,True
+atlas_finance/market_data/market_feed_service.py,_MutableRequestStatistics,,,snapshot,,,,,True,True,False,True
+atlas_finance/market_data/market_feed_service.py,MarketFeedService,BaseAtlasService,_on_start | _on_stop,,,_on_stop,,_collect_metrics | _event_bus | _metrics | _provider | _publish_events | _service_started_at | collect_metrics | event_bus | failure_threshold | metrics | provider | publish_events,True,True,False,True

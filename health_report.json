@@ -1,0 +1,117 @@
+{
+  "timestamp": "2026-07-20T13:20:26.569205",
+  "system_health_score": 84.0,
+  "total_modules": 5,
+  "healthy_modules": 3,
+  "warning_modules": 2,
+  "error_modules": 0,
+  "critical_modules": 0,
+  "modules": {
+    "core.atlas_brain": {
+      "module_name": "core.atlas_brain",
+      "overall_status": "healthy",
+      "last_check": "2026-07-20T13:20:26.566305",
+      "check_count": 1,
+      "error_count": 0,
+      "warning_count": 0,
+      "consecutive_errors": 0,
+      "consecutive_warnings": 0,
+      "average_response_time": 0.004,
+      "recent_checks": [
+        {
+          "module_name": "core.atlas_brain",
+          "check_name": "general",
+          "status": "healthy",
+          "message": "Brain status: healthy",
+          "timestamp": "2026-07-20T13:20:26.566299",
+          "details": {}
+        }
+      ]
+    },
+    "core.database": {
+      "module_name": "core.database",
+      "overall_status": "healthy",
+      "last_check": "2026-07-20T13:20:26.566349",
+      "check_count": 1,
+      "error_count": 0,
+      "warning_count": 0,
+      "consecutive_errors": 0,
+      "consecutive_warnings": 0,
+      "average_response_time": 0.0,
+      "recent_checks": [
+        {
+          "module_name": "core.database",
+          "check_name": "general",
+          "status": "healthy",
+          "message": "Database connection OK",
+          "timestamp": "2026-07-20T13:20:26.566344",
+          "details": {}
+        }
+      ]
+    },
+    "core.trading_engine": {
+      "module_name": "core.trading_engine",
+      "overall_status": "healthy",
+      "last_check": "2026-07-20T13:20:26.566372",
+      "check_count": 1,
+      "error_count": 0,
+      "warning_count": 0,
+      "consecutive_errors": 0,
+      "consecutive_warnings": 0,
+      "average_response_time": 0.0,
+      "recent_checks": [
+        {
+          "module_name": "core.trading_engine",
+          "check_name": "general",
+          "status": "healthy",
+          "message": "Trading engine running",
+          "timestamp": "2026-07-20T13:20:26.566371",
+          "details": {}
+        }
+      ]
+    },
+    "core.memory": {
+      "module_name": "core.memory",
+      "overall_status": "warning",
+      "last_check": "2026-07-20T13:20:26.566386",
+      "check_count": 1,
+      "error_count": 0,
+      "warning_count": 1,
+      "consecutive_errors": 0,
+      "consecutive_warnings": 1,
+      "average_response_time": 0.0,
+      "recent_checks": [
+        {
+          "module_name": "core.memory",
+          "check_name": "general",
+          "status": "warning",
+          "message": "Memory usage at 85%",
+          "timestamp": "2026-07-20T13:20:26.566386",
+          "details": {}
+        }
+      ]
+    },
+    "ai.learning_brain": {
+      "module_name": "ai.learning_brain",
+      "overall_status": "warning",
+      "last_check": "2026-07-20T13:20:26.566405",
+      "check_count": 1,
+      "error_count": 0,
+      "warning_count": 1,
+      "consecutive_errors": 0,
+      "consecutive_warnings": 1,
+      "average_response_time": 0.0,
+      "recent_checks": [
+        {
+          "module_name": "ai.learning_brain",
+          "check_name": "general",
+          "status": "warning",
+          "message": "Brain status: warning",
+          "timestamp": "2026-07-20T13:20:26.566404",
+          "details": {}
+        }
+      ]
+    }
+  },
+  "alerts": []
+}

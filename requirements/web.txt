@@ -1,0 +1,5 @@
+# Optional web interfaces
+fastapi
+uvicorn
+jinja2
+flask

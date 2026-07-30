@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}Atlas AI - Dashboard{% endblock %}
+
+{% block content %}
+<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="stat-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <i class="fas fa-wallet" style="font-size: 1.5rem; color: #3b82f6;"></i>
+            <span style="color: #10b981; font-size: 0.875rem;">+25.48%</span>
+        </div>
+        <h3 style="color: #64748b; font-size: 0.875rem; margin-bottom: 0.5rem;">Toplam Bakiye</h3>
+        <p style="font-size: 1.5rem; font-weight: bold; color: white;">$12,547.85</p>
+    </div>
+    <div class="stat-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <i class="fas fa-chart-line" style="font-size: 1.5rem; color: #10b981;"></i>
+            <span style="color: #10b981; font-size: 0.875rem;">+2.81%</span>
+        </div>
+        <h3 style="color: #64748b; font-size: 0.875rem; margin-bottom: 0.5rem;">Gunluk P&L</h3>
+        <p style="font-size: 1.5rem; font-weight: bold; color: #10b981;">+$342.15</p>
+    </div>
+    <div class="stat-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <i class="fas fa-briefcase" style="font-size: 1.5rem; color: #a855f7;"></i>
+            <span style="color: #64748b; font-size: 0.875rem;">4/10</span>
+        </div>
+        <h3 style="color: #64748b; font-size: 0.875rem; margin-bottom: 0.5rem;">Acik Pozisyonlar</h3>
+        <p style="font-size: 1.5rem; font-weight: bold; color: white;">4</p>
+    </div>
+    <div class="stat-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <i class="fas fa-trophy" style="font-size: 1.5rem; color: #f59e0b;"></i>
+            <span style="color: #10b981; font-size: 0.875rem;">68.5%</span>
+        </div>
+        <h3 style="color: #64748b; font-size: 0.875rem; margin-bottom: 0.5rem;">Kazanma Orani</h3>
+        <p style="font-size: 1.5rem; font-weight: bold; color: white;">68.5%</p>
+    </div>
+</div>
+
+<div class="card">
+    <h2 style="font-size: 1.25rem; font-weight: bold; margin-bottom: 1rem;"><i class="fas fa-chart-area"></i> Portfoy Performansi</h2>
+    <canvas id="portfolioChart" height="100"></canvas>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem;">
+    <div class="card">
+        <h2 style="font-size: 1.25rem; font-weight: bold; margin-bottom: 1rem;"><i class="fas fa-list"></i> Acik Pozisyonlar</h2>
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="border-bottom: 1px solid #334155;">
+                    <th style="text-align: left; padding: 0.75rem; color: #64748b; font-size: 0.875rem;">Sembol</th>
+                    <th style="text-align: left; padding: 0.75rem; color: #64748b; font-size: 0.875rem;">Yon</th>
+                    <th style="text-align: right; padding: 0.75rem; color: #64748b; font-size: 0.875rem;">Fiyat</th>
+                    <th style="text-align: right; padding: 0.75rem; color: #64748b; font-size: 0.875rem;">P&L</th>
+                </tr>
+            </thead>
+            <tbody id="positions-table"></tbody>
+        </table>
+    </div>
+    <div class="card">
+        <h2 style="font-size: 1.25rem; font-weight: bold; margin-bottom: 1rem;"><i class="fas fa-satellite-dish"></i> Aktif Sinyaller</h2>
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="border-bottom: 1px solid #334155;">
+                    <th style="text-align: left; padding: 0.75rem; color: #64748b; font-size: 0.875rem;">Sembol</th>
+                    <th style="text-align: left; padding: 0.75rem; color: #64748b; font-size: 0.875rem;">Tip</th>
+                    <th style="text-align: right; padding: 0.75rem; color: #64748b; font-size: 0.875rem;">Guven</th>
+                    <th style="text-align: right; padding: 0.75rem; color: #64748b; font-size: 0.875rem;">Strateji</th>
+                </tr>
+            </thead>
+            <tbody id="signals-table"></tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Portfolio Chart
+    const ctx = document.getElementById('portfolioChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ['1', '5', '10', '15', '20', '25', '30'],
+            datasets: [{
+                label: 'Portfoy Degeri',
+                data: [10000, 10250, 10100, 10500, 10800, 11200, 12547],
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { display: false },
+                y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#64748b' } }
+            }
+        }
+    });
+
+    // Load data
+    async function loadData() {
+        const [posRes, sigRes] = await Promise.all([
+            fetch('/api/positions'),
+            fetch('/api/signals')
+        ]);
+        const posData = await posRes.json();
+        const sigData = await sigRes.json();
+
+        document.getElementById('positions-table').innerHTML = posData.positions.map(pos => `
+            <tr style="border-bottom: 1px solid #1e293b;">
+                <td style="padding: 0.75rem;">
+                    <div style="font-weight: 500; color: white;">${pos.symbol}</div>
+                    <div style="font-size: 0.75rem; color: #64748b;">${pos.id}</div>
+                </td>
+                <td style="padding: 0.75rem;">
+                    <span style="padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; ${pos.side === 'LONG' ? 'background: rgba(16, 185, 129, 0.2); color: #10b981;' : 'background: rgba(239, 68, 68, 0.2); color: #ef4444;'}">${pos.side}</span>
+                </td>
+                <td style="padding: 0.75rem; text-align: right; color: white;">$${pos.current_price.toLocaleString()}</td>
+                <td style="padding: 0.75rem; text-align: right; ${pos.pnl >= 0 ? 'color: #10b981;' : 'color: #ef4444;'}">${pos.pnl >= 0 ? '+' : ''}$${pos.pnl.toFixed(2)}</td>
+            </tr>
+        `).join('');
+
+        document.getElementById('signals-table').innerHTML = sigData.signals.map(sig => `
+            <tr style="border-bottom: 1px solid #1e293b;">
+                <td style="padding: 0.75rem;">
+                    <div style="font-weight: 500; color: white;">${sig.symbol}</div>
+                    <div style="font-size: 0.75rem; color: #64748b;">${sig.timeframe}</div>
+                </td>
+                <td style="padding: 0.75rem;">
+                    <span style="padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; ${sig.type === 'BUY' ? 'background: rgba(16, 185, 129, 0.2); color: #10b981;' : sig.type === 'SELL' ? 'background: rgba(239, 68, 68, 0.2); color: #ef4444;' : 'background: rgba(245, 158, 11, 0.2); color: #f59e0b;'}">${sig.type}</span>
+                </td>
+                <td style="padding: 0.75rem; text-align: right; color: white;">${sig.confidence}%</td>
+                <td style="padding: 0.75rem; text-align: right; color: white; font-size: 0.875rem;">${sig.strategy}</td>
+            </tr>
+        `).join('');
+    }
+
+    loadData();
+    setInterval(loadData, 30000);
+</script>
+{% endblock %}

@@ -1,0 +1,221 @@
+
+================================================================================
+SEARCH: atlas_runtime
+================================================================================
+test_atlas_infrastructure.py:10: from atlas_runtime import (
+test_atlas_runtime_empty.py:1: from atlas_runtime import AtlasRuntime
+test_atlas_secure_core.py:3: from atlas_runtime import build_secure_core
+atlas_runtime\bootstrap.py:12: atlas_runtime
+atlas_runtime\bootstrap.py:92: from atlas_runtime.runtime import (
+atlas_runtime\runtime.py:12: atlas_runtime
+atlas_runtime\__init__.py:13: from atlas_runtime.bootstrap import (
+atlas_runtime\__init__.py:22: from atlas_runtime.runtime import (
+atlas_runtime\__init__.py:37: __package_name__ = "atlas_runtime"
+
+================================================================================
+SEARCH: core.runtime
+================================================================================
+test_atlas_secure_core.py:18: runtime = secure_core.runtime
+core\application.py:61: from core.runtime import AtlasRuntime
+
+================================================================================
+SEARCH: core.application
+================================================================================
+main.py:34: from core.application import AtlasApplication
+test_application.py:1: from core.application import AtlasApplication
+test_live_loop.py:1: from core.application import AtlasApplication
+
+================================================================================
+SEARCH: service_container
+================================================================================
+core\application.py:65: from core.service_container import ServiceContainer
+
+================================================================================
+SEARCH: service_registry
+================================================================================
+atlas_os\core\kernel.py:52: from atlas_os.core.service_registry import ServiceRegistry
+atlas_os\core\__init__.py:21: from atlas_os.core.service_registry import (
+
+================================================================================
+SEARCH: atlas_os.kernel
+================================================================================
+atlas_os\integrations\event_integration.py:64: from atlas_os.kernel import (
+atlas_os\kernel\__init__.py:5: from atlas_os.kernel.kernel import (
+atlas_os\observability\health_monitor.py:62: from atlas_os.kernel import (
+
+================================================================================
+SEARCH: atlas_os.core.kernel
+================================================================================
+atlas_os\core\__init__.py:13: from atlas_os.core.kernel import (
+
+================================================================================
+SEARCH: AtlasKernel
+================================================================================
+atlas_os\__init__.py:15: AtlasKernel,
+atlas_os\__init__.py:30: "AtlasKernel",
+atlas_os\core\kernel.py:110: class AtlasKernel:
+atlas_os\core\kernel.py:114: AtlasKernel owns lifecycle orchestration but does not implement
+atlas_os\core\kernel.py:120: NAME = "AtlasKernel"
+atlas_os\core\kernel.py:461: def __enter__(self) -> AtlasKernel:
+atlas_os\core\service_registry.py:74: responsibility belongs to AtlasKernel.
+atlas_os\core\__init__.py:14: AtlasKernel,
+atlas_os\core\__init__.py:31: "AtlasKernel",
+tests\atlas_os\test_kernel.py:12: AtlasKernel,
+tests\atlas_os\test_kernel.py:108: kernel = AtlasKernel()
+
+================================================================================
+SEARCH: AtlasRuntime
+================================================================================
+test_atlas_runtime_empty.py:1: from atlas_runtime import AtlasRuntime
+test_atlas_runtime_empty.py:4: runtime = AtlasRuntime(
+atlas_runtime\bootstrap.py:93: AtlasRuntime,
+atlas_runtime\bootstrap.py:98: "AtlasRuntime.Bootstrap"
+atlas_runtime\bootstrap.py:137: runtime: AtlasRuntime
+atlas_runtime\bootstrap.py:166: runtime: AtlasRuntime
+atlas_runtime\bootstrap.py:269: runtime: AtlasRuntime,
+atlas_runtime\bootstrap.py:270: ) -> AtlasRuntime:
+atlas_runtime\bootstrap.py:277: AtlasRuntime,
+atlas_runtime\bootstrap.py:280: "runtime must be an AtlasRuntime instance."
+atlas_runtime\bootstrap.py:285: "Bootstrap requires an empty AtlasRuntime. "
+atlas_runtime\bootstrap.py:319: runtime: AtlasRuntime | None = None,
+atlas_runtime\bootstrap.py:362: else AtlasRuntime(
+atlas_runtime\bootstrap.py:548: runtime: AtlasRuntime | None = None,
+atlas_runtime\bootstrap.py:621: else AtlasRuntime(
+atlas_runtime\runtime.py:37: AtlasRuntime
+atlas_runtime\runtime.py:89: "AtlasRuntime"
+atlas_runtime\runtime.py:98: class AtlasRuntimeState(
+atlas_runtime\runtime.py:128: class AtlasRuntimeError(
+atlas_runtime\runtime.py:136: class AtlasRuntimeStateError(
+atlas_runtime\runtime.py:137: AtlasRuntimeError
+atlas_runtime\runtime.py:144: class AtlasRuntimeConfigurationError(
+atlas_runtime\runtime.py:145: AtlasRuntimeError
+atlas_runtime\runtime.py:152: class AtlasRuntimeStartupError(
+atlas_runtime\runtime.py:153: AtlasRuntimeError
+atlas_runtime\runtime.py:160: class AtlasRuntimeShutdownError(
+atlas_runtime\runtime.py:161: AtlasRuntimeError
+atlas_runtime\runtime.py:202: class AtlasRuntimeSnapshot:
+atlas_runtime\runtime.py:207: state: AtlasRuntimeState
+atlas_runtime\runtime.py:249: class AtlasRuntime:
+atlas_runtime\runtime.py:253: AtlasRuntime is intentionally small. It does not implement
+atlas_runtime\runtime.py:262: NAME = "AtlasRuntime"
+atlas_runtime\runtime.py:326: AtlasRuntimeState.CREATED
+atlas_runtime\runtime.py:384: ) -> AtlasRuntimeState:
+atlas_runtime\runtime.py:402: is AtlasRuntimeState.RUNNING
+atlas_runtime\runtime.py:486: is AtlasRuntimeState.STOPPED
+atlas_runtime\runtime.py:527: AtlasRuntimeState.CREATED,
+atlas_runtime\runtime.py:528: AtlasRuntimeState.CONFIGURING,
+atlas_runtime\runtime.py:529: AtlasRuntimeState.READY,
+atlas_runtime\runtime.py:530: AtlasRuntimeState.STOPPED,
+atlas_runtime\runtime.py:536: AtlasRuntimeState.CONFIGURING
+atlas_runtime\runtime.py:544: raise AtlasRuntimeConfigurationError(
+atlas_runtime\runtime.py:638: AtlasRuntimeState.CREATED,
+atlas_runtime\runtime.py:639: AtlasRuntimeState.CONFIGURING,
+atlas_runtime\runtime.py:640: AtlasRuntimeState.READY,
+atlas_runtime\runtime.py:641: AtlasRuntimeState.STOPPED,
+atlas_runtime\runtime.py:651: AtlasRuntimeState.FAILED
+atlas_runtime\runtime.py:659: raise AtlasRuntimeConfigurationError(
+atlas_runtime\runtime.py:665: AtlasRuntimeState.READY
+atlas_runtime\runtime.py:695: is AtlasRuntimeState.RUNNING
+atlas_runtime\runtime.py:705: AtlasRuntimeState.CREATED,
+atlas_runtime\runtime.py:706: AtlasRuntimeState.CONFIGURING,
+atlas_runtime\runtime.py:707: AtlasRuntimeState.READY,
+atlas_runtime\runtime.py:708: AtlasRuntimeState.STOPPED,
+atlas_runtime\runtime.py:709: AtlasRuntimeState.FAILED,
+atlas_runtime\runtime.py:715: AtlasRuntimeState.STARTING
+atlas_runtime\runtime.py:741: raise AtlasRuntimeStartupError(
+atlas_runtime\runtime.py:752: AtlasRuntimeState.RUNNING
+atlas_runtime\runtime.py:766: AtlasRuntimeState.FAILED
+atlas_runtime\runtime.py:783: AtlasRuntimeError,
+atlas_runtime\runtime.py:787: raise AtlasRuntimeStartupError(
+atlas_runtime\runtime.py:832: AtlasRuntimeState.CREATED,
+atlas_runtime\runtime.py:833: AtlasRuntimeState.READY,
+atlas_runtime\runtime.py:834: AtlasRuntimeState.STOPPED,
+atlas_runtime\runtime.py:837: AtlasRuntimeState.STOPPED
+atlas_runtime\runtime.py:856: is AtlasRuntimeState.STOPPING
+atlas_runtime\runtime.py:861: AtlasRuntimeState.STOPPING
+atlas_runtime\runtime.py:873: AtlasRuntimeState.STOPPED
+atlas_runtime\runtime.py:893: AtlasRuntimeState.FAILED
+atlas_runtime\runtime.py:914: raise AtlasRuntimeShutdownError(
+atlas_runtime\runtime.py:981: ) -> AtlasRuntimeSnapshot:
+atlas_runtime\runtime.py:987: return AtlasRuntimeSnapshot(
+atlas_runtime\runtime.py:1132: AtlasRuntimeState
+atlas_runtime\runtime.py:1148: raise AtlasRuntimeStateError(
+atlas_runtime\runtime.py:1181: raise AtlasRuntimeConfigurationError(
+atlas_runtime\runtime.py:1217: raise AtlasRuntimeConfigurationError(
+atlas_runtime\runtime.py:1241: raise AtlasRuntimeConfigurationError(
+atlas_runtime\runtime.py:1252: ) -> AtlasRuntime:
+atlas_runtime\runtime.py:1285: "AtlasRuntime",
+atlas_runtime\runtime.py:1286: "AtlasRuntimeState",
+atlas_runtime\runtime.py:1287: "AtlasRuntimeSnapshot",
+atlas_runtime\runtime.py:1289: "AtlasRuntimeError",
+atlas_runtime\runtime.py:1290: "AtlasRuntimeStateError",
+atlas_runtime\runtime.py:1291: "AtlasRuntimeConfigurationError",
+atlas_runtime\runtime.py:1292: "AtlasRuntimeStartupError",
+atlas_runtime\runtime.py:1293: "AtlasRuntimeShutdownError",
+atlas_runtime\__init__.py:23: AtlasRuntime,
+atlas_runtime\__init__.py:24: AtlasRuntimeConfigurationError,
+atlas_runtime\__init__.py:25: AtlasRuntimeError,
+atlas_runtime\__init__.py:26: AtlasRuntimeShutdownError,
+atlas_runtime\__init__.py:27: AtlasRuntimeSnapshot,
+atlas_runtime\__init__.py:28: AtlasRuntimeStartupError,
+atlas_runtime\__init__.py:29: AtlasRuntimeState,
+atlas_runtime\__init__.py:30: AtlasRuntimeStateError,
+atlas_runtime\__init__.py:58: "AtlasRuntime",
+atlas_runtime\__init__.py:59: "AtlasRuntimeState",
+atlas_runtime\__init__.py:60: "AtlasRuntimeSnapshot",
+atlas_runtime\__init__.py:62: "AtlasRuntimeError",
+atlas_runtime\__init__.py:63: "AtlasRuntimeStateError",
+atlas_runtime\__init__.py:64: "AtlasRuntimeConfigurationError",
+atlas_runtime\__init__.py:65: "AtlasRuntimeStartupError",
+atlas_runtime\__init__.py:66: "AtlasRuntimeShutdownError",
+core\application.py:25: |      |-- AtlasRuntime
+core\application.py:61: from core.runtime import AtlasRuntime
+core\application.py:146: self.runtime = AtlasRuntime()
+core\runtime.py:79: class AtlasRuntime:
+
+================================================================================
+SEARCH: ServiceRegistry
+================================================================================
+inspect_atlas_os_lifecycle.py:10: ServiceRegistry,
+inspect_atlas_os_lifecycle.py:20: ServiceRegistry,
+atlas_os\__init__.py:22: ServiceRegistry,
+atlas_os\__init__.py:37: "ServiceRegistry",
+atlas_os\core\kernel.py:52: from atlas_os.core.service_registry import ServiceRegistry
+atlas_os\core\kernel.py:124: registry: ServiceRegistry | None = None,
+atlas_os\core\kernel.py:126: self.registry = registry or ServiceRegistry()
+atlas_os\core\service_registry.py:35: logger = logging.getLogger("AtlasOS.ServiceRegistry")
+atlas_os\core\service_registry.py:38: class ServiceRegistryError(RuntimeError):
+atlas_os\core\service_registry.py:44: class DuplicateServiceError(ServiceRegistryError):
+atlas_os\core\service_registry.py:50: class ServiceNotFoundError(ServiceRegistryError):
+atlas_os\core\service_registry.py:56: class MissingDependencyError(ServiceRegistryError):
+atlas_os\core\service_registry.py:62: class CircularDependencyError(ServiceRegistryError):
+atlas_os\core\service_registry.py:68: class ServiceRegistry:
+atlas_os\core\service_registry.py:78: NAME = "ServiceRegistry"
+atlas_os\core\__init__.py:26: ServiceRegistry,
+atlas_os\core\__init__.py:27: ServiceRegistryError,
+atlas_os\core\__init__.py:45: "ServiceRegistry",
+atlas_os\core\__init__.py:46: "ServiceRegistryError",
+atlas_os\kernel\kernel.py:28: +-- ServiceRegistry
+atlas_os\services\dependency_manager.py:54: - Compatible with ServiceRegistry
+atlas_os\services\dependency_manager.py:79: ServiceRegistry,
+atlas_os\services\dependency_manager.py:194: This manager owns a ServiceRegistry and adds an explicit directed
+atlas_os\services\dependency_manager.py:211: registry: ServiceRegistry | None = None,
+atlas_os\services\dependency_manager.py:217: else ServiceRegistry()
+atlas_os\services\dependency_manager.py:237: def registry(self) -> ServiceRegistry:
+atlas_os\services\registry.py:55: "AtlasAI.AtlasOS.ServiceRegistry"
+atlas_os\services\registry.py:59: class ServiceRegistryError(RuntimeError):
+atlas_os\services\registry.py:65: class DuplicateServiceError(ServiceRegistryError):
+atlas_os\services\registry.py:71: class ServiceNotFoundError(ServiceRegistryError):
+atlas_os\services\registry.py:77: class ServiceRemovalError(ServiceRegistryError):
+atlas_os\services\registry.py:141: class ServiceRegistry:
+atlas_os\services\registry.py:149: registry = ServiceRegistry()
+atlas_os\services\registry.py:161: NAME = "AtlasOSServiceRegistry"
+atlas_os\services\__init__.py:28: ServiceRegistry,
+atlas_os\services\__init__.py:29: ServiceRegistryError,
+atlas_os\services\__init__.py:52: "ServiceRegistry",
+atlas_os\services\__init__.py:53: "ServiceRegistryError",
+core\service_registry.py:70: class ServiceRegistry:
+tests\atlas_os\test_service_registry.py:2: Tests for AtlasOS ServiceRegistry.
+tests\atlas_os\test_service_registry.py:18: ServiceRegistry,
+tests\atlas_os\test_service_registry.py:87: class ServiceRegistryTests(unittest.TestCase):
+tests\atlas_os\test_service_registry.py:93: self.registry = ServiceRegistry()

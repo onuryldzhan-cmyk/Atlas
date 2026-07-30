@@ -1,0 +1,273 @@
+"""
+Atlas AI Brain v5.0
+
+Central reasoning orchestrator.
+
+Brain does not:
+- fetch market data
+- execute trades
+- calculate indicators
+
+Brain coordinates intelligence flow.
+"""
+
+
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from typing import Dict, Any
+import logging
+
+
+from core.events import (
+    AtlasEvent,
+    EventType
+)
+
+
+class BrainState:
+
+    def __init__(self):
+
+        self.last_input = None
+
+        self.last_analysis = None
+
+        self.last_decision = None
+
+        self.last_update = None
+
+
+
+class AtlasBrain:
+    """
+    Atlas intelligence core.
+    """
+
+
+    def __init__(
+        self,
+        event_bus=None
+    ):
+
+        self.event_bus = event_bus
+
+        self.state = BrainState()
+
+
+        self.logger = logging.getLogger(
+            "AtlasAI.Brain"
+        )
+
+
+        self.logger.info(
+            "Atlas Brain initialized."
+        )
+
+
+
+    def observe(
+        self,
+        data: Dict[str, Any]
+    ):
+
+        """
+        Receive information.
+        """
+
+
+        self.state.last_input = data
+
+        self.state.last_update = (
+            datetime.now(
+                timezone.utc
+            )
+        )
+
+
+        return data
+
+
+
+    def analyze(
+        self,
+        observation: Dict[str, Any]
+    ):
+
+        """
+        Placeholder analysis stage.
+
+        Real analyzers will connect later.
+        """
+
+
+        analysis = {
+
+            "timestamp":
+                datetime.now(
+                    timezone.utc
+                ).isoformat(),
+
+            "observation":
+                observation,
+
+            "status":
+                "ANALYSIS_PENDING"
+
+        }
+
+
+        self.state.last_analysis = analysis
+
+
+        return analysis
+
+
+
+    def reason(
+        self,
+        analysis: Dict[str, Any]
+    ):
+
+        """
+        Reasoning layer.
+
+        No trading decision yet.
+        """
+
+
+        decision = {
+
+            "action":
+                "WAIT",
+
+            "confidence":
+                0,
+
+            "reason":
+                "No reasoning module connected"
+
+
+        }
+
+
+        self.state.last_decision = decision
+
+
+        return decision
+
+
+
+    def reflect(
+        self,
+        result: Dict[str, Any]
+    ):
+
+        """
+        Learning feedback point.
+        """
+
+
+        reflection = {
+
+            "success":
+                True,
+
+            "timestamp":
+                datetime.now(
+                    timezone.utc
+                ).isoformat(),
+
+            "result":
+                result
+
+        }
+
+
+        return reflection
+
+
+
+    def process(
+        self,
+        data: Dict[str, Any]
+    ):
+
+        """
+        Complete brain pipeline.
+        """
+
+
+        observation = self.observe(
+            data
+        )
+
+
+        analysis = self.analyze(
+            observation
+        )
+
+
+        decision = self.reason(
+            analysis
+        )
+
+
+        reflection = self.reflect(
+            decision
+        )
+
+
+        result = {
+
+            "analysis":
+                analysis,
+
+            "decision":
+                decision,
+
+            "reflection":
+                reflection
+
+        }
+
+
+        if self.event_bus:
+
+            event = AtlasEvent(
+
+                event_type=
+                    EventType.ANALYSIS_COMPLETED,
+
+                source="brain",
+
+                payload=result
+
+            )
+
+
+            self.event_bus.publish(
+                event
+            )
+
+
+        return result
+
+
+
+    def status(self):
+
+        return {
+
+            "last_input":
+                self.state.last_input,
+
+            "last_decision":
+                self.state.last_decision,
+
+            "last_update":
+                str(
+                    self.state.last_update
+                )
+
+        }

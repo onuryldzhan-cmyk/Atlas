@@ -1,0 +1,557 @@
+﻿"""
+core/atlas_brain.py - Atlas AI Main Brain
+The central intelligence hub. Coordinates analysis, signals, and decisions.
+"""
+
+import os
+import sys
+import time
+import json
+import random
+import logging
+from pathlib import Path
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Tuple, Any
+from dataclasses import dataclass, asdict
+
+# Add project root to path
+PROJECT_ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
+try:
+    from config.settings import TRADING, RISK, SIGNAL, SYSTEM
+except ImportError:
+    TRADING = type('obj', (object,), {
+        'MODE': 'SIMULATION', 'WATCHLIST': ['BTCUSDT', 'ETHUSDT', 'SOLUSDT'],
+        'TIMEFRAME': '5m', 'PAPER_BALANCE': 10000.0
+    })()
+    RISK = type('obj', (object,), {
+        'RISK_PROFILE': 'medium', 'MAX_POSITIONS': 10
+    })()
+    SYSTEM = type('obj', (object,), {
+        'VERSION': '4.3.0', 'DEBUG_MODE': False
+    })()
+
+logger = logging.getLogger("AtlasAI.Brain")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DATA CLASSES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@dataclass
+class MarketAnalysis:
+    """Market analysis result for a symbol."""
+    symbol: str
+    timestamp: str
+    trend: str  # bullish | bearish | neutral | sideways
+    trend_strength: float  # 0-1
+    support: float
+    resistance: float
+    volatility: float  # 0-1
+    volume_profile: str  # high | normal | low
+    key_levels: List[float]
+    analysis_summary: str
+
+
+@dataclass
+class Signal:
+    """Trading signal."""
+    id: str
+    symbol: str
+    direction: str  # BUY | SELL | HOLD
+    confidence: float  # 0-1
+    timestamp: str
+    source: str
+    strategy: str
+    timeframe: str
+    entry_price: Optional[float] = None
+    stop_loss: Optional[float] = None
+    take_profit: Optional[float] = None
+    metadata: Dict = None
+
+
+@dataclass
+class BrainState:
+    """Current state of the AI brain."""
+    active: bool
+    mode: str
+    symbols_analyzed: int
+    signals_generated: int
+    last_update: str
+    market_regime: str  # trending | ranging | volatile | calm
+    overall_confidence: float
+    memory_size: int
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ATLAS BRAIN CLASS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class AtlasBrain:
+    """
+    Central AI Brain for Atlas AI.
+    Coordinates market analysis, signal generation, and strategic thinking.
+    """
+    
+    def __init__(self):
+        self.active = False
+        self.initialized = False
+        self.state = BrainState(
+            active=False,
+            mode=TRADING.MODE,
+            symbols_analyzed=0,
+            signals_generated=0,
+            last_update=datetime.now().isoformat(),
+            market_regime="unknown",
+            overall_confidence=0.0,
+            memory_size=0
+        )
+        
+        # Component placeholders
+        self.technical_analyzer = None
+        self.fundamental_analyzer = None
+        self.sentiment_analyzer = None
+        self.ml_predictor = None
+        self.pattern_recognizer = None
+        
+        # Memory
+        self.market_memory: Dict[str, List[Dict]] = {}  # symbol -> history
+        self.signal_history: List[Signal] = []
+        self.decision_log: List[Dict] = []
+        
+        # Knowledge
+        self.market_regime = "unknown"
+        self.regime_confidence = 0.0
+        self.active_strategies: List[str] = []
+        
+        logger.info("🧠 Atlas Brain initialized")
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # INITIALIZATION
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    def initialize(self) -> bool:
+        """Initialize the brain with all components."""
+        logger.info("🧠 Initializing Atlas Brain...")
+        
+        self.active = True
+        self.state.active = True
+        self.initialized = True
+        self.state.last_update = datetime.now().isoformat()
+        
+        # Initialize default strategies
+        self.active_strategies = [
+            "trend_following",
+            "mean_reversion",
+            "breakout",
+            "momentum"
+        ]
+        
+        logger.info(f"✅ Brain initialized with {len(self.active_strategies)} strategies")
+        logger.info(f"   Strategies: {', '.join(self.active_strategies)}")
+        
+        return True
+    
+    def shutdown(self):
+        """Shutdown the brain gracefully."""
+        logger.info("🧠 Shutting down Atlas Brain...")
+        self.active = False
+        self.state.active = False
+        self._save_memory()
+        logger.info("✅ Brain shutdown complete")
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # CORE ANALYSIS
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    def analyze_market(self, symbol: str, price_data: List[Dict] = None) -> MarketAnalysis:
+        """
+        Perform comprehensive market analysis for a symbol.
+        Returns structured analysis with trend, levels, and volatility.
+        """
+        if not self.active:
+            logger.warning("🧠 Brain is not active. Cannot analyze.")
+            return None
+        
+        logger.debug(f"🔍 Analyzing {symbol}...")
+        
+        # Simulated analysis (placeholder for real technical analysis)
+        analysis = self._simulate_analysis(symbol)
+        
+        # Store in memory
+        if symbol not in self.market_memory:
+            self.market_memory[symbol] = []
+        self.market_memory[symbol].append({
+            "timestamp": datetime.now().isoformat(),
+            "analysis": asdict(analysis)
+        })
+        
+        # Keep memory size limited
+        if len(self.market_memory[symbol]) > 100:
+            self.market_memory[symbol] = self.market_memory[symbol][-100:]
+        
+        self.state.symbols_analyzed += 1
+        self.state.last_update = datetime.now().isoformat()
+        
+        return analysis
+    
+    def _simulate_analysis(self, symbol: str) -> MarketAnalysis:
+        """Generate simulated market analysis for testing."""
+        # In production, this would use real technical indicators
+        current_price = random.uniform(100, 70000)
+        
+        trends = ["bullish", "bearish", "neutral", "sideways"]
+        trend = random.choices(trends, weights=[30, 25, 25, 20])[0]
+        
+        trend_strength = random.uniform(0.3, 0.95)
+        volatility = random.uniform(0.1, 0.8)
+        
+        support = current_price * (1 - random.uniform(0.02, 0.08))
+        resistance = current_price * (1 + random.uniform(0.02, 0.12))
+        
+        volume_profiles = ["high", "normal", "low"]
+        vol_profile = random.choices(volume_profiles, weights=[20, 60, 20])[0]
+        
+        summaries = {
+            "bullish": f"Strong upward momentum detected. Price above key moving averages.",
+            "bearish": f"Downward pressure observed. Support level at ${support:,.2f}.",
+            "neutral": f"Consolidation phase. Waiting for breakout confirmation.",
+            "sideways": f"Range-bound market. Key levels: ${support:,.2f} - ${resistance:,.2f}."
+        }
+        
+        return MarketAnalysis(
+            symbol=symbol,
+            timestamp=datetime.now().isoformat(),
+            trend=trend,
+            trend_strength=round(trend_strength, 2),
+            support=round(support, 2),
+            resistance=round(resistance, 2),
+            volatility=round(volatility, 2),
+            volume_profile=vol_profile,
+            key_levels=[round(support, 2), round(resistance, 2)],
+            analysis_summary=summaries.get(trend, "Analysis pending...")
+        )
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # SIGNAL GENERATION
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    def generate_signals(self, symbols: List[str] = None) -> List[Signal]:
+        """
+        Generate trading signals for given symbols.
+        Analyzes each symbol and produces actionable signals.
+        """
+        if not self.active:
+            logger.warning("🧠 Brain is not active. Cannot generate signals.")
+            return []
+        
+        if symbols is None:
+            symbols = TRADING.WATCHLIST
+        
+        signals = []
+        logger.info(f"🧠 Generating signals for {len(symbols)} symbols...")
+        
+        for symbol in symbols:
+            # Analyze market
+            analysis = self.analyze_market(symbol)
+            if not analysis:
+                continue
+            
+            # Generate signal based on analysis
+            signal = self._create_signal_from_analysis(analysis)
+            if signal:
+                signals.append(signal)
+                self.signal_history.append(signal)
+        
+        # Update state
+        self.state.signals_generated += len(signals)
+        self.state.last_update = datetime.now().isoformat()
+        
+        # Detect market regime
+        self._detect_market_regime(signals)
+        
+        if signals:
+            logger.info(f"📡 Generated {len(signals)} signals")
+            for sig in signals:
+                logger.info(f"   {sig.symbol} | {sig.direction} | {sig.confidence:.1%} | {sig.strategy}")
+        else:
+            logger.info("📡 No signals generated this cycle")
+        
+        return signals
+    
+    def _create_signal_from_analysis(self, analysis: MarketAnalysis) -> Optional[Signal]:
+        """Create a trading signal from market analysis."""
+        # Signal logic based on trend and confidence
+        if analysis.trend == "bullish" and analysis.trend_strength > 0.6:
+            direction = "BUY"
+            confidence = analysis.trend_strength * random.uniform(0.8, 1.0)
+            strategy = random.choice(["trend_following", "breakout"])
+        elif analysis.trend == "bearish" and analysis.trend_strength > 0.6:
+            direction = "SELL"
+            confidence = analysis.trend_strength * random.uniform(0.8, 1.0)
+            strategy = random.choice(["trend_following", "mean_reversion"])
+        else:
+            # No strong signal
+            if random.random() > 0.7:  # 30% chance of HOLD signal
+                direction = "HOLD"
+                confidence = random.uniform(0.4, 0.6)
+                strategy = "neutral"
+            else:
+                return None  # No signal
+        
+        # Only generate if confidence meets threshold
+        if confidence < SIGNAL.MIN_CONFIDENCE:
+            return None
+        
+        signal_id = f"SIG_{int(time.time())}_{random.randint(1000, 9999)}"
+        
+        entry = (analysis.support + analysis.resistance) / 2
+        stop = analysis.support * 0.98 if direction == "BUY" else analysis.resistance * 1.02
+        target = analysis.resistance * 1.05 if direction == "BUY" else analysis.support * 0.95
+        
+        return Signal(
+            id=signal_id,
+            symbol=analysis.symbol,
+            direction=direction,
+            confidence=round(confidence, 3),
+            timestamp=datetime.now().isoformat(),
+            source="atlas_brain",
+            strategy=strategy,
+            timeframe=TRADING.TIMEFRAME,
+            entry_price=round(entry, 2),
+            stop_loss=round(stop, 2),
+            take_profit=round(target, 2),
+            metadata={
+                "trend": analysis.trend,
+                "trend_strength": analysis.trend_strength,
+                "volatility": analysis.volatility,
+                "volume": analysis.volume_profile
+            }
+        )
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # MARKET REGIME DETECTION
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    def _detect_market_regime(self, recent_signals: List[Signal]):
+        """Detect current market regime based on recent signals."""
+        if not recent_signals:
+            return
+        
+        buy_count = sum(1 for s in recent_signals if s.direction == "BUY")
+        sell_count = sum(1 for s in recent_signals if s.direction == "SELL")
+        hold_count = sum(1 for s in recent_signals if s.direction == "HOLD")
+        total = len(recent_signals)
+        
+        if total == 0:
+            return
+        
+        buy_ratio = buy_count / total
+        sell_ratio = sell_count / total
+        
+        if buy_ratio > 0.6:
+            regime = "trending_up"
+        elif sell_ratio > 0.6:
+            regime = "trending_down"
+        elif hold_count > total * 0.5:
+            regime = "ranging"
+        else:
+            regime = "mixed"
+        
+        # Check volatility
+        avg_vol = sum(s.metadata.get("volatility", 0.5) for s in recent_signals) / total
+        if avg_vol > 0.7:
+            regime = "volatile"
+        
+        self.market_regime = regime
+        self.regime_confidence = max(buy_ratio, sell_ratio, hold_count / total)
+        self.state.market_regime = regime
+        self.state.overall_confidence = round(self.regime_confidence, 2)
+        
+        logger.info(f"📊 Market Regime: {regime} (confidence: {self.regime_confidence:.1%})")
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # STRATEGIC THINKING
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    def think(self, context: Dict = None) -> Dict:
+        """
+        High-level strategic thinking.
+        Evaluates overall market conditions and adjusts strategy.
+        """
+        if not self.active:
+            return {"error": "Brain not active"}
+        
+        logger.debug("🧠 Thinking...")
+        
+        # Adjust strategies based on market regime
+        strategy_adjustments = self._adjust_strategies_for_regime()
+        
+        # Risk assessment
+        risk_assessment = self._assess_risk()
+        
+        thought = {
+            "timestamp": datetime.now().isoformat(),
+            "market_regime": self.market_regime,
+            "regime_confidence": self.regime_confidence,
+            "active_strategies": self.active_strategies,
+            "strategy_adjustments": strategy_adjustments,
+            "risk_assessment": risk_assessment,
+            "recommendation": self._generate_recommendation(),
+        }
+        
+        self.decision_log.append(thought)
+        
+        # Keep log size limited
+        if len(self.decision_log) > 1000:
+            self.decision_log = self.decision_log[-1000:]
+        
+        return thought
+    
+    def _adjust_strategies_for_regime(self) -> Dict:
+        """Adjust active strategies based on market regime."""
+        adjustments = {}
+        
+        regime_strategy_map = {
+            "trending_up": ["trend_following", "momentum", "breakout"],
+            "trending_down": ["mean_reversion", "momentum", "trend_following"],
+            "ranging": ["mean_reversion", "range_trading"],
+            "volatile": ["breakout", "volatility"],
+            "mixed": ["trend_following", "mean_reversion"],
+            "unknown": ["trend_following", "mean_reversion", "breakout"]
+        }
+        
+        recommended = regime_strategy_map.get(self.market_regime, self.active_strategies)
+        
+        if set(recommended) != set(self.active_strategies):
+            old = self.active_strategies.copy()
+            self.active_strategies = recommended
+            adjustments = {
+                "changed": True,
+                "from": old,
+                "to": recommended,
+                "reason": f"Market regime: {self.market_regime}"
+            }
+            logger.info(f"🔄 Strategy adjusted for {self.market_regime}: {recommended}")
+        else:
+            adjustments = {"changed": False, "current": self.active_strategies}
+        
+        return adjustments
+    
+    def _assess_risk(self) -> Dict:
+        """Assess current risk levels."""
+        return {
+            "level": RISK.RISK_PROFILE,
+            "max_positions": RISK.MAX_POSITIONS,
+            "market_volatility": "elevated" if self.market_regime == "volatile" else "normal",
+            "recommendation": "caution" if self.market_regime == "volatile" else "normal"
+        }
+    
+    def _generate_recommendation(self) -> str:
+        """Generate overall trading recommendation."""
+        if self.market_regime == "trending_up":
+            return "Favor long positions. Increase position sizes cautiously."
+        elif self.market_regime == "trending_down":
+            return "Favor short positions or stay in cash."
+        elif self.market_regime == "volatile":
+            return "Reduce position sizes. Use wider stops."
+        elif self.market_regime == "ranging":
+            return "Range trade between support and resistance."
+        else:
+            return "Mixed signals. Wait for clearer direction."
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # MEMORY MANAGEMENT
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    def _save_memory(self):
+        """Save brain memory to file."""
+        try:
+            memory_file = PROJECT_ROOT / "database" / "brain_memory.json"
+            memory_file.parent.mkdir(parents=True, exist_ok=True)
+            
+            data = {
+                "timestamp": datetime.now().isoformat(),
+                "market_memory_keys": list(self.market_memory.keys()),
+                "signal_history_count": len(self.signal_history),
+                "decision_log_count": len(self.decision_log),
+                "market_regime": self.market_regime,
+                "active_strategies": self.active_strategies,
+            }
+            
+            with open(memory_file, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+            
+            logger.info(f"💾 Brain memory saved ({len(self.signal_history)} signals)")
+        except Exception as e:
+            logger.error(f"❌ Failed to save memory: {e}")
+    
+    def get_state(self) -> BrainState:
+        """Get current brain state."""
+        self.state.memory_size = (
+            sum(len(v) for v in self.market_memory.values()) +
+            len(self.signal_history) +
+            len(self.decision_log)
+        )
+        return self.state
+    
+    def get_stats(self) -> Dict:
+        """Get brain statistics."""
+        return {
+            "initialized": self.initialized,
+            "active": self.active,
+            "symbols_analyzed": self.state.symbols_analyzed,
+            "signals_generated": self.state.signals_generated,
+            "signal_history_size": len(self.signal_history),
+            "decision_log_size": len(self.decision_log),
+            "market_regime": self.market_regime,
+            "active_strategies": self.active_strategies,
+            "memory_symbols": list(self.market_memory.keys()),
+        }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STANDALONE TEST
+# ═══════════════════════════════════════════════════════════════════════════════
+
+if __name__ == "__main__":
+    print("🧠 Atlas Brain - Test Mode")
+    print("=" * 50)
+    
+    brain = AtlasBrain()
+    
+    print("\n📋 Initial State:")
+    print(f"   Active: {brain.state.active}")
+    print(f"   Mode: {brain.state.mode}")
+    print(f"   Initialized: {brain.initialized}")
+    
+    print("\n🔧 Initializing brain...")
+    brain.initialize()
+    
+    print("\n📊 Analyzing BTC/USDT...")
+    analysis = brain.analyze_market("BTCUSDT")
+    print(f"   Trend: {analysis.trend}")
+    print(f"   Strength: {analysis.trend_strength}")
+    print(f"   Support: ${analysis.support:,.2f}")
+    print(f"   Resistance: ${analysis.resistance:,.2f}")
+    print(f"   Summary: {analysis.analysis_summary}")
+    
+    print("\n📡 Generating signals for all symbols...")
+    signals = brain.generate_signals(TRADING.WATCHLIST[:5])
+    print(f"   Generated: {len(signals)} signals")
+    
+    print("\n🧠 Thinking strategically...")
+    thought = brain.think()
+    print(f"   Regime: {thought['market_regime']}")
+    print(f"   Recommendation: {thought['recommendation']}")
+    print(f"   Active Strategies: {thought['active_strategies']}")
+    
+    print("\n📋 Final Stats:")
+    for k, v in brain.get_stats().items():
+        print(f"   {k}: {v}")
+    
+    print("\n🔒 Shutting down...")
+    brain.shutdown()
+    
+    print("\n✅ Brain test completed!")

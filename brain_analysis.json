@@ -1,0 +1,64 @@
+{
+    "generated": "2026-07-23T14:39:34.234530",
+    "brains": [
+        {
+            "file": "core/brain.py",
+            "lines": 551,
+            "classes": [
+                "BrainState",
+                "AtlasBrain"
+            ],
+            "functions": [
+                "__init__",
+                "__init__",
+                "load_intelligence",
+                "observe",
+                "analyze",
+                "decide",
+                "process",
+                "analyze_and_decide",
+                "status",
+                "shutdown"
+            ],
+            "imports": [
+                "datetime",
+                "logging",
+                "core.decision_adapter",
+                "ai.core.atlas_brain"
+            ]
+        },
+        {
+            "file": "ai/core/atlas_brain.py",
+            "lines": 1567,
+            "classes": [
+                "AtlasBrain"
+            ],
+            "functions": [
+                "__init__",
+                "initialize_modules",
+                "get_system_status",
+                "analyze_and_decide",
+                "world_analysis",
+                "agent_analysis",
+                "calculate_momentum",
+                "reasoning_analysis",
+                "memory_analysis",
+                "fuse_decision",
+                "calculate_risk",
+                "record_execution_result",
+                "save_all",
+                "load_all"
+            ],
+            "imports": [
+                "__future__",
+                "datetime",
+                "typing",
+                "core.decision",
+                "atlas_memory_core",
+                "atlas_reasoning_engine",
+                "atlas_world_model",
+                "atlas_multi_agent"
+            ]
+        }
+    ]
+}

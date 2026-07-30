@@ -1,0 +1,195 @@
+{
+    "engine": "Atlas Self Awareness",
+    "version": "1.0",
+    "time": "2026-07-23T15:00:37.398527+00:00",
+    "project": ".",
+    "modules": 359,
+    "python_files": 372,
+    "lines": 79033,
+    "large_modules": [
+        {
+            "file": "backtest\\backtest_engine.py",
+            "lines": 871,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "config\\settings.py",
+            "lines": 550,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "core\\brain.py",
+            "lines": 551,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "core\\execution_manager.py",
+            "lines": 626,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "core\\market_loop.py",
+            "lines": 543,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "core\\paper_trader.py",
+            "lines": 511,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "core\\signal_pipeline.py",
+            "lines": 684,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "dashboard\\app.py",
+            "lines": 617,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "portfolio\\capital_manager.py",
+            "lines": 658,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "strategy\\strategy_base.py",
+            "lines": 705,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "archive_unused_2026-07-22\\backtest\\backtest_enhanced.py",
+            "lines": 668,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\loop.py",
+            "lines": 588,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\main_loop_v2.py",
+            "lines": 603,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\outcome_memory.py",
+            "lines": 514,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\refactor_engine.py",
+            "lines": 506,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "archive_unused_2026-07-22\\core\\strategy_competition.py",
+            "lines": 548,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "archive_unused_2026-07-22\\dashboard\\app_old.py",
+            "lines": 812,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "archive_unused_2026-07-22\\data\\data_manager.py",
+            "lines": 647,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "archive_unused_2026-07-22\\events\\event_system_v2.py",
+            "lines": 585,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "archive_unused_2026-07-22\\execution\\paper_trading_v2.py",
+            "lines": 571,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "archive_unused_2026-07-22\\atlas_paper_trading\\core\\atlas_memory_core.py",
+            "lines": 904,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "archive_unused_2026-07-22\\atlas_paper_trading\\core\\atlas_multi_agent.py",
+            "lines": 1059,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "archive_unused_2026-07-22\\atlas_paper_trading\\core\\atlas_reasoning_engine.py",
+            "lines": 825,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "archive_unused_2026-07-22\\atlas_paper_trading\\core\\atlas_world_model.py",
+            "lines": 728,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\atlas_backtesting_engine.py",
+            "lines": 832,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\atlas_digital_twin.py",
+            "lines": 515,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\atlas_execution_optimizer.py",
+            "lines": 561,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\atlas_live_trading_v2.py",
+            "lines": 1199,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\atlas_live_trading_v21.py",
+            "lines": 1305,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\atlas_orchestrator.py",
+            "lines": 809,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\atlas_orchestrator_old.py",
+            "lines": 761,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\atlas_orchestrator_old_20260721_0851.py",
+            "lines": 791,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\atlas_research_engine.py",
+            "lines": 510,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "archive_unused_2026-07-22\\ai\\core\\atlas_self_coding.py",
+            "lines": 539,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "ai\\core\\atlas_brain.py",
+            "lines": 1567,
+            "recommendation": "Bu modül parçalanmalı"
+        },
+        {
+            "file": "ai\\core\\atlas_reasoning_engine.py",
+            "lines": 927,
+            "recommendation": "Bu modül parçalanmalı"
+        }
+    ],
+    "warnings": [
+        "Büyük kod tabanı. Modüler AI mimarisi gerekli.",
+        "Çok fazla büyük dosya bulundu."
+    ]
+}

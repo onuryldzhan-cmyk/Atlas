@@ -1,0 +1,22 @@
+[
+    {
+        "signal": "AL",
+        "result": 0,
+        "exit_reason": "RISK_REJECT"
+    },
+    {
+        "signal": "AL",
+        "result": 0,
+        "exit_reason": "RISK_REJECT"
+    },
+    {
+        "signal": "AL",
+        "result": 0,
+        "exit_reason": "RISK_REJECT"
+    },
+    {
+        "signal": "AL",
+        "result": 0,
+        "exit_reason": "RISK_REJECT"
+    }
+]

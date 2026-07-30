@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Atlas AI Dashboard{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background: #0f172a; color: #e2e8f0; font-family: system-ui, -apple-system, sans-serif; }
+        .card { background: #1e293b; border: 1px solid #334155; border-radius: 0.75rem; padding: 1.5rem; }
+        .sidebar { background: #1e293b; border-right: 1px solid #334155; width: 250px; min-height: 100vh; position: fixed; }
+        .main-content { margin-left: 250px; padding: 2rem; }
+        .nav-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; color: #94a3b8; text-decoration: none; border-radius: 0.5rem; transition: all 0.2s; }
+        .nav-item:hover, .nav-item.active { background: #3b82f6; color: white; }
+        .stat-card { background: #1e293b; border: 1px solid #334155; border-radius: 0.75rem; padding: 1.5rem; transition: all 0.3s; }
+        .stat-card:hover { border-color: #3b82f6; transform: translateY(-2px); }
+        .btn-primary { background: #3b82f6; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; cursor: pointer; }
+        .btn-primary:hover { background: #2563eb; }
+        .text-success { color: #10b981; }
+        .text-danger { color: #ef4444; }
+        .text-warning { color: #f59e0b; }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="sidebar">
+        <div style="padding: 1.5rem; border-bottom: 1px solid #334155;">
+            <h1 style="font-size: 1.25rem; font-weight: bold; color: white;"><i class="fas fa-brain"></i> Atlas AI</h1>
+            <p style="font-size: 0.75rem; color: #64748b;">v4.3.0</p>
+        </div>
+        <nav style="padding: 1rem;">
+            <a href="/" class="nav-item {% if request.endpoint == 'index' %}active{% endif %}"><i class="fas fa-chart-line"></i> Dashboard</a>
+            <a href="/portfolio" class="nav-item {% if request.endpoint == 'portfolio_page' %}active{% endif %}"><i class="fas fa-wallet"></i> Portfoy</a>
+            <a href="/trades" class="nav-item {% if request.endpoint == 'trades_page' %}active{% endif %}"><i class="fas fa-exchange-alt"></i> Islemler</a>
+            <a href="/signals" class="nav-item {% if request.endpoint == 'signals_page' %}active{% endif %}"><i class="fas fa-satellite-dish"></i> Sinyaller</a>
+            <a href="/analytics" class="nav-item {% if request.endpoint == 'analytics_page' %}active{% endif %}"><i class="fas fa-chart-bar"></i> Analitik</a>
+            <a href="/settings" class="nav-item {% if request.endpoint == 'settings_page' %}active{% endif %}"><i class="fas fa-cog"></i> Ayarlar</a>
+        </nav>
+    </div>
+    <div class="main-content">
+        {% block content %}{% endblock %}
+    </div>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

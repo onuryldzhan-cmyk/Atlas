@@ -1,0 +1,62 @@
+ATLAS PHASE 6A6.1 — APPLICATION RUNTIME WIRING SUMMARY
+
+[main] main.py
+  class AtlasProcess bases=[]
+    __init__(self) -> None [265-276]
+    start(self) -> bool [336-370]
+      CALL line 345: AtlasApplication args=[] kwargs={'execution_mode': "'PAPER'"}
+      CALL line 353: self.application.start args=[] kwargs={}
+    stop(self) -> bool [469-493]
+      CALL line 481: self.application.stop args=[] kwargs={}
+    execute(self) -> int [499-558]
+      CALL line 507: self.start args=[] kwargs={}
+      CALL line 540: self.stop args=[] kwargs={}
+  function main() -> int [566-582]
+[application] core\application.py
+  class AtlasApplication bases=[]
+    __init__(self, *, exchange_name: str = 'binance_global', execution_mode: str = 'PAPER', symbols: list[str] | None = None, market_interval: float = 10.0) -> None [96-134]
+    _build_services(self) -> None [156-221]
+      CALL line 184: MarketFeed args=[] kwargs={'exchange_name': 'self.exchange_name'}
+      CALL line 204: MarketLoop args=[] kwargs={'brain': 'self.brain', 'market_feed': 'self.market_feed', 'execution': 'self.execution', 'event_bus': 'self.event_bus', 'symbols': 'self.symbols', 'interval': 'self.market_interval'}
+    start(self) -> bool [267-379]
+      CALL line 282: self.started_services.clear args=[] kwargs={}
+      CALL line 305: self.execution.start args=[] kwargs={}
+      CALL line 306: self.started_services.append args=["'execution'"] kwargs={}
+      CALL line 314: self.market_feed.start args=[] kwargs={}
+      CALL line 315: self.started_services.append args=["'market_feed'"] kwargs={}
+      CALL line 336: self.market_loop.start args=[] kwargs={}
+      CALL line 337: self.started_services.append args=["'market_loop'"] kwargs={}
+      CALL line 343: self.controller.start args=[] kwargs={}
+      CALL line 344: self.started_services.append args=["'controller'"] kwargs={}
+      CALL line 346: self.runtime.start args=[] kwargs={}
+    _start_optional_service(self, *, name: str, service: Any) -> None [385-404]
+      CALL line 404: self.started_services.append args=['name'] kwargs={}
+    _rollback_startup(self) -> None [410-419]
+      CALL line 419: self.stop args=[] kwargs={}
+    stop(self) -> bool [425-513]
+      CALL line 443: self.runtime.stop args=[] kwargs={}
+      CALL line 478: self.lifecycle.stop_all args=[] kwargs={}
+      CALL line 492: self.started_services.clear args=[] kwargs={}
+[market_loop] core\market_loop.py
+  class MarketLoop bases=[]
+    __init__(self, brain: Any, market_feed: Any, execution: Any | None = None, event_bus: Any | None = None, symbols: list[str] | tuple[str, ...] | None = None, interval: float = 10.0) -> None [104-166]
+    start(self) -> bool [172-208]
+      CALL line 188: self.stop_event.clear args=[] kwargs={}
+      CALL line 202: self.thread.start args=[] kwargs={}
+    stop(self) -> bool [214-266]
+      CALL line 227: self.stop_event.set args=[] kwargs={}
+    worker(self) -> None [272-324]
+      CALL line 318: self.stop_event.wait args=['self.interval'] kwargs={}
+[market_feed] exchange\market_feed.py
+  class MarketFeed bases=[]
+    __init__(self, exchange_name: str = 'binance_global', *, provider: MarketDataProviderProtocol | None = None, event_bus: Any | None = None, metrics: Any | None = None, publish_events: bool = True, collect_metrics: bool = True, failure_threshold: int = MarketFeedService.DEFAULT_FAILURE_THRESHOLD) -> None [81-128]
+      CALL line 114: MarketFeedService args=[] kwargs={'provider': 'self.provider', 'event_bus': 'event_bus', 'metrics': 'metrics', 'publish_events': 'publish_events', 'collect_metrics': 'collect_metrics', 'failure_threshold': 'failure_threshold'}
+    start(self) -> None [142-153]
+      CALL line 149: self.service.start args=[] kwargs={}
+    stop(self) -> None [155-166]
+      CALL line 162: self.service.stop args=[] kwargs={}
+    market_feed_snapshot(self) [273-276]
+      CALL line 276: self.service.market_feed_snapshot args=[] kwargs={}
+    _to_legacy_candle_row(candle: MarketCandle) -> list[Any] [288-336]
+      CALL line 296: MarketFeed._to_milliseconds args=['candle.open_time'] kwargs={}
+      CALL line 304: MarketFeed._to_milliseconds args=['candle.close_time or candle.open_time'] kwargs={}

@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}Atlas AI - Portfoy{% endblock %}
+{% block content %}
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem;">
+    <div>
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <h2 style="font-size: 1.25rem; font-weight: bold; margin-bottom: 1rem;"><i class="fas fa-chart-pie"></i> Portfoy Ozeti</h2>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
+                <div style="text-align: center; padding: 1rem; background: #0f172a; border-radius: 0.5rem;">
+                    <p style="color: #64748b; font-size: 0.875rem;">Toplam Deger</p>
+                    <p style="font-size: 1.5rem; font-weight: bold; color: white;">$12,547.85</p>
+                </div>
+                <div style="text-align: center; padding: 1rem; background: #0f172a; border-radius: 0.5rem;">
+                    <p style="color: #64748b; font-size: 0.875rem;">Kullanilabilir</p>
+                    <p style="font-size: 1.5rem; font-weight: bold; color: #10b981;">$8,432.12</p>
+                </div>
+                <div style="text-align: center; padding: 1rem; background: #0f172a; border-radius: 0.5rem;">
+                    <p style="color: #64748b; font-size: 0.875rem;">Kilitli</p>
+                    <p style="font-size: 1.5rem; font-weight: bold; color: #f59e0b;">$4,115.73</p>
+                </div>
+                <div style="text-align: center; padding: 1rem; background: #0f172a; border-radius: 0.5rem;">
+                    <p style="color: #64748b; font-size: 0.875rem;">Toplam P&L</p>
+                    <p style="font-size: 1.5rem; font-weight: bold; color: #10b981;">+$2,547.85</p>
+                </div>
+            </div>
+        </div>
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <h2 style="font-size: 1.25rem; font-weight: bold; margin-bottom: 1rem;"><i class="fas fa-list"></i> Acik Pozisyonlar</h2>
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="border-bottom: 1px solid #334155;">
+                        <th style="text-align: left; padding: 0.75rem; color: #64748b; font-size: 0.875rem;">ID</th>
+                        <th style="text-align: left; padding: 0.75rem; color: #64748b; font-size: 0.875rem;">Sembol</th>
+                        <th style="text-align: left; padding: 0.75rem; color: #64748b; font-size: 0.875rem;">Yon</th>
+                        <th style="text-align: right; padding: 0.75rem; color: #64748b; font-size: 0.875rem;">Miktar</th>
+                        <th style="text-align: right; padding: 0.75rem; color: #64748b; font-size: 0.875rem;">Giris</th>
+                        <th style="text-align: right; padding: 0.75rem; color: #64748b; font-size: 0.875rem;">Anlik</th>
+                        <th style="text-align: right; padding: 0.75rem; color: #64748b; font-size: 0.875rem;">P&L</th>
+                        <th style="text-align: center; padding: 0.75rem; color: #64748b; font-size: 0.875rem;">Islem</th>
+                    </tr>
+                </thead>
+                <tbody id="portfolio-positions"></tbody>
+            </table>
+        </div>
+    </div>
+    <div>
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <h2 style="font-size: 1.25rem; font-weight: bold; margin-bottom: 1rem;"><i class="fas fa-shield-alt"></i> Risk Metrikleri</h2>
+            <div style="space-y: 1rem;">
+                <div style="display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #1e293b;">
+                    <span style="color: #64748b;">Portfoy Riski</span>
+                    <span style="color: #f59e0b; font-weight: 600;">3.2/10</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #1e293b;">
+                    <span style="color: #64748b;">Sharpe Ratio</span>
+                    <span style="color: #10b981; font-weight: 600;">1.84</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #1e293b;">
+                    <span style="color: #64748b;">Max Drawdown</span>
+                    <span style="color: #ef4444; font-weight: 600;">8.2%</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #1e293b;">
+                    <span style="color: #64748b;">Beta</span>
+                    <span style="color: white; font-weight: 600;">0.85</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 0.75rem 0;">
+                    <span style="color: #64748b;">Alpha</span>
+                    <span style="color: #10b981; font-weight: 600;">2.45%</span>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <h2 style="font-size: 1.25rem; font-weight: bold; margin-bottom: 1rem;"><i class="fas fa-chart-pie"></i> Varlik Dagilimi</h2>
+            <canvas id="assetChart" height="200"></canvas>
+            <div style="margin-top: 1rem;">
+                <div style="display: flex; justify-content: space-between; padding: 0.5rem 0;">
+                    <span style="color: #64748b;"><span style="display: inline-block; width: 12px; height: 12px; background: #3b82f6; border-radius: 50%; margin-right: 0.5rem;"></span>USDT</span>
+                    <span style="color: white; font-weight: 600;">67.2%</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 0.5rem 0;">
+                    <span style="color: #64748b;"><span style="display: inline-block; width: 12px; height: 12px; background: #f97316; border-radius: 50%; margin-right: 0.5rem;"></span>BTC</span>
+                    <span style="color: white; font-weight: 600;">17.1%</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 0.5rem 0;">
+                    <span style="color: #64748b;"><span style="display: inline-block; width: 12px; height: 12px; background: #a855f7; border-radius: 50%; margin-right: 0.5rem;"></span>ETH</span>
+                    <span style="color: white; font-weight: 600;">10.2%</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 0.5rem 0;">
+                    <span style="color: #64748b;"><span style="display: inline-block; width: 12px; height: 12px; background: #22c55e; border-radius: 50%; margin-right: 0.5rem;"></span>SOL</span>
+                    <span style="color: white; font-weight: 600;">3.9%</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+    const assetCtx = document.getElementById('assetChart').getContext('2d');
+    new Chart(assetCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['USDT', 'BTC', 'ETH', 'SOL', 'BNB'],
+            datasets: [{
+                data: [67.2, 17.1, 10.2, 3.9, 1.6],
+                backgroundColor: ['#3b82f6', '#f97316', '#a855f7', '#22c55e', '#eab308'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            cutout: '70%'
+        }
+    });
+    async function loadPositions() {
+        const res = await fetch('/api/positions');
+        const data = await res.json();
+        document.getElementById('portfolio-positions').innerHTML = data.positions.map(pos => `
+            <tr style="border-bottom: 1px solid #1e293b;">
+                <td style="padding: 0.75rem; color: #64748b; font-size: 0.875rem;">${pos.id}</td>
+                <td style="padding: 0.75rem; font-weight: 500; color: white;">${pos.symbol}</td>
+                <td style="padding: 0.75rem;">
+                    <span style="padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; ${pos.side === 'LONG' ? 'background: rgba(16, 185, 129, 0.2); color: #10b981;' : 'background: rgba(239, 68, 68, 0.2); color: #ef4444;'}">${pos.side}</span>
+                </td>
+                <td style="padding: 0.75rem; text-align: right; color: white;">${pos.quantity}</td>
+                <td style="padding: 0.75rem; text-align: right; color: #64748b;">$${pos.entry_price.toLocaleString()}</td>
+                <td style="padding: 0.75rem; text-align: right; color: white;">$${pos.current_price.toLocaleString()}</td>
+                <td style="padding: 0.75rem; text-align: right; ${pos.pnl >= 0 ? 'color: #10b981;' : 'color: #ef4444;'}">${pos.pnl >= 0 ? '+' : ''}$${pos.pnl.toFixed(2)}</td>
+                <td style="padding: 0.75rem; text-align: center;">
+                    <button style="background: #ef4444; color: white; border: none; padding: 0.25rem 0.75rem; border-radius: 0.25rem; cursor: pointer; font-size: 0.75rem;" onclick="closePosition('${pos.id}')">Kapat</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+    function closePosition(id) {
+        if(confirm('Pozisyonu kapatmak istediginize emin misiniz?')) {
+            alert('Pozisyon kapatma istegi gonderildi: ' + id);
+        }
+    }
+    loadPositions();
+</script>
+{% endblock %}

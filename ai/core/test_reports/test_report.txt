@@ -1,0 +1,86 @@
+======================================================================
+ATLAS AI - TAM RAPOR
+======================================================================
+
+DONGU: #5
+ZAMAN: 2026-07-21 09:04:48
+
+----------------------------------------------------------------------
+PIYASA DURUMU
+----------------------------------------------------------------------
+Piyasa Rejimi: BULL
+Risk Profili: AGGRESSIVE
+
+----------------------------------------------------------------------
+KARARLAR
+----------------------------------------------------------------------
+
+============================================================
+KARAR RAPORU: BTCUSDT
+============================================================
+
+EYLEM: BUY
+GUVEN: %75.0
+RISK SEVIYESI: MEDIUM
+
+ACIKLAMA:
+  Guclu AL sinyali (skor: 0.75) | RSI asiri satim | MACD pozitif
+
+TEKNIK FAKTORLER:
+  - RSI sinyali
+  - MACD sinyali
+
+AJAN OYLARI:
+  🟢 TechnicalAnalyst: BUY
+  🟢 MacroAnalyst: BUY
+  ⚪ RiskManager: HOLD
+  🟢 SentimentAnalyzer: BUY
+  🟢 QuantStrategist: BUY
+
+CIO BILGISI:
+  Piyasa Rejimi: BULL
+  Risk Profili: AGGRESSIVE
+
+ZAMAN: 2026-07-21 09:04:48
+============================================================
+
+----------------------------------------------------------------------
+UYGULANAN ISLEMLER
+----------------------------------------------------------------------
+
+  [OK] BTCUSDT: Pozisyon acildi: 0.05 @ 68000
+
+----------------------------------------------------------------------
+PORTFOY DURUMU
+----------------------------------------------------------------------
+============================================================
+PORTFOY RAPORU
+============================================================
+
+PORTFOY DEGERI: $10500.50
+NAKIT: $7000.00
+AKTIF POZISYON: 2
+
+MODUL DURUMU:
+  Faz 1 Modulleri: YUKLU
+  CIO: YUKLU
+
+AKTIF POZISYONLAR:
+Sembol             Miktar        Giris          Son
+------------------------------------------------------------
+BTCUSDT            0.0500 $  65000.00 $  68000.00
+ETHUSDT            1.5000 $   3500.00 $   3600.00
+
+CIO STRATEJISI:
+  Rejim: BULL
+  Risk: AGGRESSIVE
+  Cash Hedef: %10
+  Max Pozisyon: 7
+
+PERFORMANS OZETI:
+  Toplam PnL: $0.00
+  Kazanan: 0 | Kaybeden: 0
+  Win Rate: %0.0
+
+RAPOR ZAMANI: 2026-07-21 09:04:48
+============================================================

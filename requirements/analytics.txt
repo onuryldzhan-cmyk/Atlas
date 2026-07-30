@@ -1,0 +1,3 @@
+# Optional analytics and backtesting dependencies
+numpy
+pandas
