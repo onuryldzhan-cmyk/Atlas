@@ -1,4 +1,4 @@
-﻿# Python
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -83,3 +83,8 @@ credentials/
 # Local secret variants
 .env.*
 !.env.example
+
+# Atlas runtime-generated state
+/memory_data/
+/paper_trades.json
+/data/trades.json
