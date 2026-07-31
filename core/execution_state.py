@@ -21,6 +21,7 @@ from pathlib import Path
 from datetime import datetime, UTC
 
 import json
+import os
 import threading
 
 
@@ -319,57 +320,65 @@ class ExecutionState:
 
 
     def save(self):
+        """
+        Persist the complete execution-state snapshot atomically.
 
+        The last valid state file is preserved until the new snapshot
+        has been completely serialized, flushed, synchronized to disk,
+        and atomically promoted into place.
+        """
 
-        with open(
+        temporary_file = self.file.with_suffix(
+            self.file.suffix + ".tmp"
+        )
 
-            self.file,
+        payload = {
+            "version": self.VERSION,
+            "active": self.active,
+            "history": self.history,
+            "updated": self.time(),
+        }
 
-            "w",
-
-            encoding="utf-8"
-
-        ) as f:
-
-
-            json.dump(
-
-                {
-
-
-                "version":
-
-                self.VERSION,
-
-
-                "active":
-
-                self.active,
-
-
-                "history":
-
-                self.history,
-
-
-                "updated":
-
-                self.time()
-
-
-                },
-
-
-                f,
-
-                indent=4,
-
-                default=str
-
+        try:
+            self.file.parent.mkdir(
+                parents=True,
+                exist_ok=True,
             )
 
+            with temporary_file.open(
+                "w",
+                encoding="utf-8",
+                newline="\n",
+            ) as stream:
+                json.dump(
+                    payload,
+                    stream,
+                    ensure_ascii=False,
+                    indent=4,
+                    default=str,
+                )
 
+                stream.flush()
 
+                os.fsync(
+                    stream.fileno()
+                )
+
+            os.replace(
+                temporary_file,
+                self.file,
+            )
+
+        except Exception:
+            try:
+                temporary_file.unlink(
+                    missing_ok=True
+                )
+
+            except Exception:
+                pass
+
+            raise
 
 
     def load(self):

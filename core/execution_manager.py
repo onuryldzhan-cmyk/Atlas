@@ -66,6 +66,11 @@ from core.execution_idempotency_store import (
     ExecutionIdempotencyStore,
 )
 
+from core.execution_transaction_journal import (
+    CommitOutcome,
+    ExecutionTransactionJournal,
+)
+
 from core.execution_models import (
     ExecutionRequest,
     ExecutionResult,
@@ -92,7 +97,7 @@ class ExecutionManager:
     PositionController so both components describe the same position size.
     """
 
-    VERSION = "31.2"
+    VERSION = "31.3"
 
     NAME = "ExecutionManager"
 
@@ -156,6 +161,12 @@ class ExecutionManager:
             AuditEventStore.DEFAULT_FILE
         ),
         audit_enabled: bool = True,
+        transaction_journal: (
+            ExecutionTransactionJournal | None
+        ) = None,
+        transaction_journal_file: str = (
+            ExecutionTransactionJournal.DEFAULT_FILE
+        ),
     ) -> None:
         self.capital_manager = capital_manager
         self.position_controller = position_controller
@@ -218,6 +229,14 @@ class ExecutionManager:
             for request_id, result
             in self.idempotency_store.completed_requests.items()
         }
+
+        self.transaction_journal = (
+            transaction_journal
+            if transaction_journal is not None
+            else ExecutionTransactionJournal(
+                file_path=transaction_journal_file,
+            )
+        )
 
         self.audit_enabled = bool(
             audit_enabled
@@ -299,6 +318,19 @@ class ExecutionManager:
                 return True
 
             self.running = True
+
+            try:
+                unresolved_transactions = (
+                    self.transaction_journal.has_unresolved()
+                )
+
+            except Exception:
+                unresolved_transactions = True
+
+            if unresolved_transactions:
+                self.execution_halted = True
+                self.recovery_required = True
+                self.halt_reason = "UNRESOLVED_TRANSACTION"
 
         logger.info(
             "Execution Manager ONLINE"
@@ -624,6 +656,49 @@ class ExecutionManager:
             return self.reject(
                 reason="EXECUTION_MANAGER_OFFLINE",
             )
+
+        with self._lock:
+            execution_halted = self.execution_halted
+            recovery_required = self.recovery_required
+            halt_reason = (
+                self.halt_reason
+                or "UNRESOLVED_TRANSACTION"
+            )
+
+        try:
+            journal_unresolved = (
+                self.transaction_journal.has_unresolved()
+            )
+
+        except Exception:
+            journal_unresolved = True
+
+        if (
+            execution_halted
+            or recovery_required
+            or journal_unresolved
+        ):
+            with self._lock:
+                self.execution_halted = True
+                self.recovery_required = True
+                self.halt_reason = halt_reason
+
+            return {
+                "success": False,
+                "status": "RECOVERY_REQUIRED",
+                "commit_outcome": (
+                    CommitOutcome
+                    .COMMIT_STATUS_UNKNOWN
+                    .value
+                ),
+                "error_code": halt_reason,
+                "message": (
+                    "Execution is blocked until unresolved "
+                    "transactions are reconciled"
+                ),
+                "mode": self.mode,
+                "timestamp": self._utc_now(),
+            }
 
         request: ExecutionRequest | None = None
 
@@ -952,6 +1027,68 @@ class ExecutionManager:
             )
 
             # =================================================
+            # DURABLE TRANSACTION PREPARE BARRIER
+            # =================================================
+
+            try:
+                prepared = self.transaction_journal.prepare(
+                    request_id,
+                    request.to_dict(),
+                )
+
+            except Exception as prepare_exc:
+                prepared = False
+
+                self._record_error(
+                    phase="transaction_prepare",
+                    error=prepare_exc,
+                    request=request,
+                )
+
+            if not prepared:
+                self._release_request(
+                    request_id
+                )
+
+                request_claimed = False
+
+                not_committed = {
+                    "success": False,
+                    "status": (
+                        CommitOutcome
+                        .NOT_COMMITTED
+                        .value
+                    ),
+                    "commit_outcome": (
+                        CommitOutcome
+                        .NOT_COMMITTED
+                        .value
+                    ),
+                    "error_code": (
+                        "TRANSACTION_PREPARE_FAILED"
+                    ),
+                    "message": (
+                        "Durable transaction prepare failed"
+                    ),
+                    "request_id": request_id,
+                    "symbol": request.symbol,
+                    "action": request.action,
+                    "mode": self.mode,
+                    "timestamp": self._utc_now(),
+                }
+
+                self._record_result(
+                    not_committed
+                )
+
+                self.publish(
+                    "EXECUTION_NOT_COMMITTED",
+                    not_committed,
+                )
+
+                return not_committed
+
+            # =================================================
             # EXECUTION ROUTING
             # =================================================
 
@@ -982,10 +1119,6 @@ class ExecutionManager:
                 ),
             )
 
-            self._record_result(
-                result
-            )
-
             status = str(
                 result.get(
                     "status",
@@ -994,15 +1127,49 @@ class ExecutionManager:
             ).strip().upper()
 
             # =================================================
-            # RETRYABLE FAILURE
+            # RETRYABLE FAILURE / NOT COMMITTED
             # =================================================
 
             if status in self.FAILURE_STATUSES:
+                result[
+                    "commit_outcome"
+                ] = (
+                    CommitOutcome
+                    .NOT_COMMITTED
+                    .value
+                )
+
+                mark_not_committed = getattr(
+                    self.transaction_journal,
+                    "mark_not_committed",
+                    None,
+                )
+
+                if callable(
+                    mark_not_committed
+                ):
+                    try:
+                        mark_not_committed(
+                            request_id,
+                            reason=status,
+                            result=result,
+                        )
+
+                    except Exception:
+                        logger.exception(
+                            "Transaction NOT_COMMITTED "
+                            "journal update failed"
+                        )
+
                 self._release_request(
                     request_id
                 )
 
                 request_claimed = False
+
+                self._record_result(
+                    result
+                )
 
                 self._write_audit_event(
                     event_type="EXECUTION_FAILED",
@@ -1025,6 +1192,11 @@ class ExecutionManager:
                             "latency_ms"
                         ),
                         "retryable": True,
+                        "commit_outcome": (
+                            result.get(
+                                "commit_outcome"
+                            )
+                        ),
                     },
                     causation_id=(
                         last_audit_event_id
@@ -1032,16 +1204,161 @@ class ExecutionManager:
                 )
 
             # =================================================
-            # TERMINAL COMPLETION
+            # TERMINAL DURABLE COMMIT
             # =================================================
 
             else:
-                self._complete_request(
+                result[
+                    "commit_outcome"
+                ] = (
+                    CommitOutcome
+                    .COMMITTED
+                    .value
+                )
+
+                persisted = self._complete_request(
                     request_id=request_id,
                     result=result,
                 )
 
                 request_claimed = False
+
+                if not persisted:
+                    try:
+                        self.transaction_journal.mark_unknown(
+                            request_id,
+                            reason="DURABLE_COMMIT_FAILED",
+                            result=result,
+                        )
+
+                    except Exception:
+                        logger.exception(
+                            "Unable to persist unknown "
+                            "transaction outcome"
+                        )
+
+                    with self._lock:
+                        self.execution_halted = True
+                        self.recovery_required = True
+                        self.halt_reason = (
+                            "UNRESOLVED_TRANSACTION"
+                        )
+
+                    unknown_result = {
+                        "success": False,
+                        "status": (
+                            CommitOutcome
+                            .COMMIT_STATUS_UNKNOWN
+                            .value
+                        ),
+                        "commit_outcome": (
+                            CommitOutcome
+                            .COMMIT_STATUS_UNKNOWN
+                            .value
+                        ),
+                        "error_code": (
+                            "DURABLE_COMMIT_FAILED"
+                        ),
+                        "message": (
+                            "Financial side effect completed but "
+                            "durable terminal persistence failed"
+                        ),
+                        "request_id": request_id,
+                        "symbol": request.symbol,
+                        "action": request.action,
+                        "mode": self.mode,
+                        "timestamp": self._utc_now(),
+                        "original_result": result,
+                    }
+
+                    self._record_result(
+                        unknown_result
+                    )
+
+                    self.publish(
+                        "EXECUTION_COMMIT_STATUS_UNKNOWN",
+                        unknown_result,
+                    )
+
+                    return unknown_result
+
+                try:
+                    journal_committed = (
+                        self.transaction_journal.mark_committed(
+                            request_id,
+                            result,
+                        )
+                    )
+
+                except Exception:
+                    journal_committed = False
+
+                    logger.exception(
+                        "Transaction journal commit failed"
+                    )
+
+                if not journal_committed:
+                    try:
+                        self.transaction_journal.mark_unknown(
+                            request_id,
+                            reason=(
+                                "TRANSACTION_JOURNAL_COMMIT_FAILED"
+                            ),
+                            result=result,
+                        )
+
+                    except Exception:
+                        logger.exception(
+                            "Unable to mark transaction unknown"
+                        )
+
+                    with self._lock:
+                        self.execution_halted = True
+                        self.recovery_required = True
+                        self.halt_reason = (
+                            "UNRESOLVED_TRANSACTION"
+                        )
+
+                    unknown_result = {
+                        "success": False,
+                        "status": (
+                            CommitOutcome
+                            .COMMIT_STATUS_UNKNOWN
+                            .value
+                        ),
+                        "commit_outcome": (
+                            CommitOutcome
+                            .COMMIT_STATUS_UNKNOWN
+                            .value
+                        ),
+                        "error_code": (
+                            "TRANSACTION_JOURNAL_COMMIT_FAILED"
+                        ),
+                        "message": (
+                            "Terminal result persisted but journal "
+                            "commit could not be confirmed"
+                        ),
+                        "request_id": request_id,
+                        "symbol": request.symbol,
+                        "action": request.action,
+                        "mode": self.mode,
+                        "timestamp": self._utc_now(),
+                    }
+
+                    self._record_result(
+                        unknown_result
+                    )
+
+                    self.publish(
+                        "EXECUTION_COMMIT_STATUS_UNKNOWN",
+                        unknown_result,
+                    )
+
+                    return unknown_result
+
+                self._record_result(
+                    result
+                )
 
                 self._write_audit_event(
                     event_type=(
@@ -1083,6 +1400,11 @@ class ExecutionManager:
                             )
                         ),
                         "terminal": True,
+                        "commit_outcome": (
+                            result.get(
+                                "commit_outcome"
+                            )
+                        ),
                     },
                     causation_id=(
                         last_audit_event_id
@@ -3653,9 +3975,12 @@ class ExecutionManager:
         *,
         request_id: str,
         result: dict[str, Any],
-    ) -> None:
+    ) -> bool:
         """
-        Move a claimed request into the terminal result cache.
+        Persist a terminal result before exposing it as completed.
+
+        The in-memory completed cache is updated only after the
+        persistent idempotency record succeeds.
         """
 
         canonical_id = str(
@@ -3663,7 +3988,7 @@ class ExecutionManager:
         ).strip()
 
         if not canonical_id:
-            return
+            return False
 
         cached_result = dict(
             result
@@ -3674,10 +3999,28 @@ class ExecutionManager:
             canonical_id,
         )
 
+        persisted = self.idempotency_store.record(
+            canonical_id,
+            cached_result,
+            save=True,
+        )
+
         with self._lock:
             self.pending_request_ids.discard(
                 canonical_id
             )
+
+            if not persisted:
+                self.stats[
+                    "persistent_save_failures"
+                ] += 1
+
+                self.completed_request_results.pop(
+                    canonical_id,
+                    None,
+                )
+
+                return False
 
             self.completed_request_results[
                 canonical_id
@@ -3687,21 +4030,11 @@ class ExecutionManager:
                 "requests_completed"
             ] += 1
 
-        persisted = self.idempotency_store.record(
-            canonical_id,
-            cached_result,
-            save=True,
-        )
+            self.stats[
+                "persistent_records_saved"
+            ] += 1
 
-        with self._lock:
-            if persisted:
-                self.stats[
-                    "persistent_records_saved"
-                ] += 1
-            else:
-                self.stats[
-                    "persistent_save_failures"
-                ] += 1
+        return True
 
     def _release_request(
         self,
@@ -4057,6 +4390,9 @@ class ExecutionManager:
                         else None
                     ),
                 },
+                "transaction_journal": (
+                    self.transaction_journal.status()
+                ),
                 "history": len(
                     self.history
                 ),

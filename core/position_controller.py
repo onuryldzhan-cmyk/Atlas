@@ -54,6 +54,8 @@ import logging
 import threading
 import uuid
 
+from copy import deepcopy
+
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from typing import Any
@@ -202,7 +204,11 @@ class PositionController:
         trade: dict[str, Any],
     ) -> dict[str, Any]:
         """
-        Open a new position from a normalized trade dictionary.
+        Open and durably persist a new position.
+
+        The in-memory mutation is provisional until the persistence
+        boundary succeeds. Persistence failure rolls back the position
+        registry and counters before returning NOT_COMMITTED.
         """
 
         try:
@@ -289,9 +295,43 @@ class PositionController:
                     position
                 )
 
-                self._persist_open(
-                    position_data
-                )
+                try:
+                    self._persist_open(
+                        position_data
+                    )
+
+                except Exception as exc:
+                    self.positions.pop(
+                        symbol,
+                        None,
+                    )
+
+                    self.open_count = max(
+                        0,
+                        self.open_count - 1,
+                    )
+
+                    self._record_error(
+                        phase="open_persistence",
+                        error=exc,
+                    )
+
+                    logger.exception(
+                        "Position open persistence failed; "
+                        "in-memory state rolled back"
+                    )
+
+                    return {
+                        "status": "NOT_COMMITTED",
+                        "success": False,
+                        "error_code": (
+                            "POSITION_OPEN_PERSISTENCE_FAILED"
+                        ),
+                        "reason": str(
+                            exc
+                        ),
+                        "symbol": symbol,
+                    }
 
                 self._audit(
                     action="POSITION_OPENED",
@@ -336,9 +376,6 @@ class PositionController:
                 ),
             }
 
-    # =========================================================
-    # EXECUTION MANAGER OPEN COMPATIBILITY
-    # =========================================================
 
     def open_position(
         self,
@@ -606,7 +643,11 @@ class PositionController:
         price: float | None = None,
     ) -> dict[str, Any]:
         """
-        Close a position using the supplied or latest known price.
+        Close and durably persist an active position.
+
+        The in-memory close remains provisional until persistence
+        succeeds. Persistence failure restores the exact last valid
+        open-position state and returns COMMIT_STATUS_UNKNOWN.
         """
 
         normalized_symbol = str(
@@ -641,6 +682,18 @@ class PositionController:
                     "reason": "INVALID_CLOSE_PRICE",
                     "symbol": normalized_symbol,
                 }
+
+            original_position = deepcopy(
+                position
+            )
+
+            original_closed = list(
+                self.closed
+            )
+
+            original_close_count = (
+                self.close_count
+            )
 
             self.positions.pop(
                 normalized_symbol,
@@ -681,10 +734,46 @@ class PositionController:
                 position
             )
 
-            self._persist_close(
-                symbol=normalized_symbol,
-                position=position_data,
-            )
+            try:
+                self._persist_close(
+                    symbol=normalized_symbol,
+                    position=position_data,
+                )
+
+            except Exception as exc:
+                self.positions[
+                    normalized_symbol
+                ] = original_position
+
+                self.closed[:] = (
+                    original_closed
+                )
+
+                self.close_count = (
+                    original_close_count
+                )
+
+                self._record_error(
+                    phase="close_persistence",
+                    error=exc,
+                )
+
+                logger.exception(
+                    "Position close persistence failed; "
+                    "last valid open state restored"
+                )
+
+                return {
+                    "status": "COMMIT_STATUS_UNKNOWN",
+                    "success": False,
+                    "error_code": (
+                        "POSITION_CLOSE_PERSISTENCE_FAILED"
+                    ),
+                    "reason": str(
+                        exc
+                    ),
+                    "symbol": normalized_symbol,
+                }
 
             self._audit(
                 action="POSITION_CLOSED",
@@ -711,9 +800,6 @@ class PositionController:
                 "position": position_data,
             }
 
-    # =========================================================
-    # EXECUTION MANAGER CLOSE COMPATIBILITY
-    # =========================================================
 
     def close_position(
         self,

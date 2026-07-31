@@ -418,6 +418,11 @@ class ExecutionIdempotencyStore:
     ) -> bool:
         """
         Store a terminal non-failure result.
+
+        When durable persistence is requested, the in-memory registry
+        is rolled back completely if saving fails. A failed disk write
+        must never leave a request marked as durably completed only in
+        process memory.
         """
 
         canonical_id = str(
@@ -435,6 +440,16 @@ class ExecutionIdempotencyStore:
 
         normalized = self._safe_payload(
             result
+        )
+
+        if not isinstance(
+            normalized,
+            Mapping,
+        ):
+            return False
+
+        normalized = dict(
+            normalized
         )
 
         status = str(
@@ -458,6 +473,26 @@ class ExecutionIdempotencyStore:
         )
 
         with self._lock:
+            previous_records = {
+                stored_request_id: dict(
+                    stored_result
+                )
+                for stored_request_id, stored_result
+                in self.completed_requests.items()
+            }
+
+            previous_records_added = self.stats[
+                "records_added"
+            ]
+
+            previous_records_replaced = self.stats[
+                "records_replaced"
+            ]
+
+            previous_records_pruned = self.stats[
+                "records_pruned"
+            ]
+
             existed = (
                 canonical_id
                 in self.completed_requests
@@ -478,10 +513,34 @@ class ExecutionIdempotencyStore:
 
             self._prune_locked()
 
-        if save:
-            return self.save()
+            if not save:
+                return True
 
-        return True
+            persisted = self.save()
+
+            if persisted:
+                return True
+
+            self.completed_requests = previous_records
+
+            self.stats[
+                "records_added"
+            ] = previous_records_added
+
+            self.stats[
+                "records_replaced"
+            ] = previous_records_replaced
+
+            self.stats[
+                "records_pruned"
+            ] = previous_records_pruned
+
+            logger.error(
+                "Execution idempotency record rolled back "
+                "after persistence failure"
+            )
+
+            return False
 
     def remove(
         self,
