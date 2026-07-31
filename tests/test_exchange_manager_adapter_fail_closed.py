@@ -4,9 +4,38 @@ from typing import Any
 
 import pytest
 
+from exchange.execution_exposure_guard import (
+    ExecutionExposureGuard,
+)
 from exchange.execution_risk_guard import ExecutionRiskGuard
 from exchange.execution_safety_gate import ExecutionSafetyGate
 from exchange.exchange_manager import ExchangeManager
+
+
+
+def _healthy_exposure_guard() -> ExecutionExposureGuard:
+    guard = ExecutionExposureGuard(
+        portfolio_equity=10_000.0,
+        max_order_notional=2_000.0,
+        max_symbol_exposure=3_000.0,
+        max_total_exposure=7_000.0,
+        max_open_positions=5,
+        minimum_cash_reserve=2_000.0,
+    )
+
+    result = guard.update_portfolio(
+        cash=10_000.0,
+        total_exposure=0.0,
+        symbol_exposures={},
+        open_positions=0,
+    )
+
+    if result.get("accepted") is not True:
+        raise RuntimeError(
+            "Healthy exposure fixture was rejected"
+        )
+
+    return guard
 
 
 class RaisingExchange:
@@ -64,7 +93,8 @@ def _build_manager(
             live_enabled=True,
         ),
         risk_guard=_healthy_guard(),
-    )
+
+        exposure_guard=_healthy_exposure_guard(),)
 
 
 @pytest.mark.parametrize(
@@ -101,7 +131,9 @@ def test_adapter_exception_returns_fail_closed_result(
         "BUY",
         0.01,
         idempotency_key="test_exchange_manager_adapter_fail_closed-001",
-    )
+
+        order_notional=500.0,
+        opens_new_position=False,)
 
     assert result["status"] == "ERROR"
     assert result["allowed"] is False
@@ -139,7 +171,9 @@ def test_invalid_adapter_response_fails_closed(
         "SELL",
         0.5,
         idempotency_key="test_exchange_manager_adapter_fail_closed-002",
-    )
+
+        order_notional=500.0,
+        opens_new_position=False,)
 
     assert result == {
         "status": "ERROR",
@@ -171,7 +205,9 @@ def test_exchange_rejection_dictionary_is_preserved() -> None:
         "BUY",
         1.0,
         idempotency_key="test_exchange_manager_adapter_fail_closed-003",
-    )
+
+        order_notional=500.0,
+        opens_new_position=False,)
 
     assert result == {
         "status": "REJECTED",
@@ -198,7 +234,9 @@ def test_exchange_success_dictionary_is_preserved() -> None:
         "BUY",
         25.0,
         idempotency_key="test_exchange_manager_adapter_fail_closed-004",
-    )
+
+        order_notional=500.0,
+        opens_new_position=False,)
 
     assert result == {
         "status": "FILLED",

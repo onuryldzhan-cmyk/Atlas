@@ -1,12 +1,41 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from typing import Any
 
 import pytest
 
+from exchange.execution_exposure_guard import (
+    ExecutionExposureGuard,
+)
 from exchange.execution_risk_guard import ExecutionRiskGuard
 from exchange.execution_safety_gate import ExecutionSafetyGate
 from exchange.exchange_manager import ExchangeManager
+
+
+
+def _healthy_exposure_guard() -> ExecutionExposureGuard:
+    guard = ExecutionExposureGuard(
+        portfolio_equity=10_000.0,
+        max_order_notional=2_000.0,
+        max_symbol_exposure=3_000.0,
+        max_total_exposure=7_000.0,
+        max_open_positions=5,
+        minimum_cash_reserve=2_000.0,
+    )
+
+    result = guard.update_portfolio(
+        cash=10_000.0,
+        total_exposure=0.0,
+        symbol_exposures={},
+        open_positions=0,
+    )
+
+    if result.get("accepted") is not True:
+        raise RuntimeError(
+            "Healthy exposure fixture was rejected"
+        )
+
+    return guard
 
 
 class SpyExchange:
@@ -78,7 +107,8 @@ def _build_manager(
             live_enabled=True,
         ),
         risk_guard=_healthy_guard(),
-    )
+
+        exposure_guard=_healthy_exposure_guard(),)
 
 
 def test_missing_idempotency_key_rejects_live_order() -> None:
@@ -89,7 +119,9 @@ def test_missing_idempotency_key_rejects_live_order() -> None:
         "BTCUSDT",
         "BUY",
         0.01,
-    )
+
+        order_notional=500.0,
+        opens_new_position=False,)
 
     assert result["status"] == "REJECTED"
     assert result["allowed"] is False
@@ -116,7 +148,9 @@ def test_blank_idempotency_key_rejects_order(
         "BUY",
         0.01,
         idempotency_key=key,
-    )
+
+        order_notional=500.0,
+        opens_new_position=False,)
 
     assert result["status"] == "REJECTED"
     assert result["reason"] == "IDEMPOTENCY_KEY_REQUIRED"
@@ -132,14 +166,18 @@ def test_same_key_and_same_order_calls_exchange_once() -> None:
         "BUY",
         0.01,
         idempotency_key="order-request-001",
-    )
+
+        order_notional=500.0,
+        opens_new_position=False,)
 
     second = manager.place_order(
         "BTCUSDT",
         "BUY",
         0.01,
         idempotency_key="order-request-001",
-    )
+
+        order_notional=500.0,
+        opens_new_position=False,)
 
     assert first == {
         "status": "FILLED",
@@ -166,14 +204,18 @@ def test_same_key_with_different_order_is_rejected() -> None:
         "BUY",
         0.01,
         idempotency_key="order-request-002",
-    )
+
+        order_notional=500.0,
+        opens_new_position=False,)
 
     second = manager.place_order(
         "ETHUSDT",
         "BUY",
         0.50,
         idempotency_key="order-request-002",
-    )
+
+        order_notional=500.0,
+        opens_new_position=False,)
 
     assert first["status"] == "FILLED"
 
@@ -193,14 +235,18 @@ def test_key_is_normalized_before_duplicate_check() -> None:
         "BUY",
         0.01,
         idempotency_key="  Request-ABC  ",
-    )
+
+        order_notional=500.0,
+        opens_new_position=False,)
 
     result = manager.place_order(
         "BTCUSDT",
         "BUY",
         0.01,
         idempotency_key="Request-ABC",
-    )
+
+        order_notional=500.0,
+        opens_new_position=False,)
 
     assert result["status"] == "FILLED"
     assert len(exchange.orders) == 1
@@ -215,14 +261,18 @@ def test_failed_adapter_call_does_not_permanently_consume_key() -> None:
         "BUY",
         0.01,
         idempotency_key="retry-request-001",
-    )
+
+        order_notional=500.0,
+        opens_new_position=False,)
 
     second = manager.place_order(
         "BTCUSDT",
         "BUY",
         0.01,
         idempotency_key="retry-request-001",
-    )
+
+        order_notional=500.0,
+        opens_new_position=False,)
 
     assert first["status"] == "ERROR"
     assert first["reason"] == "EXCHANGE_CONNECTION_ERROR"
@@ -245,14 +295,18 @@ def test_exchange_rejection_is_cached_for_same_request() -> None:
         "BUY",
         1.0,
         idempotency_key="rejected-request-001",
-    )
+
+        order_notional=500.0,
+        opens_new_position=False,)
 
     second = manager.place_order(
         "SOLUSDT",
         "BUY",
         1.0,
         idempotency_key="rejected-request-001",
-    )
+
+        order_notional=500.0,
+        opens_new_position=False,)
 
     assert first == {
         "status": "REJECTED",
@@ -272,7 +326,9 @@ def test_idempotency_status_does_not_expose_order_payloads() -> None:
         "BUY",
         0.01,
         idempotency_key="status-request-001",
-    )
+
+        order_notional=500.0,
+        opens_new_position=False,)
 
     status = manager.status()
 

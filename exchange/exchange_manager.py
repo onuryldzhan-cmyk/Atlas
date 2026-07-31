@@ -35,6 +35,9 @@ from typing import Any, Callable
 
 from exchange.adapters.binance_global import BinanceGlobalExchange
 from exchange.adapters.binance_tr import BinanceTRExchange
+from exchange.execution_exposure_guard import (
+    ExecutionExposureGuard,
+)
 from exchange.execution_risk_guard import ExecutionRiskGuard
 from exchange.execution_safety_gate import ExecutionSafetyGate
 from exchange.persistent_idempotency_store import (
@@ -58,7 +61,7 @@ _ALLOWED_ORDER_SIDES = {
 
 
 class ExchangeManager:
-    VERSION = "2.5"
+    VERSION = "2.6"
 
     def __init__(
         self,
@@ -67,6 +70,7 @@ class ExchangeManager:
         exchange: Any | None = None,
         safety_gate: ExecutionSafetyGate | None = None,
         risk_guard: ExecutionRiskGuard | None = None,
+        exposure_guard: ExecutionExposureGuard | None = None,
         idempotency_ttl_seconds: float = 900.0,
         idempotency_max_entries: int = 10_000,
         monotonic_provider: Callable[[], float] | None = None,
@@ -90,6 +94,7 @@ class ExchangeManager:
         )
 
         self.risk_guard = risk_guard
+        self.exposure_guard = exposure_guard
 
         self.idempotency_ttl_seconds = self._normalize_positive_float(
             idempotency_ttl_seconds,
@@ -521,6 +526,8 @@ class ExchangeManager:
         quantity: Any,
         *,
         idempotency_key: Any = None,
+        order_notional: Any = None,
+        opens_new_position: Any = None,
     ) -> dict[str, Any]:
         normalized_symbol = str(
             symbol
@@ -655,6 +662,54 @@ class ExchangeManager:
                 side=normalized_side,
                 quantity=normalized_quantity,
             )
+
+        if self.exposure_guard is None:
+            logger.error(
+                "Live order rejected because exposure guard is missing: "
+                "symbol=%s side=%s quantity=%s",
+                normalized_symbol,
+                normalized_side,
+                normalized_quantity,
+            )
+
+            return self._rejection(
+                reason="EXPOSURE_GUARD_NOT_CONFIGURED",
+                symbol=normalized_symbol,
+                side=normalized_side,
+                quantity=normalized_quantity,
+            )
+
+        exposure_decision = (
+            self.exposure_guard.authorize_order(
+                symbol=normalized_symbol,
+                order_notional=order_notional,
+                opens_new_position=opens_new_position,
+            )
+        )
+
+        if exposure_decision.get(
+            "allowed"
+        ) is not True:
+            rejection = self._rejection(
+                reason=exposure_decision.get(
+                    "reason",
+                    "EXPOSURE_AUTHORIZATION_REJECTED",
+                ),
+                symbol=normalized_symbol,
+                side=normalized_side,
+                quantity=normalized_quantity,
+            )
+
+            logger.warning(
+                "Live order rejected by exposure guard: "
+                "symbol=%s side=%s quantity=%s reason=%s",
+                normalized_symbol,
+                normalized_side,
+                normalized_quantity,
+                rejection["reason"],
+            )
+
+            return rejection
 
         try:
             result = self.exchange.place_order(
@@ -819,6 +874,14 @@ class ExchangeManager:
             "risk_guard": (
                 self.risk_guard.status()
                 if self.risk_guard is not None
+                else {
+                    "configured": False,
+                    "status": "FAIL_CLOSED",
+                }
+            ),
+            "exposure_guard": (
+                self.exposure_guard.status()
+                if self.exposure_guard is not None
                 else {
                     "configured": False,
                     "status": "FAIL_CLOSED",

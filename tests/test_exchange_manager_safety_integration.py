@@ -4,11 +4,40 @@ from typing import Any
 
 import pytest
 
+from exchange.execution_exposure_guard import (
+    ExecutionExposureGuard,
+)
 from exchange.execution_risk_guard import ExecutionRiskGuard
 from exchange.execution_safety_gate import (
     ExecutionSafetyGate,
 )
 from exchange.exchange_manager import ExchangeManager
+
+
+
+def _healthy_exposure_guard() -> ExecutionExposureGuard:
+    guard = ExecutionExposureGuard(
+        portfolio_equity=10_000.0,
+        max_order_notional=2_000.0,
+        max_symbol_exposure=3_000.0,
+        max_total_exposure=7_000.0,
+        max_open_positions=5,
+        minimum_cash_reserve=2_000.0,
+    )
+
+    result = guard.update_portfolio(
+        cash=10_000.0,
+        total_exposure=0.0,
+        symbol_exposures={},
+        open_positions=0,
+    )
+
+    if result.get("accepted") is not True:
+        raise RuntimeError(
+            "Healthy exposure fixture was rejected"
+        )
+
+    return guard
 
 
 class SpyExchange:
@@ -50,7 +79,8 @@ def _build_manager(
             max_daily_loss_percent=5.0,
             max_drawdown_percent=10.0,
         ),
-    )
+
+        exposure_guard=_healthy_exposure_guard(),)
 
     return manager, exchange
 
@@ -68,7 +98,9 @@ def test_paper_mode_never_calls_live_exchange() -> None:
         "BUY",
         0.01,
         idempotency_key="test_exchange_manager_safety_integration-001",
-    )
+
+        order_notional=500.0,
+        opens_new_position=False,)
 
     assert result == {
         "status": "REJECTED",
@@ -95,7 +127,9 @@ def test_live_without_explicit_enable_never_calls_exchange() -> None:
         "SELL",
         0.25,
         idempotency_key="test_exchange_manager_safety_integration-002",
-    )
+
+        order_notional=500.0,
+        opens_new_position=False,)
 
     assert result["status"] == "REJECTED"
     assert result["reason"] == "LIVE_NOT_EXPLICITLY_ENABLED"
@@ -116,7 +150,9 @@ def test_kill_switch_never_calls_exchange() -> None:
         "BUY",
         1.0,
         idempotency_key="test_exchange_manager_safety_integration-003",
-    )
+
+        order_notional=500.0,
+        opens_new_position=False,)
 
     assert result["status"] == "REJECTED"
     assert result["reason"] == "KILL_SWITCH_ACTIVE"
@@ -148,7 +184,9 @@ def test_missing_required_credentials_never_calls_exchange(
         "BUY",
         0.5,
         idempotency_key="test_exchange_manager_safety_integration-004",
-    )
+
+        order_notional=500.0,
+        opens_new_position=False,)
 
     assert result["status"] == "REJECTED"
     assert result["reason"] == "LIVE_CREDENTIALS_MISSING"
@@ -168,7 +206,9 @@ def test_authorized_live_order_calls_exchange_exactly_once() -> None:
         "BUY",
         25.0,
         idempotency_key="test_exchange_manager_safety_integration-005",
-    )
+
+        order_notional=500.0,
+        opens_new_position=False,)
 
     assert result == {
         "status": "FILLED",
@@ -205,14 +245,17 @@ def test_manager_defaults_to_fail_closed_environment_gate(
     manager = ExchangeManager(
         exchange_name="test",
         exchange=exchange,
-    )
+
+        exposure_guard=_healthy_exposure_guard(),)
 
     result = manager.place_order(
         "BTCUSDT",
         "BUY",
         0.01,
         idempotency_key="test_exchange_manager_safety_integration-006",
-    )
+
+        order_notional=500.0,
+        opens_new_position=False,)
 
     assert result["status"] == "REJECTED"
     assert result["reason"] == "EXECUTION_MODE_NOT_LIVE"

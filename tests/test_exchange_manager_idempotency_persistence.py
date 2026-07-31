@@ -1,12 +1,41 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
 from pathlib import Path
 from typing import Any
 
+from exchange.execution_exposure_guard import (
+    ExecutionExposureGuard,
+)
 from exchange.execution_risk_guard import ExecutionRiskGuard
 from exchange.execution_safety_gate import ExecutionSafetyGate
 from exchange.exchange_manager import ExchangeManager
+
+
+
+def _healthy_exposure_guard() -> ExecutionExposureGuard:
+    guard = ExecutionExposureGuard(
+        portfolio_equity=10_000.0,
+        max_order_notional=2_000.0,
+        max_symbol_exposure=3_000.0,
+        max_total_exposure=7_000.0,
+        max_open_positions=5,
+        minimum_cash_reserve=2_000.0,
+    )
+
+    result = guard.update_portfolio(
+        cash=10_000.0,
+        total_exposure=0.0,
+        symbol_exposures={},
+        open_positions=0,
+    )
+
+    if result.get("accepted") is not True:
+        raise RuntimeError(
+            "Healthy exposure fixture was rejected"
+        )
+
+    return guard
 
 
 class SpyExchange:
@@ -55,7 +84,8 @@ def _build_manager(
         ),
         risk_guard=_healthy_guard(),
         idempotency_store_path=store_path,
-    )
+
+        exposure_guard=_healthy_exposure_guard(),)
 
 
 def test_terminal_result_survives_manager_restart(
@@ -75,7 +105,9 @@ def test_terminal_result_survives_manager_restart(
         "BUY",
         0.01,
         idempotency_key="restart-safe-001",
-    )
+
+        order_notional=500.0,
+        opens_new_position=False,)
 
     assert first_result["status"] == "FILLED"
     assert len(first_exchange.orders) == 1
@@ -93,7 +125,9 @@ def test_terminal_result_survives_manager_restart(
         "BUY",
         0.01,
         idempotency_key="restart-safe-001",
-    )
+
+        order_notional=500.0,
+        opens_new_position=False,)
 
     assert second_result == first_result
     assert second_exchange.orders == []
@@ -114,7 +148,9 @@ def test_persisted_key_conflict_is_rejected_after_restart(
         "BUY",
         0.01,
         idempotency_key="restart-conflict-001",
-    )
+
+        order_notional=500.0,
+        opens_new_position=False,)
 
     second_exchange = SpyExchange()
 
@@ -128,7 +164,9 @@ def test_persisted_key_conflict_is_rejected_after_restart(
         "BUY",
         1.0,
         idempotency_key="restart-conflict-001",
-    )
+
+        order_notional=500.0,
+        opens_new_position=False,)
 
     assert result["status"] == "REJECTED"
     assert result["reason"] == "IDEMPOTENCY_KEY_CONFLICT"
@@ -160,14 +198,17 @@ def test_store_does_not_persist_adapter_error(
         ),
         risk_guard=_healthy_guard(),
         idempotency_store_path=store_path,
-    )
+
+        exposure_guard=_healthy_exposure_guard(),)
 
     result = manager.place_order(
         "BTCUSDT",
         "BUY",
         0.01,
         idempotency_key="retry-after-error-001",
-    )
+
+        order_notional=500.0,
+        opens_new_position=False,)
 
     assert result["status"] == "ERROR"
 
@@ -206,7 +247,9 @@ def test_corrupt_store_fails_closed(
         "BUY",
         0.01,
         idempotency_key="corrupt-store-001",
-    )
+
+        order_notional=500.0,
+        opens_new_position=False,)
 
     assert result["status"] == "REJECTED"
     assert result["reason"] == "IDEMPOTENCY_STORE_UNAVAILABLE"
@@ -228,7 +271,9 @@ def test_store_status_exposes_no_keys_or_payloads(
         "BUY",
         0.01,
         idempotency_key="secret-request-key",
-    )
+
+        order_notional=500.0,
+        opens_new_position=False,)
 
     status = manager.status()
 
