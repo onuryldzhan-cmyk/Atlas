@@ -1,14 +1,25 @@
-"""
-ATLAS EXCHANGE MANAGER v2.2
+﻿"""
+ATLAS EXCHANGE MANAGER v2.4
 
 Lifecycle-safe and fail-closed exchange facade.
 
 Order path
 ----------
 Input validation
+    -> idempotency validation
     -> LIVE safety authorization
     -> financial risk authorization
     -> exchange adapter
+    -> terminal result cache
+
+Idempotency rules
+-----------------
+- Every live order requires a non-empty idempotency key.
+- Same key + same normalized order returns the cached result.
+- Same key + different order is rejected.
+- Successful and exchange-rejected terminal responses are cached.
+- Adapter errors are not cached, allowing controlled retry.
+- Cache is bounded by TTL and maximum entry count.
 """
 
 from __future__ import annotations
@@ -16,8 +27,11 @@ from __future__ import annotations
 import logging
 import math
 import re
+import time
 
-from typing import Any
+from collections import OrderedDict
+from copy import deepcopy
+from typing import Any, Callable
 
 from exchange.adapters.binance_global import BinanceGlobalExchange
 from exchange.adapters.binance_tr import BinanceTRExchange
@@ -41,7 +55,7 @@ _ALLOWED_ORDER_SIDES = {
 
 
 class ExchangeManager:
-    VERSION = "2.3"
+    VERSION = "2.4"
 
     def __init__(
         self,
@@ -50,6 +64,9 @@ class ExchangeManager:
         exchange: Any | None = None,
         safety_gate: ExecutionSafetyGate | None = None,
         risk_guard: ExecutionRiskGuard | None = None,
+        idempotency_ttl_seconds: float = 900.0,
+        idempotency_max_entries: int = 10_000,
+        monotonic_provider: Callable[[], float] | None = None,
     ) -> None:
         self.exchange_name = str(
             exchange_name
@@ -68,6 +85,88 @@ class ExchangeManager:
         )
 
         self.risk_guard = risk_guard
+
+        self.idempotency_ttl_seconds = self._normalize_positive_float(
+            idempotency_ttl_seconds,
+            field_name="idempotency_ttl_seconds",
+        )
+
+        self.idempotency_max_entries = self._normalize_positive_int(
+            idempotency_max_entries,
+            field_name="idempotency_max_entries",
+        )
+
+        self._monotonic_provider = (
+            monotonic_provider
+            if monotonic_provider is not None
+            else time.monotonic
+        )
+
+        self._idempotency_cache: OrderedDict[
+            str,
+            dict[str, Any],
+        ] = OrderedDict()
+
+    @staticmethod
+    def _normalize_positive_float(
+        value: Any,
+        *,
+        field_name: str,
+    ) -> float:
+        if isinstance(value, bool):
+            raise ValueError(
+                f"{field_name} must be a positive finite number"
+            )
+
+        try:
+            normalized = float(value)
+        except (
+            TypeError,
+            ValueError,
+            OverflowError,
+        ) as exc:
+            raise ValueError(
+                f"{field_name} must be a positive finite number"
+            ) from exc
+
+        if (
+            not math.isfinite(normalized)
+            or normalized <= 0
+        ):
+            raise ValueError(
+                f"{field_name} must be a positive finite number"
+            )
+
+        return normalized
+
+    @staticmethod
+    def _normalize_positive_int(
+        value: Any,
+        *,
+        field_name: str,
+    ) -> int:
+        if isinstance(value, bool):
+            raise ValueError(
+                f"{field_name} must be a positive integer"
+            )
+
+        try:
+            normalized = int(value)
+        except (
+            TypeError,
+            ValueError,
+            OverflowError,
+        ) as exc:
+            raise ValueError(
+                f"{field_name} must be a positive integer"
+            ) from exc
+
+        if normalized <= 0:
+            raise ValueError(
+                f"{field_name} must be a positive integer"
+            )
+
+        return normalized
 
     def _create_exchange(
         self,
@@ -133,6 +232,25 @@ class ExchangeManager:
         }
 
     @staticmethod
+    def _error_result(
+        *,
+        reason: str,
+        symbol: str,
+        side: str,
+        quantity: float,
+        error_type: str,
+    ) -> dict[str, Any]:
+        return {
+            "status": "ERROR",
+            "allowed": False,
+            "reason": reason,
+            "symbol": symbol,
+            "side": side,
+            "quantity": quantity,
+            "error_type": error_type,
+        }
+
+    @staticmethod
     def _normalize_quantity(
         quantity: Any,
     ) -> float | None:
@@ -163,11 +281,135 @@ class ExchangeManager:
 
         return normalized
 
+    @staticmethod
+    def _normalize_idempotency_key(
+        value: Any,
+    ) -> str | None:
+        if value is None:
+            return None
+
+        normalized = str(
+            value
+        ).strip()
+
+        if not normalized:
+            return None
+
+        return normalized
+
+    @staticmethod
+    def _order_fingerprint(
+        *,
+        symbol: str,
+        side: str,
+        quantity: float,
+    ) -> tuple[str, str, float]:
+        return (
+            symbol,
+            side,
+            quantity,
+        )
+
+    def _purge_expired_idempotency_entries(
+        self,
+    ) -> None:
+        now = float(
+            self._monotonic_provider()
+        )
+
+        expired_keys = [
+            key
+            for key, entry in self._idempotency_cache.items()
+            if (
+                now - float(entry["created_at"])
+                >= self.idempotency_ttl_seconds
+            )
+        ]
+
+        for key in expired_keys:
+            self._idempotency_cache.pop(
+                key,
+                None,
+            )
+
+    def _lookup_idempotency_entry(
+        self,
+        *,
+        key: str,
+        fingerprint: tuple[str, str, float],
+        symbol: str,
+        side: str,
+        quantity: float,
+    ) -> dict[str, Any] | None:
+        self._purge_expired_idempotency_entries()
+
+        entry = self._idempotency_cache.get(
+            key
+        )
+
+        if entry is None:
+            return None
+
+        if entry["fingerprint"] != fingerprint:
+            logger.warning(
+                "Idempotency conflict rejected: "
+                "symbol=%s side=%s quantity=%s",
+                symbol,
+                side,
+                quantity,
+            )
+
+            return self._rejection(
+                reason="IDEMPOTENCY_KEY_CONFLICT",
+                symbol=symbol,
+                side=side,
+                quantity=quantity,
+            )
+
+        self._idempotency_cache.move_to_end(
+            key
+        )
+
+        return deepcopy(
+            entry["response"]
+        )
+
+    def _cache_idempotency_result(
+        self,
+        *,
+        key: str,
+        fingerprint: tuple[str, str, float],
+        response: dict[str, Any],
+    ) -> None:
+        self._purge_expired_idempotency_entries()
+
+        self._idempotency_cache[key] = {
+            "fingerprint": fingerprint,
+            "response": deepcopy(response),
+            "created_at": float(
+                self._monotonic_provider()
+            ),
+        }
+
+        self._idempotency_cache.move_to_end(
+            key
+        )
+
+        while (
+            len(self._idempotency_cache)
+            > self.idempotency_max_entries
+        ):
+            self._idempotency_cache.popitem(
+                last=False
+            )
+
     def place_order(
         self,
         symbol: str,
         side: str,
         quantity: Any,
+        *,
+        idempotency_key: Any = None,
     ) -> dict[str, Any]:
         normalized_symbol = str(
             symbol
@@ -211,6 +453,37 @@ class ExchangeManager:
                 quantity=quantity,
             )
 
+        normalized_idempotency_key = (
+            self._normalize_idempotency_key(
+                idempotency_key
+            )
+        )
+
+        if normalized_idempotency_key is None:
+            return self._rejection(
+                reason="IDEMPOTENCY_KEY_REQUIRED",
+                symbol=normalized_symbol,
+                side=normalized_side,
+                quantity=normalized_quantity,
+            )
+
+        fingerprint = self._order_fingerprint(
+            symbol=normalized_symbol,
+            side=normalized_side,
+            quantity=normalized_quantity,
+        )
+
+        cached_result = self._lookup_idempotency_entry(
+            key=normalized_idempotency_key,
+            fingerprint=fingerprint,
+            symbol=normalized_symbol,
+            side=normalized_side,
+            quantity=normalized_quantity,
+        )
+
+        if cached_result is not None:
+            return cached_result
+
         safety_decision = (
             self.safety_gate.authorize_live_order()
         )
@@ -218,7 +491,7 @@ class ExchangeManager:
         if safety_decision.get(
             "allowed"
         ) is not True:
-            rejection = self._rejection(
+            return self._rejection(
                 reason=safety_decision.get(
                     "reason",
                     "LIVE_AUTHORIZATION_REJECTED",
@@ -228,25 +501,7 @@ class ExchangeManager:
                 quantity=normalized_quantity,
             )
 
-            logger.warning(
-                "Live order rejected by safety gate: "
-                "symbol=%s side=%s quantity=%s reason=%s",
-                normalized_symbol,
-                normalized_side,
-                normalized_quantity,
-                rejection["reason"],
-            )
-
-            return rejection
-
         if self.risk_guard is None:
-            rejection = self._rejection(
-                reason="RISK_GUARD_NOT_CONFIGURED",
-                symbol=normalized_symbol,
-                side=normalized_side,
-                quantity=normalized_quantity,
-            )
-
             logger.error(
                 "Live order rejected because risk guard is missing: "
                 "symbol=%s side=%s quantity=%s",
@@ -255,7 +510,12 @@ class ExchangeManager:
                 normalized_quantity,
             )
 
-            return rejection
+            return self._rejection(
+                reason="RISK_GUARD_NOT_CONFIGURED",
+                symbol=normalized_symbol,
+                side=normalized_side,
+                quantity=normalized_quantity,
+            )
 
         risk_decision = (
             self.risk_guard.authorize_order()
@@ -264,7 +524,7 @@ class ExchangeManager:
         if risk_decision.get(
             "allowed"
         ) is not True:
-            rejection = self._rejection(
+            return self._rejection(
                 reason=risk_decision.get(
                     "reason",
                     "RISK_AUTHORIZATION_REJECTED",
@@ -273,17 +533,6 @@ class ExchangeManager:
                 side=normalized_side,
                 quantity=normalized_quantity,
             )
-
-            logger.warning(
-                "Live order rejected by risk guard: "
-                "symbol=%s side=%s quantity=%s reason=%s",
-                normalized_symbol,
-                normalized_side,
-                normalized_quantity,
-                rejection["reason"],
-            )
-
-            return rejection
 
         try:
             result = self.exchange.place_order(
@@ -300,15 +549,13 @@ class ExchangeManager:
                 normalized_quantity,
             )
 
-            return {
-                "status": "ERROR",
-                "allowed": False,
-                "reason": "EXCHANGE_TIMEOUT",
-                "symbol": normalized_symbol,
-                "side": normalized_side,
-                "quantity": normalized_quantity,
-                "error_type": type(exc).__name__,
-            }
+            return self._error_result(
+                reason="EXCHANGE_TIMEOUT",
+                symbol=normalized_symbol,
+                side=normalized_side,
+                quantity=normalized_quantity,
+                error_type=type(exc).__name__,
+            )
         except ConnectionError as exc:
             logger.exception(
                 "Exchange connection error during order submission: "
@@ -318,15 +565,13 @@ class ExchangeManager:
                 normalized_quantity,
             )
 
-            return {
-                "status": "ERROR",
-                "allowed": False,
-                "reason": "EXCHANGE_CONNECTION_ERROR",
-                "symbol": normalized_symbol,
-                "side": normalized_side,
-                "quantity": normalized_quantity,
-                "error_type": type(exc).__name__,
-            }
+            return self._error_result(
+                reason="EXCHANGE_CONNECTION_ERROR",
+                symbol=normalized_symbol,
+                side=normalized_side,
+                quantity=normalized_quantity,
+                error_type=type(exc).__name__,
+            )
         except Exception as exc:
             logger.exception(
                 "Unexpected exchange adapter failure: "
@@ -336,15 +581,13 @@ class ExchangeManager:
                 normalized_quantity,
             )
 
-            return {
-                "status": "ERROR",
-                "allowed": False,
-                "reason": "EXCHANGE_ADAPTER_ERROR",
-                "symbol": normalized_symbol,
-                "side": normalized_side,
-                "quantity": normalized_quantity,
-                "error_type": type(exc).__name__,
-            }
+            return self._error_result(
+                reason="EXCHANGE_ADAPTER_ERROR",
+                symbol=normalized_symbol,
+                side=normalized_side,
+                quantity=normalized_quantity,
+                error_type=type(exc).__name__,
+            )
 
         if not isinstance(
             result,
@@ -359,29 +602,38 @@ class ExchangeManager:
                 type(result).__name__,
             )
 
-            return {
-                "status": "ERROR",
-                "allowed": False,
-                "reason": "INVALID_EXCHANGE_RESPONSE",
-                "symbol": normalized_symbol,
-                "side": normalized_side,
-                "quantity": normalized_quantity,
-                "error_type": "InvalidExchangeResponse",
-            }
+            return self._error_result(
+                reason="INVALID_EXCHANGE_RESPONSE",
+                symbol=normalized_symbol,
+                side=normalized_side,
+                quantity=normalized_quantity,
+                error_type="InvalidExchangeResponse",
+            )
+
+        self._cache_idempotency_result(
+            key=normalized_idempotency_key,
+            fingerprint=fingerprint,
+            response=result,
+        )
 
         logger.info(
-            "Live order delegated after validation, safety and risk "
-            "authorization: symbol=%s side=%s quantity=%s",
+            "Live order delegated after validation, idempotency, "
+            "safety and risk authorization: "
+            "symbol=%s side=%s quantity=%s",
             normalized_symbol,
             normalized_side,
             normalized_quantity,
         )
 
-        return result
+        return deepcopy(
+            result
+        )
 
     def status(
         self,
     ) -> dict[str, Any]:
+        self._purge_expired_idempotency_entries()
+
         exchange_status_method = getattr(
             self.exchange,
             "status",
@@ -418,6 +670,15 @@ class ExchangeManager:
                     _SYMBOL_PATTERN.pattern
                 ),
                 "quantity_requires_positive_finite_number": True,
+            },
+            "idempotency": {
+                "enabled": True,
+                "required": True,
+                "cached_entries": len(
+                    self._idempotency_cache
+                ),
+                "ttl_seconds": self.idempotency_ttl_seconds,
+                "max_entries": self.idempotency_max_entries,
             },
             "safety": self.safety_gate.status(),
             "risk_guard": (

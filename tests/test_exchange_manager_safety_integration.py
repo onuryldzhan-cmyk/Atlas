@@ -67,6 +67,7 @@ def test_paper_mode_never_calls_live_exchange() -> None:
         "BTCUSDT",
         "BUY",
         0.01,
+        idempotency_key="test_exchange_manager_safety_integration-001",
     )
 
     assert result == {
@@ -93,6 +94,7 @@ def test_live_without_explicit_enable_never_calls_exchange() -> None:
         "ETHUSDT",
         "SELL",
         0.25,
+        idempotency_key="test_exchange_manager_safety_integration-002",
     )
 
     assert result["status"] == "REJECTED"
@@ -113,6 +115,7 @@ def test_kill_switch_never_calls_exchange() -> None:
         "SOLUSDT",
         "BUY",
         1.0,
+        idempotency_key="test_exchange_manager_safety_integration-003",
     )
 
     assert result["status"] == "REJECTED"
@@ -144,6 +147,7 @@ def test_missing_required_credentials_never_calls_exchange(
         "BNBUSDT",
         "BUY",
         0.5,
+        idempotency_key="test_exchange_manager_safety_integration-004",
     )
 
     assert result["status"] == "REJECTED"
@@ -163,6 +167,7 @@ def test_authorized_live_order_calls_exchange_exactly_once() -> None:
         "XRPUSDT",
         "BUY",
         25.0,
+        idempotency_key="test_exchange_manager_safety_integration-005",
     )
 
     assert result == {
@@ -206,6 +211,7 @@ def test_manager_defaults_to_fail_closed_environment_gate(
         "BTCUSDT",
         "BUY",
         0.01,
+        idempotency_key="test_exchange_manager_safety_integration-006",
     )
 
     assert result["status"] == "REJECTED"

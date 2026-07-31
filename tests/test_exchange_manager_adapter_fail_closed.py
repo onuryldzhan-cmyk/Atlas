@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from typing import Any
 
@@ -100,6 +100,7 @@ def test_adapter_exception_returns_fail_closed_result(
         "BTCUSDT",
         "BUY",
         0.01,
+        idempotency_key="test_exchange_manager_adapter_fail_closed-001",
     )
 
     assert result["status"] == "ERROR"
@@ -137,6 +138,7 @@ def test_invalid_adapter_response_fails_closed(
         "ETHUSDT",
         "SELL",
         0.5,
+        idempotency_key="test_exchange_manager_adapter_fail_closed-002",
     )
 
     assert result == {
@@ -168,6 +170,7 @@ def test_exchange_rejection_dictionary_is_preserved() -> None:
         "SOLUSDT",
         "BUY",
         1.0,
+        idempotency_key="test_exchange_manager_adapter_fail_closed-003",
     )
 
     assert result == {
@@ -194,6 +197,7 @@ def test_exchange_success_dictionary_is_preserved() -> None:
         "XRPUSDT",
         "BUY",
         25.0,
+        idempotency_key="test_exchange_manager_adapter_fail_closed-004",
     )
 
     assert result == {

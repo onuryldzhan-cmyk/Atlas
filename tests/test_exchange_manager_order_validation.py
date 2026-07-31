@@ -60,6 +60,7 @@ def test_empty_symbol_is_rejected_before_exchange_call() -> None:
         "   ",
         "BUY",
         1.0,
+        idempotency_key="test_exchange_manager_order_validation-001",
     )
 
     assert result["status"] == "REJECTED"
@@ -75,6 +76,7 @@ def test_invalid_symbol_characters_are_rejected() -> None:
         "BTC/USDT",
         "BUY",
         1.0,
+        idempotency_key="test_exchange_manager_order_validation-002",
     )
 
     assert result["status"] == "REJECTED"
@@ -89,6 +91,7 @@ def test_invalid_side_is_rejected_before_exchange_call() -> None:
         "BTCUSDT",
         "HOLD",
         1.0,
+        idempotency_key="test_exchange_manager_order_validation-003",
     )
 
     assert result["status"] == "REJECTED"
@@ -116,6 +119,7 @@ def test_invalid_quantity_is_rejected_without_adapter_call(
         "BTCUSDT",
         "BUY",
         quantity,
+        idempotency_key="test_exchange_manager_order_validation-004",
     )
 
     assert result["status"] == "REJECTED"
@@ -131,6 +135,7 @@ def test_valid_order_is_normalized_and_delegated_once() -> None:
         " btcusdt ",
         " buy ",
         0.25,
+        idempotency_key="test_exchange_manager_order_validation-005",
     )
 
     assert result["status"] == "FILLED"

@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from typing import Any
 
@@ -65,6 +65,7 @@ def test_healthy_risk_guard_allows_single_exchange_call() -> None:
         "BTCUSDT",
         "BUY",
         0.01,
+        idempotency_key="test_exchange_manager_risk_guard_integration-001",
     )
 
     assert result["status"] == "FILLED"
@@ -97,6 +98,7 @@ def test_daily_loss_halt_blocks_exchange_call() -> None:
         "ETHUSDT",
         "BUY",
         0.25,
+        idempotency_key="test_exchange_manager_risk_guard_integration-002",
     )
 
     assert result == {
@@ -134,6 +136,7 @@ def test_drawdown_halt_blocks_exchange_call() -> None:
         "SOLUSDT",
         "SELL",
         1.0,
+        idempotency_key="test_exchange_manager_risk_guard_integration-003",
     )
 
     assert result["status"] == "REJECTED"
@@ -160,6 +163,7 @@ def test_manual_halt_blocks_exchange_call() -> None:
         "BNBUSDT",
         "BUY",
         0.5,
+        idempotency_key="test_exchange_manager_risk_guard_integration-004",
     )
 
     assert result["status"] == "REJECTED"
@@ -186,6 +190,7 @@ def test_invalid_equity_halt_blocks_exchange_call() -> None:
         "XRPUSDT",
         "BUY",
         100.0,
+        idempotency_key="test_exchange_manager_risk_guard_integration-005",
     )
 
     assert result["status"] == "REJECTED"
@@ -209,6 +214,7 @@ def test_manager_without_risk_guard_fails_closed() -> None:
         "BTCUSDT",
         "BUY",
         0.01,
+        idempotency_key="test_exchange_manager_risk_guard_integration-006",
     )
 
     assert result["status"] == "REJECTED"
@@ -235,6 +241,7 @@ def test_risk_guard_is_checked_before_exchange_adapter() -> None:
         "BTCUSDT",
         "SELL",
         0.02,
+        idempotency_key="test_exchange_manager_risk_guard_integration-007",
     )
 
     assert exchange.orders == []
