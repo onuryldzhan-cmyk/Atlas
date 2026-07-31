@@ -292,11 +292,8 @@ def test_waiting_duplicate_receives_adapter_error_result() -> None:
     assert len(results) == 2
 
     for result in results:
-        assert result["status"] == "ERROR"
-        assert (
-            result["reason"]
-            == "EXCHANGE_CONNECTION_ERROR"
-        )
+        assert result["status"] == "PENDING_RECONCILIATION"
+        assert result["reason"] == "EXCHANGE_OUTCOME_UNKNOWN"
 
 
 def test_in_flight_wait_timeout_fails_closed() -> None:
@@ -443,8 +440,8 @@ def test_leader_base_exception_releases_duplicate_and_cleans_in_flight() -> None
     assert elapsed < 2.0
 
     assert len(follower_result) == 1
-    assert follower_result[0]["status"] == "ERROR"
-    assert follower_result[0]["reason"] == "IDEMPOTENCY_LEADER_ABORTED"
+    assert follower_result[0]["status"] == "PENDING_RECONCILIATION"
+    assert follower_result[0]["reason"] == "EXCHANGE_OUTCOME_UNKNOWN"
 
     status = manager.status()
     assert status["idempotency"]["in_flight_entries"] == 0
@@ -540,8 +537,8 @@ def test_finalization_failure_quarantines_key_and_prevents_duplicate_adapter_cal
         assert exchange.call_count == 1
 
         assert len(follower_result) == 1
-        assert follower_result[0]["status"] == "ERROR"
-        assert follower_result[0]["reason"] == "IDEMPOTENCY_FINALIZATION_FAILED"
+        assert follower_result[0]["status"] == "PENDING_RECONCILIATION"
+        assert follower_result[0]["reason"] == "EXCHANGE_OUTCOME_UNKNOWN"
 
         status = manager.status()
         assert status["idempotency"]["in_flight_entries"] == 0
@@ -552,8 +549,8 @@ def test_finalization_failure_quarantines_key_and_prevents_duplicate_adapter_cal
         )
 
         assert exchange.call_count == 1
-        assert subsequent_result["status"] in ("REJECTED", "ERROR")
-        assert subsequent_result["reason"] == "IDEMPOTENCY_OUTCOME_UNKNOWN"
+        assert subsequent_result["status"] == "PENDING_RECONCILIATION"
+        assert subsequent_result["reason"] == "EXCHANGE_OUTCOME_UNKNOWN"
 
     finally:
         manager._cache_idempotency_result = original_cache_method

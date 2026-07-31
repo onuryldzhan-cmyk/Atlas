@@ -1,5 +1,5 @@
 """
-ATLAS EXCHANGE MANAGER v2.9
+ATLAS EXCHANGE MANAGER v3.0
 
 Lifecycle-safe and fail-closed exchange facade.
 
@@ -23,10 +23,12 @@ Idempotency rules
 - Concurrent in-flight requests are coordinated to prevent duplicate adapter submissions.
 - Indeterminate outcome quarantine guarantees fail-closed protection on uncertain order submission.
 - Fingerprints include normalized economic and exposure intent.
+- Uncertain exchange outcomes are durably reconciled by client order id.
 """
 
 from __future__ import annotations
 
+import inspect
 import logging
 import math
 import re
@@ -63,9 +65,20 @@ _ALLOWED_ORDER_SIDES = {
     "SELL",
 }
 
+_TERMINAL_ORDER_STATUSES = frozenset({
+    "FILLED",
+    "REJECTED",
+    "CANCELED",
+    "CANCELLED",
+    "EXPIRED",
+    "PAPER_ONLY",
+    "EXECUTED",
+    "SUCCESS",
+})
+
 
 class ExchangeManager:
-    VERSION = "2.9"
+    VERSION = "3.0"
 
     def __init__(
         self,
@@ -143,6 +156,11 @@ class ExchangeManager:
         ] = OrderedDict()
 
         self._quarantined_keys: OrderedDict[
+            str,
+            dict[str, Any],
+        ] = OrderedDict()
+
+        self._pending_reconciliations: OrderedDict[
             str,
             dict[str, Any],
         ] = OrderedDict()
@@ -372,85 +390,58 @@ class ExchangeManager:
     ) -> None:
         if self._idempotency_store is None:
             return
-
         entries = self._idempotency_store.load()
-
         if not self._idempotency_store.available:
             return
-
-        monotonic_now = float(
-            self._monotonic_provider()
-        )
-
-        wall_now = float(
-            self._wall_time_provider()
-        )
-
+        monotonic_now = float(self._monotonic_provider())
+        wall_now = float(self._wall_time_provider())
         for key, entry in entries.items():
-            remaining_ttl = max(
-                0.0,
-                float(entry["expires_at"]) - wall_now,
-            )
-
+            remaining_ttl = max(0.0, float(entry["expires_at"]) - wall_now)
             if remaining_ttl <= 0:
                 continue
-
-            age = max(
-                0.0,
-                self.idempotency_ttl_seconds
-                - remaining_ttl,
-            )
-
-            self._idempotency_cache[key] = {
+            age = max(0.0, self.idempotency_ttl_seconds - remaining_ttl)
+            normalized_entry = {
                 "fingerprint": entry["fingerprint"],
-                "response": deepcopy(
-                    entry["response"]
-                ),
+                "response": deepcopy(entry["response"]),
                 "created_at": monotonic_now - age,
             }
+            if entry.get("state") == "PENDING_RECONCILIATION":
+                normalized_entry["symbol"] = entry["symbol"]
+                normalized_entry["client_order_id"] = entry.get("client_order_id", key)
+                self._pending_reconciliations[key] = normalized_entry
+            else:
+                self._idempotency_cache[key] = normalized_entry
 
     def _persist_idempotency_entries(
         self,
     ) -> bool:
         if self._idempotency_store is None:
             return True
-
-        monotonic_now = float(
-            self._monotonic_provider()
-        )
-
-        wall_now = float(
-            self._wall_time_provider()
-        )
-
+        monotonic_now = float(self._monotonic_provider())
+        wall_now = float(self._wall_time_provider())
         entries: dict[str, dict[str, Any]] = {}
 
-        for key, entry in self._idempotency_cache.items():
-            age = max(
-                0.0,
-                monotonic_now
-                - float(entry["created_at"]),
-            )
-
-            remaining_ttl = max(
-                0.0,
-                self.idempotency_ttl_seconds - age,
-            )
-
+        def add_entry(key: str, entry: dict[str, Any], *, state: str) -> None:
+            age = max(0.0, monotonic_now - float(entry["created_at"]))
+            remaining_ttl = max(0.0, self.idempotency_ttl_seconds - age)
             if remaining_ttl <= 0:
-                continue
-
-            entries[key] = {
+                return
+            payload = {
+                "state": state,
                 "fingerprint": entry["fingerprint"],
-                "response": deepcopy(
-                    entry["response"]
-                ),
+                "response": deepcopy(entry["response"]),
                 "expires_at": wall_now + remaining_ttl,
             }
+            if state == "PENDING_RECONCILIATION":
+                payload["symbol"] = entry["symbol"]
+                payload["client_order_id"] = entry["client_order_id"]
+            entries[key] = payload
 
-        return self._idempotency_store.save(
-            entries
-        )
+        for key, entry in self._idempotency_cache.items():
+            add_entry(key, entry, state="TERMINAL")
+        for key, entry in self._pending_reconciliations.items():
+            add_entry(key, entry, state="PENDING_RECONCILIATION")
+        return self._idempotency_store.save(entries)
 
     def _purge_expired_idempotency_entries(
         self,
@@ -524,28 +515,140 @@ class ExchangeManager:
         response: dict[str, Any],
     ) -> None:
         self._purge_expired_idempotency_entries()
-
+        previous_pending = self._pending_reconciliations.pop(key, None)
         self._idempotency_cache[key] = {
             "fingerprint": fingerprint,
             "response": deepcopy(response),
-            "created_at": float(
-                self._monotonic_provider()
-            ),
+            "created_at": float(self._monotonic_provider()),
+        }
+        self._idempotency_cache.move_to_end(key)
+        while len(self._idempotency_cache) > self.idempotency_max_entries:
+            self._idempotency_cache.popitem(last=False)
+        if not self._persist_idempotency_entries():
+            self._idempotency_cache.pop(key, None)
+            if previous_pending is not None:
+                self._pending_reconciliations[key] = previous_pending
+            raise RuntimeError("idempotency persistence failed")
+
+    def _purge_expired_pending_reconciliations(self) -> None:
+        now = float(self._monotonic_provider())
+        expired = [
+            key
+            for key, entry in self._pending_reconciliations.items()
+            if now - float(entry["created_at"]) >= self.idempotency_ttl_seconds
+        ]
+        for key in expired:
+            self._pending_reconciliations.pop(key, None)
+
+    @staticmethod
+    def _pending_result(
+        *,
+        symbol: str,
+        side: str,
+        quantity: float,
+        reason: str = "EXCHANGE_OUTCOME_UNKNOWN",
+    ) -> dict[str, Any]:
+        return {
+            "status": "PENDING_RECONCILIATION",
+            "allowed": False,
+            "reason": reason,
+            "symbol": symbol,
+            "side": side,
+            "quantity": quantity,
         }
 
-        self._idempotency_cache.move_to_end(
-            key
-        )
-
-        while (
-            len(self._idempotency_cache)
-            > self.idempotency_max_entries
-        ):
-            self._idempotency_cache.popitem(
-                last=False
+    def _lookup_pending_reconciliation(
+        self,
+        *,
+        key: str,
+        fingerprint: tuple[str, str, float, float, bool],
+        symbol: str,
+        side: str,
+        quantity: float,
+    ) -> dict[str, Any] | None:
+        self._purge_expired_pending_reconciliations()
+        entry = self._pending_reconciliations.get(key)
+        if entry is None:
+            return None
+        if entry["fingerprint"] != fingerprint:
+            return self._rejection(
+                reason="IDEMPOTENCY_KEY_CONFLICT",
+                symbol=symbol,
+                side=side,
+                quantity=quantity,
             )
+        self._pending_reconciliations.move_to_end(key)
+        return deepcopy(entry["response"])
 
-        self._persist_idempotency_entries()
+    def _record_pending_reconciliation(
+        self,
+        *,
+        key: str,
+        fingerprint: tuple[str, str, float, float, bool],
+        symbol: str,
+        side: str,
+        quantity: float,
+    ) -> dict[str, Any]:
+        response = self._pending_result(
+            symbol=symbol,
+            side=side,
+            quantity=quantity,
+        )
+        self._pending_reconciliations[key] = {
+            "fingerprint": fingerprint,
+            "response": deepcopy(response),
+            "symbol": symbol,
+            "client_order_id": key,
+            "created_at": float(self._monotonic_provider()),
+        }
+        self._pending_reconciliations.move_to_end(key)
+        while len(self._pending_reconciliations) > self.idempotency_max_entries:
+            self._pending_reconciliations.popitem(last=False)
+        if not self._persist_idempotency_entries():
+            self._pending_reconciliations.pop(key, None)
+            raise RuntimeError("pending reconciliation persistence failed")
+        return response
+
+    def _discard_pending_reconciliation(self, *, key: str) -> bool:
+        previous = self._pending_reconciliations.pop(key, None)
+        if previous is None:
+            return True
+        if self._persist_idempotency_entries():
+            return True
+        self._pending_reconciliations[key] = previous
+        return False
+
+    def _submit_order_with_client_id(
+        self,
+        *,
+        symbol: str,
+        side: str,
+        quantity: float,
+        client_order_id: str,
+    ) -> Any:
+        method = self.exchange.place_order
+        supports_client_id = False
+        try:
+            parameters = inspect.signature(method).parameters.values()
+            supports_client_id = any(
+                parameter.name == "client_order_id"
+                or parameter.kind == inspect.Parameter.VAR_KEYWORD
+                for parameter in parameters
+            )
+        except (TypeError, ValueError):
+            supports_client_id = False
+        if supports_client_id:
+            return method(
+                symbol,
+                side,
+                quantity,
+                client_order_id=client_order_id,
+            )
+        return method(symbol, side, quantity)
+
+    @staticmethod
+    def _is_terminal_order_result(result: dict[str, Any]) -> bool:
+        return str(result.get("status", "")).strip().upper() in _TERMINAL_ORDER_STATUSES
 
     def _purge_expired_quarantine_entries(
         self,
@@ -699,6 +802,16 @@ class ExchangeManager:
             )
 
             if existing is None:
+                pending_result = self._lookup_pending_reconciliation(
+                    key=key,
+                    fingerprint=fingerprint,
+                    symbol=symbol,
+                    side=side,
+                    quantity=quantity,
+                )
+                if pending_result is not None:
+                    return (False, pending_result, None)
+
                 entry: dict[str, Any] = {
                     "fingerprint": fingerprint,
                     "event": threading.Event(),
@@ -1084,28 +1197,22 @@ class ExchangeManager:
         leader_completed = False
         try:
             try:
-                result = self.exchange.place_order(
-                    normalized_symbol,
-                    normalized_side,
-                    normalized_quantity,
-                )
-            except TimeoutError as exc:
-                logger.exception(
-                    "Exchange timeout during order submission: "
-                    "symbol=%s side=%s quantity=%s",
-                    normalized_symbol,
-                    normalized_side,
-                    normalized_quantity,
-                )
-
+                with self._idempotency_lock:
+                    pending_result = self._record_pending_reconciliation(
+                        key=normalized_idempotency_key,
+                        fingerprint=fingerprint,
+                        symbol=normalized_symbol,
+                        side=normalized_side,
+                        quantity=normalized_quantity,
+                    )
+            except Exception as exc:
                 error_result = self._error_result(
-                    reason="EXCHANGE_TIMEOUT",
+                    reason="IDEMPOTENCY_STORE_UNAVAILABLE",
                     symbol=normalized_symbol,
                     side=normalized_side,
                     quantity=normalized_quantity,
                     error_type=type(exc).__name__,
                 )
-
                 completed_result = self._complete_in_flight_request(
                     key=normalized_idempotency_key,
                     entry=in_flight_entry,
@@ -1113,27 +1220,39 @@ class ExchangeManager:
                 )
                 leader_completed = True
                 return completed_result
-            except ConnectionError as exc:
+
+            try:
+                result = self._submit_order_with_client_id(
+                    symbol=normalized_symbol,
+                    side=normalized_side,
+                    quantity=normalized_quantity,
+                    client_order_id=normalized_idempotency_key,
+                )
+            except TimeoutError:
                 logger.exception(
-                    "Exchange connection error during order submission: "
-                    "symbol=%s side=%s quantity=%s",
+                    "Exchange timeout left order outcome indeterminate: symbol=%s side=%s quantity=%s",
                     normalized_symbol,
                     normalized_side,
                     normalized_quantity,
                 )
-
-                error_result = self._error_result(
-                    reason="EXCHANGE_CONNECTION_ERROR",
-                    symbol=normalized_symbol,
-                    side=normalized_side,
-                    quantity=normalized_quantity,
-                    error_type=type(exc).__name__,
-                )
-
                 completed_result = self._complete_in_flight_request(
                     key=normalized_idempotency_key,
                     entry=in_flight_entry,
-                    response=error_result,
+                    response=pending_result,
+                )
+                leader_completed = True
+                return completed_result
+            except ConnectionError:
+                logger.exception(
+                    "Exchange connection loss left order outcome indeterminate: symbol=%s side=%s quantity=%s",
+                    normalized_symbol,
+                    normalized_side,
+                    normalized_quantity,
+                )
+                completed_result = self._complete_in_flight_request(
+                    key=normalized_idempotency_key,
+                    entry=in_flight_entry,
+                    response=pending_result,
                 )
                 leader_completed = True
                 return completed_result
@@ -1145,6 +1264,19 @@ class ExchangeManager:
                     normalized_side,
                     normalized_quantity,
                 )
+
+                with self._idempotency_lock:
+                    cleared = self._discard_pending_reconciliation(
+                        key=normalized_idempotency_key,
+                    )
+                if not cleared:
+                    completed_result = self._complete_in_flight_request(
+                        key=normalized_idempotency_key,
+                        entry=in_flight_entry,
+                        response=pending_result,
+                    )
+                    leader_completed = True
+                    return completed_result
 
                 error_result = self._error_result(
                     reason="EXCHANGE_ADAPTER_ERROR",
@@ -1167,26 +1299,38 @@ class ExchangeManager:
                 dict,
             ):
                 logger.error(
-                    "Invalid exchange response type: "
-                    "symbol=%s side=%s quantity=%s response_type=%s",
+                    "Invalid exchange response left outcome indeterminate: symbol=%s side=%s quantity=%s response_type=%s",
                     normalized_symbol,
                     normalized_side,
                     normalized_quantity,
                     type(result).__name__,
                 )
-
-                error_result = self._error_result(
-                    reason="INVALID_EXCHANGE_RESPONSE",
-                    symbol=normalized_symbol,
-                    side=normalized_side,
-                    quantity=normalized_quantity,
-                    error_type="InvalidExchangeResponse",
-                )
-
                 completed_result = self._complete_in_flight_request(
                     key=normalized_idempotency_key,
                     entry=in_flight_entry,
-                    response=error_result,
+                    response=pending_result,
+                )
+                leader_completed = True
+                return completed_result
+
+            if not self._is_terminal_order_result(result):
+                nonterminal = self._pending_result(
+                    symbol=normalized_symbol,
+                    side=normalized_side,
+                    quantity=normalized_quantity,
+                    reason="EXCHANGE_ORDER_NOT_TERMINAL",
+                )
+                with self._idempotency_lock:
+                    pending_entry = self._pending_reconciliations.get(
+                        normalized_idempotency_key
+                    )
+                    if pending_entry is not None:
+                        pending_entry["response"] = deepcopy(nonterminal)
+                        self._persist_idempotency_entries()
+                completed_result = self._complete_in_flight_request(
+                    key=normalized_idempotency_key,
+                    entry=in_flight_entry,
+                    response=nonterminal,
                 )
                 leader_completed = True
                 return completed_result
@@ -1217,59 +1361,27 @@ class ExchangeManager:
 
                 return completed_result
 
-            except Exception as finalization_exc:
+            except Exception:
                 logger.exception(
-                    "Idempotency finalization/caching failure after exchange order submission: "
-                    "symbol=%s side=%s quantity=%s",
+                    "Terminal result could not be durably finalized; reconciliation remains pending: symbol=%s side=%s quantity=%s",
                     normalized_symbol,
                     normalized_side,
                     normalized_quantity,
                 )
-
-                with self._idempotency_lock:
-                    self._quarantine_key(
-                        key=normalized_idempotency_key,
-                        fingerprint=fingerprint,
-                    )
-
-                finalization_error_result = self._error_result(
-                    reason="IDEMPOTENCY_FINALIZATION_FAILED",
-                    symbol=normalized_symbol,
-                    side=normalized_side,
-                    quantity=normalized_quantity,
-                    error_type=type(finalization_exc).__name__,
-                )
-
                 completed_result = self._complete_in_flight_request(
                     key=normalized_idempotency_key,
                     entry=in_flight_entry,
-                    response=finalization_error_result,
+                    response=pending_result,
                 )
                 leader_completed = True
-                return finalization_error_result
+                return completed_result
 
-        except BaseException as base_exc:
+        except BaseException:
             if not leader_completed:
-                with self._idempotency_lock:
-                    self._quarantine_key(
-                        key=normalized_idempotency_key,
-                        fingerprint=fingerprint,
-                        reason="IDEMPOTENCY_LEADER_ABORTED",
-                        status_code="ERROR",
-                    )
-
-                abort_error_result = self._error_result(
-                    reason="IDEMPOTENCY_LEADER_ABORTED",
-                    symbol=normalized_symbol,
-                    side=normalized_side,
-                    quantity=normalized_quantity,
-                    error_type=type(base_exc).__name__,
-                )
-
                 self._complete_in_flight_request(
                     key=normalized_idempotency_key,
                     entry=in_flight_entry,
-                    response=abort_error_result,
+                    response=pending_result,
                 )
             raise
         finally:
@@ -1286,11 +1398,69 @@ class ExchangeManager:
                     if isinstance(event, threading.Event) and not event.is_set():
                         event.set()
 
+    def reconcile_order(
+        self,
+        idempotency_key: Any,
+    ) -> dict[str, Any]:
+        key = self._normalize_idempotency_key(idempotency_key)
+        if key is None:
+            return self._rejection(
+                reason="IDEMPOTENCY_KEY_REQUIRED",
+                symbol="",
+                side="",
+                quantity=0.0,
+            )
+        with self._idempotency_lock:
+            self._purge_expired_pending_reconciliations()
+            pending = self._pending_reconciliations.get(key)
+            if pending is None:
+                cached = self._idempotency_cache.get(key)
+                if cached is not None:
+                    return deepcopy(cached["response"])
+                return self._rejection(
+                    reason="RECONCILIATION_ENTRY_NOT_FOUND",
+                    symbol="",
+                    side="",
+                    quantity=0.0,
+                )
+            pending_snapshot = deepcopy(pending)
+        query_method = getattr(self.exchange, "get_order_by_client_id", None)
+        if not callable(query_method):
+            return deepcopy(pending_snapshot["response"])
+        try:
+            result = query_method(
+                pending_snapshot["symbol"],
+                pending_snapshot["client_order_id"],
+            )
+        except Exception:
+            logger.exception("Exchange order reconciliation query failed")
+            return deepcopy(pending_snapshot["response"])
+        if not isinstance(result, dict) or not self._is_terminal_order_result(result):
+            return deepcopy(pending_snapshot["response"])
+        with self._idempotency_lock:
+            current = self._pending_reconciliations.get(key)
+            if current is None:
+                cached = self._idempotency_cache.get(key)
+                if cached is not None:
+                    return deepcopy(cached["response"])
+                return deepcopy(pending_snapshot["response"])
+            try:
+                self._cache_idempotency_result(
+                    key=key,
+                    fingerprint=current["fingerprint"],
+                    response=result,
+                )
+            except Exception:
+                logger.exception("Reconciled terminal outcome could not be persisted")
+                return deepcopy(current["response"])
+        return deepcopy(result)
+
     def status(
         self,
     ) -> dict[str, Any]:
         with self._idempotency_lock:
             self._purge_expired_idempotency_entries()
+            self._purge_expired_pending_reconciliations()
             self._purge_expired_quarantine_entries()
 
             cached_entries = len(
@@ -1301,8 +1471,12 @@ class ExchangeManager:
                 self._in_flight_requests
             )
 
-            indeterminate_entries = len(
-                self._quarantined_keys
+            pending_reconciliation_entries = len(
+                self._pending_reconciliations
+            )
+            indeterminate_entries = (
+                pending_reconciliation_entries
+                + len(self._quarantined_keys)
             )
 
         exchange_status_method = getattr(
@@ -1348,6 +1522,9 @@ class ExchangeManager:
                 "cached_entries": cached_entries,
                 "in_flight_entries": in_flight_entries,
                 "indeterminate_entries": indeterminate_entries,
+                "pending_reconciliation_entries": (
+                    pending_reconciliation_entries
+                ),
                 "in_flight_wait_timeout_seconds": (
                     self.in_flight_wait_timeout_seconds
                 ),

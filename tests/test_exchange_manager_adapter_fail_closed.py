@@ -98,24 +98,28 @@ def _build_manager(
 
 
 @pytest.mark.parametrize(
-    ("exception", "expected_reason"),
+    ("exception", "expected_status", "expected_reason"),
     [
         (
             TimeoutError("exchange timeout"),
-            "EXCHANGE_TIMEOUT",
+            "PENDING_RECONCILIATION",
+            "EXCHANGE_OUTCOME_UNKNOWN",
         ),
         (
             ConnectionError("exchange unavailable"),
-            "EXCHANGE_CONNECTION_ERROR",
+            "PENDING_RECONCILIATION",
+            "EXCHANGE_OUTCOME_UNKNOWN",
         ),
         (
             RuntimeError("unexpected adapter failure"),
+            "ERROR",
             "EXCHANGE_ADAPTER_ERROR",
         ),
     ],
 )
 def test_adapter_exception_returns_fail_closed_result(
     exception: Exception,
+    expected_status: str,
     expected_reason: str,
 ) -> None:
     exchange = RaisingExchange(
@@ -135,13 +139,16 @@ def test_adapter_exception_returns_fail_closed_result(
         order_notional=500.0,
         opens_new_position=False,)
 
-    assert result["status"] == "ERROR"
+    assert result["status"] == expected_status
     assert result["allowed"] is False
     assert result["reason"] == expected_reason
     assert result["symbol"] == "BTCUSDT"
     assert result["side"] == "BUY"
     assert result["quantity"] == 0.01
-    assert result["error_type"] == type(exception).__name__
+    if expected_status == "ERROR":
+        assert result["error_type"] == type(exception).__name__
+    else:
+        assert "error_type" not in result
     assert exchange.call_count == 1
 
 
@@ -176,13 +183,12 @@ def test_invalid_adapter_response_fails_closed(
         opens_new_position=False,)
 
     assert result == {
-        "status": "ERROR",
+        "status": "PENDING_RECONCILIATION",
         "allowed": False,
-        "reason": "INVALID_EXCHANGE_RESPONSE",
+        "reason": "EXCHANGE_OUTCOME_UNKNOWN",
         "symbol": "ETHUSDT",
         "side": "SELL",
         "quantity": 0.5,
-        "error_type": "InvalidExchangeResponse",
     }
 
     assert exchange.call_count == 1

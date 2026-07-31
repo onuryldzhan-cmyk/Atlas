@@ -185,8 +185,8 @@ def test_store_does_not_persist_adapter_error(
             side: str,
             quantity: float,
         ) -> dict[str, Any]:
-            raise ConnectionError(
-                "temporary outage"
+            raise RuntimeError(
+                "definite local adapter failure"
             )
 
     manager = ExchangeManager(

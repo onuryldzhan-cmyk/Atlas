@@ -274,11 +274,11 @@ def test_failed_adapter_call_does_not_permanently_consume_key() -> None:
         order_notional=500.0,
         opens_new_position=False,)
 
-    assert first["status"] == "ERROR"
-    assert first["reason"] == "EXCHANGE_CONNECTION_ERROR"
+    assert first["status"] == "PENDING_RECONCILIATION"
+    assert first["reason"] == "EXCHANGE_OUTCOME_UNKNOWN"
 
-    assert second["status"] == "FILLED"
-    assert exchange.call_count == 2
+    assert second == first
+    assert exchange.call_count == 1
 
 
 def test_exchange_rejection_is_cached_for_same_request() -> None:
