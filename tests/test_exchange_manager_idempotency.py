@@ -336,3 +336,58 @@ def test_idempotency_status_does_not_expose_order_payloads() -> None:
     assert status["idempotency"]["cached_entries"] == 1
     assert "entries" not in status["idempotency"]
     assert "status-request-001" not in str(status)
+
+def test_same_key_with_different_order_notional_is_rejected_as_idempotency_conflict() -> None:
+    exchange = SpyExchange()
+    manager = _build_manager(exchange)
+
+    first = manager.place_order(
+        "BTCUSDT",
+        "BUY",
+        0.01,
+        idempotency_key="economic-intent-notional-001",
+        order_notional=500.0,
+        opens_new_position=False,
+    )
+
+    second = manager.place_order(
+        "BTCUSDT",
+        "BUY",
+        0.01,
+        idempotency_key="economic-intent-notional-001",
+        order_notional=750.0,
+        opens_new_position=False,
+    )
+
+    assert first["status"] == "FILLED"
+    assert second["status"] == "REJECTED"
+    assert second["reason"] == "IDEMPOTENCY_KEY_CONFLICT"
+    assert len(exchange.orders) == 1
+
+
+def test_same_key_with_different_position_opening_intent_is_rejected_as_idempotency_conflict() -> None:
+    exchange = SpyExchange()
+    manager = _build_manager(exchange)
+
+    first = manager.place_order(
+        "BTCUSDT",
+        "BUY",
+        0.01,
+        idempotency_key="economic-intent-position-001",
+        order_notional=500.0,
+        opens_new_position=False,
+    )
+
+    second = manager.place_order(
+        "BTCUSDT",
+        "BUY",
+        0.01,
+        idempotency_key="economic-intent-position-001",
+        order_notional=500.0,
+        opens_new_position=True,
+    )
+
+    assert first["status"] == "FILLED"
+    assert second["status"] == "REJECTED"
+    assert second["reason"] == "IDEMPOTENCY_KEY_CONFLICT"
+    assert len(exchange.orders) == 1

@@ -281,3 +281,132 @@ def test_store_status_exposes_no_keys_or_payloads(
     assert status["idempotency"]["store_available"] is True
     assert "secret-request-key" not in str(status)
     assert "entries" not in status["idempotency"]
+
+def test_persisted_key_rejects_different_order_notional_after_restart(
+    tmp_path: Path,
+) -> None:
+    store_path = tmp_path / "idempotency.json"
+
+    first_exchange = SpyExchange()
+    first_manager = _build_manager(
+        exchange=first_exchange,
+        store_path=store_path,
+    )
+
+    first_result = first_manager.place_order(
+        "BTCUSDT",
+        "BUY",
+        0.01,
+        idempotency_key="restart-notional-conflict-001",
+        order_notional=500.0,
+        opens_new_position=False,
+    )
+
+    assert first_result["status"] == "FILLED"
+    assert len(first_exchange.orders) == 1
+
+    second_exchange = SpyExchange()
+    second_manager = _build_manager(
+        exchange=second_exchange,
+        store_path=store_path,
+    )
+
+    second_result = second_manager.place_order(
+        "BTCUSDT",
+        "BUY",
+        0.01,
+        idempotency_key="restart-notional-conflict-001",
+        order_notional=750.0,
+        opens_new_position=False,
+    )
+
+    assert second_result["status"] == "REJECTED"
+    assert second_result["reason"] == "IDEMPOTENCY_KEY_CONFLICT"
+    assert second_exchange.orders == []
+
+
+def test_persisted_key_rejects_different_position_opening_intent_after_restart(
+    tmp_path: Path,
+) -> None:
+    store_path = tmp_path / "idempotency.json"
+
+    first_exchange = SpyExchange()
+    first_manager = _build_manager(
+        exchange=first_exchange,
+        store_path=store_path,
+    )
+
+    first_result = first_manager.place_order(
+        "BTCUSDT",
+        "BUY",
+        0.01,
+        idempotency_key="restart-position-conflict-001",
+        order_notional=500.0,
+        opens_new_position=False,
+    )
+
+    assert first_result["status"] == "FILLED"
+    assert len(first_exchange.orders) == 1
+
+    second_exchange = SpyExchange()
+    second_manager = _build_manager(
+        exchange=second_exchange,
+        store_path=store_path,
+    )
+
+    second_result = second_manager.place_order(
+        "BTCUSDT",
+        "BUY",
+        0.01,
+        idempotency_key="restart-position-conflict-001",
+        order_notional=500.0,
+        opens_new_position=True,
+    )
+
+    assert second_result["status"] == "REJECTED"
+    assert second_result["reason"] == "IDEMPOTENCY_KEY_CONFLICT"
+    assert second_exchange.orders == []
+
+def test_legacy_three_field_fingerprint_store_fails_closed(
+    tmp_path: Path,
+) -> None:
+    store_path = tmp_path / "legacy-idempotency.json"
+
+    store_path.write_text(
+        (
+            '{"version":"1.0","entries":{'
+            '"legacy-key-001":{'
+            '"fingerprint":["BTCUSDT","BUY",0.01],'
+            '"response":{'
+            '"status":"FILLED",'
+            '"order_id":"legacy-order"'
+            '},'
+            '"expires_at":4102444800.0'
+            '}'
+            '}}'
+        ),
+        encoding="utf-8",
+    )
+
+    exchange = SpyExchange()
+
+    manager = _build_manager(
+        exchange=exchange,
+        store_path=store_path,
+    )
+
+    result = manager.place_order(
+        "BTCUSDT",
+        "BUY",
+        0.01,
+        idempotency_key="legacy-key-001",
+        order_notional=500.0,
+        opens_new_position=False,
+    )
+
+    status = manager.status()
+
+    assert result["status"] == "REJECTED"
+    assert result["reason"] == "IDEMPOTENCY_STORE_UNAVAILABLE"
+    assert exchange.orders == []
+    assert status["idempotency"]["store_available"] is False

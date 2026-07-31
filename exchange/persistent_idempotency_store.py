@@ -1,4 +1,4 @@
-﻿"""
+"""
 ATLAS PERSISTENT IDEMPOTENCY STORE v1.0
 
 Restart-safe JSON persistence for terminal order outcomes.
@@ -24,7 +24,7 @@ from typing import Any, Callable, Mapping
 
 
 class PersistentIdempotencyStore:
-    VERSION = "1.0"
+    VERSION = "1.1"
 
     def __init__(
         self,
@@ -81,6 +81,15 @@ class PersistentIdempotencyStore:
                     "store root must be an object"
                 )
 
+            version = raw.get(
+                "version"
+            )
+
+            if version != self.VERSION:
+                raise ValueError(
+                    "unsupported idempotency store version"
+                )
+
             entries = raw.get(
                 "entries",
                 {},
@@ -113,7 +122,11 @@ class PersistentIdempotencyStore:
 
                 if (
                     not isinstance(fingerprint, list)
-                    or len(fingerprint) != 3
+                    or len(fingerprint) != 5
+                    or not isinstance(
+                        fingerprint[4],
+                        bool,
+                    )
                     or not isinstance(response, dict)
                 ):
                     continue
@@ -140,6 +153,8 @@ class PersistentIdempotencyStore:
                         str(fingerprint[0]),
                         str(fingerprint[1]),
                         float(fingerprint[2]),
+                        float(fingerprint[3]),
+                        fingerprint[4],
                     ),
                     "response": response,
                     "expires_at": normalized_expiry,
@@ -189,7 +204,11 @@ class PersistentIdempotencyStore:
                 if (
                     not isinstance(key, str)
                     or not isinstance(fingerprint, tuple)
-                    or len(fingerprint) != 3
+                    or len(fingerprint) != 5
+                    or not isinstance(
+                        fingerprint[4],
+                        bool,
+                    )
                     or not isinstance(response, dict)
                 ):
                     continue

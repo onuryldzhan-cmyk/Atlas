@@ -1,5 +1,5 @@
 """
-ATLAS EXCHANGE MANAGER v2.8
+ATLAS EXCHANGE MANAGER v2.9
 
 Lifecycle-safe and fail-closed exchange facade.
 
@@ -22,6 +22,7 @@ Idempotency rules
 - Cache is bounded by TTL and maximum entry count.
 - Concurrent in-flight requests are coordinated to prevent duplicate adapter submissions.
 - Indeterminate outcome quarantine guarantees fail-closed protection on uncertain order submission.
+- Fingerprints include normalized economic and exposure intent.
 """
 
 from __future__ import annotations
@@ -64,7 +65,7 @@ _ALLOWED_ORDER_SIDES = {
 
 
 class ExchangeManager:
-    VERSION = "2.8"
+    VERSION = "2.9"
 
     def __init__(
         self,
@@ -355,11 +356,15 @@ class ExchangeManager:
         symbol: str,
         side: str,
         quantity: float,
-    ) -> tuple[str, str, float]:
+        order_notional: float,
+        opens_new_position: bool,
+    ) -> tuple[str, str, float, float, bool]:
         return (
             symbol,
             side,
             quantity,
+            order_notional,
+            opens_new_position,
         )
 
     def _load_persistent_idempotency_entries(
@@ -473,7 +478,7 @@ class ExchangeManager:
         self,
         *,
         key: str,
-        fingerprint: tuple[str, str, float],
+        fingerprint: tuple[str, str, float, float, bool],
         symbol: str,
         side: str,
         quantity: float,
@@ -515,7 +520,7 @@ class ExchangeManager:
         self,
         *,
         key: str,
-        fingerprint: tuple[str, str, float],
+        fingerprint: tuple[str, str, float, float, bool],
         response: dict[str, Any],
     ) -> None:
         self._purge_expired_idempotency_entries()
@@ -568,7 +573,7 @@ class ExchangeManager:
         self,
         *,
         key: str,
-        fingerprint: tuple[str, str, float],
+        fingerprint: tuple[str, str, float, float, bool],
         reason: str = "IDEMPOTENCY_OUTCOME_UNKNOWN",
         status_code: str = "REJECTED",
     ) -> None:
@@ -650,7 +655,7 @@ class ExchangeManager:
         self,
         *,
         key: str,
-        fingerprint: tuple[str, str, float],
+        fingerprint: tuple[str, str, float, float, bool],
         symbol: str,
         side: str,
         quantity: float,
@@ -870,6 +875,35 @@ class ExchangeManager:
                 quantity=normalized_quantity,
             )
 
+        normalized_order_notional = (
+            self._normalize_quantity(
+                order_notional
+            )
+        )
+
+        if normalized_order_notional is None:
+            return self._rejection(
+                reason="INVALID_ORDER_NOTIONAL",
+                symbol=normalized_symbol,
+                side=normalized_side,
+                quantity=normalized_quantity,
+            )
+
+        if not isinstance(
+            opens_new_position,
+            bool,
+        ):
+            return self._rejection(
+                reason="INVALID_POSITION_INTENT",
+                symbol=normalized_symbol,
+                side=normalized_side,
+                quantity=normalized_quantity,
+            )
+
+        normalized_opens_new_position = (
+            opens_new_position
+        )
+
         normalized_idempotency_key = (
             self._normalize_idempotency_key(
                 idempotency_key
@@ -888,6 +922,10 @@ class ExchangeManager:
             symbol=normalized_symbol,
             side=normalized_side,
             quantity=normalized_quantity,
+            order_notional=normalized_order_notional,
+            opens_new_position=(
+                normalized_opens_new_position
+            ),
         )
 
         with self._idempotency_lock:
@@ -981,8 +1019,10 @@ class ExchangeManager:
         exposure_decision = (
             self.exposure_guard.authorize_order(
                 symbol=normalized_symbol,
-                order_notional=order_notional,
-                opens_new_position=opens_new_position,
+                order_notional=normalized_order_notional,
+                opens_new_position=(
+                    normalized_opens_new_position
+                ),
             )
         )
 
