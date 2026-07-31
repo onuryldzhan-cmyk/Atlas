@@ -1,5 +1,5 @@
 """
-ATLAS EXCHANGE MANAGER v2.4
+ATLAS EXCHANGE MANAGER v2.8
 
 Lifecycle-safe and fail-closed exchange facade.
 
@@ -20,6 +20,8 @@ Idempotency rules
 - Successful and exchange-rejected terminal responses are cached.
 - Adapter errors are not cached, allowing controlled retry.
 - Cache is bounded by TTL and maximum entry count.
+- Concurrent in-flight requests are coordinated to prevent duplicate adapter submissions.
+- Indeterminate outcome quarantine guarantees fail-closed protection on uncertain order submission.
 """
 
 from __future__ import annotations
@@ -27,6 +29,7 @@ from __future__ import annotations
 import logging
 import math
 import re
+import threading
 import time
 
 from collections import OrderedDict
@@ -61,7 +64,7 @@ _ALLOWED_ORDER_SIDES = {
 
 
 class ExchangeManager:
-    VERSION = "2.6"
+    VERSION = "2.8"
 
     def __init__(
         self,
@@ -76,6 +79,7 @@ class ExchangeManager:
         monotonic_provider: Callable[[], float] | None = None,
         idempotency_store_path: str | Path | None = None,
         wall_time_provider: Callable[[], float] | None = None,
+        in_flight_wait_timeout_seconds: float = 30.0,
     ) -> None:
         self.exchange_name = str(
             exchange_name
@@ -106,6 +110,20 @@ class ExchangeManager:
             field_name="idempotency_max_entries",
         )
 
+        self.in_flight_wait_timeout_seconds = (
+            self._normalize_positive_float(
+                in_flight_wait_timeout_seconds,
+                field_name="in_flight_wait_timeout_seconds",
+            )
+        )
+
+        self._idempotency_lock = threading.RLock()
+
+        self._in_flight_requests: dict[
+            str,
+            dict[str, Any],
+        ] = {}
+
         self._monotonic_provider = (
             monotonic_provider
             if monotonic_provider is not None
@@ -119,6 +137,11 @@ class ExchangeManager:
         )
 
         self._idempotency_cache: OrderedDict[
+            str,
+            dict[str, Any],
+        ] = OrderedDict()
+
+        self._quarantined_keys: OrderedDict[
             str,
             dict[str, Any],
         ] = OrderedDict()
@@ -519,6 +542,271 @@ class ExchangeManager:
 
         self._persist_idempotency_entries()
 
+    def _purge_expired_quarantine_entries(
+        self,
+    ) -> None:
+        now = float(
+            self._monotonic_provider()
+        )
+
+        expired_keys = [
+            key
+            for key, entry in self._quarantined_keys.items()
+            if (
+                now - float(entry["created_at"])
+                >= self.idempotency_ttl_seconds
+            )
+        ]
+
+        for key in expired_keys:
+            self._quarantined_keys.pop(
+                key,
+                None,
+            )
+
+    def _quarantine_key(
+        self,
+        *,
+        key: str,
+        fingerprint: tuple[str, str, float],
+        reason: str = "IDEMPOTENCY_OUTCOME_UNKNOWN",
+        status_code: str = "REJECTED",
+    ) -> None:
+        self._purge_expired_quarantine_entries()
+
+        self._quarantined_keys[key] = {
+            "fingerprint": fingerprint,
+            "reason": reason,
+            "status_code": status_code,
+            "created_at": float(
+                self._monotonic_provider()
+            ),
+        }
+
+        self._quarantined_keys.move_to_end(
+            key
+        )
+
+        while (
+            len(self._quarantined_keys)
+            > self.idempotency_max_entries
+        ):
+            self._quarantined_keys.popitem(
+                last=False
+            )
+
+    def _lookup_quarantined_entry(
+        self,
+        *,
+        key: str,
+        symbol: str,
+        side: str,
+        quantity: float,
+    ) -> dict[str, Any] | None:
+        self._purge_expired_quarantine_entries()
+
+        entry = self._quarantined_keys.get(
+            key
+        )
+
+        if entry is None:
+            return None
+
+        self._quarantined_keys.move_to_end(
+            key
+        )
+
+        reason = str(
+            entry.get(
+                "reason",
+                "IDEMPOTENCY_OUTCOME_UNKNOWN",
+            )
+        )
+
+        status_code = str(
+            entry.get(
+                "status_code",
+                "REJECTED",
+            )
+        )
+
+        if status_code == "ERROR":
+            return self._error_result(
+                reason=reason,
+                symbol=symbol,
+                side=side,
+                quantity=quantity,
+                error_type="IdempotencyLeaderAborted",
+            )
+
+        return self._rejection(
+            reason=reason,
+            symbol=symbol,
+            side=side,
+            quantity=quantity,
+        )
+
+    def _coordinate_in_flight_request(
+        self,
+        *,
+        key: str,
+        fingerprint: tuple[str, str, float],
+        symbol: str,
+        side: str,
+        quantity: float,
+    ) -> tuple[
+        bool,
+        dict[str, Any] | None,
+        dict[str, Any] | None,
+    ]:
+        with self._idempotency_lock:
+            quarantined_result = self._lookup_quarantined_entry(
+                key=key,
+                symbol=symbol,
+                side=side,
+                quantity=quantity,
+            )
+
+            if quarantined_result is not None:
+                return (
+                    False,
+                    quarantined_result,
+                    None,
+                )
+
+            cached_result = self._lookup_idempotency_entry(
+                key=key,
+                fingerprint=fingerprint,
+                symbol=symbol,
+                side=side,
+                quantity=quantity,
+            )
+
+            if cached_result is not None:
+                return (
+                    False,
+                    cached_result,
+                    None,
+                )
+
+            existing = self._in_flight_requests.get(
+                key
+            )
+
+            if existing is None:
+                entry: dict[str, Any] = {
+                    "fingerprint": fingerprint,
+                    "event": threading.Event(),
+                    "response": None,
+                }
+
+                self._in_flight_requests[key] = entry
+
+                return (
+                    True,
+                    None,
+                    entry,
+                )
+
+            if existing.get(
+                "fingerprint"
+            ) != fingerprint:
+                return (
+                    False,
+                    self._rejection(
+                        reason="IDEMPOTENCY_KEY_CONFLICT",
+                        symbol=symbol,
+                        side=side,
+                        quantity=quantity,
+                    ),
+                    None,
+                )
+
+            entry = existing
+            event = entry["event"]
+
+        completed = event.wait(
+            timeout=self.in_flight_wait_timeout_seconds
+        )
+
+        if not completed:
+            return (
+                False,
+                self._rejection(
+                    reason=(
+                        "IDEMPOTENCY_REQUEST_IN_FLIGHT_TIMEOUT"
+                    ),
+                    symbol=symbol,
+                    side=side,
+                    quantity=quantity,
+                ),
+                None,
+            )
+
+        response = entry.get(
+            "response"
+        )
+
+        if not isinstance(
+            response,
+            dict,
+        ):
+            return (
+                False,
+                self._error_result(
+                    reason="IDEMPOTENCY_IN_FLIGHT_RESULT_UNAVAILABLE",
+                    symbol=symbol,
+                    side=side,
+                    quantity=quantity,
+                    error_type="InFlightResultUnavailable",
+                ),
+                None,
+            )
+
+        return (
+            False,
+            deepcopy(response),
+            None,
+        )
+
+    def _complete_in_flight_request(
+        self,
+        *,
+        key: str,
+        entry: dict[str, Any],
+        response: dict[str, Any],
+    ) -> dict[str, Any]:
+        result = deepcopy(
+            response
+        )
+
+        with self._idempotency_lock:
+            entry["response"] = deepcopy(
+                result
+            )
+
+            current = self._in_flight_requests.get(
+                key
+            )
+
+            if current is entry:
+                self._in_flight_requests.pop(
+                    key,
+                    None,
+                )
+
+            event = entry.get(
+                "event"
+            )
+
+            if isinstance(
+                event,
+                threading.Event,
+            ):
+                event.set()
+
+        return result
+
     def place_order(
         self,
         symbol: str,
@@ -602,13 +890,24 @@ class ExchangeManager:
             quantity=normalized_quantity,
         )
 
-        cached_result = self._lookup_idempotency_entry(
-            key=normalized_idempotency_key,
-            fingerprint=fingerprint,
-            symbol=normalized_symbol,
-            side=normalized_side,
-            quantity=normalized_quantity,
-        )
+        with self._idempotency_lock:
+            quarantined_result = self._lookup_quarantined_entry(
+                key=normalized_idempotency_key,
+                symbol=normalized_symbol,
+                side=normalized_side,
+                quantity=normalized_quantity,
+            )
+
+            if quarantined_result is not None:
+                return quarantined_result
+
+            cached_result = self._lookup_idempotency_entry(
+                key=normalized_idempotency_key,
+                fingerprint=fingerprint,
+                symbol=normalized_symbol,
+                side=normalized_side,
+                quantity=normalized_quantity,
+            )
 
         if cached_result is not None:
             return cached_result
@@ -711,105 +1010,260 @@ class ExchangeManager:
 
             return rejection
 
+        is_leader, coordinated_result, in_flight_entry = (
+            self._coordinate_in_flight_request(
+                key=normalized_idempotency_key,
+                fingerprint=fingerprint,
+                symbol=normalized_symbol,
+                side=normalized_side,
+                quantity=normalized_quantity,
+            )
+        )
+
+        if not is_leader:
+            if coordinated_result is None:
+                return self._error_result(
+                    reason="IDEMPOTENCY_COORDINATION_FAILED",
+                    symbol=normalized_symbol,
+                    side=normalized_side,
+                    quantity=normalized_quantity,
+                    error_type="IdempotencyCoordinationError",
+                )
+
+            return coordinated_result
+
+        if in_flight_entry is None:
+            return self._error_result(
+                reason="IDEMPOTENCY_COORDINATION_FAILED",
+                symbol=normalized_symbol,
+                side=normalized_side,
+                quantity=normalized_quantity,
+                error_type="IdempotencyCoordinationError",
+            )
+
+        leader_completed = False
         try:
-            result = self.exchange.place_order(
-                normalized_symbol,
-                normalized_side,
-                normalized_quantity,
-            )
-        except TimeoutError as exc:
-            logger.exception(
-                "Exchange timeout during order submission: "
-                "symbol=%s side=%s quantity=%s",
-                normalized_symbol,
-                normalized_side,
-                normalized_quantity,
-            )
+            try:
+                result = self.exchange.place_order(
+                    normalized_symbol,
+                    normalized_side,
+                    normalized_quantity,
+                )
+            except TimeoutError as exc:
+                logger.exception(
+                    "Exchange timeout during order submission: "
+                    "symbol=%s side=%s quantity=%s",
+                    normalized_symbol,
+                    normalized_side,
+                    normalized_quantity,
+                )
 
-            return self._error_result(
-                reason="EXCHANGE_TIMEOUT",
-                symbol=normalized_symbol,
-                side=normalized_side,
-                quantity=normalized_quantity,
-                error_type=type(exc).__name__,
-            )
-        except ConnectionError as exc:
-            logger.exception(
-                "Exchange connection error during order submission: "
-                "symbol=%s side=%s quantity=%s",
-                normalized_symbol,
-                normalized_side,
-                normalized_quantity,
-            )
+                error_result = self._error_result(
+                    reason="EXCHANGE_TIMEOUT",
+                    symbol=normalized_symbol,
+                    side=normalized_side,
+                    quantity=normalized_quantity,
+                    error_type=type(exc).__name__,
+                )
 
-            return self._error_result(
-                reason="EXCHANGE_CONNECTION_ERROR",
-                symbol=normalized_symbol,
-                side=normalized_side,
-                quantity=normalized_quantity,
-                error_type=type(exc).__name__,
-            )
-        except Exception as exc:
-            logger.exception(
-                "Unexpected exchange adapter failure: "
-                "symbol=%s side=%s quantity=%s",
-                normalized_symbol,
-                normalized_side,
-                normalized_quantity,
-            )
+                completed_result = self._complete_in_flight_request(
+                    key=normalized_idempotency_key,
+                    entry=in_flight_entry,
+                    response=error_result,
+                )
+                leader_completed = True
+                return completed_result
+            except ConnectionError as exc:
+                logger.exception(
+                    "Exchange connection error during order submission: "
+                    "symbol=%s side=%s quantity=%s",
+                    normalized_symbol,
+                    normalized_side,
+                    normalized_quantity,
+                )
 
-            return self._error_result(
-                reason="EXCHANGE_ADAPTER_ERROR",
-                symbol=normalized_symbol,
-                side=normalized_side,
-                quantity=normalized_quantity,
-                error_type=type(exc).__name__,
-            )
+                error_result = self._error_result(
+                    reason="EXCHANGE_CONNECTION_ERROR",
+                    symbol=normalized_symbol,
+                    side=normalized_side,
+                    quantity=normalized_quantity,
+                    error_type=type(exc).__name__,
+                )
 
-        if not isinstance(
-            result,
-            dict,
-        ):
-            logger.error(
-                "Invalid exchange response type: "
-                "symbol=%s side=%s quantity=%s response_type=%s",
-                normalized_symbol,
-                normalized_side,
-                normalized_quantity,
-                type(result).__name__,
-            )
+                completed_result = self._complete_in_flight_request(
+                    key=normalized_idempotency_key,
+                    entry=in_flight_entry,
+                    response=error_result,
+                )
+                leader_completed = True
+                return completed_result
+            except Exception as exc:
+                logger.exception(
+                    "Unexpected exchange adapter failure: "
+                    "symbol=%s side=%s quantity=%s",
+                    normalized_symbol,
+                    normalized_side,
+                    normalized_quantity,
+                )
 
-            return self._error_result(
-                reason="INVALID_EXCHANGE_RESPONSE",
-                symbol=normalized_symbol,
-                side=normalized_side,
-                quantity=normalized_quantity,
-                error_type="InvalidExchangeResponse",
-            )
+                error_result = self._error_result(
+                    reason="EXCHANGE_ADAPTER_ERROR",
+                    symbol=normalized_symbol,
+                    side=normalized_side,
+                    quantity=normalized_quantity,
+                    error_type=type(exc).__name__,
+                )
 
-        self._cache_idempotency_result(
-            key=normalized_idempotency_key,
-            fingerprint=fingerprint,
-            response=result,
-        )
+                completed_result = self._complete_in_flight_request(
+                    key=normalized_idempotency_key,
+                    entry=in_flight_entry,
+                    response=error_result,
+                )
+                leader_completed = True
+                return completed_result
 
-        logger.info(
-            "Live order delegated after validation, idempotency, "
-            "safety and risk authorization: "
-            "symbol=%s side=%s quantity=%s",
-            normalized_symbol,
-            normalized_side,
-            normalized_quantity,
-        )
+            if not isinstance(
+                result,
+                dict,
+            ):
+                logger.error(
+                    "Invalid exchange response type: "
+                    "symbol=%s side=%s quantity=%s response_type=%s",
+                    normalized_symbol,
+                    normalized_side,
+                    normalized_quantity,
+                    type(result).__name__,
+                )
 
-        return deepcopy(
-            result
-        )
+                error_result = self._error_result(
+                    reason="INVALID_EXCHANGE_RESPONSE",
+                    symbol=normalized_symbol,
+                    side=normalized_side,
+                    quantity=normalized_quantity,
+                    error_type="InvalidExchangeResponse",
+                )
+
+                completed_result = self._complete_in_flight_request(
+                    key=normalized_idempotency_key,
+                    entry=in_flight_entry,
+                    response=error_result,
+                )
+                leader_completed = True
+                return completed_result
+
+            try:
+                with self._idempotency_lock:
+                    self._cache_idempotency_result(
+                        key=normalized_idempotency_key,
+                        fingerprint=fingerprint,
+                        response=result,
+                    )
+
+                completed_result = self._complete_in_flight_request(
+                    key=normalized_idempotency_key,
+                    entry=in_flight_entry,
+                    response=result,
+                )
+                leader_completed = True
+
+                logger.info(
+                    "Live order delegated after validation, idempotency, "
+                    "safety and risk authorization: "
+                    "symbol=%s side=%s quantity=%s",
+                    normalized_symbol,
+                    normalized_side,
+                    normalized_quantity,
+                )
+
+                return completed_result
+
+            except Exception as finalization_exc:
+                logger.exception(
+                    "Idempotency finalization/caching failure after exchange order submission: "
+                    "symbol=%s side=%s quantity=%s",
+                    normalized_symbol,
+                    normalized_side,
+                    normalized_quantity,
+                )
+
+                with self._idempotency_lock:
+                    self._quarantine_key(
+                        key=normalized_idempotency_key,
+                        fingerprint=fingerprint,
+                    )
+
+                finalization_error_result = self._error_result(
+                    reason="IDEMPOTENCY_FINALIZATION_FAILED",
+                    symbol=normalized_symbol,
+                    side=normalized_side,
+                    quantity=normalized_quantity,
+                    error_type=type(finalization_exc).__name__,
+                )
+
+                completed_result = self._complete_in_flight_request(
+                    key=normalized_idempotency_key,
+                    entry=in_flight_entry,
+                    response=finalization_error_result,
+                )
+                leader_completed = True
+                return finalization_error_result
+
+        except BaseException as base_exc:
+            if not leader_completed:
+                with self._idempotency_lock:
+                    self._quarantine_key(
+                        key=normalized_idempotency_key,
+                        fingerprint=fingerprint,
+                        reason="IDEMPOTENCY_LEADER_ABORTED",
+                        status_code="ERROR",
+                    )
+
+                abort_error_result = self._error_result(
+                    reason="IDEMPOTENCY_LEADER_ABORTED",
+                    symbol=normalized_symbol,
+                    side=normalized_side,
+                    quantity=normalized_quantity,
+                    error_type=type(base_exc).__name__,
+                )
+
+                self._complete_in_flight_request(
+                    key=normalized_idempotency_key,
+                    entry=in_flight_entry,
+                    response=abort_error_result,
+                )
+            raise
+        finally:
+            with self._idempotency_lock:
+                current = self._in_flight_requests.get(
+                    normalized_idempotency_key
+                )
+                if current is in_flight_entry:
+                    self._in_flight_requests.pop(
+                        normalized_idempotency_key,
+                        None,
+                    )
+                    event = in_flight_entry.get("event")
+                    if isinstance(event, threading.Event) and not event.is_set():
+                        event.set()
 
     def status(
         self,
     ) -> dict[str, Any]:
-        self._purge_expired_idempotency_entries()
+        with self._idempotency_lock:
+            self._purge_expired_idempotency_entries()
+            self._purge_expired_quarantine_entries()
+
+            cached_entries = len(
+                self._idempotency_cache
+            )
+
+            in_flight_entries = len(
+                self._in_flight_requests
+            )
+
+            indeterminate_entries = len(
+                self._quarantined_keys
+            )
 
         exchange_status_method = getattr(
             self.exchange,
@@ -851,8 +1305,11 @@ class ExchangeManager:
             "idempotency": {
                 "enabled": True,
                 "required": True,
-                "cached_entries": len(
-                    self._idempotency_cache
+                "cached_entries": cached_entries,
+                "in_flight_entries": in_flight_entries,
+                "indeterminate_entries": indeterminate_entries,
+                "in_flight_wait_timeout_seconds": (
+                    self.in_flight_wait_timeout_seconds
                 ),
                 "ttl_seconds": self.idempotency_ttl_seconds,
                 "max_entries": self.idempotency_max_entries,
