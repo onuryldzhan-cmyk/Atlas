@@ -59,6 +59,8 @@ from enum import StrEnum
 from types import MappingProxyType
 from typing import Any, Callable, Mapping
 
+from atlas_security import sanitize_sensitive_mapping
+
 from atlas_os.contracts import (
     ServiceIdentity,
 )
@@ -166,7 +168,9 @@ class AtlasEvent:
             self,
             "payload",
             MappingProxyType(
-                dict(self.payload)
+                sanitize_sensitive_mapping(
+                    self.payload
+                )
             ),
         )
 

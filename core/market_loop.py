@@ -57,6 +57,8 @@ import traceback
 from datetime import UTC, datetime
 from typing import Any
 
+from atlas_security import sanitize_sensitive_data
+
 from analysis.world_analysis_engine import WorldAnalysisEngine
 
 from core.candle_processor import CandleProcessor
@@ -1369,9 +1371,7 @@ class MarketLoop:
         event_name: str,
         payload: Any,
     ) -> bool:
-        """
-        Publish an event using the current or legacy EventBus contract.
-        """
+        """Publish a sanitized event using current or legacy contracts."""
 
         if self.event_bus is None:
             return False
@@ -1387,9 +1387,13 @@ class MarketLoop:
         ):
             return False
 
+        sanitized_payload = sanitize_sensitive_data(
+            payload
+        )
+
         event_payload = {
             "event": event_name,
-            "payload": payload,
+            "payload": sanitized_payload,
             "timestamp": datetime.now(
                 UTC
             ).isoformat(),
@@ -1400,16 +1404,14 @@ class MarketLoop:
             publish_method(
                 event_payload
             )
-
             return True
 
         except TypeError:
             try:
                 publish_method(
                     event_name,
-                    payload,
+                    sanitized_payload,
                 )
-
                 return True
 
             except Exception:
@@ -1417,7 +1419,6 @@ class MarketLoop:
                     "Legacy event publish failed: %s",
                     event_name,
                 )
-
                 return False
 
         except Exception:
@@ -1425,7 +1426,6 @@ class MarketLoop:
                 "Event publish failed: %s",
                 event_name,
             )
-
             return False
 
     # =========================================================

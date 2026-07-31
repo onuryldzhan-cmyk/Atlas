@@ -21,6 +21,8 @@ from enum import Enum
 import json
 import os
 
+from atlas_security import sanitize_sensitive_mapping
+
 
 class DecisionType(Enum):
 
@@ -82,47 +84,49 @@ class Decision:
 
     def to_dict(self):
 
-        return {
+        return sanitize_sensitive_mapping(
+            {
 
-            "decision_type":
-                self.decision_type.value,
+                "decision_type":
+                    self.decision_type.value,
 
-            "symbol":
-                self.symbol,
+                "symbol":
+                    self.symbol,
 
-            "confidence":
-                self.confidence,
+                "confidence":
+                    self.confidence,
 
-            "reasoning_steps":
-            [
+                "reasoning_steps":
+                [
 
-                {
+                    {
 
-                    "step_id":
-                        x.step_id,
+                        "step_id":
+                            x.step_id,
 
-                    "description":
-                        x.description,
+                        "description":
+                            x.description,
 
-                    "evidence":
-                        x.evidence,
+                        "evidence":
+                            x.evidence,
 
-                    "confidence":
-                        x.confidence.value
+                        "confidence":
+                            x.confidence.value
 
-                }
+                    }
 
-                for x in self.reasoning_steps
+                    for x in self.reasoning_steps
 
-            ],
+                ],
 
-            "risk_assessment":
-                self.risk_assessment,
+                "risk_assessment":
+                    self.risk_assessment,
 
-            "timestamp":
-                self.timestamp.isoformat()
+                "timestamp":
+                    self.timestamp.isoformat()
 
-        }
+            }
+        )
 
 
 

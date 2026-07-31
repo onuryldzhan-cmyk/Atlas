@@ -62,6 +62,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+from atlas_security import sanitize_sensitive_mapping
+
 from atlas_os.contracts import (
     ServiceIdentity,
 )
@@ -123,7 +125,9 @@ class AuditRecord:
             "source": self.source,
             "severity": self.severity,
             "correlation_id": self.correlation_id,
-            "payload": dict(self.payload),
+            "payload": sanitize_sensitive_mapping(
+                self.payload
+            ),
             "event_created_at": (
                 self.event_created_at.isoformat()
             ),
@@ -169,7 +173,7 @@ class AuditRecord:
                 is not None
                 else None
             ),
-            payload=dict(
+            payload=sanitize_sensitive_mapping(
                 data.get(
                     "payload",
                     {},
@@ -510,7 +514,7 @@ class AuditLogService(BaseAtlasService):
             source=event.source,
             severity=event.severity.value,
             correlation_id=event.correlation_id,
-            payload=dict(
+            payload=sanitize_sensitive_mapping(
                 event.payload
             ),
             event_created_at=event.created_at,

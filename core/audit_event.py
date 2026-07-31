@@ -46,6 +46,8 @@ from enum import Enum
 from types import MappingProxyType
 from typing import Any, Mapping
 
+from atlas_security import sanitize_sensitive_data
+
 
 GENESIS_HASH = "GENESIS"
 
@@ -485,107 +487,7 @@ class AuditEvent:
         cls,
         value: Any,
     ) -> Any:
-        if value is None:
-            return None
-
-        if isinstance(
-            value,
-            (
-                str,
-                int,
-                float,
-                bool,
-            ),
-        ):
-            return value
-
-        if isinstance(
-            value,
-            datetime,
-        ):
-            return cls._normalize_timestamp(
-                value
-            )
-
-        if isinstance(
-            value,
-            Enum,
-        ):
-            return cls._safe_payload(
-                value.value
-            )
-
-        if isinstance(
-            value,
-            Mapping,
-        ):
-            return {
-                str(
-                    key
-                ): cls._safe_payload(
-                    nested_value
-                )
-                for key, nested_value
-                in value.items()
-            }
-
-        if isinstance(
-            value,
-            (
-                list,
-                tuple,
-                set,
-            ),
-        ):
-            return [
-                cls._safe_payload(
-                    item
-                )
-                for item in value
-            ]
-
-        to_dict = getattr(
-            value,
-            "to_dict",
-            None,
-        )
-
-        if callable(
-            to_dict
-        ):
-            try:
-                return cls._safe_payload(
-                    to_dict()
-                )
-
-            except Exception:
-                pass
-
-        try:
-            return cls._safe_payload(
-                asdict(
-                    value
-                )
-            )
-
-        except Exception:
-            pass
-
-        if hasattr(
-            value,
-            "__dict__",
-        ):
-            try:
-                return cls._safe_payload(
-                    vars(
-                        value
-                    )
-                )
-
-            except Exception:
-                pass
-
-        return str(
+        return sanitize_sensitive_data(
             value
         )
 

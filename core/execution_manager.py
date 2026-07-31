@@ -56,6 +56,8 @@ from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, Mapping
 
+from atlas_security import sanitize_sensitive_data
+
 from core.audit_event_store import (
     AuditEventStore,
 )
@@ -2934,9 +2936,7 @@ class ExecutionManager:
         event_name: str,
         payload: Any,
     ) -> bool:
-        """
-        Publish through current and legacy EventBus contracts.
-        """
+        """Publish a sanitized event through current and legacy contracts."""
 
         if self.event_bus is None:
             return False
@@ -2952,9 +2952,13 @@ class ExecutionManager:
         ):
             return False
 
+        sanitized_payload = sanitize_sensitive_data(
+            payload
+        )
+
         event_payload = {
             "event": event_name,
-            "payload": payload,
+            "payload": sanitized_payload,
             "timestamp": self._utc_now(),
             "source": self.NAME,
             "version": self.VERSION,
@@ -2970,7 +2974,7 @@ class ExecutionManager:
             try:
                 publish_method(
                     event_name,
-                    payload,
+                    sanitized_payload,
                 )
                 return True
 

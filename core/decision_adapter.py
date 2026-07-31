@@ -62,6 +62,8 @@ from enum import Enum
 from math import isfinite
 from typing import Any, ClassVar
 
+from atlas_security import sanitize_sensitive_mapping
+
 
 logger = logging.getLogger(
     "AtlasAI.DecisionAdapter"
@@ -886,7 +888,9 @@ class DecisionAdapter:
             }
         )
 
-        return metadata
+        return sanitize_sensitive_mapping(
+            metadata
+        )
 
     # =========================================================
     # HELPERS

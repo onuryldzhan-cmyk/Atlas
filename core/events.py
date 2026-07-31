@@ -19,6 +19,8 @@ from enum import Enum
 from typing import Dict, Any
 import uuid
 
+from atlas_security import sanitize_sensitive_mapping
+
 
 
 class EventType(Enum):
@@ -136,7 +138,9 @@ class AtlasEvent:
                 self.created_at.isoformat(),
 
             "payload":
-                self.payload
+                sanitize_sensitive_mapping(
+                    self.payload
+                )
         }
 
 
