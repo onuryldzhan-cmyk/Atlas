@@ -557,4 +557,3 @@ def test_finalization_failure_quarantines_key_and_prevents_duplicate_adapter_cal
 
     finally:
         manager._cache_idempotency_result = original_cache_method
-
