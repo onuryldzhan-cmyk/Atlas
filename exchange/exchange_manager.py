@@ -1,4 +1,4 @@
-﻿"""
+"""
 ATLAS EXCHANGE MANAGER v2.4
 
 Lifecycle-safe and fail-closed exchange facade.
@@ -37,6 +37,9 @@ from exchange.adapters.binance_global import BinanceGlobalExchange
 from exchange.adapters.binance_tr import BinanceTRExchange
 from exchange.execution_risk_guard import ExecutionRiskGuard
 from exchange.execution_safety_gate import ExecutionSafetyGate
+from exchange.persistent_idempotency_store import (
+    PersistentIdempotencyStore,
+)
 
 
 logger = logging.getLogger(
@@ -55,7 +58,7 @@ _ALLOWED_ORDER_SIDES = {
 
 
 class ExchangeManager:
-    VERSION = "2.4"
+    VERSION = "2.5"
 
     def __init__(
         self,
@@ -67,6 +70,8 @@ class ExchangeManager:
         idempotency_ttl_seconds: float = 900.0,
         idempotency_max_entries: int = 10_000,
         monotonic_provider: Callable[[], float] | None = None,
+        idempotency_store_path: str | Path | None = None,
+        wall_time_provider: Callable[[], float] | None = None,
     ) -> None:
         self.exchange_name = str(
             exchange_name
@@ -102,10 +107,29 @@ class ExchangeManager:
             else time.monotonic
         )
 
+        self._wall_time_provider = (
+            wall_time_provider
+            if wall_time_provider is not None
+            else time.time
+        )
+
         self._idempotency_cache: OrderedDict[
             str,
             dict[str, Any],
         ] = OrderedDict()
+
+        self._idempotency_store = (
+            PersistentIdempotencyStore(
+                path=idempotency_store_path,
+                ttl_seconds=self.idempotency_ttl_seconds,
+                max_entries=self.idempotency_max_entries,
+                time_provider=self._wall_time_provider,
+            )
+            if idempotency_store_path is not None
+            else None
+        )
+
+        self._load_persistent_idempotency_entries()
 
     @staticmethod
     def _normalize_positive_float(
@@ -310,6 +334,91 @@ class ExchangeManager:
             quantity,
         )
 
+    def _load_persistent_idempotency_entries(
+        self,
+    ) -> None:
+        if self._idempotency_store is None:
+            return
+
+        entries = self._idempotency_store.load()
+
+        if not self._idempotency_store.available:
+            return
+
+        monotonic_now = float(
+            self._monotonic_provider()
+        )
+
+        wall_now = float(
+            self._wall_time_provider()
+        )
+
+        for key, entry in entries.items():
+            remaining_ttl = max(
+                0.0,
+                float(entry["expires_at"]) - wall_now,
+            )
+
+            if remaining_ttl <= 0:
+                continue
+
+            age = max(
+                0.0,
+                self.idempotency_ttl_seconds
+                - remaining_ttl,
+            )
+
+            self._idempotency_cache[key] = {
+                "fingerprint": entry["fingerprint"],
+                "response": deepcopy(
+                    entry["response"]
+                ),
+                "created_at": monotonic_now - age,
+            }
+
+    def _persist_idempotency_entries(
+        self,
+    ) -> bool:
+        if self._idempotency_store is None:
+            return True
+
+        monotonic_now = float(
+            self._monotonic_provider()
+        )
+
+        wall_now = float(
+            self._wall_time_provider()
+        )
+
+        entries: dict[str, dict[str, Any]] = {}
+
+        for key, entry in self._idempotency_cache.items():
+            age = max(
+                0.0,
+                monotonic_now
+                - float(entry["created_at"]),
+            )
+
+            remaining_ttl = max(
+                0.0,
+                self.idempotency_ttl_seconds - age,
+            )
+
+            if remaining_ttl <= 0:
+                continue
+
+            entries[key] = {
+                "fingerprint": entry["fingerprint"],
+                "response": deepcopy(
+                    entry["response"]
+                ),
+                "expires_at": wall_now + remaining_ttl,
+            }
+
+        return self._idempotency_store.save(
+            entries
+        )
+
     def _purge_expired_idempotency_entries(
         self,
     ) -> None:
@@ -403,6 +512,8 @@ class ExchangeManager:
                 last=False
             )
 
+        self._persist_idempotency_entries()
+
     def place_order(
         self,
         symbol: str,
@@ -451,6 +562,17 @@ class ExchangeManager:
                 symbol=normalized_symbol,
                 side=normalized_side,
                 quantity=quantity,
+            )
+
+        if (
+            self._idempotency_store is not None
+            and not self._idempotency_store.available
+        ):
+            return self._rejection(
+                reason="IDEMPOTENCY_STORE_UNAVAILABLE",
+                symbol=normalized_symbol,
+                side=normalized_side,
+                quantity=normalized_quantity,
             )
 
         normalized_idempotency_key = (
@@ -679,6 +801,19 @@ class ExchangeManager:
                 ),
                 "ttl_seconds": self.idempotency_ttl_seconds,
                 "max_entries": self.idempotency_max_entries,
+                "persistent": (
+                    self._idempotency_store is not None
+                ),
+                "store_available": (
+                    self._idempotency_store.available
+                    if self._idempotency_store is not None
+                    else None
+                ),
+                "store_error_type": (
+                    self._idempotency_store.error_type
+                    if self._idempotency_store is not None
+                    else None
+                ),
             },
             "safety": self.safety_gate.status(),
             "risk_guard": (
