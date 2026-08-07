@@ -1,1 +1,75 @@
-﻿
+﻿name: Atlas CI
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atlas-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Python test suite
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: "pip"
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
+      - name: Install runtime dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Install development dependencies
+        run: python -m pip install -r requirements/dev.txt
+
+      - name: Compile canonical Python sources
+        shell: pwsh
+        run: |
+          $files = git -c core.quotepath=false ls-files -- '*.py' |
+            Where-Object {
+              $_ -notmatch '(^|/)(archive[^/]*|[^/]*backup[^/]*|reports|quarantine)(/|$)'
+            }
+
+          if (-not $files) {
+            throw "No canonical Python source files were selected for compilation."
+          }
+
+          Write-Host "Compiling $($files.Count) canonical Python files..."
+
+          $failed = @()
+
+          foreach ($file in $files) {
+            python -m py_compile "$file"
+
+            if ($LASTEXITCODE -ne 0) {
+              $failed += $file
+            }
+          }
+
+          if ($failed.Count -gt 0) {
+            Write-Host ""
+            Write-Host "Python compilation failures:"
+            $failed | ForEach-Object { Write-Host " - $_" }
+            exit 1
+          }
+
+          Write-Host "Canonical Python compilation passed."
+
+      - name: Run test suite
+        run: python -m pytest -q --basetemp .pytest_atlas_ci
