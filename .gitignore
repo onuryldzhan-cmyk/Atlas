@@ -1,9 +1,31 @@
-# Python
+# =============================================================================
+# PROJECT ATLAS AI
+# .gitignore
+# =============================================================================
+#
+# Policy:
+# - Keep source code reproducible.
+# - Keep generated/runtime/local artifacts out of Git.
+# - Prevent accidental commits of credentials and secret material.
+# - Do not broadly ignore legitimate source-code packages.
+#
+# IMPORTANT:
+# atlas_os/secrets/ contains secret-management SOURCE CODE.
+# It must remain trackable by Git.
+# =============================================================================
+
+
+# =============================================================================
+# PYTHON
+# =============================================================================
+
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+
 .Python
+
 build/
 develop-eggs/
 dist/
@@ -16,59 +38,110 @@ parts/
 sdist/
 var/
 wheels/
+
 *.egg-info/
 .installed.cfg
 *.egg
 
-# Virtual Environment
+
+# =============================================================================
+# VIRTUAL ENVIRONMENTS
+# =============================================================================
+
 venv/
 ENV/
 env/
-.venv
+.venv/
 
-# IDE
+
+# =============================================================================
+# IDE / EDITOR
+# =============================================================================
+
 .vscode/
 .idea/
+
 *.swp
 *.swo
 *~
 
-# Environment variables
+
+# =============================================================================
+# ENVIRONMENT VARIABLES
+# =============================================================================
+
 .env
 .env.local
 
-# Logs
+.env.*
+!.env.example
+
+
+# =============================================================================
+# LOGS
+# =============================================================================
+
 logs/
 *.log
 
-# Data (buyuk dosyalar)
+
+# =============================================================================
+# DATA / LARGE GENERATED FILES
+# =============================================================================
+
 data/*.csv
+data/*.csv.gz
 data/*.parquet
+
+# JSON files may be legitimate source-controlled fixtures/configuration.
 !data/*.json
 
-# OS
+
+# =============================================================================
+# OPERATING SYSTEM FILES
+# =============================================================================
+
 .DS_Store
 Thumbs.db
 
-# Testing
+
+# =============================================================================
+# TESTING / COVERAGE
+# =============================================================================
+
 .coverage
 htmlcov/
 .pytest_cache/
 
-# Jupyter
+
+# =============================================================================
+# JUPYTER
+# =============================================================================
+
 .ipynb_checkpoints/
 
-# Atlas AI specific
+
+# =============================================================================
+# ATLAS GENERATED OUTPUT
+# =============================================================================
+
 backtest_results/
 paper_trading_logs/
 
 
-# Databases
+# =============================================================================
+# DATABASES
+# =============================================================================
+
 *.db
 *.sqlite
 *.sqlite3
 
-# Private keys and certificates
+
+# =============================================================================
+# PRIVATE KEYS / CERTIFICATES
+# =============================================================================
+
 *.pem
 *.key
 *.p12
@@ -76,15 +149,46 @@ paper_trading_logs/
 *.crt
 *.cer
 
-# Credentials and secrets directories
+
+# =============================================================================
+# CREDENTIAL / SECRET DIRECTORIES
+# =============================================================================
+#
+# General protection remains enabled.
+#
+# WARNING:
+# atlas_os/secrets/ is an Atlas Python source package.
+# Explicit exceptions below ensure it remains trackable.
+# =============================================================================
+
 secrets/
 credentials/
 
-# Local secret variants
-.env.*
-!.env.example
 
-# Atlas runtime-generated state
+# =============================================================================
+# ATLAS SECRET-MANAGEMENT SOURCE PACKAGE
+# =============================================================================
+#
+# These files contain secret-management IMPLEMENTATION CODE,
+# not secret values.
+#
+# Do not remove these exceptions unless the package architecture changes.
+# =============================================================================
+
+!atlas_os/secrets/
+!atlas_os/secrets/__init__.py
+!atlas_os/secrets/secrets_manager.py
+
+
+# =============================================================================
+# ATLAS RUNTIME-GENERATED STATE
+# =============================================================================
+
 /memory_data/
 /paper_trades.json
 /data/trades.json
+
+
+# =============================================================================
+# END
+# =============================================================================
