@@ -1,0 +1,1812 @@
+{
+  "schema_version": "4.25",
+  "supersedes": "governance/current/ATLAS_MILESTONE_REGISTRY_v4.24.json",
+  "registry_status": "CANONICAL_CURRENT_STATE_REGISTRY_WITH_PHASE1_CANONICAL_BOUNDARY_REMEDIATION_EVIDENCE",
+  "active_milestone": "FIN-004.1a-C1",
+  "live_status": "BLOCKED",
+  "specification_development_focus": "REM-001",
+  "feature_expansion_status": "PAUSED_PENDING_REM_GATE_1",
+  "critical_roadmap_additions_state": "PROPOSED_RECONCILIATION_REQUIRED",
+  "governance_frameworks": {
+    "ECM-1.0": {
+      "name": "Enterprise Company Model",
+      "status": "SPECIFICATION_REGISTERED",
+      "scope": "ORGANIZATIONAL_IDENTITY_AND_ACCOUNTABILITY",
+      "production_authority": "NONE"
+    },
+    "EMS-1.0": {
+      "name": "Enterprise Management System",
+      "status": "SPECIFICATION_REGISTERED",
+      "scope": "EXECUTIVE_MANAGEMENT_AND_DECISION_GOVERNANCE",
+      "production_authority": "NONE"
+    },
+    "AEOS-1.0": {
+      "name": "Atlas Enterprise Operating System",
+      "status": "SPECIFICATION_REGISTERED",
+      "scope": "ENTERPRISE_OPERATING_MODEL_AND_COORDINATION",
+      "production_authority": "NONE"
+    }
+  },
+  "queued_foundation_sequence": [
+    "FIN-004.1a-C2",
+    "FIN-004.1a-C3",
+    "CFG-001",
+    "ARCH-001",
+    "CODE-001",
+    "OBS-001",
+    "TEST-001",
+    "PERF-001",
+    "REL-001",
+    "SEC-001.1",
+    "DATA-001",
+    "GOV-001",
+    "SEC-002"
+  ],
+  "milestones": {
+    "CFG-001": {
+      "status": "QUEUED",
+      "priority": "P1",
+      "category": "FOUNDATIONAL_CONFIGURATION_SPECIFICATION",
+      "specification_state": "COMPLETE",
+      "configuration_model": "CANONICAL",
+      "certification": "NOT_STARTED",
+      "implementation_authorized": false,
+      "production_authority": "NONE",
+      "successors": [
+        "ARCH-001",
+        "CODE-001",
+        "OBS-001",
+        "TEST-001",
+        "PERF-001",
+        "REL-001",
+        "SEC-001.1",
+        "DATA-001",
+        "GOV-001"
+      ],
+      "live_effect": "NONE"
+    },
+    "ARCH-001": {
+      "status": "QUEUED",
+      "prerequisites": [
+        "FIN-004.1a-C3",
+        "CFG-001"
+      ],
+      "specification_state": "COMPLETE",
+      "architecture_state": "CANONICAL",
+      "certification": "NOT_STARTED",
+      "implementation_authorized": false,
+      "production_activation": "INDEPENDENT_REVIEW_AND_OWNER_APPROVAL"
+    },
+    "CODE-001": {
+      "status": "QUEUED",
+      "priority": "P1",
+      "prerequisites": [
+        "FIN-004.1a-C3",
+        "CFG-001",
+        "ARCH-001"
+      ],
+      "successors": [
+        "OBS-001",
+        "TEST-001"
+      ],
+      "authority": "CodeQualityAuthority",
+      "production_activation": "INDEPENDENT_REVIEW_AND_OWNER_APPROVAL",
+      "live_effect": "NONE"
+    },
+    "OBS-001": {
+      "status": "QUEUED",
+      "priority": "P1",
+      "enterprise_architecture_specification_state": "COMPLETE",
+      "enterprise_observability_model": "CANONICAL",
+      "certification": "NOT_STARTED",
+      "implementation_authorized": false,
+      "production_authority": "NONE",
+      "prerequisites": [
+        "FIN-004.1a-C3",
+        "CFG-001",
+        "ARCH-001",
+        "CODE-001"
+      ],
+      "successors": [
+        "TEST-001",
+        "PERF-001",
+        "REL-001",
+        "SEC-001.1"
+      ],
+      "authorities": [
+        "ObservabilityAuthority",
+        "MetricsAuthority",
+        "LoggingAuthority",
+        "TracingAuthority",
+        "HealthAuthority",
+        "AlertAuthority"
+      ],
+      "production_activation": "INDEPENDENT_REVIEW_AND_OWNER_APPROVAL",
+      "live_effect": "NONE"
+    },
+    "TEST-001": {
+      "status": "QUEUED",
+      "priority": "P1",
+      "category": "FOUNDATIONAL_PRODUCTION_ASSURANCE",
+      "enterprise_architecture_specification_state": "COMPLETE",
+      "enterprise_testing_model": "CANONICAL",
+      "certification": "NOT_STARTED",
+      "implementation_authorized": false,
+      "production_authority": "NONE",
+      "prerequisites": [
+        "FIN-004.1a-C3",
+        "CFG-001",
+        "ARCH-001",
+        "CODE-001",
+        "OBS-001"
+      ],
+      "successors": [
+        "PERF-001",
+        "REL-001",
+        "SEC-001.1"
+      ],
+      "authorities": [
+        "ValidationAuthority",
+        "TestRegistryAuthority",
+        "TestExecutionAuthority",
+        "TestEvidenceAuthority",
+        "CoverageAuthority",
+        "CertificationAuthority",
+        "EnvironmentAuthority",
+        "FaultInjectionAuthority"
+      ],
+      "profiles": [
+        "FAST",
+        "NORMAL",
+        "EXTENDED",
+        "STRESS",
+        "SOAK",
+        "RED_TEAM",
+        "CERTIFICATION"
+      ],
+      "production_activation": "INDEPENDENT_REVIEW_AND_OWNER_APPROVAL",
+      "live_effect": "NONE"
+    },
+    "PERF-001": {
+      "status": "QUEUED",
+      "priority": "P1",
+      "category": "FOUNDATIONAL_PRODUCTION_PERFORMANCE_ASSURANCE",
+      "prerequisites": [
+        "FIN-004.1a-C3",
+        "CFG-001",
+        "ARCH-001",
+        "CODE-001",
+        "OBS-001",
+        "TEST-001"
+      ],
+      "successors": [
+        "REL-001",
+        "SEC-001.1",
+        "RISK-OPS-001"
+      ],
+      "authorities": [
+        "PerformanceAuthority",
+        "BenchmarkRegistryAuthority",
+        "WorkloadAuthority",
+        "CapacityAuthority",
+        "RegressionAuthority",
+        "ResourceProfilingAuthority",
+        "PerformanceEvidenceAuthority",
+        "PerformanceCertificationAuthority"
+      ],
+      "profiles": [
+        "FAST",
+        "NORMAL",
+        "EXTENDED",
+        "STRESS",
+        "SOAK",
+        "CAPACITY",
+        "SCALABILITY",
+        "CERTIFICATION"
+      ],
+      "production_activation": "INDEPENDENT_REVIEW_AND_OWNER_APPROVAL",
+      "live_effect": "NONE"
+    },
+    "REL-001": {
+      "status": "QUEUED",
+      "priority": "P1",
+      "category": "FOUNDATIONAL_PRODUCTION_RELIABILITY_ASSURANCE",
+      "prerequisites": [
+        "FIN-004.1a-C3",
+        "CFG-001",
+        "ARCH-001",
+        "CODE-001",
+        "OBS-001",
+        "TEST-001",
+        "PERF-001"
+      ],
+      "successors": [
+        "SEC-001.1",
+        "DATA-001",
+        "RISK-OPS-001",
+        "BUS-001"
+      ],
+      "authorities": [
+        "ReliabilityAuthority",
+        "FailureDetectionAuthority",
+        "FaultContainmentAuthority",
+        "RecoveryAuthority",
+        "RestartAuthority",
+        "ReplayRecoveryAuthority",
+        "IntegrityRecoveryAuthority",
+        "ReliabilityEvidenceAuthority",
+        "ReliabilityCertificationAuthority"
+      ],
+      "profiles": [
+        "FAST",
+        "NORMAL",
+        "EXTENDED",
+        "FAULT",
+        "CHAOS",
+        "RECOVERY",
+        "SOAK",
+        "CERTIFICATION"
+      ],
+      "production_activation": "INDEPENDENT_REVIEW_AND_OWNER_APPROVAL",
+      "live_effect": "NONE"
+    },
+    "SEC-001.1": {
+      "status": "QUEUED",
+      "priority": "P1",
+      "category": "FOUNDATIONAL_PRODUCTION_SECURITY_ASSURANCE",
+      "prerequisites": [
+        "FIN-004.1a-C3",
+        "CFG-001",
+        "ARCH-001",
+        "CODE-001",
+        "OBS-001",
+        "TEST-001",
+        "PERF-001",
+        "REL-001"
+      ],
+      "successors": [
+        "DATA-001",
+        "SEC-002",
+        "RISK-OPS-001",
+        "WEB-001",
+        "BUS-001"
+      ],
+      "authorities": [
+        "SecurityAuthority",
+        "IdentityAuthority",
+        "AuthenticationAuthority",
+        "AuthorizationAuthority",
+        "SessionAuthority",
+        "SecretAuthority",
+        "EndpointSecurityAuthority",
+        "BackupAuthority",
+        "RestoreAuthority",
+        "BackupIntegrityAuthority",
+        "KeyManagementAuthority",
+        "SecurityEvidenceAuthority",
+        "SecurityCertificationAuthority"
+      ],
+      "profiles": [
+        "FAST",
+        "NORMAL",
+        "EXTENDED",
+        "PENETRATION",
+        "NEGATIVE",
+        "RED_TEAM",
+        "SOAK",
+        "CERTIFICATION"
+      ],
+      "production_activation": "INDEPENDENT_ENGINEERING_AND_SECURITY_REVIEW_PLUS_OWNER_APPROVAL",
+      "live_effect": "NONE"
+    },
+    "DATA-001": {
+      "status": "QUEUED",
+      "priority": "P1",
+      "category": "FOUNDATIONAL_PRODUCTION_DATA_ASSURANCE",
+      "governance_specification_state": "COMPLETE",
+      "enterprise_architecture_specification_state": "COMPLETE",
+      "enterprise_data_model": "CANONICAL",
+      "certification": "NOT_STARTED",
+      "implementation_authorized": false,
+      "production_authority": "NONE",
+      "prerequisites": [
+        "FIN-004.1a-C3",
+        "CFG-001",
+        "ARCH-001",
+        "CODE-001",
+        "OBS-001",
+        "TEST-001",
+        "PERF-001",
+        "REL-001",
+        "SEC-001.1"
+      ],
+      "successors": [
+        "GOV-001",
+        "SEC-002",
+        "RISK-OPS-001",
+        "WEB-001",
+        "BUS-001",
+        "OPS-001",
+        "MODEL-001",
+        "SIM-001"
+      ],
+      "authorities": [
+        "DataGovernanceAuthority",
+        "DataRegistryAuthority",
+        "DataOwnershipAuthority",
+        "DataClassificationAuthority",
+        "AuthoritativeSourceAuthority",
+        "SchemaAuthority",
+        "DataLineageAuthority",
+        "DatasetVersionAuthority",
+        "DataQualityAuthority",
+        "TemporalIntegrityAuthority",
+        "RetentionAuthority",
+        "ArchiveAuthority",
+        "SecureDeletionAuthority",
+        "DataEvidenceAuthority",
+        "DataCertificationAuthority"
+      ],
+      "profiles": [
+        "FAST",
+        "NORMAL",
+        "EXTENDED",
+        "RECONCILIATION",
+        "TEMPORAL",
+        "CORRUPTION",
+        "RECOVERY",
+        "RETENTION",
+        "CERTIFICATION"
+      ],
+      "production_activation": "INDEPENDENT_ENGINEERING_DATA_GOVERNANCE_AND_SECURITY_REVIEW_PLUS_OWNER_APPROVAL",
+      "live_effect": "NONE"
+    },
+    "GOV-001": {
+      "version": "1.0",
+      "status": "SPECIFICATION_COMPLETE",
+      "registry_state": "REGISTRY_READY",
+      "priority": "P1",
+      "category": "FOUNDATIONAL_ENTERPRISE_GOVERNANCE",
+      "milestone_type": "FOUNDATIONAL_CROSS_CUTTING",
+      "prerequisites": [
+        "CFG-001",
+        "ARCH-001",
+        "CODE-001",
+        "OBS-001",
+        "TEST-001",
+        "PERF-001",
+        "REL-001",
+        "SEC-001.1",
+        "DATA-001"
+      ],
+      "successors": [
+        "SEC-002",
+        "RISK-OPS-001",
+        "WEB-001",
+        "BUS-001",
+        "OPS-001",
+        "DEV-001",
+        "KNOW-001",
+        "RELEASE-001",
+        "COM-001",
+        "MODEL-001",
+        "AI-OPS-001",
+        "SIM-001",
+        "TECH-001",
+        "LEARN-001"
+      ],
+      "authorities": [
+        "EnterpriseGovernanceAuthority",
+        "OrganizationalRegistryAuthority",
+        "PolicyAuthority",
+        "DecisionAuthority",
+        "ApprovalAuthority",
+        "DelegationAuthority",
+        "ExceptionAuthority",
+        "WaiverAuthority",
+        "ConflictResolutionAuthority",
+        "GovernanceEvidenceAuthority",
+        "GovernanceReviewAuthority",
+        "GovernanceHealthAuthority",
+        "GovernanceCertificationAuthority"
+      ],
+      "canonical_contract_count": 96,
+      "validation_profile_count": 20,
+      "finding_registry": "CANONICAL_RECONCILED",
+      "implementation": "NOT_AUTHORIZED",
+      "certification": "NOT_STARTED",
+      "production_authority": "NONE",
+      "live_effect": "NONE"
+    },
+    "SEC-002": {
+      "version": "1.0",
+      "status": "QUEUED",
+      "priority": "P1",
+      "category": "FOUNDATIONAL_PRODUCTION_SECURITY_OPERATIONS",
+      "prerequisites": [
+        "FIN-004.1a-C3",
+        "CFG-001",
+        "ARCH-001",
+        "CODE-001",
+        "OBS-001",
+        "TEST-001",
+        "PERF-001",
+        "REL-001",
+        "SEC-001.1",
+        "DATA-001",
+        "GOV-001"
+      ],
+      "successors": [
+        "RISK-OPS-001",
+        "WEB-001",
+        "BUS-001",
+        "OPS-001",
+        "MODEL-001",
+        "AI-OPS-001"
+      ],
+      "authorities": [
+        "SOCAuthority",
+        "ThreatIntelligenceAuthority",
+        "BehaviorAnalysisAuthority",
+        "IncidentAuthority",
+        "ForensicsAuthority",
+        "SecurityMonitoringAuthority",
+        "DetectionAuthority",
+        "ContainmentAuthority",
+        "RecoveryCoordinationAuthority",
+        "IsolationAuthority",
+        "ExternalTrustAuthority",
+        "VaultAuthority",
+        "KMSAuthority",
+        "SecurityHealthAuthority",
+        "ThreatEvidenceAuthority",
+        "SecurityOperationsCertificationAuthority"
+      ],
+      "profiles": [
+        "FAST",
+        "NORMAL",
+        "EXTENDED",
+        "THREAT_INTELLIGENCE",
+        "BEHAVIORAL",
+        "CORRELATION",
+        "FORENSICS",
+        "INCIDENT_RESPONSE",
+        "CONTAINMENT",
+        "LOCKDOWN",
+        "RECOVERY",
+        "RED_TEAM",
+        "SOAK",
+        "CERTIFICATION"
+      ],
+      "contract_registry": "CANONICAL_RECONCILED",
+      "finding_registry": "IMMUTABLE_RECONCILED",
+      "certification_state": "NOT_STARTED",
+      "production_activation": "INDEPENDENT_ENGINEERING_SECURITY_AND_SOC_REVIEW_PLUS_OWNER_APPROVAL",
+      "implementation_authorized": false,
+      "live_effect": "NONE"
+    },
+    "DEP-001": {
+      "version": "1.0",
+      "status": "SPECIFICATION_COMPLETE_NOT_SEQUENCED",
+      "priority": "P1",
+      "category": "FOUNDATIONAL_ENTERPRISE_DEPLOYMENT_ARCHITECTURE",
+      "enterprise_architecture_specification_state": "COMPLETE",
+      "enterprise_deployment_model": "CANONICAL",
+      "roadmap_placement": "RECONCILIATION_REQUIRED",
+      "proposed_prerequisites": [
+        "TEST-001",
+        "PERF-001",
+        "REL-001",
+        "SEC-001.1",
+        "DATA-001",
+        "GOV-001",
+        "SEC-002"
+      ],
+      "proposed_successors": [
+        "RELEASE-001",
+        "OPS-001"
+      ],
+      "proposed_authorities": [
+        "DeploymentAuthority",
+        "ReleaseAuthority",
+        "EnvironmentPromotionAuthority",
+        "ArtifactAuthority",
+        "PipelineAuthority",
+        "RollbackAuthority",
+        "DeploymentEvidenceAuthority"
+      ],
+      "certification": "NOT_STARTED",
+      "implementation_authorized": false,
+      "production_authority": "NONE",
+      "live_effect": "NONE"
+    },
+    "OPS-001": {
+      "version": "1.0",
+      "status": "SPECIFICATION_COMPLETE_NOT_SEQUENCED",
+      "priority": "P1",
+      "category": "FOUNDATIONAL_ENTERPRISE_OPERATIONS_ARCHITECTURE",
+      "enterprise_architecture_specification_state": "COMPLETE",
+      "enterprise_operations_model": "CANONICAL",
+      "roadmap_placement": "RECONCILIATION_REQUIRED",
+      "proposed_prerequisites": [
+        "DEP-001",
+        "OBS-001",
+        "TEST-001",
+        "PERF-001",
+        "REL-001",
+        "SEC-001.1",
+        "DATA-001",
+        "GOV-001",
+        "SEC-002"
+      ],
+      "proposed_successors": [
+        "BUS-001",
+        "AI-OPS-001"
+      ],
+      "proposed_authorities": [
+        "OperationsCoordinationAuthority",
+        "RunbookRegistryAuthority",
+        "OperationsEvidenceAuthority",
+        "ShiftHandoverAuthority",
+        "OperationalCommunicationAuthority"
+      ],
+      "certification": "NOT_STARTED",
+      "implementation_authorized": false,
+      "production_authority": "NONE",
+      "live_effect": "NONE"
+    },
+    "AI-001": {
+      "version": "1.0",
+      "status": "PROPOSED_NOT_SEQUENCED",
+      "priority": "P1",
+      "category": "ENTERPRISE_AI_ARCHITECTURE",
+      "enterprise_architecture_specification_state": "PARTIAL_PARTS_2_TO_5",
+      "missing_specification_parts": [
+        "PART_1"
+      ],
+      "roadmap_placement": "RECONCILIATION_REQUIRED",
+      "proposed_prerequisites": [
+        "ARCH-001",
+        "GOV-001",
+        "DATA-001",
+        "SEC-001.1",
+        "SEC-002",
+        "OBS-001",
+        "TEST-001",
+        "DEP-001",
+        "OPS-001"
+      ],
+      "overlap_reconciliation_required": [
+        "MODEL-001",
+        "AI-OPS-001",
+        "KNOW-001",
+        "TECH-001",
+        "LEARN-001"
+      ],
+      "proposed_authorities": [
+        "AIOrganizationRegistryAuthority",
+        "AICoordinationAuthority",
+        "ReasoningEvidenceAuthority",
+        "PlanningRegistryAuthority",
+        "AIMemoryContractAuthority",
+        "ExperimentRegistryAuthority",
+        "EvolutionProposalAuthority"
+      ],
+      "certification": "NOT_STARTED",
+      "implementation_authorized": false,
+      "production_authority": "NONE",
+      "live_effect": "NONE"
+    },
+    "INT-001": {
+      "version": "1.0",
+      "status": "PAUSED_AFTER_PART_3",
+      "priority": "P1",
+      "category": "FOUNDATIONAL_ENTERPRISE_INTEGRATION_ARCHITECTURE",
+      "enterprise_architecture_specification_state": "PARTIAL_PARTS_1_TO_3",
+      "roadmap_placement": "RECONCILIATION_REQUIRED",
+      "proposed_prerequisites": [
+        "ARCH-001",
+        "CFG-001",
+        "SEC-001.1",
+        "DATA-001",
+        "OBS-001",
+        "TEST-001",
+        "REL-001",
+        "DEP-001",
+        "OPS-001"
+      ],
+      "overlap_reconciliation_required": [
+        "ARCH-001_EVENT_DRIVEN_ARCHITECTURE",
+        "DATA-001_STREAMING",
+        "SEC-001.1_IDENTITY",
+        "SEC-002_MONITORING"
+      ],
+      "proposed_authorities": [
+        "IntegrationRegistryAuthority",
+        "InterfaceContractAuthority",
+        "ServiceRegistryAuthority",
+        "EventSchemaRegistryAuthority",
+        "IntegrationEvidenceAuthority"
+      ],
+      "certification": "NOT_STARTED",
+      "implementation_authorized": false,
+      "production_authority": "NONE",
+      "live_effect": "NONE"
+    },
+    "REM-001": {
+      "version": "1.0",
+      "status": "SPECIFICATION_COMPLETE_GATE_1_OPEN",
+      "priority": "CRITICAL",
+      "category": "MANDATORY_CODEBASE_REMEDIATION_ARCHITECTURE",
+      "specification_state": "SPECIFICATION_COMPLETE_PARTS_1_TO_13",
+      "part_4_status": "SPECIFICATION_COMPLETE",
+      "part_5_status": "SPECIFICATION_COMPLETE",
+      "part_6_status": "SPECIFICATION_COMPLETE",
+      "part_7_status": "SPECIFICATION_COMPLETE",
+      "domain_registry_state": "SPECIFICATION_ONLY",
+      "ontology_state": "SPECIFICATION_ONLY",
+      "implementation_authorized": false,
+      "canonical_mapping_execution_authorized": false,
+      "source_changes_authorized": false,
+      "production_authority": "NONE",
+      "live_trading_authority": "DENIED",
+      "feature_expansion_freeze": true,
+      "current_gate": "GATE_1_CANONICAL_COMPONENT_MAPPING",
+      "gates": [
+        "CANONICAL_COMPONENT_MAPPING",
+        "REPRODUCIBLE_BUILD",
+        "DETERMINISTIC_CORE_TESTS",
+        "OFFLINE_AND_REPLAY_RUNTIME",
+        "CORE_REFACTORING",
+        "END_TO_END_PAPER_VERIFICATION",
+        "PAPER_SOAK_TESTING",
+        "TESTNET_VALIDATION",
+        "PRODUCTION_READINESS_REVIEW",
+        "LIVE_TRADING_AUTHORIZATION"
+      ],
+      "registered_findings": [
+        "REM-P0-001",
+        "REM-P0-002",
+        "REM-P0-003",
+        "REM-P0-004",
+        "REM-P1-001",
+        "REM-P1-002",
+        "REM-P1-003",
+        "REM-P1-004",
+        "REM-P1-005",
+        "REM-P1-006",
+        "REM-P0-005",
+        "REM-P0-006",
+        "REM-P1-007",
+        "REM-P1-008",
+        "REM-P1-009",
+        "REM-P1-010",
+        "REM-P0-007",
+        "REM-P0-008",
+        "REM-P0-009",
+        "REM-P1-011",
+        "REM-P1-012",
+        "REM-P1-013",
+        "REM-P1-014",
+        "REM-P1-015",
+        "REM-P1-016",
+        "REM-P0-010",
+        "REM-P0-011",
+        "REM-P0-012",
+        "REM-P0-013",
+        "REM-P1-017",
+        "REM-P1-018",
+        "REM-P1-019",
+        "REM-P1-020",
+        "REM-P1-021",
+        "REM-P0-014",
+        "REM-P0-015",
+        "REM-P1-022",
+        "REM-P1-023",
+        "REM-P1-024",
+        "REM-P1-025",
+        "REM-P0-016",
+        "REM-P0-017",
+        "REM-P0-018",
+        "REM-P0-019",
+        "REM-P1-026",
+        "REM-P1-027",
+        "REM-P1-028",
+        "REM-P1-029",
+        "REM-P1-030",
+        "REM-P0-020",
+        "REM-P0-021",
+        "REM-P1-031",
+        "REM-P1-032",
+        "REM-P1-033",
+        "REM-P0-022",
+        "REM-P0-023",
+        "REM-P0-024",
+        "REM-P0-025",
+        "REM-P0-026",
+        "REM-P0-027",
+        "REM-P0-028",
+        "REM-P0-029",
+        "REM-P0-030",
+        "REM-P1-034",
+        "REM-P1-035",
+        "REM-P1-036",
+        "REM-P1-037",
+        "REM-P1-038",
+        "REM-P1-039",
+        "REM-P1-040",
+        "REM-P1-041",
+        "REM-P1-042",
+        "REM-P1-043",
+        "REM-P1-044",
+        "REM-P1-045",
+        "REM-P1-046",
+        "REM-P1-047",
+        "REM-P0-031",
+        "REM-P1-048",
+        "REM-P1-049"
+      ],
+      "gate_1_expected_deliverables": [
+        "REM-001_CANONICAL_COMPONENT_MATRIX.json",
+        "REM-001_CANONICAL_COMPONENT_MATRIX.md",
+        "REM-001_IMPORT_GRAPH.json",
+        "REM-001_RUNTIME_CONSTRUCTION_PATHS.md",
+        "REM-001_STATE_AUTHORITY_MAP.md",
+        "REM-001_OVERLAP_REGISTER.json",
+        "REM-001_LEGACY_RETIREMENT_REGISTER.json",
+        "REM-001_SPECIFICATION_RECONCILIATION_MATRIX.md",
+        "REM-001_GATE1_VALIDATOR.ps1"
+      ],
+      "proposed_roadmap_extensions": {
+        "new_milestone_candidates": [
+          "CONTRACT-001",
+          "INV-001"
+        ],
+        "existing_authority_extensions": [
+          "GOV-001_ADR_GOVERNANCE",
+          "CONTRACT-001_COMPATIBILITY_GOVERNANCE",
+          "TEST-001_CONTRACT_TESTING",
+          "ARCH-001_CHANGE_IMPACT_ENGINE",
+          "ARCH-001_ARCHITECTURE_FITNESS_ENGINE",
+          "CODE-001_REPOSITORY_HEALTH_ENGINE",
+          "SEC-001.1_DEPENDENCY_HEALTH_SECURITY",
+          "CODE-001_DEPENDENCY_MAINTAINABILITY",
+          "REL-001_RUNTIME_REPLAY_ENGINE",
+          "ARCH-001_CONTINUOUS_ARCHITECTURE_EVOLUTION",
+          "OBS-001_ENTERPRISE_SCORECARD_TELEMETRY",
+          "GOV-001_ENTERPRISE_SCORECARD_POLICY"
+        ],
+        "independent_review_roles": [
+          "DESIGN_REVIEW_AI",
+          "CODE_REVIEW_AI",
+          "SECURITY_REVIEW_AI",
+          "PERFORMANCE_REVIEW_AI",
+          "FINANCIAL_REVIEW_AI"
+        ],
+        "roadmap_admission": "NOT_AUTHORIZED_PENDING_GATE_1_AND_GOV_RECONCILIATION"
+      },
+      "part_3_registration_outputs": [
+        "REM-001_PART3_CANONICAL_MAPPING_EXECUTION_PROTOCOL.md",
+        "REM-001_PART3_VERIFY.ps1",
+        "ATLAS_MILESTONE_REGISTRY_v4.2.json"
+      ],
+      "future_analysis_tooling_authorized": false,
+      "tooling_trust_state": "UNVALIDATED",
+      "tooling_trust_level": "L0_PROTOTYPE_NOT_IMPLEMENTED",
+      "tooling_gate": "T1_NOT_STARTED",
+      "part_4_registration_outputs": [
+        "REM-001_PART4_SAFE_ANALYSIS_TOOLING_ARCHITECTURE.md",
+        "REM-001_PART4_VERIFY.ps1",
+        "ATLAS_MILESTONE_REGISTRY_v4.3.json"
+      ],
+      "part_5_registration_outputs": [
+        "REM-001_PART5_TOOL_IMPLEMENTATION_AUTHORIZATION_SPECIFICATION.md",
+        "REM-001_PART5_VERIFY.ps1",
+        "ATLAS_MILESTONE_REGISTRY_v4.4.json"
+      ],
+      "tool_implementation_authorized": false,
+      "tooling_implementation_authorized": false,
+      "tooling_execution_authorized": false,
+      "tooling_current_gate": "T1_NOT_STARTED",
+      "tooling_sub_milestones": [
+        "REM-T01",
+        "REM-T02",
+        "REM-T03",
+        "REM-T04",
+        "REM-T05",
+        "REM-T06",
+        "REM-T07",
+        "REM-T08",
+        "REM-T09",
+        "REM-T10",
+        "REM-T11",
+        "REM-T12",
+        "REM-T13",
+        "REM-T14"
+      ],
+      "part_6_registration_outputs": [
+        "REM-001_PART6_TOOLING_IMPLEMENTATION_AUTHORIZATION_AND_CERTIFICATION.md",
+        "REM-001_PART6_VERIFY.ps1",
+        "ATLAS_MILESTONE_REGISTRY_v4.5.json"
+      ],
+      "canonical_domain_ids": [
+        "APP",
+        "RUNTIME",
+        "CONFIGURATION",
+        "SECURITY",
+        "SECRETS",
+        "MARKET_DATA",
+        "CANDLES",
+        "TECHNICAL_ANALYSIS",
+        "WORLD_ANALYSIS",
+        "AI",
+        "DECISION",
+        "RISK",
+        "CAPITAL",
+        "EXECUTION",
+        "POSITION",
+        "PORTFOLIO",
+        "LEDGER",
+        "SETTLEMENT",
+        "RECONCILIATION",
+        "EVENTS",
+        "MEMORY",
+        "KNOWLEDGE",
+        "LEARNING",
+        "AGENTS",
+        "OBSERVABILITY",
+        "TESTING",
+        "OPERATIONS",
+        "DEPLOYMENT",
+        "WEB"
+      ],
+      "part_7_future_evidence_artifacts": [
+        "DOMAIN_REGISTRY.json",
+        "RESPONSIBILITY_REGISTRY.json",
+        "STATE_ONTOLOGY.json",
+        "EVENT_ONTOLOGY.json",
+        "CONCEPT_DICTIONARY.json",
+        "AGGREGATE_REGISTRY.json",
+        "SEMANTIC_EQUIVALENCE_MAP.json"
+      ],
+      "part_7_registration_outputs": [
+        "REM-001_PART7_CANONICAL_DOMAIN_AND_STATE_ONTOLOGY.md",
+        "REM-001_PART7_VERIFY.ps1",
+        "ATLAS_MILESTONE_REGISTRY_v4.6.json"
+      ],
+      "part_6_registry_version_note": "SPEC_PROPOSED_V4.4_BUT_V4.4_ALREADY_IMMUTABLE_PART5_SNAPSHOT_SO_V4.5_USED",
+      "tool_governance_board_state": "PROPOSED_UNDER_GOV_001",
+      "long_term_roadmap_candidates": {
+        "existing_ids_preserved": [
+          "MODEL-001",
+          "RISK-OPS-001",
+          "RELEASE-001"
+        ],
+        "new_candidates": [
+          "EXP-001",
+          "FEATURE-STORE-001",
+          "RESEARCH-001",
+          "MODEL-RISK-001"
+        ],
+        "alias_reconciliation_required": {
+          "COMPLIANCE-001": "COM-001",
+          "KNOWLEDGE-001": "KNOW-001",
+          "DIGITAL-TWIN-001": "SIM-001"
+        },
+        "admission": "PROPOSED_NOT_SEQUENCED"
+      },
+      "gate_1_closure_authority": "OWNER_ACCEPTANCE_REQUIRED",
+      "live_effect": "NONE",
+      "part_8_status": "SPECIFICATION_COMPLETE",
+      "part_9_status": "SPECIFICATION_COMPLETE",
+      "part_10_status": "SPECIFICATION_COMPLETE",
+      "part_11_status": "SPECIFICATION_COMPLETE",
+      "part_12_status": "SPECIFICATION_COMPLETE",
+      "decision_governance_state": "SPECIFICATION_ONLY",
+      "evidence_governance_state": "SPECIFICATION_ONLY",
+      "finding_governance_state": "SPECIFICATION_ONLY",
+      "gate_governance_state": "SPECIFICATION_ONLY",
+      "gate_1_state": "OPEN_NOT_CERTIFIED",
+      "specification_completion_effect": "NO_IMPLEMENTATION_CERTIFICATION_PRODUCTION_OR_LIVE_AUTHORITY",
+      "final_registration_outputs": [
+        "REM-001_FINAL_SPECIFICATION.md",
+        "REM-001_SCOPE_BOUNDARY.md",
+        "REM-001_HANDOVER_MATRIX.md",
+        "REM-001_CROSS_SPEC_CONTRACTS.md",
+        "REM-001_FINAL_VALIDATOR.ps1",
+        "ATLAS_MILESTONE_REGISTRY_v4.7.json"
+      ],
+      "successor_sequence_reconciliation": "RESPONSIBILITY_HANDOVER_ONLY_EXISTING_REGISTRY_ORDER_AND_STATES_PRESERVED",
+      "part_13_status": "SPECIFICATION_COMPLETE_NORMATIVE_ADDENDUM",
+      "normative_status": "PRIMARY_REMEDIATION_GOVERNANCE_REFERENCE",
+      "compliance_declaration_required": true,
+      "override_policy": "EXPLICIT_APPROVAL_AND_COMPATIBILITY_RECORD_REQUIRED",
+      "part_13_registration_outputs": [
+        "REM-001_PART13_NORMATIVE_GOVERNANCE_ADDENDUM.md",
+        "ATLAS_MILESTONE_REGISTRY_v4.8.json",
+        "ATLAS_GOVERNANCE_LAYER_VERIFY.ps1"
+      ],
+      "gate_1_mapping_entry_contract": "REM_GATE1_REAL_ARCHITECTURE_MAPPING_ENTRY_CONTRACT.md",
+      "gate_1_mapping_execution_state": "ARCH_001_1_CLOSED_CONDITIONAL_ARCH_001_2_1_SCHEMA_COMPLETE",
+      "next_authorized_work_candidate": "GATE_1_SOURCE_BOUND_CANONICAL_ARCHITECTURE_MAPPING",
+      "gate_1_owner_authorization_record": "REM_GATE1_OWNER_AUTHORIZATION_RECORD_TEMPLATE.md",
+      "architecture_baseline_findings": [
+        "ARCH-P0-001",
+        "ARCH-P1-001",
+        "ARCH-P1-002",
+        "ARCH-P1-003",
+        "ARCH-P1-004",
+        "ARCH-P1-005"
+      ]
+    }
+  },
+  "documentation_governance": {
+    "constitution_001": {
+      "status": "PROPOSED_OWNER_RATIFICATION_REQUIRED",
+      "authority": "NONE",
+      "implementation_authorized": false,
+      "production_authority": "NONE",
+      "live_effect": "NONE"
+    },
+    "aeb_001": {
+      "status": "PROPOSED_DOCUMENTATION_PROGRAM",
+      "type": "NON_RUNTIME_HANDBOOK",
+      "authority": "NONE",
+      "canonical_architecture_source": "ARCH-001",
+      "implementation_authorized": false,
+      "live_effect": "NONE"
+    },
+    "aeos_identity": {
+      "canonical_id": "AEOS-1.0",
+      "proposed_alias": "AEOS-001",
+      "alias_admission": "REJECTED_DUPLICATE_IDENTITY"
+    }
+  },
+  "enterprise_reference_layer": {
+    "ERM-001": {
+      "version": "1.0",
+      "status": "PROPOSED",
+      "type": "IMPLEMENTATION_INDEPENDENT_REFERENCE_MODEL",
+      "implementation_authorized": false,
+      "production_authority": "NONE",
+      "live_effect": "NONE"
+    },
+    "AEF-001": {
+      "version": "1.0",
+      "status": "PROPOSED",
+      "type": "ENGINEERING_METHOD_FRAMEWORK",
+      "implementation_authorized": false,
+      "production_authority": "NONE",
+      "live_effect": "NONE"
+    },
+    "AES-001": {
+      "version": "1.0",
+      "status": "PROPOSED",
+      "type": "ENGINEERING_EVIDENCE_SCIENCE",
+      "implementation_authorized": false,
+      "production_authority": "NONE",
+      "live_effect": "NONE"
+    },
+    "ARF-001": {
+      "version": "1.0",
+      "status": "PROPOSED",
+      "type": "ENTERPRISE_RESILIENCE_FRAMEWORK",
+      "implementation_authorized": false,
+      "production_authority": "NONE",
+      "live_effect": "NONE"
+    },
+    "BLUEPRINT-001": {
+      "version": "1.0",
+      "status": "PROPOSED_SYNTHESIS",
+      "type": "NON_RUNTIME_ENTERPRISE_BLUEPRINT",
+      "implementation_authorized": false,
+      "production_authority": "NONE",
+      "live_effect": "NONE"
+    }
+  },
+  "conceptual_capstone_layer": {
+    "FC-001": {
+      "status": "PROPOSED_OWNER_RATIFICATION_REQUIRED",
+      "type": "FOUNDING_CHARTER",
+      "authority": "NONE",
+      "live_effect": "NONE"
+    },
+    "AOP-001": {
+      "status": "PROPOSED",
+      "type": "OPERATING_PHILOSOPHY",
+      "authority": "NONE",
+      "live_effect": "NONE"
+    },
+    "AMM-001": {
+      "status": "PROPOSED",
+      "type": "TECHNOLOGY_INDEPENDENT_META_MODEL",
+      "authority": "NONE",
+      "live_effect": "NONE"
+    },
+    "LSC-001": {
+      "status": "PROPOSED",
+      "type": "LIVING_SYSTEM_CHARTER",
+      "authority": "NONE",
+      "live_effect": "NONE"
+    },
+    "vision_freeze": {
+      "status": "PROPOSED_OWNER_APPROVAL_REQUIRED",
+      "decision_id": "ADR-VISION-001",
+      "new_manifesto_default": "REJECT_UNLESS_GOVERNANCE_GAP_PROVEN"
+    },
+    "execution_era": {
+      "status": "PENDING_GATE_1_OWNER_AUTHORIZATION",
+      "meaning": "ENGINEERING_MAPPING_NOT_PRODUCTION_OR_LIVE"
+    }
+  },
+  "proposal_dispositions": {
+    "AEC-001": {
+      "admission": "REJECTED_DUPLICATE_SCOPE",
+      "canonical_destinations": [
+        "AEF-001",
+        "AES-001",
+        "LSC-001",
+        "REM-001"
+      ]
+    },
+    "ADI-001": {
+      "admission": "REJECTED_DUPLICATE_SCOPE",
+      "canonical_destinations": [
+        "ERM-001",
+        "AEOS-1.0",
+        "GOV-001",
+        "DATA-001"
+      ]
+    },
+    "ACI-001": {
+      "admission": "REJECTED_DUPLICATE_SCOPE",
+      "canonical_destinations": [
+        "AES-001",
+        "ARF-001",
+        "AEB-001",
+        "FC-001"
+      ]
+    },
+    "AET-001": {
+      "admission": "REJECTED_DUPLICATE_SCOPE",
+      "canonical_destinations": [
+        "AEF-001",
+        "AES-001",
+        "ARF-001",
+        "LSC-001",
+        "OBS-001",
+        "AMP-001"
+      ]
+    },
+    "AGS-001": {
+      "admission": "REJECTED_AUTHORITY_OVERLAP",
+      "canonical_destinations": [
+        "GOV-001",
+        "EMS-1.0",
+        "AEOS-1.0",
+        "AI-001",
+        "AMP-001"
+      ]
+    }
+  },
+  "master_program": {
+    "id": "AMP-001",
+    "version": "1.0",
+    "status": "PROGRAM_BASELINE_EXECUTION_PENDING_GATE_AUTHORIZATION",
+    "phase_0": "DOCUMENTED_NOT_FULLY_RATIFIED_OR_CERTIFIED",
+    "phase_1": "NEXT_CANDIDATE_NOT_AUTHORIZED",
+    "phases_2_to_8": "BLOCKED_OR_FUTURE",
+    "implementation_authorized": false,
+    "production_authority": "NONE",
+    "live_effect": "NONE",
+    "programs": [
+      "ATLAS_RECOVERY",
+      "ATLAS_COMPLETION",
+      "ATLAS_EVOLUTION"
+    ],
+    "program_governance_profile": "AMP-001_PROGRAM_GOVERNANCE_PROFILE_v1.0.md",
+    "program_office": {
+      "id": "AEPO",
+      "status": "SPECIFICATION_ONLY",
+      "scope": "PORTFOLIO_COORDINATION_AND_REPORTING",
+      "runtime_authority": "NONE",
+      "approval_authority": "NONE",
+      "production_authority": "NONE",
+      "live_effect": "NONE"
+    },
+    "execution_era_readiness": "NOT_READY_MISSING_OWNER_AUTHORIZATION_AND_CERTIFIED_TOOLING"
+  },
+  "architecture_execution_program": {
+    "id": "ARCH-001-CURRENT-STATE-PROGRAM",
+    "status": "ACTIVE_EVIDENCE_PHASE",
+    "source_root": "C:\\Users\\HUAWEİ\\OneDrive\\Masaüstü\\Project_Atlas_AI",
+    "phase_1": {
+      "id": "ARCH-001.1",
+      "status": "CLOSED_CONDITIONAL_PASS",
+      "canonical_admission": "CANDIDATE_BASELINE_IDENTITY_CONFLICT_OPEN",
+      "python_files": 691,
+      "source_tree_sha256": "B256D596C36974753795A67B2BBB46A3B2C1651D765D26627FDDDF88A3E20371",
+      "compile_exit": 1,
+      "pytest_collection_exit": 1,
+      "source_hash_mismatches_after_analysis": 0
+    },
+    "phase_2": {
+      "id": "ARCH-001.2",
+      "status": "ACTIVE_SCHEMA_ONLY",
+      "reason": "ARCH-001.2.1_AUTHORIZED_SCANNER_AND_GENERATION_NOT_AUTHORIZED"
+    },
+    "source_changes_authorized": false,
+    "production_authority": "NONE",
+    "live_effect": "NONE",
+    "phase_2_1": {
+      "id": "ARCH-001.2.1",
+      "status": "SPECIFICATION_COMPLETE",
+      "outputs": [
+        "ARCH-001.2.1_MODULE_INVENTORY_SCHEMA.md",
+        "ARCH-001.2.1_MODULE_INVENTORY_SCHEMA.json"
+      ],
+      "scanner_implementation_authorized": false,
+      "scanner_execution_authorized": false,
+      "inventory_generation_authorized": false,
+      "successor": "ARCH-001.2.2_STATIC_MODULE_SCANNER"
+    },
+    "architectural_freeze": {
+      "decision": "ADR-ARCH-FREEZE-001",
+      "status": "ACTIVE",
+      "major_modules": true,
+      "major_refactors": true,
+      "new_privileged_agents": true,
+      "control_center_primary_integration": true,
+      "live_expansion": true
+    },
+    "sprint_roadmap": [
+      {
+        "sprint": 1,
+        "name": "ARCHITECTURE_DISCOVERY",
+        "stages": [
+          "ARCH-001.2"
+        ],
+        "status": "SCHEMA_COMPLETE_SCANNER_NOT_AUTHORIZED"
+      },
+      {
+        "sprint": 2,
+        "name": "DEPENDENCY_DISCOVERY",
+        "stages": [
+          "ARCH-001.5"
+        ],
+        "status": "BLOCKED"
+      },
+      {
+        "sprint": 3,
+        "name": "DOMAIN_DISCOVERY",
+        "stages": [
+          "ARCH-001.4"
+        ],
+        "status": "BLOCKED"
+      },
+      {
+        "sprint": 4,
+        "name": "CAPABILITY_DISCOVERY",
+        "stages": [
+          "ARCH-001.3"
+        ],
+        "status": "BLOCKED"
+      },
+      {
+        "sprint": 5,
+        "name": "OWNERSHIP_DISCOVERY",
+        "stages": [
+          "ARCH-001.4",
+          "ARCH-001.9"
+        ],
+        "status": "BLOCKED"
+      },
+      {
+        "sprint": 6,
+        "name": "STATE_OWNERSHIP",
+        "stages": [
+          "ARCH-001.6"
+        ],
+        "status": "BLOCKED"
+      },
+      {
+        "sprint": 7,
+        "name": "RUNTIME_DISCOVERY",
+        "stages": [
+          "ARCH-001.8"
+        ],
+        "status": "BLOCKED"
+      },
+      {
+        "sprint": 8,
+        "name": "ARCHITECTURE_RISK_REVIEW",
+        "stages": [
+          "ARCH-001.9"
+        ],
+        "status": "BLOCKED"
+      },
+      {
+        "sprint": 9,
+        "name": "TARGET_ARCHITECTURE",
+        "stages": [
+          "ARCH-001.10",
+          "ARCH-001.11"
+        ],
+        "status": "BLOCKED"
+      },
+      {
+        "sprint": 10,
+        "name": "REFACTORING_PROGRAM",
+        "stages": [
+          "ARCH-001.12",
+          "ARCH-001.13"
+        ],
+        "status": "BLOCKED_NO_CODE_AUTHORITY"
+      }
+    ],
+    "phase_2_2": {
+      "id": "ARCH-001.2.2",
+      "status": "CLOSED_CONDITIONAL_PASS",
+      "implementation_authorized": false,
+      "execution_authorized": false,
+      "inventory_admission_authorized": false,
+      "requirements": "ARCH-001.2.2_STATIC_SCANNER_AUTHORIZATION_REQUIREMENTS.md",
+      "title": "SOURCE_SCOPE_AND_CANONICAL_BASELINE_RESOLUTION",
+      "baseline_identity": "APPROVED_CANONICAL_REPOSITORY_ROOT",
+      "canonical_decision": "APPROVED_WITH_SCOPE_CONTROLS",
+      "python_files": 691,
+      "candidate_scope_counts": {
+        "ARCHIVE": 276,
+        "UNKNOWN": 230,
+        "TEST": 73,
+        "BACKUP": 38,
+        "REPORT_COPY": 34,
+        "TOOL": 26,
+        "QUARANTINE": 14
+      },
+      "duplicate_filename_groups": 101,
+      "runtime_entrypoint_pattern_matches": 529,
+      "source_hash_mismatches": 0,
+      "exit_blockers": [],
+      "canonical_module_set": "NOT_YET_DETERMINED",
+      "admitted_discovery_scopes": [
+        "ACTIVE_CANDIDATE",
+        "TEST",
+        "TOOL"
+      ],
+      "excluded_discovery_scopes": [
+        "ARCHIVE",
+        "BACKUP",
+        "QUARANTINE",
+        "REPORT_COPY"
+      ],
+      "unresolved_scope": "UNKNOWN",
+      "top_level_human_classification": {
+        "status": "PASS",
+        "records": 212,
+        "active_candidate": 20,
+        "test": 52,
+        "tool": 10,
+        "backup": 29,
+        "archive": 1,
+        "quarantine": 1,
+        "report_copy": 1,
+        "unknown_no_python": 98,
+        "open": 0
+      },
+      "root_python_human_classification": {
+        "status": "PASS",
+        "records": 63,
+        "open": 0
+      },
+      "human_review_validation": "PASS",
+      "closure_package_state": "READY"
+    },
+    "proposed_cao": {
+      "status": "PROPOSED_GOVERNANCE_ROLE_CLUSTER",
+      "runtime_authority": "NONE",
+      "deployment_authority": "NONE",
+      "live_effect": "NONE"
+    },
+    "phase_2_3": {
+      "id": "ARCH-001.2.3",
+      "title": "STATIC_MODULE_SCANNER_SPECIFICATION",
+      "status": "AUTHORIZED_TO_BEGIN_SPECIFICATION_ONLY",
+      "scanner_implementation_authorized": false,
+      "scanner_execution_authorized": false,
+      "inventory_generation_authorized": false,
+      "source_changes_authorized": false
+    }
+  },
+  "governance_reconciliation": {
+    "id": "GOV-DRIFT-001",
+    "status": "RECONCILED_BY_VERSIONED_SUCCESSOR",
+    "severity": "P1",
+    "historical_registry": "governance/history/ATLAS_MILESTONE_REGISTRY_v4.18.json",
+    "historical_registry_policy": "IMMUTABLE_SNAPSHOT",
+    "alignment_record": "governance/ATLAS_CURRENT_STATE_ALIGNMENT_v1.0.md",
+    "alignment_decision": "REPOSITORY_STATE_ALIGNMENT_ACCEPTED",
+    "historical_state_preserved": true,
+    "historical_state_rewritten": false,
+    "compatibility_mode": "PRESERVE_HISTORICAL_MILESTONES_AND_ADD_CURRENT_STATE_OVERLAY"
+  },
+  "current_repository_state": {
+    "identity_model": "GIT_COMMIT_AUTHORITATIVE",
+    "workstation_absolute_path_authoritative": false,
+    "alignment_branch": "fix/governance-state-alignment",
+    "historical_architecture_baseline_commit": "101908b36cbd15567c56e1b42282680d8d790795",
+    "alignment_parent_commit": "08aadd1ed70e146e2d620efa84a2dee1ba725084",
+    "alignment_record_commit": "b506da1962b74c4afddd3eb02f02b9cc7988faac",
+    "remediation_chain": [
+      {
+        "commit": "3047701ae7b3d62dae9a75e508adad3322dd8ee2",
+        "short": "3047701",
+        "change": "TRACK_ATLAS_SECRET_MANAGEMENT_SOURCE",
+        "state": "VERIFIED"
+      },
+      {
+        "commit": "f04ca2a3a432f3e94a9b4ce190eb1d91cdee3b85",
+        "short": "f04ca2a",
+        "change": "WEB_RUNTIME_DEPENDENCY_AGGREGATION",
+        "state": "VERIFIED"
+      },
+      {
+        "commit": "c7c3a40abd366660b5e1aa37a297af497100d8a6",
+        "short": "c7c3a40",
+        "change": "AUTOMATED_CI_PIPELINE",
+        "state": "VERIFIED_LOCALLY"
+      },
+      {
+        "commit": "5cd6608e178e76b9eb12af37d9efe5a39c06cbdf",
+        "short": "5cd6608",
+        "change": "OFFICIAL_BINANCE_SPOT_SDK_MIGRATION",
+        "state": "VERIFIED"
+      },
+      {
+        "commit": "08aadd1ed70e146e2d620efa84a2dee1ba725084",
+        "short": "08aadd1",
+        "change": "DEPENDENCY_GRAPH_LOCKING",
+        "state": "VERIFIED"
+      },
+      {
+        "commit": "b506da1962b74c4afddd3eb02f02b9cc7988faac",
+        "short": "b506da1",
+        "change": "GOVERNANCE_STATE_ALIGNMENT_RECORD",
+        "state": "VERIFIED"
+      },
+      {
+        "commit": "71855a028180260f091430fe6d926dc7db79cea0",
+        "short": "71855a0",
+        "change": "GOVERNANCE_REGISTRY_RECONCILIATION",
+        "state": "VERIFIED"
+      },
+      {
+        "commit": "a39087e01c139c2739c793629087f1f176b5a780",
+        "short": "a39087e",
+        "change": "ARCH_001_2_3_REVIEW_COMPLETENESS_GAP_RECORD",
+        "state": "VERIFIED"
+      },
+      {
+        "commit": "f1485140709a7dc0027c8be0d00cdeab237a3017",
+        "short": "f148514",
+        "change": "README_VERIFIED_STATE_ALIGNMENT",
+        "state": "VERIFIED"
+      },
+      {
+        "commit": "9b5cda35864eeadd85811d952b58eb998a074a1e",
+        "short": "9b5cda3",
+        "change": "ISOLATED_REPRODUCIBLE_VALIDATION_SCRIPT",
+        "state": "VERIFIED"
+      },
+      {
+        "commit": "d8ad410e687b380233459d807f8885608d829de0",
+        "short": "d8ad410",
+        "change": "PYTEST_KERNEL_COLLECTION_REMEDIATION",
+        "state": "VERIFIED"
+      },
+      {
+        "commit": "42081160f1359da89c4e9573cf436b3040299603",
+        "short": "4208116",
+        "change": "GITHUB_ACTIONS_IMMUTABLE_SHA_PINNING",
+        "state": "VERIFIED"
+      },
+      {
+        "commit": "0c6f4a915f7cfd2f2e5ad576bb5ae53b576d97b4",
+        "short": "0c6f4a9",
+        "change": "HASHED_PYTHON_DEPENDENCY_LOCK_ENFORCEMENT",
+        "state": "VERIFIED"
+      },
+      {
+        "commit": "6f9486f7ab2429f71b9e86548913f1a4fc660a47",
+        "short_commit": "6f9486f",
+        "change": "PHASE1_CANONICAL_BOUNDARY_REMEDIATION",
+        "state": "OWNER_VALIDATED_PENDING_INDEPENDENT_REVIEW"
+      }
+    ],
+    "validation": {
+      "owner_side_canonical_validation": {
+        "tested_commit": "6f9486f7ab2429f71b9e86548913f1a4fc660a47",
+        "tests_passed": 405,
+        "tests_failed": 0,
+        "dependency_isolation": "PASS",
+        "pip_check": "PASS",
+        "test_suite": "PASS"
+      },
+      "hosted_ci_execution_evidence": "NOT_EVIDENCED",
+      "production_certification": "NOT_GRANTED"
+    },
+    "state_registry_branch": "fix/phase1-canonical-boundary-remediation",
+    "readme_alignment_commit": "f1485140709a7dc0027c8be0d00cdeab237a3017",
+    "environment_isolation_commit": "9b5cda35864eeadd85811d952b58eb998a074a1e",
+    "test_quality_remediation_commit": "d8ad410e687b380233459d807f8885608d829de0",
+    "supply_chain_remediation_commit": "0c6f4a915f7cfd2f2e5ad576bb5ae53b576d97b4",
+    "current_git_commit": "6f9486f7ab2429f71b9e86548913f1a4fc660a47",
+    "phase1_canonical_boundary_remediation_commit": "6f9486f7ab2429f71b9e86548913f1a4fc660a47"
+  },
+  "authority_state": {
+    "production_authority": "NONE",
+    "live_authority": "DENIED",
+    "autonomous_deployment_authority": "DENIED",
+    "historical_architectural_freeze_preserved": true,
+    "bounded_remediation_is_blanket_architecture_authority": false,
+    "owner_approval_required_for_authority_change": true,
+    "owner_gate_eligibility": "NOT_EVIDENCED",
+    "independent_review_required_before_owner_gate_claim": true,
+    "owner_gate_status": "NOT_EVIDENCED"
+  },
+  "review_state": {
+    "repository_tests": "PASS",
+    "independent_architecture_review": "NOT_ASSERTED_COMPLETE",
+    "independent_security_review": "NOT_ASSERTED_COMPLETE",
+    "independent_financial_review": "NOT_ASSERTED_COMPLETE",
+    "independent_performance_review": "NOT_ASSERTED_COMPLETE",
+    "arch_001_2_3_independent_re_review": "NOT_EVIDENCED",
+    "test_success_equals_independent_review": false,
+    "arch_001_2_3_review_completion": "COMPLETED_WITH_REMEDIATION_REQUIRED",
+    "arch_001_2_3_owner_gate_eligibility": "NOT_EVIDENCED",
+    "pass_eligible_for_owner_gate_evidence": "NOT_FOUND",
+    "fail_changes_required_evidence": "NOT_FOUND",
+    "review_output_evidence": "NOT_FOUND",
+    "absence_of_fail_implies_pass": false,
+    "arch_001_2_3_independent_review": "FAIL_CHANGES_REQUIRED",
+    "owner_gate_status": "NOT_EVIDENCED",
+    "test_success_is_not_independent_review": true,
+    "phase1_remediation_independent_review": "PENDING",
+    "governance_closure": "NOT_PERFORMED"
+  },
+  "registry_invariants": {
+    "historical_v4_18_immutable": true,
+    "historical_architecture_fields_preserved": true,
+    "repository_truth_separate_from_historical_authority": true,
+    "live_authority_must_be_explicit": true,
+    "missing_live_denial_implies_authority": false,
+    "missing_review_output_must_not_be_interpreted_as_pass": true,
+    "missing_fail_artifact_must_not_be_interpreted_as_pass": true,
+    "owner_gate_requires_explicit_review_evidence": true,
+    "review_preparation_is_not_review_completion": true,
+    "validation_must_use_isolated_environment": true,
+    "global_python_is_not_validation_authority": true,
+    "successful_tests_do_not_imply_production_readiness": true,
+    "closed_documentation_findings_do_not_change_authority": true,
+    "closed_environment_findings_do_not_change_authority": true,
+    "pytest_warnings_must_not_be_silently_ignored": true,
+    "test_files_must_contain_collectable_tests": true,
+    "test_count_changes_require_evidence": true,
+    "local_ci_validation_is_not_hosted_ci_execution": true,
+    "missing_hosted_ci_evidence_must_not_imply_pass": true,
+    "missing_hosted_ci_evidence_must_not_imply_fail": true,
+    "hosted_ci_closure_requires_external_run_evidence": true,
+    "external_ci_actions_must_be_sha_pinned": true,
+    "canonical_python_install_requires_hashes": true,
+    "hash_lock_changes_require_validation": true,
+    "owner_validation_is_not_independent_review": true,
+    "findings_not_silently_closed_by_test_success": true,
+    "hosted_ci_evidence_gap_remains_open": true,
+    "historical_governance_records_remain_immutable": true,
+    "production_and_live_authority_not_granted": true
+  },
+  "governance_findings": {
+    "GOV-REVIEW-001": {
+      "id": "GOV-REVIEW-001",
+      "title": "ARCH-001.2.3 Independent Re-review Completion Evidence Missing",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "finding_type": "GOVERNANCE_EVIDENCE_COMPLETENESS",
+      "artifact": "governance/findings/GOV-REVIEW-001_ARCH-001.2.3_INDEPENDENT_RE_REVIEW_COMPLETENESS.md",
+      "independent_re_review_final_disposition": "NOT_EVIDENCED",
+      "independent_review_completion": "UNRESOLVED",
+      "owner_gate_eligibility": "NOT_EVIDENCED",
+      "blocking_effect": "OWNER_GATE_ELIGIBILITY_NOT_EVIDENCED",
+      "production_authority": "NONE",
+      "live_authority": "DENIED",
+      "closure_requires_explicit_final_review_artifact": true
+    },
+    "DOC-DRIFT-001": {
+      "id": "DOC-DRIFT-001",
+      "title": "Root README metadata was stale relative to verified Git state",
+      "severity": "P2",
+      "status": "CLOSED",
+      "finding_type": "DOCUMENTATION_STATE_DRIFT",
+      "resolution_commit": "f1485140709a7dc0027c8be0d00cdeab237a3017",
+      "resolution": "ROOT_README_ALIGNED_WITH_VERIFIED_REPOSITORY_AND_GOVERNANCE_STATE",
+      "production_effect": "NONE",
+      "live_effect": "NONE"
+    },
+    "ENV-ISOLATION-001": {
+      "id": "ENV-ISOLATION-001",
+      "title": "Atlas validation was being executed in a contaminated global Python environment",
+      "severity": "P2",
+      "status": "CLOSED",
+      "finding_type": "VALIDATION_ENVIRONMENT_ISOLATION",
+      "resolution_commit": "9b5cda35864eeadd85811d952b58eb998a074a1e",
+      "canonical_validation_environment": "ISOLATED_VIRTUAL_ENVIRONMENT",
+      "canonical_validation_script": "scripts/validate_atlas.ps1",
+      "isolated_pip_check": "PASS",
+      "isolated_pytest_passed": 381,
+      "isolated_pytest_warnings": 1,
+      "global_python_environment": "NON_CANONICAL_FOR_ATLAS_VALIDATION",
+      "production_effect": "NONE",
+      "live_effect": "NONE"
+    },
+    "TEST-QUALITY-001": {
+      "id": "TEST-QUALITY-001",
+      "title": "Atlas OS kernel test module was not collected by pytest",
+      "severity": "P2",
+      "status": "CLOSED",
+      "finding_type": "TEST_COLLECTION_AND_ASSURANCE_GAP",
+      "resolution_commit": "d8ad410e687b380233459d807f8885608d829de0",
+      "previous_pytest_passed": 381,
+      "previous_pytest_warnings": 1,
+      "previous_kernel_collected_tests": 0,
+      "current_pytest_passed": 385,
+      "current_pytest_warnings": 0,
+      "current_kernel_collected_tests": 4,
+      "resolution": "MANUAL_KERNEL_TEST_CONVERTED_TO_REAL_PYTEST_COLLECTABLE_TESTS",
+      "production_effect": "NONE",
+      "live_effect": "NONE"
+    },
+    "CI-EVIDENCE-001": {
+      "id": "CI-EVIDENCE-001",
+      "title": "Hosted CI execution evidence is not established",
+      "severity": "P2",
+      "status": "CONFIRMED",
+      "finding_type": "CI_EXECUTION_EVIDENCE_COMPLETENESS",
+      "artifact": "governance/findings/CI-EVIDENCE-001_HOSTED_CI_EXECUTION_EVIDENCE.md",
+      "repository_workflow": ".github/workflows/atlas_ci_cd.yml",
+      "repository_workflow_state": "PRESENT",
+      "local_workflow_validation": "EVIDENCED",
+      "git_remote": "NOT_CONFIGURED",
+      "hosted_ci_execution": "NOT_EVIDENCED",
+      "hosted_ci_pass": "NOT_ASSERTED",
+      "closure_requires_hosted_run_evidence": true,
+      "production_authority": "NONE",
+      "live_authority": "DENIED"
+    },
+    "SUPPLY-CHAIN-001": {
+      "id": "SUPPLY-CHAIN-001",
+      "title": "CI actions and Python dependency artifacts were not fully immutable",
+      "severity": "P2",
+      "status": "CLOSED",
+      "finding_type": "SUPPLY_CHAIN_IMMUTABILITY_AND_REPRODUCIBILITY",
+      "subfindings": {
+        "A": {
+          "title": "GitHub Actions used mutable major-version tags",
+          "status": "REMEDIATED",
+          "commit": "42081160f1359da89c4e9573cf436b3040299603"
+        },
+        "B": {
+          "title": "Python dependency artifacts lacked hash enforcement",
+          "status": "REMEDIATED",
+          "commit": "0c6f4a915f7cfd2f2e5ad576bb5ae53b576d97b4"
+        }
+      },
+      "runtime_lock": "requirements/locks/windows-py314-runtime.txt",
+      "development_lock": "requirements/locks/windows-py314-dev.txt",
+      "runtime_packages": 41,
+      "runtime_hashes": 41,
+      "development_packages": 46,
+      "development_hashes": 46,
+      "canonical_installation": "PIP_REQUIRE_HASHES",
+      "canonical_test_baseline": {
+        "pytest_passed": 385,
+        "pytest_warnings": 0
+      },
+      "production_effect": "NONE",
+      "live_effect": "NONE"
+    },
+    "F-001": {
+      "classification": "PROVENANCE_BINDING",
+      "finding_state": "CLOSED",
+      "severity_after_re_evaluation": "CLOSED",
+      "blocking_state": "CLOSED",
+      "basis": "Independent provenance re-evaluation resolved the immutable ZIP-to-declared-Git-baseline binding.",
+      "production_authority_effect": "NONE",
+      "live_authority_effect": "NONE"
+    },
+    "F-002": {
+      "classification": "LEGACY_NON_CANONICAL",
+      "proposed_post_remediation_state": "RETIRED_NON_CANONICAL",
+      "basis": "Legacy dashboard is explicitly retired/non-canonical, disabled by default, localhost-only when explicitly enabled, has no static secret, and is excluded from canonical runtime distribution.",
+      "evidence": [
+        "dashboard/app.py",
+        "packaging/atlas_runtime_distribution_manifest.json",
+        "tests/test_runtime_distribution_boundary.py"
+      ],
+      "independent_review": "PENDING"
+    },
+    "F-003": {
+      "classification": "NOT_CONFIRMED",
+      "finding_state": "CLOSED_AS_ORIGINALLY_STATED",
+      "basis": "No contradictory evidence was identified; unusual httpx2/httpcore2 names alone do not confirm the prior finding."
+    },
+    "F-004": {
+      "classification": "LEGACY_NON_CANONICAL",
+      "proposed_post_remediation_state": "REMEDIATED_PENDING_INDEPENDENT_REVIEW",
+      "basis": "Deprecated execution state now fails closed for corrupt, unreadable, or schema-invalid state and provides durable recovery-required state plus an explicit recovery workflow, without canonical runtime wiring.",
+      "evidence": [
+        "core/execution_state.py",
+        "tests/test_deprecated_execution_state_recovery.py"
+      ],
+      "independent_review": "PENDING"
+    },
+    "F-005": {
+      "classification": "LEGACY_NON_CANONICAL",
+      "proposed_post_remediation_state": "RETIRED_NON_CANONICAL",
+      "basis": "Legacy dashboard exposure and default-success risk are isolated from the canonical runtime distribution.",
+      "evidence": [
+        "dashboard/app.py",
+        "packaging/atlas_runtime_distribution_manifest.json",
+        "tests/test_runtime_distribution_boundary.py"
+      ],
+      "independent_review": "PENDING"
+    },
+    "F-006": {
+      "classification": "CONFIRMED",
+      "finding_state": "OPEN",
+      "evidence_state": "HOSTED_CI_NOT_EVIDENCED",
+      "basis": "Owner-side validation does not establish hosted CI execution evidence.",
+      "related_governance_finding": "CI-EVIDENCE-001"
+    },
+    "F-007": {
+      "classification": "LEGACY_TEST_DEBT",
+      "proposed_post_remediation_state": "REMEDIATED_PENDING_INDEPENDENT_REVIEW",
+      "basis": "All 51 root scripts are individually classified by a machine-readable inventory and remain outside canonical pytest and distribution scope.",
+      "evidence": [
+        "tests/legacy_test_inventory.json",
+        "tests/test_runtime_distribution_boundary.py"
+      ],
+      "independent_review": "PENDING"
+    },
+    "F-008": {
+      "classification": "REPOSITORY_PACKAGE_BOUNDARY_DEBT",
+      "proposed_post_remediation_state": "REMEDIATED_PENDING_INDEPENDENT_REVIEW",
+      "basis": "A machine-readable canonical distribution boundary and deterministic packaging tool exclude non-canonical archives, quarantine, backups, generated reports, runtime state, legacy dashboard, root manual tests, and duplicate execution implementations while preserving repository history.",
+      "evidence": [
+        "packaging/atlas_runtime_distribution_manifest.json",
+        "tools/build_runtime_distribution.py",
+        "tests/test_runtime_distribution_boundary.py"
+      ],
+      "independent_review": "PENDING"
+    }
+  },
+  "review_completeness_reconciliation": {
+    "finding": "GOV-REVIEW-001",
+    "source_registry": "ATLAS_MILESTONE_REGISTRY_v4.19.json",
+    "source_registry_commit": "71855a028180260f091430fe6d926dc7db79cea0",
+    "finding_branch": "fix/arch-001-2-3-review-completeness",
+    "search_result": {
+      "PASS_ELIGIBLE_FOR_OWNER_GATE": "NOT_FOUND",
+      "FAIL_CHANGES_REQUIRED": "NOT_FOUND",
+      "INDEPENDENT_RE_REVIEW": "NOT_FOUND",
+      "INDEPENDENT RE-REVIEW": "NOT_FOUND",
+      "REVIEW_OUTPUT": "NOT_FOUND"
+    },
+    "correct_interpretation": "FINAL_DISPOSITION_NOT_EVIDENCED",
+    "historical_review_rewritten": false,
+    "historical_registry_rewritten": false,
+    "production_effect": "NONE",
+    "live_effect": "DENIED"
+  },
+  "repository_hygiene_reconciliation": {
+    "source_registry": "ATLAS_MILESTONE_REGISTRY_v4.20.json",
+    "branch": "docs/governance-state-v4.21",
+    "closed_findings": [
+      "DOC-DRIFT-001",
+      "ENV-ISOLATION-001"
+    ],
+    "readme_alignment_commit": "f1485140709a7dc0027c8be0d00cdeab237a3017",
+    "validation_isolation_commit": "9b5cda35864eeadd85811d952b58eb998a074a1e",
+    "canonical_validation_script": "scripts/validate_atlas.ps1",
+    "isolated_dependency_validation": "PASS",
+    "isolated_test_validation": {
+      "pytest_passed": 381,
+      "pytest_warnings": 1
+    },
+    "gov_review_001_remains_open": true,
+    "production_authority_changed": false,
+    "live_authority_changed": false,
+    "historical_registry_rewritten": false
+  },
+  "test_quality_reconciliation": {
+    "source_registry": "ATLAS_MILESTONE_REGISTRY_v4.21.json",
+    "branch": "docs/governance-state-v4.22",
+    "finding": "TEST-QUALITY-001",
+    "resolution_commit": "d8ad410e687b380233459d807f8885608d829de0",
+    "previous_suite": {
+      "pytest_passed": 381,
+      "pytest_warnings": 1
+    },
+    "current_suite": {
+      "pytest_passed": 385,
+      "pytest_warnings": 0
+    },
+    "new_collectable_kernel_tests": 4,
+    "gov_review_001_remains_open": true,
+    "production_authority_changed": false,
+    "live_authority_changed": false,
+    "historical_registry_rewritten": false
+  },
+  "ci_evidence_reconciliation": {
+    "finding": "CI-EVIDENCE-001",
+    "source_registry": "ATLAS_MILESTONE_REGISTRY_v4.22.json",
+    "branch": "fix/ci-evidence-001",
+    "workflow": ".github/workflows/atlas_ci_cd.yml",
+    "workflow_present": true,
+    "git_remote_configured": false,
+    "hosted_ci_execution_evidence": "NOT_EVIDENCED",
+    "hosted_ci_pass_asserted": false,
+    "local_test_baseline": {
+      "pytest_passed": 385,
+      "pytest_warnings": 0
+    },
+    "gov_review_001_remains_open": true,
+    "production_authority_changed": false,
+    "live_authority_changed": false,
+    "historical_registry_rewritten": false
+  },
+  "supply_chain_reconciliation": {
+    "finding": "SUPPLY-CHAIN-001",
+    "source_registry": "ATLAS_MILESTONE_REGISTRY_v4.23.json",
+    "branch": "docs/governance-state-v4.24",
+    "action_pinning_commit": "42081160f1359da89c4e9573cf436b3040299603",
+    "hash_lock_enforcement_commit": "0c6f4a915f7cfd2f2e5ad576bb5ae53b576d97b4",
+    "github_actions_sha_pinned": true,
+    "python_hash_enforcement": true,
+    "runtime_lock_verified": true,
+    "development_lock_verified": true,
+    "pip_check_passed": true,
+    "pytest_passed": 385,
+    "pytest_warnings": 0,
+    "ci_evidence_001_remains_open": true,
+    "gov_review_001_remains_open": true,
+    "production_authority_changed": false,
+    "live_authority_changed": false,
+    "historical_registry_rewritten": false
+  },
+  "phase1_canonical_boundary_reconciliation": {
+    "predecessor_registry": "governance/current/ATLAS_MILESTONE_REGISTRY_v4.24.json",
+    "remediation_commit": "6f9486f7ab2429f71b9e86548913f1a4fc660a47",
+    "remediation_branch": "fix/phase1-canonical-boundary-remediation",
+    "owner_side_validation": {
+      "tests_passed": 405,
+      "tests_failed": 0,
+      "dependency_isolation": "PASS",
+      "pip_check": "PASS",
+      "test_suite": "PASS"
+    },
+    "finding_states": {
+      "F-001": "CLOSED",
+      "F-002": "RETIRED_NON_CANONICAL",
+      "F-003": "NOT_CONFIRMED / CLOSED_AS_ORIGINALLY_STATED",
+      "F-004": "REMEDIATED_PENDING_INDEPENDENT_REVIEW",
+      "F-005": "RETIRED_NON_CANONICAL",
+      "F-006": "CONFIRMED / OPEN / HOSTED_CI_NOT_EVIDENCED",
+      "F-007": "REMEDIATED_PENDING_INDEPENDENT_REVIEW",
+      "F-008": "REMEDIATED_PENDING_INDEPENDENT_REVIEW"
+    },
+    "governance_closure": "NOT_PERFORMED",
+    "owner_gate_status": "NOT_EVIDENCED",
+    "production_authority": "NONE",
+    "live_authority": "DENIED"
+  }
+}
