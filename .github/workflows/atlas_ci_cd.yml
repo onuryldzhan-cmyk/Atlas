@@ -15,32 +15,77 @@ concurrency:
 
 jobs:
   test:
-    name: Python test suite
+    name: Atlas Python Validation
     runs-on: windows-latest
     timeout-minutes: 20
 
+    env:
+      PYTHONUTF8: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
     steps:
+      # ==================================================
+      # SOURCE
+      # ==================================================
+
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      # ==================================================
+      # PYTHON
+      # ==================================================
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.14"
           cache: "pip"
+          cache-dependency-path: |
+            requirements.txt
+            requirements/base.txt
+            requirements/exchange-binance.txt
+            requirements/web.txt
+            requirements/dev.txt
+            requirements/constraints.txt
+
+      - name: Show Python environment
+        shell: pwsh
+        run: |
+          python --version
+          python -m pip --version
+
+      # ==================================================
+      # DEPENDENCIES
+      # ==================================================
 
       - name: Upgrade pip
         run: python -m pip install --upgrade pip
 
       - name: Install runtime dependencies
-        run: python -m pip install -r requirements.txt
+        run: >
+          python -m pip install
+          -c requirements/constraints.txt
+          -r requirements.txt
 
       - name: Install development dependencies
-        run: python -m pip install -r requirements/dev.txt
+        run: >
+          python -m pip install
+          -c requirements/constraints.txt
+          -r requirements/dev.txt
+
+      - name: Validate dependency integrity
+        run: python -m pip check
+
+      # ==================================================
+      # CANONICAL SOURCE VALIDATION
+      # ==================================================
 
       - name: Compile canonical Python sources
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Stop"
+
           $files = git -c core.quotepath=false ls-files -- '*.py' |
             Where-Object {
               $_ -notmatch '(^|/)(archive[^/]*|[^/]*backup[^/]*|reports|quarantine)(/|$)'
@@ -50,7 +95,7 @@ jobs:
             throw "No canonical Python source files were selected for compilation."
           }
 
-          Write-Host "Compiling $($files.Count) canonical Python files..."
+          Write-Host "Canonical Python files selected: $($files.Count)"
 
           $failed = @()
 
@@ -65,11 +110,47 @@ jobs:
           if ($failed.Count -gt 0) {
             Write-Host ""
             Write-Host "Python compilation failures:"
-            $failed | ForEach-Object { Write-Host " - $_" }
-            exit 1
+
+            foreach ($file in $failed) {
+              Write-Host " - $file"
+            }
+
+            throw "Canonical Python compilation failed."
           }
 
-          Write-Host "Canonical Python compilation passed."
+          Write-Host "Canonical Python compilation: PASS"
 
-      - name: Run test suite
-        run: python -m pytest -q --basetemp .pytest_atlas_ci
+      # ==================================================
+      # TESTS
+      # ==================================================
+
+      - name: Run Atlas test suite
+        shell: pwsh
+        run: |
+          python -m pytest `
+            -q `
+            --basetemp .pytest_atlas_ci
+
+      # ==================================================
+      # FINAL DIAGNOSTICS
+      # ==================================================
+
+      - name: Show resolved dependency versions
+        if: always()
+        shell: pwsh
+        run: |
+          python -m pip freeze
+
+      - name: CI completion summary
+        if: success()
+        shell: pwsh
+        run: |
+          Write-Host "======================================"
+          Write-Host "ATLAS CI VALIDATION: PASS"
+          Write-Host "======================================"
+          Write-Host "Python setup:             PASS"
+          Write-Host "Locked dependency install: PASS"
+          Write-Host "Dependency integrity:     PASS"
+          Write-Host "Canonical compilation:    PASS"
+          Write-Host "Test suite:               PASS"
+          Write-Host "======================================"
