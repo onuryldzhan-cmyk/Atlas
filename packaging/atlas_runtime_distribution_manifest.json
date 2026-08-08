@@ -1,0 +1,141 @@
+{
+  "schema_version": "1.0",
+  "distribution_name": "atlas-runtime",
+  "authority": "CANONICAL_RUNTIME_DISTRIBUTION_BOUNDARY",
+  "canonical_runtime_files": [
+    ".env.example",
+    "atlas.ps1",
+    "main.py",
+    "run_atlas.ps1",
+    "run_dashboard.ps1",
+    "web_app.py"
+  ],
+  "canonical_runtime_source_paths": [
+    "ai",
+    "analytics",
+    "assistant",
+    "atlas_finance",
+    "atlas_os",
+    "atlas_paper_trading",
+    "atlas_runtime",
+    "atlas_security",
+    "backtest",
+    "config",
+    "core",
+    "data",
+    "exchange",
+    "intelligence",
+    "learning",
+    "portfolio",
+    "strategy",
+    "templates"
+  ],
+  "canonical_configuration_paths": [
+    "requirements",
+    "requirements.txt"
+  ],
+  "canonical_test_paths": [
+    "pytest.ini",
+    "tests"
+  ],
+  "build_tool_paths": [
+    "packaging/atlas_runtime_distribution_manifest.json",
+    "tools/build_runtime_distribution.py"
+  ],
+  "default_include_tests": false,
+  "safe_public_templates": [
+    ".env.example"
+  ],
+  "exclusions": {
+    "secret_files": [
+      ".env",
+      ".env.*",
+      "**/.env",
+      "**/.env.*",
+      "*.key",
+      "**/*.key",
+      "*.pem",
+      "**/*.pem",
+      "*.p12",
+      "**/*.p12",
+      "*.pfx",
+      "**/*.pfx"
+    ],
+    "repository_metadata": [
+      ".git",
+      ".git/**"
+    ],
+    "caches_and_environments": [
+      "**/__pycache__/**",
+      "**/*.pyc",
+      "**/*.pyo",
+      ".pytest_cache/**",
+      ".venv*/**",
+      "venv/**"
+    ],
+    "runtime_state_paths": [
+      "database/**",
+      "logs/**",
+      "runtime_data/**"
+    ],
+    "legacy_dashboard": [
+      "dashboard",
+      "dashboard/**"
+    ],
+    "deprecated_execution_state": [
+      "core/execution_state.py"
+    ],
+    "archive_paths": [
+      "archive*/**",
+      "**/archive*/**"
+    ],
+    "quarantine_paths": [
+      "_quarantine/**",
+      "quarantine/**",
+      "**/_quarantine/**"
+    ],
+    "generated_report_paths": [
+      "reports/**",
+      "*_report.json",
+      "*_report.txt",
+      "atlas_*_report.txt",
+      "atlas_*_signatures.txt",
+      "atlas_*_audit.txt",
+      "atlas_tree.txt",
+      "atlas_structure.txt"
+    ],
+    "backup_paths": [
+      "backups/**",
+      "*backup*/**",
+      "**/*backup*/**",
+      "**/*backup*.py",
+      "**/*.bak",
+      "**/*.backup_*"
+    ],
+    "governance_history": [
+      "governance/**"
+    ],
+    "root_manual_legacy_tests": [
+      "test_*.py",
+      "ai/core/test_*",
+      "atlas_paper_trading/core/database/test_*",
+      "core/test_*.py",
+      "data/test_*"
+    ],
+    "legacy_patch_tools": [
+      "patch_*.py",
+      "patches/**"
+    ]
+  },
+  "excluded_module_patterns": [
+    "archive_unused_*",
+    "_quarantine",
+    "_quarantine.*",
+    "dashboard",
+    "dashboard.*",
+    "core.execution_state",
+    "core.*backup*",
+    "core.execution_manager_v*",
+    "reports.*"
+  ]
+}

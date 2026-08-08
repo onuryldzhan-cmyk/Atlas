@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
-"""
-Atlas AI Dashboard - Ana Uygulama v2.1
-Flask tabanli web dashboard (SocketIO'suz stabil versiyon)
+"""Retired Atlas Flask dashboard retained as non-canonical reference.
+
+The canonical Atlas web entry point is ``web_app:app``. This module is
+excluded from the canonical runtime distribution and is disabled by default
+because it has no production authentication or authorization boundary.
 """
 
 import os
@@ -9,6 +11,7 @@ import sys
 import json
 import logging
 import random
+import secrets
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -30,8 +33,33 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__, 
             template_folder='templates',
             static_folder='static')
-app.config['SECRET_KEY'] = 'atlas-ai-secret-key-2026-v2'
+app.config['SECRET_KEY'] = os.getenv(
+    'ATLAS_LEGACY_DASHBOARD_SECRET'
+) or secrets.token_hex(32)
 app.config['JSON_SORT_KEYS'] = False
+
+ATLAS_COMPONENT_STATUS = 'LEGACY_NON_CANONICAL'
+CANONICAL_WEB_ENTRY_POINT = 'web_app:app'
+LEGACY_ENABLE_ENV = 'ATLAS_ENABLE_LEGACY_DASHBOARD'
+
+
+def legacy_dashboard_enabled():
+    """Require an explicit development-only opt-in for this retired app."""
+    return os.getenv(LEGACY_ENABLE_ENV, '').strip().lower() == (
+        'explicit-development-only'
+    )
+
+
+@app.before_request
+def reject_disabled_legacy_dashboard():
+    """Prevent accidental service exposure through generic Flask launchers."""
+    if not legacy_dashboard_enabled():
+        return jsonify({
+            'status': 'retired',
+            'reason': 'LEGACY_NON_CANONICAL_DASHBOARD_DISABLED',
+            'canonical_entry_point': CANONICAL_WEB_ENTRY_POINT,
+        }), 410
+    return None
 
 # Global instances
 brain = None
@@ -599,6 +627,11 @@ def internal_error(error):
 # ==================== MAIN ====================
 
 if __name__ == '__main__':
+    if not legacy_dashboard_enabled():
+        raise SystemExit(
+            'Legacy dashboard disabled. Use canonical web_app:app.'
+        )
+
     # Sistem baslat
     if init_system():
         logger.info("=" * 60)
@@ -608,7 +641,7 @@ if __name__ == '__main__':
         logger.info("=" * 60)
         
         # Flask calistir (SocketIO'suz)
-        app.run(host='0.0.0.0', 
+        app.run(host='127.0.0.1',
                 port=8080, 
                 debug=False,
                 use_reloader=False)

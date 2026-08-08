@@ -1,0 +1,518 @@
+{
+  "schema_version": "1.0",
+  "authority": "LEGACY_ROOT_TEST_CLASSIFICATION",
+  "canonical_pytest_root": "tests",
+  "policy": "Root test_*.py files are not canonical pytest inputs and are excluded from runtime distributions.",
+  "entries": [
+    {
+      "path": "test_adaptive_learning.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_advisor.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_application.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_atlas_infrastructure.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_atlas_os_audit_log.py",
+      "classification": "MIGRATED",
+      "reason": "Canonical pytest coverage exists at tests/atlas_os/test_audit_log.py",
+      "top_level_execution_side_effects": false,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": "tests/atlas_os/test_audit_log.py",
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_atlas_os_event_bus.py",
+      "classification": "MIGRATED",
+      "reason": "Canonical pytest coverage exists at tests/atlas_os/test_event_bus.py",
+      "top_level_execution_side_effects": false,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": "tests/atlas_os/test_event_bus.py",
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_atlas_os_event_integration.py",
+      "classification": "MIGRATED",
+      "reason": "Canonical pytest coverage exists at tests/atlas_os/test_event_integration.py",
+      "top_level_execution_side_effects": false,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": "tests/atlas_os/test_event_integration.py",
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_atlas_os_health_monitor.py",
+      "classification": "MIGRATED",
+      "reason": "Canonical pytest coverage exists at tests/atlas_os/test_health_monitor.py",
+      "top_level_execution_side_effects": false,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": "tests/atlas_os/test_health_monitor.py",
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_atlas_os_kernel.py",
+      "classification": "MIGRATED",
+      "reason": "Canonical pytest coverage exists at tests/atlas_os/test_kernel.py",
+      "top_level_execution_side_effects": false,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": "tests/atlas_os/test_kernel.py",
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_atlas_os_scheduler.py",
+      "classification": "MIGRATED",
+      "reason": "Canonical pytest coverage exists at tests/atlas_os/test_scheduler.py",
+      "top_level_execution_side_effects": false,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": "tests/atlas_os/test_scheduler.py",
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_atlas_pipeline.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": false,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_atlas_runtime_empty.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_atlas_secure_core.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_awareness.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_brain_connector.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_buy_execution.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": false,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_capital.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_coin_scanner.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_configuration_secrets_service.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_controller.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_decision.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_decision_adapter.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_evaluator.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_evolution.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_execution.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_execution_manager_v21.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_execution_pipeline.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": false,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_executor.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_experiment.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_feed.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_full_execution_lifecycle.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 3
+    },
+    {
+      "path": "test_improvement.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_intelligence_core.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_intelligence_loop.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_knowledge.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_live_loop.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_market_data.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_market_intelligence.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_opportunity.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_paper_bridge.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_portfolio_intelligence.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_position_database.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": false,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_position_lifecycle.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": false,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_regime.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_risk.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_risk_intelligence.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_self_improvement.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_strategy_selector.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_supervisor.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_trade_memory.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    },
+    {
+      "path": "test_validator.py",
+      "classification": "LEGACY",
+      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
+      "top_level_execution_side_effects": true,
+      "safe_for_pytest_collection": false,
+      "canonical_replacement_test": null,
+      "discovered_test_functions": 0,
+      "discovered_test_classes": 0
+    }
+  ]
+}

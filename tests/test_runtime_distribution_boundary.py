@@ -1,0 +1,157 @@
+from __future__ import annotations
+
+import hashlib
+import json
+from pathlib import Path
+
+import pytest
+
+from tools.build_runtime_distribution import (
+    DEFAULT_MANIFEST,
+    DistributionBoundaryError,
+    _load_manifest,
+    _normalize_relative_path,
+    build_distribution,
+    select_distribution_files,
+    validate_import_boundaries,
+)
+
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_canonical_distribution_includes_required_and_excludes_legacy() -> None:
+    manifest = _load_manifest(DEFAULT_MANIFEST)
+    selected = select_distribution_files(
+        REPOSITORY_ROOT,
+        manifest,
+        include_tests=False,
+    )
+
+    assert "main.py" in selected
+    assert "web_app.py" in selected
+    assert ".env.example" in selected
+    assert "core/application.py" in selected
+    assert "core/execution_manager.py" in selected
+    assert "requirements/locks/windows-py314-runtime.txt" in selected
+
+    assert "dashboard/app.py" not in selected
+    assert "core/execution_state.py" not in selected
+    assert not any(path.startswith("archive_unused_") for path in selected)
+    assert not any(path.startswith("_quarantine/") for path in selected)
+    assert not any(path.startswith("reports/") for path in selected)
+    assert not any(path.startswith("database/") for path in selected)
+    assert not any(Path(path).name.startswith("test_") for path in selected)
+    assert not any("backup" in path.lower() for path in selected)
+
+
+def test_distribution_path_normalization_rejects_escape() -> None:
+    for value in ("../secret", "core/../../secret", "/absolute/path"):
+        with pytest.raises(DistributionBoundaryError):
+            _normalize_relative_path(value)
+
+
+def test_distribution_output_is_deterministic(tmp_path: Path) -> None:
+    first = tmp_path / "first.zip"
+    second = tmp_path / "second.zip"
+
+    first_result = build_distribution(first)
+    second_result = build_distribution(second)
+
+    assert first_result["file_count"] == second_result["file_count"]
+    assert first.read_bytes() == second.read_bytes()
+    assert first_result["sha256"] == hashlib.sha256(
+        first.read_bytes()
+    ).hexdigest().upper()
+
+
+def test_optional_canonical_tests_do_not_include_root_legacy_scripts() -> None:
+    manifest = _load_manifest(DEFAULT_MANIFEST)
+    selected = select_distribution_files(
+        REPOSITORY_ROOT,
+        manifest,
+        include_tests=True,
+    )
+
+    assert "tests/test_durable_transaction_state.py" in selected
+    assert not any(
+        "/" not in path and path.startswith("test_")
+        for path in selected
+    )
+
+
+def test_canonical_sources_do_not_import_excluded_modules() -> None:
+    manifest = _load_manifest(DEFAULT_MANIFEST)
+    selected = select_distribution_files(
+        REPOSITORY_ROOT,
+        manifest,
+        include_tests=False,
+    )
+    assert validate_import_boundaries(
+        REPOSITORY_ROOT,
+        selected,
+        manifest,
+    ) == []
+
+
+def test_import_boundary_detects_legacy_import(tmp_path: Path) -> None:
+    source = tmp_path / "canonical.py"
+    source.write_text("import dashboard.app\n", encoding="utf-8")
+    manifest = {"excluded_module_patterns": ["dashboard.*"]}
+
+    assert validate_import_boundaries(
+        tmp_path,
+        ["canonical.py"],
+        manifest,
+    ) == ["canonical.py: dashboard.app"]
+
+
+def test_import_boundary_detects_relative_legacy_import(tmp_path: Path) -> None:
+    package = tmp_path / "core"
+    package.mkdir()
+    source = package / "canonical.py"
+    source.write_text("from . import execution_state\n", encoding="utf-8")
+    manifest = {"excluded_module_patterns": ["core.execution_state"]}
+
+    assert validate_import_boundaries(
+        tmp_path,
+        ["core/canonical.py"],
+        manifest,
+    ) == ["core/canonical.py: core.execution_state"]
+
+
+def test_legacy_inventory_covers_every_root_test_script() -> None:
+    inventory = json.loads(
+        (REPOSITORY_ROOT / "tests" / "legacy_test_inventory.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    recorded = {entry["path"] for entry in inventory["entries"]}
+    actual = {path.name for path in REPOSITORY_ROOT.glob("test_*.py")}
+
+    assert recorded == actual
+    assert all(
+        entry["safe_for_pytest_collection"] is False
+        for entry in inventory["entries"]
+    )
+
+
+def test_canonical_launchers_never_route_to_legacy_dashboard() -> None:
+    for relative_path in ("atlas.ps1", "run_dashboard.ps1"):
+        content = (REPOSITORY_ROOT / relative_path).read_text(encoding="utf-8-sig")
+        assert "web_app:app" in content
+        assert "dashboard.app" not in content
+        assert "dashboard/app.py" not in content
+
+
+def test_legacy_dashboard_is_machine_marked_and_default_disabled() -> None:
+    source = (REPOSITORY_ROOT / "dashboard" / "app.py").read_text(
+        encoding="utf-8-sig"
+    )
+    assert "ATLAS_COMPONENT_STATUS = 'LEGACY_NON_CANONICAL'" in source
+    assert "CANONICAL_WEB_ENTRY_POINT = 'web_app:app'" in source
+    assert "ATLAS_ENABLE_LEGACY_DASHBOARD" in source
+    assert "atlas-ai-secret-key-2026-v2" not in source
+    assert "ATLAS_LEGACY_DASHBOARD_SECRET" in source
+    assert "app.run(host='127.0.0.1'" in source
+    assert "app.run(host='0.0.0.0'" not in source
