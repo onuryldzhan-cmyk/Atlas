@@ -48,6 +48,8 @@ jobs:
             requirements/web.txt
             requirements/dev.txt
             requirements/constraints.txt
+            requirements/locks/windows-py314-runtime.txt
+            requirements/locks/windows-py314-dev.txt
 
       - name: Show Python environment
         shell: pwsh
@@ -62,17 +64,11 @@ jobs:
       - name: Upgrade pip
         run: python -m pip install --upgrade pip
 
-      - name: Install runtime dependencies
+      - name: Install locked development dependencies
         run: >
           python -m pip install
-          -c requirements/constraints.txt
-          -r requirements.txt
-
-      - name: Install development dependencies
-        run: >
-          python -m pip install
-          -c requirements/constraints.txt
-          -r requirements/dev.txt
+          --require-hashes
+          -r requirements/locks/windows-py314-dev.txt
 
       - name: Validate dependency integrity
         run: python -m pip check

@@ -143,7 +143,7 @@ try {
     Write-Host $VenvPath
 
 
-    Write-Step "ATLAS VALIDATION - RUNTIME DEPENDENCIES"
+    Write-Step "ATLAS VALIDATION - LOCKED DEVELOPMENT DEPENDENCIES"
 
     Invoke-Checked `
         -Executable $ValidationPython `
@@ -152,26 +152,9 @@ try {
             "pip",
             "install",
             "--disable-pip-version-check",
-            "-c",
-            "requirements/constraints.txt",
+            "--require-hashes",
             "-r",
-            "requirements.txt"
-        )
-
-
-    Write-Step "ATLAS VALIDATION - DEVELOPMENT DEPENDENCIES"
-
-    Invoke-Checked `
-        -Executable $ValidationPython `
-        -Arguments @(
-            "-m",
-            "pip",
-            "install",
-            "--disable-pip-version-check",
-            "-c",
-            "requirements/constraints.txt",
-            "-r",
-            "requirements/dev.txt"
+            "requirements/locks/windows-py314-dev.txt"
         )
 
 
