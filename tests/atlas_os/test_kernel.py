@@ -1,6 +1,31 @@
 """
 ============================================================
-ATLAS OS KERNEL TEST v1.0
+ATLAS OS KERNEL TESTS v2.0
+============================================================
+
+Pytest coverage for the Atlas OS kernel lifecycle.
+
+Coverage
+--------
+- Service registration
+- Dependency-aware startup ordering
+- Kernel startup
+- Service startup
+- Kernel health reporting
+- Kernel snapshot reporting
+- Kernel shutdown
+- Service shutdown
+
+TEST-QUALITY-001
+----------------
+This module intentionally uses a helper service class whose name does
+not begin with ``Test`` so that pytest does not mistake the helper for
+a test class.
+
+The previous implementation exposed a manual ``run_kernel_test()``
+function. Pytest did not collect that function, which meant this module
+contributed no executed tests to the canonical test suite.
+
 ============================================================
 """
 
@@ -20,9 +45,12 @@ from atlas_os.core import (
 )
 
 
-class TestService(AtlasService):
+class FakeService(AtlasService):
     """
-    Controlled test implementation of an AtlasOS service.
+    Controlled AtlasService implementation used only by kernel tests.
+
+    The class deliberately does not use pytest's ``Test*`` naming
+    convention because it is a test helper rather than a test case.
     """
 
     def __init__(
@@ -100,23 +128,41 @@ class TestService(AtlasService):
         )
 
 
-def run_kernel_test() -> None:
-    print("=" * 60)
-    print("ATLAS OS KERNEL TEST v1.0")
-    print("=" * 60)
+def _build_kernel() -> tuple[
+    AtlasKernel,
+    FakeService,
+    FakeService,
+    FakeService,
+]:
+    """
+    Build a kernel with a deterministic three-service dependency graph.
+
+    Dependency graph
+    ----------------
+    ConfigurationService
+        |
+        v
+    EventBusService
+        |
+        v
+    HealthMonitorService
+
+    Services are intentionally registered in reverse dependency order
+    so that the kernel dependency resolver is exercised.
+    """
 
     kernel = AtlasKernel()
 
-    configuration = TestService(
+    configuration = FakeService(
         "ConfigurationService",
     )
 
-    event_bus = TestService(
+    event_bus = FakeService(
         "EventBusService",
         dependencies=("ConfigurationService",),
     )
 
-    health_monitor = TestService(
+    health_monitor = FakeService(
         "HealthMonitorService",
         dependencies=(
             "ConfigurationService",
@@ -128,74 +174,154 @@ def run_kernel_test() -> None:
     kernel.register_service(event_bus)
     kernel.register_service(configuration)
 
-    print("\n[1] REGISTERED SERVICES")
+    return (
+        kernel,
+        configuration,
+        event_bus,
+        health_monitor,
+    )
 
-    for name in kernel.registry.names():
-        print(f" - {name}")
+
+def test_kernel_resolves_dependency_aware_startup_order() -> None:
+    """
+    Kernel registry must resolve dependencies rather than blindly using
+    reverse registration order.
+    """
+
+    (
+        kernel,
+        configuration,
+        event_bus,
+        health_monitor,
+    ) = _build_kernel()
+
+    assert set(kernel.registry.names()) == {
+        "ConfigurationService",
+        "EventBusService",
+        "HealthMonitorService",
+    }
 
     startup_order = kernel.registry.resolve_startup_order()
 
-    print("\n[2] RESOLVED STARTUP ORDER")
+    startup_names = [
+        service.metadata.name
+        for service in startup_order
+    ]
 
-    for index, service in enumerate(startup_order, start=1):
-        print(f" {index}. {service.metadata.name}")
+    assert startup_names == [
+        configuration.metadata.name,
+        event_bus.metadata.name,
+        health_monitor.metadata.name,
+    ]
+
+
+def test_kernel_start_transitions_all_services_to_running() -> None:
+    """
+    Starting the kernel must initialize and start every registered
+    service successfully.
+    """
+
+    (
+        kernel,
+        configuration,
+        event_bus,
+        health_monitor,
+    ) = _build_kernel()
+
+    kernel.start()
+
+    try:
+        assert kernel.state == KernelState.RUNNING
+
+        assert configuration.state == ServiceState.RUNNING
+        assert event_bus.state == ServiceState.RUNNING
+        assert health_monitor.state == ServiceState.RUNNING
+
+        assert configuration.snapshot().started_at is not None
+        assert event_bus.snapshot().started_at is not None
+        assert health_monitor.snapshot().started_at is not None
+
+    finally:
+        kernel.stop()
+
+
+def test_kernel_health_and_snapshot_reflect_running_services() -> None:
+    """
+    Health and snapshot views must describe the active kernel and all
+    running services consistently.
+    """
+
+    (
+        kernel,
+        configuration,
+        event_bus,
+        health_monitor,
+    ) = _build_kernel()
+
+    kernel.start()
+
+    try:
+        health = kernel.health()
+
+        assert "services" in health
+        assert len(health["services"]) == 3
+
+        health_by_name = {
+            service["name"]: service
+            for service in health["services"]
+        }
+
+        expected_names = {
+            configuration.metadata.name,
+            event_bus.metadata.name,
+            health_monitor.metadata.name,
+        }
+
+        assert set(health_by_name) == expected_names
+
+        for service_name in expected_names:
+            service_health = health_by_name[service_name]
+
+            assert service_health["state"] == HealthState.HEALTHY.value
+            assert service_health["message"]
+
+        snapshot = kernel.snapshot()
+
+        assert snapshot.state == KernelState.RUNNING
+        assert snapshot.registered_services == 3
+        assert snapshot.running_services == 3
+        assert snapshot.healthy_services == 3
+        assert snapshot.uptime_seconds >= 0.0
+
+    finally:
+        kernel.stop()
+
+
+def test_kernel_stop_transitions_all_services_to_stopped() -> None:
+    """
+    Stopping the kernel must stop every service and leave the kernel in
+    the STOPPED state.
+    """
+
+    (
+        kernel,
+        configuration,
+        event_bus,
+        health_monitor,
+    ) = _build_kernel()
 
     kernel.start()
 
     assert kernel.state == KernelState.RUNNING
-    assert configuration.state == ServiceState.RUNNING
-    assert event_bus.state == ServiceState.RUNNING
-    assert health_monitor.state == ServiceState.RUNNING
-
-    print("\n[3] KERNEL STARTED")
-    print(f" Kernel state: {kernel.state.value}")
-
-    print("\n[4] SERVICE HEALTH")
-
-    health = kernel.health()
-
-    for service in health["services"]:
-        print(
-            f" {service['name']}: "
-            f"{service['state']} — {service['message']}"
-        )
-
-    snapshot = kernel.snapshot()
-
-    print("\n[5] KERNEL SNAPSHOT")
-    print(f" Version             : {snapshot.version}")
-    print(f" State               : {snapshot.state.value}")
-    print(
-        f" Registered services : "
-        f"{snapshot.registered_services}"
-    )
-    print(
-        f" Running services    : "
-        f"{snapshot.running_services}"
-    )
-    print(
-        f" Healthy services    : "
-        f"{snapshot.healthy_services}"
-    )
-    print(
-        f" Uptime seconds      : "
-        f"{snapshot.uptime_seconds:.6f}"
-    )
 
     kernel.stop()
 
     assert kernel.state == KernelState.STOPPED
+
     assert configuration.state == ServiceState.STOPPED
     assert event_bus.state == ServiceState.STOPPED
     assert health_monitor.state == ServiceState.STOPPED
 
-    print("\n[6] KERNEL STOPPED")
-    print(f" Kernel state: {kernel.state.value}")
-
-    print("\n" + "=" * 60)
-    print("ATLAS OS KERNEL TEST PASSED")
-    print("=" * 60)
-
-
-if __name__ == "__main__":
-    run_kernel_test()
+    assert configuration.snapshot().stopped_at is not None
+    assert event_bus.snapshot().stopped_at is not None
+    assert health_monitor.snapshot().stopped_at is not None
