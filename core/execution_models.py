@@ -49,6 +49,7 @@ from dataclasses import dataclass
 from dataclasses import field
 from datetime import UTC
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 from typing import Any
 from uuid import uuid4
 
@@ -621,9 +622,18 @@ class ExecutionResult:
     action: str | None = None
 
     filled_price: float | None = None
+    # Legacy compatibility only.  On the canonical PAPER BUY path this is the
+    # quote-currency allocation; it is never a base-asset quantity contract.
     filled_amount: float | None = None
 
+    requested_quote_allocation: Decimal | None = None
+    requested_base_quantity: Decimal | None = None
+    filled_base_quantity: Decimal | None = None
+    filled_quote_notional: Decimal | None = None
+
     fee: float = 0.0
+    fee_amount: Decimal = Decimal("0")
+    fee_currency: str | None = None
     pnl: float = 0.0
 
     mode: str = "PAPER"
@@ -694,6 +704,21 @@ class ExecutionResult:
             self.filled_amount = float(
                 self.filled_amount
             )
+
+        for field_name in (
+            "requested_quote_allocation", "requested_base_quantity",
+            "filled_base_quantity", "filled_quote_notional", "fee_amount",
+        ):
+            value = getattr(self, field_name)
+            if value is None:
+                continue
+            try:
+                number = Decimal(str(value))
+            except (InvalidOperation, ValueError) as exc:
+                raise ValueError(f"Invalid {field_name}") from exc
+            if not number.is_finite() or number < 0:
+                raise ValueError(f"Invalid {field_name}")
+            setattr(self, field_name, number)
 
         if self.requested_price is not None:
             self.requested_price = float(
@@ -887,6 +912,14 @@ class ExecutionResult:
         payload[
             "risk_level"
         ] = self.risk_level
+
+        for field_name in (
+            "requested_quote_allocation", "requested_base_quantity",
+            "filled_base_quantity", "filled_quote_notional", "fee_amount",
+        ):
+            value = payload.get(field_name)
+            if value is not None:
+                payload[field_name] = format(value, "f")
 
         return payload
 

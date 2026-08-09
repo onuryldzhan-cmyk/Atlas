@@ -48,6 +48,7 @@ Atlas Brain / Decision Engine
 from __future__ import annotations
 
 import logging
+from decimal import Decimal, InvalidOperation
 import threading
 import time
 import uuid
@@ -74,6 +75,10 @@ from core.execution_transaction_journal import (
 from core.execution_models import (
     ExecutionRequest,
     ExecutionResult,
+)
+
+from data_layer.runtime_safety import (
+    FinancialRuntimeSafetyService,
 )
 
 
@@ -167,6 +172,9 @@ class ExecutionManager:
         transaction_journal_file: str = (
             ExecutionTransactionJournal.DEFAULT_FILE
         ),
+        financial_safety_service: (
+            FinancialRuntimeSafetyService | None
+        ) = None,
     ) -> None:
         self.capital_manager = capital_manager
         self.position_controller = position_controller
@@ -238,6 +246,18 @@ class ExecutionManager:
             )
         )
 
+        self._financial_safety_service_injected = (
+            financial_safety_service is not None
+        )
+        self.financial_safety_service = (
+            financial_safety_service
+            if financial_safety_service is not None
+            else FinancialRuntimeSafetyService(
+                transaction_journal=self.transaction_journal,
+                idempotency_store=self.idempotency_store,
+            )
+        )
+
         self.audit_enabled = bool(
             audit_enabled
         )
@@ -305,6 +325,15 @@ class ExecutionManager:
     # LIFECYCLE
     # =========================================================
 
+    def _assess_financial_readiness(self):
+        """Keep the default gate bound to the canonical specialized stores."""
+        if not self._financial_safety_service_injected:
+            self.financial_safety_service = FinancialRuntimeSafetyService(
+                transaction_journal=self.transaction_journal,
+                idempotency_store=self.idempotency_store,
+            )
+        return self.financial_safety_service.assess()
+
     def start(self) -> bool:
         """
         Bring the execution service online.
@@ -319,18 +348,12 @@ class ExecutionManager:
 
             self.running = True
 
-            try:
-                unresolved_transactions = (
-                    self.transaction_journal.has_unresolved()
-                )
+            readiness = self._assess_financial_readiness()
 
-            except Exception:
-                unresolved_transactions = True
-
-            if unresolved_transactions:
+            if not readiness.ready:
                 self.execution_halted = True
                 self.recovery_required = True
-                self.halt_reason = "UNRESOLVED_TRANSACTION"
+                self.halt_reason = readiness.decision.reason
 
         logger.info(
             "Execution Manager ONLINE"
@@ -665,23 +688,22 @@ class ExecutionManager:
                 or "UNRESOLVED_TRANSACTION"
             )
 
-        try:
-            journal_unresolved = (
-                self.transaction_journal.has_unresolved()
-            )
-
-        except Exception:
-            journal_unresolved = True
+        readiness = self._assess_financial_readiness()
 
         if (
             execution_halted
             or recovery_required
-            or journal_unresolved
+            or not readiness.ready
         ):
+            effective_halt_reason = (
+                halt_reason
+                if execution_halted or recovery_required
+                else readiness.decision.reason
+            )
             with self._lock:
                 self.execution_halted = True
                 self.recovery_required = True
-                self.halt_reason = halt_reason
+                self.halt_reason = effective_halt_reason
 
             return {
                 "success": False,
@@ -691,7 +713,7 @@ class ExecutionManager:
                     .COMMIT_STATUS_UNKNOWN
                     .value
                 ),
-                "error_code": halt_reason,
+                "error_code": effective_halt_reason,
                 "message": (
                     "Execution is blocked until unresolved "
                     "transactions are reconciled"
@@ -2136,7 +2158,12 @@ class ExecutionManager:
             request
         )
 
+        # Historical compatibility: filled_amount remains the quote allocation
+        # on this path.  Canonical consumers must use the explicit Decimal fields.
         result.filled_amount = allocation
+        quote_notional = Decimal(str(allocation))
+        result.requested_quote_allocation = Decimal(str(request.amount))
+        result.filled_quote_notional = quote_notional
         result.data = result.data or {}
         result.data["allocation"] = allocation
 
@@ -2160,6 +2187,25 @@ class ExecutionManager:
                 result=result,
                 payload=paper_trade,
             )
+
+        if not result.order_id:
+            result.order_id = "paper-order:" + str(
+                uuid.uuid5(uuid.NAMESPACE_URL, str(request.request_id))
+            )
+
+        try:
+            execution_price = Decimal(str(result.filled_price))
+            if quote_notional <= 0 or execution_price <= 0:
+                raise ValueError("non-positive paper fill inputs")
+            result.filled_base_quantity = quote_notional / execution_price
+            result.fee_amount = Decimal(str(result.fee))
+        except (InvalidOperation, ValueError, TypeError, ZeroDivisionError):
+            self._mark_result_failure(
+                result=result,
+                message="Paper fill quantity semantics are invalid",
+                error_code="INVALID_FINANCIAL_QUANTITY",
+            )
+            return
 
         position_metadata = {
             **self._normalize_metadata(
@@ -2216,6 +2262,13 @@ class ExecutionManager:
                             position
                         ),
                     )
+
+        if result.success and position is not None and not result.position_id:
+            self._mark_result_failure(
+                result=result,
+                message="Position mutation did not return authoritative position_id",
+                error_code="MISSING_POSITION_IDENTITY",
+            )
 
         self.publish(
             "TRADE_OPENED",
@@ -3046,13 +3099,12 @@ class ExecutionManager:
         if filled_price > 0:
             result.filled_price = filled_price
 
+        # Do not hydrate canonical base quantity from ambiguous legacy keys.
         filled_amount = ExecutionManager._extract_numeric_value(
             payload,
             keys=(
                 "filled_amount",
-                "amount",
                 "allocation",
-                "quantity",
             ),
         )
 

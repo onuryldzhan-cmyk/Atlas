@@ -97,6 +97,7 @@ class OrderRecord:
     limit_price: Decimal | None = None
     strategy: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
+    version: int = 0
 
     def __post_init__(self) -> None:
         self.validated()
@@ -123,6 +124,8 @@ class OrderRecord:
             raise IntegrityViolation("strategy cannot be blank")
         object.__setattr__(self, "created_at", utc_text(self.created_at))
         object.__setattr__(self, "metadata", parse_metadata(metadata_text(self.metadata)))
+        if not isinstance(self.version, int) or isinstance(self.version, bool) or self.version < 0:
+            raise IntegrityViolation("invalid order version")
         return self
 
 
@@ -163,6 +166,7 @@ class PositionRecord:
     updated_at: datetime | str
     realized_pnl: Decimal = Decimal("0")
     metadata: dict[str, Any] = field(default_factory=dict)
+    version: int = 0
 
     def __post_init__(self) -> None:
         self.validated()
@@ -179,4 +183,6 @@ class PositionRecord:
             raise IntegrityViolation("open position quantity must be positive")
         object.__setattr__(self, "updated_at", utc_text(self.updated_at))
         object.__setattr__(self, "metadata", parse_metadata(metadata_text(self.metadata)))
+        if not isinstance(self.version, int) or isinstance(self.version, bool) or self.version < 0:
+            raise IntegrityViolation("invalid position version")
         return self

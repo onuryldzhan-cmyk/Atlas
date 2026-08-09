@@ -10,7 +10,7 @@ from enum import Enum, auto
 from pathlib import Path
 from typing import Any
 
-from .contracts import IntegrityViolation, StorageError, TransactionStateError, UnitOfWork
+from .contracts import ConcurrencyConflict, IntegrityViolation, StorageError, TransactionStateError, UnitOfWork
 from .migrations import MIGRATIONS, apply_migrations
 from .models import (
     ExecutionRecord,
@@ -22,6 +22,7 @@ from .models import (
     parse_metadata,
     utc_text,
 )
+from .semantic_contracts import validate_order_transition
 
 
 def _translate_integrity(exc: sqlite3.IntegrityError) -> IntegrityViolation:
@@ -61,8 +62,8 @@ class SQLiteOrderRepository:
                 """
                 INSERT INTO atlas_orders (
                     order_id, symbol, side, quantity_text, limit_price_text,
-                    status, idempotency_key, strategy, created_at_utc, metadata_json
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    status, idempotency_key, strategy, created_at_utc, metadata_json, version
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     record.order_id,
@@ -74,7 +75,7 @@ class SQLiteOrderRepository:
                     record.idempotency_key,
                     record.strategy,
                     utc_text(record.created_at),
-                    metadata_text(record.metadata),
+                    metadata_text(record.metadata), record.version,
                 ),
             )
         except sqlite3.IntegrityError as exc:
@@ -84,7 +85,7 @@ class SQLiteOrderRepository:
         row = self._connection.execute(
             """
             SELECT order_id, symbol, side, quantity_text, status, created_at_utc,
-                   idempotency_key, limit_price_text, strategy, metadata_json
+                   idempotency_key, limit_price_text, strategy, metadata_json, version
             FROM atlas_orders WHERE order_id = ?
             """,
             (order_id,),
@@ -95,13 +96,30 @@ class SQLiteOrderRepository:
             order_id=row[0], symbol=row[1], side=row[2], quantity=Decimal(row[3]),
             status=row[4], created_at=row[5], idempotency_key=row[6],
             limit_price=None if row[7] is None else Decimal(row[7]),
-            strategy=row[8], metadata=parse_metadata(row[9]),
+            strategy=row[8], metadata=parse_metadata(row[9]), version=row[10],
         ).validated()
 
     def exists(self, order_id: str) -> bool:
         return self._connection.execute(
             "SELECT 1 FROM atlas_orders WHERE order_id = ?", (order_id,)
         ).fetchone() is not None
+
+    def transition(self, order_id: str, target_status: str, *, expected_version: int) -> int:
+        current = self.get(order_id)
+        if current is None:
+            raise IntegrityViolation("order does not exist")
+        changed = validate_order_transition(current.status, target_status)
+        if not changed:
+            if current.version != expected_version:
+                raise ConcurrencyConflict("stale order version")
+            return current.version
+        cursor = self._connection.execute(
+            "UPDATE atlas_orders SET status=?, version=version+1 WHERE order_id=? AND version=?",
+            (target_status, order_id, expected_version),
+        )
+        if cursor.rowcount != 1:
+            raise ConcurrencyConflict("stale order version")
+        return expected_version + 1
 
 
 class SQLiteExecutionRepository:
@@ -174,23 +192,15 @@ class SQLitePositionRepository:
                 """
                 INSERT INTO atlas_positions (
                     position_id, symbol, quantity_text, average_price_text,
-                    realized_pnl_text, status, updated_at_utc, metadata_json
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(position_id) DO UPDATE SET
-                    symbol=excluded.symbol,
-                    quantity_text=excluded.quantity_text,
-                    average_price_text=excluded.average_price_text,
-                    realized_pnl_text=excluded.realized_pnl_text,
-                    status=excluded.status,
-                    updated_at_utc=excluded.updated_at_utc,
-                    metadata_json=excluded.metadata_json
+                    realized_pnl_text, status, updated_at_utc, metadata_json, version
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     record.position_id, normalize_symbol(record.symbol),
                     decimal_text(record.quantity, "quantity", nonnegative=True),
                     decimal_text(record.average_price, "average_price", nonnegative=True),
                     decimal_text(record.realized_pnl, "realized_pnl"),
-                    record.status, utc_text(record.updated_at), metadata_text(record.metadata),
+                    record.status, utc_text(record.updated_at), metadata_text(record.metadata), record.version,
                 ),
             )
         except sqlite3.IntegrityError as exc:
@@ -201,14 +211,14 @@ class SQLitePositionRepository:
         return PositionRecord(
             position_id=row[0], symbol=row[1], quantity=Decimal(row[2]),
             average_price=Decimal(row[3]), realized_pnl=Decimal(row[4]),
-            status=row[5], updated_at=row[6], metadata=parse_metadata(row[7]),
+            status=row[5], updated_at=row[6], metadata=parse_metadata(row[7]), version=row[8],
         ).validated()
 
     def get(self, position_id: str) -> PositionRecord | None:
         row = self._connection.execute(
             """
             SELECT position_id, symbol, quantity_text, average_price_text,
-                   realized_pnl_text, status, updated_at_utc, metadata_json
+                   realized_pnl_text, status, updated_at_utc, metadata_json, version
             FROM atlas_positions WHERE position_id = ?
             """,
             (position_id,),
@@ -219,12 +229,37 @@ class SQLitePositionRepository:
         row = self._connection.execute(
             """
             SELECT position_id, symbol, quantity_text, average_price_text,
-                   realized_pnl_text, status, updated_at_utc, metadata_json
+                   realized_pnl_text, status, updated_at_utc, metadata_json, version
             FROM atlas_positions WHERE symbol = ? AND status = 'OPEN'
             """,
             (normalize_symbol(symbol),),
         ).fetchone()
         return None if row is None else self._record(row)
+
+    def put_cas(self, record: PositionRecord, *, expected_version: int) -> int:
+        record.validated()
+        existing = self.get(record.position_id)
+        if existing is None:
+            if expected_version != -1:
+                raise ConcurrencyConflict("stale position version")
+            self.put(record)
+            return record.version
+        if existing.version != expected_version:
+            raise ConcurrencyConflict("stale position version")
+        next_version = expected_version + 1
+        cursor = self._connection.execute(
+            """UPDATE atlas_positions SET symbol=?, quantity_text=?, average_price_text=?,
+               realized_pnl_text=?, status=?, updated_at_utc=?, metadata_json=?, version=?
+               WHERE position_id=? AND version=?""",
+            (record.symbol, decimal_text(record.quantity, "quantity", nonnegative=True),
+             decimal_text(record.average_price, "average_price", nonnegative=True),
+             decimal_text(record.realized_pnl, "realized_pnl"), record.status,
+             utc_text(record.updated_at), metadata_text(record.metadata), next_version,
+             record.position_id, expected_version),
+        )
+        if cursor.rowcount != 1:
+            raise ConcurrencyConflict("stale position version")
+        return next_version
 
 
 class SQLiteUnitOfWork(UnitOfWork):

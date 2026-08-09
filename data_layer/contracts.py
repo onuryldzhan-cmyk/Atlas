@@ -23,6 +23,10 @@ class IntegrityViolation(StorageError):
     """Financial data violates a persistence invariant."""
 
 
+class ConcurrencyConflict(IntegrityViolation):
+    """A stale optimistic writer attempted to mutate financial state."""
+
+
 class MigrationError(StorageError):
     """Schema migration validation or application failed."""
 
@@ -35,6 +39,7 @@ class OrderRepository(Protocol):
     def add(self, record: OrderRecord) -> None: ...
     def get(self, order_id: str) -> OrderRecord | None: ...
     def exists(self, order_id: str) -> bool: ...
+    def transition(self, order_id: str, target_status: str, *, expected_version: int) -> int: ...
 
 
 class ExecutionRepository(Protocol):
@@ -47,6 +52,7 @@ class PositionRepository(Protocol):
     def put(self, record: PositionRecord) -> None: ...
     def get(self, position_id: str) -> PositionRecord | None: ...
     def get_open_for_symbol(self, symbol: str) -> PositionRecord | None: ...
+    def put_cas(self, record: PositionRecord, *, expected_version: int) -> int: ...
 
 
 class UnitOfWork(AbstractContextManager["UnitOfWork"], ABC):

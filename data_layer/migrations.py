@@ -73,6 +73,14 @@ MIGRATIONS = (
             "CREATE UNIQUE INDEX uq_atlas_open_position_symbol ON atlas_positions(symbol) WHERE status = 'OPEN'",
         ),
     ),
+    Migration(
+        2,
+        "optimistic_concurrency_versions",
+        (
+            "ALTER TABLE atlas_orders ADD COLUMN version INTEGER NOT NULL DEFAULT 0 CHECK (version >= 0)",
+            "ALTER TABLE atlas_positions ADD COLUMN version INTEGER NOT NULL DEFAULT 0 CHECK (version >= 0)",
+        ),
+    ),
 )
 
 
