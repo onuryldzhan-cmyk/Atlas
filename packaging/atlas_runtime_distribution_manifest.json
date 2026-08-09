@@ -23,6 +23,7 @@
     "config",
     "core",
     "data",
+    "data_layer",
     "exchange",
     "intelligence",
     "learning",

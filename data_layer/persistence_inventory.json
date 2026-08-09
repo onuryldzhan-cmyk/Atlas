@@ -1,0 +1,131 @@
+{
+  "schema_version": "1.0",
+  "scope": "CANONICAL_REPOSITORY_MATERIAL_PERSISTENCE",
+  "generated_for_commit": "3aca7cf829f091e76a8348cbd245866e675fccd9",
+  "classifications": [
+    "CANONICAL_ACTIVE",
+    "CANONICAL_SPECIALIZED",
+    "LEGACY_NON_CANONICAL",
+    "TEST_ONLY",
+    "RUNTIME_ARTIFACT",
+    "UNKNOWN_REQUIRES_REVIEW"
+  ],
+  "runtime_migration_state": "PENDING_CONTROLLED_MIGRATION",
+  "scan_observations": {
+    "relational_backend_in_canonical_runtime_before_phase2": "NONE_FOUND",
+    "sqlite3_usage_before_phase2": "NONE_FOUND_IN_REVIEWED_CANONICAL_PATHS",
+    "sqlalchemy_or_orm_usage": "NONE_FOUND",
+    "postgresql_adapter_usage": "NONE_FOUND",
+    "pickle_persistence_in_reviewed_canonical_paths": "NONE_FOUND",
+    "material_active_formats": ["JSON", "append-only JSON lines", "flat-file runtime state"],
+    "atomic_persistence_controls_found": ["temporary file", "fsync", "os.replace", "RLock"]
+  },
+  "mechanisms": [
+    {
+      "path": "core/execution_transaction_journal.py",
+      "classification": "CANONICAL_SPECIALIZED",
+      "data": "exchange execution transaction outcomes",
+      "safety": ["RLock", "temporary file", "fsync", "atomic replace", "recovery gate"],
+      "phase2_action": "RETAIN_INDEPENDENTLY"
+    },
+    {
+      "path": "core/execution_idempotency_store.py",
+      "classification": "CANONICAL_SPECIALIZED",
+      "data": "execution request idempotency results",
+      "safety": ["RLock", "temporary file", "fsync", "atomic replace", "fail closed load"],
+      "phase2_action": "RETAIN_INDEPENDENTLY"
+    },
+    {
+      "path": "core/audit_event_store.py",
+      "classification": "CANONICAL_SPECIALIZED",
+      "data": "append-only security/audit evidence",
+      "safety": ["RLock", "append", "fsync", "integrity validation"],
+      "phase2_action": "RETAIN_INDEPENDENTLY"
+    },
+    {
+      "path": "core/execution_manager.py",
+      "classification": "CANONICAL_ACTIVE",
+      "data": "execution orchestration ownership of journal and idempotency stores",
+      "phase2_action": "NO_RUNTIME_CUTOVER"
+    },
+    {
+      "path": "core/trade_memory.py",
+      "classification": "CANONICAL_ACTIVE",
+      "data": "trade memory JSON",
+      "phase2_action": "PENDING_CONTROLLED_MIGRATION"
+    },
+    {
+      "path": "core/paper_trader.py",
+      "classification": "CANONICAL_ACTIVE",
+      "data": "paper trading JSON state",
+      "phase2_action": "PENDING_CONTROLLED_MIGRATION"
+    },
+    {
+      "path": "portfolio/capital_manager.py",
+      "classification": "CANONICAL_ACTIVE",
+      "data": "capital and position JSON state",
+      "phase2_action": "PENDING_CONTROLLED_MIGRATION"
+    },
+    {
+      "path": "core/signal_pipeline.py",
+      "classification": "CANONICAL_ACTIVE",
+      "data": "signal/evidence JSON",
+      "phase2_action": "PENDING_CONTROLLED_MIGRATION"
+    },
+    {
+      "path": "core/learning_engine.py",
+      "classification": "CANONICAL_ACTIVE",
+      "data": "learning memory JSON",
+      "phase2_action": "PENDING_CONTROLLED_MIGRATION"
+    },
+    {
+      "path": "core/database.py",
+      "classification": "LEGACY_NON_CANONICAL",
+      "data": "generic JSON trade records",
+      "phase2_action": "DO_NOT_INTEGRATE"
+    },
+    {
+      "path": "core/execution_state.py",
+      "classification": "LEGACY_NON_CANONICAL",
+      "data": "deprecated execution state and recovery marker",
+      "phase2_action": "RETAIN_AS_LEGACY_EVIDENCE"
+    },
+    {
+      "path": "core/execution_audit.py",
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "data": "legacy execution audit JSON",
+      "phase2_action": "CALLER_REVIEW_REQUIRED"
+    },
+    {
+      "path": "database/execution_audit.json",
+      "classification": "RUNTIME_ARTIFACT",
+      "data": "execution audit sample/runtime state",
+      "phase2_action": "NEVER_AUTO_MIGRATE"
+    },
+    {
+      "path": "database/execution_state.json",
+      "classification": "RUNTIME_ARTIFACT",
+      "data": "execution state sample/runtime state",
+      "phase2_action": "NEVER_AUTO_MIGRATE"
+    },
+    {
+      "path": "tests",
+      "classification": "TEST_ONLY",
+      "data": "temporary persistence fixtures and failure injection",
+      "phase2_action": "RETAIN"
+    },
+    {
+      "path": "data_layer",
+      "classification": "CANONICAL_ACTIVE",
+      "data": "backend-neutral relational foundation",
+      "phase2_action": "FOUNDATION_READY_PENDING_CONTROLLED_INTEGRATION"
+    }
+  ],
+  "database_connection_ownership": {
+    "sqlite": "SQLiteStorage creates one connection per UnitOfWork",
+    "postgresql": "NOT_CONFIGURED",
+    "core_backend_awareness": "PROHIBITED"
+  },
+  "automatic_legacy_migration": false,
+  "destructive_operations_authorized": false
+}

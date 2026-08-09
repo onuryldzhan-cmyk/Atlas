@@ -171,6 +171,12 @@ try {
 
     if (-not $SkipTests) {
 
+        # Pytest behavior is validation authority and must not inherit caller
+        # filters, alternate plugin injection, or implicit discovery scope.
+        $env:PYTEST_ADDOPTS = ""
+        $env:PYTEST_PLUGINS = ""
+        $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = "1"
+
         Write-Step "ATLAS VALIDATION - TEST TEMP DIRECTORY"
 
         if (-not (Test-Path $TempParent)) {
@@ -191,6 +197,21 @@ try {
         Write-Host $TempRoot
 
 
+        Write-Step "ATLAS VALIDATION - TEST COLLECTION"
+
+        Invoke-Checked `
+            -Executable $ValidationPython `
+            -Arguments @(
+                "-m",
+                "pytest",
+                "-c",
+                "pytest.ini",
+                "tests",
+                "--collect-only",
+                "-qq"
+            )
+
+
         Write-Step "ATLAS VALIDATION - TEST SUITE"
 
         Invoke-Checked `
@@ -198,6 +219,9 @@ try {
             -Arguments @(
                 "-m",
                 "pytest",
+                "-c",
+                "pytest.ini",
+                "tests",
                 "-q",
                 "--basetemp=$TempRoot"
             )
