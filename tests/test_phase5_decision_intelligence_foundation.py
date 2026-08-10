@@ -216,3 +216,20 @@ def test_module_has_no_direct_execution_or_provider_sdk_dependency():
     import core.decision_intelligence as module
     names = set(vars(module))
     assert not ({"ExecutionManager", "ExchangeManager", "OpenAI", "Anthropic"} & names)
+
+
+def test_record_canonical_decision_appends_to_audit_chain(tmp_path):
+    from core.audit_event_store import AuditEventStore
+    from core.decision_intelligence import record_canonical_decision
+
+    fusion = SignalFusion(policy()).fuse("BTCUSDT", [ev()], now=NOW)
+    decision = CanonicalDecision.from_fusion("BTCUSDT", fusion, timestamp=NOW)
+
+    store = AuditEventStore(tmp_path / "decisions.jsonl")
+    event = record_canonical_decision(store, decision)
+
+    assert event.aggregate_id == decision.decision_id
+    assert event.event_type == "DECISION_PROPOSED"
+    assert store.verify_chain()["valid"] is True
+    [stored] = store.read_all()
+    assert stored.payload == decision.audit_record()

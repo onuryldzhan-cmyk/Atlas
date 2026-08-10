@@ -12,7 +12,11 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from enum import Enum
-from typing import Any, Mapping, Protocol, Sequence
+from typing import TYPE_CHECKING, Any, Mapping, Protocol, Sequence
+
+if TYPE_CHECKING:
+    from core.audit_event import AuditEvent
+    from core.audit_event_store import AuditEventStore
 
 
 D = Decimal
@@ -346,6 +350,17 @@ class CanonicalDecision:
             "policy_version": self.policy_version, "market_context": dict(self.market_context),
             "authority": self.authority,
         }
+
+
+def record_canonical_decision(store: "AuditEventStore", decision: CanonicalDecision) -> "AuditEvent":
+    """Append a Phase-5 decision proposal to the append-only audit chain."""
+    return store.append(
+        event_type="DECISION_PROPOSED",
+        source="core.decision_intelligence",
+        aggregate_type="decision",
+        aggregate_id=decision.decision_id,
+        payload=decision.audit_record(),
+    )
 
 
 class OfflineLearningBoundary:
