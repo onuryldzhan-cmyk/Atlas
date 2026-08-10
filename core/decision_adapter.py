@@ -58,6 +58,7 @@ import logging
 
 from dataclasses import asdict, is_dataclass
 from datetime import UTC, datetime
+from collections.abc import Mapping
 from enum import Enum
 from math import isfinite
 from typing import Any, ClassVar
@@ -209,21 +210,31 @@ class DecisionAdapter:
     def convert(
         cls,
         decision: Any,
+        *,
+        phase5_proposal: Any = None,
     ) -> dict[str, Any] | None:
         """
         Convert one decision using a temporary adapter instance.
         """
 
         return cls().normalize(
-            decision
+            decision,
+            phase5_proposal=phase5_proposal,
         )
 
     def normalize(
         self,
         decision: Any,
+        *,
+        phase5_proposal: Any = None,
     ) -> dict[str, Any] | None:
         """
         Convert an arbitrary Atlas decision into canonical format.
+
+        ``phase5_proposal`` is an optional, shadow-only advisory record
+        (e.g. ``CanonicalDecision.audit_record()`` output). It is never
+        used to derive action, confidence, price, or risk_level - it is
+        only preserved as opaque metadata under "phase5_proposal".
         """
 
         try:
@@ -242,7 +253,8 @@ class DecisionAdapter:
                 return None
 
             normalized = self.build_schema(
-                source
+                source,
+                phase5_proposal=phase5_proposal,
             )
 
             self.converted += 1
@@ -341,6 +353,8 @@ class DecisionAdapter:
     def build_schema(
         self,
         data: dict[str, Any],
+        *,
+        phase5_proposal: Any = None,
     ) -> dict[str, Any]:
         """
         Build the execution-ready Atlas decision contract.
@@ -378,6 +392,7 @@ class DecisionAdapter:
             data=data,
             action=action,
             confidence=confidence,
+            phase5_proposal=phase5_proposal,
         )
 
         return {
@@ -845,6 +860,7 @@ class DecisionAdapter:
         data: dict[str, Any],
         action: str,
         confidence: float,
+        phase5_proposal: Any = None,
     ) -> dict[str, Any]:
         """
         Preserve source metadata and append adapter diagnostics.
@@ -888,9 +904,82 @@ class DecisionAdapter:
             }
         )
 
+        shadow_proposal = self._extract_phase5_proposal(
+            phase5_proposal
+        )
+
+        if shadow_proposal is not None:
+            metadata["phase5_proposal"] = shadow_proposal
+
         return sanitize_sensitive_mapping(
             metadata
         )
+
+    # =========================================================
+    # PHASE-5 SHADOW-ONLY ADVISORY METADATA
+    # =========================================================
+
+    @staticmethod
+    def _extract_phase5_proposal(
+        phase5_proposal: Any,
+    ) -> dict[str, Any] | None:
+        """
+        Resolve an opaque Phase-5 advisory record for shadow metadata only.
+
+        This never contributes to action, confidence, price, risk_level,
+        sizing, routing, or execution eligibility. Malformed or absent
+        input fails safe by returning None (no metadata key is added).
+        """
+
+        if phase5_proposal is None:
+            return None
+
+        try:
+            audit_record = getattr(
+                phase5_proposal,
+                "audit_record",
+                None,
+            )
+
+            if callable(
+                audit_record
+            ):
+                record = audit_record()
+
+            else:
+                record = phase5_proposal
+
+            if isinstance(
+                record,
+                dict,
+            ):
+                return dict(
+                    record
+                )
+
+            if isinstance(
+                record,
+                Mapping,
+            ):
+                return dict(
+                    record
+                )
+
+            logger.warning(
+                "Phase-5 proposal ignored: unsupported type %s",
+                type(
+                    phase5_proposal
+                ).__name__,
+            )
+
+            return None
+
+        except Exception:
+            logger.exception(
+                "Phase-5 proposal extraction failed; ignoring proposal"
+            )
+
+            return None
 
     # =========================================================
     # HELPERS
