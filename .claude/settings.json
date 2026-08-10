@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)",
+      "Read(./credentials/**)",
+      "Read(./.venv/**)",
+      "Read(./node_modules/**)",
+      "Read(./__pycache__/**)",
+      "Read(./build/**)",
+      "Read(./dist/**)",
+      "Read(./coverage/**)",
+      "Read(./.pytest_cache/**)",
+      "Edit(./.env)",
+      "Edit(./.env.*)",
+      "Edit(./secrets/**)",
+      "Edit(./credentials/**)",
+      "Edit(./.venv/**)",
+      "Edit(./node_modules/**)",
+      "Edit(./__pycache__/**)",
+      "Edit(./build/**)",
+      "Edit(./dist/**)",
+      "Edit(./coverage/**)",
+      "Edit(./.pytest_cache/**)"
+    ]
+  }
+}
