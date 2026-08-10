@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import importlib
 import json
+from datetime import UTC, datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +13,9 @@ import core.execution_state as execution_state_module
 from core.execution_idempotency_store import ExecutionIdempotencyStore
 from core.execution_manager import ExecutionManager
 from core.position_controller import PositionController
+from core.risk_engine import RiskEngine, RiskPolicy, RiskState
+from core.capital_reservation import CapitalReservationLedger, JsonReservationStore
+from core.risk_state_store import JsonRiskStateStore, RestoredRiskState
 
 
 def _decision(request_id: str = "durable-request-001") -> dict[str, Any]:
@@ -149,6 +154,11 @@ def _manager(
     paper_trader: CountingPaperTrader | None = None,
     journal: RecordingJournal | None = None,
 ) -> ExecutionManager:
+    reservation_store = JsonReservationStore(tmp_path / "reservations.json")
+    reservation_store.initialize_empty()
+    risk_store = JsonRiskStateStore(tmp_path / "risk-state.json")
+    risk_store.save(RestoredRiskState(datetime.now(UTC).date(), Decimal("0"),
+                                     Decimal("1000"), Decimal("1000"), "phase3-risk-v1"))
     manager = ExecutionManager(
         paper_trader=paper_trader,
         idempotency_store=(
@@ -159,10 +169,19 @@ def _manager(
             )
         ),
         audit_enabled=False,
+        risk_engine=RiskEngine(RiskPolicy(total_capital=Decimal("1000"))),
+        reservation_ledger=CapitalReservationLedger(reservation_store, Decimal("800")),
+        risk_state_store=risk_store,
     )
     manager.transaction_journal = journal
     manager.start()
     return manager
+
+
+def _risk_state() -> RiskState:
+    return RiskState((), Decimal("0"), Decimal("0"), Decimal("1000"),
+                     Decimal("1000"), True, datetime.now(UTC).date().isoformat(),
+                     "phase3-risk-v1")
 
 
 def test_transaction_journal_contract_exists() -> None:
@@ -203,9 +222,7 @@ def test_prepare_record_is_durable_before_financial_side_effect(
         journal=journal,
     )
 
-    result = manager.execute(
-        _decision()
-    )
+    result = manager.execute(_decision(), _risk_state())
 
     assert result.get("commit_outcome") == "COMMITTED"
     assert journal.calls == [
@@ -229,9 +246,7 @@ def test_prepare_failure_blocks_side_effect_as_not_committed(
         journal=journal,
     )
 
-    result = manager.execute(
-        _decision()
-    )
+    result = manager.execute(_decision(), _risk_state())
 
     assert result["success"] is False
     assert result["status"] == "NOT_COMMITTED"
@@ -257,9 +272,7 @@ def test_terminal_persistence_failure_returns_unknown_and_halts(
         journal=journal,
     )
 
-    result = manager.execute(
-        _decision()
-    )
+    result = manager.execute(_decision(), _risk_state())
 
     assert result["success"] is False
     assert result["status"] == "COMMIT_STATUS_UNKNOWN"

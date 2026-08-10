@@ -31,6 +31,7 @@ def test_canonical_paper_flow_emits_stable_order_and_authoritative_position_iden
     monkeypatch.setattr(manager, "_position_open", lambda **kwargs: {"success": True, "position_id": "position-1"})
     monkeypatch.setattr(manager, "publish", lambda *args, **kwargs: None)
     request = ExecutionRequest("BTCUSDT", "BUY", 50000, 1000, request_id="req-stable")
+    manager._risk_admissions[request.request_id] = manager._risk_admission_key(request)
     first = manager.paper_execute(request)
     second = manager.paper_execute(request)
     assert first["filled_base_quantity"] == "0.02"
@@ -48,7 +49,9 @@ def test_paper_flow_preserves_authoritative_order_identity(monkeypatch):
     monkeypatch.setattr(manager, "_paper_open_trade", lambda **kwargs: {"success": True, "order_id": "engine-order-7"})
     monkeypatch.setattr(manager, "_position_open", lambda **kwargs: None)
     monkeypatch.setattr(manager, "publish", lambda *args, **kwargs: None)
-    result = manager.paper_execute(ExecutionRequest("BTCUSDT", "BUY", 50000, 1000, request_id="req-1"))
+    request = ExecutionRequest("BTCUSDT", "BUY", 50000, 1000, request_id="req-1")
+    manager._risk_admissions[request.request_id] = manager._risk_admission_key(request)
+    result = manager.paper_execute(request)
     assert result["order_id"] == "engine-order-7"
 
 

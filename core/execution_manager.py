@@ -77,6 +77,13 @@ from core.execution_models import (
     ExecutionResult,
 )
 
+from core.risk_engine import (
+    RiskEngine,
+    RiskRequest,
+    RiskState,
+)
+from core.capital_reservation import CapitalReservationLedger
+
 from data_layer.runtime_safety import (
     FinancialRuntimeSafetyService,
 )
@@ -175,11 +182,19 @@ class ExecutionManager:
         financial_safety_service: (
             FinancialRuntimeSafetyService | None
         ) = None,
+        risk_engine: RiskEngine | None = None,
+        reservation_ledger: CapitalReservationLedger | None = None,
+        risk_state_store: Any | None = None,
     ) -> None:
         self.capital_manager = capital_manager
         self.position_controller = position_controller
         self.paper_trader = paper_trader
         self.event_bus = event_bus
+        self.risk_engine = risk_engine
+        self.reservation_ledger = reservation_ledger
+        self.risk_state_store = risk_state_store
+        self.last_risk_decision: dict[str, Any] | None = None
+        self._risk_admissions: dict[str, tuple[str, ...]] = {}
 
         self.mode = self._normalize_mode(
             mode
@@ -1025,6 +1040,9 @@ class ExecutionManager:
 
                 return result
 
+            if not self._has_risk_admission(request):
+                return self.reject(reason="CANONICAL_RISK_ADMISSION_MISSING", request=request)
+
             last_audit_event_id = (
                 self._write_audit_event(
                     event_type="RISK_APPROVED",
@@ -1068,6 +1086,7 @@ class ExecutionManager:
                 )
 
             if not prepared:
+                self._release_capital_reservation(request_id)
                 self._release_request(
                     request_id
                 )
@@ -1153,6 +1172,7 @@ class ExecutionManager:
             # =================================================
 
             if status in self.FAILURE_STATUSES:
+                self._release_capital_reservation(request_id)
                 result[
                     "commit_outcome"
                 ] = (
@@ -1246,6 +1266,7 @@ class ExecutionManager:
                 request_claimed = False
 
                 if not persisted:
+                    self._mark_capital_indeterminate(request_id)
                     try:
                         self.transaction_journal.mark_unknown(
                             request_id,
@@ -1320,6 +1341,7 @@ class ExecutionManager:
                     )
 
                 if not journal_committed:
+                    self._mark_capital_indeterminate(request_id)
                     try:
                         self.transaction_journal.mark_unknown(
                             request_id,
@@ -1377,6 +1399,13 @@ class ExecutionManager:
                     )
 
                     return unknown_result
+
+                if not self._commit_capital_reservation(request_id):
+                    with self._lock:
+                        self.execution_halted = True
+                        self.recovery_required = True
+                        self.halt_reason = "CAPITAL_RESERVATION_COMMIT_FAILED"
+                    return self.reject(reason="CAPITAL_RESERVATION_COMMIT_FAILED", request=request)
 
                 self._record_result(
                     result
@@ -1836,6 +1865,83 @@ class ExecutionManager:
         Apply position and optional CapitalManager risk gates.
         """
 
+        # Phase-3 canonical admission is evaluated before compatibility risk
+        # adapters.  Its state must have been restored by the accounting owner;
+        # missing state is intentionally recovery-blocking rather than inferred.
+        if self.risk_engine is None:
+            return {"approved": False, "reason": "CANONICAL_RISK_SERVICE_REQUIRED",
+                    "status": "BLOCK_RECOVERY_REQUIRED"}
+        if self.reservation_ledger is None or not self.reservation_ledger.ready:
+            return {"approved": False, "reason": "CAPITAL_RESERVATION_STATE_NOT_READY",
+                    "status": "BLOCK_RECOVERY_REQUIRED"}
+        if self.risk_state_store is None:
+            return {"approved": False, "reason": "RISK_ACCOUNTING_STATE_STORE_REQUIRED",
+                    "status": "BLOCK_RECOVERY_REQUIRED"}
+        if self.risk_engine is not None:
+            risk_state = (
+                market_state
+                if isinstance(market_state, RiskState)
+                else (
+                    market_state.get("risk_state")
+                    if isinstance(market_state, Mapping)
+                    else None
+                )
+            )
+            try:
+                if not isinstance(risk_state, RiskState) or not risk_state.state_ready:
+                    raise ValueError("authoritative position exposure state is required")
+                restored = self.risk_state_store.load(
+                    expected_policy_version=self.risk_engine.policy.version,
+                    today_utc=datetime.now(UTC).date(),
+                )
+                risk_state = RiskState(
+                    positions=risk_state.positions,
+                    committed_quote=risk_state.committed_quote,
+                    realized_daily_pnl=restored.realized_daily_pnl,
+                    peak_equity=restored.peak_equity,
+                    current_equity=restored.current_equity,
+                    state_ready=True,
+                    accounting_day_utc=restored.accounting_day_utc.isoformat(),
+                    policy_version=restored.policy_version,
+                )
+                canonical = self.risk_engine.evaluate(
+                    RiskRequest(
+                        symbol=request.symbol,
+                        action=request.action,
+                        confidence=Decimal(str(request.confidence)) / Decimal("100"),
+                        requested_quote_allocation=Decimal(str(request.amount)),
+                        execution_price=Decimal(str(request.price)),
+                        risk_bucket=request.risk,
+                        reduce_only=request.reduce_only,
+                    ),
+                    risk_state if isinstance(risk_state, RiskState) else RiskState(),
+                )
+                self.last_risk_decision = canonical.to_dict()
+            except Exception as exc:
+                self._record_error(phase="canonical_risk", error=exc, request=request)
+                return {"approved": False, "reason": "RISK_STATE_RESTORATION_FAILED",
+                        "status": "BLOCK_RECOVERY_REQUIRED"}
+            if not canonical.approved:
+                return {
+                    "approved": False,
+                    "reason": canonical.reason_code,
+                    "status": canonical.status.value,
+                    "details": self.last_risk_decision,
+                }
+            # The pure evaluator never silently reduces an approved request.
+            # Keep this explicit assertion at the execution seam.
+            if canonical.approved_allocation != Decimal(str(request.amount)):
+                return {"approved": False, "reason": "RISK_ALLOCATION_MISMATCH"}
+            if request.action == "BUY" and not request.reduce_only:
+                try:
+                    self.reservation_ledger.reserve(request.request_id, request.request_id,
+                                                    canonical.approved_allocation)
+                except Exception as exc:
+                    self._record_error(phase="capital_reservation", error=exc, request=request)
+                    return {"approved": False, "reason": "CAPITAL_RESERVATION_FAILED",
+                            "status": "BLOCK_RECOVERY_REQUIRED"}
+            self._risk_admissions[request.request_id] = self._risk_admission_key(request)
+
         if request.action == "BUY":
             allowed = self._can_open_position(
                 request.symbol
@@ -1958,6 +2064,68 @@ class ExecutionManager:
 
         return True
 
+    @staticmethod
+    def _risk_admission_key(request: ExecutionRequest) -> tuple[str, ...]:
+        return (
+            request.symbol,
+            request.action,
+            str(Decimal(str(request.price))),
+            str(Decimal(str(request.amount))),
+            str(Decimal(str(request.confidence))),
+            request.risk,
+            str(bool(request.reduce_only)),
+            request.mode,
+        )
+
+    def _has_risk_admission(self, request: ExecutionRequest) -> bool:
+        return self._risk_admissions.get(request.request_id) == self._risk_admission_key(request)
+
+    def _release_capital_reservation(self, request_id: str) -> bool:
+        if self.reservation_ledger is None:
+            return False
+        if self.reservation_ledger.get(request_id) is None:
+            self._risk_admissions.pop(request_id, None)
+            return True
+        try:
+            self.reservation_ledger.release(request_id)
+            self._risk_admissions.pop(request_id, None)
+            return True
+        except Exception as exc:
+            self._record_error(phase="capital_release", error=exc)
+            with self._lock:
+                self.execution_halted = True
+                self.recovery_required = True
+                self.halt_reason = "CAPITAL_RESERVATION_RELEASE_FAILED"
+            return False
+
+    def _commit_capital_reservation(self, request_id: str) -> bool:
+        if self.reservation_ledger is None:
+            return False
+        if self.reservation_ledger.get(request_id) is None:
+            self._risk_admissions.pop(request_id, None)
+            return True
+        try:
+            self.reservation_ledger.commit(request_id)
+            self._risk_admissions.pop(request_id, None)
+            return True
+        except Exception as exc:
+            self._record_error(phase="capital_commit", error=exc)
+            return False
+
+    def _mark_capital_indeterminate(self, request_id: str) -> bool:
+        if self.reservation_ledger is None:
+            return False
+        if self.reservation_ledger.get(request_id) is None:
+            self._risk_admissions.pop(request_id, None)
+            return True
+        try:
+            self.reservation_ledger.mark_indeterminate(request_id)
+            self._risk_admissions.pop(request_id, None)
+            return True
+        except Exception as exc:
+            self._record_error(phase="capital_indeterminate", error=exc)
+            return False
+
     def _capital_risk_check(
         self,
         *,
@@ -2078,6 +2246,9 @@ class ExecutionManager:
         """
         Execute an approved request in paper mode.
         """
+
+        if not self._has_risk_admission(request):
+            return self.reject(reason="CANONICAL_RISK_ADMISSION_MISSING", request=request)
 
         execution_id = str(
             uuid.uuid4()
@@ -2933,6 +3104,8 @@ class ExecutionManager:
         Even when enabled, a concrete live execution adapter is required.
         """
 
+        if not self._has_risk_admission(request):
+            return self.reject(reason="CANONICAL_RISK_ADMISSION_MISSING", request=request)
         if not self.live_execution_enabled:
             with self._lock:
                 self.stats["live_blocked"] += 1
