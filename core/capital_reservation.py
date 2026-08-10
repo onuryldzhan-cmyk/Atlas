@@ -121,6 +121,22 @@ class CapitalReservationLedger:
                 raise RuntimeError("reservation state recovery required")
             return self.total_allocatable - self._encumbered(self._items)
 
+    def active_reserved_capital(self, *, exclude: str | None = None) -> Decimal:
+        """Capital still reserved or indeterminate, excluding invested commits."""
+        with self._lock:
+            if not self._ready:
+                raise RuntimeError("reservation state recovery required")
+            return sum(
+                (
+                    item.amount
+                    for reservation_id, item in self._items.items()
+                    if reservation_id != exclude
+                    and item.status
+                    in {ReservationStatus.RESERVED, ReservationStatus.INDETERMINATE}
+                ),
+                Decimal("0"),
+            )
+
     def _persist(self, candidate: dict[str, CapitalReservation]) -> None:
         try:
             self.store.save(tuple(sorted(candidate.values(), key=lambda item: item.reservation_id)))

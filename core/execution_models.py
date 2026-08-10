@@ -662,6 +662,9 @@ class ExecutionResult:
     slippage: float = 0.0
     latency_ms: float = 0.0
 
+    idempotency_key: str | None = None
+    provenance_ref: str | None = None
+
     def __post_init__(
         self,
     ) -> None:
@@ -805,6 +808,52 @@ class ExecutionResult:
         """
 
         return self.filled_price
+
+    @property
+    def execution_price(self) -> Decimal | None:
+        """Financially authoritative execution price as ``Decimal``."""
+        if self.filled_price is None:
+            return None
+        value = Decimal(str(self.filled_price))
+        if not value.is_finite() or value <= 0:
+            raise ValueError("Invalid execution_price")
+        return value
+
+    def validate_financial_evidence(self, *, position_mutation: bool = True) -> None:
+        """Fail closed when a successful fill lacks material evidence.
+
+        ``filled_amount``/``amount`` are deliberately excluded: their legacy
+        unit is ambiguous and they are not authoritative financial evidence.
+        """
+        if not self.success:
+            raise ValueError("Execution is not confirmed successful")
+        required = {
+            "execution_id": self.execution_id,
+            "symbol": self.symbol,
+            "action": self.action,
+            "execution_price": self.execution_price,
+            "filled_base_quantity": self.filled_base_quantity,
+            "filled_quote_notional": self.filled_quote_notional,
+            "timestamp": self.timestamp,
+            "idempotency_key": self.idempotency_key,
+        }
+        if position_mutation:
+            required["position_id"] = self.position_id
+        missing = [name for name, value in required.items() if value is None or value == ""]
+        if missing:
+            raise ValueError("Incomplete financial evidence: " + ", ".join(missing))
+        if self.action not in {"BUY", "SELL"}:
+            raise ValueError("Execution action cannot mutate a position")
+        assert self.execution_price is not None
+        assert self.filled_base_quantity is not None
+        assert self.filled_quote_notional is not None
+        expected = self.execution_price * self.filled_base_quantity
+        if expected != self.filled_quote_notional:
+            raise ValueError("Execution quantity/notional mismatch")
+        if self.filled_base_quantity <= 0 or self.filled_quote_notional <= 0:
+            raise ValueError("Execution quantities must be positive")
+        if self.fee_amount and not self.fee_currency:
+            raise ValueError("fee_currency required when fee_amount is non-zero")
 
     def mark_success(
         self,

@@ -76,6 +76,7 @@ from core.execution_models import (
     ExecutionRequest,
     ExecutionResult,
 )
+from core.execution_portfolio_foundation import ExecutionPortfolioFoundation
 
 from core.risk_engine import (
     RiskEngine,
@@ -185,6 +186,7 @@ class ExecutionManager:
         risk_engine: RiskEngine | None = None,
         reservation_ledger: CapitalReservationLedger | None = None,
         risk_state_store: Any | None = None,
+        portfolio_foundation: ExecutionPortfolioFoundation | None = None,
     ) -> None:
         self.capital_manager = capital_manager
         self.position_controller = position_controller
@@ -193,6 +195,7 @@ class ExecutionManager:
         self.risk_engine = risk_engine
         self.reservation_ledger = reservation_ledger
         self.risk_state_store = risk_state_store
+        self.portfolio_foundation = portfolio_foundation
         self.last_risk_decision: dict[str, Any] | None = None
         self._risk_admissions: dict[str, tuple[str, ...]] = {}
 
@@ -349,6 +352,18 @@ class ExecutionManager:
             )
         return self.financial_safety_service.assess()
 
+    def _durable_financial_ready(self) -> tuple[bool, str | None]:
+        foundation = self.portfolio_foundation
+        if foundation is None:
+            # The durable portfolio cutover is opt-in at construction time.
+            # Existing transaction-journal users retain their established
+            # commit-outcome contract when no foundation is configured.
+            return True, None
+        if not foundation.ready:
+            reason = foundation.diagnostics().get("reason")
+            return False, str(reason or "FINANCIAL_STATE_RECOVERY_REQUIRED")
+        return True, None
+
     def start(self) -> bool:
         """
         Bring the execution service online.
@@ -365,10 +380,17 @@ class ExecutionManager:
 
             readiness = self._assess_financial_readiness()
 
-            if not readiness.ready:
+            durable_ready = True
+            durable_reason = None
+            if self.portfolio_foundation is not None:
+                durable_ready, durable_reason = self._durable_financial_ready()
+
+            if not readiness.ready or not durable_ready:
                 self.execution_halted = True
                 self.recovery_required = True
-                self.halt_reason = readiness.decision.reason
+                self.halt_reason = (
+                    readiness.decision.reason if not readiness.ready else durable_reason
+                )
 
         logger.info(
             "Execution Manager ONLINE"
@@ -704,16 +726,20 @@ class ExecutionManager:
             )
 
         readiness = self._assess_financial_readiness()
+        durable_ready, durable_reason = self._durable_financial_ready()
 
         if (
             execution_halted
             or recovery_required
             or not readiness.ready
+            or not durable_ready
         ):
             effective_halt_reason = (
                 halt_reason
                 if execution_halted or recovery_required
-                else readiness.decision.reason
+                else (
+                    readiness.decision.reason if not readiness.ready else durable_reason
+                )
             )
             with self._lock:
                 self.execution_halted = True
@@ -1250,6 +1276,77 @@ class ExecutionManager:
             # =================================================
 
             else:
+                try:
+                    if self.portfolio_foundation is not None:
+                        self._finalize_durable_financial_state(
+                            request=request,
+                            result=result,
+                        )
+                except Exception as finalization_exc:
+                    self._record_error(
+                        phase="durable_financial_finalization",
+                        error=finalization_exc,
+                        request=request,
+                    )
+                    self._mark_capital_indeterminate(request_id)
+                    try:
+                        self.transaction_journal.mark_unknown(
+                            request_id,
+                            reason="DURABLE_FINANCIAL_FINALIZATION_FAILED",
+                            result=result,
+                        )
+                    except Exception:
+                        logger.exception("Unable to mark failed financial finalization unknown")
+                    with self._lock:
+                        self.execution_halted = True
+                        self.recovery_required = True
+                        self.halt_reason = "DURABLE_FINANCIAL_FINALIZATION_FAILED"
+                    request_claimed = False
+                    unknown_result = {
+                        "success": False,
+                        "status": CommitOutcome.COMMIT_STATUS_UNKNOWN.value,
+                        "commit_outcome": CommitOutcome.COMMIT_STATUS_UNKNOWN.value,
+                        "recovery_required": True,
+                        "error_code": "DURABLE_FINANCIAL_FINALIZATION_FAILED",
+                        "message": "Execution was confirmed but durable position/portfolio finalization failed",
+                        "request_id": request_id,
+                        "symbol": request.symbol,
+                        "action": request.action,
+                        "mode": self.mode,
+                        "timestamp": self._utc_now(),
+                    }
+                    self._record_result(unknown_result)
+                    self.publish("EXECUTION_COMMIT_STATUS_UNKNOWN", unknown_result)
+                    return unknown_result
+
+                if not self._commit_capital_reservation(request_id):
+                    try:
+                        self.transaction_journal.mark_unknown(
+                            request_id,
+                            reason="CAPITAL_RESERVATION_COMMIT_FAILED",
+                            result=result,
+                        )
+                    except Exception:
+                        logger.exception("Unable to mark reservation commit failure unknown")
+                    with self._lock:
+                        self.execution_halted = True
+                        self.recovery_required = True
+                        self.halt_reason = "CAPITAL_RESERVATION_COMMIT_FAILED"
+                    request_claimed = False
+                    return {
+                        "success": False,
+                        "status": CommitOutcome.COMMIT_STATUS_UNKNOWN.value,
+                        "commit_outcome": CommitOutcome.COMMIT_STATUS_UNKNOWN.value,
+                        "recovery_required": True,
+                        "error_code": "CAPITAL_RESERVATION_COMMIT_FAILED",
+                        "message": "Execution finalized but reservation commit could not be confirmed",
+                        "request_id": request_id,
+                        "symbol": request.symbol,
+                        "action": request.action,
+                        "mode": self.mode,
+                        "timestamp": self._utc_now(),
+                    }
+
                 result[
                     "commit_outcome"
                 ] = (
@@ -1299,6 +1396,7 @@ class ExecutionManager:
                             .COMMIT_STATUS_UNKNOWN
                             .value
                         ),
+                        "recovery_required": True,
                         "error_code": (
                             "DURABLE_COMMIT_FAILED"
                         ),
@@ -1375,6 +1473,7 @@ class ExecutionManager:
                             .COMMIT_STATUS_UNKNOWN
                             .value
                         ),
+                        "recovery_required": True,
                         "error_code": (
                             "TRANSACTION_JOURNAL_COMMIT_FAILED"
                         ),
@@ -1399,13 +1498,6 @@ class ExecutionManager:
                     )
 
                     return unknown_result
-
-                if not self._commit_capital_reservation(request_id):
-                    with self._lock:
-                        self.execution_halted = True
-                        self.recovery_required = True
-                        self.halt_reason = "CAPITAL_RESERVATION_COMMIT_FAILED"
-                    return self.reject(reason="CAPITAL_RESERVATION_COMMIT_FAILED", request=request)
 
                 self._record_result(
                     result
@@ -2126,6 +2218,57 @@ class ExecutionManager:
             self._record_error(phase="capital_indeterminate", error=exc)
             return False
 
+    def _finalize_durable_financial_state(
+        self,
+        *,
+        request: ExecutionRequest,
+        result: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Consume confirmed execution evidence without invoking an exchange."""
+        foundation = self.portfolio_foundation
+        if foundation is None or not foundation.ready:
+            raise RuntimeError("DURABLE_FINANCIAL_FOUNDATION_NOT_READY")
+        if not self._has_risk_admission(request):
+            raise PermissionError("CANONICAL_RISK_ADMISSION_MISSING")
+        reservation = (
+            self.reservation_ledger.get(request.request_id)
+            if self.reservation_ledger is not None
+            else None
+        )
+        reservation_required = request.action == "BUY" and not request.reduce_only
+        if reservation_required and (
+            reservation is None or reservation.status.value != "RESERVED"
+        ):
+            raise PermissionError("CAPITAL_RESERVATION_NOT_CONFIRMED")
+        if self.reservation_ledger is None:
+            raise PermissionError("CAPITAL_RESERVATION_STATE_NOT_READY")
+        foundation.set_reserved_capital(
+            self.reservation_ledger.active_reserved_capital(
+                exclude=request.request_id if reservation_required else None
+            )
+        )
+        evidence = ExecutionResult.from_dict(result)
+        evidence.idempotency_key = request.request_id
+        evidence.provenance_ref = f"transaction-journal:{request.request_id}"
+        expected_version = None
+        snapshot = foundation.snapshot()
+        current = snapshot["positions"].get(request.symbol)
+        if current is not None:
+            expected_version = int(current["version"])
+        finalized = foundation.apply_confirmed(
+            evidence,
+            risk_authorized=True,
+            reservation_confirmed=True,
+            expected_position_version=expected_version,
+        )
+        result["idempotency_key"] = evidence.idempotency_key
+        result["provenance_ref"] = evidence.provenance_ref
+        result["durable_financial_state"] = {
+            "replayed": finalized["replayed"],
+            "position_id": evidence.position_id,
+        }
+        return finalized
+
     def _capital_risk_check(
         self,
         *,
@@ -2292,6 +2435,8 @@ class ExecutionManager:
             timestamp=request.timestamp,
             requested_price=request.price,
             requested_amount=request.amount,
+            idempotency_key=request.request_id,
+            provenance_ref=f"transaction-journal:{request.request_id}",
         )
 
         if request.action == "BUY":
@@ -2395,11 +2540,19 @@ class ExecutionManager:
             "reduce_only": request.reduce_only,
         }
 
-        position = self._position_open(
-            request=request,
-            allocation=allocation,
-            metadata=position_metadata,
-        )
+        if self.portfolio_foundation is not None:
+            existing = self.portfolio_foundation.snapshot()["positions"].get(request.symbol)
+            result.position_id = (
+                existing["position_id"] if existing is not None
+                else "long:" + request.symbol
+            )
+            position = None
+        else:
+            position = self._position_open(
+                request=request,
+                allocation=allocation,
+                metadata=position_metadata,
+            )
 
         if position is not None:
             result.data["position"] = position
@@ -2627,6 +2780,23 @@ class ExecutionManager:
 
         result.data = result.data or {}
 
+        if self.portfolio_foundation is not None:
+            position = self.portfolio_foundation.snapshot()["positions"].get(request.symbol)
+            if position is None:
+                self._mark_result_failure(
+                    result=result,
+                    message="Durable LONG position was not found",
+                    error_code="POSITION_NOT_FOUND",
+                )
+                return
+            result.position_id = position["position_id"]
+            result.filled_base_quantity = Decimal(position["base_quantity"])
+            result.filled_quote_notional = (
+                result.filled_base_quantity * Decimal(str(result.filled_price))
+            )
+            result.filled_amount = float(result.filled_quote_notional)
+            result.fee_amount = Decimal(str(result.fee))
+
         paper_trade = self._paper_close_trade(
             request
         )
@@ -2653,9 +2823,9 @@ class ExecutionManager:
             "reduce_only": request.reduce_only,
         }
 
-        position = self._position_close(
-            request=request,
-            metadata=close_metadata,
+        position = (
+            None if self.portfolio_foundation is not None
+            else self._position_close(request=request, metadata=close_metadata)
         )
 
         if position is not None:
@@ -4617,6 +4787,15 @@ class ExecutionManager:
                 },
                 "transaction_journal": (
                     self.transaction_journal.status()
+                ),
+                "durable_financial_state": (
+                    self.portfolio_foundation.diagnostics()
+                    if self.portfolio_foundation is not None
+                    else {
+                        "ready": False,
+                        "recovery_required": True,
+                        "reason": "DURABLE_FINANCIAL_FOUNDATION_REQUIRED",
+                    }
                 ),
                 "history": len(
                     self.history
