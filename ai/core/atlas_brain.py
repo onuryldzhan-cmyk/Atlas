@@ -61,9 +61,12 @@ decision confidence. They are stored only as diagnostic metadata.
 
 from __future__ import annotations
 
+import json
 import logging
 
 from datetime import UTC, datetime
+from decimal import Decimal
+from math import isfinite
 from typing import Any
 
 from .atlas_memory_core import AtlasMemoryCore
@@ -76,6 +79,14 @@ from .intelligence.decision_builder import DecisionBuilder
 from .intelligence.memory_adapter import MemoryAdapter
 from .intelligence.reasoning_adapter import ReasoningAdapter
 from .intelligence.risk_engine import RiskEngine
+
+from core.decision_intelligence import (
+    Action,
+    CanonicalDecision,
+    Evidence,
+    FusionPolicy,
+    SignalFusion,
+)
 
 
 logger = logging.getLogger(
@@ -251,11 +262,13 @@ class AtlasBrain:
             symbol
         ).strip().upper()
 
+        cycle_started_at = datetime.now(
+            UTC
+        )
+
         self.cycles += 1
         self.last_symbol = normalized_symbol
-        self.last_analysis_at = datetime.now(
-            UTC
-        ).isoformat()
+        self.last_analysis_at = cycle_started_at.isoformat()
 
         try:
             self._validate_pipeline()
@@ -314,6 +327,26 @@ class AtlasBrain:
             )
 
             # =================================================
+            # PHASE-5 SHADOW PROPOSAL (PROPOSAL_ONLY, non-execution)
+            # =================================================
+
+            try:
+                phase5_shadow_proposal = (
+                    self._build_phase5_shadow_proposal(
+                        normalized_symbol,
+                        agent_results,
+                        market_data,
+                    )
+                )
+            except Exception:
+                logger.exception(
+                    "Phase-5 shadow proposal call site failed; "
+                    "continuing without shadow proposal"
+                )
+
+                phase5_shadow_proposal = None
+
+            # =================================================
             # INTERMEDIATE CONFIDENCE ANALYSIS
             # =================================================
 
@@ -323,6 +356,9 @@ class AtlasBrain:
                 {
                     "level": "MEDIUM",
                 },
+                expected_agent_count=len(
+                    self.agents.WEIGHTS
+                ),
             )
 
             intermediate_confidence = (
@@ -355,6 +391,11 @@ class AtlasBrain:
                 reasoning_result,
                 memory_result,
                 agent_results,
+                getattr(
+                    self.agents,
+                    "last_unavailable_agents",
+                    None,
+                ),
             )
 
             # =================================================
@@ -396,6 +437,17 @@ class AtlasBrain:
                     ),
                 }
             )
+
+            if phase5_shadow_proposal is not None:
+                try:
+                    decision.metadata[
+                        "phase5_proposal"
+                    ] = phase5_shadow_proposal.audit_record()
+                except Exception:
+                    logger.exception(
+                        "Phase-5 shadow proposal metadata "
+                        "attachment failed; ignoring proposal"
+                    )
 
             self.successful_cycles += 1
             self.last_decision = decision
@@ -512,6 +564,388 @@ class AtlasBrain:
             )
 
             return {}
+
+    # =========================================================
+    # PHASE-5 SHADOW PROPOSAL (PROPOSAL_ONLY, non-execution)
+    # =========================================================
+
+    def _build_phase5_shadow_proposal(
+        self,
+        symbol: str,
+        agent_results: Any,
+        market_data: Any,
+        *,
+        now: datetime | None = None,
+    ) -> CanonicalDecision | None:
+        """
+        Build a shadow-only Phase-5 CanonicalDecision from agent evidence.
+
+        This is advisory only: it never influences action, confidence,
+        price, risk, sizing, routing, or execution eligibility. Any
+        failure here is swallowed and returns None so the live decision
+        path is never affected.
+
+        Weighting semantics (intentional, NOT baseline parity):
+        This uses SignalFusion's equal-weight, one-source-one-vote signed
+        fusion (core/decision_intelligence.py) - every agent gets weight
+        1, regardless of AgentFusion.WEIGHTS' configured importance
+        (technical=.40, momentum=.20, risk=.20, macro=.10, sentiment=.10).
+        It deliberately does NOT reproduce AgentFusion.fuse()'s weighted
+        bucket-share conviction. The resulting action/confidence are an
+        independent Phase-5 research/shadow metric and must not be read
+        as a reproduction of production conviction - the two can and do
+        diverge materially on identical agent input.
+
+        HOLD evidence contributes zero to SignalFusion's signed numerator
+        (BUY is positive conviction, SELL is negative) but still
+        contributes its full source weight to the denominator, so each
+        HOLD dilutes net conviction rather than being excluded outright -
+        a third behavior, distinct from both AgentFusion's own HOLD
+        handling (0.5 * weight into a dedicated HOLD bucket) and from
+        simply dropping HOLD evidence. Because of this dilution, a
+        symbol with several HOLD agents and only one directional agent
+        can legitimately fall below FusionPolicy.decision_threshold and
+        resolve to ABSTAIN here while AgentFusion's bucket-share vote
+        still resolves to BUY or SELL on the same input. This is an
+        action-level divergence, not merely a confidence-magnitude
+        difference, and is expected behavior for this independent
+        research metric - it must not be read as a bug or as evidence
+        Phase 5 and baseline disagree about market direction.
+
+        Freshness semantics (intentional, INGESTION-TIME only):
+        Evidence.observed_at is parsed from market_data["timestamp"] -
+        the market-data ingestion/build time - not exchange/source event
+        time. If that timestamp is missing, malformed, or timezone-naive,
+        no provenance is fabricated: this method returns None rather
+        than substituting cycle-start or wall-clock time as fake
+        evidence age. `now` is an independently evaluated fusion time
+        (defaults to the real current time; overridable for deterministic
+        tests), never derived from the evidence itself, so the staleness
+        check is a genuine comparison between two independently obtained
+        timestamps rather than a literal `now == observed_at` tautology.
+        Source/event-time (exchange candle) freshness is NOT verified by
+        this check and remains UNVERIFIED pending future propagation of
+        candle timestamps into market_data.
+
+        In practice, on the normal synchronous live path, market_data
+        ["timestamp"] is stamped by build_market_data() only milliseconds
+        before this method runs, so evidence age is normally near zero
+        and the 5-minute freshness gate will almost never reject evidence
+        for genuine upstream market-data staleness in that path - it
+        mainly guards other callers or future asynchronous/queued paths
+        where ingestion and fusion can drift apart. Passing evidence
+        through this gate is proof the ingestion timestamp itself is
+        recent; it is not proof the underlying exchange/source data was
+        fresh at the exchange.
+
+        Replay/backtest callers must not assume this gate enforces a
+        correct historical event-time contract; it does not yet, and two
+        distinct failure modes are both possible depending on how the
+        caller constructs market_data:
+        - if replay/backtest reuses build_market_data() unmodified, the
+          ingestion timestamp is stamped at replay wall-clock time, so
+          arbitrarily old historical evidence will appear fresh here;
+        - if replay/backtest instead injects genuine historical
+          timestamps while `now` defaults to current wall-clock time,
+          that evidence will read as STALE (age > max_age) and the
+          proposal will legitimately degrade to ABSTAIN regardless of
+          how directionally strong the historical evidence actually was.
+        Neither failure mode is fixed by this method; correct replay
+        semantics require propagating a matching historical `now`
+        alongside historical evidence, which is separate, not-yet-scoped
+        roadmap work.
+
+        Per-agent isolation:
+        Each agent result is validated and converted independently via
+        _build_phase5_agent_evidence(). One malformed agent (unsupported
+        action, non-numeric/boolean/out-of-range score, etc.) is
+        excluded and recorded - it never discards valid evidence from
+        other agents, and it never aborts the whole proposal. Rejections
+        are surfaced in the resulting CanonicalDecision's market_context
+        under "phase5_agent_input_rejections" (a compact JSON list of
+        {"agent", "reason"} records) so malformed input remains visible
+        in the audit trail rather than silently vanishing.
+        """
+
+        try:
+            observed_at = self._parse_ingestion_timestamp(
+                market_data
+            )
+
+            if observed_at is None:
+                return None
+
+            evaluation_now = (
+                now
+                if now is not None
+                else datetime.now(
+                    UTC
+                )
+            )
+
+            evidence: list[Evidence] = []
+            rejections: list[tuple[str, str]] = []
+
+            for name, data in dict(
+                agent_results or {}
+            ).items():
+                item, reason = self._build_phase5_agent_evidence(
+                    name,
+                    data,
+                    symbol,
+                    observed_at,
+                )
+
+                if item is not None:
+                    evidence.append(
+                        item
+                    )
+                elif reason is not None:
+                    rejections.append(
+                        (
+                            name,
+                            reason,
+                        )
+                    )
+
+            if not evidence:
+                return None
+
+            policy = FusionPolicy(
+                weights={
+                    item.source: Decimal("1")
+                    for item in evidence
+                }
+            )
+
+            fusion = SignalFusion(
+                policy
+            ).fuse(
+                symbol,
+                evidence,
+                now=evaluation_now,
+            )
+
+            market_context: dict[str, str] = {}
+
+            if rejections:
+                market_context[
+                    "phase5_agent_input_rejections"
+                ] = json.dumps(
+                    [
+                        {
+                            "agent": agent_name,
+                            "reason": reason_code,
+                        }
+                        for agent_name, reason_code in sorted(
+                            rejections
+                        )
+                    ],
+                    sort_keys=True,
+                    separators=(
+                        ",",
+                        ":",
+                    ),
+                )
+
+            return CanonicalDecision.from_fusion(
+                symbol,
+                fusion,
+                timestamp=evaluation_now,
+                market_context=market_context,
+            )
+
+        except Exception:
+            logger.exception(
+                "Phase-5 shadow proposal construction failed; "
+                "continuing without shadow proposal"
+            )
+
+            return None
+
+    def _build_phase5_agent_evidence(
+        self,
+        name: str,
+        data: Any,
+        symbol: str,
+        observed_at: datetime,
+    ) -> tuple[Evidence | None, str | None]:
+        """
+        Validate and convert one agent result into Evidence.
+
+        Isolates one agent's failure from the rest of the batch: a
+        single malformed agent must never discard valid evidence
+        already constructed for other agents. Returns:
+        - (Evidence, None) on success;
+        - (None, None) when the agent simply supplied no signal
+          (absent/None action or score - not malformed, not recorded
+          as a rejection);
+        - (None, reason_code) when the supplied signal is malformed
+          and must be recorded in the Phase-5 audit trail. Reason
+          codes: "malformed_agent_result", "unsupported_action",
+          "invalid_score_type", "score_out_of_range".
+
+        This is a distinct, earlier taxonomy from SignalFusion's own
+        per-evidence rejection reasons (WRONG_SYMBOL, STALE, etc.),
+        which apply only to evidence that already passed this stage.
+        """
+
+        if not isinstance(
+            data,
+            dict,
+        ):
+            return None, "malformed_agent_result"
+
+        action = data.get(
+            "action"
+        )
+        score = data.get(
+            "score"
+        )
+
+        if action is None or score is None:
+            return None, None
+
+        try:
+            normalized_action = Action(
+                str(
+                    action
+                ).strip().upper()
+            )
+        except ValueError:
+            return None, "unsupported_action"
+
+        if isinstance(
+            score,
+            bool,
+        ) or not isinstance(
+            score,
+            (
+                int,
+                float,
+                str,
+            ),
+        ):
+            return None, "invalid_score_type"
+
+        try:
+            score_value = float(
+                score
+            )
+        except (
+            TypeError,
+            ValueError,
+        ):
+            return None, "invalid_score_type"
+
+        if (
+            not isfinite(
+                score_value
+            )
+            or not (
+                0.0 <= score_value <= 1.0
+            )
+        ):
+            return None, "score_out_of_range"
+
+        conviction = self._agent_score_to_conviction(
+            normalized_action.value,
+            score_value,
+        )
+
+        try:
+            evidence = Evidence(
+                evidence_id=f"agent:{name}:{symbol}:{observed_at.isoformat()}",
+                source=f"agent:{name}",
+                source_version="1",
+                symbol=symbol,
+                action=normalized_action,
+                score=Decimal(
+                    str(
+                        conviction
+                    )
+                ),
+                observed_at=observed_at,
+            )
+        except Exception:
+            return None, "malformed_agent_result"
+
+        return evidence, None
+
+    @staticmethod
+    def _parse_ingestion_timestamp(
+        market_data: Any,
+    ) -> datetime | None:
+        """
+        Parse a trustworthy, timezone-aware ingestion timestamp.
+
+        Returns None (never a fabricated substitute) when the timestamp
+        is missing, malformed, or timezone-naive - a naive value cannot
+        be trusted as verified UTC provenance.
+        """
+
+        if not isinstance(
+            market_data,
+            dict,
+        ):
+            return None
+
+        raw_timestamp = market_data.get(
+            "timestamp"
+        )
+
+        if (
+            not isinstance(
+                raw_timestamp,
+                str,
+            )
+            or not raw_timestamp
+        ):
+            return None
+
+        try:
+            parsed = datetime.fromisoformat(
+                raw_timestamp
+            )
+        except ValueError:
+            return None
+
+        if (
+            parsed.tzinfo is None
+            or parsed.utcoffset() is None
+        ):
+            return None
+
+        return parsed.astimezone(
+            UTC
+        )
+
+    @staticmethod
+    def _agent_score_to_conviction(
+        action: str,
+        score: Any,
+    ) -> float:
+        """
+        Convert a raw agent score into directional Evidence conviction.
+
+        Mirrors AgentFusion.fuse()'s own convention (agent_fusion.py):
+        SELL strength is (1 - score); BUY strength is score. HOLD has no
+        directional weight in SignalFusion (signed value is 0), so its
+        raw score is preserved unchanged.
+        """
+
+        score_value = float(
+            score
+        )
+
+        normalized_action = str(
+            action
+        ).strip().upper()
+
+        if normalized_action == "SELL":
+            return 1 - score_value
+
+        return score_value
 
     # =========================================================
     # PIPELINE VALIDATION

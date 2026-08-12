@@ -110,7 +110,8 @@ class ConfidenceEngine:
         self,
         agents: Dict,
         reasoning: Dict,
-        risk: Dict | None = None
+        risk: Dict | None = None,
+        expected_agent_count: int | None = None
 
     ) -> ConfidenceResult:
 
@@ -118,7 +119,9 @@ class ConfidenceEngine:
 
         agreement = self.calculate_agent_agreement(
 
-            agents
+            agents,
+
+            expected_agent_count=expected_agent_count
 
         )
 
@@ -213,7 +216,9 @@ class ConfidenceEngine:
 
         self,
 
-        agents: Dict
+        agents: Dict,
+
+        expected_agent_count: int | None = None
 
     ):
 
@@ -285,7 +290,34 @@ class ConfidenceEngine:
 
 
 
-        return strongest / len(actions)
+        # NB-4/NB-5: the denominator must reflect the expected/configured
+        # agent roster, not merely the agents that survived to this call.
+        # Missing evidence must never shrink the denominator below the
+        # roster size - doing so lets evidence loss inflate agreement
+        # (e.g. 2/2 surviving BUY votes reading as 1.0 when 3 other
+        # configured agents are simply absent). `expected_agent_count`
+        # is optional and additive: callers that omit it (or pass a
+        # value no larger than the surviving count) keep the prior,
+        # unscaled `strongest / len(actions)` behavior exactly - this
+        # also guarantees the denominator can never be smaller than
+        # `len(actions)` (which is already known >0 here), so no
+        # division-by-zero is possible regardless of what is passed in.
+
+        denominator = len(actions)
+
+        if (
+
+            expected_agent_count is not None
+
+            and expected_agent_count > denominator
+
+        ):
+
+            denominator = expected_agent_count
+
+
+
+        return strongest / denominator
 
 
 

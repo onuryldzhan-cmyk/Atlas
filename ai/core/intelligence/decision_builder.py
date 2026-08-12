@@ -65,7 +65,8 @@ class DecisionBuilder:
         risk,
         reasoning=None,
         memory=None,
-        agents=None
+        agents=None,
+        unavailable_agents=None
     ):
 
 
@@ -141,6 +142,22 @@ class DecisionBuilder:
 
 
 
+                "fusion_reason":
+
+                    self._safe_fusion_reason(
+                        fusion
+                    ),
+
+
+
+                "unavailable_agents":
+
+                    self._safe_unavailable_agents(
+                        unavailable_agents
+                    ),
+
+
+
                 "risk":
 
                     risk.to_dict(),
@@ -193,6 +210,79 @@ class DecisionBuilder:
         return decision
 
 
+
+
+    # =====================================================
+    # DIAGNOSTIC METADATA HELPERS (audit-only, non-load-bearing)
+    # =====================================================
+    #
+    # Persist AgentFusion's INSUFFICIENT_EVIDENCE/FUSED_EVIDENCE reason
+    # and the excluded-agent diagnostics into Decision.metadata so the
+    # audit trail can distinguish "no directional decision" from other
+    # HOLD @ 0.0 causes without inferring it from confidence alone.
+    # Never load-bearing: any malformed/missing input here degrades to
+    # a safe default and never raises, so action/confidence/risk_level
+    # construction can never depend on this data being present.
+
+
+    @staticmethod
+    def _safe_fusion_reason(
+        fusion
+    ):
+
+        reason = getattr(
+            fusion,
+            "reason",
+            None
+        )
+
+        if not isinstance(
+            reason,
+            str
+        ):
+
+            return "FUSED_EVIDENCE"
+
+        return reason
+
+
+    @staticmethod
+    def _safe_unavailable_agents(
+        unavailable_agents
+    ):
+
+        if not isinstance(
+            unavailable_agents,
+            dict
+        ):
+
+            return {}
+
+        valid_names = [
+
+            name
+            for name, reason in unavailable_agents.items()
+
+            if isinstance(
+                name,
+                str
+            )
+            and isinstance(
+                reason,
+                str
+            )
+
+        ]
+
+        return {
+
+            name: unavailable_agents[name]
+
+            for name in sorted(
+                valid_names
+            )
+
+        }
 
 
 
