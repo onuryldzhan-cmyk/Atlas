@@ -55,6 +55,8 @@ import logging
 import traceback
 
 from datetime import UTC, datetime
+from decimal import Decimal
+from pathlib import Path
 from typing import Any
 
 from core.logger import AtlasLogger
@@ -74,10 +76,38 @@ from portfolio.capital_manager import CapitalManager
 from core.position_controller import PositionController
 from core.paper_trader import PaperTrader
 
+from core.risk_engine import RiskEngine, RiskPolicy
+from core.capital_reservation import (
+    CapitalReservationLedger,
+    JsonReservationStore,
+)
+from core.risk_state_store import JsonRiskStateStore
+from core.execution_portfolio_foundation import (
+    ExecutionPortfolioFoundation,
+    FinancialStateStore,
+)
+
 from core.controller.atlas_controller import AtlasController
 
 
 logger = logging.getLogger("AtlasAI.Application")
+
+
+# =============================================================
+# DURABLE FINANCIAL STATE LOCATION
+# =============================================================
+#
+# Durable financial state lives beside the already canonical
+# execution stores (idempotency, audit, transaction journal),
+# which resolve their own defaults under the same directory.
+# The composition root owns these locations so that no domain
+# or execution module has to invent a path of its own.
+
+DEFAULT_STATE_DIRECTORY = "memory_data"
+
+RISK_ACCOUNTING_STATE_FILE = "risk_accounting_state.json"
+CAPITAL_RESERVATION_STATE_FILE = "capital_reservations.json"
+EXECUTION_FINANCIAL_STATE_FILE = "execution_financial_state.json"
 
 
 class AtlasApplication:
@@ -100,6 +130,7 @@ class AtlasApplication:
         execution_mode: str = "PAPER",
         symbols: list[str] | None = None,
         market_interval: float = 10.0,
+        state_directory: str | Path = DEFAULT_STATE_DIRECTORY,
     ) -> None:
         logger.info(
             "Initializing %s v%s",
@@ -111,6 +142,7 @@ class AtlasApplication:
         self.execution_mode = str(execution_mode).upper()
         self.symbols = list(symbols) if symbols else None
         self.market_interval = float(market_interval)
+        self.state_directory = Path(state_directory)
 
         self.running = False
         self.initialized = False
@@ -186,6 +218,12 @@ class AtlasApplication:
         )
 
         # -----------------------------------------------------
+        # Canonical financial risk services
+        # -----------------------------------------------------
+
+        self._build_financial_services()
+
+        # -----------------------------------------------------
         # Execution
         # -----------------------------------------------------
 
@@ -195,6 +233,10 @@ class AtlasApplication:
             paper_trader=self.paper_trader,
             event_bus=self.event_bus,
             mode=self.execution_mode,
+            risk_engine=self.risk_engine,
+            reservation_ledger=self.reservation_ledger,
+            risk_state_store=self.risk_state_store,
+            portfolio_foundation=self.portfolio_foundation,
         )
 
         # -----------------------------------------------------
@@ -221,6 +263,65 @@ class AtlasApplication:
         )
 
     # =========================================================
+    # CANONICAL FINANCIAL RISK SERVICES
+    # =========================================================
+
+    def _build_financial_services(self) -> None:
+        """
+        Construct the single canonical financial-risk service family.
+
+        Concrete implementation choice and durable-state locations are
+        owned here, in the composition root, so that execution and
+        intelligence modules never construct infrastructure of their own.
+
+        The risk policy is derived from the already configured portfolio
+        capital; no policy number is introduced or overridden here.
+
+        None of these services fabricate a permissive ready state. A
+        missing or corrupt store leaves the corresponding service
+        not-ready, and the canonical execution path refuses new risk on
+        that basis rather than falling back to a legacy component.
+        """
+
+        self.risk_policy = RiskPolicy(
+            total_capital=Decimal(
+                str(
+                    self.capital.total_capital
+                )
+            ),
+        )
+
+        self.risk_engine = RiskEngine(
+            self.risk_policy,
+        )
+
+        self.risk_state_store = JsonRiskStateStore(
+            self.state_directory / RISK_ACCOUNTING_STATE_FILE,
+        )
+
+        self.reservation_ledger = CapitalReservationLedger(
+            JsonReservationStore(
+                self.state_directory / CAPITAL_RESERVATION_STATE_FILE,
+            ),
+            self.risk_policy.allocatable_capital,
+        )
+
+        self.portfolio_foundation = ExecutionPortfolioFoundation(
+            FinancialStateStore(
+                self.state_directory / EXECUTION_FINANCIAL_STATE_FILE,
+            ),
+        )
+
+        logger.info(
+            "Canonical financial services constructed "
+            "policy_version=%s reservation_state_ready=%s "
+            "portfolio_state_ready=%s",
+            self.risk_policy.version,
+            self.reservation_ledger.ready,
+            self.portfolio_foundation.ready,
+        )
+
+    # =========================================================
     # SERVICE REGISTRATION
     # =========================================================
 
@@ -242,6 +343,10 @@ class AtlasApplication:
             self.capital,
             self.paper_trader,
             self.position_controller,
+            self.risk_engine,
+            self.reservation_ledger,
+            self.risk_state_store,
+            self.portfolio_foundation,
             self.brain,
             self.market_feed,
             self.execution,

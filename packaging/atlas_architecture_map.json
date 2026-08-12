@@ -401,6 +401,7 @@
     "core/paper_trader.py": "L3",
     "core/position_controller.py": "L3",
     "core/risk_engine.py": "L1",
+    "core/risk_state_store.py": "L3",
     "core/runtime.py": "L3",
     "core/scheduler.py": "L2",
     "core/service_container.py": "L2",

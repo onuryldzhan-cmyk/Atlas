@@ -76,6 +76,7 @@
     "core/paper_trader.py",
     "core/position_controller.py",
     "core/risk_engine.py",
+    "core/risk_state_store.py",
     "core/runtime.py",
     "core/scheduler.py",
     "core/service_container.py",
