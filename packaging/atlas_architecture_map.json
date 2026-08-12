@@ -1,0 +1,524 @@
+{
+  "schema_version": "1.0",
+  "authority": "ATLAS_BLOCK2_ARCHITECTURE_BOUNDARY",
+  "package_2a_scope_note": "Package 2A. Layer assignment and dependency-boundary enforcement only. Does not wire canonical risk services and does not change execution behavior.",
+  "composition_root": {
+    "canonical": "core/application.py",
+    "entry_scripts": [
+      "main.py",
+      "web_app.py"
+    ],
+    "note": "core/application.py is the sole authorized cross-layer composition point (ADR-0001). It may construct services from any layer; this is the documented composition-root exception to the layer dependency rules."
+  },
+  "canonical_authorities": {
+    "atlas_os": {
+      "canonical": [
+        "atlas_os/contracts.py",
+        "atlas_os/kernel/",
+        "atlas_os/services/"
+      ],
+      "non_canonical": [
+        "atlas_os/core/"
+      ],
+      "adr": "docs/adr/0002-atlas-os-contract-authority.md"
+    },
+    "atlas_runtime": {
+      "status": "NON_CANONICAL_QUARANTINED",
+      "adr": "docs/adr/0001-canonical-composition-root.md"
+    }
+  },
+  "layers": {
+    "L0": {
+      "name": "CROSS_CUTTING",
+      "description": "Pure sanitization utilities with no domain, infrastructure, or application knowledge.",
+      "allowed_dependencies": [
+        "stdlib"
+      ]
+    },
+    "L1": {
+      "name": "DOMAIN_CONTRACTS",
+      "description": "Domain vocabulary, value objects, and contracts. No I/O.",
+      "allowed_dependencies": [
+        "stdlib",
+        "L0"
+      ]
+    },
+    "L2": {
+      "name": "INFRASTRUCTURE_ADAPTERS",
+      "description": "Concrete adapters, persistent stores, journals, event bus implementations, and external service integrations.",
+      "allowed_dependencies": [
+        "stdlib",
+        "L0",
+        "L1"
+      ]
+    },
+    "L3": {
+      "name": "APPLICATION",
+      "description": "Composition, lifecycle, orchestration, and execution authority. May consume research/intelligence proposals but owns all execution decisions.",
+      "allowed_dependencies": [
+        "stdlib",
+        "L0",
+        "L1",
+        "L2",
+        "L4"
+      ]
+    },
+    "L4": {
+      "name": "RESEARCH_INTELLIGENCE",
+      "description": "Produces proposals and evidence. Must never own execution authority or reach execution internals directly (research cannot trade).",
+      "allowed_dependencies": [
+        "stdlib",
+        "L0",
+        "L1"
+      ]
+    },
+    "L5": {
+      "name": "PRESENTATION",
+      "description": "Presentation layer. Runtime objects must be supplied by injection, not direct construction of application/infrastructure internals.",
+      "allowed_dependencies": [
+        "stdlib",
+        "L0",
+        "L1"
+      ]
+    }
+  },
+  "layer_rules": [
+    {
+      "pattern": "atlas_security/*",
+      "layer": "L0",
+      "reason": "explicit: L0 cross-cutting sanitization package"
+    },
+    {
+      "pattern": "analysis/evidence_status.py",
+      "layer": "L1",
+      "reason": "explicit: shared L1 vocabulary exception within analysis/**"
+    },
+    {
+      "pattern": "atlas_finance/market_data/contracts.py",
+      "layer": "L1",
+      "reason": "explicit: L1 domain contract example"
+    },
+    {
+      "pattern": "atlas_finance/market_data/models.py",
+      "layer": "L1",
+      "reason": "explicit: L1 domain contract example"
+    },
+    {
+      "pattern": "atlas_os/contracts.py",
+      "layer": "L1",
+      "reason": "explicit: L1 domain contract example; canonical AtlasOS contract authority (ADR-0002)"
+    },
+    {
+      "pattern": "data_layer/contracts.py",
+      "layer": "L1",
+      "reason": "explicit: L1 domain contract example"
+    },
+    {
+      "pattern": "data_layer/models.py",
+      "layer": "L1",
+      "reason": "explicit: L1 domain contract example"
+    },
+    {
+      "pattern": "data_layer/canonical_evidence.py",
+      "layer": "L1",
+      "reason": "domain evidence contract, sibling of data_layer/contracts.py and data_layer/models.py"
+    },
+    {
+      "pattern": "data_layer/semantic_contracts.py",
+      "layer": "L1",
+      "reason": "domain contract vocabulary, sibling of data_layer/contracts.py"
+    },
+    {
+      "pattern": "core/decision.py",
+      "layer": "L1",
+      "reason": "explicit: L1 domain contract example"
+    },
+    {
+      "pattern": "core/decision_intelligence.py",
+      "layer": "L1",
+      "reason": "explicit: L1 domain contract example"
+    },
+    {
+      "pattern": "core/risk_engine.py",
+      "layer": "L1",
+      "reason": "explicit: L1 domain contract example; canonical execution/admission RiskEngine authority"
+    },
+    {
+      "pattern": "core/capital_reservation.py",
+      "layer": "L1",
+      "reason": "explicit: L1 domain contract example"
+    },
+    {
+      "pattern": "core/execution_contracts.py",
+      "layer": "L1",
+      "reason": "explicit: L1 domain contract example"
+    },
+    {
+      "pattern": "core/execution_models.py",
+      "layer": "L1",
+      "reason": "explicit: L1 domain contract example"
+    },
+    {
+      "pattern": "core/audit_event.py",
+      "layer": "L1",
+      "reason": "explicit: L1 domain contract example"
+    },
+    {
+      "pattern": "core/execution_portfolio_foundation.py",
+      "layer": "L1",
+      "reason": "canonical financial-state/portfolio-foundation domain authority, grouped with risk_engine.py and capital_reservation.py as the M-1 canonical risk services (deliberately unwired in Package 2A)"
+    },
+    {
+      "pattern": "data_layer/config.py",
+      "layer": "L2",
+      "reason": "explicit: data-layer configuration is L2 infrastructure"
+    },
+    {
+      "pattern": "data_layer/migrations.py",
+      "layer": "L2",
+      "reason": "explicit: data-layer migrations are L2 infrastructure"
+    },
+    {
+      "pattern": "data_layer/sqlite.py",
+      "layer": "L2",
+      "reason": "explicit: L2 infrastructure example"
+    },
+    {
+      "pattern": "core/audit_event_store.py",
+      "layer": "L2",
+      "reason": "persistent store, matches L2 example bucket"
+    },
+    {
+      "pattern": "core/execution_idempotency_store.py",
+      "layer": "L2",
+      "reason": "persistent store, matches L2 example bucket"
+    },
+    {
+      "pattern": "core/execution_transaction_journal.py",
+      "layer": "L2",
+      "reason": "journal, matches L2 example bucket"
+    },
+    {
+      "pattern": "core/event_bus.py",
+      "layer": "L2",
+      "reason": "event bus implementation, matches L2 example bucket"
+    },
+    {
+      "pattern": "core/lifecycle.py",
+      "layer": "L2",
+      "reason": "infrastructure lifecycle manager (application.py Infrastructure bucket)"
+    },
+    {
+      "pattern": "core/logger.py",
+      "layer": "L2",
+      "reason": "infrastructure logging adapter"
+    },
+    {
+      "pattern": "core/scheduler.py",
+      "layer": "L2",
+      "reason": "infrastructure scheduler (application.py Infrastructure bucket)"
+    },
+    {
+      "pattern": "core/service_container.py",
+      "layer": "L2",
+      "reason": "infrastructure dependency container (application.py Infrastructure bucket)"
+    },
+    {
+      "pattern": "core/runtime.py",
+      "layer": "L3",
+      "reason": "explicit: L3 application example (composition root chain, main.py -> core/application.py -> core/runtime.py)"
+    },
+    {
+      "pattern": "core/application.py",
+      "layer": "L3",
+      "reason": "explicit: L3 application example; canonical composition root"
+    },
+    {
+      "pattern": "core/market_loop.py",
+      "layer": "L3",
+      "reason": "explicit: L3 application example"
+    },
+    {
+      "pattern": "core/brain.py",
+      "layer": "L3",
+      "reason": "explicit: L3 application example"
+    },
+    {
+      "pattern": "core/execution_manager.py",
+      "layer": "L3",
+      "reason": "explicit: L3 application example"
+    },
+    {
+      "pattern": "core/position_controller.py",
+      "layer": "L3",
+      "reason": "explicit: L3 application example"
+    },
+    {
+      "pattern": "core/decision_adapter.py",
+      "layer": "L3",
+      "reason": "explicit: L3 application example"
+    },
+    {
+      "pattern": "core/paper_trader.py",
+      "layer": "L3",
+      "reason": "execution-orchestration collaborator alongside PositionController/CapitalManager (application.py Portfolio bucket)"
+    },
+    {
+      "pattern": "core/candle_processor.py",
+      "layer": "L3",
+      "reason": "market-data processing orchestration consumed by market_loop, not a pure domain contract"
+    },
+    {
+      "pattern": "core/technical_analyzer.py",
+      "layer": "L3",
+      "reason": "market analysis orchestration consumed by brain/market_loop, not a pure domain contract"
+    },
+    {
+      "pattern": "core/controller/*",
+      "layer": "L3",
+      "reason": "AtlasController orchestration (application.py Control bucket)"
+    },
+    {
+      "pattern": "portfolio/capital_manager.py",
+      "layer": "L3",
+      "reason": "explicit: L3 application example (lifecycle/scheduler/controller orchestration bucket)"
+    },
+    {
+      "pattern": "main.py",
+      "layer": "L3",
+      "reason": "process entry point that constructs and starts the L3 composition root; treated as part of the application layer"
+    },
+    {
+      "pattern": "web_app.py",
+      "layer": "L5",
+      "reason": "explicit: L5 presentation example"
+    },
+    {
+      "pattern": "ai/*",
+      "layer": "L4",
+      "reason": "explicit: ai/** is L4 research/intelligence"
+    },
+    {
+      "pattern": "analysis/*",
+      "layer": "L4",
+      "reason": "explicit: analysis/** is L4 research/intelligence except the shared L1 vocabulary exception listed above"
+    },
+    {
+      "pattern": "atlas_finance/*",
+      "layer": "L2",
+      "reason": "explicit: atlas_finance/** concrete providers/services default to L2, except the L1 contract/model exceptions listed above"
+    },
+    {
+      "pattern": "atlas_os/*",
+      "layer": "L2",
+      "reason": "AtlasOS infrastructure implementations (kernel, services, events, observability, audit, scheduling, secrets, configuration, integration); atlas_os/__init__.py re-exports both the L1 contracts module and these L2 implementations so is itself classified at the lower-common-denominator L2, except atlas_os/contracts.py listed above"
+    },
+    {
+      "pattern": "exchange/*",
+      "layer": "L2",
+      "reason": "explicit: exchange/** is L2 infrastructure"
+    },
+    {
+      "pattern": "data_layer/*",
+      "layer": "L2",
+      "reason": "data_layer default is L2 infrastructure; data_layer/__init__.py itself re-exports both L1 (models) and L2 (config, sqlite) symbols so is classified at the lower-common-denominator L2, except the L1 contract exceptions listed above"
+    },
+    {
+      "pattern": "core/*",
+      "layer": "L3",
+      "reason": "default for unlisted core/** modules: application-layer orchestration, per the composition-root diagram in core/application.py's own docstring"
+    }
+  ],
+  "module_layers": {
+    "ai/core/atlas_brain.py": "L4",
+    "ai/core/atlas_memory_core.py": "L4",
+    "ai/core/atlas_reasoning_engine.py": "L4",
+    "ai/core/atlas_world_model.py": "L4",
+    "ai/core/intelligence/agent_fusion.py": "L4",
+    "ai/core/intelligence/confidence/confidence_engine.py": "L4",
+    "ai/core/intelligence/decision_builder.py": "L4",
+    "ai/core/intelligence/memory_adapter.py": "L4",
+    "ai/core/intelligence/reasoning_adapter.py": "L4",
+    "ai/core/intelligence/risk_engine.py": "L4",
+    "analysis/__init__.py": "L4",
+    "analysis/evidence_status.py": "L1",
+    "analysis/world_analysis_engine.py": "L4",
+    "atlas_finance/__init__.py": "L2",
+    "atlas_finance/market_data/__init__.py": "L2",
+    "atlas_finance/market_data/binance_public_provider.py": "L2",
+    "atlas_finance/market_data/contracts.py": "L1",
+    "atlas_finance/market_data/exceptions.py": "L2",
+    "atlas_finance/market_data/market_feed_service.py": "L2",
+    "atlas_finance/market_data/models.py": "L1",
+    "atlas_os/__init__.py": "L2",
+    "atlas_os/audit/__init__.py": "L2",
+    "atlas_os/audit/audit_log.py": "L2",
+    "atlas_os/configuration/__init__.py": "L2",
+    "atlas_os/configuration/configuration_service.py": "L2",
+    "atlas_os/contracts.py": "L1",
+    "atlas_os/events/__init__.py": "L2",
+    "atlas_os/events/event_bus.py": "L2",
+    "atlas_os/integration/__init__.py": "L2",
+    "atlas_os/integration/configuration_secrets_bridge.py": "L2",
+    "atlas_os/integrations/__init__.py": "L2",
+    "atlas_os/integrations/event_integration.py": "L2",
+    "atlas_os/kernel/__init__.py": "L2",
+    "atlas_os/kernel/kernel.py": "L2",
+    "atlas_os/observability/__init__.py": "L2",
+    "atlas_os/observability/health_monitor.py": "L2",
+    "atlas_os/observability/metrics.py": "L2",
+    "atlas_os/scheduling/__init__.py": "L2",
+    "atlas_os/scheduling/scheduler.py": "L2",
+    "atlas_os/secrets/__init__.py": "L2",
+    "atlas_os/secrets/secrets_manager.py": "L2",
+    "atlas_os/services/__init__.py": "L2",
+    "atlas_os/services/base_service.py": "L2",
+    "atlas_os/services/dependency_manager.py": "L2",
+    "atlas_os/services/registry.py": "L2",
+    "atlas_security/__init__.py": "L0",
+    "atlas_security/sensitive_data_guard.py": "L0",
+    "core/__init__.py": "L3",
+    "core/application.py": "L3",
+    "core/audit_event.py": "L1",
+    "core/audit_event_store.py": "L2",
+    "core/brain.py": "L3",
+    "core/candle_processor.py": "L3",
+    "core/capital_reservation.py": "L1",
+    "core/controller/__init__.py": "L3",
+    "core/controller/atlas_controller.py": "L3",
+    "core/decision.py": "L1",
+    "core/decision_adapter.py": "L3",
+    "core/decision_intelligence.py": "L1",
+    "core/event_bus.py": "L2",
+    "core/execution_idempotency_store.py": "L2",
+    "core/execution_manager.py": "L3",
+    "core/execution_models.py": "L1",
+    "core/execution_portfolio_foundation.py": "L1",
+    "core/execution_transaction_journal.py": "L2",
+    "core/lifecycle.py": "L2",
+    "core/logger.py": "L2",
+    "core/market_loop.py": "L3",
+    "core/paper_trader.py": "L3",
+    "core/position_controller.py": "L3",
+    "core/risk_engine.py": "L1",
+    "core/runtime.py": "L3",
+    "core/scheduler.py": "L2",
+    "core/service_container.py": "L2",
+    "core/technical_analyzer.py": "L3",
+    "data_layer/__init__.py": "L2",
+    "data_layer/canonical_evidence.py": "L1",
+    "data_layer/config.py": "L2",
+    "data_layer/contracts.py": "L1",
+    "data_layer/migrations.py": "L2",
+    "data_layer/models.py": "L1",
+    "data_layer/projection_replay.py": "L2",
+    "data_layer/recovery.py": "L2",
+    "data_layer/runtime_safety.py": "L2",
+    "data_layer/semantic_contracts.py": "L1",
+    "data_layer/sqlite.py": "L2",
+    "exchange/__init__.py": "L2",
+    "exchange/market_feed.py": "L2",
+    "main.py": "L3",
+    "portfolio/capital_manager.py": "L3",
+    "web_app.py": "L5"
+  },
+  "forbidden_edges": [
+    {
+      "from": "L0",
+      "to": "L1",
+      "reason": "L0 cross-cutting must depend only on stdlib"
+    },
+    {
+      "from": "L0",
+      "to": "L2",
+      "reason": "L0 cross-cutting must depend only on stdlib"
+    },
+    {
+      "from": "L0",
+      "to": "L3",
+      "reason": "L0 cross-cutting must depend only on stdlib"
+    },
+    {
+      "from": "L0",
+      "to": "L4",
+      "reason": "L0 cross-cutting must depend only on stdlib"
+    },
+    {
+      "from": "L0",
+      "to": "L5",
+      "reason": "L0 cross-cutting must depend only on stdlib"
+    },
+    {
+      "from": "L1",
+      "to": "L2",
+      "reason": "hard forbidden edge: domain/contracts must not depend on infrastructure"
+    },
+    {
+      "from": "L1",
+      "to": "L3",
+      "reason": "hard forbidden edge: domain/contracts must not depend on application"
+    },
+    {
+      "from": "L1",
+      "to": "L4",
+      "reason": "hard forbidden edge: domain/contracts must not depend on research/intelligence"
+    },
+    {
+      "from": "L1",
+      "to": "L5",
+      "reason": "hard forbidden edge: domain/contracts must not depend on presentation"
+    },
+    {
+      "from": "L2",
+      "to": "L3",
+      "reason": "infrastructure must not depend on application orchestration"
+    },
+    {
+      "from": "L2",
+      "to": "L4",
+      "reason": "infrastructure must not depend on research/intelligence"
+    },
+    {
+      "from": "L2",
+      "to": "L5",
+      "reason": "infrastructure must not depend on presentation"
+    },
+    {
+      "from": "L4",
+      "to": "L2",
+      "reason": "hard forbidden edge: research/intelligence must not reach execution/infrastructure internals (research cannot trade)"
+    },
+    {
+      "from": "L4",
+      "to": "L3",
+      "reason": "hard forbidden edge: research/intelligence must not reach execution/application internals (research cannot trade)"
+    },
+    {
+      "from": "L4",
+      "to": "L5",
+      "reason": "research/intelligence must not depend on presentation"
+    },
+    {
+      "from": "L5",
+      "to": "L2",
+      "reason": "hard forbidden edge: presentation must not import concrete infrastructure internals unless explicitly injected"
+    },
+    {
+      "from": "L5",
+      "to": "L3",
+      "reason": "hard forbidden edge: presentation must not import application internals unless explicitly injected"
+    },
+    {
+      "from": "L5",
+      "to": "L4",
+      "reason": "presentation must not depend on research/intelligence"
+    }
+  ],
+  "permitted_exceptions": [
+    {
+      "from": "data_layer/canonical_evidence.py",
+      "to": "data_layer/projection_replay.py",
+      "reason": "data_layer/canonical_evidence.py imports only ConfirmedExecutionEvidence, a plain immutable @dataclass value object defined in projection_replay.py; it performs no I/O and carries no infrastructure behavior. projection_replay.py itself remains classified L2 because it also defines StorageBackend-consuming replay logic."
+    }
+  ]
+}
