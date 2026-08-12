@@ -126,6 +126,16 @@
     "legacy_patch_tools": [
       "patch_*.py",
       "patches/**"
+    ],
+    "block2_non_canonical_unreachable_source_paths": [
+      "atlas_runtime/**",
+      "atlas_paper_trading/**",
+      "backtest/**",
+      "config/**",
+      "data/**",
+      "intelligence/**",
+      "assistant/**",
+      "core/intelligence/**"
     ]
   },
   "excluded_module_patterns": [
@@ -137,6 +147,21 @@
     "core.execution_state",
     "core.*backup*",
     "core.execution_manager_v*",
-    "reports.*"
+    "core.service_registry",
+    "reports.*",
+    "atlas_runtime",
+    "atlas_runtime.*",
+    "atlas_paper_trading",
+    "atlas_paper_trading.*",
+    "backtest",
+    "backtest.*",
+    "config",
+    "config.*",
+    "data",
+    "data.*",
+    "intelligence",
+    "intelligence.*",
+    "assistant",
+    "assistant.*"
   ]
 }
