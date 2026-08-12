@@ -2025,16 +2025,10 @@ class ExecutionManager:
             # Keep this explicit assertion at the execution seam.
             if canonical.approved_allocation != Decimal(str(request.amount)):
                 return {"approved": False, "reason": "RISK_ALLOCATION_MISMATCH"}
-            if request.action == "BUY" and not request.reduce_only:
-                try:
-                    self.reservation_ledger.reserve(request.request_id, request.request_id,
-                                                    canonical.approved_allocation)
-                except Exception as exc:
-                    self._record_error(phase="capital_reservation", error=exc, request=request)
-                    return {"approved": False, "reason": "CAPITAL_RESERVATION_FAILED",
-                            "status": "BLOCK_RECOVERY_REQUIRED"}
-            self._risk_admissions[request.request_id] = self._risk_admission_key(request)
 
+        # Every reject-capable compatibility gate must run before capital is
+        # reserved and admission is recorded, so a rejection here never
+        # leaves a reservation or admission behind (Block-2 M-1).
         if request.action == "BUY":
             allowed = self._can_open_position(
                 request.symbol
@@ -2056,6 +2050,16 @@ class ExecutionManager:
 
         if not capital_result["approved"]:
             return capital_result
+
+        if request.action == "BUY" and not request.reduce_only:
+            try:
+                self.reservation_ledger.reserve(request.request_id, request.request_id,
+                                                canonical.approved_allocation)
+            except Exception as exc:
+                self._record_error(phase="capital_reservation", error=exc, request=request)
+                return {"approved": False, "reason": "CAPITAL_RESERVATION_FAILED",
+                        "status": "BLOCK_RECOVERY_REQUIRED"}
+        self._risk_admissions[request.request_id] = self._risk_admission_key(request)
 
         return {
             "approved": True,
