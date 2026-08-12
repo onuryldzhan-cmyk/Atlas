@@ -992,12 +992,10 @@ class DecisionAdapter:
         if raw_risk_level:
             metadata["raw_risk_level"] = raw_risk_level
 
-        shadow_proposal = self._extract_phase5_proposal(
-            phase5_proposal
+        self._resolve_phase5_metadata(
+            metadata=metadata,
+            phase5_proposal=phase5_proposal,
         )
-
-        if shadow_proposal is not None:
-            metadata["phase5_proposal"] = shadow_proposal
 
         return sanitize_sensitive_mapping(
             metadata
@@ -1006,6 +1004,129 @@ class DecisionAdapter:
     # =========================================================
     # PHASE-5 SHADOW-ONLY ADVISORY METADATA
     # =========================================================
+
+    def _resolve_phase5_metadata(
+        self,
+        *,
+        metadata: dict[str, Any],
+        phase5_proposal: Any,
+    ) -> None:
+        """
+        Resolve a dual-producer collision on metadata["phase5_proposal"].
+
+        Two independent producers can populate this key: source metadata
+        already carrying a proposal (e.g. from an upstream caller), and
+        this call's explicit ``phase5_proposal`` argument. Mutates
+        ``metadata`` in place; never raises. On any unexpected failure
+        the dict is left exactly as it stood on entry, so a defect in
+        collision handling can never turn a research/audit concern into
+        an execution-affecting failure.
+
+        No-collision behavior is unchanged from the prior contract:
+        - no source proposal, no argument -> no key added
+        - no source proposal, valid argument -> argument wins
+        - no source proposal, malformed argument -> no key added
+        - source proposal present, no argument -> source proposal kept
+
+        Collision behavior (source proposal present AND an argument was
+        supplied):
+        - normalized values equal -> idempotent, no provenance recorded
+        - normalized values differ -> argument wins at the canonical
+          key; the displaced source proposal is preserved under
+          "phase5_provenance", and one warning is logged
+        - argument is malformed/unusable -> source proposal is kept
+          unchanged; the rejection is recorded under "phase5_provenance"
+          (the malformed object itself is never stored), and one
+          warning is logged
+        """
+
+        try:
+            existing_proposal = metadata.get(
+                "phase5_proposal"
+            )
+
+            if not isinstance(
+                existing_proposal,
+                dict,
+            ):
+                existing_proposal = None
+
+            explicit_supplied = (
+                phase5_proposal is not None
+            )
+
+            shadow_proposal = self._extract_phase5_proposal(
+                phase5_proposal
+            )
+
+            if existing_proposal is None:
+                if shadow_proposal is not None:
+                    metadata[
+                        "phase5_proposal"
+                    ] = shadow_proposal
+
+                return
+
+            if not explicit_supplied:
+                return
+
+            if shadow_proposal is not None:
+                if shadow_proposal == existing_proposal:
+                    return
+
+                metadata[
+                    "phase5_proposal"
+                ] = shadow_proposal
+
+                metadata[
+                    "phase5_provenance"
+                ] = {
+                    "collision": True,
+                    "resolution": "explicit_argument",
+                    "source_metadata_proposal": existing_proposal,
+                    "explicit_argument_proposal": shadow_proposal,
+                }
+
+                logger.warning(
+                    "Phase-5 metadata collision: explicit proposal "
+                    "(decision_id=%s) superseded source metadata "
+                    "proposal (decision_id=%s)",
+                    shadow_proposal.get(
+                        "decision_id",
+                        "unknown",
+                    ),
+                    existing_proposal.get(
+                        "decision_id",
+                        "unknown",
+                    ),
+                )
+
+                return
+
+            metadata[
+                "phase5_provenance"
+            ] = {
+                "collision": True,
+                "resolution": "explicit_argument_rejected_malformed",
+                "source_metadata_proposal": existing_proposal,
+                "explicit_argument_status": "malformed_or_unusable",
+            }
+
+            logger.warning(
+                "Phase-5 metadata collision: explicit proposal "
+                "rejected as malformed; keeping source metadata "
+                "proposal (decision_id=%s)",
+                existing_proposal.get(
+                    "decision_id",
+                    "unknown",
+                ),
+            )
+
+        except Exception:
+            logger.exception(
+                "Phase-5 metadata collision handling failed; "
+                "preserving inherited proposal"
+            )
 
     @staticmethod
     def _extract_phase5_proposal(
