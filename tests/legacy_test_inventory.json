@@ -215,16 +215,6 @@
       "discovered_test_classes": 0
     },
     {
-      "path": "test_decision_adapter.py",
-      "classification": "LEGACY",
-      "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",
-      "top_level_execution_side_effects": true,
-      "safe_for_pytest_collection": false,
-      "canonical_replacement_test": null,
-      "discovered_test_functions": 0,
-      "discovered_test_classes": 0
-    },
-    {
       "path": "test_evaluator.py",
       "classification": "LEGACY",
       "reason": "Pre-remediation root manual/legacy script outside canonical pytest discovery",

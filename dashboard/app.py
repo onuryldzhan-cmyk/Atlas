@@ -325,7 +325,7 @@ def init_system():
             brain = None
         
         try:
-            from portfolio.capital_manager import CapitalManager  # NOT (konsolidasyon): core.capital_manager diye bir dosya yok
+            from portfolio.capital_manager import CapitalManager  # NOT (konsolidasyon): core.capital_manager dosyasi mevcut ama legacy/non-canonical (main.py zincirinden erisilemiyor); portfolio.capital_manager canonical/live olandir.
             capital_manager = CapitalManager()
             logger.info("CapitalManager baslatildi")
         except ImportError as e:

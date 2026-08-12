@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import ast
+import fnmatch
 import hashlib
 import json
 from pathlib import Path
@@ -43,6 +45,85 @@ def test_canonical_distribution_includes_required_and_excludes_legacy() -> None:
     assert not any(path.startswith("database/") for path in selected)
     assert not any(Path(path).name.startswith("test_") for path in selected)
     assert not any("backup" in path.lower() for path in selected)
+
+
+# Historical-variant naming conventions observed in this repository that a bare
+# "backup" substring check does not catch (e.g. "*_before_*" snapshots taken by
+# one-shot patch scripts). Matched against each selected file's basename.
+_HISTORICAL_VARIANT_PATTERNS = (
+    "*_before_*",
+    "*.bak",
+    "*.backup_*",
+    "*_backup*.py",
+)
+
+
+def test_canonical_distribution_excludes_historical_variant_patterns() -> None:
+    manifest = _load_manifest(DEFAULT_MANIFEST)
+    selected = select_distribution_files(
+        REPOSITORY_ROOT,
+        manifest,
+        include_tests=False,
+    )
+
+    violations = [
+        path
+        for path in selected
+        if any(
+            fnmatch.fnmatch(Path(path).name, pattern)
+            for pattern in _HISTORICAL_VARIANT_PATTERNS
+        )
+    ]
+    assert violations == []
+
+
+def test_canonical_distribution_has_single_execution_manager_authority() -> None:
+    # Narrow semantic guard: at most one selected core/*.py file may define a
+    # `class ExecutionManager` carrying a `VERSION` attribute. This catches
+    # duplicate-authority leaks (e.g. a historical snapshot with a different
+    # filename) that path-pattern matching alone cannot anticipate.
+    manifest = _load_manifest(DEFAULT_MANIFEST)
+    selected = select_distribution_files(
+        REPOSITORY_ROOT,
+        manifest,
+        include_tests=False,
+    )
+
+    authorities = []
+    for path in selected:
+        if not path.startswith("core/") or not path.endswith(".py"):
+            continue
+        tree = ast.parse(
+            (REPOSITORY_ROOT / path).read_text(encoding="utf-8-sig"),
+            filename=path,
+        )
+        for node in ast.walk(tree):
+            if not (isinstance(node, ast.ClassDef) and node.name == "ExecutionManager"):
+                continue
+            has_version_attribute = any(
+                isinstance(stmt, ast.Assign)
+                and any(
+                    isinstance(target, ast.Name) and target.id == "VERSION"
+                    for target in stmt.targets
+                )
+                for stmt in node.body
+            )
+            if has_version_attribute:
+                authorities.append(path)
+
+    assert authorities == ["core/execution_manager.py"]
+
+
+def test_canonical_distribution_capital_manager_authority() -> None:
+    manifest = _load_manifest(DEFAULT_MANIFEST)
+    selected = select_distribution_files(
+        REPOSITORY_ROOT,
+        manifest,
+        include_tests=False,
+    )
+
+    assert "portfolio/capital_manager.py" in selected
+    assert "core/capital_manager.py" not in selected
 
 
 def test_distribution_path_normalization_rejects_escape() -> None:

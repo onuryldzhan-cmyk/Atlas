@@ -1,0 +1,184 @@
+{
+  "schema_version": "1.0",
+  "report_version": "1.0",
+  "operation": "QUARANTINE_RELOCATION",
+  "phase": 1,
+  "authority": "PHASE1_CANONICAL_MODULE_BOUNDARY_REMEDIATION (cumulative across batches; see 'batches' for per-batch authority)",
+  "basis": "PHASE1_CANONICAL_MODULE_BOUNDARY_SAFETY_REVIEW; batch 2 additionally basis'd on the follow-up capital_manager authority re-verification performed immediately before that move. See 'batches' for per-batch detail.",
+  "source_root": "core",
+  "destination_root": "_quarantine/phase1/core",
+  "moved_count": 19,
+  "moved_at_utc": "2026-08-11T06:12:35.480057+00:00",
+  "safety": "No file was deleted, in any batch. All 19 relocations (18 in batch 1, 1 in batch 2) are tracked git renames (git mv), independently confirmed as 100% content-similarity renames (0 insertions, 0 deletions) via `git diff --cached -M100%`.",
+  "hash_methodology": "sha256_before is computed from the canonical git blob at HEAD:<original_path>; sha256_after is computed from the canonical git blob staged at :0:<quarantine_path> after `git mv`. Both are git's internal content-addressed objects, unaffected by Windows checkout-time CRLF normalization of on-disk working-tree files, so sha256_before and sha256_after are directly comparable byte-for-byte.",
+  "records": [
+    {
+      "original_path": "core/atlas_brain.py.bak",
+      "quarantine_path": "_quarantine/phase1/core/atlas_brain.py.bak",
+      "sha256_before": "0637854e4b34abc4757bf55f67d2ad12aa6fc5ab13fca6584a466d825a6bd9ff",
+      "sha256_after": "0637854e4b34abc4757bf55f67d2ad12aa6fc5ab13fca6584a466d825a6bd9ff",
+      "hash_match": true,
+      "moved_at_utc": "2026-08-11T06:04:30.246384+00:00"
+    },
+    {
+      "original_path": "core/brain.py.backup_v5",
+      "quarantine_path": "_quarantine/phase1/core/brain.py.backup_v5",
+      "sha256_before": "a6e92f2a3926b6297dd83c4abe9c725d09e040b9b5bd07c4f808be7fc2c8f602",
+      "sha256_after": "a6e92f2a3926b6297dd83c4abe9c725d09e040b9b5bd07c4f808be7fc2c8f602",
+      "hash_match": true,
+      "moved_at_utc": "2026-08-11T06:04:30.246384+00:00"
+    },
+    {
+      "original_path": "core/candle_processor_phase6a9_backup.py",
+      "quarantine_path": "_quarantine/phase1/core/candle_processor_phase6a9_backup.py",
+      "sha256_before": "affb3314db1995618305aa6c2dbb9da3407f5f65f1b2a59544837fee31d747fe",
+      "sha256_after": "affb3314db1995618305aa6c2dbb9da3407f5f65f1b2a59544837fee31d747fe",
+      "hash_match": true,
+      "moved_at_utc": "2026-08-11T06:04:30.246384+00:00"
+    },
+    {
+      "original_path": "core/capital_manager.py",
+      "quarantine_path": "_quarantine/phase1/core/capital_manager.py",
+      "sha256_before": "5f2fa633338091796051b2f3b5dbdf4be0c2f6ddc74fc0ec3e2ea531c479e0bb",
+      "sha256_after": "5f2fa633338091796051b2f3b5dbdf4be0c2f6ddc74fc0ec3e2ea531c479e0bb",
+      "hash_match": true,
+      "moved_at_utc": "2026-08-11T06:12:35.480057+00:00"
+    },
+    {
+      "original_path": "core/decision_engine.py.bak",
+      "quarantine_path": "_quarantine/phase1/core/decision_engine.py.bak",
+      "sha256_before": "6c23df1e48ea255f7f73d5b83354920ab078175a67cf5c58bd7cd9d6857344bf",
+      "sha256_after": "6c23df1e48ea255f7f73d5b83354920ab078175a67cf5c58bd7cd9d6857344bf",
+      "hash_match": true,
+      "moved_at_utc": "2026-08-11T06:04:30.246384+00:00"
+    },
+    {
+      "original_path": "core/execution_manager_phase6a9_4a_backup.py",
+      "quarantine_path": "_quarantine/phase1/core/execution_manager_phase6a9_4a_backup.py",
+      "sha256_before": "d2b66eabc8fae2660778641abba2cb0acaa6cd03755d3d25168a673c606c118b",
+      "sha256_after": "d2b66eabc8fae2660778641abba2cb0acaa6cd03755d3d25168a673c606c118b",
+      "hash_match": true,
+      "moved_at_utc": "2026-08-11T06:04:30.246384+00:00"
+    },
+    {
+      "original_path": "core/execution_manager_phase6a9_4b_backup.py",
+      "quarantine_path": "_quarantine/phase1/core/execution_manager_phase6a9_4b_backup.py",
+      "sha256_before": "59d32818744eeadc3f03efb95fcc1c39fd31e7cbb078dfba055c4c8898770573",
+      "sha256_after": "59d32818744eeadc3f03efb95fcc1c39fd31e7cbb078dfba055c4c8898770573",
+      "hash_match": true,
+      "moved_at_utc": "2026-08-11T06:04:30.246384+00:00"
+    },
+    {
+      "original_path": "core/execution_manager_phase7a2_backup.py",
+      "quarantine_path": "_quarantine/phase1/core/execution_manager_phase7a2_backup.py",
+      "sha256_before": "0d581b6740cc37a3b16b413d1ac13aced624f4d97b0e054a5b75661d2a876827",
+      "sha256_after": "0d581b6740cc37a3b16b413d1ac13aced624f4d97b0e054a5b75661d2a876827",
+      "hash_match": true,
+      "moved_at_utc": "2026-08-11T06:04:30.246384+00:00"
+    },
+    {
+      "original_path": "core/execution_manager_v30_backup.py",
+      "quarantine_path": "_quarantine/phase1/core/execution_manager_v30_backup.py",
+      "sha256_before": "07f032a97321fd36d95a565e4a4f67d31684f377b30de9bdce57dc0ad72ade5e",
+      "sha256_after": "07f032a97321fd36d95a565e4a4f67d31684f377b30de9bdce57dc0ad72ade5e",
+      "hash_match": true,
+      "moved_at_utc": "2026-08-11T06:04:30.246384+00:00"
+    },
+    {
+      "original_path": "core/execution_manager_v31_0_backup.py",
+      "quarantine_path": "_quarantine/phase1/core/execution_manager_v31_0_backup.py",
+      "sha256_before": "0e8d0f929288c7b212c0750332bc636a78b0c7d0214e10501091364f8207909b",
+      "sha256_after": "0e8d0f929288c7b212c0750332bc636a78b0c7d0214e10501091364f8207909b",
+      "hash_match": true,
+      "moved_at_utc": "2026-08-11T06:04:30.246384+00:00"
+    },
+    {
+      "original_path": "core/execution_manager_v31_1_backup.py",
+      "quarantine_path": "_quarantine/phase1/core/execution_manager_v31_1_backup.py",
+      "sha256_before": "93d41e8c209f8d632076f18e6b4db04a5d2aded6b39be07439fc24da278c0542",
+      "sha256_after": "93d41e8c209f8d632076f18e6b4db04a5d2aded6b39be07439fc24da278c0542",
+      "hash_match": true,
+      "moved_at_utc": "2026-08-11T06:04:30.246384+00:00"
+    },
+    {
+      "original_path": "core/execution_manager_v31_1_before_runtime_state.py",
+      "quarantine_path": "_quarantine/phase1/core/execution_manager_v31_1_before_runtime_state.py",
+      "sha256_before": "93d41e8c209f8d632076f18e6b4db04a5d2aded6b39be07439fc24da278c0542",
+      "sha256_after": "93d41e8c209f8d632076f18e6b4db04a5d2aded6b39be07439fc24da278c0542",
+      "hash_match": true,
+      "moved_at_utc": "2026-08-11T06:04:30.246384+00:00"
+    },
+    {
+      "original_path": "core/execution_manager_v31_2a_backup.py",
+      "quarantine_path": "_quarantine/phase1/core/execution_manager_v31_2a_backup.py",
+      "sha256_before": "953dfb952824d486224632f9e8b9592ef227fc872217417c221538a0fcb01022",
+      "sha256_after": "953dfb952824d486224632f9e8b9592ef227fc872217417c221538a0fcb01022",
+      "hash_match": true,
+      "moved_at_utc": "2026-08-11T06:04:30.246384+00:00"
+    },
+    {
+      "original_path": "core/execution_manager_v31_2b_backup.py",
+      "quarantine_path": "_quarantine/phase1/core/execution_manager_v31_2b_backup.py",
+      "sha256_before": "bd18735dd68ffb80fa743a8093819ff97ea4911959848a7fe33be501de472af9",
+      "sha256_after": "bd18735dd68ffb80fa743a8093819ff97ea4911959848a7fe33be501de472af9",
+      "hash_match": true,
+      "moved_at_utc": "2026-08-11T06:04:30.246384+00:00"
+    },
+    {
+      "original_path": "core/execution_manager_v31_before_idempotency_hotfix.py",
+      "quarantine_path": "_quarantine/phase1/core/execution_manager_v31_before_idempotency_hotfix.py",
+      "sha256_before": "738829eab9a01df3ede4a7656f97d6d7a42f67647100ab93b344cf9079387c69",
+      "sha256_after": "738829eab9a01df3ede4a7656f97d6d7a42f67647100ab93b344cf9079387c69",
+      "hash_match": true,
+      "moved_at_utc": "2026-08-11T06:04:30.246384+00:00"
+    },
+    {
+      "original_path": "core/market_loop_phase6a9_2_backup.py",
+      "quarantine_path": "_quarantine/phase1/core/market_loop_phase6a9_2_backup.py",
+      "sha256_before": "c985cd4b82530265d53406274e196c176a883fa68fc7821b2dda2680759deae5",
+      "sha256_after": "c985cd4b82530265d53406274e196c176a883fa68fc7821b2dda2680759deae5",
+      "hash_match": true,
+      "moved_at_utc": "2026-08-11T06:04:30.246384+00:00"
+    },
+    {
+      "original_path": "core/market_loop_phase6a9_backup.py",
+      "quarantine_path": "_quarantine/phase1/core/market_loop_phase6a9_backup.py",
+      "sha256_before": "3cd07787c77fde9ed462e11de1500afa9e6ea9a6d9fc0594da42b139ef246f1f",
+      "sha256_after": "3cd07787c77fde9ed462e11de1500afa9e6ea9a6d9fc0594da42b139ef246f1f",
+      "hash_match": true,
+      "moved_at_utc": "2026-08-11T06:04:30.246384+00:00"
+    },
+    {
+      "original_path": "core/memory.py.bak",
+      "quarantine_path": "_quarantine/phase1/core/memory.py.bak",
+      "sha256_before": "f0e5f34c0e98094b284c67a9f14f3b86f4cb274f519863dae20610501783b009",
+      "sha256_after": "f0e5f34c0e98094b284c67a9f14f3b86f4cb274f519863dae20610501783b009",
+      "hash_match": true,
+      "moved_at_utc": "2026-08-11T06:04:30.246384+00:00"
+    },
+    {
+      "original_path": "core/trading_engine.py.bak",
+      "quarantine_path": "_quarantine/phase1/core/trading_engine.py.bak",
+      "sha256_before": "33a7923a3b1f5a549c98738ea1a0f8a99eca1b46fb08592e222b1b8bd805395f",
+      "sha256_after": "33a7923a3b1f5a549c98738ea1a0f8a99eca1b46fb08592e222b1b8bd805395f",
+      "hash_match": true,
+      "moved_at_utc": "2026-08-11T06:04:30.246384+00:00"
+    }
+  ],
+  "batches": [
+    {
+      "batch": 1,
+      "authority": "PHASE1_CANONICAL_MODULE_BOUNDARY_REMEDIATION_BATCH_1",
+      "basis": "PHASE1_CANONICAL_MODULE_BOUNDARY_SAFETY_REVIEW (pre-verified: zero production import, zero collected-test dependency, zero governance/inventory reference for all 18 files)",
+      "moved_count": 18,
+      "moved_at_utc": "2026-08-11T06:04:30.246384+00:00"
+    },
+    {
+      "batch": 2,
+      "authority": "PHASE1_CAPITAL_MANAGER_AUTHORITY_CLEANUP",
+      "basis": "PHASE1_CANONICAL_MODULE_BOUNDARY_SAFETY_REVIEW: portfolio.capital_manager confirmed sole implementation reachable from main.py; core.capital_manager confirmed to have zero production importers and only 4 governance-classified LEGACY (non-collected) importers, re-verified immediately before this move",
+      "moved_count": 1,
+      "moved_at_utc": "2026-08-11T06:12:35.480057+00:00"
+    }
+  ]
+}
