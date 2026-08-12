@@ -50,6 +50,7 @@ from dataclasses import field
 from datetime import UTC
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
+from enum import Enum
 from typing import Any
 from uuid import uuid4
 
@@ -179,27 +180,77 @@ def normalize_mode(
     )
 
 
-def normalize_risk(
-    risk: str | None,
-) -> str:
-    """
-    Normalize an execution risk classification.
-    """
-
-    normalized = str(
-        risk or "MEDIUM"
-    ).strip().upper()
-
-    supported_risks = {
+SUPPORTED_RISK_LEVELS = frozenset(
+    {
         "LOW",
         "MEDIUM",
         "HIGH",
         "CRITICAL",
         "UNKNOWN",
     }
+)
 
-    if normalized not in supported_risks:
-        return "UNKNOWN"
+UNSUPPORTED_RISK_LEVEL = "UNKNOWN"
+
+ABSENT_RISK_LEVEL = "MEDIUM"
+
+
+def normalize_risk(
+    risk: Any,
+) -> str:
+    """
+    Normalize an execution risk classification (canonical, syntactic only).
+
+    This is syntax, not policy: it never decides admission, it only resolves
+    a supplied value onto the canonical vocabulary.
+
+    Contract
+    --------
+
+    - absent value (``None`` / empty / whitespace) -> ``MEDIUM``
+      (frozen legacy compatibility default)
+    - supported label (LOW, MEDIUM, HIGH, CRITICAL, UNKNOWN) -> itself,
+      case-insensitive, whitespace stripped, ``RiskLevel.HIGH``-style
+      dotted and Enum forms resolved to their analytical value
+    - present but unsupported label (EXTREME, VERY_HIGH, SEVERE, any future
+      label) -> ``UNKNOWN``
+
+    An unsupported classification must never inherit the ``MEDIUM`` absence
+    default, because ``MEDIUM`` is an executable bucket and an unrecognized
+    value has no authority to open exposure.
+    """
+
+    if risk is None:
+        return ABSENT_RISK_LEVEL
+
+    if isinstance(
+        risk,
+        Enum,
+    ):
+        risk = (
+            risk.value
+            if isinstance(
+                risk.value,
+                str,
+            )
+            else risk.name
+        )
+
+    normalized = str(
+        risk
+    ).strip().upper()
+
+    if not normalized:
+        return ABSENT_RISK_LEVEL
+
+    if "." in normalized:
+        normalized = normalized.rsplit(
+            ".",
+            maxsplit=1,
+        )[-1].strip()
+
+    if normalized not in SUPPORTED_RISK_LEVELS:
+        return UNSUPPORTED_RISK_LEVEL
 
     return normalized
 

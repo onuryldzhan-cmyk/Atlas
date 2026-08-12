@@ -65,6 +65,8 @@ from typing import Any, ClassVar
 
 from atlas_security import sanitize_sensitive_mapping
 
+from core.execution_models import normalize_risk
+
 
 logger = logging.getLogger(
     "AtlasAI.DecisionAdapter"
@@ -125,6 +127,18 @@ class DecisionAdapter:
             "CRITICAL",
         }
     )
+
+    RISK_KEYS: ClassVar[tuple[str, ...]] = (
+        "risk_level",
+        "risk",
+        "risk_category",
+    )
+
+    # Legacy absence default.  Applies only when no risk value is supplied.
+    ABSENT_RISK_LEVEL: ClassVar[str] = "MEDIUM"
+
+    # Present-but-unrecognized classification.  Non-executable downstream.
+    UNSUPPORTED_RISK_LEVEL: ClassVar[str] = "UNKNOWN"
 
     # Final Decision Builder confidence values must be checked
     # before intermediate intelligence confidence values.
@@ -393,6 +407,9 @@ class DecisionAdapter:
             action=action,
             confidence=confidence,
             phase5_proposal=phase5_proposal,
+            raw_risk_level=self.get_raw_risk_level(
+                data
+            ),
         )
 
         return {
@@ -761,27 +778,90 @@ class DecisionAdapter:
         data: dict[str, Any],
     ) -> str:
         """
-        Extract LOW, MEDIUM, HIGH or CRITICAL risk.
+        Extract LOW, MEDIUM, HIGH, CRITICAL or UNKNOWN risk.
+
+        Absence and unsupported values are deliberately different states:
+
+        - no risk field / ``None`` / empty -> ``MEDIUM``
+          (frozen legacy compatibility default)
+        - present but unsupported value -> ``UNKNOWN``
+
+        An unrecognized classification must not inherit the executable
+        ``MEDIUM`` default; downstream admission owns what happens next.
+        This layer normalizes syntax only and never grants permission.
         """
 
         raw_risk = self._first_value(
             data=data,
-            keys=(
-                "risk_level",
-                "risk",
-                "risk_category",
-            ),
-            default="MEDIUM",
+            keys=self.RISK_KEYS,
+            default=None,
         )
 
-        risk_level = self._normalize_enum_or_string(
+        if raw_risk is None:
+            return self.ABSENT_RISK_LEVEL
+
+        normalized_value = self._normalize_enum_or_string(
             raw_risk
         )
 
-        if risk_level not in self.VALID_RISK_LEVELS:
-            return "MEDIUM"
+        if not normalized_value:
+            return self.ABSENT_RISK_LEVEL
+
+        # Vocabulary resolution is delegated to the canonical syntactic
+        # normalizer so every construction path shares one contract.
+        risk_level = normalize_risk(
+            normalized_value
+        )
+
+        if (
+            risk_level == self.UNSUPPORTED_RISK_LEVEL
+            and normalized_value != self.UNSUPPORTED_RISK_LEVEL
+        ):
+            logger.warning(
+                "Unsupported decision risk level normalized to %s: %r",
+                self.UNSUPPORTED_RISK_LEVEL,
+                raw_risk,
+            )
 
         return risk_level
+
+    def get_raw_risk_level(
+        self,
+        data: dict[str, Any],
+    ) -> str | None:
+        """
+        Return the original risk value when it is present but unsupported.
+
+        Diagnostics only.  It exists so an ``EXTREME`` classification is not
+        lost once the canonical value becomes ``UNKNOWN``; it must never be
+        consulted for admission.
+        """
+
+        raw_risk = self._first_value(
+            data=data,
+            keys=self.RISK_KEYS,
+            default=None,
+        )
+
+        if raw_risk is None:
+            return None
+
+        if self.get_risk_level(
+            data
+        ) != self.UNSUPPORTED_RISK_LEVEL:
+            return None
+
+        original = str(
+            raw_risk
+        ).strip()
+
+        if (
+            not original
+            or original.upper() == self.UNSUPPORTED_RISK_LEVEL
+        ):
+            return None
+
+        return original
 
     # =========================================================
     # STRATEGY NORMALIZATION
@@ -861,9 +941,14 @@ class DecisionAdapter:
         action: str,
         confidence: float,
         phase5_proposal: Any = None,
+        raw_risk_level: str | None = None,
     ) -> dict[str, Any]:
         """
         Preserve source metadata and append adapter diagnostics.
+
+        ``raw_risk_level`` is recorded only when an explicit risk value was
+        unsupported and therefore normalized to ``UNKNOWN``.  It is a
+        diagnostic breadcrumb; no admission decision may read it.
         """
 
         source_metadata = data.get(
@@ -903,6 +988,9 @@ class DecisionAdapter:
                 ),
             }
         )
+
+        if raw_risk_level:
+            metadata["raw_risk_level"] = raw_risk_level
 
         shadow_proposal = self._extract_phase5_proposal(
             phase5_proposal
@@ -991,6 +1079,13 @@ class DecisionAdapter:
     ) -> str:
         """
         Normalize Enum and dotted values such as DecisionAction.BUY.
+
+        Only genuine ``Enum`` instances receive Enum semantics. Arbitrary
+        objects that merely expose a ``.value`` (or ``.name``) attribute are
+        never granted Enum extraction: that duck-typed path let a spoofed
+        object impersonate a trusted classification (NBF-6). Anything that
+        is not an ``Enum`` falls through to plain string representation,
+        exactly like any other unsupported value.
         """
 
         if isinstance(
@@ -1007,22 +1102,6 @@ class DecisionAdapter:
                 )
                 else value.name
             )
-
-        elif hasattr(
-            value,
-            "value",
-        ):
-            possible_value = getattr(
-                value,
-                "value",
-                None,
-            )
-
-            if isinstance(
-                possible_value,
-                str,
-            ):
-                value = possible_value
 
         normalized = str(
             value

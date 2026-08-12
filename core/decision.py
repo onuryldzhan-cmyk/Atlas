@@ -53,6 +53,44 @@ class RiskLevel(Enum):
     CRITICAL = "CRITICAL"
 
 
+_RISK_LEVEL_VALUES = frozenset(member.value for member in RiskLevel)
+
+
+def _coerce_risk_level(value: Any) -> RiskLevel:
+    """Canonicalize a raw ``risk_level`` input into the strict RiskLevel taxonomy.
+
+    ``Decision.risk_level`` is a strict analytical domain field: every
+    successfully constructed/mutated Decision must hold a real ``RiskLevel``
+    member. Enum inputs (e.g. ``RiskCategory``, ``RiskBucket``) are trusted
+    only when their semantic value resolves to a genuine RiskLevel member;
+    arbitrary objects are never trusted merely because they expose ``.value``.
+    """
+
+    if isinstance(value, RiskLevel):
+        return value
+
+    if isinstance(value, Enum):
+        raw = value.value if isinstance(value.value, str) else value.name
+        if raw in _RISK_LEVEL_VALUES:
+            return RiskLevel(raw)
+        raise ValueError(
+            f"Unsupported risk_level enum value: {value!r}"
+        )
+
+    if isinstance(value, str):
+        normalized = value.upper()
+        if normalized in _RISK_LEVEL_VALUES:
+            return RiskLevel(normalized)
+        raise ValueError(
+            f"Unsupported risk_level string: {value!r}"
+        )
+
+    raise TypeError(
+        f"risk_level must be a RiskLevel, a recognized Enum, or a string; "
+        f"got {type(value).__name__}"
+    )
+
+
 
 
 
@@ -124,25 +162,25 @@ class Decision:
             )
 
 
-        if isinstance(
-            self.risk_level,
-            str
-        ):
-
-            self.risk_level = RiskLevel(
-                self.risk_level.upper()
-            )
+        self.risk_level = _coerce_risk_level(
+            self.risk_level
+        )
 
 
+        # Clamp bounds are float literals, not int, so the result stays
+        # float regardless of which operand max()/min() select: mixing
+        # an int literal into either call silently reverts a value that
+        # was just cast to float back to int whenever that literal is
+        # the one selected (e.g. max(0, 0.0) -> 0, not 0.0).
         self.confidence = max(
 
-            0,
+            0.0,
 
             min(
 
                 float(self.confidence),
 
-                100
+                100.0
 
             )
 
@@ -150,6 +188,23 @@ class Decision:
 
 
 
+
+
+    # =================================================
+    # LIFETIME TYPE INVARIANT (NBF-7)
+    # =================================================
+
+
+    def __setattr__(self, name, value):
+
+        # __post_init__ already routes through _coerce_risk_level; this is
+        # the choke point for every *other* write path (ordinary attribute
+        # assignment), so the isinstance(risk_level, RiskLevel) invariant
+        # holds for the object's entire lifetime, not just at construction.
+        if name == "risk_level":
+            value = _coerce_risk_level(value)
+
+        super().__setattr__(name, value)
 
 
     # =================================================
@@ -175,7 +230,7 @@ class Decision:
 
         elif key == "risk_level":
 
-            self.risk_level = RiskLevel(
+            self.risk_level = _coerce_risk_level(
                 value
             )
 

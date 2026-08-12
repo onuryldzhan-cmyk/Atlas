@@ -75,6 +75,7 @@ from core.execution_transaction_journal import (
 from core.execution_models import (
     ExecutionRequest,
     ExecutionResult,
+    normalize_risk,
 )
 from core.execution_portfolio_foundation import ExecutionPortfolioFoundation
 
@@ -3879,31 +3880,20 @@ class ExecutionManager:
     def _normalize_risk_level(
         value: Any,
     ) -> str:
-        if isinstance(
-            value,
-            Enum,
-        ):
-            value = value.value
+        """
+        Normalize a decision risk value onto the canonical vocabulary.
 
-        risk = str(
+        Delegates to the same normalizer ``ExecutionRequest`` applies, so a
+        request built here and a request constructed directly cannot carry
+        different risk semantics.  Absence still defaults to ``MEDIUM``; a
+        present but unsupported value becomes ``UNKNOWN`` and is never
+        promoted into an executable bucket.  Admission is decided later, by
+        ``RiskEngine.evaluate``.
+        """
+
+        return normalize_risk(
             value
-        ).strip().upper()
-
-        if "." in risk:
-            risk = risk.rsplit(
-                ".",
-                maxsplit=1,
-            )[-1]
-
-        if risk not in {
-            "LOW",
-            "MEDIUM",
-            "HIGH",
-            "CRITICAL",
-        }:
-            return "MEDIUM"
-
-        return risk
+        )
 
     @staticmethod
     def _normalize_metadata(

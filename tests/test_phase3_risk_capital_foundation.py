@@ -71,9 +71,14 @@ def test_bucket_confidence_policy(bucket, confidence, approved):
 
 
 def test_invalid_bucket_fails_closed():
+    """NBF-4 (Policy D') gave unsupported risk its own non-executable reason
+    code; it previously fell into the malformed-input code.  Fail-closed
+    strength is unchanged: still REJECT, still zero allocation."""
     result = RiskEngine(policy()).evaluate(request(bucket="UNKNOWN"), state())
     assert result.status is RiskDecisionStatus.REJECT
-    assert result.reason_code == "INVALID_FINANCIAL_INPUT"
+    assert result.reason_code == "UNSUPPORTED_RISK_LEVEL"
+    assert result.approved_allocation == D("0")
+    assert result.approved is False
 
 
 def test_exposure_reconciliation_prevents_stale_or_duplicate_accounting():

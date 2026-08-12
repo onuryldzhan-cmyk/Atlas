@@ -3,6 +3,34 @@
 This module performs calculations only.  Callers own authoritative portfolio
 and accounting persistence and must restore it before setting ``state_ready``.
 All financially material values are Decimal; binary floats are rejected.
+
+Risk taxonomy projection
+------------------------
+Upstream analytical risk has four states (LOW, MEDIUM, HIGH, CRITICAL);
+executable bucket policy has three (``RiskBucket``).  CRITICAL is a valid
+upstream state, not malformed input, so it stays visible in decision and
+audit contracts and is never normalized away or aliased to HIGH.  It simply
+cannot open or increase exposure: a new-risk request carrying CRITICAL is
+rejected with ``CRITICAL_RISK_NOT_EXECUTABLE`` and zero allocation.  Genuine
+risk reduction stays permitted, because refusing to let a position be closed
+would trap exposure in exactly the state judged most dangerous; such requests
+still satisfy every existing reduction check before approval.
+
+Unsupported risk (NBF-4)
+------------------------
+A risk classification that is present but that Atlas does not understand
+(``EXTREME``, ``VERY_HIGH``, ``SEVERE``, any future label) is a fifth
+analytical state, distinct from both CRITICAL and malformed input.  It
+carries no policy, so it can never be resolved into an executable bucket:
+it collapses onto the ``UNKNOWN`` sentinel and a new-risk request carrying
+it is rejected with ``UNSUPPORTED_RISK_LEVEL`` and zero allocation.  Like
+CRITICAL, it does not trap exposure: a structurally verified reduce-only
+exit is still approved through the existing reduction checks.
+
+Absence is deliberately *not* this state.  A missing/None/empty risk value
+retains its legacy ``MEDIUM`` default, which is applied by the syntactic
+normalization layers before a request reaches this module; an empty value
+arriving here is therefore malformed input, not absence.
 """
 
 from __future__ import annotations
@@ -28,6 +56,46 @@ class RiskBucket(str, Enum):
     LOW = "LOW"
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"
+
+
+NON_EXECUTABLE_RISK_LEVELS = frozenset({"CRITICAL"})
+UNSUPPORTED_RISK_SENTINEL = "UNKNOWN"
+ANALYTICAL_RISK_LEVELS = (
+    frozenset(b.value for b in RiskBucket)
+    | NON_EXECUTABLE_RISK_LEVELS
+    | {UNSUPPORTED_RISK_SENTINEL}
+)
+
+
+def analytical_risk_level(value: Any) -> str:
+    """Resolve a request risk level inside the analytical taxonomy.
+
+    Recognized states are LOW / MEDIUM / HIGH (executable), CRITICAL (valid
+    maximum-risk, non-executable) and UNKNOWN (unsupported, non-executable).
+
+    A present but unrecognized classification collapses onto the UNKNOWN
+    sentinel rather than raising: it is a real upstream state Atlas cannot
+    interpret, and it must fail closed as unsupported instead of being
+    reported as malformed financial input or resolved to a bucket.
+
+    An absent, empty or non-textual value still raises, so it keeps failing
+    closed as malformed financial input exactly as before.  Absence defaults
+    belong to the syntactic normalization layers, not to this boundary.
+    """
+    if isinstance(value, RiskBucket):
+        return value.value
+    if isinstance(value, Enum):
+        raw = value.value if isinstance(value.value, str) else value.name
+    elif isinstance(value, str):
+        raw = value
+    else:
+        raise ValueError("risk level must be a risk enum or string")
+    level = raw.strip().upper()
+    if not level:
+        raise ValueError("risk level is required")
+    if level not in ANALYTICAL_RISK_LEVELS:
+        return UNSUPPORTED_RISK_SENTINEL
+    return level
 
 
 class DrawdownLevel(str, Enum):
@@ -301,7 +369,11 @@ class RiskEngine:
             confidence = decimal_value(request.confidence, "confidence")
             allocation = decimal_value(request.requested_quote_allocation, "requested_quote_allocation", allow_zero=False)
             price = decimal_value(request.execution_price, "execution_price", allow_zero=False)
-            bucket = request.risk_bucket if isinstance(request.risk_bucket, RiskBucket) else RiskBucket(str(request.risk_bucket).upper())
+            # Analytical state only: conversion to an executable RiskBucket is
+            # deferred past the risk-reduction path so a CRITICAL or
+            # unsupported exit is not blocked for lacking a bucket it must
+            # never have.
+            risk_level = analytical_risk_level(request.risk_bucket)
             if confidence > ONE:
                 raise ValueError("confidence out of range")
             if request.base_quantity is not None:
@@ -322,7 +394,18 @@ class RiskEngine:
         if action != "BUY":
             return reject("NON_RISK_REDUCING_SELL")
 
-        bucket_policy = self.policy.buckets[bucket]
+        # New or increasing risk: CRITICAL is a valid upstream state that has
+        # no executable bucket by policy, so it is rejected on its own terms
+        # rather than resolved, aliased, or reported as malformed input.
+        if risk_level in NON_EXECUTABLE_RISK_LEVELS:
+            return reject("CRITICAL_RISK_NOT_EXECUTABLE")
+        # An unsupported classification carries no policy at all, so there is
+        # nothing to resolve it into; it fails closed on its own reason code
+        # and stays distinguishable from CRITICAL and from malformed input.
+        if risk_level == UNSUPPORTED_RISK_SENTINEL:
+            return reject("UNSUPPORTED_RISK_LEVEL")
+
+        bucket_policy = self.policy.buckets[RiskBucket(risk_level)]
         if confidence < max(self.policy.global_minimum_confidence, bucket_policy.minimum_confidence):
             return reject("CONFIDENCE_BELOW_POLICY")
         loss = max(-state.realized_daily_pnl, ZERO)
