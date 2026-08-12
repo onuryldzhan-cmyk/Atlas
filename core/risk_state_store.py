@@ -59,6 +59,19 @@ class JsonRiskStateStore:
     def __init__(self, path: str | Path) -> None:
         self.path = Path(path)
 
+    def initialize(self, value: RestoredRiskState) -> None:
+        """Create initial durable state. Never overwrites an existing file.
+
+        This is the explicit-bootstrap counterpart to
+        JsonReservationStore.initialize_empty() and
+        FinancialStateStore.initialize(): callers that need a fresh
+        accounting day 0 must construct RestoredRiskState themselves and
+        pass it in, rather than this store fabricating one.
+        """
+        if self.path.exists():
+            raise FileExistsError(self.path)
+        self.save(value)
+
     def load(self, *, expected_policy_version: str, today_utc: date) -> RestoredRiskState:
         payload: dict[str, Any] = json.loads(self.path.read_text(encoding="utf-8"))
         if payload.get("schema") != self.SCHEMA:
