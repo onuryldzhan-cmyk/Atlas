@@ -53,7 +53,7 @@ import analysis.world_analysis_engine as world_analysis_engine_module
 from analysis.evidence_status import MarketDataEvidenceStatus
 from analysis.world_analysis_engine import WorldAnalysisEngine
 from ai.core.intelligence.agent_fusion import AgentFusion
-from ai.core.intelligence.risk_engine import RiskEngine
+from ai.core.intelligence.risk_engine import AdvisoryRiskScorer
 
 
 VALID_ANALYSIS = {
@@ -773,15 +773,15 @@ def test_step2c_repeated_identical_inputs_are_deterministic():
 
 def test_risk_engine_output_unchanged_for_fixed_confidence_input():
     """
-    Item 19. RiskEngine is untouched by the Step 2C cutover. Confirms
+    Item 19. AdvisoryRiskScorer is untouched by the Step 2C cutover. Confirms
     its call signature and output for a fixed confidence input match
     the pre-existing formula exactly - the market/execution risk
     separation documented in the Phase 2 design review remains intact
-    (RiskEngine never reads market_data["risk_score"] or the "risk"
+    (AdvisoryRiskScorer never reads market_data["risk_score"] or the "risk"
     agent's score; it only ever receives `confidence=`).
     """
 
-    result = RiskEngine().calculate(confidence=0.4236)
+    result = AdvisoryRiskScorer().calculate(confidence=0.4236)
 
     assert result.to_dict() == {
         "level": "HIGH",

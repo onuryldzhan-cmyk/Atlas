@@ -26,13 +26,13 @@ from analysis.world_analysis_engine import WorldAnalysisEngine
 from ai.core.atlas_brain import AtlasBrain
 from ai.core.intelligence.agent_fusion import AgentFusion
 from ai.core.intelligence.decision_builder import DecisionBuilder
-from ai.core.intelligence.risk_engine import RiskEngine
+from ai.core.intelligence.risk_engine import AdvisoryRiskScorer
 
 
 def _build_decision(signals, unavailable_agents=None):
     fusion_engine = AgentFusion()
     fusion_result = fusion_engine.fuse(signals)
-    risk_result = RiskEngine().calculate(confidence=fusion_result.confidence)
+    risk_result = AdvisoryRiskScorer().calculate(confidence=fusion_result.confidence)
 
     return DecisionBuilder().create(
         "BTCUSDT",
@@ -186,7 +186,7 @@ def test_missing_diagnostics_does_not_break_decision_construction():
 def test_decision_builder_call_without_unavailable_agents_argument_still_works():
     fusion_engine = AgentFusion()
     fused = fusion_engine.fuse({})
-    risk = RiskEngine().calculate(confidence=fused.confidence)
+    risk = AdvisoryRiskScorer().calculate(confidence=fused.confidence)
 
     decision = DecisionBuilder().create(
         "BTCUSDT",

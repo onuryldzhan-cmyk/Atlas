@@ -29,7 +29,7 @@ import pytest
 
 from ai.core.intelligence.agent_fusion import AgentFusion
 from ai.core.intelligence.confidence.confidence_engine import ConfidenceEngine
-from ai.core.intelligence.risk_engine import RiskCategory, RiskEngine
+from ai.core.intelligence.risk_engine import AdvisoryRiskScorer, RiskCategory
 
 
 REASONING = {"confidence": 0.7}
@@ -49,7 +49,7 @@ def _agents(actions):
 
 def test_full_evidence_invariance_agreement_confidence_risk():
     engine = ConfidenceEngine()
-    risk = RiskEngine()
+    risk = AdvisoryRiskScorer()
 
     full_agents = _agents(["BUY", "BUY", "HOLD", "HOLD", "HOLD"])
 
@@ -110,7 +110,7 @@ def test_evidence_loss_does_not_increase_confidence():
 
 def test_evidence_loss_does_not_relax_risk_bucket():
     engine = ConfidenceEngine()
-    risk = RiskEngine()
+    risk = AdvisoryRiskScorer()
 
     full_agents = _agents(["BUY", "BUY", "HOLD", "HOLD", "HOLD"])
     reduced_agents = _agents(["BUY", "BUY"])

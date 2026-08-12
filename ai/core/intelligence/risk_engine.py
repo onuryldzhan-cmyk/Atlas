@@ -86,12 +86,17 @@ class RiskResult:
 
 
 # =====================================================
-# RISK ENGINE
+# ADVISORY RISK SCORER
 # =====================================================
+#
+# Renamed from RiskEngine (Package 2A, E1): core.risk_engine.RiskEngine is
+# the canonical execution/admission risk authority. This class is the
+# intelligence-layer advisory/research risk scorer and must not be confused
+# with it. No semantic behavior change.
 
 
 
-class RiskEngine:
+class AdvisoryRiskScorer:
 
 
 

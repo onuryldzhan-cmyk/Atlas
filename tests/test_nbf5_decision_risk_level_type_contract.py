@@ -1,7 +1,7 @@
 """NBF-5: Decision.risk_level strict type contract (Policy B).
 
 ``core.decision.Decision`` declares ``risk_level: RiskLevel`` but the live
-producer (``ai.core.intelligence.risk_engine.RiskEngine`` ->
+producer (``ai.core.intelligence.risk_engine.AdvisoryRiskScorer`` ->
 ``ai.core.intelligence.decision_builder.DecisionBuilder``) passed
 ``RiskCategory`` straight through, and ``Decision.__post_init__`` only
 canonicalized ``str``. ``None``, integers and arbitrary objects (including
@@ -40,9 +40,9 @@ from core.risk_engine import (
     UNSUPPORTED_RISK_SENTINEL,
 )
 
-from ai.core.intelligence.risk_engine import RiskCategory, RiskEngine
+from ai.core.intelligence.risk_engine import AdvisoryRiskScorer, RiskCategory
 from ai.core.intelligence.decision_builder import DecisionBuilder
-from ai.core.intelligence.agent_fusion import FusionResult
+from ai.core.intelligence.agent_fusion import AgentFusionResult
 from core.risk_engine import RiskBucket as ExecutableRiskBucket
 
 
@@ -202,15 +202,15 @@ def test_risk_bucket_maps_to_matching_risk_level(member):
 
 
 # =====================================================================
-# T3 - live producer integration (RiskEngine -> DecisionBuilder -> Decision)
+# T3 - live producer integration (AdvisoryRiskScorer -> DecisionBuilder -> Decision)
 # =====================================================================
 
 
 def test_live_producer_risk_category_is_canonicalized_to_risk_level():
-    risk_result = RiskEngine().calculate(confidence=0.82)
+    risk_result = AdvisoryRiskScorer().calculate(confidence=0.82)
     assert type(risk_result.level) is RiskCategory
 
-    fusion = FusionResult(action="BUY", confidence=0.82, scores={"BUY": 0.82})
+    fusion = AgentFusionResult(action="BUY", confidence=0.82, scores={"BUY": 0.82})
     decision = DecisionBuilder().create(symbol="BTCUSDT", fusion=fusion, risk=risk_result)
 
     assert isinstance(decision.risk_level, RiskLevel)

@@ -78,7 +78,7 @@ from .intelligence.confidence.confidence_engine import ConfidenceEngine
 from .intelligence.decision_builder import DecisionBuilder
 from .intelligence.memory_adapter import MemoryAdapter
 from .intelligence.reasoning_adapter import ReasoningAdapter
-from .intelligence.risk_engine import RiskEngine
+from .intelligence.risk_engine import AdvisoryRiskScorer
 
 from core.decision_intelligence import (
     Action,
@@ -149,7 +149,7 @@ class AtlasBrain:
         self.reasoning: ReasoningAdapter | None = None
         self.memory: MemoryAdapter | None = None
         self.confidence: ConfidenceEngine | None = None
-        self.risk: RiskEngine | None = None
+        self.risk: AdvisoryRiskScorer | None = None
         self.builder: DecisionBuilder | None = None
 
         self.initialize_modules()
@@ -207,7 +207,7 @@ class AtlasBrain:
 
             self.confidence = ConfidenceEngine()
 
-            self.risk = RiskEngine()
+            self.risk = AdvisoryRiskScorer()
 
             self.builder = DecisionBuilder()
 

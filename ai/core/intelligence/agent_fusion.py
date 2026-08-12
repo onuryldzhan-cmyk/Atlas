@@ -42,7 +42,7 @@ from analysis.evidence_status import MarketDataEvidenceStatus
 
 
 @dataclass
-class FusionResult:
+class AgentFusionResult:
 
 
     action: str
@@ -55,7 +55,7 @@ class FusionResult:
 
 
     # Additive, backward-compatible: existing callers that construct
-    # FusionResult with only action/confidence/scores are unaffected.
+    # AgentFusionResult with only action/confidence/scores are unaffected.
     # "FUSED_EVIDENCE" is the normal-path reason; "INSUFFICIENT_EVIDENCE"
     # marks the minimum-evidence-floor fail-safe result (see AgentFusion
     # .MIN_PARTICIPATING_AGENTS / .MIN_WEIGHT_COVERAGE), which is
@@ -553,7 +553,7 @@ class AgentFusion:
 
         ):
 
-            return FusionResult(
+            return AgentFusionResult(
 
                 action="HOLD",
 
@@ -632,7 +632,7 @@ class AgentFusion:
         if total == 0:
 
 
-            return FusionResult(
+            return AgentFusionResult(
 
                 action="HOLD",
 
@@ -722,7 +722,7 @@ class AgentFusion:
 
 
 
-        return FusionResult(
+        return AgentFusionResult(
 
             action=action,
 

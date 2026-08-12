@@ -137,7 +137,7 @@ def test_step2c_insufficient_evidence_confidence_survives_decision_construction(
 
     from ai.core.intelligence.agent_fusion import AgentFusion
     from ai.core.intelligence.decision_builder import DecisionBuilder
-    from ai.core.intelligence.risk_engine import RiskEngine
+    from ai.core.intelligence.risk_engine import AdvisoryRiskScorer
 
     fusion_engine = AgentFusion()
     # Only 2 configured agents (technical+momentum) - below the
@@ -151,7 +151,7 @@ def test_step2c_insufficient_evidence_confidence_survives_decision_construction(
     assert fusion_result.reason == "INSUFFICIENT_EVIDENCE"
     assert fusion_result.confidence == 0.0
 
-    risk_result = RiskEngine().calculate(confidence=fusion_result.confidence)
+    risk_result = AdvisoryRiskScorer().calculate(confidence=fusion_result.confidence)
     decision = DecisionBuilder().create(
         "BTCUSDT",
         fusion_result,
