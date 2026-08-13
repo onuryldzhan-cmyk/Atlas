@@ -1,0 +1,81 @@
+{
+  "schema_version": "1.0",
+  "block": 2,
+  "verdict": "PASS_WITH_BACKLOG",
+  "freeze_status": "CLOSED_FROZEN",
+  "branch": "feat/block2-architecture-core",
+  "audited_source_commit": "53e127fc53d6b1513f4eb8dff1d8fd1f9f58503b",
+  "audit": {
+    "type": "independent_red_team",
+    "blocking_count": 0,
+    "high_count": 0,
+    "medium_backlog": ["M-A", "M-B", "M-C", "M-D", "M-E", "M-F"],
+    "low_backlog": ["L-1", "L-2", "L-3", "L-4", "L-5", "L-6", "L-7", "L-8", "L-9"]
+  },
+  "python_version": "3.14.6",
+  "full_suite": {
+    "command": "python -m pytest tests/ -q --basetemp=C:/pytest_tmp_block2_freeze -p no:cacheprovider",
+    "result": "1203 passed",
+    "basetemp_caveat": "Windows account name contains a non-ASCII character, which breaks pytest's default tmp path handling; an explicit ASCII --basetemp is required."
+  },
+  "architecture_inventory": {
+    "command": "python tools/build_architecture_inventory.py check",
+    "runtime_closure_modules": 92,
+    "architecture_map_modules": 92,
+    "forbidden_edges": 0
+  },
+  "safety_posture": {
+    "paper_only": true,
+    "live_authority": false,
+    "live_denial_path": "AtlasApplication defaults to PAPER and main.py hardcodes it; live_execution_enabled defaults False and is never passed by the composition root; no environment or config path selects LIVE; request-level mode aliases (REAL/PRODUCTION/LIVE) do not change routing; live_execute denies twice and no live adapter exists.",
+    "default_deny": true
+  },
+  "closed": {
+    "package_2A": "Canonical composition root, architecture map, runtime closure, dependency rules, authority-collision resolution, quarantine.",
+    "M-1": "Reservation/admission atomicity. Every reject-capable compatibility gate runs before reserve() and before _risk_admissions is written. Verified on the application-wired ExecutionManager: repeated POSITION_LIMIT and CAPITAL_RISK_* rejections leave zero reservation delta and zero stale admissions.",
+    "package_2B": "Canonical financial-risk services wired and injected from the composition root; single instance of RiskEngine, CapitalReservationLedger, JsonRiskStateStore and ExecutionPortfolioFoundation; ExecutionManager creates no fallback for any of them.",
+    "package_2C": "Explicit financial-state bootstrap contract, secrets-provider boundary, structured observability contracts, governance/policy seam, build-provenance seam."
+  },
+  "block3_hard_entry_gates": {
+    "M-2": "MUST be resolved before any third evidence provider is enabled. Removing a dissenting participant can increase AgentFusion confidence; reproduced with max delta +0.35 (0.55 -> 0.90) across 22054 grid configurations. Unreachable today only because MIN_PARTICIPATING_AGENTS=3 exceeds the two live providers (technical, momentum); macro/sentiment/market_risk report UNAVAILABLE_NO_PROVIDER, so live fusion returns INSUFFICIENT_EVIDENCE at confidence 0.0. Enabling any third provider, including a stub, makes this immediately live and is BLOCKING until fixed. Guard: tests/test_block2c_deferred_backlog_guards.py::test_only_technical_and_momentum_have_a_live_evidence_provider must not be relaxed to unblock provider work.",
+    "M-3": "MUST be resolved before ConfidenceEngine receives dynamic risk levels. calculate_risk_penalty has no CRITICAL entry, so CRITICAL/UNKNOWN/EXTREME all fall back to the MEDIUM penalty (0.20). The sole live call site hardcodes level=MEDIUM.",
+    "LIVE": "MUST remain denied unless separately authorized and governance-gated. Any live adapter work requires an explicit authorization decision plus a real policy gate at ExecutionManager.execute(), not a configuration flag."
+  },
+  "block3_early_backlog": {
+    "M-A": "Post-reservation execution-exception cleanup. execute()'s generic exception handler and finally block release the idempotency claim but not the capital reservation or the _risk_admissions entry; the request also does not halt. Reachable only after transaction_journal.prepare() succeeds, so the leaked request always leaves a PREPARED journal entry and the next execute() halts with UNRESOLVED_JOURNAL: at most one leak per halt cycle, no silent capital drain.",
+    "M-B": "Inject idempotency/audit/transaction-journal paths from the composition root. They are constructed inside ExecutionManager from CWD-relative memory_data/ defaults while the three financial stores honour state_directory. Same state_directory with a different CWD loses duplicate detection and converts a clean DUPLICATE_REQUEST_COMPLETED into DURABLE_FINANCIAL_FINALIZATION_FAILED plus a permanent halt. Fail-closed but path-dependent, and it contradicts the ownership claim in core/application.py.",
+    "M-C": "Bootstrap must distinguish corrupt from valid ALREADY_EXISTS. A corrupt store yields ALREADY_EXISTS and FinancialStateBootstrapResult.succeeded stays True while the other stores are created; the failure surfaces only at the first BUY as RISK_STATE_RESTORATION_FAILED.",
+    "M-D": "Bootstrap/runtime capital-policy consistency check. Bootstrapping a capital value inconsistent with the runtime RiskPolicy passes construction and startup, approves risk, reserves capital, then fails at durable finalization with a permanent halt and an INDETERMINATE reservation.",
+    "M-E": "Sanitize future observability fields and make metadata immutable. OperationResult.model_provider/model_id/tool_id/cost/evidence_ids bypass sanitize_sensitive_data entirely, and metadata is a mutable dict on a frozen dataclass so post-construction injection defeats the sanitized-on-construction guarantee. Unreachable today: core/operational_contracts.py has no production consumer.",
+    "M-F": "Operator bootstrap entry point. bootstrap_financial_state exists only as a library function with no CLI, script, or runbook command."
+  },
+  "remaining_backlog": {
+    "M-4": "Semantic-record mismatch only. The advisory ConfidenceEngine value can differ from the fusion-authoritative Decision.confidence. No authority bypass: DecisionBuilder.create accepts no confidence override, and executable admission re-derives confidence inside core.risk_engine.RiskEngine, which the intelligence layer cannot import.",
+    "L-1": "Provenance overclaim surfaces: test_result is a caller-supplied free-text operator assertion; build_mode is unvalidated except the exact LIVE token; branch is trivially spoofable; manifest hashes are working-tree byte hashes under core.autocrlf=true and are therefore checkout-dependent.",
+    "L-2": "core/risk_state_store.py classified L3 while its sibling stores are declared L1; it falls through the core/* catch-all rule.",
+    "L-3": "dashboard/app.py constructs AtlasBrain() outside the composition root; no execution authority, not launched by any script, invisible to the closure-scoped uniqueness guard.",
+    "L-4": "AtlasApplication.health() reports healthy=true while execution is halted; it reads execution_status['running'] and never operational_state.execution_halted/recovery_required.",
+    "L-5": "The runtime-closure tool is AST-only and cannot detect a future dynamic import. Zero dynamic-import mechanisms exist across all 92 live modules today, so the artifact is currently exact.",
+    "L-6": "The authority guard is symbol-keyed; a duplicate executable risk authority under a different class name, constructed outside core/application.py, would evade every current guard.",
+    "L-7": "LIVE denial is loud rather than clean: LIVE_DISABLED/LIVE_NOT_IMPLEMENTED are not in FAILURE_STATUSES, so the pipeline takes the terminal-commit branch and yields COMMIT_STATUS_UNKNOWN plus a permanent halt and an INDETERMINATE reservation.",
+    "L-8": "Only CapitalReservationLedger has a declared store Protocol; ExecutionPortfolioFoundation is annotated with the concrete FinancialStateStore and ExecutionManager.risk_state_store is typed Any.",
+    "L-9": "The technical evidence gate does not range-check RSI or require trend; rsi=999 and a missing trend both report AVAILABLE. Pre-existing, masked today by the MIN_PARTICIPATING_AGENTS floor."
+  },
+  "provenance": {
+    "path": "reports/block2_freeze_provenance.json",
+    "sha256": "6202a03f194c0babe35fbdc30fb5399a19c5e6b754c49335ba95db225a9e26f3",
+    "generator": "tools/build_provenance_record.py",
+    "generated_from": "clean worktree at 53e127fc53d6b1513f4eb8dff1d8fd1f9f58503b",
+    "test_result_caveat": "test_result is an OPERATOR ASSERTION recorded verbatim by the generator. It is not cryptographically or tool-verified evidence; the generator does not run or observe the test suite.",
+    "build_mode_caveat": "build_mode is unvalidated except for the exact LIVE token, and paper_only/live_authority are hardcoded statements of build policy rather than cryptographic guarantees. The generator's own docstring states it is not a build attestation (no SLSA/Sigstore/SBOM).",
+    "hash_caveat": "The three manifest hashes are sha256 over WORKING-TREE bytes. This repository has core.autocrlf=true, so requirements.txt and packaging/atlas_architecture_map.json are CRLF in the worktree but LF in the committed blob, and their recorded hashes therefore do not equal the canonical git content hashes. A fresh clone of this same commit produced runtime_manifest_hash bab435cfd8cdd711d9243868cb267aa0ba0e72a65116c3e96ad134ae36bb9c73 instead of the recorded f5f49ebc4809b1ec0957ff9629d46853e771229aed27311f4bfc55301bc85e09. git_commit is the sound anchor; the manifest hashes are checkout-dependent. Tracked as L-1."
+  },
+  "tag": {
+    "name": "block2-frozen",
+    "target": "the freeze-evidence commit that contains this record",
+    "annotation": "Atlas Block 2 frozen - audited source 53e127f, PASS WITH BACKLOG, 1203 tests",
+    "note": "The independent audit was performed against 53e127fc53d6b1513f4eb8dff1d8fd1f9f58503b. Committing this freeze evidence necessarily advances HEAD, so the tag points at the evidence commit while audited_source_commit records the exact audited tree. The evidence commit adds only reports/ files and changes no production code, test, architecture artifact, or ADR."
+  },
+  "scope_note": "This freeze commit adds evidence only. No production code, test, architecture artifact, or ADR was modified, and no backlog item was fixed, as required by the freeze work order.",
+  "push_status": "NOT_PUSHED"
+}

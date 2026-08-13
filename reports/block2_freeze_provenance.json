@@ -1,0 +1,17 @@
+{
+  "architecture_map_hash": "d757f02a36f546dfb71c2d005179285c804b2170e92aa5edb910888d763d8038",
+  "artifact_id": "atlas-53e127fc53d6",
+  "branch": "feat/block2-architecture-core",
+  "build_mode": "PAPER",
+  "build_timestamp": "2026-08-13T07:08:53.060464+00:00",
+  "dependency_manifest_hash": "f3255e196d257f748b3e46dad459aa3a1f42ddebbd8adf493fbd03605fda3f26",
+  "dirty_worktree": false,
+  "git_commit": "53e127fc53d6b1513f4eb8dff1d8fd1f9f58503b",
+  "live_authority": false,
+  "paper_only": true,
+  "python_version": "3.14.6",
+  "runtime_manifest_hash": "f5f49ebc4809b1ec0957ff9629d46853e771229aed27311f4bfc55301bc85e09",
+  "schema_version": "1.0",
+  "source_provenance": "local_worktree",
+  "test_result": "1203 passed"
+}
