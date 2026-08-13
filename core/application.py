@@ -72,6 +72,9 @@ from core.market_loop import MarketLoop
 from exchange.market_feed import MarketFeed
 
 from core.execution_manager import ExecutionManager
+from core.audit_event_store import AuditEventStore
+from core.execution_idempotency_store import ExecutionIdempotencyStore
+from core.execution_transaction_journal import ExecutionTransactionJournal
 from portfolio.capital_manager import CapitalManager
 from core.position_controller import PositionController
 from core.paper_trader import PaperTrader
@@ -94,20 +97,33 @@ logger = logging.getLogger("AtlasAI.Application")
 
 
 # =============================================================
-# DURABLE FINANCIAL STATE LOCATION
+# DURABLE STATE LOCATION
 # =============================================================
 #
-# Durable financial state lives beside the already canonical
-# execution stores (idempotency, audit, transaction journal),
-# which resolve their own defaults under the same directory.
-# The composition root owns these locations so that no domain
-# or execution module has to invent a path of its own.
+# Every durable file Atlas execution depends on — financial state
+# and execution durability alike — is located here, in the
+# composition root, and derived from one configured persistence
+# root. No domain or execution module invents a path of its own,
+# and none of them resolve a default against the process working
+# directory: the same configured state directory must produce the
+# same durable behaviour from any CWD.
+#
+# The default root is anchored to the installation directory
+# rather than to the CWD for the same reason. The file names and
+# the layout below are the established ones; no stored format is
+# renamed or migrated here.
 
-DEFAULT_STATE_DIRECTORY = "memory_data"
+DEFAULT_STATE_DIRECTORY = Path(__file__).resolve().parent.parent / "memory_data"
 
 RISK_ACCOUNTING_STATE_FILE = "risk_accounting_state.json"
 CAPITAL_RESERVATION_STATE_FILE = "capital_reservations.json"
 EXECUTION_FINANCIAL_STATE_FILE = "execution_financial_state.json"
+
+EXECUTION_IDEMPOTENCY_STATE_FILE = "execution_idempotency.json"
+EXECUTION_TRANSACTION_JOURNAL_FILE = "execution_transaction_journal.json"
+EXECUTION_AUDIT_EVENT_FILE = "audit/atlas_audit_events.jsonl"
+
+PAPER_TRADE_BOOK_FILE = "paper_trades.json"
 
 
 class AtlasApplication:
@@ -195,7 +211,17 @@ class AtlasApplication:
         # -----------------------------------------------------
 
         self.capital = CapitalManager()
-        self.paper_trader = PaperTrader()
+
+        # The paper book is a durable execution side effect: open_trade()
+        # and close_trade() persist it, and an interrupted execution is
+        # classified against it. It therefore belongs under the same
+        # configured root as the other durable execution state, not beside
+        # whatever directory the process happened to start in.
+        self.paper_trader = PaperTrader(
+            filename=str(
+                self.state_directory / PAPER_TRADE_BOOK_FILE
+            ),
+        )
 
         self.position_controller = PositionController(
             event_bus=self.event_bus,
@@ -224,6 +250,12 @@ class AtlasApplication:
         self._build_financial_services()
 
         # -----------------------------------------------------
+        # Durable execution stores
+        # -----------------------------------------------------
+
+        self._build_execution_durability()
+
+        # -----------------------------------------------------
         # Execution
         # -----------------------------------------------------
 
@@ -233,6 +265,9 @@ class AtlasApplication:
             paper_trader=self.paper_trader,
             event_bus=self.event_bus,
             mode=self.execution_mode,
+            idempotency_store=self.idempotency_store,
+            audit_store=self.audit_store,
+            transaction_journal=self.transaction_journal,
             risk_engine=self.risk_engine,
             reservation_ledger=self.reservation_ledger,
             risk_state_store=self.risk_state_store,
@@ -322,6 +357,45 @@ class AtlasApplication:
         )
 
     # =========================================================
+    # DURABLE EXECUTION STORES
+    # =========================================================
+
+    def _build_execution_durability(self) -> None:
+        """
+        Construct the durable execution stores from the configured root.
+
+        Idempotency, audit, and transaction-journal persistence decide
+        whether a restarted Atlas recognises a completed request, detects an
+        unresolved transaction, and continues the same audit chain. Leaving
+        those locations to a CWD-relative default inside ExecutionManager
+        made restart behaviour depend on where the process happened to be
+        started; owning them here makes it depend only on configuration.
+
+        Each store keeps its own fail-closed load semantics. A missing or
+        corrupt file is not repaired or replaced here.
+        """
+
+        self.idempotency_store = ExecutionIdempotencyStore(
+            self.state_directory / EXECUTION_IDEMPOTENCY_STATE_FILE,
+        )
+
+        self.transaction_journal = ExecutionTransactionJournal(
+            self.state_directory / EXECUTION_TRANSACTION_JOURNAL_FILE,
+        )
+
+        self.audit_store = AuditEventStore(
+            self.state_directory / EXECUTION_AUDIT_EVENT_FILE,
+        )
+
+        logger.info(
+            "Durable execution stores constructed under %s "
+            "idempotency_loaded=%s journal_unresolved=%s",
+            self.state_directory,
+            self.idempotency_store.loaded,
+            self.transaction_journal.has_unresolved(),
+        )
+
+    # =========================================================
     # SERVICE REGISTRATION
     # =========================================================
 
@@ -347,6 +421,9 @@ class AtlasApplication:
             self.reservation_ledger,
             self.risk_state_store,
             self.portfolio_foundation,
+            self.idempotency_store,
+            self.transaction_journal,
+            self.audit_store,
             self.brain,
             self.market_feed,
             self.execution,

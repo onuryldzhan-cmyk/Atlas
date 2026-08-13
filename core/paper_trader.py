@@ -547,6 +547,21 @@ class PaperTrader:
     def save(self):
 
 
+        # The book location is chosen by the composition root, so its
+        # directory is not guaranteed to exist yet. The other durable
+        # execution stores create their own parent the same way.
+        directory = os.path.dirname(
+            self.filename
+        )
+
+        if directory:
+
+            os.makedirs(
+                directory,
+                exist_ok=True,
+            )
+
+
         with open(
 
             self.filename,
