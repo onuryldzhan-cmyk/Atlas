@@ -200,6 +200,12 @@ class ExecutionManager:
         self.last_risk_decision: dict[str, Any] | None = None
         self._risk_admissions: dict[str, tuple[str, ...]] = {}
 
+        # Request ids whose execution has passed the paper/live side-effect
+        # boundary.  PaperTrader.open_trade()/close_trade() persist to their
+        # own durable book, so once that boundary is crossed an interrupted
+        # request has an outcome this manager cannot prove either way.
+        self._execution_side_effect_ids: set[str] = set()
+
         self.mode = self._normalize_mode(
             mode
         )
@@ -1199,7 +1205,105 @@ class ExecutionManager:
             # =================================================
 
             if status in self.FAILURE_STATUSES:
-                self._release_capital_reservation(request_id)
+                # An unsuccessful result is classified by the same
+                # side-effect boundary as a raised exception. A paper
+                # mutation that already persisted is not undone by the
+                # execution then reporting FAILED.
+                side_effect_possible = (
+                    self._resolve_unsuccessful_execution(
+                        request_id=request_id,
+                        reason=status,
+                        result=result,
+                    )
+                )
+
+                self._release_request(
+                    request_id
+                )
+
+                request_claimed = False
+
+                if side_effect_possible:
+                    # The original business failure is preserved in
+                    # error_code, message, and original_status; only the
+                    # commit classification changes, because this runtime
+                    # can no longer claim nothing happened.
+                    result[
+                        "original_status"
+                    ] = status
+
+                    result[
+                        "success"
+                    ] = False
+
+                    result[
+                        "status"
+                    ] = (
+                        CommitOutcome
+                        .COMMIT_STATUS_UNKNOWN
+                        .value
+                    )
+
+                    result[
+                        "commit_outcome"
+                    ] = (
+                        CommitOutcome
+                        .COMMIT_STATUS_UNKNOWN
+                        .value
+                    )
+
+                    result[
+                        "recovery_required"
+                    ] = True
+
+                    with self._lock:
+                        self.stats[
+                            "failed"
+                        ] += 1
+
+                    self._record_result(
+                        result
+                    )
+
+                    self._write_audit_event(
+                        event_type=(
+                            "EXECUTION_COMMIT_STATUS_UNKNOWN"
+                        ),
+                        request=request,
+                        payload={
+                            "success": False,
+                            "status": result.get(
+                                "status"
+                            ),
+                            "original_status": status,
+                            "message": result.get(
+                                "message"
+                            ),
+                            "error_code": result.get(
+                                "error_code"
+                            ),
+                            "latency_ms": result.get(
+                                "latency_ms"
+                            ),
+                            "retryable": False,
+                            "commit_outcome": (
+                                result.get(
+                                    "commit_outcome"
+                                )
+                            ),
+                        },
+                        causation_id=(
+                            last_audit_event_id
+                        ),
+                    )
+
+                    self.publish(
+                        "EXECUTION_COMMIT_STATUS_UNKNOWN",
+                        result,
+                    )
+
+                    return result
+
                 result[
                     "commit_outcome"
                 ] = (
@@ -1207,34 +1311,6 @@ class ExecutionManager:
                     .NOT_COMMITTED
                     .value
                 )
-
-                mark_not_committed = getattr(
-                    self.transaction_journal,
-                    "mark_not_committed",
-                    None,
-                )
-
-                if callable(
-                    mark_not_committed
-                ):
-                    try:
-                        mark_not_committed(
-                            request_id,
-                            reason=status,
-                            result=result,
-                        )
-
-                    except Exception:
-                        logger.exception(
-                            "Transaction NOT_COMMITTED "
-                            "journal update failed"
-                        )
-
-                self._release_request(
-                    request_id
-                )
-
-                request_claimed = False
 
                 self._record_result(
                     result
@@ -1578,17 +1654,67 @@ class ExecutionManager:
                 "Execution pipeline failed"
             )
 
-            failure = self._failure_result(
-                request=request,
-                status="FAILED",
-                message=(
-                    "Execution pipeline failed"
-                ),
-                error_code=(
-                    "EXECUTION_PIPELINE_EXCEPTION"
-                ),
-                error=exc,
+            # An exception after risk admission must not leave capital
+            # reserved, an admission stale, and the runtime running.
+            side_effect_possible = (
+                self._resolve_unsuccessful_execution(
+                    request_id=request_id,
+                    reason="EXECUTION_PIPELINE_EXCEPTION",
+                )
+                if request_id
+                else False
             )
+
+            if side_effect_possible:
+                failure = self._failure_result(
+                    request=request,
+                    status=(
+                        CommitOutcome
+                        .COMMIT_STATUS_UNKNOWN
+                        .value
+                    ),
+                    message=(
+                        "Execution was interrupted after a paper "
+                        "execution side effect"
+                    ),
+                    error_code=(
+                        "EXECUTION_PIPELINE_EXCEPTION"
+                    ),
+                    error=exc,
+                )
+
+                failure[
+                    "commit_outcome"
+                ] = (
+                    CommitOutcome
+                    .COMMIT_STATUS_UNKNOWN
+                    .value
+                )
+
+                failure[
+                    "recovery_required"
+                ] = True
+
+            else:
+                failure = self._failure_result(
+                    request=request,
+                    status="FAILED",
+                    message=(
+                        "Execution pipeline failed"
+                    ),
+                    error_code=(
+                        "EXECUTION_PIPELINE_EXCEPTION"
+                    ),
+                    error=exc,
+                )
+
+                failure[
+                    "commit_outcome"
+                ] = (
+                    CommitOutcome
+                    .NOT_COMMITTED
+                    .value
+                )
 
             if request_id:
                 failure.setdefault(
@@ -1616,13 +1742,19 @@ class ExecutionManager:
 
             if request is not None:
                 self._write_audit_event(
-                    event_type="EXECUTION_FAILED",
+                    event_type=(
+                        "EXECUTION_COMMIT_STATUS_UNKNOWN"
+                        if side_effect_possible
+                        else "EXECUTION_FAILED"
+                    ),
                     request=request,
                     payload={
                         "success": False,
-                        "status": "FAILED",
-                        "message": (
-                            "Execution pipeline failed"
+                        "status": failure.get(
+                            "status"
+                        ),
+                        "message": failure.get(
+                            "message"
                         ),
                         "error_code": (
                             "EXECUTION_PIPELINE_EXCEPTION"
@@ -1636,7 +1768,12 @@ class ExecutionManager:
                         "latency_ms": failure.get(
                             "latency_ms"
                         ),
-                        "retryable": True,
+                        "retryable": (
+                            not side_effect_possible
+                        ),
+                        "commit_outcome": failure.get(
+                            "commit_outcome"
+                        ),
                     },
                     causation_id=(
                         last_audit_event_id
@@ -1644,7 +1781,11 @@ class ExecutionManager:
                 )
 
             self.publish(
-                "EXECUTION_FAILED",
+                (
+                    "EXECUTION_COMMIT_STATUS_UNKNOWN"
+                    if side_effect_possible
+                    else "EXECUTION_FAILED"
+                ),
                 failure,
             )
 
@@ -1653,13 +1794,15 @@ class ExecutionManager:
         finally:
             # Defensive release for exceptions or unexpected
             # early exits after a successful atomic claim.
-            if (
-                request_claimed
-                and request_id
-            ):
-                self._release_request(
+            if request_id:
+                self._consume_execution_side_effect(
                     request_id
                 )
+
+                if request_claimed:
+                    self._release_request(
+                        request_id
+                    )
 
     def build_request(
         self,
@@ -2177,15 +2320,19 @@ class ExecutionManager:
     def _has_risk_admission(self, request: ExecutionRequest) -> bool:
         return self._risk_admissions.get(request.request_id) == self._risk_admission_key(request)
 
+    # Each of these three helpers ends the execution authority of one
+    # request. The admission is dropped even when the ledger write fails,
+    # because a request whose capital could not be resolved must never keep
+    # a token that would let a later stage treat it as still authorized;
+    # the failing ledger write itself is what halts the runtime.
+
     def _release_capital_reservation(self, request_id: str) -> bool:
         if self.reservation_ledger is None:
             return False
-        if self.reservation_ledger.get(request_id) is None:
-            self._risk_admissions.pop(request_id, None)
-            return True
         try:
+            if self.reservation_ledger.get(request_id) is None:
+                return True
             self.reservation_ledger.release(request_id)
-            self._risk_admissions.pop(request_id, None)
             return True
         except Exception as exc:
             self._record_error(phase="capital_release", error=exc)
@@ -2194,34 +2341,142 @@ class ExecutionManager:
                 self.recovery_required = True
                 self.halt_reason = "CAPITAL_RESERVATION_RELEASE_FAILED"
             return False
+        finally:
+            self._risk_admissions.pop(request_id, None)
 
     def _commit_capital_reservation(self, request_id: str) -> bool:
         if self.reservation_ledger is None:
             return False
-        if self.reservation_ledger.get(request_id) is None:
-            self._risk_admissions.pop(request_id, None)
-            return True
         try:
+            if self.reservation_ledger.get(request_id) is None:
+                return True
             self.reservation_ledger.commit(request_id)
-            self._risk_admissions.pop(request_id, None)
             return True
         except Exception as exc:
             self._record_error(phase="capital_commit", error=exc)
             return False
+        finally:
+            self._risk_admissions.pop(request_id, None)
 
     def _mark_capital_indeterminate(self, request_id: str) -> bool:
         if self.reservation_ledger is None:
             return False
-        if self.reservation_ledger.get(request_id) is None:
-            self._risk_admissions.pop(request_id, None)
-            return True
         try:
+            if self.reservation_ledger.get(request_id) is None:
+                return True
             self.reservation_ledger.mark_indeterminate(request_id)
-            self._risk_admissions.pop(request_id, None)
             return True
         except Exception as exc:
             self._record_error(phase="capital_indeterminate", error=exc)
             return False
+        finally:
+            self._risk_admissions.pop(request_id, None)
+
+    def _mark_execution_side_effect(self, request_id: str) -> None:
+        """Record that this request has reached the paper/live side effect.
+
+        Called immediately before the first component mutation of an
+        execution, so a later exception cannot be mistaken for a request
+        that never touched anything.
+        """
+        canonical_id = str(request_id).strip()
+        if not canonical_id:
+            return
+        with self._lock:
+            self._execution_side_effect_ids.add(canonical_id)
+
+    def _consume_execution_side_effect(self, request_id: str) -> bool:
+        """Clear and report the side-effect marker for one request."""
+        canonical_id = str(request_id).strip()
+        if not canonical_id:
+            return False
+        with self._lock:
+            crossed = canonical_id in self._execution_side_effect_ids
+            self._execution_side_effect_ids.discard(canonical_id)
+            return crossed
+
+    def _resolve_unsuccessful_execution(
+        self,
+        *,
+        request_id: str,
+        reason: str,
+        result: Mapping[str, Any] | None = None,
+    ) -> bool:
+        """Restore deterministic financial authority after a failed execution.
+
+        This is the single resolution path for every unsuccessful terminal
+        outcome after risk admission — a raised pipeline exception and an
+        explicit FAILED/ERROR result alike. How a failure was reported says
+        nothing about whether the paper book was already mutated, so both
+        are classified by the same recorded side-effect boundary rather than
+        by the shape of the failure.
+
+        Such a failure must never leave a RESERVED reservation, a stale
+        admission, and a running runtime behind at the same time.
+
+        Two outcomes are possible, and which one applies is decided by
+        recorded fact rather than inference:
+
+        - the side-effect boundary was never crossed, so nothing external can
+          have happened: the reservation is RELEASED, the journal entry is
+          resolved NOT_COMMITTED, and the request stays retryable;
+        - the boundary was crossed, so the execution outcome is genuinely
+          unknown: the reservation is marked INDETERMINATE, the journal entry
+          is left COMMIT_STATUS_UNKNOWN, and the runtime halts for operator
+          recovery instead of releasing capital it cannot prove is free.
+
+        Returns True when an execution side effect may already have occurred.
+        """
+        side_effect_possible = self._consume_execution_side_effect(request_id)
+
+        if side_effect_possible:
+            self._mark_capital_indeterminate(request_id)
+
+            try:
+                self.transaction_journal.mark_unknown(
+                    request_id,
+                    reason=reason,
+                    result=result,
+                )
+            except Exception:
+                logger.exception(
+                    "Unable to mark interrupted execution unknown"
+                )
+
+            with self._lock:
+                self.execution_halted = True
+                self.recovery_required = True
+                self.halt_reason = (
+                    "EXECUTION_INTERRUPTED_AFTER_SIDE_EFFECT"
+                )
+
+        else:
+            self._release_capital_reservation(request_id)
+
+            # Only an already prepared transaction is resolved here. A
+            # request that never reached the prepare barrier must not gain a
+            # journal entry from its own failure.
+            prepared_entries = getattr(
+                self.transaction_journal,
+                "entries",
+                {},
+            )
+
+            if request_id in prepared_entries:
+                try:
+                    self.transaction_journal.mark_not_committed(
+                        request_id,
+                        reason=reason,
+                        result=result,
+                    )
+                except Exception:
+                    logger.exception(
+                        "Unable to mark interrupted execution not committed"
+                    )
+
+        self._risk_admissions.pop(request_id, None)
+
+        return side_effect_possible
 
     def _finalize_durable_financial_state(
         self,
@@ -2496,6 +2751,11 @@ class ExecutionManager:
             )
             return
 
+        # Side-effect boundary: PaperTrader.open_trade() persists its own
+        # durable book, so from here an interrupted request has an outcome
+        # this manager cannot prove.
+        self._mark_execution_side_effect(request.request_id)
+
         paper_trade = self._paper_open_trade(
             request=request,
             allocation=allocation,
@@ -2503,6 +2763,27 @@ class ExecutionManager:
 
         if paper_trade is not None:
             result.data["paper_trade"] = paper_trade
+
+            # PaperTrader is the authority on whether the trade was
+            # recorded. A denied mutation must not be able to continue into
+            # durable finalization as a confirmed execution.
+            if self._component_reported_failure(
+                paper_trade
+            ):
+                self._mark_result_failure(
+                    result=result,
+                    message=str(
+                        paper_trade.get(
+                            "reason",
+                            "Paper trade was not recorded",
+                        )
+                    ),
+                    error_code="PAPER_TRADE_REJECTED",
+                    details=dict(
+                        paper_trade
+                    ),
+                )
+                return
 
             self._hydrate_result_from_component(
                 result=result,
@@ -2802,12 +3083,37 @@ class ExecutionManager:
             result.filled_amount = float(result.filled_quote_notional)
             result.fee_amount = Decimal(str(result.fee))
 
+        # Side-effect boundary: PaperTrader.close_trade() persists its own
+        # durable book, so from here an interrupted request has an outcome
+        # this manager cannot prove.
+        self._mark_execution_side_effect(request.request_id)
+
         paper_trade = self._paper_close_trade(
             request
         )
 
         if paper_trade is not None:
             result.data["paper_trade"] = paper_trade
+
+            # Same authority contract as the BUY path: a close the paper
+            # book refused is not a completed exit.
+            if self._component_reported_failure(
+                paper_trade
+            ):
+                self._mark_result_failure(
+                    result=result,
+                    message=str(
+                        paper_trade.get(
+                            "reason",
+                            "Paper trade was not recorded",
+                        )
+                    ),
+                    error_code="PAPER_TRADE_REJECTED",
+                    details=dict(
+                        paper_trade
+                    ),
+                )
+                return
 
             self._hydrate_result_from_component(
                 result=result,
@@ -3481,6 +3787,49 @@ class ExecutionManager:
 
         if pnl != 0:
             result.pnl = pnl
+
+    @staticmethod
+    def _component_reported_failure(
+        payload: Any,
+    ) -> bool:
+        """Report whether a component payload explicitly denies success.
+
+        Hydration deliberately copies identifiers and numerics only, because
+        component status vocabularies are their own: PaperTrader answers a
+        successful open with ``OPENED``, which is not one of this manager's
+        success statuses. Copying a component status straight onto the
+        execution result would therefore turn successful paper BUYs into
+        failures, so the outcome is inspected separately here.
+
+        Absence of an outcome is not failure. Only an explicit denial — a
+        false ``success`` flag, or a status this manager itself treats as
+        terminal failure — counts, so component payloads that simply carry
+        no outcome field keep behaving exactly as before.
+        """
+        if not isinstance(
+            payload,
+            Mapping,
+        ):
+            return False
+
+        if (
+            "success" in payload
+            and not bool(
+                payload.get(
+                    "success"
+                )
+            )
+        ):
+            return True
+
+        status = str(
+            payload.get(
+                "status",
+                "",
+            )
+        ).strip().upper()
+
+        return status in ExecutionManager.FAILURE_STATUSES
 
     @staticmethod
     def _mark_result_failure(
@@ -4664,6 +5013,7 @@ class ExecutionManager:
 
             self.pending_request_ids.clear()
             self.completed_request_results.clear()
+            self._execution_side_effect_ids.clear()
 
             self.idempotency_store.reset(
                 delete_file=False
