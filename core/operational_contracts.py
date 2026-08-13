@@ -62,6 +62,19 @@ def _freeze(value: Any) -> Any:
     return value
 
 
+def sanitized_metadata(metadata: Mapping[str, Any] | None) -> Mapping[str, Any]:
+    """Sanitize and freeze a caller-supplied metadata mapping.
+
+    The single place any Atlas contract turns untrusted metadata into
+    something safe to hold, repr, and audit. Exposed so that other contract
+    modules reuse this exact boundary instead of growing a second, weaker
+    one; every caller gets the same redaction rules and the same immunity to
+    post-construction mutation.
+    """
+    sanitized = sanitize_sensitive_data(dict(metadata or {}))
+    return _freeze(sanitized if isinstance(sanitized, dict) else {})
+
+
 @dataclass(frozen=True, slots=True)
 class OperationContext:
     """Immutable identity for one in-flight Atlas operation."""
@@ -136,10 +149,7 @@ class OperationResult:
             "evidence_ids",
             tuple(sanitize_sensitive_text(item) for item in self.evidence_ids),
         )
-        sanitized = sanitize_sensitive_data(dict(self.metadata))
-        object.__setattr__(
-            self, "metadata", _freeze(sanitized if isinstance(sanitized, dict) else {}),
-        )
+        object.__setattr__(self, "metadata", sanitized_metadata(self.metadata))
 
     @classmethod
     def from_context(
