@@ -129,6 +129,16 @@
       "reason": "domain contract vocabulary, sibling of data_layer/contracts.py"
     },
     {
+      "pattern": "data_layer/market_data_models.py",
+      "layer": "L1",
+      "reason": "market-data domain contract value objects, sibling of data_layer/contracts.py and data_layer/models.py (Block 4 market-data contract foundation)"
+    },
+    {
+      "pattern": "data_layer/market_data_contracts.py",
+      "layer": "L1",
+      "reason": "market-data repository contract seams, sibling of data_layer/contracts.py; concrete backends would live at L2 (Block 4 market-data contract foundation)"
+    },
+    {
       "pattern": "core/decision.py",
       "layer": "L1",
       "reason": "explicit: L1 domain contract example"
