@@ -891,8 +891,13 @@ class AgentFusion:
         # wrong move, and they only ever move down.
         #
         # `scores` is deliberately left as-is: it stays the honest
-        # bucket distribution among available evidence only, and it is
-        # still what selects `action`.
+        # bucket distribution among available evidence only, rounded
+        # to 3 decimals for display and backward compatibility. It
+        # carries no decision authority - `action` is selected from
+        # `quantized_mass` above, which is the same MASS_PRECISION
+        # authority the `winning_mass` numerator below reads. Keeping
+        # presentation rounding out of the selection path is what
+        # closes the M-2 display-rounding monotonicity defect.
 
         missing_weight = max(
 
