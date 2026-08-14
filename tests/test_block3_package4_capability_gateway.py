@@ -218,15 +218,15 @@ def test_adapter_output_is_deterministic_for_the_same_invocation_identity():
 
     assert first.outcome is InvocationOutcome.OK
     assert first.reason_code == PROBE_OK
-    assert first.output_reference == second.output_reference
-    assert len(first.output_reference) == 64
+    assert first.output_digest == second.output_digest
+    assert len(first.output_digest) == 64
 
 
 def test_adapter_output_changes_with_the_invocation_identity():
     adapter = LocalCapabilityProbeAdapter()
     assert (
-        adapter.invoke(probe_invocation()).output_reference
-        != adapter.invoke(probe_invocation()).output_reference
+        adapter.invoke(probe_invocation()).output_digest
+        != adapter.invoke(probe_invocation()).output_digest
     )
 
 
@@ -248,6 +248,7 @@ def test_adapter_refuses_an_invocation_addressed_to_another_tool():
     assert result.outcome is InvocationOutcome.INVALID_RESULT
     assert result.reason_code == DESCRIPTOR_MISMATCH
     assert result.output_reference is None
+    assert result.output_digest is None
 
 
 def test_adapter_metadata_is_sanitized_and_frozen():
@@ -898,6 +899,337 @@ def test_l_no_identity_assertion_depends_on_a_minted_uuid():
     # And the pinned inputs are exactly the ones the identity tests use.
     assert len(MANGLED_UUIDS) == 3
     assert len(set(MANGLED_UUIDS)) == 3
+
+
+# --- M: the output digest boundary -----------------------------------
+#
+# `output_reference` and `output_digest` are separate fields because they
+# have opposite trust properties. The reference is adapter-authored
+# descriptive text and stays sanitized; the digest is machine-minted and
+# must survive byte-exact, because sanitizing it corrupted it.
+
+
+#: SHA-256 digests the *sanitizing* boundary rewrites. The first three are
+#: the digests the probe adapter actually produced for the pinned invocation
+#: ids below, measured while reproducing the intermittent failure; the fourth
+#: is a standalone sample. Pinned rather than minted, for the reason
+#: test_l records: a test that mints its own input fails one run in N.
+LUHN_MANGLED_DIGESTS = (
+    "295158cdfffc2a6aa89aa3661091269601cb07a70d3f6f6cd16969cdc4d0cdad",
+    "3f1f0356226902951fb6ef3cc620eaefcd142fff898716e55108ae1a1cdd9484",
+    "c88174de456e27e730066f3b90c70e69818645779565a99501014ce5e2563a6e",
+    "d88fd0288439397598c22246f2e3204267f890e125317edd8192c857e9f1ada1",
+)
+
+#: The invocation ids that produced the first three digests above. Feeding
+#: these to the real adapter reproduces the historical flake deterministically.
+FLAKE_INVOCATION_IDS = (
+    "9a47401c-0385-42c9-8611-014b5d57162e",
+    "1ed5b0f0-7db6-45b1-929e-cf9f1bd1fbac",
+    "35512432-e44f-44ec-b38f-fca092d17825",
+)
+
+
+def _model_result(**overrides):
+    """A minimal valid ModelInvocationResult, so the digest assertions can
+    be made against both result contracts without restating five required
+    fields each time."""
+    from core.model_provider_contracts import ModelInvocationResult
+
+    return ModelInvocationResult(
+        invocation_id=MANGLED_UUIDS[0],
+        provider_id="local",
+        model_id="deterministic",
+        outcome=InvocationOutcome.OK,
+        reason_code="OK",
+        **overrides,
+    )
+
+
+def test_m_the_pinned_digests_are_still_genuinely_mangled_by_the_old_boundary():
+    """Guards the guards, as the identity section does: if the sanitizer
+    ever stops rewriting these, the tests below would silently stop
+    testing anything and would need new inputs."""
+    from core.model_provider_contracts import sanitized_identifier
+
+    for digest in LUHN_MANGLED_DIGESTS:
+        assert len(digest) == 64
+        assert sanitized_identifier(digest, "x") != digest
+        assert "[REDACTED]" in sanitized_identifier(digest, "x")
+
+
+@pytest.mark.parametrize("digest", LUHN_MANGLED_DIGESTS)
+def test_m_a_luhn_bearing_digest_is_preserved_exactly(digest):
+    from core.model_provider_contracts import machine_digest
+
+    assert machine_digest(digest, "output_digest") == digest
+
+
+@pytest.mark.parametrize("digest", LUHN_MANGLED_DIGESTS)
+def test_m_a_result_preserves_a_luhn_bearing_digest(digest):
+    for result in (
+        ToolInvocationResult(
+            invocation_id=MANGLED_UUIDS[0],
+            tool_id=LocalCapabilityProbeAdapter.TOOL_ID,
+            outcome=InvocationOutcome.OK,
+            reason_code=PROBE_OK,
+            output_digest=digest,
+        ),
+        _model_result(output_digest=digest),
+    ):
+        assert result.output_digest == digest
+        assert len(result.output_digest) == 64
+        assert "[REDACTED]" not in result.output_digest
+
+
+def test_m_an_ordinary_digest_is_preserved_exactly():
+    import hashlib
+
+    from core.model_provider_contracts import machine_digest
+
+    digest = hashlib.sha256(b"atlas").hexdigest()
+    assert machine_digest(digest, "output_digest") == digest
+    assert ToolInvocationResult(
+        invocation_id=MANGLED_UUIDS[0],
+        tool_id=LocalCapabilityProbeAdapter.TOOL_ID,
+        outcome=InvocationOutcome.OK,
+        reason_code=PROBE_OK,
+        output_digest=digest,
+    ).output_digest == digest
+
+
+def test_m_an_uppercase_digest_canonicalizes_to_lowercase():
+    """Lowercase is the canonical stored form, matching the data layer's
+    existing sha256_hex convention, so the same digest written either way
+    compares and keys identically."""
+    from core.model_provider_contracts import machine_digest
+
+    digest = LUHN_MANGLED_DIGESTS[0]
+    assert machine_digest(digest.upper(), "output_digest") == digest
+    assert ToolInvocationResult(
+        invocation_id=MANGLED_UUIDS[0],
+        tool_id=LocalCapabilityProbeAdapter.TOOL_ID,
+        outcome=InvocationOutcome.OK,
+        reason_code=PROBE_OK,
+        output_digest=digest.upper(),
+    ).output_digest == digest
+
+
+def test_m_surrounding_whitespace_is_stripped_from_an_otherwise_valid_digest():
+    """Documents the chosen convention: for a digest, case-folding and
+    surrounding-whitespace stripping are value-preserving canonicalization,
+    which is why they are allowed here and forbidden for opaque identity."""
+    from core.model_provider_contracts import machine_digest
+
+    digest = LUHN_MANGLED_DIGESTS[2]
+    assert machine_digest(f"  {digest}  ", "output_digest") == digest
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "g" * 64,                       # 64 characters, not hexadecimal
+        "z" + "a" * 63,                 # one non-hex character
+        "a" * 63,                       # one short
+        "a" * 65,                       # one long
+        "a" * 32 + "\n" + "a" * 31,     # embedded control character
+        "a" * 32 + "\x00" + "a" * 31,
+        "a" * 32 + "\t" + "a" * 31,
+        "a" * 32 + "\r" + "a" * 31,
+        "a" * 32 + " " + "a" * 31,      # embedded space is not padding
+        "",
+        "   ",
+        None, 123, 4.5, True, b"a" * 64,
+        LUHN_MANGLED_DIGESTS[0][:-1] + "[REDACTED]",
+    ],
+)
+def test_m_a_malformed_digest_is_rejected_not_repaired(bad):
+    from core.model_provider_contracts import machine_digest
+
+    with pytest.raises(ValueError):
+        machine_digest(bad, "output_digest")
+
+
+#: `None` is deliberately absent: the field is `str | None` and None means
+#: "this result carries no digest", which is the default and not an error.
+@pytest.mark.parametrize("bad", ["g" * 64, "a" * 63, "a" * 65, 123, "", b"x" * 64])
+def test_m_a_result_cannot_be_constructed_with_a_malformed_digest(bad):
+    with pytest.raises(ValueError):
+        ToolInvocationResult(
+            invocation_id=MANGLED_UUIDS[0],
+            tool_id=LocalCapabilityProbeAdapter.TOOL_ID,
+            outcome=InvocationOutcome.OK,
+            reason_code=PROBE_OK,
+            output_digest=bad,
+        )
+    with pytest.raises(ValueError):
+        _model_result(output_digest=bad)
+
+
+def test_m_the_digest_boundary_is_narrower_than_the_identity_boundary():
+    """The two preserving validators are not interchangeable: identity
+    accepts any opaque string, a digest field accepts only a digest.
+    Reusing machine_identifier here would have made output_digest an
+    unvalidated free-string field."""
+    from core.model_provider_contracts import machine_digest, machine_identifier
+
+    opaque = "991f566c-fe7f-4064-9927-46430d7b3ece"
+    assert machine_identifier(opaque, "invocation_id") == opaque
+    with pytest.raises(ValueError):
+        machine_digest(opaque, "output_digest")
+
+
+def test_m_the_two_output_fields_keep_opposite_treatments_on_one_result():
+    """The whole point of the split, on a single object: the descriptive
+    field is still redacted and the digest beside it is still exact."""
+    leaky = "4111111111111111"
+    digest = LUHN_MANGLED_DIGESTS[1]
+
+    for result in (
+        ToolInvocationResult(
+            invocation_id=MANGLED_UUIDS[0],
+            tool_id=LocalCapabilityProbeAdapter.TOOL_ID,
+            outcome=InvocationOutcome.OK,
+            reason_code=PROBE_OK,
+            output_reference=leaky,
+            output_digest=digest,
+        ),
+        _model_result(output_reference=leaky, output_digest=digest),
+    ):
+        assert "[REDACTED]" in result.output_reference
+        assert result.output_digest == digest
+
+
+def test_m_a_descriptive_reference_is_still_sanitized_and_still_free_form():
+    """`output_reference` keeps its old semantics exactly: adapter-authored
+    text of any shape, sanitized on the way in."""
+    result = ToolInvocationResult(
+        invocation_id=MANGLED_UUIDS[0],
+        tool_id=LocalCapabilityProbeAdapter.TOOL_ID,
+        outcome=InvocationOutcome.OK,
+        reason_code=PROBE_OK,
+        output_reference="s3://bucket/run/output.json",
+    )
+    assert result.output_reference == "s3://bucket/run/output.json"
+    assert result.output_digest is None
+
+    leaky = ToolInvocationResult(
+        invocation_id=MANGLED_UUIDS[0],
+        tool_id=LocalCapabilityProbeAdapter.TOOL_ID,
+        outcome=InvocationOutcome.OK,
+        reason_code=PROBE_OK,
+        output_reference="operator@example.com 4111111111111111",
+    )
+    assert "4111111111111111" not in leaky.output_reference
+    assert "operator@example.com" not in leaky.output_reference
+
+
+def test_m_both_output_fields_default_to_none():
+    result = ToolInvocationResult(
+        invocation_id=MANGLED_UUIDS[0],
+        tool_id=LocalCapabilityProbeAdapter.TOOL_ID,
+        outcome=InvocationOutcome.OK,
+        reason_code=PROBE_OK,
+    )
+    assert result.output_reference is None
+    assert result.output_digest is None
+    assert _model_result().output_digest is None
+
+
+@pytest.mark.parametrize("operation_id", FLAKE_INVOCATION_IDS)
+def test_m_the_reproduced_flake_is_deterministically_fixed(operation_id):
+    """These three invocation ids produced digests the old boundary
+    corrupted, which is what made `len(output_reference) == 64` fail about
+    1 run in 220. Pinned here, the historical failure is now a fixed test
+    rather than an intermittent one."""
+    import hashlib
+
+    result = LocalCapabilityProbeAdapter().invoke(
+        ToolInvocation(
+            context=OperationContext(
+                component="test", operation=PROBE_OPERATION,
+                operation_id=operation_id, actor_id="operator",
+            ),
+            descriptor=LocalCapabilityProbeAdapter.DESCRIPTOR,
+            operation=PROBE_OPERATION,
+            cost=LocalCapabilityProbeAdapter.free_cost(),
+        )
+    )
+
+    expected = hashlib.sha256(
+        "\x1f".join(
+            (LocalCapabilityProbeAdapter.TOOL_ID, PROBE_OPERATION, operation_id)
+        ).encode("utf-8")
+    ).hexdigest()
+
+    assert expected in LUHN_MANGLED_DIGESTS
+    assert result.output_digest == expected
+    assert len(result.output_digest) == 64
+    assert "[REDACTED]" not in result.output_digest
+    assert result.output_reference is None
+
+
+@pytest.mark.parametrize("operation_id", FLAKE_INVOCATION_IDS)
+def test_m_the_digest_survives_the_gateway_round_trip(operation_id):
+    invocation = ToolInvocation(
+        context=OperationContext(
+            component="test", operation=PROBE_OPERATION,
+            operation_id=operation_id, actor_id="operator",
+        ),
+        descriptor=LocalCapabilityProbeAdapter.DESCRIPTOR,
+        operation=PROBE_OPERATION,
+        cost=LocalCapabilityProbeAdapter.free_cost(),
+    )
+    result = CapabilityGateway(AllowingPolicyGate()).invoke_tool(
+        invocation, LocalCapabilityProbeAdapter(),
+    )
+
+    assert result.outcome is InvocationOutcome.OK
+    assert len(result.output_digest) == 64
+    assert "[REDACTED]" not in result.output_digest
+
+
+def test_m_the_probe_adapter_reports_a_digest_and_no_descriptive_reference():
+    """The probe points at no output, so it has nothing descriptive to
+    report; its digest belongs in the digest field alone."""
+    result = LocalCapabilityProbeAdapter().invoke(probe_invocation())
+
+    assert result.outcome is InvocationOutcome.OK
+    assert result.output_reference is None
+    assert len(result.output_digest) == 64
+    assert set(result.output_digest) <= set("0123456789abcdef")
+
+
+def test_m_each_output_field_is_bound_to_its_own_validator():
+    """Structural, in the style of test_k: the digest field is validated by
+    machine_digest and the reference field by sanitized_identifier, in both
+    result contracts, so the two cannot quietly swap."""
+    for relative_path in ("core/model_provider_contracts.py",
+                          "core/tool_gateway_contracts.py"):
+        text = (REPOSITORY_ROOT / relative_path).read_text(encoding="utf-8")
+        lines = [line.strip() for line in text.splitlines()]
+
+        digest_uses = [
+            line for line in lines
+            if "machine_digest(" in line and "def " not in line
+        ]
+        assert [line for line in digest_uses if "self.output_digest" in line], (
+            relative_path
+        )
+        assert not [line for line in digest_uses if "output_reference" in line], (
+            relative_path
+        )
+
+        reference_uses = [
+            line for line in lines
+            if "sanitized_identifier(" in line and "def " not in line
+        ]
+        assert [
+            line for line in reference_uses if "self.output_reference" in line
+        ], relative_path
+        assert not [
+            line for line in reference_uses if "output_digest" in line
+        ], relative_path
 
 
 # =====================================================================

@@ -109,7 +109,7 @@ class LocalCapabilityProbeAdapter:
     own identity (tool id, operation, invocation id). It reads nothing, writes
     nothing, and reaches nothing; the digest is a function of its arguments
     alone, so the same invocation identity always yields the same
-    `output_reference`.
+    `output_digest`.
 
     Its value is diagnostic. An operator can establish that descriptors,
     policy evaluation, replay claiming, identity matching, and result
@@ -181,7 +181,12 @@ class LocalCapabilityProbeAdapter:
             # part, latency is observability. Nothing asserts on it.
             latency_ms=(time.perf_counter() - started) * 1000.0,
             cost=invocation.cost,
-            output_reference=digest,
+            # The digest field, not the descriptive one: this value is
+            # meaningful only by being exactly itself, and `output_reference`
+            # sanitizes what it accepts. There is no descriptive reference to
+            # report - the probe produces no output to point at - so
+            # `output_reference` stays None.
+            output_digest=digest,
             metadata={
                 "operation": invocation.operation,
                 "digest_algorithm": "sha256",

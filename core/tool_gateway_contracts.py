@@ -51,6 +51,7 @@ from core.model_provider_contracts import (
     ModelInvocationResult,
     ModelProviderAdapter,
     ModelProviderDescriptor,
+    machine_digest,
     machine_identifier,
     sanitized_identifier,
 )
@@ -188,7 +189,20 @@ class ToolInvocation:
 
 @dataclass(frozen=True, slots=True)
 class ToolInvocationResult:
-    """Outcome of one governed tool invocation."""
+    """Outcome of one governed tool invocation.
+
+    An adapter can refer to its output in two ways, kept as separate fields
+    because they have opposite trust properties:
+
+    - `output_reference` is *descriptive* - a path, a URI, a resource id,
+      whatever the adapter chose to call the output. Adapters are untrusted
+      by design here, so this text is sanitized like any other adapter string.
+    - `output_digest` is a *cryptographic digest* of the output: machine
+      minted, meaningful only by being exactly itself, and therefore
+      structurally validated and preserved rather than rewritten.
+
+    An adapter may set either, both, or neither.
+    """
 
     invocation_id: str
     tool_id: str
@@ -197,6 +211,7 @@ class ToolInvocationResult:
     latency_ms: float = 0.0
     cost: CostMetadata | None = None
     output_reference: str | None = None
+    output_digest: str | None = None
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -219,6 +234,11 @@ class ToolInvocationResult:
             object.__setattr__(
                 self, "output_reference",
                 sanitized_identifier(self.output_reference, "output_reference"),
+            )
+        if self.output_digest is not None:
+            object.__setattr__(
+                self, "output_digest",
+                machine_digest(self.output_digest, "output_digest"),
             )
         object.__setattr__(self, "metadata", sanitized_metadata(self.metadata))
 
