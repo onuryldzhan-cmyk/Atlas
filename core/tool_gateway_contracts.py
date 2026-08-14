@@ -51,6 +51,7 @@ from core.model_provider_contracts import (
     ModelInvocationResult,
     ModelProviderAdapter,
     ModelProviderDescriptor,
+    machine_identifier,
     sanitized_identifier,
 )
 from core.operational_contracts import (
@@ -200,7 +201,7 @@ class ToolInvocationResult:
 
     def __post_init__(self) -> None:
         object.__setattr__(
-            self, "invocation_id", sanitized_identifier(self.invocation_id, "invocation_id"),
+            self, "invocation_id", machine_identifier(self.invocation_id, "invocation_id"),
         )
         object.__setattr__(self, "tool_id", sanitized_identifier(self.tool_id, "tool_id"))
         object.__setattr__(self, "outcome", InvocationOutcome(self.outcome))

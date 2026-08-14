@@ -101,21 +101,93 @@ class InvocationOutcome(str, Enum):
     INVALID_RESULT = "INVALID_RESULT"
 
 
+#: Shared bound for every identifier this module accepts, whichever of the
+#: two functions below validates it. Long enough for any realistic provider,
+#: model, or correlation id; short enough that an id cannot become a payload.
+MAX_IDENTIFIER_LENGTH = 200
+
+#: Characters that must never appear inside an identifier, because an id ends
+#: up in log lines and audit records where they would forge structure.
+FORBIDDEN_IDENTIFIER_CHARACTERS = "\r\n\t\x00"
+
+
 def sanitized_identifier(value: str, field_name: str) -> str:
-    """Validate and sanitize a caller-supplied identifier.
+    """Validate and sanitize a caller-supplied *descriptive* identifier.
 
     Identifiers reach logs, audit records, and reason codes, so an id is
     both length-bounded and passed through the sanitizer: a provider_id of
     'api_key=sk-live-...' must not become an audit record that leaks it.
+
+    Use this for anything a human or a provider chose the text of -
+    provider_id, model_id, tool_id, task_type, reason_code, permissions,
+    currency, references. Do *not* use it for a correlation id Atlas minted
+    itself; see `machine_identifier`.
     """
     text = str(value).strip()
     if not text:
         raise ValueError(f"{field_name} is required")
-    if len(text) > 200:
+    if len(text) > MAX_IDENTIFIER_LENGTH:
         raise ValueError(f"{field_name} is too long")
-    if any(character in text for character in "\r\n\t\x00"):
+    if any(character in text for character in FORBIDDEN_IDENTIFIER_CHARACTERS):
         raise ValueError(f"{field_name} must not contain control characters")
     return sanitize_sensitive_text(text)
+
+
+def machine_identifier(value: Any, field_name: str) -> str:
+    """Validate an opaque machine identifier and return it unchanged.
+
+    Correlation identity - `OperationContext.trace_id` / `operation_id` and
+    the `invocation_id` copied from it - is minted by Atlas, not authored by
+    anyone. Its only job is to be equal to itself: the gateway matches a
+    result against its invocation by byte equality, the replay guard keys on
+    it, and an audit record is joined to its operation through it. An
+    identifier that a redaction pass can rewrite cannot do that job.
+
+    Passing such an id through `sanitize_sensitive_text` was doing exactly
+    that. The card-number detector matches hyphen-separated digit runs of
+    13-19 digits and redacts those satisfying a Luhn check, and a uuid4's
+    middle groups form such a run often enough to matter: 447 of 200,000
+    sampled uuid4 values were rewritten. The result was a correct adapter's
+    correct result being refused as ADAPTER_RESULT_INVALID, and audit
+    records carrying an id that no longer joined to anything.
+
+    The boundary this restores is the one the rest of Atlas already keeps:
+    `OperationContext` documents trace_id/operation_id as "internally
+    generated UUID identity ... left untouched", and `OperationResult`
+    exempts trace_id for the same reason. These two invocation_id fields
+    were the only places that did not.
+
+    Preserving is not trusting. A malformed identifier is rejected rather
+    than repaired, and the structural rules are deliberately identical to
+    `sanitized_identifier`'s - required, length-bounded, no control
+    characters - so the two differ in exactly one respect: this one never
+    rewrites what it accepts. Two rules are additionally strict, because
+    for opaque identity a silent repair is itself the defect:
+
+    - a non-string is rejected instead of coerced, since ``str(x)`` would
+      produce an id that never equals the object it came from;
+    - surrounding whitespace is rejected instead of stripped, for the same
+      reason.
+
+    UUID shape is deliberately *not* required. `OperationContext` accepts
+    any caller-supplied operation_id and validates none of it, so uuid4 is
+    this system's default, not its contract; demanding it here would
+    invent an invariant Atlas does not have and would reject contexts that
+    are legal today.
+    """
+    if not isinstance(value, str):
+        raise ValueError(f"{field_name} must be a string")
+    if not value:
+        raise ValueError(f"{field_name} is required")
+    # Also catches a whitespace-only id, which cannot survive both this
+    # check and the emptiness check above.
+    if value.strip() != value:
+        raise ValueError(f"{field_name} must not be padded with whitespace")
+    if len(value) > MAX_IDENTIFIER_LENGTH:
+        raise ValueError(f"{field_name} is too long")
+    if any(character in value for character in FORBIDDEN_IDENTIFIER_CHARACTERS):
+        raise ValueError(f"{field_name} must not contain control characters")
+    return value
 
 
 def _cost_amount(value: Any, field_name: str) -> Decimal:
@@ -299,7 +371,7 @@ class ModelInvocationResult:
 
     def __post_init__(self) -> None:
         object.__setattr__(
-            self, "invocation_id", sanitized_identifier(self.invocation_id, "invocation_id"),
+            self, "invocation_id", machine_identifier(self.invocation_id, "invocation_id"),
         )
         object.__setattr__(
             self, "provider_id", sanitized_identifier(self.provider_id, "provider_id"),
