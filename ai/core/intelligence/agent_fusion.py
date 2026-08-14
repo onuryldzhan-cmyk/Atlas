@@ -170,6 +170,30 @@ class AgentFusion:
 
 
     # =================================================
+    # MASS QUANTIZATION (M-2)
+    # =================================================
+    #
+    # Every bucket mass is a sum of (configured weight x vote factor)
+    # products. Weights carry two decimal places and scores are rounded
+    # to three, so no semantically meaningful digit exists beyond about
+    # five decimal places. Quantizing the confidence ratio's numerator
+    # and denominator at twelve places therefore cannot change a real
+    # value; it only removes binary floating-point accumulation noise.
+    #
+    # This is load-bearing for the M-2 monotonicity guarantee, not
+    # cosmetic. The same mathematical quantity is reached by different
+    # summation paths depending on which participants are present (a
+    # removed participant's weight moves out of `total` and into
+    # `missing_weight`), so two mathematically identical results can
+    # differ in the last bit. Without quantization, an exact tie can
+    # straddle the 4-decimal rounding boundary and report a +0.0001
+    # "increase" on evidence removal. Grid verification found exactly
+    # that: 8 such artifacts unquantized, 0 at this precision.
+
+    MASS_PRECISION = 12
+
+
+    # =================================================
     # EVIDENCE CONTRACT (Step 2C)
     # =================================================
     #
@@ -345,6 +369,28 @@ class AgentFusion:
                 continue
 
 
+            if not self._is_usable_score(
+                score
+            ):
+
+                # Package 4 red team: the value is present but outside the
+                # contractual [0, 1] score range (or NaN, or not a number
+                # at all). fuse() excludes such a participant defensively
+                # too; catching it here as well is what turns a silent
+                # exclusion into a named, auditable diagnostic on the
+                # canonical producer path.
+                unavailable[agent_name] = (
+                    "SCORE_OUT_OF_CONTRACT_RANGE"
+                )
+
+                print(
+                    f"[AGENT] {agent_name}: "
+                    f"EXCLUDED status=SCORE_OUT_OF_CONTRACT_RANGE"
+                )
+
+                continue
+
+
             action = self.score_to_action(
                 score
             )
@@ -501,6 +547,51 @@ class AgentFusion:
         self,
         signals
     ):
+
+
+        # -------------------------------------------------
+        # SCORE RANGE GUARD (Package 4 red team)
+        # -------------------------------------------------
+        #
+        # Every score is contractually a fraction in [0, 1], and the live
+        # producer (MarketLoop.calculate_score) does clamp to that range.
+        # fuse() never checked, though, and it is a public method: a score
+        # outside the range makes a bucket mass exceed the participant's
+        # weight, or go negative, and the resulting confidence escapes
+        # [0, 1] entirely (an out-of-range input was measured producing
+        # confidence 1.3333 - a nonsensical 133% conviction).
+        #
+        # Such a participant is excluded, not clamped, for the same reason
+        # NB-1/NB-3 exclude a malformed RSI rather than defaulting it: a
+        # value Atlas cannot interpret is absent evidence, and absent
+        # evidence must cost the participant its weight rather than be
+        # rewritten into a plausible one. Exclusion is exactly the removal
+        # case the availability charge below already handles, so it is
+        # fail-closed by construction and cannot raise confidence.
+        #
+        # With every surviving factor in [0, 1] and every weight
+        # non-negative, winning_mass <= total <= total + missing_weight,
+        # so the reported confidence is now bounded to [0, 1] by the
+        # arithmetic itself rather than by a downstream clamp.
+
+        signals = {
+
+            name: data
+
+            for name, data in signals.items()
+
+            if self._is_usable_score(
+                data.get(
+                    "score"
+                )
+                if isinstance(
+                    data,
+                    dict,
+                )
+                else None
+            )
+
+        }
 
 
         # -------------------------------------------------
@@ -688,33 +779,99 @@ class AgentFusion:
 
 
 
-        bucket_confidence = scores[action]
-
-
-
         # -------------------------------------------------
-        # AVAILABILITY-SCALED CONFIDENCE (Step 2C)
+        # AVAILABILITY-ADJUSTED CONFIDENCE (M-2, supersedes Step 2C)
         # -------------------------------------------------
         #
-        # `scores` (and bucket_confidence) reflect agreement only among
-        # the agents actually present in `signals` - they say nothing
-        # about how much of the configured evidence base that
-        # represents. Reporting bucket_confidence directly would let
-        # two fully agreeing agents read as 100% conviction even though
-        # most configured evidence is missing. weight_coverage was
-        # already computed above (for the evidence floor) and is reused
-        # unchanged here, per the authorized design, to fold the
-        # missing-evidence fraction into the externally reported
-        # confidence:
+        # Step 2C reported `bucket_share * weight_coverage`, where
+        # bucket_share = winning_mass / total (total being the mass of
+        # the *surviving* participants only). That is two independent
+        # normalizations against two different populations, and the
+        # first one is not availability-aware: `total` shrinks when a
+        # participant disappears, so bucket_share rises. The coverage
+        # factor does not always cancel that rise, because `total` is
+        # not the participating weight - each participant contributes
+        # only a fraction of its weight (score for BUY, 1-score for
+        # SELL, 0.5 for HOLD). Whenever the surviving evidence is
+        # weakly held (total / available_weight < 1 - f_removed),
+        # removing a participant increased the reported confidence.
+        # That is M-2: reproduced at this HEAD by grid search at up to
+        # +0.133 (0.667 -> 0.800) for a single removal, and it is the
+        # reason MIN_PARTICIPATING_AGENTS=3 had to stay an interlock
+        # against a third evidence provider.
         #
-        #     final_confidence = bucket_confidence * weight_coverage
+        # The correction is a single normalization against the *whole*
+        # configured roster. An absent participant is not dropped from
+        # the denominator and is not fabricated into a bucket; it is
+        # charged its full configured weight against whatever wins:
         #
-        # `scores` itself is left unscaled - it stays the honest
-        # internal bucket distribution among available evidence only.
+        #     missing_weight = total_configured_weight - available_weight
+        #     confidence     = winning_mass / (total + missing_weight)
+        #
+        # Two properties follow, and both are what M-2 required:
+        #
+        # 1. Monotonicity. Removing participant j removes c_j = f_j*w_j
+        #    from `total` and adds w_j to missing_weight, so the
+        #    denominator moves by w_j*(1 - f_j) >= 0 - it can never
+        #    shrink. The numerator either loses c_j (j voted with the
+        #    winner) or is unchanged, and if the winner changes the new
+        #    winner's mass was already <= the old winner's. So the
+        #    quotient is non-increasing under any removal, for every
+        #    input. Removing evidence can no longer buy confidence.
+        #
+        # 2. Absence is the worst case, not the neutral case. Charging
+        #    the full weight w_j means a missing participant is treated
+        #    as maximally non-supporting: no real vote it could have
+        #    cast is worse than its absence. Missing evidence therefore
+        #    cannot improve the result, which is the invariant Step 2C
+        #    was reaching for.
+        #
+        # Full-roster behaviour is preserved exactly: missing_weight is
+        # 0, so confidence is the winning bucket share, which is what
+        # `bucket_share * 1.0` already produced. Under unanimous
+        # maximal conviction the value still degrades to the coverage
+        # ratio (3/5 -> 0.80, 2/5 -> 0.60), so Step 2C's intended
+        # availability ladder is unchanged; only the cases Step 2C got
+        # wrong move, and they only ever move down.
+        #
+        # `scores` is deliberately left as-is: it stays the honest
+        # bucket distribution among available evidence only, and it is
+        # still what selects `action`.
+
+        missing_weight = max(
+
+            round(
+                total_configured_weight - available_weight,
+                self.MASS_PRECISION,
+            ),
+
+            0.0,
+
+        )
+
+        winning_mass = {
+
+            "BUY":
+                buy,
+
+            "SELL":
+                sell,
+
+            "HOLD":
+                hold,
+
+        }[action]
 
         confidence = round(
 
-            bucket_confidence * weight_coverage,
+            round(
+                winning_mass,
+                self.MASS_PRECISION,
+            )
+            / round(
+                total + missing_weight,
+                self.MASS_PRECISION,
+            ),
 
             4,
 
@@ -767,6 +924,39 @@ class AgentFusion:
         return "HOLD"
 
 
+
+
+
+
+    @staticmethod
+    def _is_usable_score(
+        value
+    ):
+        """
+        True when `value` is a real number inside the contractual score
+        range [0, 1]. Booleans are refused despite being ints: a boolean
+        score is a caller mistake, not a 0/1 measurement. NaN is refused
+        by the self-comparison, which no arithmetic check would catch.
+        """
+
+        if isinstance(
+            value,
+            bool,
+        ) or not isinstance(
+            value,
+            (
+                int,
+                float,
+            ),
+        ):
+
+            return False
+
+        if value != value:
+
+            return False
+
+        return 0.0 <= value <= 1.0
 
 
 

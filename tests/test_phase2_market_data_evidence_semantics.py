@@ -337,7 +337,13 @@ def test_step2c_before_after_strong_buy_now_insufficient():
     before = fusion_engine.fuse(historical_signals)
 
     assert before.action == "BUY"
-    assert before.confidence == pytest.approx(0.706)
+    # Full 5/5 roster, so the M-2 correction leaves this value unchanged as
+    # a quantity: missing_weight is 0 and confidence is exactly the winning
+    # bucket share. The only movement is precision - the old code rounded
+    # the share to 3 places before scaling it by a coverage of 1.0, the new
+    # code rounds the ratio once at 4 places. 0.48/0.68 = 0.70588...
+    assert before.confidence == pytest.approx(0.7059)
+    assert before.confidence == pytest.approx(before.scores["BUY"], abs=1e-3)
     assert before.scores == {"BUY": 0.706, "SELL": 0.0, "HOLD": 0.294}
 
     # ---- AFTER (real producer + evaluate(), accepted floor policy) ----
@@ -455,7 +461,9 @@ def test_step2c_before_after_confidence_ceiling_now_insufficient_regardless_of_m
     before = fusion_engine.fuse(historical_signals)
 
     assert before.action == "BUY"
-    assert before.confidence == pytest.approx(0.737)
+    # Full 5/5 roster: unchanged by the M-2 correction except for the same
+    # single-rounding precision shift. 0.56/0.76 = 0.73684...
+    assert before.confidence == pytest.approx(0.7368)
     assert before.confidence < 1.0
 
     maximal_analysis = {"rsi": 20, "trend": "BULLISH", "ema20": 110.0, "ema50": 90.0}
@@ -534,11 +542,21 @@ def test_step2c_three_agents_with_sufficient_coverage_pass():
     assert fusion.action == "BUY"
     assert fusion.reason == "FUSED_EVIDENCE"
     assert fusion.scores == {"BUY": 1.0, "SELL": 0.0, "HOLD": 0.0}
-    # Required item 13: confidence-scaling formula is unaffected by the
-    # participant-floor policy change - bucket_share (1.0) * coverage
-    # (0.70) = 0.70, exactly the same formula verified for the 2-agent
-    # (now-insufficient) cases before this policy change.
-    assert fusion.confidence == pytest.approx(0.70)
+    # Required item 13, restated for the M-2 correction. The old formula
+    # was bucket_share (1.0) * coverage (0.70) = 0.70, which double-counted
+    # the availability normalization: it took the share against surviving
+    # mass and *then* scaled by coverage. The corrected single
+    # normalization charges the two absent participants their full weight
+    # instead: buy = 0.85*0.40 + 0.70*0.20 + 0.90*0.10 = 0.57, and
+    # 0.57 / (0.57 + 0.30) = 0.6552.
+    #
+    # The lower value is the point. `scores` still reads 100% BUY among
+    # the evidence that exists, but three of five configured sources
+    # agreeing at ordinary strength is not 70% conviction about the whole
+    # roster. Coverage is only reached as a ceiling under maximal
+    # conviction (see the unanimous-1.0 ladder test).
+    assert fusion.confidence == pytest.approx(0.6552)
+    assert fusion.confidence < coverage
 
 
 def test_step2c_three_agents_with_insufficient_coverage_fail():
@@ -750,7 +768,15 @@ def test_step2c_genuine_neutral_with_sufficient_evidence_remains_fused_hold():
     assert fusion.action == "HOLD"
     assert fusion.reason == "FUSED_EVIDENCE"
     # Distinguishable from insufficient evidence: nonzero confidence.
-    assert fusion.confidence == pytest.approx(0.70)
+    #
+    # Value updated for the M-2 correction (was 0.70 under the old
+    # bucket_share * coverage double normalization). Three genuine HOLD
+    # votes carry 0.5 * 0.70 = 0.35 of mass and the two absent
+    # participants are charged their full 0.30: 0.35 / (0.35 + 0.30)
+    # = 0.5385. Still emphatically not 0.0 - the genuine-neutral versus
+    # insufficient-evidence distinction this test exists to protect is
+    # unaffected.
+    assert fusion.confidence == pytest.approx(0.5385)
     assert fusion.confidence != 0.0
 
 

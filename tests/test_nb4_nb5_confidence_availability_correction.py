@@ -275,17 +275,32 @@ def test_fusion_confidence_path_is_unaffected_by_agreement_fix():
         + AgentFusion.WEIGHTS["risk"]
     )
     total_weight = sum(AgentFusion.WEIGHTS.values())
-    weight_coverage = available_weight / total_weight
+    missing_weight = total_weight - available_weight
 
     buy = 0.9 * AgentFusion.WEIGHTS["technical"]
     buy += 0.8 * AgentFusion.WEIGHTS["momentum"]
     buy += 0.7 * AgentFusion.WEIGHTS["risk"]
-    bucket_confidence = buy / buy  # single-bucket total == buy total
 
-    expected_confidence = round(bucket_confidence * weight_coverage, 4)
+    # Restated for the M-2 correction. This test's subject is unchanged -
+    # that Decision.confidence's path is structurally separate from the
+    # ConfidenceEngine agreement denominator - but the fusion formula it
+    # mirrors is now a single normalization against the full configured
+    # roster, not bucket_share * weight_coverage. The old expression
+    # (bucket_share of 1.0 scaled by coverage 0.70 -> 0.80) applied the
+    # availability adjustment twice, which is exactly the double scaling
+    # this test is named for.
+    expected_confidence = round(buy / (buy + missing_weight), 4)
 
     assert result.action == "BUY"
     assert result.confidence == pytest.approx(expected_confidence)
+    assert result.confidence == pytest.approx(0.7674)
+
+    # The availability adjustment is applied exactly once: re-scaling the
+    # already-adjusted result by coverage would be the double-scaling
+    # regression, and it produces a materially different number.
+    assert result.confidence != pytest.approx(
+        round(expected_confidence * (available_weight / total_weight), 4)
+    )
 
     # AgentFusion.fuse() never imports/calls ConfidenceEngine - the
     # agreement-denominator fix in this change touches a structurally
