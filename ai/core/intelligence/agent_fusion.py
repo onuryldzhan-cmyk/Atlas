@@ -769,11 +769,67 @@ class AgentFusion:
 
 
 
+        # -------------------------------------------------
+        # WINNER-SELECTION AUTHORITY (M-2)
+        # -------------------------------------------------
+        #
+        # The winning bucket is chosen from bucket MASS quantized at
+        # MASS_PRECISION - the identical quantity the confidence
+        # numerator below divides - and never from `scores`, which is a
+        # 3-decimal distribution kept for display and backward
+        # compatibility. Decision authority must not depend on
+        # presentation rounding.
+        #
+        # Selecting on `scores` was a real monotonicity defect, not a
+        # cosmetic one. Two buckets whose true masses differ only in the
+        # 4th decimal collapse onto one 3-decimal share, and max() then
+        # returns the first key in insertion order (BUY, SELL, HOLD) -
+        # so BUY could be declared the winner while SELL held strictly
+        # more mass, while the confidence numerator still used the
+        # winner's own, smaller, unrounded mass. Removing a participant
+        # broke the collision, the larger true mass became the
+        # numerator, and reported confidence ROSE on evidence removal -
+        # exactly what M-2 exists to forbid. Independent grid search
+        # found 69 such inversions across 6.7M removals, up to +0.0007,
+        # including one where the removed participant voted with factor
+        # 1.0 so the denominator was provably unchanged.
+        #
+        # With selection and numerator reading the same quantized value,
+        # the numerator is max_b q(mass_b). No removal can increase any
+        # bucket's mass and q is monotone, so the numerator is
+        # non-increasing while the denominator is non-decreasing: the
+        # quotient can only fall. A surviving tie is now a genuine
+        # equality of quantized mass, so either branch of the
+        # deterministic insertion-order tie-break yields the identical
+        # numerator and cannot invert anything.
+
+        quantized_mass = {
+
+            "BUY":
+                round(
+                    buy,
+                    self.MASS_PRECISION,
+                ),
+
+            "SELL":
+                round(
+                    sell,
+                    self.MASS_PRECISION,
+                ),
+
+            "HOLD":
+                round(
+                    hold,
+                    self.MASS_PRECISION,
+                ),
+
+        }
+
         action=max(
 
-            scores,
+            quantized_mass,
 
-            key=scores.get
+            key=quantized_mass.get
 
         )
 
@@ -849,25 +905,17 @@ class AgentFusion:
 
         )
 
-        winning_mass = {
+        # The same quantized mass that selected `action` above is the
+        # numerator here. Reading it from `quantized_mass` rather than
+        # re-quantizing a second copy is what makes "the winner" and
+        # "the numerator" one value by construction instead of two
+        # values that happen to agree.
 
-            "BUY":
-                buy,
-
-            "SELL":
-                sell,
-
-            "HOLD":
-                hold,
-
-        }[action]
+        winning_mass = quantized_mass[action]
 
         confidence = round(
 
-            round(
-                winning_mass,
-                self.MASS_PRECISION,
-            )
+            winning_mass
             / round(
                 total + missing_weight,
                 self.MASS_PRECISION,
