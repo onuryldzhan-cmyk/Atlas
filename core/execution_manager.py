@@ -1203,8 +1203,41 @@ class ExecutionManager:
             # =================================================
             # RETRYABLE FAILURE / NOT COMMITTED
             # =================================================
+            #
+            # Terminal classification is a SUCCESS allow-list, not a
+            # failure allow-list. Only a status this manager itself
+            # recognises as a completed execution may continue into
+            # durable finalization; every other terminal status resolves
+            # through the unsuccessful-execution path.
+            #
+            # The previous `status in FAILURE_STATUSES` test admitted
+            # everything outside {FAILED, ERROR} into the durable-commit
+            # branch. The statuses that actually reach this point are
+            # PAPER_EXECUTED and FAILED (paper_execute), REJECTED (the
+            # canonical-admission guard inside paper_execute and
+            # live_execute), and LIVE_DISABLED / LIVE_NOT_IMPLEMENTED
+            # (live_execute). So a correctly denied LIVE request - one
+            # that provably performed no side effect at all - was
+            # finalized as a confirmed execution: it failed inside
+            # _finalize_durable_financial_state and left the runtime
+            # halted with an unresolved journal entry, INDETERMINATE
+            # capital, and an audit record asserting that an execution
+            # "was confirmed" which had never occurred.
+            #
+            # Inverting the test is also what makes an unrecognised
+            # terminal status fail closed. ExecutionResult.status
+            # defaults to "UNKNOWN", and any status added in future is
+            # treated as not-committed until it is deliberately declared
+            # a success here, rather than being silently durable.
+            #
+            # This changes only how a status is classified, never how a
+            # side effect is judged: _resolve_unsuccessful_execution
+            # still decides deterministic rollback versus genuine
+            # uncertainty from the recorded side-effect marker alone, so
+            # a post-side-effect failure remains INDETERMINATE exactly
+            # as before.
 
-            if status in self.FAILURE_STATUSES:
+            if status not in self.SUCCESS_STATUSES:
                 # An unsuccessful result is classified by the same
                 # side-effect boundary as a raised exception. A paper
                 # mutation that already persisted is not undone by the
