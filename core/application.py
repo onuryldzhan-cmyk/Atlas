@@ -92,6 +92,12 @@ from core.execution_portfolio_foundation import (
 
 from core.controller.atlas_controller import AtlasController
 
+from core.tool_gateway_contracts import CapabilityGateway
+from core.local_capability_adapter import (
+    LocalCapabilityProbeAdapter,
+    UnconfiguredPolicyGate,
+)
+
 
 logger = logging.getLogger("AtlasAI.Application")
 
@@ -297,6 +303,47 @@ class AtlasApplication:
             execution=self.execution,
         )
 
+        self._build_capability_gateway()
+
+    # =========================================================
+    # CAPABILITY GATEWAY
+    # =========================================================
+
+    def _build_capability_gateway(self) -> None:
+        """
+        Bind the capability contracts to their concrete implementations.
+
+        This is the only place in Atlas allowed to decide which policy gate
+        and which adapters exist, exactly as it is for the risk services
+        below. Intelligence cannot reach an adapter directly — the L4->L2
+        forbidden edge makes that a structural impossibility rather than a
+        convention — so the composition root is the sole binding point.
+
+        Nothing built here runs. The gateway is not started, not scheduled,
+        not subscribed to the event bus, and not referenced by the brain,
+        the market loop, or the execution path. It performs work only if a
+        caller invokes it, and today no caller does.
+
+        It also cannot perform work if one did. `UnconfiguredPolicyGate`
+        denies every operation, and the gateway consults the policy before
+        it touches an adapter, so every invocation through this instance
+        stops at POLICY_DENIED with no side effect. Widening that requires
+        constructing a different gate here, which is a visible diff and a
+        reviewable decision.
+
+        The adapter is registered rather than hidden so that the wiring is
+        inspectable and injectable — a caller receives the adapter from the
+        container instead of importing the concrete class.
+        """
+
+        self.capability_policy_gate = UnconfiguredPolicyGate()
+
+        self.capability_gateway = CapabilityGateway(
+            self.capability_policy_gate,
+        )
+
+        self.capability_probe_adapter = LocalCapabilityProbeAdapter()
+
     # =========================================================
     # CANONICAL FINANCIAL RISK SERVICES
     # =========================================================
@@ -429,6 +476,10 @@ class AtlasApplication:
             self.execution,
             self.market_loop,
             self.controller,
+            # Registered, not started: these have no lifecycle, and the
+            # startup sequence below never references them.
+            self.capability_gateway,
+            self.capability_probe_adapter,
         )
 
         for service in services:

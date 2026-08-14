@@ -164,6 +164,21 @@
       "reason": "explicit: L1 domain contract example"
     },
     {
+      "pattern": "core/operational_contracts.py",
+      "layer": "L1",
+      "reason": "operation/policy vocabulary; data contracts only, no I/O (Block 3 capability seam)"
+    },
+    {
+      "pattern": "core/model_provider_contracts.py",
+      "layer": "L1",
+      "reason": "provider-neutral model invocation vocabulary; no SDK, client, or credential (Block 3 capability seam)"
+    },
+    {
+      "pattern": "core/tool_gateway_contracts.py",
+      "layer": "L1",
+      "reason": "tool invocation vocabulary and the CapabilityGateway policy chokepoint; contracts only, concrete adapters live at L2 (Block 3 capability seam)"
+    },
+    {
       "pattern": "core/execution_portfolio_foundation.py",
       "layer": "L1",
       "reason": "canonical financial-state/portfolio-foundation domain authority, grouped with risk_engine.py and capital_reservation.py as the M-1 canonical risk services (deliberately unwired in Package 2A)"
@@ -217,6 +232,11 @@
       "pattern": "core/scheduler.py",
       "layer": "L2",
       "reason": "infrastructure scheduler (application.py Infrastructure bucket)"
+    },
+    {
+      "pattern": "core/local_capability_adapter.py",
+      "layer": "L2",
+      "reason": "concrete implementations of the L1 capability contracts (deny-by-default policy gate, local probe tool adapter); L2 keeps the L4->L2 forbidden edge as the structural guarantee that intelligence cannot import an adapter and bypass the gateway"
     },
     {
       "pattern": "core/service_container.py",
@@ -396,8 +416,11 @@
     "core/execution_portfolio_foundation.py": "L1",
     "core/execution_transaction_journal.py": "L2",
     "core/lifecycle.py": "L2",
+    "core/local_capability_adapter.py": "L2",
     "core/logger.py": "L2",
     "core/market_loop.py": "L3",
+    "core/model_provider_contracts.py": "L1",
+    "core/operational_contracts.py": "L1",
     "core/paper_trader.py": "L3",
     "core/position_controller.py": "L3",
     "core/risk_engine.py": "L1",
@@ -406,6 +429,7 @@
     "core/scheduler.py": "L2",
     "core/service_container.py": "L2",
     "core/technical_analyzer.py": "L3",
+    "core/tool_gateway_contracts.py": "L1",
     "data_layer/__init__.py": "L2",
     "data_layer/canonical_evidence.py": "L1",
     "data_layer/config.py": "L2",

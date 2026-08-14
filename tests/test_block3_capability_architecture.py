@@ -15,6 +15,17 @@ added to one of them would not be caught by it.
 
 These tests close that blind spot directly, by walking the imports of the
 new modules themselves.
+
+Package-4 supersession
+----------------------
+Two guards in class H were written as "nothing implements this yet", which
+Package 4 makes false by shipping `core/local_capability_adapter.py` and
+binding it in the composition root. They are replaced here by the stronger
+conditions that made shipping an adapter acceptable: a concrete adapter must
+be L2-placed, only the composition root may bind it, the execution path may
+never see it, and the gate it is bound with must deny by default. Everything
+class I asserts about the M-2 provider interlock is unchanged and still
+enforced.
 """
 
 from __future__ import annotations
@@ -71,7 +82,10 @@ def code_references(path: Path) -> set[str]:
     document in prose exactly which evidence/fusion symbols they avoid, and
     a substring scan would flag that documentation as a violation.
     """
-    tree = ast.parse(path.read_text(encoding="utf-8", errors="ignore"))
+    # utf-8-sig, not utf-8: a leading BOM survives errors="ignore" and makes
+    # ast.parse() raise, which would silently exempt a BOM-prefixed module
+    # from every scan built on this helper.
+    tree = ast.parse(path.read_text(encoding="utf-8-sig", errors="ignore"))
     references: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom) and node.module:
@@ -173,14 +187,30 @@ def test_no_intelligence_module_imports_the_package_3_contracts_yet():
             assert "tool_gateway_contracts" not in text
 
 
-def test_no_concrete_adapter_module_exists_yet():
-    """This package ships contracts only; an adapter would need L2 placement."""
+def test_concrete_adapters_are_l2_placed_only():
+    """Package 4 supersedes Package 3's "no adapter exists yet" guard.
+
+    An adapter now exists, so the guard becomes the condition that made
+    shipping one acceptable: any module that implements or references an
+    adapter contract is either one of the two L1 contract seams, or is
+    explicitly mapped to L2 in the architecture map. L2 is what the L4->L2
+    forbidden edge acts on, so a concrete adapter that drifted to L1 or L3
+    would silently become importable by intelligence or by the execution
+    path and could be called without passing the gateway.
+    """
+    layers = architecture_map()["module_layers"]
+
     for path in (REPOSITORY_ROOT / "core").glob("*.py"):
         text = path.read_text(encoding="utf-8", errors="ignore")
-        if "ToolAdapter" in text or "ModelProviderAdapter" in text:
-            assert path.name in {
-                "model_provider_contracts.py", "tool_gateway_contracts.py",
-            }, f"{path.name} references an adapter contract outside the L1 seam"
+        if "ToolAdapter" not in text and "ModelProviderAdapter" not in text:
+            continue
+        if path.name in {"model_provider_contracts.py", "tool_gateway_contracts.py"}:
+            continue
+        relative_path = f"core/{path.name}"
+        assert layers.get(relative_path) == "L2", (
+            f"{relative_path} references an adapter contract but is not "
+            f"declared L2 (declared: {layers.get(relative_path)!r})"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -251,13 +281,72 @@ def test_package_3_grants_no_live_or_execution_authority():
             assert forbidden not in names, f"{relative_path} references {forbidden}"
 
 
-def test_package_3_does_not_alter_execution_or_application_modules():
-    """The contracts are additive; nothing in the execution path imports them."""
-    for relative_path in ("core/application.py", "core/execution_manager.py"):
-        text = (REPOSITORY_ROOT / relative_path).read_text(encoding="utf-8")
-        assert "model_provider_contracts" not in text
-        assert "tool_gateway_contracts" not in text
-        assert "CapabilityGateway" not in text
+def test_execution_path_does_not_reach_the_capability_contracts():
+    """Package 4 splits Package 3's single guard into its two real halves.
+
+    The execution path keeps the original prohibition outright: nothing in
+    ExecutionManager may see a gateway, an adapter, or an invocation
+    contract, so no capability can ever sit on the order path.
+
+    The composition root is the deliberate exception, because binding
+    contracts to implementations is precisely its job (ADR-0001) and there
+    is nowhere else the binding is permitted to happen.
+    """
+    execution_text = (REPOSITORY_ROOT / "core/execution_manager.py").read_text(
+        encoding="utf-8"
+    )
+    for forbidden in (
+        "model_provider_contracts", "tool_gateway_contracts",
+        "local_capability_adapter", "CapabilityGateway",
+    ):
+        assert forbidden not in execution_text, (
+            f"core/execution_manager.py now references {forbidden}"
+        )
+
+
+def test_composition_root_is_the_only_binder_of_capability_implementations():
+    """Exactly one module may construct the gateway and its adapters."""
+    binders = []
+    for package in ("core", "ai", "analysis", "portfolio", "exchange"):
+        directory = REPOSITORY_ROOT / package
+        if not directory.exists():
+            continue
+        for path in directory.rglob("*.py"):
+            if path.name == "local_capability_adapter.py":
+                continue
+            if any(
+                "local_capability_adapter" in reference
+                for reference in code_references(path)
+            ):
+                binders.append(path.relative_to(REPOSITORY_ROOT).as_posix())
+
+    assert binders == ["core/application.py"], (
+        f"the concrete adapter module gained a non-composition-root importer: {binders}"
+    )
+
+
+def test_composition_root_binds_a_deny_by_default_policy_gate():
+    """The wired gateway must be incapable of reaching any adapter.
+
+    This is the property that makes wiring a gateway into a live financial
+    application acceptable at all: the composed instance denies before it
+    touches an adapter, so the wiring adds reachable surface of exactly
+    zero. If the composition root ever binds an approving gate, that is a
+    governance decision and this test must be the thing that fails.
+    """
+    text = (REPOSITORY_ROOT / "core/application.py").read_text(encoding="utf-8")
+    assert "UnconfiguredPolicyGate" in text
+    assert "CapabilityGateway(" in text
+
+    from core.local_capability_adapter import UnconfiguredPolicyGate
+    from core.operational_contracts import OperationContext
+
+    decision = UnconfiguredPolicyGate().evaluate(
+        OperationContext(
+            component="test", operation="anything", actor_id="operator",
+        )
+    )
+    assert decision.allowed is False
 
 
 def test_financial_side_effect_is_representable_but_denied_by_default():
