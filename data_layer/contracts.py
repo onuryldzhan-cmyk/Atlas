@@ -27,6 +27,21 @@ class ConcurrencyConflict(IntegrityViolation):
     """A stale optimistic writer attempted to mutate financial state."""
 
 
+class RecordConflict(IntegrityViolation):
+    """A record already exists under this exact key with a different payload.
+
+    Distinct from ConcurrencyConflict, which reports a stale optimistic
+    version of a record the writer intended to mutate. This instead reports
+    an immutable, content-addressed record whose stored payload disagrees
+    with the one being written: the write is refused rather than applied,
+    because the two payloads cannot both be what that key identifies.
+
+    Backend-neutral: it names a storage invariant, not a SQLite behavior, so
+    a future PostgreSQL adapter raises the same class. No existing execution
+    storage path raises it.
+    """
+
+
 class MigrationError(StorageError):
     """Schema migration validation or application failed."""
 
