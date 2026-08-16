@@ -279,8 +279,16 @@ def test_an_interrupted_execution_still_blocks_after_restart(state_dir):
     app = application(state_dir)
     app.execution.start()
 
+    # Scoped to the durable read that follows the paper side effect: Block-5A
+    # also reads the snapshot during risk_check to derive the canonical
+    # RiskState, and failing there would refuse admission rather than
+    # interrupt an execution that has already crossed the boundary.
+    durable_snapshot = app.execution.portfolio_foundation.snapshot
+
     def failing_snapshot(*args, **kwargs):
-        raise RuntimeError("durable snapshot read failed")
+        if app.execution._execution_side_effect_ids:
+            raise RuntimeError("durable snapshot read failed")
+        return durable_snapshot(*args, **kwargs)
 
     app.execution.portfolio_foundation.snapshot = failing_snapshot
     app.execution.execute(buy_decision(app), risk_state())

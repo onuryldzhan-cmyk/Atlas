@@ -71,6 +71,9 @@ def execution_manager(*, position_controller=None, capital_manager=None, reserva
     manager.risk_engine = RiskEngine(policy())
     manager.reservation_ledger = reservations if reservations is not None else ledger()
     manager.risk_state_store = MemoryRiskStateStore()
+    # No durable portfolio book is configured here, so the supplied
+    # RiskState remains the position authority for these unit contracts.
+    manager.portfolio_foundation = None
     manager.position_controller = position_controller
     manager.capital_manager = capital_manager
     manager.last_risk_decision = None

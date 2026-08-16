@@ -80,6 +80,7 @@ from core.execution_models import (
 from core.execution_portfolio_foundation import ExecutionPortfolioFoundation
 
 from core.risk_engine import (
+    PositionExposure,
     RiskEngine,
     RiskRequest,
     RiskState,
@@ -2122,6 +2123,149 @@ class ExecutionManager:
         }
 
     # =========================================================
+    # AUTHORITATIVE RISK STATE DERIVATION
+    # =========================================================
+
+    def _derived_position_exposures(self) -> tuple[PositionExposure, ...]:
+        """Project the durable LONG book onto the canonical exposure contract.
+
+        Each position is valued at the ``mark_price`` the foundation already
+        holds, which is the same basis its own ``snapshot()`` reports. No new
+        market-price authority is introduced here: a mark that has not been
+        refreshed is carried exactly as the durable book states it, so the
+        derived exposure is never fresher than the accounting it comes from.
+        """
+        positions = self.portfolio_foundation.snapshot()["positions"]
+
+        exposures = []
+        for symbol, position in sorted(positions.items()):
+            base = Decimal(str(position["base_quantity"]))
+            mark = Decimal(str(position["mark_price"]))
+            exposures.append(
+                PositionExposure(symbol, base, mark, base * mark)
+            )
+
+        return tuple(exposures)
+
+    def _derive_risk_state(
+        self,
+        market_state: Any | None = None,
+    ) -> RiskState:
+        """Assemble the canonical ``RiskState`` from authoritative state.
+
+        Contract
+        --------
+        Position state and committed exposure come from
+        ``ExecutionPortfolioFoundation``, the durable owner of LONG position
+        accounting. Realized daily P&L, peak/current equity, the UTC
+        accounting day and the policy version come from the durable risk
+        accounting record behind ``risk_state_store``. Nothing is inferred or
+        defaulted: every field is read from one of those two authorities, and
+        an authority that cannot answer raises so ``risk_check`` refuses the
+        request instead of evaluating risk against a fabricated portfolio.
+
+        ``CapitalReservationLedger`` is deliberately not consulted. There is
+        no reserved-capital field on ``RiskState``; ``RiskEngine`` derives
+        reserved and allocatable capital from ``RiskPolicy`` itself. The
+        ledger's readiness remains a precondition ``risk_check`` enforces
+        before this runs, so it still gates admission without contributing a
+        value that cannot be proven from the state it owns.
+
+        Compatibility
+        -------------
+        When no portfolio foundation is configured - the documented opt-out
+        described in ``_durable_financial_ready`` - the caller-supplied
+        ``RiskState`` remains the position authority exactly as before. A
+        foundation that *is* configured but is not ready never falls back to
+        caller-supplied positions: an unrecoverable book fails closed.
+        """
+        if self.risk_engine is None:
+            raise RuntimeError("CANONICAL_RISK_SERVICE_REQUIRED")
+
+        if self.risk_state_store is None:
+            raise RuntimeError("RISK_ACCOUNTING_STATE_STORE_REQUIRED")
+
+        foundation = self.portfolio_foundation
+
+        if foundation is not None:
+            if not foundation.ready:
+                raise RuntimeError(
+                    "DURABLE_FINANCIAL_FOUNDATION_NOT_READY"
+                )
+
+            positions = self._derived_position_exposures()
+
+        else:
+            supplied = (
+                market_state
+                if isinstance(market_state, RiskState)
+                else (
+                    market_state.get("risk_state")
+                    if isinstance(market_state, Mapping)
+                    else None
+                )
+            )
+
+            if not isinstance(supplied, RiskState) or not supplied.state_ready:
+                raise ValueError(
+                    "authoritative position exposure state is required"
+                )
+
+            positions = supplied.positions
+
+        restored = self.risk_state_store.load(
+            expected_policy_version=self.risk_engine.policy.version,
+            today_utc=datetime.now(UTC).date(),
+        )
+
+        return RiskState(
+            positions=positions,
+            committed_quote=sum(
+                (position.quote_exposure for position in positions),
+                Decimal("0"),
+            ),
+            realized_daily_pnl=restored.realized_daily_pnl,
+            peak_equity=restored.peak_equity,
+            current_equity=restored.current_equity,
+            state_ready=True,
+            accounting_day_utc=restored.accounting_day_utc.isoformat(),
+            policy_version=restored.policy_version,
+        )
+
+    @staticmethod
+    def _derive_reduce_only(
+        request: ExecutionRequest,
+        state: RiskState,
+    ) -> bool:
+        """Derive risk-reduction intent from authoritative held-position state.
+
+        Atlas is LONG-only, so exposure can only fall by selling a symbol that
+        is actually held. A SELL against a held position is therefore handed to
+        ``RiskEngine`` as reduce-only, and the engine keeps sole authority over
+        whether the requested size is a *valid* reduction: an over-sized one
+        still fails closed as ``INVALID_RISK_REDUCTION``. A SELL against a
+        symbol that is not held is not a reduction at all and stays
+        ``NON_RISK_REDUCING_SELL``.
+
+        A BUY can never reduce exposure, so it derives False unconditionally.
+        That also stops a caller-supplied flag from waiving the capital
+        reservation the BUY path requires.
+
+        The derived value is authoritative. A contradicting caller flag is
+        logged and then discarded, because held-position state - not caller
+        intent - decides whether exposure is being reduced.
+        """
+        if str(request.action).strip().upper() != "SELL":
+            return False
+
+        symbol = str(request.symbol).strip().upper()
+
+        return any(
+            position.symbol == symbol
+            for position in state.positions
+        )
+
+    # =========================================================
     # RISK VALIDATION
     # =========================================================
 
@@ -2147,32 +2291,28 @@ class ExecutionManager:
             return {"approved": False, "reason": "RISK_ACCOUNTING_STATE_STORE_REQUIRED",
                     "status": "BLOCK_RECOVERY_REQUIRED"}
         if self.risk_engine is not None:
-            risk_state = (
-                market_state
-                if isinstance(market_state, RiskState)
-                else (
-                    market_state.get("risk_state")
-                    if isinstance(market_state, Mapping)
-                    else None
-                )
-            )
             try:
-                if not isinstance(risk_state, RiskState) or not risk_state.state_ready:
-                    raise ValueError("authoritative position exposure state is required")
-                restored = self.risk_state_store.load(
-                    expected_policy_version=self.risk_engine.policy.version,
-                    today_utc=datetime.now(UTC).date(),
+                risk_state = self._derive_risk_state(market_state)
+
+                # Risk-reduction intent is decided by the position state the
+                # engine is about to evaluate against, never by the caller.
+                supplied_reduce_only = bool(request.reduce_only)
+                request.reduce_only = self._derive_reduce_only(
+                    request,
+                    risk_state,
                 )
-                risk_state = RiskState(
-                    positions=risk_state.positions,
-                    committed_quote=risk_state.committed_quote,
-                    realized_daily_pnl=restored.realized_daily_pnl,
-                    peak_equity=restored.peak_equity,
-                    current_equity=restored.current_equity,
-                    state_ready=True,
-                    accounting_day_utc=restored.accounting_day_utc.isoformat(),
-                    policy_version=restored.policy_version,
-                )
+
+                if request.reduce_only != supplied_reduce_only:
+                    logger.warning(
+                        "Reduce-only intent re-derived from authoritative "
+                        "position state symbol=%s action=%s supplied=%s "
+                        "derived=%s",
+                        request.symbol,
+                        request.action,
+                        supplied_reduce_only,
+                        request.reduce_only,
+                    )
+
                 canonical = self.risk_engine.evaluate(
                     RiskRequest(
                         symbol=request.symbol,
@@ -2183,7 +2323,7 @@ class ExecutionManager:
                         risk_bucket=request.risk,
                         reduce_only=request.reduce_only,
                     ),
-                    risk_state if isinstance(risk_state, RiskState) else RiskState(),
+                    risk_state,
                 )
                 self.last_risk_decision = canonical.to_dict()
             except Exception as exc:

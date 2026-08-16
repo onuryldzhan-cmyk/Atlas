@@ -84,6 +84,9 @@ def execution_manager():
     manager.risk_engine = CoreRiskEngine(policy())
     manager.reservation_ledger = CapitalReservationLedger(MemoryStore(), D("800"))
     manager.risk_state_store = MemoryRiskStateStore()
+    # No durable portfolio book is configured here, so the supplied
+    # RiskState remains the position authority for these unit contracts.
+    manager.portfolio_foundation = None
     manager.position_controller = None
     manager.capital_manager = None
     manager.last_risk_decision = None

@@ -119,12 +119,21 @@ def break_after_side_effect(app: AtlasApplication) -> None:
     """Raise after PaperTrader has already persisted the opened trade.
 
     ``_execute_paper_buy`` reads the durable portfolio snapshot to resolve the
-    position identity only after ``_paper_open_trade`` has returned, so this
-    reproduces an interruption on the far side of the boundary.
+    position identity only after ``_paper_open_trade`` has returned, so a
+    failure there reproduces an interruption on the far side of the boundary.
+
+    Block-5A also reads that snapshot to derive the canonical RiskState, which
+    happens during ``risk_check`` and therefore *before* any component is
+    touched. The injection is scoped to reads taken once the side-effect
+    boundary has actually been crossed, so it keeps reproducing the post-side
+    -effect interruption instead of degenerating into an admission refusal.
     """
+    durable_snapshot = app.execution.portfolio_foundation.snapshot
 
     def failing_snapshot(*args, **kwargs):
-        raise RuntimeError("durable snapshot read failed")
+        if app.execution._execution_side_effect_ids:
+            raise RuntimeError("durable snapshot read failed")
+        return durable_snapshot(*args, **kwargs)
 
     app.execution.portfolio_foundation.snapshot = failing_snapshot
 
@@ -651,8 +660,18 @@ def test_exception_and_failed_result_resolve_consistently(running_app, tmp_path)
     assert running_app.execution.execution_halted == other.execution.execution_halted
 
 
-def test_sell_position_not_found_stays_before_the_boundary(running_app):
-    """The reachable SELL failure occurs before the paper book is touched."""
+def test_sell_without_a_held_position_stays_before_the_boundary(running_app):
+    """A SELL Atlas cannot back with a real position never reaches the book.
+
+    Before Block-5A the caller supplied the exposure state, so a phantom
+    position carried this request all the way to ``_execute_paper_sell`` and
+    the reachable failure was POSITION_NOT_FOUND. Exposure is now derived from
+    the durable book, so the same request is refused at admission instead: the
+    boundary moved earlier, and the safety claims this test owns - the paper
+    book is untouched, no admission survives, the runtime does not halt - are
+    unchanged. The durable POSITION_NOT_FOUND defence still exists below this
+    point and is covered directly in the Block-5A suite.
+    """
     decision = ExecutionRequest(
         "BTCUSDT",
         "SELL",
@@ -664,16 +683,17 @@ def test_sell_position_not_found_stays_before_the_boundary(running_app):
         reduce_only=True,
     ).to_dict()
 
-    # A risk-reducing exit needs a real exposure to reduce; the durable
-    # book still holds no position, which is the POSITION_NOT_FOUND case.
+    # A caller-supplied exposure can no longer manufacture a reduction: the
+    # durable book holds no position, so there is nothing to reduce.
     exposure = PositionExposure("BTCUSDT", D("10"), D("10"), D("100"))
     result = running_app.execution.execute(
         decision, risk_state_with(exposure)
     )
 
-    assert result["error_code"] == "POSITION_NOT_FOUND"
-    assert result["status"] == "FAILED"
-    assert result["commit_outcome"] == CommitOutcome.NOT_COMMITTED.value
+    assert result["success"] is False
+    assert result["status"] == "REJECTED"
+    assert result["reason"] == "NON_RISK_REDUCING_SELL"
+    assert running_app.paper_trader.positions == {}
     assert running_app.execution._risk_admissions == {}
     assert running_app.execution.execution_halted is False
 
