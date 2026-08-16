@@ -82,9 +82,12 @@ class FakeProvider:
             close=65000.0,
             volume=125.5,
             provider=self.provider_name,
+            # Real BinancePublicDataProvider metadata contract. The
+            # adapter previously read invented key names, so a fake
+            # provider that mirrored those names hid the defect.
             metadata={
-                "quote_asset_volume": 8125000.0,
-                "number_of_trades": 1500,
+                "quote_volume": 8125000.0,
+                "trades": 1500,
                 "taker_buy_base_volume": 60.0,
                 "taker_buy_quote_volume": 3900000.0,
             },

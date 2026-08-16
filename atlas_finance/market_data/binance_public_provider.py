@@ -121,6 +121,14 @@ class BinancePublicDataProvider(
 
     MINIMUM_CANDLE_LIMIT: Final[int] = 1
 
+    # A Binance kline carries market evidence in positions 0 to 10:
+    # OHLCV and both timestamps, then quote volume, trade count and
+    # the taker-buy volumes. Every consumer of this provider needs all
+    # of them, so a narrower array is incomplete market data rather
+    # than an array to pad. Position 11 is the Binance filler field
+    # and is not correctness-authoritative, so it is not required.
+    MINIMUM_KLINE_COLUMNS: Final[int] = 11
+
     SYMBOL_PATTERN: Final[
         re.Pattern[str]
     ] = re.compile(
@@ -747,6 +755,17 @@ class BinancePublicDataProvider(
         symbol: str,
         timeframe: str,
     ) -> MarketCandle:
+        """
+        Convert one raw Binance kline array into a MarketCandle.
+
+        Positions 0 to 10 are all required. Every candle this method
+        returns therefore carries a real quote volume, trade count and
+        both taker-buy volumes, so downstream consumers never have to
+        invent one: a candle that cannot supply them is rejected here
+        instead of reaching them with a fabricated zero or a silent
+        None.
+        """
+
         if not isinstance(
             raw_candle,
             (
@@ -760,9 +779,13 @@ class BinancePublicDataProvider(
 
         if len(
             raw_candle
-        ) < 7:
+        ) < self.MINIMUM_KLINE_COLUMNS:
             raise MarketDataResponseError(
-                "Binance candle array is incomplete."
+                "Binance candle array is incomplete: "
+                f"{len(raw_candle)} columns received, "
+                f"{self.MINIMUM_KLINE_COLUMNS} required "
+                "for quote volume, trade count and the "
+                "taker-buy volumes."
             )
 
         open_time = (
@@ -878,32 +901,44 @@ class BinancePublicDataProvider(
             closed=closed,
             metadata={
                 "trades": (
-                    self._optional_integer(
-                        raw_candle[8]
+                    self._parse_non_negative_integer(
+                        raw_candle[8],
+                        field_name="trades",
+                        exception_type=(
+                            InvalidCandleError
+                        ),
                     )
-                    if len(raw_candle) > 8
-                    else None
                 ),
                 "quote_volume": (
-                    self._optional_float(
-                        raw_candle[7]
+                    self._parse_non_negative_float(
+                        raw_candle[7],
+                        field_name="quote_volume",
+                        exception_type=(
+                            InvalidCandleError
+                        ),
                     )
-                    if len(raw_candle) > 7
-                    else None
                 ),
                 "taker_buy_base_volume": (
-                    self._optional_float(
-                        raw_candle[9]
+                    self._parse_non_negative_float(
+                        raw_candle[9],
+                        field_name=(
+                            "taker_buy_base_volume"
+                        ),
+                        exception_type=(
+                            InvalidCandleError
+                        ),
                     )
-                    if len(raw_candle) > 9
-                    else None
                 ),
                 "taker_buy_quote_volume": (
-                    self._optional_float(
-                        raw_candle[10]
+                    self._parse_non_negative_float(
+                        raw_candle[10],
+                        field_name=(
+                            "taker_buy_quote_volume"
+                        ),
+                        exception_type=(
+                            InvalidCandleError
+                        ),
                     )
-                    if len(raw_candle) > 10
-                    else None
                 ),
             },
         )
@@ -1280,38 +1315,44 @@ class BinancePublicDataProvider(
             ) from error
 
     @staticmethod
-    def _optional_float(
+    def _parse_non_negative_integer(
         value: Any,
-    ) -> float | None:
+        *,
+        field_name: str,
+        exception_type: type[Exception],
+    ) -> int:
+        """
+        Parse a required non-negative count from a kline position.
+
+        A count that cannot be read is a rejected candle, not a zero:
+        no trades and an unreadable trade field are different market
+        statements.
+        """
+
+        if isinstance(
+            value,
+            bool,
+        ):
+            raise exception_type(
+                f"{field_name} must be an integer count."
+            )
+
         try:
-            normalized = float(
+            normalized = int(
                 value
             )
 
         except (
             TypeError,
             ValueError,
-        ):
-            return None
+        ) as error:
+            raise exception_type(
+                f"{field_name} must be an integer count."
+            ) from error
 
-        if not math.isfinite(
-            normalized
-        ):
-            return None
+        if normalized < 0:
+            raise exception_type(
+                f"{field_name} cannot be negative."
+            )
 
         return normalized
-
-    @staticmethod
-    def _optional_integer(
-        value: Any,
-    ) -> int | None:
-        try:
-            return int(
-                value
-            )
-
-        except (
-            TypeError,
-            ValueError,
-        ):
-            return None

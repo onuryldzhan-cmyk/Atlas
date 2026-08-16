@@ -48,12 +48,18 @@ from atlas_finance.market_data.binance_public_provider import (
 from atlas_finance.market_data.contracts import (
     MarketDataProviderProtocol,
 )
+from atlas_finance.market_data.exceptions import (
+    InvalidCandleError,
+)
 from atlas_finance.market_data.market_feed_service import (
     MarketFeedService,
 )
 from atlas_finance.market_data.models import (
     MarketCandle,
     MarketPrice,
+)
+from atlas_finance.market_data.temporal import (
+    to_milliseconds,
 )
 
 
@@ -218,8 +224,9 @@ class MarketFeed:
             ignore,
         ]
 
-        The final five values are recovered from candle metadata when
-        available; otherwise safe neutral defaults are used.
+        Positions 7 to 10 carry real provider metadata. Missing
+        metadata is not zero: the conversion fails closed rather than
+        fabricating a value into a legacy row position.
         """
 
         results = self.service.get_candles(
@@ -306,27 +313,31 @@ class MarketFeed:
                 or candle.open_time
             ),
             str(
-                metadata.get(
-                    "quote_asset_volume",
-                    0.0,
+                MarketFeed._require_metadata(
+                    metadata,
+                    "quote_volume",
+                    candle,
                 )
             ),
             int(
-                metadata.get(
-                    "number_of_trades",
-                    0,
+                MarketFeed._require_metadata(
+                    metadata,
+                    "trades",
+                    candle,
                 )
             ),
             str(
-                metadata.get(
+                MarketFeed._require_metadata(
+                    metadata,
                     "taker_buy_base_volume",
-                    0.0,
+                    candle,
                 )
             ),
             str(
-                metadata.get(
+                MarketFeed._require_metadata(
+                    metadata,
                     "taker_buy_quote_volume",
-                    0.0,
+                    candle,
                 )
             ),
             metadata.get(
@@ -336,10 +347,44 @@ class MarketFeed:
         ]
 
     @staticmethod
+    def _require_metadata(
+        metadata: dict[str, Any],
+        key: str,
+        candle: MarketCandle,
+    ) -> Any:
+        """
+        Return a required provider metadata value.
+
+        Missing is not zero. A None or absent value fails closed with
+        the market-data validation semantics instead of fabricating a
+        neutral number that a consumer would read as real volume or a
+        real trade count.
+        """
+
+        value = metadata.get(
+            key
+        )
+
+        if value is None:
+            raise InvalidCandleError(
+                f"Candle metadata is missing required field {key!r} "
+                f"for {candle.symbol} {candle.timeframe} at "
+                f"{candle.open_time.isoformat()}."
+            )
+
+        return value
+
+    @staticmethod
     def _to_milliseconds(
         value: datetime,
     ) -> int:
-        return int(
-            value.timestamp()
-            * 1000
+        """
+        Convert an aware candle timestamp to epoch milliseconds.
+
+        Naive datetimes are rejected by the temporal authority so the
+        host timezone cannot alter a normalized row timestamp.
+        """
+
+        return to_milliseconds(
+            value
         )

@@ -61,7 +61,10 @@ from atlas_security import sanitize_sensitive_data
 
 from analysis.world_analysis_engine import WorldAnalysisEngine
 
-from core.candle_processor import CandleProcessor
+from core.candle_processor import (
+    CandleContractError,
+    CandleProcessor,
+)
 from core.decision_adapter import DecisionAdapter
 from core.technical_analyzer import TechnicalAnalyzer
 
@@ -174,6 +177,7 @@ class MarketLoop:
             "closed_candles_processed": 0,
             "duplicate_candles_skipped": 0,
             "open_candles_excluded": 0,
+            "market_data_contract_violations": 0,
             "decisions_received": 0,
             "decisions_normalized": 0,
             "decisions_rejected": 0,
@@ -360,15 +364,35 @@ class MarketLoop:
     def run_cycle(self) -> None:
         """
         Process one complete multi-symbol market cycle.
+
+        The processing clock is read exactly once here. Every symbol in
+        the cycle is evaluated against that single explicit cutoff, and
+        no component below MarketLoop reads a clock to decide candle
+        closure.
         """
+
+        processing_cutoff = self._processing_cutoff()
 
         for symbol in tuple(self.symbols):
             if not self.running:
                 break
 
             self.process_symbol(
-                symbol
+                symbol,
+                processing_cutoff=processing_cutoff,
             )
+
+    @staticmethod
+    def _processing_cutoff() -> datetime:
+        """
+        Return the single cycle cutoff.
+
+        MarketLoop is the only clock authority on the market-data path.
+        """
+
+        return datetime.now(
+            UTC
+        )
 
     # =========================================================
     # SYMBOL PIPELINE
@@ -377,14 +401,28 @@ class MarketLoop:
     def process_symbol(
         self,
         symbol: str,
+        *,
+        processing_cutoff: datetime | None = None,
     ) -> dict[str, Any] | None:
         """
         Execute the full intelligence pipeline for one symbol.
+
+        Args:
+            symbol:
+                Market symbol to process.
+            processing_cutoff:
+                The explicit cycle cutoff supplied by run_cycle(). When
+                a direct caller omits it, MarketLoop reads the clock
+                here because it is the market-data clock authority.
+                Components below MarketLoop never do.
         """
 
         symbol = str(
             symbol
         ).strip().upper()
+
+        if processing_cutoff is None:
+            processing_cutoff = self._processing_cutoff()
 
         try:
             candles = self._load_candles(
@@ -398,7 +436,8 @@ class MarketLoop:
                 return None
 
             normalized_candles = self.processor.normalize(
-                candles
+                candles,
+                processing_cutoff=processing_cutoff,
             )
 
             if not normalized_candles:
@@ -718,6 +757,33 @@ class MarketLoop:
             )
 
             return result
+
+        except CandleContractError as exc:
+            # Ambiguous or unordered market data. The symbol fails
+            # closed for this cycle instead of guessing a winner.
+            self._increment_metric(
+                "symbols_skipped"
+            )
+
+            self._increment_metric(
+                "market_data_contract_violations"
+            )
+
+            logger.error(
+                "%s skipped: %s | %s",
+                symbol,
+                exc.reason,
+                exc,
+            )
+
+            return {
+                "status": "SKIPPED",
+                "reason": exc.reason,
+                "symbol": symbol,
+                "detail": str(
+                    exc
+                ),
+            }
 
         except Exception as exc:
             self._record_error(

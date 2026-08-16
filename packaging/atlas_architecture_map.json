@@ -104,6 +104,11 @@
       "reason": "explicit: L1 domain contract example"
     },
     {
+      "pattern": "atlas_finance/market_data/temporal.py",
+      "layer": "L1",
+      "reason": "pure market-data temporal vocabulary (aware-UTC normalization and cutoff-relative closure), stdlib-only with no I/O and no clock; sibling of atlas_finance/market_data/models.py and contracts.py, so it is exempt from the generic atlas_finance/* -> L2 default (Block 4 market-data correctness)"
+    },
+    {
       "pattern": "atlas_os/contracts.py",
       "layer": "L1",
       "reason": "explicit: L1 domain contract example; canonical AtlasOS contract authority (ADR-0002)"
@@ -390,6 +395,7 @@
     "atlas_finance/market_data/exceptions.py": "L2",
     "atlas_finance/market_data/market_feed_service.py": "L2",
     "atlas_finance/market_data/models.py": "L1",
+    "atlas_finance/market_data/temporal.py": "L1",
     "atlas_os/__init__.py": "L2",
     "atlas_os/audit/__init__.py": "L2",
     "atlas_os/audit/audit_log.py": "L2",
