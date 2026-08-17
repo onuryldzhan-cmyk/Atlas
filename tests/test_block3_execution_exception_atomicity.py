@@ -141,15 +141,15 @@ def break_after_side_effect(app: AtlasApplication) -> None:
 def break_before_side_effect(app: AtlasApplication) -> None:
     """Raise before PaperTrader is reached.
 
-    ``allocate_capital`` is the first step of ``_execute_paper_buy`` and runs
-    before any component mutation, so this reproduces an interruption on the
-    near side of the boundary.
+    Reading the admitted quote allocation is the first step of
+    ``_execute_paper_buy`` and runs before any component mutation, so this
+    reproduces an interruption on the near side of the boundary.
     """
 
     def failing_allocation(request):
         raise RuntimeError("allocation engine failed")
 
-    app.execution.allocate_capital = failing_allocation
+    app.execution._admitted_quote_allocation = failing_allocation
 
 
 # --------------------------------------------------------------------------
@@ -543,10 +543,11 @@ def fail_after_side_effect(app: AtlasApplication) -> None:
 def fail_before_side_effect(app: AtlasApplication) -> None:
     """Return an explicit FAILED result before the paper book is touched.
 
-    A zero allocation is rejected as ZERO_ALLOCATION at the top of
-    ``_execute_paper_buy``, before ``_paper_open_trade`` runs.
+    A request with no canonical approval is rejected as
+    CANONICAL_ALLOCATION_MISSING at the top of ``_execute_paper_buy``, before
+    ``_paper_open_trade`` runs.
     """
-    app.execution.allocate_capital = lambda request: 0.0
+    app.execution._admitted_quote_allocation = lambda request: None
 
 
 def test_failed_result_after_side_effect_marks_capital_indeterminate(running_app):
@@ -615,7 +616,7 @@ def test_failed_result_before_side_effect_releases_capital(running_app):
     result = execute(running_app)
 
     assert result["status"] == "FAILED"
-    assert result["error_code"] == "ZERO_ALLOCATION"
+    assert result["error_code"] == "CANONICAL_ALLOCATION_MISSING"
     assert result["commit_outcome"] == CommitOutcome.NOT_COMMITTED.value
     assert reservation_status(running_app, "r1") == ReservationStatus.RELEASED.value
     assert journal_state(running_app, "r1") == CommitOutcome.NOT_COMMITTED.value

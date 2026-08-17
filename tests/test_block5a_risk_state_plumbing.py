@@ -562,14 +562,15 @@ def attach_allocation(loop: MarketLoop, amount: float) -> None:
     """Attach a quote allocation to the loop's normalized decision.
 
     ``DecisionAdapter.normalize()`` drops ``amount``, and ``build_request``
-    then defaults it to ``0.0``; the ``DEFAULT_ALLOCATION`` fallback lives in
-    ``allocate_capital``, which runs inside paper execution, long after
-    ``risk_check``. Sizing the runtime request is Package 5B's work and is
-    deliberately not changed here, so these tests stand the allocation in
-    where 5B will have to put it, and exercise the plumbing 5A owns.
+    then defaults it to ``0.0``. These 5A tests pin the *plumbing* - that the
+    request reaches RiskEngine and is judged on its merits - so they state the
+    allocation explicitly rather than depending on how it gets sized.
 
-    ``test_market_loop_decision_is_unsized_before_5b`` pins the unsized
-    behaviour itself, so this helper cannot hide it.
+    Package 5B refuses an unsized new-risk request outright rather than
+    sizing it, so an explicit amount here is what lets these plumbing tests
+    reach RiskEngine at all - and it also proves 5B never overwrites caller
+    intent. ``test_market_loop_unsized_buy_fails_closed_under_5b`` covers the
+    unsized path, so this helper cannot hide it.
     """
     real_normalize = loop.normalize_decision
 
@@ -591,6 +592,7 @@ def test_market_loop_buy_reaches_risk_engine(flat_app):
     flat_app.execution.start()
     brain = DecidingBrain("BUY", amount=float(HIGH_BUCKET_MAX))
     loop = execution_enabled_loop(flat_app, brain)
+    attach_allocation(loop, float(HIGH_BUCKET_MAX))
 
     result = loop.process_symbol("BTCUSDT")
 
@@ -601,27 +603,37 @@ def test_market_loop_buy_reaches_risk_engine(flat_app):
     assert flat_app.execution.last_risk_decision["policy_version"] == POLICY_VERSION
 
 
-def test_market_loop_decision_is_unsized_before_5b(flat_app):
-    """The remaining runtime blocker, pinned so it cannot be lost again.
+def test_market_loop_unsized_buy_fails_closed_under_5b(flat_app):
+    """The 5A blocker, now visible rather than fatal.
 
-    RiskEngine is now reached, and refuses the request on its own terms: the
-    loop hands it a zero allocation, because nothing between DecisionAdapter
-    and risk_check sizes the decision. Fixing that is Package 5B; recording it
-    here keeps the gap visible instead of latent.
+    ``DecisionAdapter.normalize()`` still drops ``amount``, so the loop still
+    hands ``build_request`` a zero allocation - the plumbing gap 5A exposed is
+    genuinely still open upstream.
+
+    Package 5B does not close it by inventing a size. It refuses the request
+    on its own reason code, so the gap is reported instead of being papered
+    over with the largest allocation policy would permit. What must no longer
+    happen is the old symptom: the request dying as malformed input.
     """
     flat_app.execution.start()
     loop = execution_enabled_loop(
         flat_app, DecidingBrain("BUY", amount=float(HIGH_BUCKET_MAX))
     )
 
+    decision = loop.normalize_decision(
+        raw_decision={"action": "BUY", "confidence": 90, "risk_level": "MEDIUM"},
+        symbol="BTCUSDT", price=10.0, market_data={"symbol": "BTCUSDT", "price": 10.0},
+    )
+    assert "amount" not in decision
+    assert flat_app.execution.build_request(decision).amount == 0.0
+
     result = loop.process_symbol("BTCUSDT")
 
-    assert result["status"] == "REJECTED"
-    assert result["reason"] == "INVALID_FINANCIAL_INPUT"
-    assert flat_app.execution.last_risk_decision["reason_code"] == (
-        "INVALID_FINANCIAL_INPUT"
-    )
+    assert result.get("status") != "PAPER_EXECUTED"
+    assert result.get("reason") == "UNSIZED_REQUEST_REJECTED"
+    assert result.get("reason") != "INVALID_FINANCIAL_INPUT"
     assert flat_app.portfolio_foundation.snapshot()["positions"] == {}
+    assert flat_app.execution.reservation_ledger.active_reserved_capital() == D("0")
 
 
 def test_market_loop_buy_executes_once_the_decision_is_sized(flat_app):

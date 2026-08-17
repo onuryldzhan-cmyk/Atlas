@@ -26,16 +26,20 @@ def test_explicit_decimal_contract_preserves_quote_and_base_units():
 
 def test_canonical_paper_flow_emits_stable_order_and_authoritative_position_identity(monkeypatch):
     manager = ExecutionManager(audit_enabled=False)
-    monkeypatch.setattr(manager, "allocate_capital", lambda request: 1000.0)
+    # The committed quote allocation is the canonical approved Decimal on the
+    # request. There is no separate allocation step left to stand in for, and
+    # `amount` is only its lossy mirror.
     monkeypatch.setattr(manager, "_paper_open_trade", lambda **kwargs: {"success": True})
     monkeypatch.setattr(manager, "_position_open", lambda **kwargs: {"success": True, "position_id": "position-1"})
     monkeypatch.setattr(manager, "publish", lambda *args, **kwargs: None)
-    request = ExecutionRequest("BTCUSDT", "BUY", 50000, 1000, request_id="req-stable")
+    request = ExecutionRequest("BTCUSDT", "BUY", 50000, 1000, request_id="req-stable",
+                               approved_quote_allocation=Decimal("1000"))
     manager._risk_admissions[request.request_id] = manager._risk_admission_key(request)
     first = manager.paper_execute(request)
     second = manager.paper_execute(request)
-    assert first["filled_base_quantity"] == "0.02"
-    assert first["filled_quote_notional"] == "1000.0"
+    assert first["filled_base_quantity"] == "0.02000000"
+    assert first["filled_quote_notional"] == "1000.000000000"
+    assert Decimal(first["filled_quote_notional"]) == Decimal("1000")
     assert first["filled_amount"] == 1000.0
     assert first["execution_id"]
     assert first["order_id"] == second["order_id"]
@@ -45,14 +49,26 @@ def test_canonical_paper_flow_emits_stable_order_and_authoritative_position_iden
 
 def test_paper_flow_preserves_authoritative_order_identity(monkeypatch):
     manager = ExecutionManager(audit_enabled=False)
-    monkeypatch.setattr(manager, "allocate_capital", lambda request: 1000.0)
     monkeypatch.setattr(manager, "_paper_open_trade", lambda **kwargs: {"success": True, "order_id": "engine-order-7"})
     monkeypatch.setattr(manager, "_position_open", lambda **kwargs: None)
     monkeypatch.setattr(manager, "publish", lambda *args, **kwargs: None)
-    request = ExecutionRequest("BTCUSDT", "BUY", 50000, 1000, request_id="req-1")
+    request = ExecutionRequest("BTCUSDT", "BUY", 50000, 1000, request_id="req-1",
+                               approved_quote_allocation=Decimal("1000"))
     manager._risk_admissions[request.request_id] = manager._risk_admission_key(request)
     result = manager.paper_execute(request)
     assert result["order_id"] == "engine-order-7"
+
+
+def test_paper_buy_without_a_canonical_approval_cannot_execute(monkeypatch):
+    """An admission token is not an approval: the Decimal has to be there."""
+    manager = ExecutionManager(audit_enabled=False)
+    monkeypatch.setattr(manager, "_paper_open_trade", lambda **kwargs: {"success": True})
+    monkeypatch.setattr(manager, "publish", lambda *args, **kwargs: None)
+    request = ExecutionRequest("BTCUSDT", "BUY", 50000, 1000, request_id="req-unapproved")
+    manager._risk_admissions[request.request_id] = manager._risk_admission_key(request)
+    result = manager.paper_execute(request)
+    assert result["success"] is False
+    assert result["error_code"] == "CANONICAL_ALLOCATION_MISSING"
 
 
 def test_completed_retry_preserves_all_canonical_identities():

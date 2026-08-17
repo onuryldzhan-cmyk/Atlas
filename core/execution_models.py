@@ -341,6 +341,15 @@ class ExecutionRequest:
     time_in_force: str = "GTC"
     reduce_only: bool = False
 
+    #: The risk-approved quote allocation, in quote currency, as an exact
+    #: ``Decimal``. This is the single financially authoritative allocation on
+    #: a request: ``RiskEngine`` produces it, ``ExecutionManager.risk_check``
+    #: writes it once on approval, and every authoritative consumer downstream
+    #: reads it. ``amount`` is a lossy ``float`` mirror kept for historical
+    #: callers and carries no authority. ``None`` means "not approved", which
+    #: is the only state an unadmitted request may ever be in.
+    approved_quote_allocation: Decimal | None = None
+
     def __post_init__(
         self,
     ) -> None:
@@ -429,6 +438,33 @@ class ExecutionRequest:
             self.trailing_stop = float(
                 self.trailing_stop
             )
+
+        if self.approved_quote_allocation is not None:
+            # A float would defeat the whole point of the field, so the only
+            # accepted inputs are ones that convert without a binary
+            # round-trip. Anything malformed, negative or non-finite is
+            # rejected outright rather than carried as an approval.
+            if isinstance(self.approved_quote_allocation, float):
+                raise ValueError(
+                    "approved_quote_allocation must not be float"
+                )
+
+            try:
+                approved = Decimal(
+                    str(self.approved_quote_allocation)
+                )
+
+            except (InvalidOperation, ValueError) as exc:
+                raise ValueError(
+                    "Invalid approved_quote_allocation"
+                ) from exc
+
+            if not approved.is_finite() or approved <= 0:
+                raise ValueError(
+                    "Invalid approved_quote_allocation"
+                )
+
+            self.approved_quote_allocation = approved
 
     @property
     def risk_level(
@@ -579,6 +615,16 @@ class ExecutionRequest:
         payload[
             "notional"
         ] = self.notional
+
+        # Serialized as an exact decimal string, never as a float, so a
+        # round-tripped request carries the same approval it was admitted with.
+        if self.approved_quote_allocation is not None:
+            payload[
+                "approved_quote_allocation"
+            ] = format(
+                self.approved_quote_allocation,
+                "f",
+            )
 
         return payload
 

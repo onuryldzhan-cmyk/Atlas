@@ -33,8 +33,11 @@ def manager_with(book):
 
 
 def request():
+    # An admitted request carries the engine's approval as an exact Decimal;
+    # finalization reconciles the settled notional + fee against it.
     return ExecutionRequest(
-        "BTCUSDT", "BUY", 10, 20, confidence=90, request_id="request-1"
+        "BTCUSDT", "BUY", 10, 20, confidence=90, request_id="request-1",
+        approved_quote_allocation=Decimal("20"),
     )
 
 

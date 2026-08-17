@@ -209,6 +209,18 @@ class ExecutionPortfolioFoundation:
         }
 
     def _close(self, state: dict[str, Any], result: ExecutionResult, expected: int | None) -> None:
+        """Apply a confirmed LONG reduction, whole or partial.
+
+        The executed base quantity is authoritative: this book records the
+        reduction that actually happened and never substitutes the whole
+        holding for a smaller one. Selling more than is held stays impossible.
+
+        A partial reduction releases cost basis pro rata, so the remaining
+        position keeps the average entry price it already had and realized P&L
+        is charged only against the fraction actually sold. The remainder is
+        re-marked at the price it just traded at - the same convention ``_open``
+        uses - which is realized execution evidence, not a market-data feed.
+        """
         assert result.symbol and result.position_id
         assert result.filled_base_quantity is not None and result.filled_quote_notional is not None
         current = state["positions"].get(result.symbol)
@@ -216,13 +228,23 @@ class ExecutionPortfolioFoundation:
             raise ValueError("POSITION_NOT_FOUND")
         if expected is None or expected != current["version"]:
             raise ValueError("STALE_POSITION_MUTATION")
-        held = D(current["base_quantity"])
-        if result.filled_base_quantity != held:
-            raise ValueError("PARTIAL_CLOSE_DEFERRED")
-        gross = result.filled_quote_notional - D(current["cost_quote"])
+        held, sold = D(current["base_quantity"]), result.filled_base_quantity
+        if sold > held:
+            raise ValueError("REDUCTION_EXCEEDS_POSITION")
+        cost = D(current["cost_quote"])
+        released = cost if sold == held else cost * sold / held
+        gross = result.filled_quote_notional - released
         state["cash"] = format(D(state["cash"]) + result.filled_quote_notional - result.fee_amount, "f")
         state["fees"] = format(D(state["fees"]) + result.fee_amount, "f")
         state["realized_gross_pnl"] = format(D(state["realized_gross_pnl"]) + gross, "f")
+        if sold != held:
+            base, basis = held - sold, cost - released
+            state["positions"][result.symbol] = {**current,
+                "base_quantity": format(base, "f"), "cost_quote": format(basis, "f"),
+                "average_entry_price": format(basis / base, "f"),
+                "mark_price": format(result.execution_price, "f"),
+                "version": current["version"] + 1}
+            return
         closed = dict(current); closed.update({"status": "CLOSED", "base_quantity": "0",
             "exit_price": format(result.execution_price, "f"), "gross_pnl": format(gross, "f"),
             "closed_at": _utc(str(result.timestamp)), "version": current["version"] + 1})

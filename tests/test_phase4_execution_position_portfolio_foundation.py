@@ -98,15 +98,57 @@ def test_duplicate_open_position_identity_rejected(tmp_path):
         apply(book, execution(eid="e2", key="request-2", position="other"), version=1)
 
 
-def test_short_and_partial_close_explicitly_rejected(tmp_path):
-    book, _ = foundation(tmp_path); apply(book, execution())
-    partial = execution(eid="e2", key="request-2", action="SELL", price="11", base="5", fee="0")
-    with pytest.raises(ValueError, match="PARTIAL_CLOSE_DEFERRED"):
-        apply(book, partial, version=1)
+def test_short_close_explicitly_rejected(tmp_path):
     other, _ = foundation(tmp_path / "other")
     short = execution(action="SELL")
     with pytest.raises(ValueError, match="POSITION_NOT_FOUND"):
         apply(other, short, version=0)
+
+
+def test_partial_close_reduces_the_position_pro_rata(tmp_path):
+    """Block-5B: a partial reduction is recorded, not upgraded to a full exit.
+
+    Opened 10 base for 100 quote (avg entry 10). Selling 5 at 11 releases half
+    the cost basis (50), realizes 55 - 50 = 5 gross, and leaves 5 base still
+    held at the same average entry price, re-marked at the price just traded.
+    """
+    book, _ = foundation(tmp_path); apply(book, execution())
+    partial = execution(eid="e2", key="request-2", action="SELL", price="11", base="5", fee="0")
+    snap = apply(book, partial, version=1)
+    position = snap["positions"]["BTCUSDT"]
+    assert D(position["base_quantity"]) == D("5")
+    assert D(position["cost_quote"]) == D("50")
+    assert D(position["average_entry_price"]) == D("10")
+    assert D(position["mark_price"]) == D("11")
+    assert position["version"] == 2
+    assert position["position_id"] == "p1"
+    assert snap["realized_gross_pnl"] == D("5")
+    # Opening debited 100 + 1 fee from 1000; the reduction credits 55 back.
+    assert snap["cash"] == D("954")
+    assert book.store.load()["closed_positions"] == {}
+
+
+def test_partial_close_then_full_exit_settles_the_remainder(tmp_path):
+    """The remainder stays exitable, and the position closes exactly once."""
+    book, _ = foundation(tmp_path); apply(book, execution())
+    apply(book, execution(eid="e2", key="request-2", action="SELL", price="11",
+                          base="5", fee="0"), version=1)
+    snap = apply(book, execution(eid="e3", key="request-3", action="SELL", price="12",
+                                 base="5", fee="0"), version=2)
+    assert snap["positions"] == {}
+    assert "p1" in book.store.load()["closed_positions"]
+    # 5 gross on the first half, 60 - 50 = 10 on the second.
+    assert snap["realized_gross_pnl"] == D("15")
+
+
+def test_reduction_larger_than_the_holding_is_rejected(tmp_path):
+    book, _ = foundation(tmp_path); apply(book, execution())
+    oversized = execution(eid="e2", key="request-2", action="SELL", price="11",
+                          base="11", fee="0")
+    with pytest.raises(ValueError, match="REDUCTION_EXCEEDS_POSITION"):
+        apply(book, oversized, version=1)
+    # A failed durable transition requires reconciliation/recovery; no blind retry.
+    assert not book.ready
 
 
 @pytest.mark.parametrize("exit_price,gross", [("12", "20"), ("8", "-20"), ("10", "0")])
