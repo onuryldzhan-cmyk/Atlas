@@ -80,6 +80,7 @@ from core.position_controller import PositionController
 from core.paper_trader import PaperTrader
 
 from core.risk_engine import RiskEngine, RiskPolicy
+from core.position_sizing import PositionSizingService
 from core.capital_reservation import (
     CapitalReservationLedger,
     JsonReservationStore,
@@ -291,6 +292,7 @@ class AtlasApplication:
             event_bus=self.event_bus,
             symbols=self.symbols,
             interval=self.market_interval,
+            position_sizing_service=self.position_sizing_service,
         )
 
         # -----------------------------------------------------
@@ -374,6 +376,14 @@ class AtlasApplication:
         )
 
         self.risk_engine = RiskEngine(
+            self.risk_policy,
+        )
+
+        # The single upstream sizing authority (Block 5C). It proposes a BUY
+        # quote allocation only; it shares this exact RiskPolicy instance
+        # rather than a duplicate, so its bucket allocation percentage can
+        # never drift from the one RiskEngine approves against.
+        self.position_sizing_service = PositionSizingService(
             self.risk_policy,
         )
 

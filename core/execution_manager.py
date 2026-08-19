@@ -2025,6 +2025,13 @@ class ExecutionManager:
                     False,
                 )
             ),
+            # Preserved exactly as the caller supplied it (Block 5C B1): this
+            # is the pre-admission sizing proposal, read straight from the
+            # decision dict rather than through ``_to_float``, so a Decimal
+            # proposal reaches ``ExecutionRequest`` losslessly.
+            proposed_quote_allocation=data.get(
+                "proposed_quote_allocation"
+            ),
         )
 
         return request
@@ -2371,12 +2378,20 @@ class ExecutionManager:
         policy ceiling, a confidence score, a CapitalManager or a constant,
         and nothing here can raise a caller's number.
 
+        Exact sizing proposal (Block 5C B1)
+            A request carrying an exact ``proposed_quote_allocation`` -
+            written only by ``PositionSizingService`` - is asking for exactly
+            that Decimal, and takes priority over the ``amount`` compatibility
+            mirror below. This is what keeps an authoritative proposal from
+            ever crossing the lossy ``amount`` float boundary on its way to
+            ``RiskEngine``.
+
         Explicit allocation
-            A request carrying a positive ``amount`` is asking for exactly
-            that, and gets exactly that. It is still subject to every
-            admission verdict - a request above the policy ceiling is refused
-            by ``RiskEngine`` as ``REQUEST_EXCEEDS_RISK_LIMIT``, not silently
-            trimmed to fit.
+            A request carrying a positive ``amount`` and no exact proposal is
+            asking for exactly that, and gets exactly that. It is still
+            subject to every admission verdict - a request above the policy
+            ceiling is refused by ``RiskEngine`` as
+            ``REQUEST_EXCEEDS_RISK_LIMIT``, not silently trimmed to fit.
 
         Unsized reduction
             A SELL against a held position that names no amount means "exit
@@ -2402,6 +2417,9 @@ class ExecutionManager:
         The result is exact ``Decimal`` and deterministic for identical
         durable state.
         """
+        if request.proposed_quote_allocation is not None:
+            return request.proposed_quote_allocation
+
         existing = Decimal(str(request.amount))
         if existing > 0:
             return existing

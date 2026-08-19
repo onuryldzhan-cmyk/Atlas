@@ -205,6 +205,64 @@ class RiskPolicy:
 
 
 @dataclass(frozen=True)
+class BuyCapacityLimits:
+    """The canonical BUY capacity ceilings for one symbol/bucket/committed state.
+
+    Every field is exactly the limit ``RiskEngine.evaluate`` has always bound
+    a BUY's ``approved_allocation`` by; this dataclass changes no formula and
+    no numeric meaning, it only gives the existing limits one shared name and
+    shape so a second authority (``PositionSizingService``) can bound its own
+    proposal by the same ceilings without copying the formula text.
+    """
+
+    max_position: Decimal
+    bucket_allocation: Decimal
+    per_symbol: Decimal
+    concentration: Decimal
+    bucket_exposure_ceiling: Decimal
+    portfolio_exposure: Decimal
+    allocatable_capital: Decimal
+
+    def as_tuple(self) -> tuple[Decimal, ...]:
+        return (
+            self.max_position,
+            self.bucket_allocation,
+            self.per_symbol,
+            self.concentration,
+            self.bucket_exposure_ceiling,
+            self.portfolio_exposure,
+            self.allocatable_capital,
+        )
+
+
+def derive_buy_capacity_limits(
+    policy: RiskPolicy,
+    bucket_policy: BucketPolicy,
+    *,
+    symbol_exposure: Decimal,
+    committed_quote: Decimal,
+) -> BuyCapacityLimits:
+    """Derive the canonical BUY capacity limits for one admission evaluation.
+
+    Pure and side-effect free: it reads only ``policy``, ``bucket_policy``,
+    and the two exposure figures the caller already holds. ``RiskEngine.evaluate``
+    and ``PositionSizingService.propose`` both call this, so a policy or
+    exposure change moves both authorities' ceilings together and can never
+    let the two drift apart.
+    """
+
+    return BuyCapacityLimits(
+        max_position=policy.total_capital * policy.max_position_pct,
+        bucket_allocation=policy.total_capital * bucket_policy.max_allocation_pct,
+        per_symbol=policy.total_capital * policy.per_symbol_pct - symbol_exposure,
+        concentration=policy.total_capital * policy.concentration_pct - symbol_exposure,
+        bucket_exposure_ceiling=policy.total_capital * bucket_policy.exposure_ceiling_pct - symbol_exposure,
+        portfolio_exposure=policy.total_capital * policy.portfolio_exposure_pct - committed_quote,
+        allocatable_capital=policy.allocatable_capital - committed_quote,
+    )
+
+
+@dataclass(frozen=True)
 class PositionExposure:
     symbol: str
     base_quantity: Decimal
@@ -425,16 +483,11 @@ class RiskEngine:
         if len(state.positions) >= self.policy.max_positions:
             return reject("MAX_POSITIONS_REACHED")
 
-        limits = (
-            self.policy.total_capital * self.policy.max_position_pct,
-            self.policy.total_capital * bucket_policy.max_allocation_pct,
-            self.policy.total_capital * self.policy.per_symbol_pct - symbol_exposure,
-            self.policy.total_capital * self.policy.concentration_pct - symbol_exposure,
-            self.policy.total_capital * bucket_policy.exposure_ceiling_pct - symbol_exposure,
-            self.policy.total_capital * self.policy.portfolio_exposure_pct - state.committed_quote,
-            self.policy.allocatable_capital - state.committed_quote,
+        capacity = derive_buy_capacity_limits(
+            self.policy, bucket_policy,
+            symbol_exposure=symbol_exposure, committed_quote=state.committed_quote,
         )
-        approved = min((allocation, *limits))
+        approved = min((allocation, *capacity.as_tuple()))
         if approved <= ZERO:
             return reject("INSUFFICIENT_ALLOCATABLE_CAPITAL")
         if approved < allocation:

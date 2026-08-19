@@ -350,6 +350,18 @@ class ExecutionRequest:
     #: is the only state an unadmitted request may ever be in.
     approved_quote_allocation: Decimal | None = None
 
+    #: The pre-admission BUY sizing proposal, in quote currency, as an exact
+    #: ``Decimal`` (Block 5C B1). ``PositionSizingService`` is the only writer
+    #: of this field's *value*; it is sizing intent only, never an approval -
+    #: ``approved_quote_allocation`` stays the sole canonical admitted
+    #: allocation, written only by ``risk_check``. This field exists so that
+    #: intent can reach ``risk_check`` as the same exact ``Decimal`` it was
+    #: proposed as, instead of crossing the lossy ``amount`` float mirror.
+    #: ``None`` means "no exact proposal", in which case admission falls back
+    #: to the ``amount`` compatibility mirror exactly as before this field
+    #: existed.
+    proposed_quote_allocation: Decimal | None = None
+
     def __post_init__(
         self,
     ) -> None:
@@ -465,6 +477,32 @@ class ExecutionRequest:
                 )
 
             self.approved_quote_allocation = approved
+
+        if self.proposed_quote_allocation is not None:
+            # Same contract as ``approved_quote_allocation``: a float would
+            # defeat the whole point of this field (Block 5C B1), so only
+            # exact-conversion inputs are accepted.
+            if isinstance(self.proposed_quote_allocation, float):
+                raise ValueError(
+                    "proposed_quote_allocation must not be float"
+                )
+
+            try:
+                proposed = Decimal(
+                    str(self.proposed_quote_allocation)
+                )
+
+            except (InvalidOperation, ValueError) as exc:
+                raise ValueError(
+                    "Invalid proposed_quote_allocation"
+                ) from exc
+
+            if not proposed.is_finite() or proposed <= 0:
+                raise ValueError(
+                    "Invalid proposed_quote_allocation"
+                )
+
+            self.proposed_quote_allocation = proposed
 
     @property
     def risk_level(
@@ -623,6 +661,16 @@ class ExecutionRequest:
                 "approved_quote_allocation"
             ] = format(
                 self.approved_quote_allocation,
+                "f",
+            )
+
+        # Same round-trip guarantee as ``approved_quote_allocation`` (Block 5C B1):
+        # an exact decimal string, never a float.
+        if self.proposed_quote_allocation is not None:
+            payload[
+                "proposed_quote_allocation"
+            ] = format(
+                self.proposed_quote_allocation,
                 "f",
             )
 

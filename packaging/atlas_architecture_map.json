@@ -159,6 +159,11 @@
       "reason": "explicit: L1 domain contract example; canonical execution/admission RiskEngine authority"
     },
     {
+      "pattern": "core/position_sizing.py",
+      "layer": "L1",
+      "reason": "pure deterministic BUY sizing policy calculator: no I/O, no orchestration, no stores, no ledger ownership, stdlib + L1 dependencies only (core.risk_engine); sibling of core/risk_engine.py, not application orchestration, so it is exempt from the generic core/* -> L3 default (Block 5C M3)"
+    },
+    {
       "pattern": "core/capital_reservation.py",
       "layer": "L1",
       "reason": "explicit: L1 domain contract example"
@@ -449,6 +454,7 @@
     "core/operational_contracts.py": "L1",
     "core/paper_trader.py": "L3",
     "core/position_controller.py": "L3",
+    "core/position_sizing.py": "L1",
     "core/risk_engine.py": "L1",
     "core/risk_state_store.py": "L3",
     "core/runtime.py": "L3",

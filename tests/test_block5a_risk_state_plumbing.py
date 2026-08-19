@@ -614,11 +614,19 @@ def test_market_loop_unsized_buy_fails_closed_under_5b(flat_app):
     on its own reason code, so the gap is reported instead of being papered
     over with the largest allocation policy would permit. What must no longer
     happen is the old symptom: the request dying as malformed input.
+
+    Package 5C (see tests/test_block5c_upstream_sizing_authority.py) later
+    adds a deliberate upstream sizing authority and wires it into
+    ``AtlasApplication`` by default, so ``flat_app.market_loop`` now carries
+    one and would size this exact decision. This test pins down the branch
+    where no sizing authority is configured, which must still refuse unsized
+    exactly as it did before 5C existed.
     """
     flat_app.execution.start()
     loop = execution_enabled_loop(
         flat_app, DecidingBrain("BUY", amount=float(HIGH_BUCKET_MAX))
     )
+    loop.position_sizing_service = None
 
     decision = loop.normalize_decision(
         raw_decision={"action": "BUY", "confidence": 90, "risk_level": "MEDIUM"},

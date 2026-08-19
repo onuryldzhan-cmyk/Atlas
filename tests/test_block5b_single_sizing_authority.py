@@ -1689,14 +1689,19 @@ def execution_enabled_loop(app: AtlasApplication, action: str,
 
 
 def test_real_market_loop_buy_fails_closed_because_it_is_unsized(flat_app):
-    """The runtime's decision path still produces no allocation.
+    """With no sizing authority configured, the runtime path produces no allocation.
 
-    Package 5B refuses to invent one. Until a deliberate sizing authority
-    exists upstream, a genuine loop BUY must stop here - visibly, on its own
-    reason code, with nothing reserved and nothing executed. It must not be
-    reported as malformed input (defect A's symptom) and must not execute.
+    Package 5B refuses to invent one. Package 5C (see
+    tests/test_block5c_upstream_sizing_authority.py) later adds a deliberate
+    upstream sizing authority and wires it into ``AtlasApplication`` by
+    default, so ``flat_app.market_loop`` now carries one; this test pins down
+    the branch where none is configured, which must still behave exactly as
+    it did before 5C existed - visibly, on its own reason code, with nothing
+    reserved and nothing executed, and not reported as malformed input
+    (defect A's symptom).
     """
     manager = flat_app.execution
+    flat_app.market_loop.position_sizing_service = None
 
     result = execution_enabled_loop(flat_app, "BUY").process_symbol("BTCUSDT")
 
