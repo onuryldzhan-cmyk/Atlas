@@ -85,6 +85,10 @@ from core.capital_reservation import (
     CapitalReservationLedger,
     JsonReservationStore,
 )
+from core.instrument_rules import (
+    InstrumentRulesConfigError,
+    load_instrument_ruleset,
+)
 from core.risk_state_store import JsonRiskStateStore
 from core.execution_portfolio_foundation import (
     ExecutionPortfolioFoundation,
@@ -121,6 +125,14 @@ logger = logging.getLogger("AtlasAI.Application")
 # renamed or migrated here.
 
 DEFAULT_STATE_DIRECTORY = Path(__file__).resolve().parent.parent / "memory_data"
+
+# Block 5D: the checked-in static venue instrument-precision authority
+# (owner decision 1). Anchored to the installation directory for the same
+# reason DEFAULT_STATE_DIRECTORY is: the same runtime must load the same
+# rules regardless of the process's working directory.
+DEFAULT_INSTRUMENT_RULES_PATH = (
+    Path(__file__).resolve().parent.parent / "config" / "instrument_rules.json"
+)
 
 RISK_ACCOUNTING_STATE_FILE = "risk_accounting_state.json"
 CAPITAL_RESERVATION_STATE_FILE = "capital_reservations.json"
@@ -263,8 +275,22 @@ class AtlasApplication:
         self._build_execution_durability()
 
         # -----------------------------------------------------
+        # Venue instrument precision (Block 5D)
+        # -----------------------------------------------------
+
+        self._build_instrument_rules()
+
+        # -----------------------------------------------------
         # Execution
         # -----------------------------------------------------
+
+        # The trade-enabled symbol universe this run is configured for. A
+        # symbol left unspecified falls back to MarketLoop's own default
+        # list, so the instrument-rules startup gate checks exactly the
+        # symbols MarketLoop will actually scan and trade.
+        configured_symbols = (
+            list(self.symbols) if self.symbols else list(MarketLoop.DEFAULT_SYMBOLS)
+        )
 
         self.execution = ExecutionManager(
             capital_manager=self.capital,
@@ -279,6 +305,8 @@ class AtlasApplication:
             reservation_ledger=self.reservation_ledger,
             risk_state_store=self.risk_state_store,
             portfolio_foundation=self.portfolio_foundation,
+            instrument_rules=self.instrument_ruleset,
+            configured_symbols=configured_symbols,
         )
 
         # -----------------------------------------------------
@@ -450,6 +478,43 @@ class AtlasApplication:
             self.state_directory,
             self.idempotency_store.loaded,
             self.transaction_journal.has_unresolved(),
+        )
+
+    # =========================================================
+    # VENUE INSTRUMENT PRECISION (BLOCK 5D)
+    # =========================================================
+
+    def _build_instrument_rules(self) -> None:
+        """
+        Load the checked-in static venue instrument-rules config.
+
+        This is the sole place that reads ``config/instrument_rules.json``
+        (owner decision 1): ``ExecutionManager`` consumes the result but
+        never constructs, mutates, or invents an entry. A missing, malformed,
+        or contract-invalid config does not fabricate a permissive ruleset -
+        it leaves ``self.instrument_ruleset`` as ``None``, and
+        ``ExecutionManager.start()`` then halts fail-closed with
+        ``INSTRUMENT_RULES_UNAVAILABLE`` for any trade-enabled or held
+        symbol, exactly as an unready durable store already halts startup
+        above.
+        """
+
+        try:
+            self.instrument_ruleset = load_instrument_ruleset(
+                DEFAULT_INSTRUMENT_RULES_PATH
+            )
+        except InstrumentRulesConfigError as exc:
+            self.instrument_ruleset = None
+            logger.error(
+                "Instrument rules unavailable path=%s error=%s",
+                DEFAULT_INSTRUMENT_RULES_PATH,
+                exc,
+            )
+            return
+
+        logger.info(
+            "Instrument rules loaded symbols=%s",
+            self.instrument_ruleset.symbols,
         )
 
     # =========================================================

@@ -4,8 +4,20 @@ import pytest
 
 from core.execution_manager import ExecutionManager
 from core.execution_models import ExecutionRequest, ExecutionResult
+from core.instrument_rules import InstrumentRules, InstrumentRuleset
 from data_layer.contracts import IntegrityViolation
 from data_layer.projection_replay import ConfirmedExecutionEvidence, replay_confirmed_execution
+
+# A minimal, hermetic stand-in for the real checked-in BTCUSDT rule (Block
+# 5D): every request in this file trades BTCUSDT at price 50000.
+_BTCUSDT_RULES = InstrumentRuleset({
+    "BTCUSDT": InstrumentRules(
+        venue="BINANCE", symbol="BTCUSDT", base_asset="BTC", quote_asset="USDT",
+        quantity_step="0.00001", min_quantity="0.00001", min_notional="5",
+        price_tick="0.01", source="test-fixture", source_version="v1",
+        retrieved_at="2026-01-01T00:00:00Z",
+    ),
+})
 
 
 def test_explicit_decimal_contract_preserves_quote_and_base_units():
@@ -25,7 +37,7 @@ def test_explicit_decimal_contract_preserves_quote_and_base_units():
 
 
 def test_canonical_paper_flow_emits_stable_order_and_authoritative_position_identity(monkeypatch):
-    manager = ExecutionManager(audit_enabled=False)
+    manager = ExecutionManager(audit_enabled=False, instrument_rules=_BTCUSDT_RULES)
     # The committed quote allocation is the canonical approved Decimal on the
     # request. There is no separate allocation step left to stand in for, and
     # `amount` is only its lossy mirror.
@@ -37,8 +49,11 @@ def test_canonical_paper_flow_emits_stable_order_and_authoritative_position_iden
     manager._risk_admissions[request.request_id] = manager._risk_admission_key(request)
     first = manager.paper_execute(request)
     second = manager.paper_execute(request)
-    assert first["filled_base_quantity"] == "0.02000000"
-    assert first["filled_quote_notional"] == "1000.000000000"
+    # Block 5D: flooring now derives from the venue quantity_step (via
+    # floor_to_step) rather than always quantizing to a fixed 8dp quantum, so
+    # the exact zero-padding of the serialized string is no longer a fixed
+    # width - only the value is a stable contract.
+    assert Decimal(first["filled_base_quantity"]) == Decimal("0.02")
     assert Decimal(first["filled_quote_notional"]) == Decimal("1000")
     assert first["filled_amount"] == 1000.0
     assert first["execution_id"]
@@ -48,7 +63,7 @@ def test_canonical_paper_flow_emits_stable_order_and_authoritative_position_iden
 
 
 def test_paper_flow_preserves_authoritative_order_identity(monkeypatch):
-    manager = ExecutionManager(audit_enabled=False)
+    manager = ExecutionManager(audit_enabled=False, instrument_rules=_BTCUSDT_RULES)
     monkeypatch.setattr(manager, "_paper_open_trade", lambda **kwargs: {"success": True, "order_id": "engine-order-7"})
     monkeypatch.setattr(manager, "_position_open", lambda **kwargs: None)
     monkeypatch.setattr(manager, "publish", lambda *args, **kwargs: None)

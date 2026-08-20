@@ -12,10 +12,22 @@ import pytest
 import core.execution_state as execution_state_module
 from core.execution_idempotency_store import ExecutionIdempotencyStore
 from core.execution_manager import ExecutionManager
+from core.instrument_rules import InstrumentRules, InstrumentRuleset
 from core.position_controller import PositionController
 from core.risk_engine import RiskEngine, RiskPolicy, RiskState
 from core.capital_reservation import CapitalReservationLedger, JsonReservationStore
 from core.risk_state_store import JsonRiskStateStore, RestoredRiskState
+
+# A minimal, hermetic stand-in for the real checked-in BTCUSDT rule (Block
+# 5D): _decision() below trades BTCUSDT at price 65000.0.
+_BTCUSDT_RULES = InstrumentRuleset({
+    "BTCUSDT": InstrumentRules(
+        venue="BINANCE", symbol="BTCUSDT", base_asset="BTC", quote_asset="USDT",
+        quantity_step="0.00001", min_quantity="0.00001", min_notional="5",
+        price_tick="0.01", source="test-fixture", source_version="v1",
+        retrieved_at="2026-01-01T00:00:00Z",
+    ),
+})
 
 
 def _decision(request_id: str = "durable-request-001") -> dict[str, Any]:
@@ -172,6 +184,7 @@ def _manager(
         risk_engine=RiskEngine(RiskPolicy(total_capital=Decimal("1000"))),
         reservation_ledger=CapitalReservationLedger(reservation_store, Decimal("800")),
         risk_state_store=risk_store,
+        instrument_rules=_BTCUSDT_RULES,
     )
     manager.transaction_journal = journal
     manager.start()

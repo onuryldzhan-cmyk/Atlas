@@ -29,6 +29,9 @@ def manager_with(book):
     manager.portfolio_foundation = book
     manager.reservation_ledger = Reservations()
     manager._risk_admissions = {}
+    # Block 5D: _risk_admission_key() (used by _has_risk_admission(), which
+    # _finalize_durable_financial_state() calls) now reads this too.
+    manager.instrument_rules = None
     return manager
 
 

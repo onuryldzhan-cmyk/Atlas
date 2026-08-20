@@ -78,6 +78,11 @@ from core.execution_models import (
     normalize_risk,
 )
 from core.execution_portfolio_foundation import ExecutionPortfolioFoundation
+from core.instrument_rules import (
+    InstrumentRuleset,
+    floor_to_step,
+    is_aligned_to_step,
+)
 
 from core.risk_engine import (
     PositionExposure,
@@ -145,22 +150,6 @@ class ExecutionManager:
 
     MIN_CONFIDENCE = 60.0
 
-    # The smallest base-currency amount this runtime is able to execute.
-    #
-    # This is a *representation* bound, not a venue lot size. No exchange or
-    # instrument contract in this repository declares a step size, minimum
-    # quantity or quantity precision, so none is assumed here; this reuses the
-    # repository's own eight-decimal financial scale as the single declared
-    # base quantum. When a venue contract does arrive, the per-instrument step
-    # size replaces this constant and every fill below already rounds the same
-    # way - down, toward less risk.
-    #
-    # Declaring it is what makes the quantity/notional identity exact: a fill
-    # is sized in whole base quanta first and its quote notional is then
-    # derived from that quantity, so `price * quantity == notional` holds by
-    # construction instead of being hoped for after a division.
-    BASE_QUANTITY_QUANTUM = Decimal("0.00000001")
-
     MAX_HISTORY = 500
     MAX_REJECTIONS = 500
     MAX_ERRORS = 500
@@ -227,6 +216,8 @@ class ExecutionManager:
         reservation_ledger: CapitalReservationLedger | None = None,
         risk_state_store: Any | None = None,
         portfolio_foundation: ExecutionPortfolioFoundation | None = None,
+        instrument_rules: InstrumentRuleset | None = None,
+        configured_symbols: list[str] | tuple[str, ...] | None = None,
     ) -> None:
         # Retained for status/compatibility reporting only. No execution path
         # reads it: it is never asked to size an allocation and never asked to
@@ -241,6 +232,25 @@ class ExecutionManager:
         self.reservation_ledger = reservation_ledger
         self.risk_state_store = risk_state_store
         self.portfolio_foundation = portfolio_foundation
+
+        # Block 5D: the sole venue instrument-precision authority. This
+        # manager consumes it but never constructs, mutates, or invents an
+        # entry - the composition root loads it once from the checked-in
+        # static config and injects it here. ``configured_symbols`` is the
+        # trade-enabled symbol universe the composition root knows about; a
+        # missing rule for any of them halts startup fail-closed rather than
+        # being discovered on the first admitted request.
+        self.instrument_rules = instrument_rules
+        self._configured_symbols: tuple[str, ...] = tuple(
+            sorted(
+                {
+                    str(symbol).strip().upper()
+                    for symbol in (configured_symbols or ())
+                    if str(symbol).strip()
+                }
+            )
+        )
+
         self.last_risk_decision: dict[str, Any] | None = None
         self._risk_admissions: dict[str, tuple[str, ...]] = {}
 
@@ -415,6 +425,55 @@ class ExecutionManager:
             return False, str(reason or "FINANCIAL_STATE_RECOVERY_REQUIRED")
         return True, None
 
+    def _instrument_rules_startup_check(self) -> tuple[bool, str | None]:
+        """Verify venue instrument rules cover every symbol this run needs.
+
+        Block 5D owner decisions 2 and 4. Two independent symbol sources are
+        checked: the composition root's configured trade-enabled symbols
+        (decision 2 - a symbol Atlas is set up to trade must have a verified
+        rule before the first order attempt, not discovered as a runtime
+        admission failure) and every symbol the durable book currently holds
+        a position in (a held position is implicitly configured regardless of
+        whether it is still in the trade-enabled list, and its alignment
+        cannot even be checked without a rule for it).
+
+        A configured or held symbol with no rule halts as
+        ``INSTRUMENT_RULES_UNAVAILABLE``. A held position whose durable
+        ``base_quantity`` is not an exact multiple of the rule's
+        ``quantity_step`` halts as ``INSTRUMENT_RULES_POSITION_MISALIGNED``
+        - never floored, rounded, or written off; only an operator can
+        resolve it. Both are startup-only: this manager never mutates the
+        durable book to fix either condition.
+        """
+        symbols = set(self._configured_symbols)
+
+        foundation = self.portfolio_foundation
+        foundation_usable = foundation is not None and foundation.ready
+        if foundation_usable:
+            positions = self._derived_position_exposures()
+            symbols.update(position.symbol for position in positions)
+        else:
+            positions = ()
+
+        if not symbols:
+            return True, None
+
+        if self.instrument_rules is None:
+            return False, "INSTRUMENT_RULES_UNAVAILABLE"
+
+        for symbol in sorted(symbols):
+            if self.instrument_rules.get(symbol) is None:
+                return False, "INSTRUMENT_RULES_UNAVAILABLE"
+
+        for position in positions:
+            rules = self.instrument_rules.get(position.symbol)
+            if rules is not None and not is_aligned_to_step(
+                position.base_quantity, rules.quantity_step
+            ):
+                return False, "INSTRUMENT_RULES_POSITION_MISALIGNED"
+
+        return True, None
+
     def start(self) -> bool:
         """
         Bring the execution service online.
@@ -436,11 +495,23 @@ class ExecutionManager:
             if self.portfolio_foundation is not None:
                 durable_ready, durable_reason = self._durable_financial_ready()
 
-            if not readiness.ready or not durable_ready:
+            instrument_rules_ready = True
+            instrument_rules_reason = None
+            if readiness.ready and durable_ready:
+                # Position alignment can only be checked once the durable
+                # book itself is known ready; a not-ready foundation already
+                # halts above with its own reason.
+                instrument_rules_ready, instrument_rules_reason = (
+                    self._instrument_rules_startup_check()
+                )
+
+            if not readiness.ready or not durable_ready or not instrument_rules_ready:
                 self.execution_halted = True
                 self.recovery_required = True
                 self.halt_reason = (
-                    readiness.decision.reason if not readiness.ready else durable_reason
+                    readiness.decision.reason if not readiness.ready
+                    else durable_reason if not durable_ready
+                    else instrument_rules_reason
                 )
 
         logger.info(
@@ -2575,6 +2646,40 @@ class ExecutionManager:
             if canonical.approved_allocation != requested:
                 return {"approved": False, "reason": "RISK_ALLOCATION_MISMATCH"}
 
+        # Block 5D owner decisions 2/3/7: venue instrument precision is a
+        # fail-closed admission gate for every action, not only BUY. A
+        # symbol with no checked-in rule can never be admitted - there is no
+        # fallback quantum - and a request price that does not land exactly
+        # on the venue's price tick is refused outright rather than rounded
+        # to the nearest valid one. Both run before any reservation and
+        # before the BUY-only quantity checks below, and neither this
+        # manager nor any caller ever writes a rounded price back.
+        instrument_rules = (
+            self.instrument_rules.get(request.symbol)
+            if self.instrument_rules is not None
+            else None
+        )
+
+        if instrument_rules is None:
+            return {
+                "approved": False,
+                "reason": "INSTRUMENT_RULES_UNAVAILABLE",
+                "details": {"symbol": request.symbol},
+            }
+
+        request_price = Decimal(str(request.price))
+
+        if not is_aligned_to_step(request_price, instrument_rules.price_tick):
+            return {
+                "approved": False,
+                "reason": "PRICE_TICK_MISALIGNED",
+                "details": {
+                    "symbol": request.symbol,
+                    "price": format(request_price, "f"),
+                    "price_tick": format(instrument_rules.price_tick, "f"),
+                },
+            }
+
         # Every reject-capable compatibility gate must run before capital is
         # reserved and admission is recorded, so a rejection here never
         # leaves a reservation or admission behind (Block-2 M-1).
@@ -2600,59 +2705,94 @@ class ExecutionManager:
         # below - all of which run before any capital is reserved.
 
         if request.action == "BUY" and not request.reduce_only:
-            # An approval too small to buy one whole base quantum can never
-            # produce a fill, so it is refused here rather than discovered
-            # after the paper book has already been mutated. `_resolve_base_fill`
-            # detects the same condition, but it runs past the side-effect
-            # boundary: reaching it turns an unexecutable request into
-            # EXECUTION_INTERRUPTED_AFTER_SIDE_EFFECT - INDETERMINATE capital,
-            # an unresolved journal entry, a paper position the durable book
-            # never receives, and a halted runtime awaiting operator recovery.
-            # Refusing at admission leaves none of that behind.
+            # An approval that cannot fund one whole venue quantity_step, or
+            # that floors to less than the venue's min_quantity/min_notional,
+            # can never produce a valid fill, so it is refused here rather
+            # than discovered after the paper book has already been mutated.
+            # `_resolve_base_fill` is the same pure derivation the
+            # post-component defense-in-depth check in `_execute_paper_buy`
+            # uses, so the two can never drift apart on how a fill is sized -
+            # only on the fee, which is not yet known at admission and is
+            # taken as zero here (Block 5D owner decision: reuse the same
+            # fill/step derivation for both).
             #
-            # This sizes nothing. It is a pure feasibility bound on the amount
-            # the caller already asked for and the engine already approved: no
-            # allocation is raised, lowered, or manufactured, and a request
-            # below the bound is refused rather than rounded up to it.
+            # Reaching this condition past admission turns an unexecutable
+            # request into EXECUTION_INTERRUPTED_AFTER_SIDE_EFFECT -
+            # INDETERMINATE capital, an unresolved journal entry, a paper
+            # position the durable book never receives, and a halted runtime
+            # awaiting operator recovery. Refusing at admission leaves none
+            # of that behind.
             #
-            # BASE_QUANTITY_QUANTUM is this runtime's representation bound, not
-            # a venue lot size - the same declared scale `_resolve_base_fill`
-            # rounds to. When a per-instrument step size arrives it replaces
-            # the constant in both places at once.
-            #
-            # Only the approval itself is bounded here. The executing component
-            # reports its fee at fill time and `ExecutionRequest` carries no
-            # pre-admission fee input, so the fee-inclusive form of this bound
-            # (`approved - fee`) stays where the fee is first known, in
-            # `_resolve_base_fill`.
-            minimum_executable_notional = (
-                Decimal(str(request.price)) * self.BASE_QUANTITY_QUANTUM
+            # This sizes nothing. It is a pure feasibility bound on the
+            # amount the caller already asked for and the engine already
+            # approved: no allocation is raised, lowered, or manufactured
+            # (Block 5D owner decision: never raise allocation to satisfy a
+            # minimum), and a request below the bound is refused rather than
+            # rounded up to it.
+            admission_fill = self._resolve_base_fill(
+                allocation=canonical.approved_allocation,
+                price=request_price,
+                fee=Decimal("0"),
+                quantity_step=instrument_rules.quantity_step,
             )
 
-            if canonical.approved_allocation < minimum_executable_notional:
+            if admission_fill is None:
                 logger.warning(
-                    "Approved allocation below one executable base quantum "
-                    "symbol=%s request_id=%s approved=%s minimum=%s",
+                    "Approved allocation cannot fund one whole "
+                    "quantity_step symbol=%s request_id=%s approved=%s "
+                    "price=%s quantity_step=%s",
                     request.symbol,
                     request.request_id,
                     format(canonical.approved_allocation, "f"),
-                    format(minimum_executable_notional, "f"),
+                    format(request_price, "f"),
+                    format(instrument_rules.quantity_step, "f"),
                 )
                 return {
                     "approved": False,
-                    "reason": "ALLOCATION_BELOW_EXECUTABLE_QUANTUM",
+                    "reason": "QUANTITY_BELOW_VENUE_MINIMUM",
                     "details": {
                         "approved_allocation": format(
                             canonical.approved_allocation, "f"
                         ),
-                        "minimum_executable_notional": format(
-                            minimum_executable_notional, "f"
+                        "execution_price": format(request_price, "f"),
+                        "quantity_step": format(
+                            instrument_rules.quantity_step, "f"
                         ),
-                        "execution_price": format(
-                            Decimal(str(request.price)), "f"
+                    },
+                }
+
+            admission_base_quantity, admission_quote_notional = admission_fill
+
+            if admission_base_quantity < instrument_rules.min_quantity:
+                return {
+                    "approved": False,
+                    "reason": "QUANTITY_BELOW_VENUE_MINIMUM",
+                    "details": {
+                        "floored_base_quantity": format(
+                            admission_base_quantity, "f"
                         ),
-                        "base_quantity_quantum": format(
-                            self.BASE_QUANTITY_QUANTUM, "f"
+                        "min_quantity": format(
+                            instrument_rules.min_quantity, "f"
+                        ),
+                    },
+                }
+
+            if admission_quote_notional < instrument_rules.min_notional:
+                # Terminal for this request/cycle only (Block 5D owner
+                # decision 6): this admission is refused outright, but it
+                # halts nothing - a future independent request (a new
+                # request_id, e.g. the next market-loop tick with an updated
+                # price or allocation) is evaluated fresh against the same
+                # rule.
+                return {
+                    "approved": False,
+                    "reason": "NOTIONAL_BELOW_VENUE_MINIMUM",
+                    "details": {
+                        "floored_quote_notional": format(
+                            admission_quote_notional, "f"
+                        ),
+                        "min_notional": format(
+                            instrument_rules.min_notional, "f"
                         ),
                     },
                 }
@@ -2722,6 +2862,14 @@ class ExecutionManager:
         return {
             "approved": True,
             "reason": "RISK_APPROVED",
+            # Block 5D: recorded here so it reaches the RISK_APPROVED audit
+            # event through the existing details pass-through, alongside the
+            # fill-time evidence _execute_paper_buy/_execute_paper_sell write
+            # onto result.data.
+            "details": {
+                "instrument_rules_digest": instrument_rules.digest,
+                "instrument_rules_source_version": instrument_rules.source_version,
+            },
         }
 
     def _can_open_position(
@@ -2819,8 +2967,7 @@ class ExecutionManager:
 
         return True
 
-    @staticmethod
-    def _risk_admission_key(request: ExecutionRequest) -> tuple[str, ...]:
+    def _risk_admission_key(self, request: ExecutionRequest) -> tuple[str, ...]:
         """Seal the terms a request was admitted on.
 
         The allocation term is the canonical ``Decimal``, never the ``amount``
@@ -2832,8 +2979,21 @@ class ExecutionManager:
 
         An unapproved request has no allocation to seal and is keyed as such,
         so a hand-built token can never stand in for an engine verdict.
+
+        Block 5D: the symbol's current instrument-rules digest is sealed in
+        too, so a rules change between admission and execution invalidates
+        the admission exactly as an altered approval would - even though
+        rules are immutable for the lifetime of one process (owner decision
+        9), the seal is what makes that invariant structurally enforced
+        rather than merely assumed.
         """
         approved = request.approved_quote_allocation
+
+        rules = (
+            self.instrument_rules.get(request.symbol)
+            if self.instrument_rules is not None
+            else None
+        )
 
         return (
             request.symbol,
@@ -2843,6 +3003,7 @@ class ExecutionManager:
             str(Decimal(str(request.confidence))),
             request.risk,
             str(bool(request.reduce_only)),
+            rules.digest if rules is not None else "NO_INSTRUMENT_RULES",
             request.mode,
         )
 
@@ -3180,21 +3341,21 @@ class ExecutionManager:
 
         return request.approved_quote_allocation
 
-    @classmethod
+    @staticmethod
     def _resolve_base_fill(
-        cls,
         *,
         allocation: Decimal,
         price: Decimal,
         fee: Decimal,
+        quantity_step: Decimal,
     ) -> tuple[Decimal, Decimal] | None:
         """Size a new-risk fill inside an approved allocation, exactly.
 
-        Quantity first, notional second. The largest whole
-        ``BASE_QUANTITY_QUANTUM`` the allocation can pay for is chosen, and
-        the quote notional is then *derived* from that quantity at the
-        execution price. Because the notional is a product rather than the
-        input to a division, the canonical identity
+        Quantity first, notional second. The largest whole venue
+        ``quantity_step`` the allocation can pay for is chosen, and the quote
+        notional is then *derived* from that quantity at the execution price.
+        Because the notional is a product rather than the input to a
+        division, the canonical identity
 
             execution_price * filled_base_quantity == filled_quote_notional
 
@@ -3220,10 +3381,14 @@ class ExecutionManager:
         ``ROUND_DOWN`` on the quantity, so the executed notional can only ever
         be at or below the approval, never above it. Callers record it.
 
-        Returns ``None`` when no positive whole quantum is affordable - an
-        allocation consumed entirely by its fee, a non-positive price, or a
-        price so high that a single quantum costs more than was approved.
-        That is a fail-closed refusal, never a rounded-up fill.
+        Returns ``None`` when no positive whole ``quantity_step`` is
+        affordable - an allocation consumed entirely by its fee, a
+        non-positive price, or a price so high that a single step costs more
+        than was approved. That is a fail-closed refusal, never a rounded-up
+        fill. This is the one derivation both the pre-reservation admission
+        feasibility check in ``risk_check`` and this post-component
+        defense-in-depth call site use (Block 5D), so the two can never
+        disagree on how a fill is sized.
         """
         if not price.is_finite() or price <= 0:
             return None
@@ -3236,13 +3401,14 @@ class ExecutionManager:
 
         try:
             with localcontext() as context:
-                # ROUND_DOWN on the division as well as the quantization: a
+                # ROUND_DOWN on the division as well as the step flooring: a
                 # quotient rounded up in its last representable digit could
-                # otherwise cross a quantum boundary and buy one quantum more
-                # than the allocation covers.
+                # otherwise cross a step boundary and buy one step more than
+                # the allocation covers.
                 context.rounding = ROUND_DOWN
-                base = (spendable / price).quantize(cls.BASE_QUANTITY_QUANTUM)
+                quotient = spendable / price
 
+            base = floor_to_step(quotient, quantity_step)
             quote = price * base
         except (InvalidOperation, ZeroDivisionError, ValueError):
             return None
@@ -3284,6 +3450,32 @@ class ExecutionManager:
 
         result.requested_quote_allocation = approved
         result.data["approved_quote_allocation"] = format(approved, "f")
+
+        # Defense-in-depth (Block 5D): admission already required a rule for
+        # this symbol, so this can only be reached if the rule disappeared
+        # between admission and execution - which the admission-key seal
+        # below also catches. Checked before the side-effect boundary so a
+        # somehow-missing rule still refuses cleanly instead of mutating the
+        # paper book first.
+        instrument_rules = (
+            self.instrument_rules.get(request.symbol)
+            if self.instrument_rules is not None
+            else None
+        )
+
+        if instrument_rules is None:
+            self._mark_result_failure(
+                result=result,
+                message="No instrument rules for symbol",
+                error_code="INSTRUMENT_RULES_UNAVAILABLE",
+            )
+            return
+
+        result.data["instrument_rules_digest"] = instrument_rules.digest
+        result.data["instrument_rules_source"] = instrument_rules.source
+        result.data["instrument_rules_source_version"] = (
+            instrument_rules.source_version
+        )
 
         # Side-effect boundary: PaperTrader.open_trade() persists its own
         # durable book, so from here an interrupted request has an outcome
@@ -3352,22 +3544,61 @@ class ExecutionManager:
             allocation=approved,
             price=execution_price,
             fee=fee_amount,
+            quantity_step=instrument_rules.quantity_step,
         )
 
         if fill is None:
             self._mark_result_failure(
                 result=result,
-                message="Approved allocation cannot fund one whole base quantum at the fill price",
+                message="Approved allocation cannot fund one whole quantity_step at the fill price",
                 error_code="ALLOCATION_BELOW_EXECUTABLE_QUANTUM",
                 details={
                     "approved_quote_allocation": format(approved, "f"),
                     "execution_price": format(execution_price, "f"),
                     "fee_amount": format(fee_amount, "f"),
+                    "quantity_step": format(instrument_rules.quantity_step, "f"),
                 },
             )
             return
 
         base_quantity, quote_notional = fill
+
+        # Block 5D owner ruling (SELL-venue-minimums remediation, M1): the
+        # admission-time bound above used fee=0, because the fee is not
+        # known until the executing component reports it here. A
+        # component-reported fee can shrink the fee-adjusted fill enough to
+        # cross below the venue's minimum even though admission cleared it
+        # against a zero fee, so both minimums are re-asserted against the
+        # actual fill before durable settlement - using the same
+        # post-side-effect failure machinery the `fill is None` check above
+        # already relies on, so a violation here halts for operator
+        # recovery with capital INDETERMINATE rather than settling a
+        # venue-invalid fill.
+        if base_quantity < instrument_rules.min_quantity:
+            self._mark_result_failure(
+                result=result,
+                message="Fee-adjusted fill quantity is below the venue minimum quantity",
+                error_code="QUANTITY_BELOW_VENUE_MINIMUM",
+                details={
+                    "filled_base_quantity": format(base_quantity, "f"),
+                    "fee_amount": format(fee_amount, "f"),
+                    "min_quantity": format(instrument_rules.min_quantity, "f"),
+                },
+            )
+            return
+
+        if quote_notional < instrument_rules.min_notional:
+            self._mark_result_failure(
+                result=result,
+                message="Fee-adjusted fill notional is below the venue minimum notional",
+                error_code="NOTIONAL_BELOW_VENUE_MINIMUM",
+                details={
+                    "filled_quote_notional": format(quote_notional, "f"),
+                    "fee_amount": format(fee_amount, "f"),
+                    "min_notional": format(instrument_rules.min_notional, "f"),
+                },
+            )
+            return
 
         result.filled_base_quantity = base_quantity
         result.filled_quote_notional = quote_notional
@@ -3671,14 +3902,19 @@ class ExecutionManager:
 
         Partial exit
         ------------
-        The reduction is floored to a whole ``BASE_QUANTITY_QUANTUM``, so the
-        exposure actually removed is at or just below what was approved - a
-        deterministic remainder smaller than one quantum, always on the side
-        of reducing less than permitted rather than more. It can never reach
-        the held quantity, so a partial reduction stays partial.
+        The reduction is floored to a whole venue ``quantity_step`` (Block
+        5D), so the exposure actually removed is at or just below what was
+        approved - a deterministic remainder smaller than one step, always on
+        the side of reducing less than permitted rather than more. It can
+        never reach the held quantity, so a partial reduction stays partial.
 
-        Returns ``None`` after marking ``result`` failed. Both failure modes
-        are fail-closed and neither can under- or over-sell:
+        Returns ``None`` after marking ``result`` failed. Failure modes are
+        fail-closed and none can under- or over-sell:
+
+        ``INSTRUMENT_RULES_UNAVAILABLE``
+            no rule for this symbol. Admission already required one, so
+            reaching this is the same defense-in-depth case
+            ``_execute_paper_buy`` guards against.
 
         ``REDUCTION_EXCEEDS_POSITION``
             more was approved than is held. RiskEngine already refuses this as
@@ -3686,8 +3922,33 @@ class ExecutionManager:
             moved after admission.
 
         ``REDUCTION_BELOW_EXECUTABLE_QUANTUM``
-            the approved reduction is smaller than one base quantum at this
-            basis, so no positive quantity can be sold for it.
+            the approved reduction is smaller than one ``quantity_step`` at
+            this basis, so no positive quantity can be sold for it.
+
+        Venue minimums (Block 5D SELL-venue-minimums owner ruling)
+        ------------------------------------------------------------
+        Exact durable-quantity preservation on a full exit and never-round-up
+        flooring on a partial exit do not exempt a SELL from the venue's own
+        ``min_quantity``/``min_notional`` - a venue would refuse either order
+        exactly as it would refuse an undersized BUY. Neither side is ever
+        raised, floored to a minimum, or auto-upgraded to a full close:
+
+        ``FULL_EXIT_BELOW_VENUE_MINIMUM``
+            the exact durable holding itself - quantity or notional - is
+            below what the venue would accept as a close order. Left for
+            operator reconciliation; never floored, rounded, or written off.
+
+        ``QUANTITY_BELOW_VENUE_MINIMUM`` / ``NOTIONAL_BELOW_VENUE_MINIMUM``
+            the floored partial-reduction quantity itself, or its notional at
+            the same exposure basis, is below the venue minimum - the same
+            gate ``risk_check`` already applies to a new-risk BUY.
+
+        ``REDUCTION_STRANDS_SUBMINIMUM_REMAINDER``
+            the partial reduction itself is venue-valid, but the durable
+            quantity it would leave behind is not - neither zero nor at or
+            above the venue minimum. Rather than silently promote the
+            request to a full close, the partial reduction is refused
+            outright; the caller may resubmit an unsized (full) exit.
         """
 
         held = Decimal(str(position["base_quantity"]))
@@ -3697,6 +3958,26 @@ class ExecutionManager:
 
         result.data["risk_basis_price"] = format(basis, "f")
         result.data["held_base_quantity"] = format(held, "f")
+
+        instrument_rules = (
+            self.instrument_rules.get(request.symbol)
+            if self.instrument_rules is not None
+            else None
+        )
+
+        if instrument_rules is None:
+            self._mark_result_failure(
+                result=result,
+                message="No instrument rules for symbol",
+                error_code="INSTRUMENT_RULES_UNAVAILABLE",
+            )
+            return None
+
+        result.data["instrument_rules_digest"] = instrument_rules.digest
+        result.data["instrument_rules_source"] = instrument_rules.source
+        result.data["instrument_rules_source_version"] = (
+            instrument_rules.source_version
+        )
 
         if reduction is None:
             self._mark_result_failure(
@@ -3721,6 +4002,30 @@ class ExecutionManager:
             return None
 
         if reduction == exposure:
+            # Block 5D SELL-venue-minimums owner ruling: exact durable
+            # quantity is preserved on a full exit, but that quantity is not
+            # exempt from the venue's own minimums. A close order the venue
+            # itself would refuse fails closed here, before any side effect,
+            # for operator reconciliation - never floored, rounded up, or
+            # written off.
+            full_exit_notional = held * basis
+            if (
+                held < instrument_rules.min_quantity
+                or full_exit_notional < instrument_rules.min_notional
+            ):
+                self._mark_result_failure(
+                    result=result,
+                    message="Full exit is below the venue minimum quantity or notional",
+                    error_code="FULL_EXIT_BELOW_VENUE_MINIMUM",
+                    details={
+                        "held_base_quantity": format(held, "f"),
+                        "held_quote_notional": format(full_exit_notional, "f"),
+                        "min_quantity": format(instrument_rules.min_quantity, "f"),
+                        "min_notional": format(instrument_rules.min_notional, "f"),
+                    },
+                )
+                return None
+
             result.data["executed_quote_reduction"] = format(exposure, "f")
             result.data["unreduced_quote_remainder"] = "0"
             return held
@@ -3728,9 +4033,8 @@ class ExecutionManager:
         try:
             with localcontext() as context:
                 context.rounding = ROUND_DOWN
-                base_quantity = (reduction / basis).quantize(
-                    self.BASE_QUANTITY_QUANTUM
-                )
+                quotient = reduction / basis
+            base_quantity = floor_to_step(quotient, instrument_rules.quantity_step)
         except (InvalidOperation, ZeroDivisionError, ValueError):
             base_quantity = None
 
@@ -3746,10 +4050,67 @@ class ExecutionManager:
             )
             return None
 
-        executed = base_quantity * basis
+        # Block 5D SELL-venue-minimums owner ruling: the floored quantity
+        # actually being submitted must itself clear the venue minimums -
+        # the same gate `risk_check` already applies to a new-risk BUY - and
+        # the durable quantity this reduction would leave behind must remain
+        # itself either exactly zero or venue-sellable. Neither side is ever
+        # rounded up, and a reduction that would strand an unsellable
+        # remainder is refused rather than silently promoted to a full
+        # close.
+        submitted_notional = base_quantity * basis
 
-        result.data["executed_quote_reduction"] = format(executed, "f")
-        result.data["unreduced_quote_remainder"] = format(reduction - executed, "f")
+        if base_quantity < instrument_rules.min_quantity:
+            self._mark_result_failure(
+                result=result,
+                message="Reduction quantity is below the venue minimum quantity",
+                error_code="QUANTITY_BELOW_VENUE_MINIMUM",
+                details={
+                    "floored_base_quantity": format(base_quantity, "f"),
+                    "min_quantity": format(instrument_rules.min_quantity, "f"),
+                },
+            )
+            return None
+
+        if submitted_notional < instrument_rules.min_notional:
+            self._mark_result_failure(
+                result=result,
+                message="Reduction notional is below the venue minimum notional",
+                error_code="NOTIONAL_BELOW_VENUE_MINIMUM",
+                details={
+                    "floored_quote_notional": format(submitted_notional, "f"),
+                    "min_notional": format(instrument_rules.min_notional, "f"),
+                },
+            )
+            return None
+
+        remainder_base = held - base_quantity
+        remainder_notional = remainder_base * basis
+
+        if remainder_base > 0 and (
+            remainder_base < instrument_rules.min_quantity
+            or remainder_notional < instrument_rules.min_notional
+        ):
+            self._mark_result_failure(
+                result=result,
+                message=(
+                    "Partial reduction would strand a durable remainder "
+                    "below the venue minimum quantity or notional"
+                ),
+                error_code="REDUCTION_STRANDS_SUBMINIMUM_REMAINDER",
+                details={
+                    "remainder_base_quantity": format(remainder_base, "f"),
+                    "remainder_quote_notional": format(remainder_notional, "f"),
+                    "min_quantity": format(instrument_rules.min_quantity, "f"),
+                    "min_notional": format(instrument_rules.min_notional, "f"),
+                },
+            )
+            return None
+
+        result.data["executed_quote_reduction"] = format(submitted_notional, "f")
+        result.data["unreduced_quote_remainder"] = format(
+            reduction - submitted_notional, "f"
+        )
 
         return base_quantity
 

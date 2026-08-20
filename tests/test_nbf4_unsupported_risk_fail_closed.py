@@ -31,10 +31,22 @@ from core.decision_adapter import DecisionAdapter
 from core.execution_manager import ExecutionManager
 from core.execution_models import ExecutionRequest, normalize_risk
 from core.capital_reservation import CapitalReservationLedger
+from core.instrument_rules import InstrumentRules, InstrumentRuleset
 from core.risk_state_store import RestoredRiskState
 
 
 UNSUPPORTED = ["UNKNOWN", "EXTREME", "VERY_HIGH", "SEVERE"]
+
+# A minimal, hermetic stand-in for the real checked-in ETHUSDT rule (Block
+# 5D): every request in this file trades ETHUSDT at price 10.
+ETHUSDT_RULES = InstrumentRuleset({
+    "ETHUSDT": InstrumentRules(
+        venue="BINANCE", symbol="ETHUSDT", base_asset="ETH", quote_asset="USDT",
+        quantity_step="0.0001", min_quantity="0.0001", min_notional="5",
+        price_tick="0.01", source="test-fixture", source_version="v1",
+        retrieved_at="2026-01-01T00:00:00Z",
+    ),
+})
 
 
 # =====================================================================
@@ -114,6 +126,7 @@ def execution_manager(ledger=None):
     manager.capital_manager = None
     manager.last_risk_decision = None
     manager._risk_admissions = {}
+    manager.instrument_rules = ETHUSDT_RULES
     manager.mode = "PAPER"
     manager.event_bus = None
     manager._lock = threading.RLock()

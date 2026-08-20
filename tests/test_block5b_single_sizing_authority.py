@@ -54,6 +54,7 @@ import pytest
 
 from core.application import (
     CAPITAL_RESERVATION_STATE_FILE,
+    DEFAULT_INSTRUMENT_RULES_PATH,
     EXECUTION_FINANCIAL_STATE_FILE,
     PAPER_TRADE_BOOK_FILE,
     RISK_ACCOUNTING_STATE_FILE,
@@ -63,6 +64,7 @@ from core.capital_reservation import JsonReservationStore
 from core.execution_manager import ExecutionManager
 from core.execution_models import ExecutionRequest
 from core.execution_portfolio_foundation import FinancialStateStore
+from core.instrument_rules import InstrumentRules, InstrumentRuleset, load_instrument_ruleset
 from core.market_loop import MarketLoop
 from core.risk_state_store import JsonRiskStateStore, RestoredRiskState
 
@@ -79,9 +81,25 @@ MEDIUM_BUCKET_CEILING = TOTAL_CAPITAL * D("0.25")
 # Prices chosen so that allocation / price does not terminate. These are the
 # prices the old notional-first arithmetic could not represent exactly.
 AWKWARD_PRICE = D("1.29")
+
+# BTC_LIKE_PRICE keeps its original, pre-5D precision: it seeds only the
+# durable position mark price in awkward_exposure_app() below (never a
+# request's own price), so Block 5D's price_tick admission gate never sees
+# it and AWKWARD_EXPOSURE's exact-digit-count/float-rounds-up property (the
+# whole point of the F2 reproduction) stays untouched.
 BTC_LIKE_PRICE = D("43219.87654321")
 
-QUANTUM = ExecutionManager.BASE_QUANTITY_QUANTUM
+# Block 5D requires every *admitted* request price to land exactly on the
+# venue's price_tick (BTCUSDT: 0.01), so a genuine request price needs its
+# own tick-valid sibling; BTC_LIKE_PRICE itself is not tick-valid.
+BTC_LIKE_ADMITTED_PRICE = D("43219.88")
+
+# The venue quantity_step this manager now floors to (Block 5D), read from
+# the same checked-in config ExecutionManager loads in production rather
+# than duplicated as a magic number, so this suite never silently drifts
+# from what actually ships.
+BTCUSDT_RULES = load_instrument_ruleset(DEFAULT_INSTRUMENT_RULES_PATH).get("BTCUSDT")
+QUANTUM = BTCUSDT_RULES.quantity_step
 
 
 # --------------------------------------------------------------------------
@@ -516,14 +534,20 @@ def test_risk_check_is_idempotent_for_an_unsized_exit(tmp_path):
     """
     app = awkward_exposure_app(tmp_path)
     manager = app.execution
-    request = sell(price=float(BTC_LIKE_PRICE))
+    request = sell(price=float(BTC_LIKE_ADMITTED_PRICE))
 
     first = manager.risk_check(request)
     first_approved = request.approved_quote_allocation
 
     second = manager.risk_check(request)
 
-    assert first == second == {"approved": True, "reason": "RISK_APPROVED"}
+    # Equal to each other (idempotent), and both a genuine approval. Not an
+    # exact-dict literal: Block 5D adds an instrument-rules evidence
+    # "details" payload to every approval, which is orthogonal to what this
+    # test proves.
+    assert first == second
+    assert first["approved"] is True
+    assert first["reason"] == "RISK_APPROVED"
     assert first_approved == AWKWARD_EXPOSURE
     assert request.approved_quote_allocation == AWKWARD_EXPOSURE
 
@@ -535,7 +559,7 @@ def test_risk_check_never_synthesizes_the_amount_mirror(tmp_path):
     turns a compatibility field into an authority on the next evaluation.
     """
     app = awkward_exposure_app(tmp_path)
-    unsized = sell(price=float(BTC_LIKE_PRICE))
+    unsized = sell(price=float(BTC_LIKE_ADMITTED_PRICE))
 
     app.execution.risk_check(unsized)
 
@@ -558,7 +582,7 @@ def test_a_float_rounded_mirror_cannot_trap_an_exit(tmp_path):
     """The full consequence: a re-evaluated exit still closes the position."""
     app = awkward_exposure_app(tmp_path)
     manager = app.execution
-    request = sell(price=float(BTC_LIKE_PRICE))
+    request = sell(price=float(BTC_LIKE_ADMITTED_PRICE))
 
     manager.risk_check(request)
     assert manager.risk_check(request)["approved"] is True
@@ -734,7 +758,9 @@ def test_near_bound_buy_re_evaluation_keeps_its_approval(tmp_path):
     first = manager.risk_check(request)
     second = manager.risk_check(request)
 
-    assert first == second == {"approved": True, "reason": "RISK_APPROVED"}
+    assert first == second
+    assert first["approved"] is True
+    assert first["reason"] == "RISK_APPROVED"
 
 
 def test_re_evaluated_buy_reserves_its_allocation_exactly_once(tmp_path):
@@ -817,13 +843,13 @@ def test_f1_sub_quantum_refusal_stays_pre_reservation_under_re_evaluation(tmp_pa
     """F1 is preserved: the quantum bound still refuses before any reservation."""
     app = near_bound_app(tmp_path)
     manager = app.execution
-    request = buy(amount=0.0001, price=float(BTC_LIKE_PRICE))
+    request = buy(amount=0.0001, price=float(BTC_LIKE_ADMITTED_PRICE))
 
     first = manager.risk_check(request)
     second = manager.risk_check(request)
 
     assert first["approved"] is second["approved"] is False
-    assert first["reason"] == second["reason"] == "ALLOCATION_BELOW_EXECUTABLE_QUANTUM"
+    assert first["reason"] == second["reason"] == "QUANTITY_BELOW_VENUE_MINIMUM"
     assert manager.reservation_ledger.get("b1") is None
     assert manager.reservation_ledger._items == {}
     assert manager._risk_admissions == {}
@@ -833,11 +859,13 @@ def test_f1_sub_quantum_refusal_stays_pre_reservation_under_re_evaluation(tmp_pa
 def test_f2_repeated_sell_risk_check_remains_idempotent(tmp_path):
     """F2 is preserved: a re-evaluated exit keeps its verdict and its amount."""
     manager = awkward_exposure_app(tmp_path).execution
-    request = sell(price=float(BTC_LIKE_PRICE))
+    request = sell(price=float(BTC_LIKE_ADMITTED_PRICE))
 
     verdicts = [manager.risk_check(request) for _ in range(3)]
 
-    assert verdicts == [{"approved": True, "reason": "RISK_APPROVED"}] * 3
+    assert verdicts[0] == verdicts[1] == verdicts[2]
+    assert verdicts[0]["approved"] is True
+    assert verdicts[0]["reason"] == "RISK_APPROVED"
     assert request.approved_quote_allocation == AWKWARD_EXPOSURE
     assert request.amount == 0
     # A reduction consumes no capital, so no evaluation of it may reserve any.
@@ -870,12 +898,14 @@ def test_no_execution_path_exceeds_the_approval_after_re_evaluation(tmp_path):
 
 
 @pytest.mark.parametrize("price,allocation", [
-    (AWKWARD_PRICE, D("1000")),      # the 1.29 reproduction
-    (BTC_LIKE_PRICE, D("2500")),     # a non-round-trip venue price
-    (D("1.00"), D("1.01")),          # the prior 1.01 / 1.00 reproduction
-    (AWKWARD_PRICE, D("1.01")),      # the prior 1.01 / 1.29 reproduction
-    (D("3"), D("1")),                # a recurring quote/price division
-    (D("0.00031234"), D("17.77")),   # a sub-unit price
+    (AWKWARD_PRICE, D("1000")),           # the 1.29 reproduction
+    (BTC_LIKE_ADMITTED_PRICE, D("2500")), # a non-round-trip venue price
+    (D("1.00"), D("10.10")),              # the prior 1.01 / 1.00 reproduction,
+                                           # scaled 10x to clear min_notional
+    (AWKWARD_PRICE, D("10.10")),          # the prior 1.01 / 1.29 reproduction,
+                                           # scaled 10x to clear min_notional
+    (D("3"), D("100")),                   # a recurring quote/price division
+    (D("0.37"), D("17.77")),              # a sub-unit, tick-valid price
 ])
 def test_buy_notional_is_exactly_price_times_quantity(tmp_path, price, allocation):
     """The exact-identity failure, fixed structurally rather than tolerated.
@@ -902,20 +932,20 @@ def test_buy_at_an_awkward_price_leaves_a_measured_sub_quantum_remainder(flat_ap
 
     result = settle(flat_app, request)
 
-    assert D(result["filled_base_quantity"]) == D("775.19379844")
-    assert D(result["filled_quote_notional"]) == D("999.9999999876")
-    assert D(result["data"]["unallocated_quote_remainder"]) == D("0.0000000124")
+    assert D(result["filled_base_quantity"]) == D("775.19379")
+    assert D(result["filled_quote_notional"]) == D("999.9999891")
+    assert D(result["data"]["unallocated_quote_remainder"]) == D("0.0000109")
     assert D(result["data"]["approved_quote_allocation"]) == D("1000")
 
 
 def test_buy_at_a_btc_like_price_never_exceeds_the_approval(flat_app):
-    request = buy(amount=2500, price=float(BTC_LIKE_PRICE))
+    request = buy(amount=2500, price=float(BTC_LIKE_ADMITTED_PRICE))
 
     result = settle(flat_app, request)
 
     base, quote = assert_exact_fill(result, approved=D("2500"))
     assert quote < D("2500")
-    assert base == D("0.05784375")
+    assert base == D("0.05784")
 
 
 def test_buy_rounding_is_deterministic_across_identical_runtimes(tmp_path):
@@ -923,31 +953,32 @@ def test_buy_rounding_is_deterministic_across_identical_runtimes(tmp_path):
     first.execution.start()
     second.execution.start()
 
-    one = settle(first, buy(amount=1000, price=float(BTC_LIKE_PRICE)))
-    two = settle(second, buy(amount=1000, price=float(BTC_LIKE_PRICE)))
+    one = settle(first, buy(amount=1000, price=float(BTC_LIKE_ADMITTED_PRICE)))
+    two = settle(second, buy(amount=1000, price=float(BTC_LIKE_ADMITTED_PRICE)))
 
     assert one["filled_base_quantity"] == two["filled_base_quantity"]
     assert one["filled_quote_notional"] == two["filled_quote_notional"]
 
 
 def test_sub_quantum_buy_is_refused_at_admission(flat_app):
-    """An approval too small to buy a single quantum is refused, never rounded up.
+    """An approval too small to buy a single quantity_step is refused, never
+    rounded up.
 
     The bound is a feasibility test on the amount the caller already asked for
     and the engine already approved. It sizes nothing: the request is refused
-    rather than raised to the minimum executable notional.
+    rather than raised to the venue's minimum (Block 5D).
     """
     manager = flat_app.execution
-    minimum = D(str(BTC_LIKE_PRICE)) * QUANTUM
-    request = buy(amount=0.0001, price=float(BTC_LIKE_PRICE))
-    assert D(str(request.amount)) < minimum
+    minimum_affordable_notional = QUANTUM * BTC_LIKE_ADMITTED_PRICE
+    request = buy(amount=0.0001, price=float(BTC_LIKE_ADMITTED_PRICE))
+    assert D(str(request.amount)) < minimum_affordable_notional
 
     result = manager.risk_check(request)
 
     assert result["approved"] is False
-    assert result["reason"] == "ALLOCATION_BELOW_EXECUTABLE_QUANTUM"
-    assert D(result["details"]["minimum_executable_notional"]) == minimum
+    assert result["reason"] == "QUANTITY_BELOW_VENUE_MINIMUM"
     assert D(result["details"]["approved_allocation"]) == D("0.0001")
+    assert D(result["details"]["quantity_step"]) == QUANTUM
     assert request.approved_quote_allocation is None
     assert manager.reservation_ledger.get("b1") is None
     assert manager._risk_admissions == {}
@@ -969,12 +1000,12 @@ def test_sub_quantum_buy_through_execute_refuses_without_halting(flat_app):
     driven through the real orchestration.
     """
     result = drive(flat_app, buy_decision(
-        amount=0.0001, price=float(BTC_LIKE_PRICE)
+        amount=0.0001, price=float(BTC_LIKE_ADMITTED_PRICE)
     ))
 
     assert result["success"] is False
     assert result["status"] == "REJECTED"
-    assert result["reason"] == "ALLOCATION_BELOW_EXECUTABLE_QUANTUM"
+    assert result["reason"] == "QUANTITY_BELOW_VENUE_MINIMUM"
     # Not a post-side-effect interruption: no unknown commit outcome at all.
     assert result.get("commit_outcome") is None
     assert result.get("original_status") is None
@@ -983,7 +1014,7 @@ def test_sub_quantum_buy_through_execute_refuses_without_halting(flat_app):
 
 def test_sub_quantum_buy_leaves_no_journal_entry(flat_app):
     """The prepare barrier is never reached, so nothing needs resolving."""
-    drive(flat_app, buy_decision(amount=0.0001, price=float(BTC_LIKE_PRICE)))
+    drive(flat_app, buy_decision(amount=0.0001, price=float(BTC_LIKE_ADMITTED_PRICE)))
 
     assert flat_app.execution.transaction_journal.entries == {}
 
@@ -991,7 +1022,7 @@ def test_sub_quantum_buy_leaves_no_journal_entry(flat_app):
 def test_a_sub_quantum_buy_does_not_block_a_later_valid_buy(flat_app):
     """A refusal that halted the runtime would make this impossible."""
     drive(flat_app, buy_decision(
-        amount=0.0001, price=float(BTC_LIKE_PRICE), request_id="dust"
+        amount=0.0001, price=float(BTC_LIKE_ADMITTED_PRICE), request_id="dust"
     ))
 
     result = drive(flat_app, buy_decision(
@@ -999,7 +1030,7 @@ def test_a_sub_quantum_buy_does_not_block_a_later_valid_buy(flat_app):
     ))
 
     assert result["status"] == "PAPER_EXECUTED"
-    assert D(result["filled_quote_notional"]) == D("999.9999999876")
+    assert D(result["filled_quote_notional"]) == D("999.9999891")
 
 
 def test_buy_below_one_executable_quantum_fails_closed_at_the_backstop(flat_app):
@@ -1170,10 +1201,16 @@ def test_partial_sell_does_not_overwrite_the_request_with_the_holding(holding_ap
 
 
 def test_partial_reduction_at_an_awkward_basis_never_exceeds_the_approval(tmp_path):
-    """A reduction the basis does not divide is floored, never rounded up."""
-    app = application(tmp_path, positions=[("BTCUSDT", "1", "3")])
+    """A reduction the basis does not divide is floored, never rounded up.
+
+    Position/reduction scaled 10x from the original 1/3 reproduction (Block
+    5D H1 remediation: SELL is now subject to the same venue min_notional as
+    BUY, so both the submitted reduction and the remaining exposure must
+    clear it), while preserving the same awkward, non-terminating division.
+    """
+    app = application(tmp_path, positions=[("BTCUSDT", "10", "3")])
     app.execution.start()
-    request = sell(amount=1, price=3)
+    request = sell(amount=10, price=3)
 
     result = settle(app, request)
 
@@ -1181,11 +1218,11 @@ def test_partial_reduction_at_an_awkward_basis_never_exceeds_the_approval(tmp_pa
     base = D(result["filled_base_quantity"])
     executed = D(result["data"]["executed_quote_reduction"])
 
-    assert base == D("0.33333333")
+    assert base == D("3.33333")
     assert base * basis == executed
     assert executed <= request.approved_quote_allocation
     assert request.approved_quote_allocation - executed < basis * QUANTUM
-    assert D(position_of(app)["base_quantity"]) == D("0.66666667")
+    assert D(position_of(app)["base_quantity"]) == D("6.66667")
 
 
 def test_unsized_sell_resolves_to_the_whole_durable_exposure(holding_app):
@@ -1239,12 +1276,12 @@ def test_buy_then_partial_sell_then_full_remainder_exit_leaves_no_dust(flat_app)
 
 def test_repeated_partial_reductions_still_close_exactly(flat_app):
     """Four partial exits and a final one, with no residue at the end."""
-    entry = settle(flat_app, buy(amount=2000, price=float(BTC_LIKE_PRICE),
+    entry = settle(flat_app, buy(amount=2000, price=float(BTC_LIKE_ADMITTED_PRICE),
                                  request_id="entry"))
     sold = D("0")
 
     for index in range(4):
-        result = settle(flat_app, sell(amount=300, price=float(BTC_LIKE_PRICE),
+        result = settle(flat_app, sell(amount=300, price=float(BTC_LIKE_ADMITTED_PRICE),
                                        request_id=f"cut{index}"))
         sold += D(result["filled_base_quantity"])
         assert position_of(flat_app) is not None
@@ -1252,7 +1289,7 @@ def test_repeated_partial_reductions_still_close_exactly(flat_app):
     held = D(position_of(flat_app)["base_quantity"])
     assert held == D(entry["filled_base_quantity"]) - sold
 
-    final = settle(flat_app, sell(price=float(BTC_LIKE_PRICE), request_id="exit"))
+    final = settle(flat_app, sell(price=float(BTC_LIKE_ADMITTED_PRICE), request_id="exit"))
 
     assert D(final["filled_base_quantity"]) == held
     assert position_of(flat_app) is None
@@ -1266,7 +1303,7 @@ def test_re_entry_succeeds_immediately_after_a_full_close(flat_app):
 
     assert position_of(flat_app) is None
 
-    re_entry = buy(amount=500, price=float(BTC_LIKE_PRICE), request_id="reentry")
+    re_entry = buy(amount=500, price=float(BTC_LIKE_ADMITTED_PRICE), request_id="reentry")
     result = settle(flat_app, re_entry)
 
     assert result["success"] is True
@@ -1279,6 +1316,24 @@ def test_full_close_releases_the_max_position_slot(tmp_path):
     app = application(
         tmp_path, positions=[(f"SYM{index}USDT", "1", "10") for index in range(5)]
     )
+    # This test's placeholder symbols (SYM0USDT.. + OTHERUSDT, six distinct
+    # names to exceed RiskPolicy.max_positions=5) exist only to prove
+    # position-slot accounting; they carry no real venue rule. Synthetic
+    # rules for them are added alongside the real checked-in ones (rather
+    # than replacing them) so Block 5D's instrument-rules startup gate still
+    # sees rules for the actually-configured default symbols too.
+    placeholder_rules = {
+        symbol: InstrumentRules(
+            venue="TEST", symbol=symbol, base_asset=symbol[:-4], quote_asset="USDT",
+            quantity_step="0.00001", min_quantity="0.00001", min_notional="1",
+            price_tick="0.01", source="test-fixture", source_version="v1",
+            retrieved_at="2026-01-01T00:00:00Z",
+        )
+        for symbol in (*(f"SYM{index}USDT" for index in range(5)), "OTHERUSDT")
+    }
+    app.execution.instrument_rules = InstrumentRuleset({
+        **app.execution.instrument_rules.rules, **placeholder_rules,
+    })
     app.execution.start()
 
     assert app.execution.risk_check(
