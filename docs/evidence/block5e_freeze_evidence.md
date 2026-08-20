@@ -351,16 +351,21 @@ established are unmodified.
 
 ## Known Non-Blocking Follow-ups / Limitations
 
-**COMMITTED reservation lifecycle / capital reclamation (accepted, open,
-BLOCKING for a future package — not for this one).** A COMMITTED
-reservation still never transitions to RELEASED. F7's remediation in this
-package (committing at the exact settled amount rather than the full
-reservation) narrows the amount permanently encumbered by a BUY's own
-sub-quantum remainder, but does not address the broader lifecycle: capital
-committed to a position is not reclaimed when that position is later
+**COMMITTED reservation lifecycle / capital reclamation (CLOSED by Package
+5F — open at this package's own freeze time).** At 5E's freeze, a COMMITTED
+reservation still never transitioned to RELEASED, and F7's remediation in
+this package (committing at the exact settled amount rather than the full
+reservation) narrowed the amount permanently encumbered by a BUY's own
+sub-quantum remainder without addressing the broader lifecycle: capital
+committed to a position was not reclaimed when that position was later
 reduced or closed. This was explicitly out of scope for Package 5E from the
-outset (see the test module's own docstring) and remains the single most
-consequential open item against this settlement authority.
+outset (see the test module's own docstring) and was, at the time, the
+single most consequential open item against this settlement authority.
+Package 5F closed it — not by adding the RELEASED transition or a
+reservation/position link this note anticipated, but by correcting
+`CapitalReservationLedger`'s definition of live encumbrance to RESERVED +
+INDETERMINATE only, so a COMMITTED reservation stops encumbering `available`
+the instant it settles. See `docs/evidence/block5f_freeze_evidence.md`.
 
 **Unsupported base-asset/third-asset fee settlement (accepted, open).**
 `FeeNormalizer` fails closed on a base-asset or third-asset fee rather than

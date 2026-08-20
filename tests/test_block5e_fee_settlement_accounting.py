@@ -23,9 +23,16 @@ currency and never converted - there is no FX or fee-rate policy anywhere
 in this repository.
 
 Explicitly NOT covered here (owner-scoped out of 5E):
-- The COMMITTED-reservation-never-unwinds defect: a committed reservation
-  still never releases capital back on a later position exit. That is a
-  separate, BLOCKING follow-up.
+- The COMMITTED-reservation-never-unwinds defect: at 5E freeze, a committed
+  reservation still permanently encumbered ``available`` even though the
+  capital it spent was already accounted for through durable cash. That was
+  a separate, BLOCKING follow-up - CLOSED by Block 5F, which redefined live
+  encumbrance as RESERVED + INDETERMINATE only, so COMMITTED never
+  encumbers ``available`` regardless of position lifecycle (see
+  ``tests/test_block5f_reservation_capital_reclamation.py`` and
+  ``docs/evidence/block5f_freeze_evidence.md``). COMMITTED still never
+  transitions to RELEASED and is still never linked to a position - 5F
+  reached the reclamation goal without adding either.
 - Any fee rate, fee schedule, or FX conversion.
 - Base-asset fee *settlement* (withholding from base quantity) - fails
   closed instead of being implemented.
@@ -453,8 +460,9 @@ def test_committed_reservation_settles_at_notional_plus_fee_not_full_approval(tm
 
     assert committed.amount == D("96")
     assert committed.status.value == "COMMITTED"
-    # The unused 4 is excluded from what remains encumbered.
-    assert ledger.available == D("1000") - D("96")
+    # COMMITTED is durable history, not live encumbrance (Block 5F): the
+    # settled 96 does not reduce available capital at all.
+    assert ledger.available == D("1000")
     assert ledger.active_reserved_capital() == D("0")
 
 
@@ -469,7 +477,8 @@ def test_committed_settlement_amount_survives_a_restart_reload(tmp_path):
 
     assert reloaded.get("req-1").amount == D("96")
     assert reloaded.get("req-1").status.value == "COMMITTED"
-    assert reloaded.available == D("1000") - D("96")
+    # Block 5F: COMMITTED never encumbers, restart or not.
+    assert reloaded.available == D("1000")
 
 
 def test_commit_replay_does_not_reprice_an_already_committed_reservation(tmp_path):
