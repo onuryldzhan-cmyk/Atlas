@@ -48,7 +48,7 @@ Atlas Brain / Decision Engine
 from __future__ import annotations
 
 import logging
-from decimal import ROUND_DOWN, Decimal, InvalidOperation, localcontext
+from decimal import ROUND_DOWN, ROUND_HALF_EVEN, Decimal, InvalidOperation, localcontext
 import threading
 import time
 import uuid
@@ -77,7 +77,11 @@ from core.execution_models import (
     ExecutionResult,
     normalize_risk,
 )
-from core.execution_portfolio_foundation import ExecutionPortfolioFoundation
+from core.execution_portfolio_foundation import (
+    SETTLEMENT_CONTEXT_PRECISION,
+    ExecutionPortfolioFoundation,
+)
+from core.fee_accounting import FeeNormalizer, FeeRejected
 from core.instrument_rules import (
     InstrumentRuleset,
     floor_to_step,
@@ -1544,7 +1548,34 @@ class ExecutionManager:
                     self.publish("EXECUTION_COMMIT_STATUS_UNKNOWN", unknown_result)
                     return unknown_result
 
-                if not self._commit_capital_reservation(request_id):
+                # Block 5E: commit the reservation at the exact settled
+                # amount - notional + quote fee - rather than the full
+                # reservation, so the deterministic sub-quantum remainder a
+                # BUY never spent stops being permanently encumbered by this
+                # reservation. `None` when either figure is absent (e.g. a
+                # non-paper/live result), which preserves the historical
+                # full-amount commit for that case. The addition is pinned
+                # to the same explicit context as the rest of the 5E
+                # settlement slice (final-review MEDIUM #2), so a caller
+                # thread's ambient precision can never round this sum
+                # differently than `_finalize_durable_financial_state`
+                # already rounded the identical `notional + fee` figure it
+                # checked against the approval moments earlier - a
+                # divergence here would either under-commit or spuriously
+                # halt on `settled_amount exceeds reserved amount`.
+                settled_amount = None
+                notional_raw = result.get("filled_quote_notional")
+                settled_fee_raw = result.get("fee_amount")
+                if notional_raw is not None and settled_fee_raw is not None:
+                    try:
+                        with localcontext() as context:
+                            context.prec = SETTLEMENT_CONTEXT_PRECISION
+                            context.rounding = ROUND_HALF_EVEN
+                            settled_amount = Decimal(str(notional_raw)) + Decimal(str(settled_fee_raw))
+                    except (InvalidOperation, ValueError, TypeError):
+                        settled_amount = None
+
+                if not self._commit_capital_reservation(request_id, settled_amount):
                     try:
                         self.transaction_journal.mark_unknown(
                             request_id,
@@ -1758,6 +1789,12 @@ class ExecutionManager:
                         ),
                         "fee": result.get(
                             "fee"
+                        ),
+                        "fee_amount": result.get(
+                            "fee_amount"
+                        ),
+                        "fee_currency": result.get(
+                            "fee_currency"
                         ),
                         "pnl": result.get(
                             "pnl"
@@ -3034,13 +3071,23 @@ class ExecutionManager:
         finally:
             self._risk_admissions.pop(request_id, None)
 
-    def _commit_capital_reservation(self, request_id: str) -> bool:
+    def _commit_capital_reservation(
+        self, request_id: str, settled_amount: Decimal | None = None
+    ) -> bool:
+        """Commit a reservation, at ``settled_amount`` when one is known.
+
+        ``settled_amount`` (Block 5E) is ``filled_quote_notional +
+        quote_fee`` - the exact economic amount durable settlement spent.
+        ``None`` preserves the historical behaviour of committing at the
+        full reserved amount, for a caller that has no settled figure to
+        offer (e.g. a non-paper/live path).
+        """
         if self.reservation_ledger is None:
             return False
         try:
             if self.reservation_ledger.get(request_id) is None:
                 return True
-            self.reservation_ledger.commit(request_id)
+            self.reservation_ledger.commit(request_id, settled_amount)
             return True
         except Exception as exc:
             self._record_error(phase="capital_commit", error=exc)
@@ -3210,7 +3257,14 @@ class ExecutionManager:
         if reservation_required:
             if approved is None:
                 raise PermissionError("CANONICAL_ALLOCATION_MISSING")
-            settled = (evidence.filled_quote_notional or Decimal("0")) + evidence.fee_amount
+            # Pinned to the same explicit settlement context the commit-time
+            # `notional + fee` recomputation above uses (final-review
+            # MEDIUM #2), so the two can never round this identical figure
+            # differently under a caller's ambient precision.
+            with localcontext() as context:
+                context.prec = SETTLEMENT_CONTEXT_PRECISION
+                context.rounding = ROUND_HALF_EVEN
+                settled = (evidence.filled_quote_notional or Decimal("0")) + evidence.fee_amount
             if settled > approved:
                 raise PermissionError("SETTLEMENT_EXCEEDS_APPROVED_ALLOCATION")
 
@@ -3528,10 +3582,12 @@ class ExecutionManager:
 
         # Sized after hydration, so the price and fee the executing component
         # actually reported are the ones the fill is derived from - not the
-        # ones this manager assumed before calling it.
+        # ones this manager assumed before calling it. `result.fee_amount`
+        # is already the authoritative Decimal `_hydrate_result_from_component`
+        # set - exact when the component reported `fee_amount` directly,
+        # float-derived otherwise (Block 5E).
         try:
             execution_price = Decimal(str(result.filled_price))
-            fee_amount = Decimal(str(result.fee))
         except (InvalidOperation, ValueError, TypeError):
             self._mark_result_failure(
                 result=result,
@@ -3539,6 +3595,36 @@ class ExecutionManager:
                 error_code="INVALID_FINANCIAL_QUANTITY",
             )
             return
+
+        # Block 5E: only a fee this venue's quote asset can settle exactly is
+        # ever allowed to reach durable settlement. A base-asset fee, a
+        # third-asset fee, or an undeclared nonzero fee is refused here -
+        # before `_finalize_durable_financial_state` - never inferred and
+        # never converted, because there is no FX or fee-rate policy
+        # anywhere in this repository.
+        try:
+            normalized_fee = FeeNormalizer.normalize(
+                fee_amount=result.fee_amount,
+                fee_currency=result.fee_currency,
+                instrument=instrument_rules,
+            )
+        except FeeRejected as exc:
+            self._mark_result_failure(
+                result=result,
+                message="Component-reported fee cannot be settled: only this venue's quote-asset fee is supported",
+                error_code=exc.reason.value,
+                details={
+                    "fee_amount": (
+                        format(exc.fee_amount, "f") if exc.fee_amount is not None else None
+                    ),
+                    "fee_currency": exc.fee_currency,
+                    "quote_asset": instrument_rules.quote_asset,
+                    "base_asset": instrument_rules.base_asset,
+                },
+            )
+            return
+
+        fee_amount = normalized_fee.quote_amount
 
         fill = self._resolve_base_fill(
             allocation=approved,
@@ -3603,6 +3689,7 @@ class ExecutionManager:
         result.filled_base_quantity = base_quantity
         result.filled_quote_notional = quote_notional
         result.fee_amount = fee_amount
+        result.fee_currency = normalized_fee.currency
 
         # Historical compatibility: filled_amount stays quote capital on this
         # path.  Canonical consumers must use the explicit Decimal fields.
@@ -4221,7 +4308,6 @@ class ExecutionManager:
                     result.filled_base_quantity * execution_price
                 )
                 result.filled_amount = float(result.filled_quote_notional)
-                result.fee_amount = Decimal(str(result.fee))
             except (InvalidOperation, ValueError, TypeError):
                 self._mark_result_failure(
                     result=result,
@@ -4229,6 +4315,50 @@ class ExecutionManager:
                     error_code="INVALID_FINANCIAL_QUANTITY",
                 )
                 return
+
+            # Block 5E: the same quote-asset-only fee gate `_execute_paper_buy`
+            # applies. Admission already required an instrument rule to
+            # exist for this symbol, so re-fetching it here can only miss if
+            # it disappeared between admission and execution - the same
+            # defense-in-depth case `_execute_paper_buy` guards against.
+            instrument_rules = (
+                self.instrument_rules.get(request.symbol)
+                if self.instrument_rules is not None
+                else None
+            )
+
+            if instrument_rules is None:
+                self._mark_result_failure(
+                    result=result,
+                    message="No instrument rules for symbol",
+                    error_code="INSTRUMENT_RULES_UNAVAILABLE",
+                )
+                return
+
+            try:
+                normalized_fee = FeeNormalizer.normalize(
+                    fee_amount=result.fee_amount,
+                    fee_currency=result.fee_currency,
+                    instrument=instrument_rules,
+                )
+            except FeeRejected as exc:
+                self._mark_result_failure(
+                    result=result,
+                    message="Component-reported fee cannot be settled: only this venue's quote-asset fee is supported",
+                    error_code=exc.reason.value,
+                    details={
+                        "fee_amount": (
+                            format(exc.fee_amount, "f") if exc.fee_amount is not None else None
+                        ),
+                        "fee_currency": exc.fee_currency,
+                        "quote_asset": instrument_rules.quote_asset,
+                        "base_asset": instrument_rules.base_asset,
+                    },
+                )
+                return
+
+            result.fee_amount = normalized_fee.quote_amount
+            result.fee_currency = normalized_fee.currency
 
         close_metadata = {
             **self._normalize_metadata(
@@ -4677,23 +4807,30 @@ class ExecutionManager:
         # owned by the execution paths that derive them from the risk-approved
         # allocation, and they remain the only financially material quantities.
 
-        fee = ExecutionManager._extract_numeric_value(
+        # Block 5E exact fee ingress: a component may report `fee_amount`
+        # directly as a Decimal or decimal string, taken verbatim and never
+        # routed through the lossy float `fee` mirror below. Only when the
+        # key itself is absent does hydration fall back to the historical
+        # `fee`/`commission` float keys - a present-but-invalid `fee_amount`
+        # (negative, non-finite, or unparseable) still comes back from
+        # `_extract_exact_decimal` as a `Decimal`, so it is carried through
+        # here and left for the `FeeNormalizer` gate below to refuse; it
+        # never falls back to `fee`/`commission` (final-review MEDIUM #1).
+        exact_fee = ExecutionManager._extract_exact_decimal(
             payload,
-            keys=(
-                "fee",
-                "commission",
-            ),
+            keys=("fee_amount",),
         )
 
-        if fee != 0:
-            result.fee = fee
+        if exact_fee is not None:
+            result.fee_amount = exact_fee
+            result.fee = float(exact_fee) if exact_fee.is_finite() else 0.0
 
-            # The currency comes from the component that charged the fee, and
-            # from nowhere else. No instrument contract in this repository
-            # declares a quote asset, so a denomination cannot be inferred
-            # from the symbol - and a fee whose currency nobody stated is
-            # rejected by `validate_financial_evidence` rather than assumed to
-            # be quote currency.
+            # The currency comes from the component that charged the fee,
+            # and from nowhere else. `InstrumentRules.base_asset`/
+            # `quote_asset` (Block 5D) let `FeeNormalizer` (Block 5E)
+            # classify a stated currency against the venue; a fee whose
+            # currency nobody stated is still rejected rather than assumed
+            # to be quote currency.
             result.fee_currency = (
                 result.fee_currency
                 or ExecutionManager._extract_nested(
@@ -4702,6 +4839,27 @@ class ExecutionManager:
                     "commission_asset",
                 )
             )
+        else:
+            fee = ExecutionManager._extract_numeric_value(
+                payload,
+                keys=(
+                    "fee",
+                    "commission",
+                ),
+            )
+
+            if fee != 0:
+                result.fee = fee
+                result.fee_amount = Decimal(str(fee))
+
+                result.fee_currency = (
+                    result.fee_currency
+                    or ExecutionManager._extract_nested(
+                        payload,
+                        "fee_currency",
+                        "commission_asset",
+                    )
+                )
 
         pnl = ExecutionManager._extract_numeric_value(
             payload,
@@ -5231,6 +5389,60 @@ class ExecutionManager:
         return ExecutionManager._to_float(
             value
         )
+
+    @staticmethod
+    def _extract_exact_decimal(
+        value: Any,
+        *,
+        keys: tuple[str, ...],
+    ) -> Decimal | None:
+        """Read an exact ``Decimal`` straight from a payload, never through float.
+
+        Mirrors ``_extract_numeric_value``'s key/``data``-fallback lookup,
+        but for a field a component may report as an exact ``Decimal`` or
+        decimal string (Block 5E ``fee_amount`` ingress) - so an exact
+        component-reported figure never has to round-trip through a float
+        mirror to become authoritative. Returns ``None`` only when the key
+        itself is absent (or explicitly ``None``) - that is the one case
+        the caller is allowed to fall back to the legacy ``fee``/
+        ``commission`` mirror for.
+
+        A key that *is* present but cannot stand as an authoritative fee -
+        negative, non-finite, or not parseable as a ``Decimal`` at all - is
+        never silently discarded into that same ``None``/fallback path
+        (final-review MEDIUM #1): it comes back as a ``Decimal`` regardless,
+        valid or not, so the caller's existing ``FeeNormalizer`` gate is the
+        one place that decides whether it may settle. A value ``Decimal()``
+        itself cannot represent - unparseable garbage - is poisoned as
+        ``NaN``, which that same gate already refuses via its
+        ``is_finite()`` check, so the failure reason a caller sees is
+        identical whether the fee was unparseable, negative, or already
+        non-finite.
+        """
+        if not isinstance(value, Mapping):
+            return None
+
+        candidate = None
+        for key in keys:
+            if key in value:
+                candidate = value[key]
+                break
+
+        if candidate is None:
+            data = value.get("data")
+            if isinstance(data, Mapping):
+                for key in keys:
+                    if key in data:
+                        candidate = data[key]
+                        break
+
+        if candidate is None:
+            return None
+
+        try:
+            return Decimal(str(candidate))
+        except (InvalidOperation, ValueError, TypeError):
+            return Decimal("NaN")
 
     @staticmethod
     def _extract_nested(

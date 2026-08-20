@@ -1,10 +1,14 @@
-from decimal import Decimal as D
+from decimal import ROUND_HALF_EVEN, Decimal as D, localcontext
 import json
 
 import pytest
 
 from core.execution_models import ExecutionResult
-from core.execution_portfolio_foundation import ExecutionPortfolioFoundation, FinancialStateStore
+from core.execution_portfolio_foundation import (
+    SETTLEMENT_CONTEXT_PRECISION,
+    ExecutionPortfolioFoundation,
+    FinancialStateStore,
+)
 
 
 def foundation(tmp_path, cash="1000"):
@@ -88,7 +92,16 @@ def test_valid_increase_updates_weighted_position(tmp_path):
     position = book.snapshot()["positions"]["BTCUSDT"]
     assert D(position["base_quantity"]) == D("15")
     assert D(position["cost_quote"]) == D("200")
-    assert D(position["average_entry_price"]) == D("200") / D("15")
+    # 200/15 does not terminate, so the expected value is computed under
+    # the identical explicit context `_open` pins this division under
+    # (Block 5E, final-review MEDIUM #2) - not this test's own ambient
+    # precision, which would otherwise round the repeating decimal to a
+    # different number of digits than the foundation's 50-digit context did.
+    with localcontext() as context:
+        context.prec = SETTLEMENT_CONTEXT_PRECISION
+        context.rounding = ROUND_HALF_EVEN
+        expected_average_entry_price = D("200") / D("15")
+    assert D(position["average_entry_price"]) == expected_average_entry_price
     assert position["version"] == 2
 
 

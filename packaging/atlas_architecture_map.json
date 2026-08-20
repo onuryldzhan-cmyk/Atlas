@@ -209,6 +209,11 @@
       "reason": "pure venue instrument-precision domain contract: immutable InstrumentRules/InstrumentRuleset value objects plus stdlib-only floor_to_step/is_aligned_to_step helpers, no I/O beyond the checked-in-config loader function which the L3 composition root alone calls; sibling of core/risk_engine.py and core/position_sizing.py, not application orchestration, so it is exempt from the generic core/* -> L3 default (Block 5D)"
     },
     {
+      "pattern": "core/fee_accounting.py",
+      "layer": "L1",
+      "reason": "pure fee-currency classification: FeeNormalizer is a stateless static-method classifier with no I/O, no orchestration, no stores, and no ledger ownership, depending only on stdlib and the L1 core/instrument_rules.py contract it classifies fees against; sibling of core/instrument_rules.py and core/position_sizing.py, not application orchestration, so it is exempt from the generic core/* -> L3 default (Block 5E)"
+    },
+    {
       "pattern": "data_layer/config.py",
       "layer": "L2",
       "reason": "explicit: data-layer configuration is L2 infrastructure"
@@ -451,6 +456,7 @@
     "core/execution_models.py": "L1",
     "core/execution_portfolio_foundation.py": "L1",
     "core/execution_transaction_journal.py": "L2",
+    "core/fee_accounting.py": "L1",
     "core/instrument_rules.py": "L1",
     "core/lifecycle.py": "L2",
     "core/local_capability_adapter.py": "L2",

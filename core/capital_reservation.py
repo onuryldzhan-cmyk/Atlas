@@ -172,7 +172,6 @@ class CapitalReservationLedger:
             if current.status is target:
                 return current
             allowed = {
-                (ReservationStatus.RESERVED, ReservationStatus.COMMITTED),
                 (ReservationStatus.RESERVED, ReservationStatus.RELEASED),
                 (ReservationStatus.RESERVED, ReservationStatus.INDETERMINATE),
             }
@@ -183,8 +182,52 @@ class CapitalReservationLedger:
             self._persist(candidate)
             return updated
 
-    def commit(self, reservation_id: str) -> CapitalReservation:
-        return self._transition(reservation_id, ReservationStatus.COMMITTED)
+    def commit(self, reservation_id: str, settled_amount: Decimal | None = None) -> CapitalReservation:
+        """Commit a reservation, optionally settling it to an exact amount.
+
+        ``settled_amount`` (Block 5E) is the amount durable settlement
+        actually spent - ``filled_quote_notional + quote_fee`` on the BUY
+        path. It is always at or below the reserved amount, because the fee
+        is taken out of the approved allocation, never added on top of it
+        (``ExecutionManager._resolve_base_fill``). The COMMITTED reservation
+        is recorded at that settled figure rather than at the full
+        reservation, so the deterministic sub-quantum remainder the fill
+        never spent stops being permanently encumbered by this reservation.
+
+        This does not release the settled amount on a later position exit -
+        a COMMITTED reservation still never transitions to RELEASED. That
+        lifecycle/unwind is an explicit, separate follow-up, not part of
+        this change.
+
+        Idempotent: a reservation already COMMITTED is returned unchanged,
+        regardless of ``settled_amount`` - a replayed commit must not be
+        able to re-price an already-settled reservation.
+        """
+        with self._lock:
+            if not self._ready:
+                raise RuntimeError("reservation state recovery required")
+            current = self._items.get(reservation_id)
+            if current is None:
+                raise KeyError(reservation_id)
+            if current.status is ReservationStatus.COMMITTED:
+                return current
+            if current.status is not ReservationStatus.RESERVED:
+                raise ValueError(
+                    f"invalid reservation transition {current.status.value}->COMMITTED"
+                )
+            amount = current.amount
+            if settled_amount is not None:
+                settled_amount = decimal_value(settled_amount, "settled_amount", allow_zero=False)
+                if settled_amount > current.amount:
+                    raise ValueError("settled_amount exceeds reserved amount")
+                amount = settled_amount
+            updated = replace(
+                current, status=ReservationStatus.COMMITTED, amount=amount,
+                version=current.version + 1,
+            )
+            candidate = dict(self._items); candidate[reservation_id] = updated
+            self._persist(candidate)
+            return updated
 
     def release(self, reservation_id: str) -> CapitalReservation:
         return self._transition(reservation_id, ReservationStatus.RELEASED)

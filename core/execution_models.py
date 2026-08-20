@@ -776,6 +776,10 @@ class ExecutionResult:
     filled_base_quantity: Decimal | None = None
     filled_quote_notional: Decimal | None = None
 
+    # Historical compatibility mirror only, never authoritative (Block 5E).
+    # ``fee_amount`` is the exact Decimal every settlement path reads; a
+    # component may report it directly as a Decimal or decimal string and
+    # it is carried through verbatim below, with no float round-trip.
     fee: float = 0.0
     fee_amount: Decimal = Decimal("0")
     fee_currency: str | None = None

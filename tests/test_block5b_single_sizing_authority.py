@@ -1115,10 +1115,18 @@ def test_a_reported_fee_is_paid_out_of_the_approval_not_on_top_of_it(flat_app):
 def test_a_fee_without_a_declared_currency_fails_closed(flat_app):
     """The design gap, pinned rather than papered over.
 
-    Nothing in this repository declares an instrument's quote asset, so a
-    component that charges a fee without naming its currency leaves an
-    unbooked denomination. That must stop at the evidence contract instead of
-    being assumed to be quote currency.
+    A component that charges a fee without naming its currency leaves an
+    unbooked denomination. That must stop before it is assumed to be quote
+    currency.
+
+    Block 5E (``core.fee_accounting.FeeNormalizer``, tracked as this
+    package's F4) moved this rejection out of durable finalization and into
+    ``paper_execute`` itself, so it is caught before
+    ``_finalize_durable_financial_state`` is ever reached rather than inside
+    it. The invariant this test pins - an undeclared nonzero fee never
+    settles - is unchanged; only where it is caught improved. See
+    ``tests/test_block5e_fee_settlement_accounting.py`` for the full
+    fee-currency contract.
     """
     manager = flat_app.execution
     manager._paper_open_trade = lambda **kwargs: {"success": True, "fee": 2.5}
@@ -1127,9 +1135,8 @@ def test_a_fee_without_a_declared_currency_fails_closed(flat_app):
 
     result = manager.paper_execute(request)
 
-    with pytest.raises(ValueError, match="fee_currency"):
-        manager._finalize_durable_financial_state(request=request, result=result)
-
+    assert result["success"] is False
+    assert result["error_code"] == "UNDECLARED_FEE_CURRENCY"
     assert position_of(flat_app) is None
 
 

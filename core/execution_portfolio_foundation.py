@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_HALF_EVEN, Decimal, InvalidOperation, localcontext
 import json
 import os
 from pathlib import Path
@@ -18,6 +18,19 @@ from core.execution_models import ExecutionResult
 
 D = Decimal
 SCHEMA_VERSION = 1
+
+# Block 5E: the fixed precision the whole confirmed-execution settlement
+# slice - BUY debit/fee accumulation, SELL gross P&L/cash/fee accumulation,
+# the partial-close cost/entry-fee pro-rata split, and both sides'
+# average-entry-price division - is computed under, explicit and pinned
+# rather than whatever precision happens to be ambient in the caller's
+# thread (F5's settlement slice; widened to `_open` and to the whole of
+# `_close` at final review, MEDIUM #2). ``ExecutionManager`` reuses this
+# same constant for the settled-amount sums it computes around this
+# foundation, so the whole slice shares one precision. 50 significant
+# digits is generous headroom above the Decimal module's 28-digit default
+# for any realistic cost/fee/quantity magnitude this book holds.
+SETTLEMENT_CONTEXT_PRECISION = 50
 
 
 def _decimal(value: Any, name: str, *, allow_zero: bool = True) -> Decimal:
@@ -177,34 +190,49 @@ class ExecutionPortfolioFoundation:
         return self.snapshot()
 
     def _open(self, state: dict[str, Any], result: ExecutionResult, expected: int | None) -> None:
+        """Apply a confirmed BUY, whole open or an add to an existing LONG.
+
+        The debit, fee accumulation, and average-entry-price division all
+        settle inside one explicitly pinned Decimal context (Block 5E,
+        final-review MEDIUM #2) - the same context ``_close`` uses - so this
+        side of the settlement slice is immune to whatever precision
+        happens to be ambient in the caller's thread exactly as the other
+        side already was.
+        """
         assert result.symbol and result.position_id and result.execution_price
         assert result.filled_base_quantity is not None and result.filled_quote_notional is not None
         current = state["positions"].get(result.symbol)
-        if current is not None:
-            if current["position_id"] != result.position_id:
-                raise ValueError("DUPLICATE_OPEN_POSITION")
-            if expected is None or expected != current["version"]:
-                raise ValueError("STALE_POSITION_MUTATION")
-            base = D(current["base_quantity"]) + result.filled_base_quantity
-            cost = D(current["cost_quote"]) + result.filled_quote_notional
-            version = current["version"] + 1
-            opened_at = current["opened_at"]
-            fees = D(current["entry_fees"]) + result.fee_amount
-        else:
-            if expected not in (None, 0): raise ValueError("STALE_POSITION_MUTATION")
-            base, cost, version, opened_at, fees = (result.filled_base_quantity,
-                result.filled_quote_notional, 1, _utc(str(result.timestamp)), result.fee_amount)
-        debit = result.filled_quote_notional + result.fee_amount
-        cash = D(state["cash"])
-        if debit > cash: raise ValueError("INSUFFICIENT_CASH")
-        if cash - debit < D(state["reserved_capital"]):
-            raise ValueError("NEGATIVE_AVAILABLE_CAPITAL")
-        state["cash"] = format(cash - debit, "f")
-        state["fees"] = format(D(state["fees"]) + result.fee_amount, "f")
+        with localcontext() as context:
+            context.prec = SETTLEMENT_CONTEXT_PRECISION
+            context.rounding = ROUND_HALF_EVEN
+            if current is not None:
+                if current["position_id"] != result.position_id:
+                    raise ValueError("DUPLICATE_OPEN_POSITION")
+                if expected is None or expected != current["version"]:
+                    raise ValueError("STALE_POSITION_MUTATION")
+                base = D(current["base_quantity"]) + result.filled_base_quantity
+                cost = D(current["cost_quote"]) + result.filled_quote_notional
+                version = current["version"] + 1
+                opened_at = current["opened_at"]
+                fees = D(current["entry_fees"]) + result.fee_amount
+            else:
+                if expected not in (None, 0): raise ValueError("STALE_POSITION_MUTATION")
+                base, cost, version, opened_at, fees = (result.filled_base_quantity,
+                    result.filled_quote_notional, 1, _utc(str(result.timestamp)), result.fee_amount)
+            debit = result.filled_quote_notional + result.fee_amount
+            cash = D(state["cash"])
+            if debit > cash: raise ValueError("INSUFFICIENT_CASH")
+            new_cash = cash - debit
+            if new_cash < D(state["reserved_capital"]):
+                raise ValueError("NEGATIVE_AVAILABLE_CAPITAL")
+            new_fees = D(state["fees"]) + result.fee_amount
+            average_entry_price = cost / base
+        state["cash"] = format(new_cash, "f")
+        state["fees"] = format(new_fees, "f")
         state["positions"][result.symbol] = {
             "position_id": result.position_id, "symbol": result.symbol,
             "base_quantity": format(base, "f"), "cost_quote": format(cost, "f"),
-            "entry_fees": format(fees, "f"), "average_entry_price": format(cost / base, "f"),
+            "entry_fees": format(fees, "f"), "average_entry_price": format(average_entry_price, "f"),
             "mark_price": format(result.execution_price, "f"), "version": version, "opened_at": opened_at,
         }
 
@@ -220,6 +248,23 @@ class ExecutionPortfolioFoundation:
         is charged only against the fraction actually sold. The remainder is
         re-marked at the price it just traded at - the same convention ``_open``
         uses - which is realized execution evidence, not a market-data feed.
+
+        ``entry_fees`` is released at the identical ``sold/held`` ratio as
+        cost basis (Block 5E), computed under an explicitly pinned Decimal
+        context rather than whatever precision happens to be ambient (F5's
+        settlement slice). Both the cost-basis remainder and the entry-fees
+        remainder are the complement of their released figure - ``cost -
+        released`` and ``entry_fees - released_entry_fees`` - never
+        independently recomputed, so released + remaining equals the
+        original exactly regardless of the division's own rounding.
+
+        Every other figure this settlement writes - gross P&L, the cash and
+        fee accumulation, and the remaining position's average entry price -
+        is computed inside that same pinned context (final-review MEDIUM
+        #2), not just the pro-rata split: an addition or subtraction is
+        rounded to its *active* context exactly as a division is, so
+        leaving any one of them outside the ``with`` block would still have
+        exposed it to whatever precision is ambient in the caller's thread.
         """
         assert result.symbol and result.position_id
         assert result.filled_base_quantity is not None and result.filled_quote_notional is not None
@@ -232,16 +277,32 @@ class ExecutionPortfolioFoundation:
         if sold > held:
             raise ValueError("REDUCTION_EXCEEDS_POSITION")
         cost = D(current["cost_quote"])
-        released = cost if sold == held else cost * sold / held
-        gross = result.filled_quote_notional - released
-        state["cash"] = format(D(state["cash"]) + result.filled_quote_notional - result.fee_amount, "f")
-        state["fees"] = format(D(state["fees"]) + result.fee_amount, "f")
-        state["realized_gross_pnl"] = format(D(state["realized_gross_pnl"]) + gross, "f")
+        entry_fees = D(current["entry_fees"])
+        with localcontext() as context:
+            context.prec = SETTLEMENT_CONTEXT_PRECISION
+            context.rounding = ROUND_HALF_EVEN
+            if sold == held:
+                released, released_entry_fees = cost, entry_fees
+            else:
+                released = cost * sold / held
+                released_entry_fees = entry_fees * sold / held
+                basis = cost - released
+                remaining_entry_fees = entry_fees - released_entry_fees
+            gross = result.filled_quote_notional - released
+            new_cash = D(state["cash"]) + result.filled_quote_notional - result.fee_amount
+            new_fees = D(state["fees"]) + result.fee_amount
+            new_realized_gross_pnl = D(state["realized_gross_pnl"]) + gross
+            if sold != held:
+                base = held - sold
+                average_entry_price = basis / base
+        state["cash"] = format(new_cash, "f")
+        state["fees"] = format(new_fees, "f")
+        state["realized_gross_pnl"] = format(new_realized_gross_pnl, "f")
         if sold != held:
-            base, basis = held - sold, cost - released
             state["positions"][result.symbol] = {**current,
                 "base_quantity": format(base, "f"), "cost_quote": format(basis, "f"),
-                "average_entry_price": format(basis / base, "f"),
+                "entry_fees": format(remaining_entry_fees, "f"),
+                "average_entry_price": format(average_entry_price, "f"),
                 "mark_price": format(result.execution_price, "f"),
                 "version": current["version"] + 1}
             return
