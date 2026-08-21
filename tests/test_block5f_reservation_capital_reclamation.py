@@ -23,9 +23,15 @@ not by adding a lifecycle transition or a reservation/position link.
 
 Explicitly NOT covered here (owner-scoped out of 5F):
 - ``closed_positions`` being keyed and overwritten by ``position_id``, so
-  only the most recent close of a reused position id survives. Section E's
-  repeated-turnover cycles trigger this on every iteration but never assert
-  against ``closed_positions`` for exactly that reason.
+  only the most recent close of a reused position id survived, was
+  identified here as accepted/deferred (5F evidence F3) and has since been
+  closed by Block 5G: ``ExecutionManager`` now mints a deterministic
+  ``long:<symbol>:<request_id>`` identity per lifetime instead of reusing a
+  bare ``long:<symbol>`` constant, and ``ExecutionPortfolioFoundation._close``
+  fails closed with ``CLOSED_POSITION_IDENTITY_CONFLICT`` rather than
+  silently overwriting if a collision is ever produced. Section E's
+  repeated-turnover cycles give each simulated lifetime its own id for this
+  reason, rather than reproducing the old collision.
 - Unbounded growth of the reservation store or of
   ``ExecutionPortfolioFoundation``'s ``applied_executions`` map - neither is
   ever compacted or pruned.
@@ -277,10 +283,16 @@ def test_repeated_buy_full_sell_cycles_do_not_decay_available_capital(tmp_path):
         reservation_id = f"turnover-{i}"
         assert ledger.available == D("1000")
 
+        # Block 5G: each simulated lifetime gets its own deterministic
+        # identity - long:BTCUSDT reused across independent lifetimes is
+        # exactly the collision ExecutionPortfolioFoundation._close now
+        # refuses (CLOSED_POSITION_IDENTITY_CONFLICT).
+        lifetime_position_id = f"long:BTCUSDT:{reservation_id}"
+
         ledger.reserve(reservation_id, reservation_id, D("100"))
         foundation.apply_confirmed(
             _fill("BUY", base="10", price="9.5", fee="1", fee_ccy="USDT",
-                  execution_id=f"turnover-buy-{i}"),
+                  execution_id=f"turnover-buy-{i}", position_id=lifetime_position_id),
             risk_authorized=True, reservation_confirmed=True, expected_position_version=None,
         )
         ledger.commit(reservation_id, D("96"))
@@ -290,7 +302,7 @@ def test_repeated_buy_full_sell_cycles_do_not_decay_available_capital(tmp_path):
 
         foundation.apply_confirmed(
             _fill("SELL", base="10", price="9.5", fee="0", fee_ccy="USDT",
-                  execution_id=f"turnover-sell-{i}"),
+                  execution_id=f"turnover-sell-{i}", position_id=lifetime_position_id),
             risk_authorized=True, reservation_confirmed=True, expected_position_version=1,
         )
         assert "BTCUSDT" not in foundation.snapshot()["positions"]

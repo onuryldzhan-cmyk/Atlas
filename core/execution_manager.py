@@ -80,6 +80,7 @@ from core.execution_models import (
 from core.execution_portfolio_foundation import (
     SETTLEMENT_CONTEXT_PRECISION,
     ExecutionPortfolioFoundation,
+    mint_long_position_id,
 )
 from core.fee_accounting import FeeNormalizer, FeeRejected
 from core.instrument_rules import (
@@ -3531,6 +3532,35 @@ class ExecutionManager:
             instrument_rules.source_version
         )
 
+        # Block 5G: a flat-book BUY is about to mint a new lifetime identity
+        # from (symbol, request_id) alone, which is decidable now rather
+        # than after the fact - checked before the side-effect boundary for
+        # the same reason as the instrument-rules check above, so a mint
+        # failure refuses cleanly instead of opening a paper trade that
+        # would then need an INDETERMINATE halt to recover from. Since
+        # mint_long_position_id hashes request_id rather than embedding it,
+        # request_id's own content/length can no longer make the mint fail
+        # (any request_id, including MarketLoop's pipe-delimited
+        # convention, always produces a valid, bounded digest) - this now
+        # guards only the always-should-be-unreachable case of a
+        # malformed symbol reaching this point, kept as the same
+        # defense-in-depth the instrument-rules check above already
+        # applies to a rule that "can only be reached if [it] disappeared
+        # between admission and execution". An add-to-position BUY reuses
+        # the existing live position_id and never mints, so it is exempt.
+        if self.portfolio_foundation is not None:
+            preflight_position = self.portfolio_foundation.snapshot()["positions"].get(request.symbol)
+            if preflight_position is None:
+                try:
+                    mint_long_position_id(request.symbol, request.request_id)
+                except ValueError:
+                    self._mark_result_failure(
+                        result=result,
+                        message="symbol/request_id do not produce a valid composite position identity",
+                        error_code="INVALID_POSITION_IDENTITY",
+                    )
+                    return
+
         # Side-effect boundary: PaperTrader.open_trade() persists its own
         # durable book, so from here an interrupted request has an outcome
         # this manager cannot prove.
@@ -3732,7 +3762,7 @@ class ExecutionManager:
             existing = self.portfolio_foundation.snapshot()["positions"].get(request.symbol)
             result.position_id = (
                 existing["position_id"] if existing is not None
-                else "long:" + request.symbol
+                else mint_long_position_id(request.symbol, request.request_id)
             )
             position = None
         else:

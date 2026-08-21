@@ -9,9 +9,11 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from decimal import ROUND_HALF_EVEN, Decimal, InvalidOperation, localcontext
+import hashlib
 import json
 import os
 from pathlib import Path
+import re
 from typing import Any, Callable
 
 from core.execution_models import ExecutionResult
@@ -50,6 +52,47 @@ def _utc(value: str) -> str:
     if parsed.tzinfo is None or parsed.utcoffset() is None:
         raise ValueError("timestamp must be timezone-aware")
     return parsed.astimezone(UTC).isoformat()
+
+
+# Block 5G: the canonical position-identity contract, identical to
+# ``data_layer.models``' generic `_ID` pattern (the repository's one formal
+# identity-format contract) - first character alphanumeric, every following
+# character alphanumeric or one of "._:-", 1-128 characters total. Kept
+# local rather than imported to avoid an L1-to-L1 import across domains;
+# ExecutionManager mints against ``mint_long_position_id`` below rather than
+# duplicating the pattern, the same precedent set by its reuse of
+# ``SETTLEMENT_CONTEXT_PRECISION``.
+_POSITION_IDENTITY_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+
+
+def mint_long_position_id(symbol: str, request_id: str) -> str:
+    """Deterministically mint a flat-book LONG position lifetime identity.
+
+    ``long:<symbol>:<sha256(request_id).hexdigest()>`` is reproducible from
+    the opening request alone - never random - so a later re-derivation
+    from the same confirmed evidence always agrees: recomputing the digest
+    of the same ``request_id`` always yields the same identity.
+
+    The digest is hashed, not embedded raw (Block 5G final hardening): an
+    earlier version of this function embedded ``request_id`` directly and
+    had to widen the identity charset to accommodate MarketLoop's real
+    ``f"{symbol}|{candle_identity}|{action}"`` request_id convention
+    (core/market_loop.py). Hashing removes that coupling entirely - a
+    fixed-length, fixed-charset SHA-256 hex digest satisfies
+    ``data_layer.models``' canonical `_ID` contract and stays comfortably
+    inside its 128-character bound regardless of what characters or how
+    much text ``request_id`` itself contains, with no special-casing for
+    any particular caller's request_id shape. ``request_id`` keeps its own
+    existing, unrelated validation (``ExecutionManager`` requires only
+    non-blank); this function owns solely the safe, deterministic
+    projection of it into a durable position identity, never a truncation
+    or sanitization of the raw value into that identity.
+    """
+    digest = hashlib.sha256(str(request_id).encode("utf-8")).hexdigest()
+    candidate = f"long:{symbol}:{digest}"
+    if not _POSITION_IDENTITY_PATTERN.fullmatch(candidate):
+        raise ValueError("INVALID_POSITION_IDENTITY")
+    return candidate
 
 
 @dataclass(frozen=True, slots=True)
@@ -139,6 +182,9 @@ class ExecutionPortfolioFoundation:
             seen.update((symbol, item["position_id"]))
             for name in ("base_quantity", "cost_quote", "entry_fees", "average_entry_price", "mark_price"):
                 _decimal(item[name], name, allow_zero=name == "entry_fees")
+        for position_id, closed in state["closed_positions"].items():
+            if closed["position_id"] != position_id or not _POSITION_IDENTITY_PATTERN.fullmatch(position_id):
+                raise ValueError("CORRUPT_CLOSED_POSITION_STATE")
 
     def set_reserved_capital(self, value: Decimal) -> None:
         self._require_ready()
@@ -306,6 +352,12 @@ class ExecutionPortfolioFoundation:
                 "mark_price": format(result.execution_price, "f"),
                 "version": current["version"] + 1}
             return
+        if result.position_id in state["closed_positions"]:
+            # Block 5G: a lifetime archives exactly once. Overwriting a prior
+            # closed record would silently destroy its historical gross_pnl,
+            # entry_fees, exit_price, and timestamps, so a collision fails
+            # closed here rather than replacing the earlier record.
+            raise ValueError("CLOSED_POSITION_IDENTITY_CONFLICT")
         closed = dict(current); closed.update({"status": "CLOSED", "base_quantity": "0",
             "exit_price": format(result.execution_price, "f"), "gross_pnl": format(gross, "f"),
             "closed_at": _utc(str(result.timestamp)), "version": current["version"] + 1})

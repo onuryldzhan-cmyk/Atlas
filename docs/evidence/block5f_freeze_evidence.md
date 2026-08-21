@@ -174,16 +174,30 @@ touching it was honored with no exception needed.
 
 ## Known Non-Blocking Follow-ups / Limitations
 
-**F3 — closed-position overwrite (accepted, open, deferred).**
-`ExecutionPortfolioFoundation._close`'s full-exit branch writes
+**F3 — closed-position overwrite (accepted, open, deferred; CLOSED by
+Block 5G).**
+`ExecutionPortfolioFoundation._close`'s full-exit branch wrote
 `state["closed_positions"][result.position_id] = closed`, keyed only by
 `position_id`. A position id reused after a full close (the same symbol
-traded again) silently overwrites the prior closed record; nothing
-compacts or archives closed-position history.
+traded again) silently overwrote the prior closed record; nothing
+compacted or archived closed-position history.
 `test_repeated_buy_full_sell_cycles_do_not_decay_available_capital`
-triggers this overwrite on every one of its 12 cycles by construction and
-deliberately asserts nothing about `closed_positions` for that reason. Out
+triggered this overwrite on every one of its 12 cycles by construction and
+deliberately asserted nothing about `closed_positions` for that reason. Out
 of scope for 5F by explicit owner instruction.
+
+Closed by Block 5G (`docs/evidence/block5g_freeze_evidence.md`):
+`ExecutionManager` now mints a deterministic
+`long:<symbol>:<sha256(request_id).hexdigest()>` identity once per lifetime
+instead of reusing a bare `long:<symbol>` constant across every re-entry,
+and `ExecutionPortfolioFoundation._close` fails closed with
+`CLOSED_POSITION_IDENTITY_CONFLICT` rather than silently overwriting if a
+collision is ever produced. Hashing the opening `request_id` rather than
+embedding it raw also closes 5G-3, the dormant `data_layer` relational
+projection layer's `PRIMARY KEY` incompatibility, unconditionally. The
+turnover test above now
+gives each simulated lifetime its own id for this reason, rather than
+reproducing the old collision.
 
 **F4 — reservation-store growth (accepted, open, deferred).**
 `CapitalReservationLedger` never removes a COMMITTED or RELEASED reservation
