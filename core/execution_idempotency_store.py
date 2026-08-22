@@ -16,7 +16,8 @@ Responsibilities
 - Restore completed execution results
 - Perform atomic JSON writes
 - Protect state with a reentrant lock
-- Maintain bounded storage
+- Retain every completed request indefinitely in production; bounded
+      retention is opt-in and reserved for explicit test callers
 - Recover safely from invalid state files
 - Expose health, status, diagnostics, and reset operations
 
@@ -77,7 +78,10 @@ class ExecutionIdempotencyStore:
         "memory_data/execution_idempotency.json"
     )
 
-    DEFAULT_MAX_RECORDS = 5_000
+    # Production is unbounded: a COMMITTED request_id must remain replayable
+    # indefinitely. Explicit positive values remain supported for tests that
+    # need to exercise bounded retention; production wiring never sets one.
+    DEFAULT_MAX_RECORDS = None
 
     FAILURE_STATUSES = {
         "FAILED",
@@ -87,18 +91,26 @@ class ExecutionIdempotencyStore:
     def __init__(
         self,
         file_path: str | Path = DEFAULT_FILE,
-        max_records: int = DEFAULT_MAX_RECORDS,
+        max_records: int | None = DEFAULT_MAX_RECORDS,
         auto_load: bool = True,
     ) -> None:
         self.file_path = Path(
             file_path
         )
 
-        self.max_records = max(
-            1,
-            int(
-                max_records
-            ),
+        # None means unbounded (the production default). An explicit
+        # positive integer still enables the bounded mode reserved for
+        # tests; invalid explicit values normalize the same way this
+        # already did before unbounded retention existed.
+        self.max_records = (
+            None
+            if max_records is None
+            else max(
+                1,
+                int(
+                    max_records
+                ),
+            )
         )
 
         self._lock = threading.RLock()
@@ -583,8 +595,14 @@ class ExecutionIdempotencyStore:
         """
         Retain only the newest bounded request records.
 
-        Dictionary insertion order is used as the record order.
+        Production leaves max_records unset (None) and never prunes, so
+        every COMMITTED request_id stays replayable indefinitely. Bounded
+        retention only applies when a caller (a test) passes an explicit
+        max_records. Dictionary insertion order is used as the record order.
         """
+
+        if self.max_records is None:
+            return
 
         excess = (
             len(

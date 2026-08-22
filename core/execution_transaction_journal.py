@@ -22,6 +22,10 @@ Safety
 - Writes use temporary-file replacement.
 - Status exposes aggregate counts only.
 - Request IDs and order payloads are never exposed by status().
+- prepare() refuses to reopen a COMMITTED entry; a request whose side
+  effect actually happened can never be reset back to PREPARED. A
+  NOT_COMMITTED entry (no side effect occurred) deliberately remains
+  re-preparable - that request stays retryable by design.
 ============================================================
 """
 
@@ -63,6 +67,19 @@ class ExecutionTransactionJournal:
     UNRESOLVED_STATES = {
         "PREPARED",
         CommitOutcome.COMMIT_STATUS_UNKNOWN.value,
+    }
+
+    # COMMITTED means a financial side effect actually happened and is
+    # durably recorded: prepare() must never reopen it, so a stale retry or
+    # a duplicate claim that slips past idempotency-store detection can
+    # never reset it back to PREPARED. NOT_COMMITTED is deliberately
+    # excluded: it means the side-effect boundary was never crossed, and
+    # ExecutionManager._resolve_unsuccessful_execution's own contract is
+    # that such a request "stays retryable" - a fresh prepare() for the
+    # same request_id must succeed again. COMMIT_STATUS_UNKNOWN is not
+    # terminal at all (see UNRESOLVED_STATES) and was never at risk.
+    TERMINAL_STATES = {
+        CommitOutcome.COMMITTED.value,
     }
 
     def __init__(
@@ -292,6 +309,34 @@ class ExecutionTransactionJournal:
             return False
 
         with self._lock:
+            existing = self.entries.get(
+                canonical_id
+            )
+
+            if (
+                isinstance(
+                    existing,
+                    Mapping,
+                )
+                and str(
+                    existing.get(
+                        "state",
+                        "",
+                    )
+                ).upper()
+                in self.TERMINAL_STATES
+            ):
+                logger.warning(
+                    "Refusing to reopen terminal transaction "
+                    "journal entry request_id=%s state=%s",
+                    canonical_id,
+                    existing.get(
+                        "state"
+                    ),
+                )
+
+                return False
+
             previous_entries = {
                 key: dict(
                     value
