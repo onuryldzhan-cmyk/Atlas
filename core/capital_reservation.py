@@ -50,8 +50,36 @@ class ReservationStore(Protocol):
     def save(self, reservations: tuple[CapitalReservation, ...]) -> None: ...
 
 
+class ReservationArchive(Protocol):
+    def append(self, reservation: CapitalReservation) -> None: ...
+    def load_index(self) -> dict[str, CapitalReservation]: ...
+
+
+class ReservationSchemaMigrationRequiredError(ValueError):
+    """Raised when a working-set file is still on the legacy v1 schema.
+
+    Block 5H made the working-set store version-gated rather than
+    auto-migrating: a v1 file is real, valuable reservation history, and
+    silently reinterpreting it under the v2 contract (where a COMMITTED or
+    RELEASED entry is expected to live in the archive, not the working set)
+    would risk misclassifying it. ``tools/migrate_capital_reservations.py``
+    is the only supported path from v1 to v2 + archive.
+    """
+
+
 class JsonReservationStore:
-    """Atomic file implementation; missing/corrupt state never becomes empty state."""
+    """Atomic file implementation; missing/corrupt state never becomes empty state.
+
+    ``SCHEMA_V2`` working-set files hold any reservation status, but by
+    convention (enforced by ``CapitalReservationLedger.compact()``, not by
+    this store) only RESERVED/INDETERMINATE remain once a ledger with an
+    archive has compacted its terminal records out. A file still tagged
+    ``SCHEMA_V1`` is refused outright - see
+    ``ReservationSchemaMigrationRequiredError``.
+    """
+
+    SCHEMA_V1 = "atlas-capital-reservations-v1"
+    SCHEMA_V2 = "atlas-capital-reservations-v2"
 
     def __init__(self, path: str | Path) -> None:
         self.path = Path(path)
@@ -63,14 +91,20 @@ class JsonReservationStore:
 
     def load(self) -> tuple[CapitalReservation, ...]:
         payload = json.loads(self.path.read_text(encoding="utf-8"))
-        if payload.get("schema") != "atlas-capital-reservations-v1":
+        schema = payload.get("schema")
+        if schema == self.SCHEMA_V1:
+            raise ReservationSchemaMigrationRequiredError(
+                "reservation state schema v1 requires migration to v2 "
+                "(run tools/migrate_capital_reservations.py)"
+            )
+        if schema != self.SCHEMA_V2:
             raise ValueError("unsupported reservation state schema")
         return tuple(CapitalReservation.from_dict(item) for item in payload["reservations"])
 
     def save(self, reservations: tuple[CapitalReservation, ...]) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         temporary = self.path.with_suffix(self.path.suffix + ".tmp")
-        payload = {"schema": "atlas-capital-reservations-v1",
+        payload = {"schema": self.SCHEMA_V2,
                    "reservations": [item.to_dict() for item in reservations]}
         try:
             with temporary.open("w", encoding="utf-8", newline="\n") as stream:
@@ -81,6 +115,90 @@ class JsonReservationStore:
         finally:
             if temporary.exists():
                 temporary.unlink()
+
+
+class ReservationArchiveError(RuntimeError):
+    """Base class for immutable capital-reservation archive failures."""
+
+
+class ReservationArchiveCorruptError(ReservationArchiveError):
+    """A line in the archive is malformed, torn, or holds a live status."""
+
+
+class ReservationArchiveConflictError(ReservationArchiveError):
+    """Two archive lines disagree about the same reservation_id."""
+
+
+# Statuses ever allowed to appear in the immutable archive. RESERVED and
+# INDETERMINATE are live encumbrance (Block 5F) and must never leave the
+# working set - see CapitalReservationLedger.compact().
+_ARCHIVABLE_STATUSES = (ReservationStatus.COMMITTED, ReservationStatus.RELEASED)
+
+
+class ReservationArchiveStore:
+    """Immutable, append-only JSON-Lines archive of terminal reservations.
+
+    One canonical ``CapitalReservation.to_dict()`` payload per line, for a
+    COMMITTED or RELEASED reservation only. A line is written durably
+    (write -> flush -> fsync, mirroring ``AuditEventStore``) and the file is
+    never rewritten or truncated - ``append`` is the only write operation.
+    This is what lets ``CapitalReservationLedger.get()`` answer a
+    reservation_id forever, long after ``compact()`` has removed it from the
+    live working-set file.
+
+    Duplicate lines for the same reservation_id are tolerated only when
+    field-equivalent (an interrupted compaction retried the same append);
+    disagreeing duplicates or a malformed/torn line fail ``load_index()``
+    closed rather than being silently treated as empty or as the newest
+    line winning.
+    """
+
+    def __init__(self, path: str | Path) -> None:
+        self.path = Path(path)
+
+    def append(self, reservation: CapitalReservation) -> None:
+        if reservation.status not in _ARCHIVABLE_STATUSES:
+            raise ValueError(
+                f"cannot archive reservation in status {reservation.status.value}"
+            )
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        line = json.dumps(reservation.to_dict(), sort_keys=True, separators=(",", ":"))
+        with self.path.open("a", encoding="utf-8", newline="\n") as stream:
+            stream.write(line + "\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+
+    def load_index(self) -> dict[str, CapitalReservation]:
+        if not self.path.exists():
+            return {}
+        index: dict[str, CapitalReservation] = {}
+        with self.path.open("r", encoding="utf-8") as stream:
+            for line_number, raw_line in enumerate(stream, start=1):
+                line = raw_line.strip()
+                if not line:
+                    continue
+                try:
+                    payload = json.loads(line)
+                    if not isinstance(payload, dict):
+                        raise ValueError("archive line is not an object")
+                    record = CapitalReservation.from_dict(payload)
+                    if record.status not in _ARCHIVABLE_STATUSES:
+                        raise ValueError(
+                            f"archive contains live status {record.status.value}"
+                        )
+                except Exception as exc:
+                    raise ReservationArchiveCorruptError(
+                        f"malformed capital reservation archive line {line_number}"
+                    ) from exc
+                existing = index.get(record.reservation_id)
+                if existing is None:
+                    index[record.reservation_id] = record
+                elif existing != record:
+                    raise ReservationArchiveConflictError(
+                        "conflicting archive records for "
+                        f"reservation_id={record.reservation_id!r}"
+                    )
+        return index
 
 
 class CapitalReservationLedger:
@@ -97,24 +215,62 @@ class CapitalReservationLedger:
     encumbrance. ``_live_encumbered`` is the single definition both
     ``available`` and ``active_reserved_capital`` are computed from, so the
     two can never drift into independently-maintained formulas.
+
+    Block 5H adds an optional immutable ``archive``: a durable,
+    append-only record of every COMMITTED/RELEASED reservation that
+    ``compact()`` has moved out of the live working-set file. ``get()``
+    reads through to it, so historical reservations remain queryable
+    forever even after compaction, and ``reserve()`` treats any
+    reservation_id already in the archive as permanently consumed - it can
+    never be re-created as RESERVED. Neither ``available`` nor
+    ``active_reserved_capital`` is affected by the archive: both are still
+    computed from the live working set alone, exactly as in 5F. An
+    ``archive`` of ``None`` (the default, and every pre-5H call site)
+    behaves exactly as an always-empty archive.
     """
 
     _LIVE_ENCUMBRANCE_STATUSES = (ReservationStatus.RESERVED, ReservationStatus.INDETERMINATE)
 
-    def __init__(self, store: ReservationStore, total_allocatable: Decimal) -> None:
+    def __init__(
+        self,
+        store: ReservationStore,
+        total_allocatable: Decimal,
+        archive: ReservationArchive | None = None,
+    ) -> None:
         self.store = store
+        self.archive = archive
         self.total_allocatable = decimal_value(total_allocatable, "total_allocatable", allow_zero=False)
         self._lock = threading.RLock()
         self._ready = False
         self._items: dict[str, CapitalReservation] = {}
+        self._archive_index: dict[str, CapitalReservation] = {}
         try:
             loaded = store.load()
             items = {item.reservation_id: item for item in loaded}
             if len(items) != len(loaded):
                 raise ValueError("duplicate reservation id")
+            archive_index: dict[str, CapitalReservation] = {}
+            if archive is not None:
+                # Working set and archive may legitimately share a
+                # reservation_id for one call (an interrupted compaction -
+                # Block 5H crash window B/D/E): the archive append durably
+                # succeeded but the working-set rewrite that would have
+                # dropped the record never completed. Tolerated only when
+                # the two copies agree field-for-field; any disagreement is
+                # corruption, not a race, and must fail closed rather than
+                # picking a side.
+                archive_index = dict(archive.load_index())
+                for reservation_id, archived_item in archive_index.items():
+                    live_item = items.get(reservation_id)
+                    if live_item is not None and live_item != archived_item:
+                        raise ValueError(
+                            "reservation present in both working set and "
+                            "archive with disagreeing payloads"
+                        )
             if self._live_encumbered(items) > self.total_allocatable:
                 raise ValueError("reservations exceed allocatable capital")
             self._items = items
+            self._archive_index = archive_index
             self._ready = True
         except Exception:
             self._ready = False
@@ -176,6 +332,13 @@ class CapitalReservationLedger:
         with self._lock:
             if not self._ready:
                 raise RuntimeError("reservation state recovery required")
+            # Block 5H: a reservation_id already archived is consumed
+            # history, unconditionally - unlike the working-set collision
+            # check just below, there is no idempotent same-request/same
+            # -amount carve-out here, because an archived id can never be
+            # re-armed as RESERVED regardless of what is requested.
+            if reservation_id in self._archive_index:
+                raise ValueError("reservation id already archived")
             existing = self._items.get(reservation_id)
             if existing is not None:
                 if existing.request_id == request_id and existing.amount == amount:
@@ -192,7 +355,14 @@ class CapitalReservationLedger:
         with self._lock:
             if not self._ready:
                 raise RuntimeError("reservation state recovery required")
-            current = self._items.get(reservation_id)
+            # Archive-aware (Block 5H): an id already compacted out of the
+            # working set is looked up the same way get() finds it, so a
+            # replayed release()/mark_indeterminate() call against an
+            # already-archived (necessarily terminal) record hits the
+            # idempotent same-status return below or the ordinary invalid
+            # -transition error, never a spurious KeyError - which for
+            # release() would otherwise halt the runtime.
+            current = self.get(reservation_id)
             if current is None:
                 raise KeyError(reservation_id)
             if current.status is target:
@@ -239,7 +409,8 @@ class CapitalReservationLedger:
         with self._lock:
             if not self._ready:
                 raise RuntimeError("reservation state recovery required")
-            current = self._items.get(reservation_id)
+            # Archive-aware (Block 5H): see _transition's identical rationale.
+            current = self.get(reservation_id)
             if current is None:
                 raise KeyError(reservation_id)
             if current.status is ReservationStatus.COMMITTED:
@@ -269,5 +440,74 @@ class CapitalReservationLedger:
         return self._transition(reservation_id, ReservationStatus.INDETERMINATE)
 
     def get(self, reservation_id: str) -> CapitalReservation | None:
+        """Look up a reservation: live working set first, then archive.
+
+        A COMMITTED/RELEASED reservation ``compact()`` has moved out of the
+        working set is still returned exactly - this is what keeps
+        ``MarketLoop``'s sizing-replay-conflict check (which compares a
+        fresh proposal against whatever this returns) correct for a request
+        identity whose only surviving record is in the archive.
+        """
         with self._lock:
-            return self._items.get(reservation_id)
+            found = self._items.get(reservation_id)
+            if found is not None:
+                return found
+            return self._archive_index.get(reservation_id)
+
+    def compact(self) -> int:
+        """Durably move every terminal working-set record into the archive.
+
+        For each RESERVED->...->COMMITTED/RELEASED record still in the
+        live working set: append it to the archive (durable: write ->
+        flush -> fsync) before removing it from the working set and
+        atomically rewriting the working-set file without it. The two
+        steps are ordered so that a crash between them never loses the
+        record - the record ends up durably in both places, and the next
+        ``CapitalReservationLedger`` construction accepts that as an
+        interrupted compaction (Block 5H) rather than a conflict, because
+        the archived copy and the still-present working-set copy agree
+        field-for-field. Calling ``compact()`` again after such an
+        interruption finishes it: the record is already archived
+        identically, so this call only removes it from the working set.
+
+        Never touches a RESERVED or INDETERMINATE record - both remain
+        live encumbrance in the working set exactly as before, so no
+        compaction failure (partial or total) can ever free capital that
+        is still reserved or indeterminate. Returns the number of records
+        archived by this call.
+        """
+        with self._lock:
+            if not self._ready:
+                raise RuntimeError("reservation state recovery required")
+            if self.archive is None:
+                raise RuntimeError("reservation archive not configured")
+
+            terminal_ids = [
+                reservation_id for reservation_id, item in self._items.items()
+                if item.status in _ARCHIVABLE_STATUSES
+            ]
+
+            archived = 0
+            for reservation_id in terminal_ids:
+                item = self._items[reservation_id]
+                already_archived = self._archive_index.get(reservation_id)
+                if already_archived is None:
+                    self.archive.append(item)
+                    self._archive_index[reservation_id] = item
+                elif already_archived != item:
+                    # Defense in depth: reserve()'s archive-collision guard
+                    # and __init__'s cross-store check should make this
+                    # unreachable in practice. Fail closed rather than
+                    # silently keep or overwrite either copy.
+                    raise RuntimeError(
+                        "reservation archive conflict during compaction: "
+                        f"reservation_id={reservation_id!r}"
+                    )
+
+                candidate = {
+                    rid: it for rid, it in self._items.items() if rid != reservation_id
+                }
+                self._persist(candidate)
+                archived += 1
+
+            return archived

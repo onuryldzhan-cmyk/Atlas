@@ -217,7 +217,7 @@ def test_reservation_state_encumbered_exceeding_allocatable_is_invalid_existing(
 def test_reservation_state_duplicate_reservation_id_is_invalid_existing(tmp_path):
     path = tmp_path / "capital_reservations.json"
     payload = {
-        "schema": "atlas-capital-reservations-v1",
+        "schema": "atlas-capital-reservations-v2",
         "reservations": [
             {"reservation_id": "dup", "request_id": "req-1", "amount": "100",
              "status": "RESERVED"},

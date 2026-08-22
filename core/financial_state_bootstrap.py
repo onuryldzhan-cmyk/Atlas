@@ -41,7 +41,14 @@ from decimal import Decimal
 from enum import Enum
 from pathlib import Path
 
-from core.capital_reservation import CapitalReservationLedger, JsonReservationStore
+from core.capital_reservation import (
+    CapitalReservationLedger,
+    JsonReservationStore,
+    ReservationArchiveConflictError,
+    ReservationArchiveCorruptError,
+    ReservationArchiveStore,
+    ReservationSchemaMigrationRequiredError,
+)
 from core.execution_portfolio_foundation import (
     ExecutionPortfolioFoundation,
     FinancialStateStore,
@@ -50,6 +57,7 @@ from core.risk_state_store import JsonRiskStateStore, RestoredRiskState
 
 DEFAULT_RISK_STATE_FILE = "risk_accounting_state.json"
 DEFAULT_RESERVATION_STATE_FILE = "capital_reservations.json"
+DEFAULT_RESERVATION_ARCHIVE_FILE = "capital_reservations_archive.jsonl"
 DEFAULT_FINANCIAL_STATE_FILE = "execution_financial_state.json"
 
 _STATE_VALID_EXISTING = "STATE_VALID_EXISTING"
@@ -101,6 +109,7 @@ def bootstrap_financial_state(
     verify_only: bool = False,
     risk_state_file: str = DEFAULT_RISK_STATE_FILE,
     reservation_state_file: str = DEFAULT_RESERVATION_STATE_FILE,
+    reservation_archive_file: str = DEFAULT_RESERVATION_ARCHIVE_FILE,
     financial_state_file: str = DEFAULT_FINANCIAL_STATE_FILE,
 ) -> FinancialStateBootstrapResult:
     """Explicitly create or validate durable financial state.
@@ -142,7 +151,8 @@ def bootstrap_financial_state(
             verify_only,
         ),
         _bootstrap_reservation_state(
-            directory / reservation_state_file, allocatable_capital, verify_only,
+            directory / reservation_state_file, directory / reservation_archive_file,
+            allocatable_capital, verify_only,
         ),
         _bootstrap_financial_state(
             directory / financial_state_file, initial_capital, verify_only,
@@ -226,8 +236,19 @@ def _bootstrap_risk_state(
 
 
 def _bootstrap_reservation_state(
-    path: Path, allocatable_capital: Decimal, verify_only: bool = False,
+    path: Path, archive_path: Path, allocatable_capital: Decimal, verify_only: bool = False,
 ) -> StoreBootstrapResult:
+    """Validate the v2 working store and, if present, its immutable archive.
+
+    VALID_EXISTING requires all three: the working file loads under the
+    current v2 schema, the archive (when one exists on disk) loads with no
+    internal corruption or conflict, and no reservation_id present in both
+    disagrees between them. A v1 working file is never auto-migrated - it is
+    reported INVALID_EXISTING/RESERVATION_MIGRATION_REQUIRED, pointing at
+    ``tools/migrate_capital_reservations.py``. The archive itself is never
+    written, repaired, or deleted here, matching every other outcome in this
+    module.
+    """
     store = JsonReservationStore(path)
     if verify_only:
         if not path.exists():
@@ -256,6 +277,11 @@ def _bootstrap_reservation_state(
             "capital_reservations", str(path), BootstrapOutcome.INVALID_EXISTING,
             "RESERVATION_STATE_UNREADABLE",
         )
+    except ReservationSchemaMigrationRequiredError:
+        return StoreBootstrapResult(
+            "capital_reservations", str(path), BootstrapOutcome.INVALID_EXISTING,
+            "RESERVATION_MIGRATION_REQUIRED",
+        )
     except Exception:
         return StoreBootstrapResult(
             "capital_reservations", str(path), BootstrapOutcome.INVALID_EXISTING,
@@ -269,9 +295,42 @@ def _bootstrap_reservation_state(
             "RESERVATION_DUPLICATE_ID",
         )
 
-    # Reuses the canonical ledger's own readiness check rather than
-    # re-deriving the encumbered-capital formula here.
-    ledger = CapitalReservationLedger(JsonReservationStore(path), allocatable_capital)
+    archive = ReservationArchiveStore(archive_path)
+    archive_index: dict = {}
+    if archive_path.exists():
+        try:
+            archive_index = archive.load_index()
+        except OSError:
+            return StoreBootstrapResult(
+                "capital_reservations", str(path), BootstrapOutcome.INVALID_EXISTING,
+                "RESERVATION_ARCHIVE_UNREADABLE",
+            )
+        except ReservationArchiveConflictError:
+            return StoreBootstrapResult(
+                "capital_reservations", str(path), BootstrapOutcome.INVALID_EXISTING,
+                "RESERVATION_ARCHIVE_CONFLICT",
+            )
+        except ReservationArchiveCorruptError:
+            return StoreBootstrapResult(
+                "capital_reservations", str(path), BootstrapOutcome.INVALID_EXISTING,
+                "RESERVATION_ARCHIVE_CORRUPT",
+            )
+
+    working_by_id = {item.reservation_id: item for item in reservations}
+    for reservation_id, archived_item in archive_index.items():
+        live_item = working_by_id.get(reservation_id)
+        if live_item is not None and live_item != archived_item:
+            return StoreBootstrapResult(
+                "capital_reservations", str(path), BootstrapOutcome.INVALID_EXISTING,
+                "RESERVATION_ARCHIVE_CONFLICT",
+            )
+
+    # Reuses the canonical ledger's own readiness check (including the
+    # same cross-store check just performed above) rather than re-deriving
+    # the encumbered-capital formula here.
+    ledger = CapitalReservationLedger(
+        JsonReservationStore(path), allocatable_capital, archive=archive,
+    )
     if not ledger.ready:
         return StoreBootstrapResult(
             "capital_reservations", str(path), BootstrapOutcome.INVALID_EXISTING,

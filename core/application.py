@@ -84,6 +84,7 @@ from core.position_sizing import PositionSizingService
 from core.capital_reservation import (
     CapitalReservationLedger,
     JsonReservationStore,
+    ReservationArchiveStore,
 )
 from core.instrument_rules import (
     InstrumentRulesConfigError,
@@ -136,6 +137,11 @@ DEFAULT_INSTRUMENT_RULES_PATH = (
 
 RISK_ACCOUNTING_STATE_FILE = "risk_accounting_state.json"
 CAPITAL_RESERVATION_STATE_FILE = "capital_reservations.json"
+# Block 5H: immutable, append-only archive of terminal (COMMITTED/RELEASED)
+# reservations CapitalReservationLedger.compact() has moved out of the
+# working-set file above. Read through by CapitalReservationLedger.get()
+# forever; never auto-compacted or read by AtlasApplication itself.
+CAPITAL_RESERVATION_ARCHIVE_FILE = "capital_reservations_archive.jsonl"
 EXECUTION_FINANCIAL_STATE_FILE = "execution_financial_state.json"
 
 EXECUTION_IDEMPOTENCY_STATE_FILE = "execution_idempotency.json"
@@ -424,6 +430,9 @@ class AtlasApplication:
                 self.state_directory / CAPITAL_RESERVATION_STATE_FILE,
             ),
             self.risk_policy.allocatable_capital,
+            archive=ReservationArchiveStore(
+                self.state_directory / CAPITAL_RESERVATION_ARCHIVE_FILE,
+            ),
         )
 
         self.portfolio_foundation = ExecutionPortfolioFoundation(
