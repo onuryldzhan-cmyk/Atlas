@@ -26,7 +26,12 @@ from core.capital_reservation import (
     JsonReservationStore,
     ReservationStatus,
 )
-from core.execution_portfolio_foundation import ExecutionPortfolioFoundation, FinancialStateStore
+from core.execution_portfolio_foundation import (
+    AppliedExecutionArchiveStore,
+    ClosedPositionArchiveStore,
+    ExecutionPortfolioFoundation,
+    FinancialStateStore,
+)
 from core.financial_state_bootstrap import BootstrapOutcome, bootstrap_financial_state
 from core.risk_engine import RiskPolicy
 from core.risk_state_store import JsonRiskStateStore
@@ -91,6 +96,8 @@ def test_bootstrap_with_canonical_defaults_produces_runtime_compatible_state(tmp
 
     foundation = ExecutionPortfolioFoundation(
         FinancialStateStore(tmp_path / "execution_financial_state.json"),
+        applied_archive=AppliedExecutionArchiveStore(tmp_path / "execution_applied_executions.jsonl"),
+        closed_archive=ClosedPositionArchiveStore(tmp_path / "execution_closed_positions.jsonl"),
     )
     assert foundation.ready is True
 

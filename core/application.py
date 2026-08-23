@@ -92,6 +92,8 @@ from core.instrument_rules import (
 )
 from core.risk_state_store import JsonRiskStateStore
 from core.execution_portfolio_foundation import (
+    AppliedExecutionArchiveStore,
+    ClosedPositionArchiveStore,
     ExecutionPortfolioFoundation,
     FinancialStateStore,
 )
@@ -143,6 +145,12 @@ CAPITAL_RESERVATION_STATE_FILE = "capital_reservations.json"
 # forever; never auto-compacted or read by AtlasApplication itself.
 CAPITAL_RESERVATION_ARCHIVE_FILE = "capital_reservations_archive.jsonl"
 EXECUTION_FINANCIAL_STATE_FILE = "execution_financial_state.json"
+# Block 5I: immutable, append-only sidecars execution_financial_state.json's
+# (schema v2) applied_checkpoint / closed_checkpoint point at. Read through
+# by ExecutionPortfolioFoundation at construction; never auto-compacted or
+# migrated by AtlasApplication itself.
+EXECUTION_APPLIED_EXECUTIONS_FILE = "execution_applied_executions.jsonl"
+EXECUTION_CLOSED_POSITIONS_FILE = "execution_closed_positions.jsonl"
 
 EXECUTION_IDEMPOTENCY_STATE_FILE = "execution_idempotency.json"
 EXECUTION_TRANSACTION_JOURNAL_FILE = "execution_transaction_journal.json"
@@ -438,6 +446,12 @@ class AtlasApplication:
         self.portfolio_foundation = ExecutionPortfolioFoundation(
             FinancialStateStore(
                 self.state_directory / EXECUTION_FINANCIAL_STATE_FILE,
+            ),
+            applied_archive=AppliedExecutionArchiveStore(
+                self.state_directory / EXECUTION_APPLIED_EXECUTIONS_FILE,
+            ),
+            closed_archive=ClosedPositionArchiveStore(
+                self.state_directory / EXECUTION_CLOSED_POSITIONS_FILE,
             ),
         )
 

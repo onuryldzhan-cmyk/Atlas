@@ -50,7 +50,10 @@ from core.capital_reservation import (
     ReservationSchemaMigrationRequiredError,
 )
 from core.execution_portfolio_foundation import (
+    AppliedExecutionArchiveStore,
+    ClosedPositionArchiveStore,
     ExecutionPortfolioFoundation,
+    FinancialStateMigrationRequiredError,
     FinancialStateStore,
 )
 from core.risk_state_store import JsonRiskStateStore, RestoredRiskState
@@ -59,6 +62,10 @@ DEFAULT_RISK_STATE_FILE = "risk_accounting_state.json"
 DEFAULT_RESERVATION_STATE_FILE = "capital_reservations.json"
 DEFAULT_RESERVATION_ARCHIVE_FILE = "capital_reservations_archive.jsonl"
 DEFAULT_FINANCIAL_STATE_FILE = "execution_financial_state.json"
+# Block 5I: the immutable applied-execution / closed-position sidecars the
+# v2 working file's checkpoints point at. See core/execution_portfolio_foundation.py.
+DEFAULT_APPLIED_EXECUTIONS_FILE = "execution_applied_executions.jsonl"
+DEFAULT_CLOSED_POSITIONS_FILE = "execution_closed_positions.jsonl"
 
 _STATE_VALID_EXISTING = "STATE_VALID_EXISTING"
 _STATE_ABSENT = "STATE_ABSENT"
@@ -111,6 +118,8 @@ def bootstrap_financial_state(
     reservation_state_file: str = DEFAULT_RESERVATION_STATE_FILE,
     reservation_archive_file: str = DEFAULT_RESERVATION_ARCHIVE_FILE,
     financial_state_file: str = DEFAULT_FINANCIAL_STATE_FILE,
+    applied_executions_file: str = DEFAULT_APPLIED_EXECUTIONS_FILE,
+    closed_positions_file: str = DEFAULT_CLOSED_POSITIONS_FILE,
 ) -> FinancialStateBootstrapResult:
     """Explicitly create or validate durable financial state.
 
@@ -155,7 +164,8 @@ def bootstrap_financial_state(
             allocatable_capital, verify_only,
         ),
         _bootstrap_financial_state(
-            directory / financial_state_file, initial_capital, verify_only,
+            directory / financial_state_file, directory / applied_executions_file,
+            directory / closed_positions_file, initial_capital, verify_only,
         ),
     ]
 
@@ -347,10 +357,73 @@ def _bootstrap_reservation_state(
 # execution_financial_state
 # ---------------------------------------------------------------------------
 
+# Foundation readiness reasons that are already fixed, data-free tokens -
+# passed through unchanged. Anything else (in particular
+# AppliedExecutionArchiveConflictError / ClosedPositionArchiveConflictError
+# messages, which embed the raw execution_id/idempotency_key/position_id
+# that triggered them, and *ArchiveCorruptError messages, which embed a raw
+# archive line number) is classified below rather than exposed verbatim.
+_FINANCIAL_FOUNDATION_FIXED_REASONS = frozenset((
+    "FINANCIAL_APPLIED_AUTHORITY_DIVERGENT",
+    "FINANCIAL_APPLIED_AUTHORITY_MISSING",
+    "FINANCIAL_CLOSED_AUTHORITY_DIVERGENT",
+    "FINANCIAL_CLOSED_AUTHORITY_MISSING",
+    "FINANCIAL_CLOSED_POSITION_LIVE_CONFLICT",
+    "CORRUPT_FINANCIAL_STATE",
+    "DUPLICATE_POSITION_STATE",
+    "CORRUPT_CHECKPOINT_STATE",
+    # Raised directly by FinancialStateStore.load() itself (not archive
+    # hydration) - already fixed, data-free tokens ADR-0005 documents by
+    # name; must pass through unchanged rather than collapse into the
+    # generic fallback below.
+    "FINANCIAL_STATE_RECOVERY_REQUIRED",
+    "FINANCIAL_TRANSITION_RECOVERY_REQUIRED",
+))
+
+
+def _classify_financial_foundation_reason(raw_reason: str) -> str:
+    """Map ``ExecutionPortfolioFoundation.diagnostics()["reason"]`` to a
+    fixed, operator-safe token per ADR-0005's output-safety contract.
+
+    ``ExecutionPortfolioFoundation._recovery_reason`` intentionally keeps the
+    full internal exception text for debugging (see its docstring) - which,
+    for the two archive conflict/corrupt exception types, embeds the raw
+    execution_id, idempotency_key, position_id, or archive line number that
+    triggered them. A 200-char truncation would not fix this: every one of
+    those raw identifiers is short enough to survive it. Anything other than
+    an already-fixed, data-free token therefore collapses to a stable,
+    prefix-derived token here rather than being truncated or passed through.
+    """
+    if raw_reason in _FINANCIAL_FOUNDATION_FIXED_REASONS:
+        return raw_reason
+    if raw_reason.startswith("FINANCIAL_APPLIED_AUTHORITY_CORRUPT"):
+        return "FINANCIAL_APPLIED_AUTHORITY_CORRUPT"
+    if raw_reason.startswith(("APPLIED_EXECUTION_CONFLICT", "IDEMPOTENCY_IDENTITY_CONFLICT")):
+        return "FINANCIAL_APPLIED_AUTHORITY_CONFLICT"
+    if raw_reason.startswith("FINANCIAL_CLOSED_AUTHORITY_CORRUPT"):
+        return "FINANCIAL_CLOSED_AUTHORITY_CORRUPT"
+    if raw_reason.startswith("CLOSED_POSITION_ARCHIVE_CONFLICT"):
+        return "FINANCIAL_CLOSED_AUTHORITY_CONFLICT"
+    return "FINANCIAL_STATE_RECOVERY_REQUIRED"
+
 
 def _bootstrap_financial_state(
-    path: Path, initial_capital: Decimal, verify_only: bool = False,
+    path: Path, applied_executions_path: Path, closed_positions_path: Path,
+    initial_capital: Decimal, verify_only: bool = False,
 ) -> StoreBootstrapResult:
+    """Validate the v2 working file and, cross-store, its two sidecars.
+
+    VALID_EXISTING requires the working file to load under the current v2
+    schema, validate its own shape, and - reusing the canonical foundation's
+    own construction, the same way ``_bootstrap_reservation_state`` reuses
+    ``CapitalReservationLedger`` - have its ``applied_checkpoint`` /
+    ``closed_checkpoint`` agree exactly with the two sidecars' durable
+    tails. A v1 working file is never auto-migrated: it is reported
+    INVALID_EXISTING / FINANCIAL_MIGRATION_REQUIRED, pointing at
+    ``tools/migrate_execution_financial_state.py``. Neither sidecar is ever
+    written, repaired, or deleted here, matching every other outcome in
+    this module.
+    """
     store = FinancialStateStore(path)
     if verify_only:
         if not path.exists():
@@ -374,6 +447,11 @@ def _bootstrap_financial_state(
 
     try:
         payload = store.load()
+    except FinancialStateMigrationRequiredError:
+        return StoreBootstrapResult(
+            "execution_financial_state", str(path), BootstrapOutcome.INVALID_EXISTING,
+            "FINANCIAL_MIGRATION_REQUIRED",
+        )
     except RuntimeError as exc:
         return StoreBootstrapResult(
             "execution_financial_state", str(path), BootstrapOutcome.INVALID_EXISTING,
@@ -388,6 +466,19 @@ def _bootstrap_financial_state(
         return StoreBootstrapResult(
             "execution_financial_state", str(path), BootstrapOutcome.INVALID_EXISTING,
             "FINANCIAL_STATE_INVALID",
+        )
+
+    # Cross-store checkpoint validation, reusing the canonical foundation's
+    # own construction rather than re-deriving the tail-agreement check here.
+    foundation = ExecutionPortfolioFoundation(
+        store,
+        applied_archive=AppliedExecutionArchiveStore(applied_executions_path),
+        closed_archive=ClosedPositionArchiveStore(closed_positions_path),
+    )
+    if not foundation.ready:
+        return StoreBootstrapResult(
+            "execution_financial_state", str(path), BootstrapOutcome.INVALID_EXISTING,
+            _classify_financial_foundation_reason(foundation.diagnostics()["reason"]),
         )
 
     return StoreBootstrapResult(

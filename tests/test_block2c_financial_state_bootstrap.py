@@ -17,7 +17,12 @@ import pytest
 
 import core.application as application_module
 from core.capital_reservation import CapitalReservationLedger, JsonReservationStore
-from core.execution_portfolio_foundation import ExecutionPortfolioFoundation, FinancialStateStore
+from core.execution_portfolio_foundation import (
+    AppliedExecutionArchiveStore,
+    ClosedPositionArchiveStore,
+    ExecutionPortfolioFoundation,
+    FinancialStateStore,
+)
 from core.financial_state_bootstrap import (
     BootstrapOutcome,
     bootstrap_financial_state,
@@ -48,6 +53,8 @@ def test_reservation_ledger_missing_file_is_not_ready(tmp_path):
 def test_portfolio_foundation_missing_file_is_not_ready(tmp_path):
     foundation = ExecutionPortfolioFoundation(
         FinancialStateStore(tmp_path / "execution_financial_state.json"),
+        applied_archive=AppliedExecutionArchiveStore(tmp_path / "execution_applied_executions.jsonl"),
+        closed_archive=ClosedPositionArchiveStore(tmp_path / "execution_closed_positions.jsonl"),
     )
     assert foundation.ready is False
     with pytest.raises(RuntimeError, match="FINANCIAL_STATE_RECOVERY_REQUIRED"):
@@ -91,6 +98,8 @@ def test_bootstrap_creates_all_three_stores_and_they_become_ready(tmp_path):
 
     foundation = ExecutionPortfolioFoundation(
         FinancialStateStore(tmp_path / "execution_financial_state.json"),
+        applied_archive=AppliedExecutionArchiveStore(tmp_path / "execution_applied_executions.jsonl"),
+        closed_archive=ClosedPositionArchiveStore(tmp_path / "execution_closed_positions.jsonl"),
     )
     assert foundation.ready is True
     assert foundation.snapshot()["cash"] == D("10000")
@@ -157,6 +166,8 @@ def test_bootstrap_is_valid_existing_on_second_call_and_does_not_touch_state(tmp
 
     foundation = ExecutionPortfolioFoundation(
         FinancialStateStore(financial_path),
+        applied_archive=AppliedExecutionArchiveStore(tmp_path / "execution_applied_executions.jsonl"),
+        closed_archive=ClosedPositionArchiveStore(tmp_path / "execution_closed_positions.jsonl"),
     )
     assert foundation.snapshot()["cash"] == D("10000")
 

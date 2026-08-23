@@ -60,6 +60,8 @@ import pytest
 from core.application import AtlasApplication
 from core.execution_models import ExecutionResult
 from core.execution_portfolio_foundation import (
+    AppliedExecutionArchiveStore,
+    ClosedPositionArchiveStore,
     ExecutionPortfolioFoundation,
     FinancialStateStore,
     mint_long_position_id,
@@ -98,11 +100,23 @@ HOSTILE_REQUEST_IDS = [
 ]
 
 
+def _sidecars(store: FinancialStateStore) -> tuple[AppliedExecutionArchiveStore, ClosedPositionArchiveStore]:
+    """Derive a store's sidecar paths deterministically from its own path -
+    these stores hold no Python-side state, only a path, so a restart (a
+    fresh FinancialStateStore/ExecutionPortfolioFoundation pointing at the
+    same file) trivially points at the same sidecars too."""
+    return (
+        AppliedExecutionArchiveStore(store.path.with_name(store.path.stem + "-applied.jsonl")),
+        ClosedPositionArchiveStore(store.path.with_name(store.path.stem + "-closed.jsonl")),
+    )
+
+
 def _foundation(tmp_path, *, name: str = "financial", cash: str = "1000"
                  ) -> tuple[ExecutionPortfolioFoundation, FinancialStateStore]:
     store = FinancialStateStore(tmp_path / f"{name}.json")
     store.initialize(D(cash))
-    return ExecutionPortfolioFoundation(store), store
+    applied_archive, closed_archive = _sidecars(store)
+    return ExecutionPortfolioFoundation(store, applied_archive=applied_archive, closed_archive=closed_archive), store
 
 
 def _fill(action, *, base, price, fee, fee_ccy, execution_id, position_id) -> ExecutionResult:
@@ -143,7 +157,8 @@ def _live(app: AtlasApplication, symbol: str = "BTCUSDT"):
 
 
 def _closed_on_disk(store: FinancialStateStore) -> dict:
-    return store.load()["closed_positions"]
+    _, closed_archive = _sidecars(store)
+    return closed_archive.load_index().by_position_id
 
 
 # ===========================================================================
@@ -194,7 +209,7 @@ def test_four_real_lifetimes_produce_four_distinct_closed_records_surviving_rest
     assert len(set(position_ids)) == 4, "each lifetime must mint a distinct identity"
     assert len(set(opened_ats)) == 4, "each lifetime opens at its own timestamp"
 
-    closed = app.portfolio_foundation._state["closed_positions"]
+    closed = app.portfolio_foundation._closed_by_position_id
     assert set(closed) == set(expected)
 
     for position_id, want in expected.items():
@@ -219,7 +234,7 @@ def test_four_real_lifetimes_produce_four_distinct_closed_records_surviving_rest
     restarted = AtlasApplication(state_directory=tmp_path / "state")
     restarted.execution.start()
     assert restarted.portfolio_foundation.ready is True
-    assert restarted.portfolio_foundation._state["closed_positions"] == closed
+    assert restarted.portfolio_foundation._closed_by_position_id == closed
     restarted_snap = restarted.portfolio_foundation.snapshot()
     assert restarted_snap["realized_gross_pnl"] == snap["realized_gross_pnl"]
     assert restarted_snap["cash"] == snap["cash"]
@@ -251,7 +266,7 @@ def test_candle_identity_shaped_request_id_mints_and_closes_through_the_real_pip
     sell_result = _sell(app, request_id=sell_request_id, price=11.0)
     assert sell_result["status"] == "PAPER_EXECUTED"
     assert _live(app) is None
-    closed = app.portfolio_foundation._state["closed_positions"]
+    closed = app.portfolio_foundation._closed_by_position_id
     assert expected_id in closed
 
 
@@ -414,11 +429,12 @@ def test_reused_closed_position_identity_fails_closed_without_overwriting(tmp_pa
     # like every other integrity violation in this module.
     assert foundation.ready is False
 
+    assert _closed_on_disk(store)[collision_id] == first_record
     on_disk = json.loads(store.path.read_text(encoding="utf-8"))
-    assert on_disk["closed_positions"][collision_id] == first_record
     assert on_disk["transition"] is not None
 
-    reloaded = ExecutionPortfolioFoundation(store)
+    applied_archive, closed_archive = _sidecars(store)
+    reloaded = ExecutionPortfolioFoundation(store, applied_archive=applied_archive, closed_archive=closed_archive)
     assert reloaded.ready is False
     assert reloaded.diagnostics()["reason"] == "FINANCIAL_TRANSITION_RECOVERY_REQUIRED"
 
@@ -445,7 +461,8 @@ def test_legacy_bare_symbol_position_id_closes_once_and_next_lifetime_mints_comp
     }
     store.save(payload)
 
-    foundation = ExecutionPortfolioFoundation(store)
+    applied_archive, closed_archive = _sidecars(store)
+    foundation = ExecutionPortfolioFoundation(store, applied_archive=applied_archive, closed_archive=closed_archive)
     assert foundation.ready is True
     assert foundation.snapshot()["positions"]["BTCUSDT"]["position_id"] == legacy_id
 
@@ -500,7 +517,8 @@ def test_restart_preserves_every_closed_lifetime_exactly(tmp_path):
     assert len(before) == 3
     assert set(before) == set(ids)
 
-    restarted = ExecutionPortfolioFoundation(store)
+    applied_archive, closed_archive = _sidecars(store)
+    restarted = ExecutionPortfolioFoundation(store, applied_archive=applied_archive, closed_archive=closed_archive)
     assert restarted.ready is True
     assert _closed_on_disk(store) == before
     assert restarted.snapshot()["positions"] == {}

@@ -3,6 +3,19 @@
 External execution determination remains owned by the transaction journal and
 reconciliation.  This module consumes confirmed evidence; it never retries an
 exchange operation and never claims filesystem atomicity is exchange atomicity.
+
+Block 5I moved ``closed_positions`` and ``applied_executions`` out of the
+working snapshot (``execution_financial_state.json``, now schema_version 2)
+into two immutable, append-only JSON-Lines sidecars -
+``AppliedExecutionArchiveStore`` and ``ClosedPositionArchiveStore``. The
+working file now tracks only current operational state plus two small
+checkpoints (``applied_checkpoint`` / ``closed_checkpoint``) pointing at the
+exact sidecar tail it last durably wrote. This bounds the working file's size
+by *live* state rather than by lifetime execution/close count; the sidecars
+themselves are O(1) appends, and rebuilding their in-memory indexes at
+startup is O(history) once, not on every mutation. There is no runtime
+auto-migration from schema_version 1 - see ``FinancialStateMigrationRequiredError``
+and ``tools/migrate_execution_financial_state.py``.
 """
 from __future__ import annotations
 
@@ -19,7 +32,7 @@ from typing import Any, Callable
 from core.execution_models import ExecutionResult
 
 D = Decimal
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 # Block 5E: the fixed precision the whole confirmed-execution settlement
 # slice - BUY debit/fee accumulation, SELL gross P&L/cash/fee accumulation,
@@ -112,6 +125,19 @@ class LongPosition:
                 for name, value in asdict(self).items()}
 
 
+class FinancialStateMigrationRequiredError(ValueError):
+    """Raised when execution_financial_state.json is still schema_version 1.
+
+    Block 5I moved ``closed_positions`` and ``applied_executions`` out of the
+    working snapshot into the two immutable sidecars below. A v1 file is
+    real, valuable accounting history; silently reinterpreting it under the
+    v2 contract (where those two collections are expected to live in the
+    sidecars, not the working file) would risk misplacing or losing it.
+    Runtime never auto-migrates - ``tools/migrate_execution_financial_state.py``
+    is the only supported path from v1 to v2 + sidecars.
+    """
+
+
 class FinancialStateStore:
     """Atomic JSON state store; missing/corrupt state is never healthy-empty."""
     def __init__(self, path: str | Path):
@@ -124,7 +150,7 @@ class FinancialStateStore:
             "schema_version": SCHEMA_VERSION, "transition": None,
             "cash": format(initial_cash, "f"), "reserved_capital": "0",
             "realized_gross_pnl": "0", "fees": "0", "positions": {},
-            "closed_positions": {}, "applied_executions": {},
+            "applied_checkpoint": None, "closed_checkpoint": None,
         })
 
     def load(self) -> dict[str, Any]:
@@ -132,7 +158,10 @@ class FinancialStateStore:
             payload = json.loads(self.path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
             raise RuntimeError("FINANCIAL_STATE_RECOVERY_REQUIRED") from exc
-        if payload.get("schema_version") != SCHEMA_VERSION:
+        schema = payload.get("schema_version")
+        if schema == 1:
+            raise FinancialStateMigrationRequiredError("FINANCIAL_MIGRATION_REQUIRED")
+        if schema != SCHEMA_VERSION:
             raise RuntimeError("FINANCIAL_STATE_RECOVERY_REQUIRED")
         if payload.get("transition") is not None:
             raise RuntimeError("FINANCIAL_TRANSITION_RECOVERY_REQUIRED")
@@ -149,17 +178,366 @@ class FinancialStateStore:
         os.replace(temp, self.path)
 
 
+# ---------------------------------------------------------------------------
+# Block 5I - applied-execution authority (immutable, append-only)
+# ---------------------------------------------------------------------------
+
+
+class AppliedExecutionArchiveError(RuntimeError):
+    """Base class for immutable applied-execution authority failures."""
+
+
+class AppliedExecutionArchiveCorruptError(AppliedExecutionArchiveError):
+    """A line in the applied-execution archive is malformed, torn, or its
+    sequence is not the deterministic append order this store requires."""
+
+
+class AppliedExecutionArchiveConflictError(AppliedExecutionArchiveError):
+    """Two archive lines disagree about execution_id/idempotency_key identity."""
+
+
+@dataclass(frozen=True, slots=True)
+class AppliedExecutionRecord:
+    sequence: int
+    execution_id: str
+    idempotency_key: str
+    applied_at: str
+
+    def __post_init__(self) -> None:
+        if self.sequence < 0:
+            raise ValueError("sequence must be non-negative")
+        if not self.execution_id or not self.idempotency_key:
+            raise ValueError("execution_id and idempotency_key are required")
+        _utc(self.applied_at)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"sequence": self.sequence, "execution_id": self.execution_id,
+                "idempotency_key": self.idempotency_key, "applied_at": self.applied_at}
+
+    @classmethod
+    def from_dict(cls, value: dict[str, Any]) -> "AppliedExecutionRecord":
+        return cls(int(value["sequence"]), str(value["execution_id"]),
+                   str(value["idempotency_key"]), str(value["applied_at"]))
+
+
+@dataclass(frozen=True, slots=True)
+class AppliedExecutionIndex:
+    by_execution_id: dict[str, AppliedExecutionRecord]
+    by_idempotency_key: dict[str, AppliedExecutionRecord]
+    tail: AppliedExecutionRecord | None
+    count: int
+
+
+class AppliedExecutionArchiveStore:
+    """Immutable, append-only JSON-Lines authority of every applied execution.
+
+    One canonical record per line - ``sequence``, ``execution_id``,
+    ``idempotency_key``, ``applied_at`` - written durably (write -> flush ->
+    fsync) before the call returns, mirroring ``ReservationArchiveStore``
+    (Block 5H) / ``AuditEventStore``'s existing jsonl pattern. ``append`` is
+    the only write operation this store performs: no line is ever rewritten,
+    reordered, or deleted, and there is no retention or pruning.
+    """
+
+    def __init__(self, path: str | Path) -> None:
+        self.path = Path(path)
+
+    def append(self, record: AppliedExecutionRecord) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        line = json.dumps(record.to_dict(), sort_keys=True, separators=(",", ":"))
+        with self.path.open("a", encoding="utf-8", newline="\n") as stream:
+            stream.write(line + "\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+
+    def load_index(self) -> AppliedExecutionIndex:
+        """Rebuild the O(1) execution_id / idempotency_key indexes.
+
+        O(history) once, at construction - see the module docstring's
+        asymptotic note. Consecutive byte-identical duplicate lines are
+        tolerated idempotently, as defensive equality logic against a torn
+        write duplicating a line at the storage layer; any other repetition
+        of a sequence, execution_id, or idempotency_key is corruption and
+        fails closed rather than being silently resolved by picking a side.
+        This tolerance is not known to be reachable via any live
+        ``apply_confirmed``-driven path: ``applied_at`` is stamped fresh on
+        every append, so two genuine retries of the same logical execution
+        never produce byte-identical records, and same-process replay of an
+        already-durable ``execution_id`` short-circuits in
+        ``apply_confirmed`` before a second append is ever attempted.
+        """
+        if not self.path.exists():
+            return AppliedExecutionIndex({}, {}, None, 0)
+        by_execution_id: dict[str, AppliedExecutionRecord] = {}
+        by_idempotency_key: dict[str, AppliedExecutionRecord] = {}
+        tail: AppliedExecutionRecord | None = None
+        expected_next = 0
+        with self.path.open("r", encoding="utf-8") as stream:
+            for line_number, raw_line in enumerate(stream, start=1):
+                line = raw_line.strip()
+                if not line:
+                    continue
+                try:
+                    payload = json.loads(line)
+                    if not isinstance(payload, dict):
+                        raise ValueError("archive line is not an object")
+                    record = AppliedExecutionRecord.from_dict(payload)
+                except Exception as exc:
+                    raise AppliedExecutionArchiveCorruptError(
+                        f"FINANCIAL_APPLIED_AUTHORITY_CORRUPT: line {line_number}"
+                    ) from exc
+                if record.sequence == expected_next:
+                    if record.execution_id in by_execution_id:
+                        raise AppliedExecutionArchiveConflictError(
+                            f"APPLIED_EXECUTION_CONFLICT: execution_id={record.execution_id!r}"
+                        )
+                    if record.idempotency_key in by_idempotency_key:
+                        raise AppliedExecutionArchiveConflictError(
+                            f"IDEMPOTENCY_IDENTITY_CONFLICT: idempotency_key={record.idempotency_key!r}"
+                        )
+                    by_execution_id[record.execution_id] = record
+                    by_idempotency_key[record.idempotency_key] = record
+                    tail = record
+                    expected_next += 1
+                elif record.sequence == expected_next - 1 and tail == record:
+                    continue  # tolerated retry of the immediately preceding append
+                else:
+                    raise AppliedExecutionArchiveCorruptError(
+                        f"FINANCIAL_APPLIED_AUTHORITY_CORRUPT: non-deterministic "
+                        f"sequence at line {line_number}"
+                    )
+        return AppliedExecutionIndex(by_execution_id, by_idempotency_key, tail, len(by_execution_id))
+
+
+# ---------------------------------------------------------------------------
+# Block 5I - closed-position archive (immutable, append-only)
+# ---------------------------------------------------------------------------
+
+
+class ClosedPositionArchiveError(RuntimeError):
+    """Base class for immutable closed-position archive failures."""
+
+
+class ClosedPositionArchiveCorruptError(ClosedPositionArchiveError):
+    """A line in the closed-position archive is malformed, torn, shape-invalid,
+    or its sequence is not the deterministic append order this store requires."""
+
+
+class ClosedPositionArchiveConflictError(ClosedPositionArchiveError):
+    """Two archive lines disagree about the same position_id."""
+
+
+# Every field the current `_close` full-exit semantics actually produce
+# (see `_close` below) - never a subset of the old `closed_positions`
+# working-map check, and never a new economic field this module does not
+# already compute.
+_CLOSED_POSITION_REQUIRED_FIELDS = (
+    "position_id", "symbol", "base_quantity", "cost_quote", "entry_fees",
+    "average_entry_price", "mark_price", "version", "opened_at",
+    "status", "exit_price", "gross_pnl", "closed_at",
+)
+_CLOSED_POSITION_POSITIVE_DECIMAL_FIELDS = (
+    "cost_quote", "average_entry_price", "mark_price", "exit_price",
+)
+
+
+def validate_closed_position_record(record: dict[str, Any]) -> None:
+    """Validate a closed-position archive record's shape strongly.
+
+    Stronger than the pre-5I ``closed_positions`` working-map check (which
+    validated only ``position_id`` identity and pattern): every field
+    ``_close`` actually produces for a full exit is checked for presence and
+    type/range correctness.
+    """
+    if not isinstance(record, dict) or set(record) != set(_CLOSED_POSITION_REQUIRED_FIELDS):
+        raise ValueError("CORRUPT_CLOSED_POSITION_RECORD")
+    position_id = record["position_id"]
+    if not isinstance(position_id, str) or not _POSITION_IDENTITY_PATTERN.fullmatch(position_id):
+        raise ValueError("CORRUPT_CLOSED_POSITION_RECORD")
+    if not isinstance(record["symbol"], str) or not record["symbol"]:
+        raise ValueError("CORRUPT_CLOSED_POSITION_RECORD")
+    if record["status"] != "CLOSED":
+        raise ValueError("CORRUPT_CLOSED_POSITION_RECORD")
+    try:
+        if _decimal(record["base_quantity"], "base_quantity") != 0:
+            raise ValueError("CORRUPT_CLOSED_POSITION_RECORD")
+        for name in _CLOSED_POSITION_POSITIVE_DECIMAL_FIELDS:
+            _decimal(record[name], name, allow_zero=False)
+        _decimal(record["entry_fees"], "entry_fees", allow_zero=True)
+        gross_pnl = D(str(record["gross_pnl"]))
+        if not gross_pnl.is_finite():
+            raise ValueError("CORRUPT_CLOSED_POSITION_RECORD")
+    except (InvalidOperation, ValueError) as exc:
+        raise ValueError("CORRUPT_CLOSED_POSITION_RECORD") from exc
+    if (not isinstance(record["version"], int) or isinstance(record["version"], bool)
+            or record["version"] < 1):
+        raise ValueError("CORRUPT_CLOSED_POSITION_RECORD")
+    for name in ("opened_at", "closed_at"):
+        try:
+            _utc(record[name])
+        except Exception as exc:
+            raise ValueError("CORRUPT_CLOSED_POSITION_RECORD") from exc
+
+
+@dataclass(frozen=True, slots=True)
+class ClosedPositionIndex:
+    by_position_id: dict[str, dict[str, Any]]
+    sequence_by_position_id: dict[str, int]
+    tail_sequence: int | None
+    tail_position_id: str | None
+    count: int
+
+
+class ClosedPositionArchiveStore:
+    """Immutable, append-only JSON-Lines archive of fully-closed positions.
+
+    One canonical closed-position record per line - exactly what ``_close``
+    produces for a full exit, keyed by Block 5G's deterministic
+    ``position_id`` - plus the deterministic ``sequence`` this package's
+    checkpoint contract needs. Durable (write -> flush -> fsync) before the
+    call returns; ``append`` is the only write operation, no retention or
+    pruning, mirroring ``AppliedExecutionArchiveStore`` / ``ReservationArchiveStore``.
+    """
+
+    def __init__(self, path: str | Path) -> None:
+        self.path = Path(path)
+
+    def append(self, sequence: int, record: dict[str, Any]) -> None:
+        if not isinstance(sequence, int) or isinstance(sequence, bool) or sequence < 0:
+            raise ValueError("sequence must be a non-negative int")
+        validate_closed_position_record(record)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {"sequence": sequence, **record}
+        line = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+        with self.path.open("a", encoding="utf-8", newline="\n") as stream:
+            stream.write(line + "\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+
+    def load_index(self) -> ClosedPositionIndex:
+        """Rebuild the O(1) position_id index. O(history) once, at construction."""
+        if not self.path.exists():
+            return ClosedPositionIndex({}, {}, None, None, 0)
+        by_position_id: dict[str, dict[str, Any]] = {}
+        sequence_by_position_id: dict[str, int] = {}
+        tail_sequence: int | None = None
+        tail_position_id: str | None = None
+        expected_next = 0
+        with self.path.open("r", encoding="utf-8") as stream:
+            for line_number, raw_line in enumerate(stream, start=1):
+                line = raw_line.strip()
+                if not line:
+                    continue
+                try:
+                    payload = json.loads(line)
+                    if not isinstance(payload, dict) or "sequence" not in payload:
+                        raise ValueError("archive line is not a sequenced object")
+                    sequence = payload["sequence"]
+                    if not isinstance(sequence, int) or isinstance(sequence, bool):
+                        raise ValueError("sequence must be an int")
+                    record = {key: value for key, value in payload.items() if key != "sequence"}
+                    validate_closed_position_record(record)
+                except Exception as exc:
+                    raise ClosedPositionArchiveCorruptError(
+                        f"FINANCIAL_CLOSED_AUTHORITY_CORRUPT: line {line_number}"
+                    ) from exc
+                position_id = record["position_id"]
+                if sequence == expected_next:
+                    if position_id in by_position_id:
+                        raise ClosedPositionArchiveConflictError(
+                            f"CLOSED_POSITION_ARCHIVE_CONFLICT: position_id={position_id!r}"
+                        )
+                    by_position_id[position_id] = record
+                    sequence_by_position_id[position_id] = sequence
+                    tail_sequence, tail_position_id = sequence, position_id
+                    expected_next += 1
+                elif (sequence == expected_next - 1 and tail_position_id == position_id
+                        and by_position_id.get(position_id) == record):
+                    continue  # tolerated retry of the immediately preceding append
+                else:
+                    raise ClosedPositionArchiveCorruptError(
+                        f"FINANCIAL_CLOSED_AUTHORITY_CORRUPT: non-deterministic "
+                        f"sequence at line {line_number}"
+                    )
+        return ClosedPositionIndex(
+            by_position_id, sequence_by_position_id, tail_sequence, tail_position_id, len(by_position_id)
+        )
+
+
 class ExecutionPortfolioFoundation:
     """Idempotent durable LONG lifecycle and portfolio accounting."""
-    def __init__(self, store: FinancialStateStore):
+    def __init__(self, store: FinancialStateStore, *,
+                 applied_archive: AppliedExecutionArchiveStore,
+                 closed_archive: ClosedPositionArchiveStore):
         self.store = store
+        self.applied_archive = applied_archive
+        self.closed_archive = closed_archive
         self._recovery_reason: str | None = None
+        self._applied_by_execution_id: dict[str, AppliedExecutionRecord] = {}
+        self._applied_by_idempotency_key: dict[str, AppliedExecutionRecord] = {}
+        self._applied_tail: AppliedExecutionRecord | None = None
+        self._closed_by_position_id: dict[str, dict[str, Any]] = {}
+        self._closed_tail_sequence: int | None = None
         try:
             self._state = store.load()
             self._validate_state(self._state)
+            self._hydrate_sidecars()
         except Exception as exc:
             self._state = {}
             self._recovery_reason = str(exc) or "FINANCIAL_STATE_RECOVERY_REQUIRED"
+
+    def _hydrate_sidecars(self) -> None:
+        """Cross-check each checkpoint against its sidecar's durable tail.
+
+        Both checkpoints are validated the same way: a ``None`` checkpoint
+        requires an empty (missing or zero-record) sidecar - a freshly
+        bootstrapped book - and a non-``None`` checkpoint requires the
+        sidecar's exact tail record to match it field-for-field. Any
+        disagreement - a corrupt/conflicting sidecar, a missing sidecar the
+        checkpoint proves must exist, or an orphan record the sidecar holds
+        beyond what the checkpoint confirms was ever durably committed -
+        fails closed. This is what protects against a sidecar append
+        surviving a crash while the working-state commit that would confirm
+        it never landed, and an operator later clearing the transition
+        marker without reconciling the checkpoint to match.
+        """
+        applied_index = self.applied_archive.load_index()
+        applied_checkpoint = self._state["applied_checkpoint"]
+        if applied_checkpoint is None:
+            if applied_index.count != 0:
+                raise RuntimeError("FINANCIAL_APPLIED_AUTHORITY_DIVERGENT")
+        else:
+            tail = applied_index.tail
+            if (tail is None or tail.sequence != applied_checkpoint["sequence"]
+                    or tail.execution_id != applied_checkpoint["execution_id"]
+                    or tail.idempotency_key != applied_checkpoint["idempotency_key"]):
+                raise RuntimeError(
+                    "FINANCIAL_APPLIED_AUTHORITY_MISSING" if applied_index.count == 0
+                    else "FINANCIAL_APPLIED_AUTHORITY_DIVERGENT"
+                )
+
+        closed_index = self.closed_archive.load_index()
+        closed_checkpoint = self._state["closed_checkpoint"]
+        if closed_checkpoint is None:
+            if closed_index.count != 0:
+                raise RuntimeError("FINANCIAL_CLOSED_AUTHORITY_DIVERGENT")
+        else:
+            if (closed_index.tail_sequence != closed_checkpoint["sequence"]
+                    or closed_index.tail_position_id != closed_checkpoint["position_id"]):
+                raise RuntimeError(
+                    "FINANCIAL_CLOSED_AUTHORITY_MISSING" if closed_index.count == 0
+                    else "FINANCIAL_CLOSED_AUTHORITY_DIVERGENT"
+                )
+
+        live_ids = {item["position_id"] for item in self._state["positions"].values()}
+        if live_ids & closed_index.by_position_id.keys():
+            raise RuntimeError("FINANCIAL_CLOSED_POSITION_LIVE_CONFLICT")
+
+        self._applied_by_execution_id = dict(applied_index.by_execution_id)
+        self._applied_by_idempotency_key = dict(applied_index.by_idempotency_key)
+        self._applied_tail = applied_index.tail
+        self._closed_by_position_id = dict(closed_index.by_position_id)
+        self._closed_tail_sequence = closed_index.tail_sequence
 
     @property
     def ready(self) -> bool:
@@ -182,9 +560,17 @@ class ExecutionPortfolioFoundation:
             seen.update((symbol, item["position_id"]))
             for name in ("base_quantity", "cost_quote", "entry_fees", "average_entry_price", "mark_price"):
                 _decimal(item[name], name, allow_zero=name == "entry_fees")
-        for position_id, closed in state["closed_positions"].items():
-            if closed["position_id"] != position_id or not _POSITION_IDENTITY_PATTERN.fullmatch(position_id):
-                raise ValueError("CORRUPT_CLOSED_POSITION_STATE")
+        for checkpoint, keys in (
+            (state["applied_checkpoint"], ("sequence", "execution_id", "idempotency_key")),
+            (state["closed_checkpoint"], ("sequence", "position_id")),
+        ):
+            if checkpoint is None:
+                continue
+            if not isinstance(checkpoint, dict) or set(checkpoint) != set(keys):
+                raise ValueError("CORRUPT_CHECKPOINT_STATE")
+            sequence = checkpoint["sequence"]
+            if not isinstance(sequence, int) or isinstance(sequence, bool) or sequence < 0:
+                raise ValueError("CORRUPT_CHECKPOINT_STATE")
 
     def set_reserved_capital(self, value: Decimal) -> None:
         self._require_ready()
@@ -196,34 +582,66 @@ class ExecutionPortfolioFoundation:
 
     def apply_confirmed(self, result: ExecutionResult, *, risk_authorized: bool,
                         reservation_confirmed: bool, expected_position_version: int | None = None,
+                        before_closed_archive_append: Callable[[], None] | None = None,
+                        before_applied_archive_append: Callable[[], None] | None = None,
                         before_final_persist: Callable[[], None] | None = None) -> dict[str, Any]:
         self._require_ready()
         if not risk_authorized or not reservation_confirmed:
             raise PermissionError("RISK_AND_RESERVATION_REQUIRED")
         result.validate_financial_evidence(position_mutation=True)
         assert result.execution_id and result.position_id and result.symbol and result.action
-        prior = self._state["applied_executions"].get(result.execution_id)
         identity = result.idempotency_key
-        if prior:
-            if prior != identity:
+        prior = self._applied_by_execution_id.get(result.execution_id)
+        if prior is not None:
+            if prior.idempotency_key != identity:
                 raise ValueError("EXECUTION_IDENTITY_CONFLICT")
             return self.snapshot(replayed=True)
-        if identity in self._state["applied_executions"].values():
+        if identity in self._applied_by_idempotency_key:
             raise ValueError("IDEMPOTENCY_IDENTITY_CONFLICT")
 
         transition = dict(self._state)
         transition["transition"] = {"execution_id": result.execution_id, "idempotency_key": identity,
                                     "stage": "CONFIRMED_EXECUTION"}
         self.store.save(transition)
+        closed_record: dict[str, Any] | None = None
+        applied_record: AppliedExecutionRecord | None = None
         try:
             candidate = json.loads(json.dumps(self._state))
             if result.action == "BUY":
                 self._open(candidate, result, expected_position_version)
             elif result.action == "SELL":
-                self._close(candidate, result, expected_position_version)
+                closed_record = self._close(candidate, result, expected_position_version)
             else:
                 raise ValueError("LONG_ONLY_ACTION_REJECTED")
-            candidate["applied_executions"][result.execution_id] = identity
+
+            # Block 5I crash-safety ordering: the closed-position archive
+            # (if this apply produced one) is appended and fsynced before
+            # the applied-execution authority record, which is itself
+            # appended and fsynced before the final working-state commit
+            # below - so a crash at any point leaves at most an orphan
+            # sidecar record, never an uncommitted financial mutation with
+            # no durable applied-execution proof.
+            if closed_record is not None:
+                if before_closed_archive_append:
+                    before_closed_archive_append()
+                closed_sequence = 0 if self._closed_tail_sequence is None else self._closed_tail_sequence + 1
+                self.closed_archive.append(closed_sequence, closed_record)
+                candidate["closed_checkpoint"] = {
+                    "sequence": closed_sequence, "position_id": closed_record["position_id"],
+                }
+
+            if before_applied_archive_append:
+                before_applied_archive_append()
+            applied_sequence = 0 if self._applied_tail is None else self._applied_tail.sequence + 1
+            applied_record = AppliedExecutionRecord(
+                applied_sequence, result.execution_id, identity, datetime.now(UTC).isoformat(),
+            )
+            self.applied_archive.append(applied_record)
+            candidate["applied_checkpoint"] = {
+                "sequence": applied_record.sequence, "execution_id": applied_record.execution_id,
+                "idempotency_key": applied_record.idempotency_key,
+            }
+
             candidate["transition"] = None
             self._validate_state(candidate)
             if before_final_persist:
@@ -233,6 +651,12 @@ class ExecutionPortfolioFoundation:
             self._recovery_reason = "FINANCIAL_TRANSITION_RECOVERY_REQUIRED"
             raise
         self._state = candidate
+        if closed_record is not None:
+            self._closed_by_position_id[closed_record["position_id"]] = closed_record
+            self._closed_tail_sequence = candidate["closed_checkpoint"]["sequence"]
+        self._applied_by_execution_id[applied_record.execution_id] = applied_record
+        self._applied_by_idempotency_key[applied_record.idempotency_key] = applied_record
+        self._applied_tail = applied_record
         return self.snapshot()
 
     def _open(self, state: dict[str, Any], result: ExecutionResult, expected: int | None) -> None:
@@ -282,7 +706,7 @@ class ExecutionPortfolioFoundation:
             "mark_price": format(result.execution_price, "f"), "version": version, "opened_at": opened_at,
         }
 
-    def _close(self, state: dict[str, Any], result: ExecutionResult, expected: int | None) -> None:
+    def _close(self, state: dict[str, Any], result: ExecutionResult, expected: int | None) -> dict[str, Any] | None:
         """Apply a confirmed LONG reduction, whole or partial.
 
         The executed base quantity is authoritative: this book records the
@@ -311,6 +735,12 @@ class ExecutionPortfolioFoundation:
         rounded to its *active* context exactly as a division is, so
         leaving any one of them outside the ``with`` block would still have
         exposed it to whatever precision is ambient in the caller's thread.
+
+        Returns the closed-position record for a full exit, ready for the
+        caller to durably archive (Block 5I: this method computes it but
+        never persists it - ``apply_confirmed`` owns sequencing and
+        archiving), or ``None`` for a partial reduction, which archives
+        nothing.
         """
         assert result.symbol and result.position_id
         assert result.filled_base_quantity is not None and result.filled_quote_notional is not None
@@ -351,18 +781,21 @@ class ExecutionPortfolioFoundation:
                 "average_entry_price": format(average_entry_price, "f"),
                 "mark_price": format(result.execution_price, "f"),
                 "version": current["version"] + 1}
-            return
-        if result.position_id in state["closed_positions"]:
-            # Block 5G: a lifetime archives exactly once. Overwriting a prior
-            # closed record would silently destroy its historical gross_pnl,
-            # entry_fees, exit_price, and timestamps, so a collision fails
-            # closed here rather than replacing the earlier record.
+            return None
+        if result.position_id in self._closed_by_position_id:
+            # Block 5G/5I: a lifetime archives exactly once. The immutable
+            # closed-position authority - not the working state, which no
+            # longer even holds this collection - is the source of truth
+            # for this check, so it still holds across restart. Overwriting
+            # a prior closed record would silently destroy its historical
+            # gross_pnl, entry_fees, exit_price, and timestamps, so a
+            # collision fails closed here rather than replacing it.
             raise ValueError("CLOSED_POSITION_IDENTITY_CONFLICT")
         closed = dict(current); closed.update({"status": "CLOSED", "base_quantity": "0",
             "exit_price": format(result.execution_price, "f"), "gross_pnl": format(gross, "f"),
             "closed_at": _utc(str(result.timestamp)), "version": current["version"] + 1})
-        state["closed_positions"][result.position_id] = closed
         del state["positions"][result.symbol]
+        return closed
 
     def mark(self, symbol: str, price: Decimal) -> None:
         self._require_ready(); value = _decimal(price, "mark_price", allow_zero=False)

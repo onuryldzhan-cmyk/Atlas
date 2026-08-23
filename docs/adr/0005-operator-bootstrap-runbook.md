@@ -114,7 +114,24 @@ Exit `2` with `INVALID_EXISTING` and a reason code identifying the store:
 `RISK_STATE_UNREADABLE`, `RISK_STATE_SCHEMA_INVALID`,
 `RESERVATION_STATE_UNREADABLE`, `RESERVATION_SCHEMA_INVALID`,
 `RESERVATION_DUPLICATE_ID`, `FINANCIAL_STATE_RECOVERY_REQUIRED`,
-`FINANCIAL_TRANSITION_RECOVERY_REQUIRED`, `FINANCIAL_STATE_INVALID`.
+`FINANCIAL_TRANSITION_RECOVERY_REQUIRED`, `FINANCIAL_STATE_INVALID`,
+`FINANCIAL_MIGRATION_REQUIRED`.
+
+Cross-checkpoint validation against the two Block 5I sidecars
+(`execution_applied_executions.jsonl` / `execution_closed_positions.jsonl`)
+can additionally report `FINANCIAL_APPLIED_AUTHORITY_DIVERGENT`,
+`FINANCIAL_APPLIED_AUTHORITY_MISSING`, `FINANCIAL_APPLIED_AUTHORITY_CORRUPT`,
+`FINANCIAL_APPLIED_AUTHORITY_CONFLICT`, `FINANCIAL_CLOSED_AUTHORITY_DIVERGENT`,
+`FINANCIAL_CLOSED_AUTHORITY_MISSING`, `FINANCIAL_CLOSED_AUTHORITY_CORRUPT`,
+`FINANCIAL_CLOSED_AUTHORITY_CONFLICT`, or `FINANCIAL_CLOSED_POSITION_LIVE_CONFLICT`
+— always one of these fixed tokens, never the underlying exception's raw
+text. `ExecutionPortfolioFoundation`'s own internal diagnostic for a corrupt
+or conflicting sidecar embeds the specific execution_id/idempotency_key/
+position_id/archive line number involved, which is useful for an operator
+reading logs directly but must never appear in this tool's output;
+`core/financial_state_bootstrap.py`'s `_classify_financial_foundation_reason`
+maps every such internal diagnostic to one of the tokens above before it
+ever becomes a `reason_code`.
 
 The tool does not repair, overwrite, or delete anything — the file is left
 byte-for-byte as found. Resolution is a deliberate operator decision:
@@ -126,6 +143,25 @@ decision with financial consequences, not a cleanup step.
 `FINANCIAL_TRANSITION_RECOVERY_REQUIRED` specifically means a write was
 interrupted mid-transition. Do not create fresh state over it without first
 establishing what the interrupted transition did.
+
+`FINANCIAL_MIGRATION_REQUIRED` (Block 5I) means `execution_financial_state.json`
+is still on the legacy schema_version 1, which held `closed_positions` and
+`applied_executions` inline instead of in the current schema_version 2
+layout's two immutable sidecars. This tool never migrates it — moving state
+aside here would discard that accounting history exactly as any other
+manual move would. Run the dedicated, explicit migration tool instead:
+
+```
+python tools/migrate_execution_financial_state.py --state-directory ./memory_data
+```
+
+It rewrites `execution_financial_state.json` in place as schema_version 2
+and populates `execution_applied_executions.jsonl` /
+`execution_closed_positions.jsonl` from the v1 file's contents exactly, then
+`--verify-only` against this bootstrap tool reports `VALID_EXISTING`. See
+that tool's own module docstring for its idempotency/resumability and
+refusal contract — it is a separate, standalone operator workflow, not a
+flag on this one.
 
 ### 4. Policy mismatch
 

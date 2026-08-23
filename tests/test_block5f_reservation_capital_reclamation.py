@@ -55,6 +55,8 @@ from core.capital_reservation import (
 )
 from core.execution_models import ExecutionResult
 from core.execution_portfolio_foundation import (
+    AppliedExecutionArchiveStore,
+    ClosedPositionArchiveStore,
     ExecutionPortfolioFoundation,
     FinancialStateStore,
 )
@@ -83,15 +85,18 @@ def _ledger(tmp_path, *, name: str = "reservations", total: str = "1000"
 
 
 def _foundation(tmp_path, *, name: str = "financial", cash: str = "1000"
-                 ) -> tuple[ExecutionPortfolioFoundation, FinancialStateStore]:
+                 ) -> tuple[ExecutionPortfolioFoundation, FinancialStateStore,
+                            AppliedExecutionArchiveStore, ClosedPositionArchiveStore]:
     store = FinancialStateStore(tmp_path / f"{name}.json")
     store.initialize(D(cash))
-    foundation = ExecutionPortfolioFoundation(store)
+    applied_archive = AppliedExecutionArchiveStore(tmp_path / f"{name}-applied.jsonl")
+    closed_archive = ClosedPositionArchiveStore(tmp_path / f"{name}-closed.jsonl")
+    foundation = ExecutionPortfolioFoundation(store, applied_archive=applied_archive, closed_archive=closed_archive)
     # No reservation<->position linkage (owner ruling): this foundation's
     # own reserved_capital tracking is independent of the reservation ledger
     # under test, and stays at zero throughout.
     foundation.set_reserved_capital(D("0"))
-    return foundation, store
+    return foundation, store, applied_archive, closed_archive
 
 
 def _fill(action, *, base, price, fee, fee_ccy, execution_id,
@@ -173,7 +178,7 @@ def test_real_execute_buy_reclaims_reservation_capital_through_full_pipeline(tmp
 
 def test_partial_and_full_sell_leave_committed_reservation_untouched_across_restarts(tmp_path):
     ledger, reservation_store = _ledger(tmp_path, total="1000")
-    foundation, financial_store = _foundation(tmp_path, cash="1000")
+    foundation, financial_store, applied_archive, closed_archive = _foundation(tmp_path, cash="1000")
 
     def assert_buy_checkpoint(ledger, foundation):
         reservation = ledger.get("flow-1")
@@ -227,7 +232,9 @@ def test_partial_and_full_sell_leave_committed_reservation_untouched_across_rest
 
     # --- D: restart after BUY.
     ledger = CapitalReservationLedger(reservation_store, D("1000"))
-    foundation = ExecutionPortfolioFoundation(financial_store)
+    foundation = ExecutionPortfolioFoundation(
+        financial_store, applied_archive=applied_archive, closed_archive=closed_archive,
+    )
     assert_buy_checkpoint(ledger, foundation)
 
     # --- B: partial SELL, 5 of 10 @ 12, fee 0.5. Cash/exposure move only
@@ -241,7 +248,9 @@ def test_partial_and_full_sell_leave_committed_reservation_untouched_across_rest
 
     # --- D: restart after partial SELL.
     ledger = CapitalReservationLedger(reservation_store, D("1000"))
-    foundation = ExecutionPortfolioFoundation(financial_store)
+    foundation = ExecutionPortfolioFoundation(
+        financial_store, applied_archive=applied_archive, closed_archive=closed_archive,
+    )
     assert_partial_sell_checkpoint(ledger, foundation)
 
     # --- C: full SELL, remaining 5 @ 11, fee 0.4. Position closes.
@@ -254,7 +263,9 @@ def test_partial_and_full_sell_leave_committed_reservation_untouched_across_rest
 
     # --- D: restart after full SELL.
     ledger = CapitalReservationLedger(reservation_store, D("1000"))
-    foundation = ExecutionPortfolioFoundation(financial_store)
+    foundation = ExecutionPortfolioFoundation(
+        financial_store, applied_archive=applied_archive, closed_archive=closed_archive,
+    )
     assert_full_exit_checkpoint(ledger, foundation)
 
 
@@ -276,7 +287,7 @@ def test_repeated_buy_full_sell_cycles_do_not_decay_available_capital(tmp_path):
     downward at all.
     """
     ledger, _ = _ledger(tmp_path, total="1000")
-    foundation, _ = _foundation(tmp_path, cash="1000")
+    foundation, _, _, _ = _foundation(tmp_path, cash="1000")
     cycles = 12
 
     for i in range(cycles):

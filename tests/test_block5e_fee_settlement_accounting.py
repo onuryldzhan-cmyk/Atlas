@@ -60,6 +60,8 @@ from core.capital_reservation import CapitalReservationLedger, JsonReservationSt
 from core.execution_models import ExecutionRequest, ExecutionResult
 from core.execution_portfolio_foundation import (
     SETTLEMENT_CONTEXT_PRECISION,
+    AppliedExecutionArchiveStore,
+    ClosedPositionArchiveStore,
     ExecutionPortfolioFoundation,
     FinancialStateStore,
 )
@@ -538,7 +540,11 @@ def test_real_buy_execution_commits_the_exact_settled_amount(flat_app):
 def _foundation(tmp_path, name="fs") -> ExecutionPortfolioFoundation:
     store = FinancialStateStore(tmp_path / f"{name}.json")
     store.initialize(D("1000"))
-    return ExecutionPortfolioFoundation(store)
+    return ExecutionPortfolioFoundation(
+        store,
+        applied_archive=AppliedExecutionArchiveStore(tmp_path / f"{name}-applied.jsonl"),
+        closed_archive=ClosedPositionArchiveStore(tmp_path / f"{name}-closed.jsonl"),
+    )
 
 
 def _fill(action, *, base, price, fee, fee_ccy, execution_id,
@@ -588,7 +594,7 @@ def test_full_close_exhausts_the_remaining_entry_fee_basis(tmp_path):
 
     snapshot = foundation.snapshot()
     assert "BTCUSDT" not in snapshot["positions"]
-    closed = foundation._state["closed_positions"]["long:BTCUSDT"]
+    closed = foundation._closed_by_position_id["long:BTCUSDT"]
     # The full 0.5 remaining entry-fee basis is exhausted into the closed
     # record; none is left dangling on an open position (there is none).
     assert D(closed["entry_fees"]) == D("0.5")
