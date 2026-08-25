@@ -107,6 +107,20 @@ logger = logging.getLogger(
 )
 
 
+class ExecutionResetRefusedError(RuntimeError):
+    """``ExecutionManager.reset()`` refused a destructive runtime reset.
+
+    Block 5J. The transaction journal and the idempotency store are a paired
+    execution authority: the journal owns the commit outcome, the idempotency
+    store owns the terminal result a replayed request must be answered with,
+    and ``FinancialRuntimeSafetyService`` requires every COMMITTED journal
+    entry to still have its idempotency counterpart. Erasing one half while
+    leaving the other manufactures ``SOURCE_DISAGREEMENT`` out of a healthy
+    book, so ``reset()`` refuses rather than proceeding. The message is a
+    fixed reason token (never a request_id, execution_id, or state payload).
+    """
+
+
 class ExecutionManager:
     """
     Validate, route, execute, and observe Atlas execution requests.
@@ -6121,19 +6135,110 @@ class ExecutionManager:
             return None
 
 
+    def _reset_refusal_reason(self) -> str | None:
+        """Return a fixed refusal token, or ``None`` when reset is provably safe.
+
+        Called with ``self._lock`` held. Attributes are read defensively
+        (``getattr`` with the same conventions
+        ``FinancialRuntimeSafetyService._base_evidence`` uses) so an injected
+        test double cannot make the guard raise instead of refuse.
+        """
+
+        idempotency_loaded = bool(
+            getattr(
+                self.idempotency_store,
+                "loaded",
+                False,
+            )
+        )
+
+        journal_loaded = bool(
+            getattr(
+                self.transaction_journal,
+                "loaded",
+                False,
+            )
+        ) and not bool(
+            getattr(
+                self.transaction_journal,
+                "load_failed",
+                False,
+            )
+        )
+
+        if not idempotency_loaded or not journal_loaded:
+            # An authority that did not load reports zero records, which is
+            # indistinguishable from "no history" - and is exactly the state
+            # in which erasing the other half is most damaging.
+            return "EXECUTION_HISTORY_INDETERMINATE"
+
+        if self.pending_request_ids or self._execution_side_effect_ids:
+            return "EXECUTION_REQUESTS_IN_FLIGHT"
+
+        completed = getattr(
+            self.idempotency_store,
+            "completed_requests",
+            None,
+        )
+
+        entries = getattr(
+            self.transaction_journal,
+            "entries",
+            None,
+        )
+
+        if not isinstance(completed, dict) or not isinstance(entries, dict):
+            return "EXECUTION_HISTORY_INDETERMINATE"
+
+        if completed or entries or self.completed_request_results:
+            return "EXECUTION_HISTORY_PRESENT"
+
+        return None
+
     def reset(self) -> None:
+        """Clear in-memory runtime diagnostics only.
+
+        Block 5J (finding B5H-0-9). This operation used to call
+        ``idempotency_store.reset()``, erasing the durable terminal-result
+        authority while leaving every COMMITTED transaction-journal entry in
+        place. That is precisely the state
+        ``FinancialRuntimeSafetyService._authorities_agree`` classifies as
+        ``SOURCE_DISAGREEMENT``, so a single reset could halt the next start
+        of an otherwise healthy runtime - and, because ``_claim_request``
+        answers duplicates from ``completed_request_results`` alone, could
+        also let an already-executed request execute a second time in the
+        current process.
+
+        The durable erase is gone: this method now writes no state file at
+        all. It refuses outright (``ExecutionResetRefusedError``) whenever
+        durable execution history exists, whenever either authority failed to
+        load, and whenever a request is still in flight - so it can no longer
+        manufacture divergence, and it can no longer discard committed
+        financial evidence for convenience. Deliberately destructive
+        maintenance is an explicit operator action against the state files
+        themselves (see ADR-0005 and
+        ``tools/reconcile_execution_authorities.py``), never a runtime call.
+
+        The single-authority ``ExecutionIdempotencyStore.reset()`` /
+        ``ExecutionTransactionJournal.reset()`` primitives are deliberately
+        left as they are: neither store can see its counterpart, so the
+        pairing invariant can only be enforced here, where both are held.
+        """
+
         with self._lock:
+            refusal = self._reset_refusal_reason()
+
+            if refusal is not None:
+                logger.warning(
+                    "Execution Manager reset refused reason=%s",
+                    refusal,
+                )
+
+                raise ExecutionResetRefusedError(refusal)
+
             self.history.clear()
             self.rejections.clear()
             self.errors.clear()
-
-            self.pending_request_ids.clear()
-            self.completed_request_results.clear()
-            self._execution_side_effect_ids.clear()
-
-            self.idempotency_store.reset(
-                delete_file=False
-            )
 
             self.stats = self._new_stats()
 

@@ -195,6 +195,72 @@ Any migration of legacy paper-trading history into the current durable
 stores is a separate, explicit operator workflow that does not exist yet.
 Until it does, treat the legacy file as read-only historical data.
 
+### 6. `SOURCE_DISAGREEMENT` at startup (Block 5J)
+
+Atlas halts with `SOURCE_DISAGREEMENT` when the execution transaction
+journal holds a COMMITTED entry whose counterpart is missing from the
+execution idempotency store. The journal owns the commit outcome; the
+idempotency store owns the terminal result a replayed request must be
+answered with. Starting with one half missing would let an already-executed
+request execute a second time, so the runtime refuses.
+
+```
+python tools/reconcile_execution_authorities.py --state-directory ./memory_data
+```
+
+The tool is verify-first: without `--apply` it reports and writes nothing.
+`--dry-run` is an explicit spelling of that default and cannot be combined
+with `--apply`. Exit codes follow the same contract as the tools above
+(`0` agreed / dry run / repaired, `1` usage, `2` action required, `3` repair
+attempted and failed with the idempotency file restored byte-for-byte).
+
+Outcomes are `AUTHORITIES_AGREE`, `WOULD_RECONCILE`, `RECONCILED`,
+`RECONCILIATION_REQUIRED`, `STATE_INVALID`, `FAILED`, with these fixed
+reason codes:
+
+| reason code | meaning |
+| --- | --- |
+| `AUTHORITIES_ALREADY_AGREE` | nothing to reconcile |
+| `DRY_RUN` | a repair is provable; `--apply` would perform it |
+| `RECONCILIATION_COMPLETE` | repaired and verified |
+| `STATE_DIRECTORY_ABSENT` | no such state directory |
+| `JOURNAL_UNREADABLE` / `IDEMPOTENCY_UNREADABLE` | that authority did not load |
+| `APPLIED_AUTHORITY_CORRUPT` / `APPLIED_AUTHORITY_CONFLICT` | the immutable applied-execution archive is torn or self-contradictory |
+| `JOURNAL_UNRESOLVED` | a PREPARED / COMMIT_STATUS_UNKNOWN entry exists — resolve it first |
+| `JOURNAL_ENTRY_MALFORMED` | a journal entry's state or result is not a complete, self-consistent record |
+| `AUTHORITY_RESULT_CONFLICT` | both authorities hold a record and they disagree |
+| `JOURNAL_ENTRY_ABSENT` | a terminal result exists with no journal entry |
+| `FINANCIAL_APPLICATION_UNPROVEN` | no applied-execution record (or no clean book) proves the execution was applied |
+| `IDEMPOTENCY_WRITE_FAILED` | the repair could not be persisted |
+| `POST_REPAIR_VERIFICATION_FAILED` / `POST_REPAIR_RUNTIME_NOT_READY` / `POST_REPAIR_EVIDENCE_INVALID` | the write landed but a post-write gate refused it; originals restored |
+
+**The tool repairs exactly one class**: a journal entry that is COMMITTED
+with a complete successful result, whose `request_id`/`execution_id` an
+immutable applied-execution record proves was financially applied, in a book
+that loads cleanly — and that has no idempotency record. The repair copies
+the journal's own result into the idempotency store field for field. It is a
+copy of an existing authority, never a derivation from partial evidence.
+
+Everything else refuses, including the reverse direction: a journal entry is
+never reconstructed from a terminal result, because commit-outcome and
+lifecycle semantics are not recoverable from one. A book holding any other
+disagreement class refuses wholesale, so nothing is written while an
+unresolved question remains. The idempotency store is the only file this
+tool can ever write; the journal, both sidecars, the financial-state file,
+and the audit log are never modified.
+
+Output safety is the same as the tools above: fixed reason-code tokens,
+outcomes, counts, and the sanitized state-directory path only. No
+`request_id`, `execution_id`, `position_id`, `order_id`, state-file content,
+or raw exception text is ever printed.
+
+Note that no *runtime* operation can produce this divergence any more.
+`ExecutionManager.reset()` used to erase the idempotency authority while
+leaving the journal intact; as of Block 5J it writes no state file at all and
+refuses (`ExecutionResetRefusedError`, reason `EXECUTION_HISTORY_PRESENT` /
+`EXECUTION_REQUESTS_IN_FLIGHT` / `EXECUTION_HISTORY_INDETERMINATE`) whenever
+durable execution history exists.
+
 ## Consequences
 
 - Operators have one documented command with a machine-detectable exit code,
