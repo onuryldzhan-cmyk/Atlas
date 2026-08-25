@@ -805,19 +805,36 @@ class ExecutionPortfolioFoundation:
 
     @staticmethod
     def available_capital(state: dict[str, Any]) -> Decimal:
-        return D(state["cash"]) - D(state["reserved_capital"])
+        # Block 5L: derived under an explicit local context for the same
+        # reason `_open`/`_close` are. Free capital is read by sizing and
+        # risk admission, so computing it under whatever `decimal` precision
+        # the calling process happens to have set could silently understate
+        # or overstate it rather than fail closed.
+        with localcontext() as context:
+            context.prec = SETTLEMENT_CONTEXT_PRECISION
+            context.rounding = ROUND_HALF_EVEN
+            return D(state["cash"]) - D(state["reserved_capital"])
 
     def snapshot(self, *, replayed: bool = False) -> dict[str, Any]:
         self._require_ready()
-        exposure = sum((D(p["base_quantity"]) * D(p["mark_price"]) for p in self._state["positions"].values()), D("0"))
-        unrealized = sum((D(p["base_quantity"]) * D(p["mark_price"]) - D(p["cost_quote"]) for p in self._state["positions"].values()), D("0"))
-        cash, fees = D(self._state["cash"]), D(self._state["fees"])
+        # Every figure below is derived from the durable book by arithmetic,
+        # so it carries the same context requirement as the settlement path
+        # that produced the book (Block 5L).
+        with localcontext() as context:
+            context.prec = SETTLEMENT_CONTEXT_PRECISION
+            context.rounding = ROUND_HALF_EVEN
+            exposure = sum((D(p["base_quantity"]) * D(p["mark_price"]) for p in self._state["positions"].values()), D("0"))
+            unrealized = sum((D(p["base_quantity"]) * D(p["mark_price"]) - D(p["cost_quote"]) for p in self._state["positions"].values()), D("0"))
+            cash, fees = D(self._state["cash"]), D(self._state["fees"])
+            committed = sum((D(p["cost_quote"]) for p in self._state["positions"].values()), D("0"))
+            realized_net = D(self._state["realized_gross_pnl"]) - fees
+            equity = cash + exposure
         return {"ready": True, "recovery_required": False, "cash": cash,
             "reserved_capital": D(self._state["reserved_capital"]),
-            "committed_capital": sum((D(p["cost_quote"]) for p in self._state["positions"].values()), D("0")),
+            "committed_capital": committed,
             "gross_exposure": exposure, "realized_gross_pnl": D(self._state["realized_gross_pnl"]),
-            "fees": fees, "realized_net_pnl": D(self._state["realized_gross_pnl"]) - fees,
-            "unrealized_pnl": unrealized, "equity": cash + exposure,
+            "fees": fees, "realized_net_pnl": realized_net,
+            "unrealized_pnl": unrealized, "equity": equity,
             "available_capital": self.available_capital(self._state),
             "positions": json.loads(json.dumps(self._state["positions"])), "replayed": replayed}
 

@@ -65,6 +65,7 @@
     "core/decision.py",
     "core/decision_adapter.py",
     "core/decision_intelligence.py",
+    "core/durable_append_log.py",
     "core/event_bus.py",
     "core/execution_idempotency_store.py",
     "core/execution_manager.py",

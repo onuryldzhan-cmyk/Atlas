@@ -36,7 +36,7 @@ arriving here is therefore malformed input, not absence.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_EVEN, localcontext
 from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, Mapping
@@ -44,6 +44,15 @@ from typing import Any, Mapping
 
 ZERO = Decimal("0")
 ONE = Decimal("1")
+
+# Block 5L: every capital figure this module derives is computed inside an
+# explicit local context, matching the settlement precision
+# ``ExecutionPortfolioFoundation`` already uses. Risk ceilings and the
+# quantity/notional gate are capital-accounting authority: derived under
+# whatever ``decimal`` precision the calling process happens to have set, a
+# ceiling could round *up* and admit an allocation above the true policy
+# limit. Restated here rather than imported so no new module edge is created.
+RISK_CONTEXT_PRECISION = 50
 
 
 class RiskDecisionStatus(str, Enum):
@@ -197,11 +206,17 @@ class RiskPolicy:
 
     @property
     def reserved_capital(self) -> Decimal:
-        return self.total_capital * self.cash_reserve_pct
+        with localcontext() as context:
+            context.prec = RISK_CONTEXT_PRECISION
+            context.rounding = ROUND_HALF_EVEN
+            return self.total_capital * self.cash_reserve_pct
 
     @property
     def allocatable_capital(self) -> Decimal:
-        return self.total_capital - self.reserved_capital
+        with localcontext() as context:
+            context.prec = RISK_CONTEXT_PRECISION
+            context.rounding = ROUND_HALF_EVEN
+            return self.total_capital - self.reserved_capital
 
 
 @dataclass(frozen=True)
@@ -251,15 +266,18 @@ def derive_buy_capacity_limits(
     let the two drift apart.
     """
 
-    return BuyCapacityLimits(
-        max_position=policy.total_capital * policy.max_position_pct,
-        bucket_allocation=policy.total_capital * bucket_policy.max_allocation_pct,
-        per_symbol=policy.total_capital * policy.per_symbol_pct - symbol_exposure,
-        concentration=policy.total_capital * policy.concentration_pct - symbol_exposure,
-        bucket_exposure_ceiling=policy.total_capital * bucket_policy.exposure_ceiling_pct - symbol_exposure,
-        portfolio_exposure=policy.total_capital * policy.portfolio_exposure_pct - committed_quote,
-        allocatable_capital=policy.allocatable_capital - committed_quote,
-    )
+    with localcontext() as context:
+        context.prec = RISK_CONTEXT_PRECISION
+        context.rounding = ROUND_HALF_EVEN
+        return BuyCapacityLimits(
+            max_position=policy.total_capital * policy.max_position_pct,
+            bucket_allocation=policy.total_capital * bucket_policy.max_allocation_pct,
+            per_symbol=policy.total_capital * policy.per_symbol_pct - symbol_exposure,
+            concentration=policy.total_capital * policy.concentration_pct - symbol_exposure,
+            bucket_exposure_ceiling=policy.total_capital * bucket_policy.exposure_ceiling_pct - symbol_exposure,
+            portfolio_exposure=policy.total_capital * policy.portfolio_exposure_pct - committed_quote,
+            allocatable_capital=policy.allocatable_capital - committed_quote,
+        )
 
 
 @dataclass(frozen=True)
@@ -388,11 +406,14 @@ class RiskEngine:
 
     def _decision(self, status: RiskDecisionStatus, reason: str, state: RiskState,
                   *, allocation: Decimal = ZERO) -> RiskDecision:
-        drawdown_amount = max(state.peak_equity - state.current_equity, ZERO)
-        drawdown_pct = drawdown_amount / state.peak_equity if state.peak_equity > ZERO else ZERO
+        with localcontext() as context:
+            context.prec = RISK_CONTEXT_PRECISION
+            context.rounding = ROUND_HALF_EVEN
+            drawdown_amount = max(state.peak_equity - state.current_equity, ZERO)
+            drawdown_pct = drawdown_amount / state.peak_equity if state.peak_equity > ZERO else ZERO
+            gross = state.committed_quote
+            available = max(self.policy.allocatable_capital - gross, ZERO)
         level = self._drawdown_level(drawdown_pct)
-        gross = state.committed_quote
-        available = max(self.policy.allocatable_capital - gross, ZERO)
         return RiskDecision(status, reason, allocation, gross, available,
                             self.policy.reserved_capital, state.realized_daily_pnl,
                             drawdown_amount, drawdown_pct, level, self.policy.version)
@@ -436,13 +457,20 @@ class RiskEngine:
                 raise ValueError("confidence out of range")
             if request.base_quantity is not None:
                 quantity = decimal_value(request.base_quantity, "base_quantity", allow_zero=False)
-                if quantity * price != allocation:
+                with localcontext() as context:
+                    context.prec = RISK_CONTEXT_PRECISION
+                    context.rounding = ROUND_HALF_EVEN
+                    quantity_notional = quantity * price
+                if quantity_notional != allocation:
                     return reject("QUANTITY_NOTIONAL_MISMATCH")
         except (ValueError, TypeError):
             return reject("INVALID_FINANCIAL_INPUT")
 
         symbol_positions = [p for p in state.positions if p.symbol == symbol]
-        symbol_exposure = sum((p.quote_exposure for p in symbol_positions), ZERO)
+        with localcontext() as context:
+            context.prec = RISK_CONTEXT_PRECISION
+            context.rounding = ROUND_HALF_EVEN
+            symbol_exposure = sum((p.quote_exposure for p in symbol_positions), ZERO)
         if reducing:
             if not symbol_positions or allocation > symbol_exposure:
                 return reject("INVALID_RISK_REDUCTION")
@@ -466,13 +494,20 @@ class RiskEngine:
         bucket_policy = self.policy.buckets[RiskBucket(risk_level)]
         if confidence < max(self.policy.global_minimum_confidence, bucket_policy.minimum_confidence):
             return reject("CONFIDENCE_BELOW_POLICY")
-        loss = max(-state.realized_daily_pnl, ZERO)
+        with localcontext() as context:
+            context.prec = RISK_CONTEXT_PRECISION
+            context.rounding = ROUND_HALF_EVEN
+            loss = max(-state.realized_daily_pnl, ZERO)
+            daily_loss_ceiling = (
+                self.policy.total_capital * self.policy.max_daily_loss_pct
+                if self.policy.max_daily_loss_pct is not None else None
+            )
+            dd_pct = (max(state.peak_equity - state.current_equity, ZERO) / state.peak_equity
+                      if state.peak_equity > ZERO else ZERO)
         if self.policy.max_daily_loss_amount is not None and loss >= self.policy.max_daily_loss_amount:
             return reject("DAILY_LOSS_LIMIT_BREACHED")
-        if self.policy.max_daily_loss_pct is not None and loss >= self.policy.total_capital * self.policy.max_daily_loss_pct:
+        if daily_loss_ceiling is not None and loss >= daily_loss_ceiling:
             return reject("DAILY_LOSS_LIMIT_BREACHED")
-        dd_pct = (max(state.peak_equity - state.current_equity, ZERO) / state.peak_equity
-                  if state.peak_equity > ZERO else ZERO)
         level = self._drawdown_level(dd_pct)
         if level is DrawdownLevel.HALT_NEW_RISK:
             return reject("DRAWDOWN_HALT_NEW_RISK")

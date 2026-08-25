@@ -716,8 +716,16 @@ def test_v_migration_preserves_financial_totals_closed_history_and_applied_mappi
     snap = foundation.snapshot()
     assert snap["cash"] == D("500") and snap["fees"] == D("1") and snap["realized_gross_pnl"] == D("9")
     assert snap["positions"] == v1_positions
-    assert foundation._closed_by_position_id == v1_closed
-    assert {eid: rec.idempotency_key for eid, rec in foundation._applied_by_execution_id.items()} == v1_applied
+    # The migrated content is asserted through each archive's own public
+    # index (Block 5L, L-3). The foundation constructed above hydrates from
+    # exactly these two archives and only reports `ready` when that hydration
+    # succeeded, so asserting the durable authority here is what asserting its
+    # private mirror was standing in for.
+    assert closed_archive.load_index().by_position_id == v1_closed
+    assert {
+        eid: rec.idempotency_key
+        for eid, rec in applied_archive.load_index().by_execution_id.items()
+    } == v1_applied
 
     # A migrated applied identity still replays cleanly through the real path.
     replay_fill = ExecutionResult(

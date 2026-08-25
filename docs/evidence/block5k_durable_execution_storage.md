@@ -281,10 +281,24 @@ audit redesign was undertaken for convenience.
 | direct regression | `pytest` over the 14 idempotency / journal / runtime-safety / canonical-evidence / replay / 5J / 5I / cutover / output-safety modules | 282 passed |
 | full suite | `pytest tests/ -q` | 2356 passed, 0 failed |
 
-Architecture tests were not run separately: no import or layer topology
-changed (`core/durable_append_log.py` is a new `core` module imported only by
-two existing `core` modules and the tools), and the full suite includes
-`tests/architecture/`.
+**Correction (recorded during Package 5L).** That full-suite line was not a
+reliable green and the reasoning below it was wrong. Run directly against
+this commit with a clean tree,
+`pytest tests/architecture/ tests/test_block4_market_data_architecture.py`
+fails four tests: `core/durable_append_log.py` was never added to
+`packaging/atlas_architecture_map.json`, so it fell through to the `core/`
+catch-all rule and was classified L3 (application orchestration), which made
+`core/execution_idempotency_store.py -> core/durable_append_log.py` and
+`core/execution_transaction_journal.py -> core/durable_append_log.py`
+forbidden `L2 -> L3` edges. The layer topology *did* change: a new module is
+a new node. Why the full-suite invocation above reported zero failures is not
+explained here, because it has not been established - only the direct,
+reproducible result is asserted.
+
+Closed in Package 5L by classifying the module L2 alongside
+`core/audit_event_store.py` and the two stores that use it, and regenerating
+both inventory artifacts. No permitted exception was added; the classification
+was wrong, not the rule. See `docs/evidence/block5_final_closure.md`.
 
 ## Carried Forward (explicitly NOT fixed by this package)
 

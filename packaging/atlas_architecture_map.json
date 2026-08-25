@@ -254,6 +254,11 @@
       "reason": "journal, matches L2 example bucket"
     },
     {
+      "pattern": "core/durable_append_log.py",
+      "layer": "L2",
+      "reason": "durable append-only storage primitive, matches L2 example bucket"
+    },
+    {
       "pattern": "core/event_bus.py",
       "layer": "L2",
       "reason": "event bus implementation, matches L2 example bucket"
@@ -450,6 +455,7 @@
     "core/decision.py": "L1",
     "core/decision_adapter.py": "L3",
     "core/decision_intelligence.py": "L1",
+    "core/durable_append_log.py": "L2",
     "core/event_bus.py": "L2",
     "core/execution_idempotency_store.py": "L2",
     "core/execution_manager.py": "L3",

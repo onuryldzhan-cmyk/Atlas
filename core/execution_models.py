@@ -49,7 +49,7 @@ from dataclasses import dataclass
 from dataclasses import field
 from datetime import UTC
 from datetime import datetime
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, localcontext
 from enum import Enum
 from typing import Any
 from uuid import uuid4
@@ -58,6 +58,14 @@ from uuid import uuid4
 # ============================================================
 # HELPERS
 # ============================================================
+
+
+#: Floor for the local precision ``validate_financial_evidence`` uses to
+#: compute an exact price x quantity product. The operand-digit sum is what
+#: actually guarantees exactness; this floor keeps the context no narrower
+#: than the interpreter default so the gate can never become *stricter* than
+#: it was before Block 5L made it context-independent.
+_MINIMUM_EXACT_PRODUCT_PRECISION = 28
 
 
 def utc_now_iso() -> str:
@@ -996,7 +1004,23 @@ class ExecutionResult:
         assert self.execution_price is not None
         assert self.filled_base_quantity is not None
         assert self.filled_quote_notional is not None
-        expected = self.execution_price * self.filled_base_quantity
+        # Block 5L: this is an *exact* equality gate on a confirmed fill, so
+        # the product it compares against must itself be exact. Computed
+        # under the ambient context it was not: a product needing more
+        # significant digits than the caller's `decimal` precision was
+        # rounded, and the fill was then refused as a mismatch even though
+        # price x quantity did equal the notional. That is fail-closed rather
+        # than wrong, but it refuses money that already moved. An explicit
+        # local context wide enough for the full product removes the false
+        # rejection and keeps every true one - a genuinely disagreeing
+        # notional still differs from the exact product.
+        with localcontext() as exact:
+            exact.prec = max(
+                len(self.execution_price.as_tuple().digits)
+                + len(self.filled_base_quantity.as_tuple().digits),
+                _MINIMUM_EXACT_PRODUCT_PRECISION,
+            )
+            expected = self.execution_price * self.filled_base_quantity
         if expected != self.filled_quote_notional:
             raise ValueError("Execution quantity/notional mismatch")
         if self.filled_base_quantity <= 0 or self.filled_quote_notional <= 0:
