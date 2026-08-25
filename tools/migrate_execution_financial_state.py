@@ -396,9 +396,14 @@ def migrate(
             if record.execution_id not in already_applied:
                 applied_store.append(record)
                 applied_appended += 1
-    except Exception as exc:
+    except Exception:
+        # ADR-0005: the reason code an operator sees is a fixed token. The
+        # underlying exception's text can carry an execution_id, an
+        # idempotency_key, a position_id, or a raw filesystem path, none of
+        # which may reach this tool's output; the phase is what the operator
+        # actually needs, and truncating the prose would not make it safe.
         return MigrationResult(
-            MigrationOutcome.FAILED, f"MIGRATION_WRITE_FAILED:{str(exc)[:200]}",
+            MigrationOutcome.FAILED, "MIGRATION_WRITE_FAILED:SIDECAR_APPEND",
             str(working_path), str(applied_path), str(closed_path),
             applied_count=len(applied_records), closed_count=len(closed_items),
             applied_appended=applied_appended, closed_appended=closed_appended,
@@ -440,9 +445,12 @@ def migrate(
             ),
         }
         FinancialStateStore(working_path).save(working_payload)
-    except Exception as exc:
+    except Exception:
+        # Fixed token for the same reason as the sidecar-append failure
+        # above: no exception prose, identifier, or path-dependent state
+        # content ever becomes an operator-visible reason code.
         return MigrationResult(
-            MigrationOutcome.FAILED, f"MIGRATION_WRITE_FAILED:{str(exc)[:200]}",
+            MigrationOutcome.FAILED, "MIGRATION_WRITE_FAILED:WORKING_STATE_REWRITE",
             str(working_path), str(applied_path), str(closed_path),
             applied_count=len(applied_records), closed_count=len(closed_items),
             applied_appended=applied_appended, closed_appended=closed_appended,

@@ -8,10 +8,10 @@ authorities in one state directory, with one narrowly-proven repair.
 
 Authority model (established by Block 5H-0 / 5I, not redefined here):
 
-- ``execution_transaction_journal.json`` is the permanent commit-outcome
+- ``execution_transaction_journal.jsonl`` is the permanent commit-outcome
   authority. A COMMITTED entry means the financial side effect actually
   happened.
-- ``execution_idempotency.json`` is the permanent terminal-result / replay
+- ``execution_idempotency.jsonl`` is the permanent terminal-result / replay
   authority. Its record is what a replayed request_id is answered with, so a
   missing record is what lets an already-executed request execute twice.
 - ``execution_applied_executions.jsonl`` (plus the ``applied_checkpoint`` in
@@ -122,8 +122,8 @@ EXIT_USAGE = 1
 EXIT_REFUSED = 2
 EXIT_FAILED = 3
 
-DEFAULT_JOURNAL_FILE = "execution_transaction_journal.json"
-DEFAULT_IDEMPOTENCY_FILE = "execution_idempotency.json"
+DEFAULT_JOURNAL_FILE = "execution_transaction_journal.jsonl"
+DEFAULT_IDEMPOTENCY_FILE = "execution_idempotency.jsonl"
 DEFAULT_FINANCIAL_STATE_FILE = "execution_financial_state.json"
 DEFAULT_APPLIED_FILE = "execution_applied_executions.jsonl"
 DEFAULT_CLOSED_FILE = "execution_closed_positions.jsonl"
@@ -253,12 +253,24 @@ def reconcile(
     idempotency_path = directory / idempotency_file
 
     journal = ExecutionTransactionJournal(journal_path)
+    # Legacy v1 state is reported before unreadability so the operator is
+    # sent to the migration tool rather than to a corruption investigation.
+    if journal.migration_required:
+        return ReconciliationResult(
+            ReconciliationOutcome.STATE_INVALID, "JOURNAL_MIGRATION_REQUIRED",
+            rendered_directory,
+        )
     if not journal.loaded or journal.load_failed:
         return ReconciliationResult(
             ReconciliationOutcome.STATE_INVALID, "JOURNAL_UNREADABLE", rendered_directory,
         )
 
     idempotency = ExecutionIdempotencyStore(idempotency_path)
+    if idempotency.migration_required:
+        return ReconciliationResult(
+            ReconciliationOutcome.STATE_INVALID, "IDEMPOTENCY_MIGRATION_REQUIRED",
+            rendered_directory,
+        )
     if not idempotency.loaded:
         return ReconciliationResult(
             ReconciliationOutcome.STATE_INVALID, "IDEMPOTENCY_UNREADABLE", rendered_directory,

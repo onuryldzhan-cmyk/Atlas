@@ -85,14 +85,32 @@ class FinancialRuntimeSafetyService:
                 return False
         return True
 
+    def _migration_required(self) -> bool:
+        """Whether either authority holds legacy state it refuses to reinterpret.
+
+        Block 5K moved both authorities to versioned append-only logs. A
+        legacy v1 file is real history, so the store reports it rather than
+        loading an empty log in its place; the runtime must treat that as
+        the schema/migration failure it is and never as a clean new store.
+        """
+        return any(
+            bool(getattr(authority, "migration_required", False))
+            for authority in (self._journal, self._idempotency)
+        )
+
     def _base_evidence(self) -> RecoveryEvidence:
+        migration_required = self._migration_required()
         journal_valid = bool(getattr(self._journal, "loaded", True)) and not bool(
             getattr(self._journal, "load_failed", False)
         )
-        idempotency_valid = bool(getattr(self._idempotency, "loaded", True))
-        if not idempotency_valid:
+        idempotency_valid = bool(
+            getattr(self._idempotency, "loaded", True)
+        ) and not bool(getattr(self._idempotency, "migration_required", False))
+        if not idempotency_valid and not migration_required:
             # A deliberately non-loaded, not-yet-created store is a clean new
-            # authority. A present file that was not loaded is never trusted.
+            # authority. A present file that was not loaded is never trusted,
+            # and neither is an absent log whose legacy predecessor is still
+            # sitting beside it awaiting migration.
             file_path = getattr(self._idempotency, "file_path", None)
             try:
                 idempotency_valid = file_path is not None and not file_path.exists()
@@ -116,7 +134,9 @@ class FinancialRuntimeSafetyService:
             idempotency_valid=idempotency_valid,
             relational_valid=self._safe_check(self._relational_state_valid),
             sources_agree=self._authorities_agree(),
-            schema_valid=self._safe_check(self._schema_valid),
+            schema_valid=(
+                self._safe_check(self._schema_valid) and not migration_required
+            ),
         )
 
     def assess(self) -> FinancialReadiness:

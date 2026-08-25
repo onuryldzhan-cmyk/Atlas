@@ -585,10 +585,21 @@ def test_i2_explicit_invalid_bounds_normalize_like_before(
 # =============================================================================
 
 
-def test_j_v1_persisted_format_loads_without_migration_and_stops_pruning(
+def test_j_v1_persisted_format_is_never_reinterpreted_and_pruning_stays_off(
     tmp_path: Path,
 ) -> None:
-    path = tmp_path / "idempotency.json"
+    """Block 5K replaced the v1 whole-file object with a versioned
+    append-only log, so this test's original subject - that a v1 file loads
+    in place - no longer holds and must not be recreated by a compatibility
+    loader. A v1 file is real completed history: reading it as an absent v2
+    authority would let every request in it execute a second time. It fails
+    closed and waits for tools/migrate_execution_authority_logs.py.
+
+    The unbounded-retention half of this test's contract (Block 5H-0) is
+    unchanged and is still asserted here against the v2 authority."""
+
+    legacy_path = tmp_path / "idempotency.json"
+    log_path = tmp_path / "idempotency.jsonl"
     legacy_ids = [f"legacy-{i:04d}" for i in range(10)]
     legacy_payload = {
         "version": "1.0",
@@ -597,21 +608,34 @@ def test_j_v1_persisted_format_loads_without_migration_and_stops_pruning(
             request_id: _confirmed_result(request_id) for request_id in legacy_ids
         },
     }
-    path.write_text(json.dumps(legacy_payload), encoding="utf-8")
+    legacy_path.write_text(json.dumps(legacy_payload), encoding="utf-8")
 
-    store = ExecutionIdempotencyStore(file_path=path)
+    store = ExecutionIdempotencyStore(file_path=log_path)
 
-    assert store.VERSION == "1.0"
-    assert store.max_records is None
-    assert len(store.completed_requests) == len(legacy_ids)
-    for request_id in legacy_ids:
-        assert request_id in store.completed_requests
+    assert store.VERSION == "2.0"
+    assert store.migration_required is True
+    assert store.loaded is False
+    assert store.completed_requests == {}
+    assert legacy_path.read_text(encoding="utf-8") == json.dumps(legacy_payload)
+
+    # A runtime built on it refuses to start rather than treating ten
+    # completed requests as no history at all.
+    readiness = FinancialRuntimeSafetyService(
+        transaction_journal=ExecutionTransactionJournal(file_path=tmp_path / "journal.jsonl"),
+        idempotency_store=store,
+    ).assess()
+
+    assert readiness.ready is False
+    assert readiness.decision.reason == "SCHEMA_OR_MIGRATION_INVALID"
+
+    # Unbounded retention on the v2 authority is what it was on the v1 one.
+    migrated = ExecutionIdempotencyStore(file_path=tmp_path / "fresh.jsonl")
+
+    assert migrated.max_records is None
 
     for i in range(200):
         request_id = f"new-{i:05d}"
-        assert store.record(request_id, _confirmed_result(request_id), save=False)
+        assert migrated.record(request_id, _confirmed_result(request_id), save=False)
 
-    assert store.stats["records_pruned"] == 0
-    assert len(store.completed_requests) == len(legacy_ids) + 200
-    for request_id in legacy_ids:
-        assert request_id in store.completed_requests
+    assert migrated.stats["records_pruned"] == 0
+    assert len(migrated.completed_requests) == 200

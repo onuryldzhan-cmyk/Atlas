@@ -152,8 +152,8 @@ EXECUTION_FINANCIAL_STATE_FILE = "execution_financial_state.json"
 EXECUTION_APPLIED_EXECUTIONS_FILE = "execution_applied_executions.jsonl"
 EXECUTION_CLOSED_POSITIONS_FILE = "execution_closed_positions.jsonl"
 
-EXECUTION_IDEMPOTENCY_STATE_FILE = "execution_idempotency.json"
-EXECUTION_TRANSACTION_JOURNAL_FILE = "execution_transaction_journal.json"
+EXECUTION_IDEMPOTENCY_STATE_FILE = "execution_idempotency.jsonl"
+EXECUTION_TRANSACTION_JOURNAL_FILE = "execution_transaction_journal.jsonl"
 EXECUTION_AUDIT_EVENT_FILE = "audit/atlas_audit_events.jsonl"
 
 PAPER_TRADE_BOOK_FILE = "paper_trades.json"

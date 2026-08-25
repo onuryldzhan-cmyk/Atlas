@@ -515,8 +515,12 @@ def test_h_conflicting_results_between_authorities_refuse(tmp_path):
     store = ExecutionIdempotencyStore(directory / IDEMPOTENCY_FILE)
     diverged = dict(store.completed_requests["req-h"])
     diverged["filled_quote_notional"] = "999999"
-    store.completed_requests["req-h"] = diverged
-    assert store.save()
+    # Block 5K's append-only authority refuses to durably overwrite a
+    # terminal result, so the divergence is introduced the only way the
+    # store's own API allows: the original record is removed (which compacts
+    # the log) and the diverged one recorded in its place.
+    assert store.remove("req-h", save=True)
+    assert store.record("req-h", diverged, save=True)
 
     outcome = reconcile(directory, apply=True)
 
@@ -635,12 +639,36 @@ def test_j_unresolved_journal_entry_blocks_all_reconciliation(tmp_path):
     assert _snapshot(directory) == before
 
 
-def test_j_malformed_journal_state_refuses(tmp_path):
+def test_j_unknown_journal_state_refuses(tmp_path):
+    """A state outside the journal's own lifecycle is refused by the Block 5K
+    authority itself, at load, rather than being carried into this tool as a
+    classifiable entry. The refusal moved earlier and got stricter; it did
+    not go away."""
     directory = tmp_path / "state"
     _build_book(directory, ["req-j4"])
 
     journal = ExecutionTransactionJournal(directory / JOURNAL_FILE)
     journal.entries["req-j4"]["state"] = "SOMETHING_ELSE"
+    assert journal.save()
+
+    assert ExecutionTransactionJournal(directory / JOURNAL_FILE).load_failed is True
+
+    outcome = reconcile(directory, apply=True)
+
+    assert outcome.outcome is ReconciliationOutcome.STATE_INVALID
+    assert outcome.reason_code == "JOURNAL_UNREADABLE"
+
+
+def test_j_malformed_journal_state_refuses(tmp_path):
+    """A COMMITTED entry whose result is not a complete, self-consistent
+    success is the refusal class this tool owns: the journal loads, but the
+    payload a repair would copy into the replay authority is not there."""
+    directory = tmp_path / "state"
+    _build_book(directory, ["req-j5"])
+    _drop_idempotency_record(directory, "req-j5")
+
+    journal = ExecutionTransactionJournal(directory / JOURNAL_FILE)
+    journal.entries["req-j5"].pop("result")
     assert journal.save()
 
     outcome = reconcile(directory, apply=True)
@@ -819,11 +847,15 @@ def test_n_operator_output_never_exposes_identifiers_or_payloads(tmp_path):
         _assert_output_is_safe(completed.stdout)
         _assert_output_is_safe(completed.stderr)
 
-    # ... and the same for the successful repair path.
-    assert ExecutionIdempotencyStore(directory / IDEMPOTENCY_FILE).record(
-        "SECRET-REQUEST-ID", result, save=True,
-    )
-    ExecutionIdempotencyStore(directory / IDEMPOTENCY_FILE).remove(
+    # ... and the same for the successful repair path. The --apply runs above
+    # already recreated the terminal result, so the repair is re-armed by
+    # removing it again rather than by writing a second, differently stamped
+    # terminal record over a durable one - which Block 5K's append-only
+    # idempotency authority refuses by design.
+    assert ExecutionIdempotencyStore(
+        directory / IDEMPOTENCY_FILE
+    ).contains("SECRET-REQUEST-ID")
+    assert ExecutionIdempotencyStore(directory / IDEMPOTENCY_FILE).remove(
         "SECRET-REQUEST-ID", save=True,
     )
     repaired = run_cli("--state-directory", str(directory), "--apply", "--json")
