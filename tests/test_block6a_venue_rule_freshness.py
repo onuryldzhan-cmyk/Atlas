@@ -20,6 +20,7 @@ the day the suite runs, or on the order the tests execute in.
 from __future__ import annotations
 
 import socket
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal as D
 from typing import Any
@@ -349,12 +350,35 @@ def application(tmp_path, *, execution_mode: str = "PAPER", **policy: Any) -> At
     )
 
 
+def with_venue_bounds(rules: InstrumentRuleset) -> InstrumentRuleset:
+    """The shipped rules, given venue upper bounds.
+
+    Block 6B made complete upper bounds a second requirement of live
+    authority. These tests are about rule *age*, so the bounds are supplied
+    far above anything they trade and never bind: what stays isolated is the
+    freshness gate.
+    """
+    return InstrumentRuleset(
+        {
+            symbol: replace(
+                entry,
+                max_quantity=D("1000000"),
+                max_notional=D("1000000000"),
+                market_max_quantity=D("1000000"),
+            )
+            for symbol, entry in rules.rules.items()
+        },
+        schema_version=rules.schema_version,
+    )
+
+
 def live_authorized_manager(tmp_path, *, offset_seconds: int):
     """A runtime holding live authority, with the shipped rules evaluated at a
     fixed distance from their own ``retrieved_at``."""
     app = application(tmp_path, execution_mode="LIVE")
     manager = app.execution
     manager.live_execution_enabled = True
+    manager.instrument_rules = with_venue_bounds(app.instrument_ruleset)
 
     observed = datetime.fromisoformat(
         app.instrument_ruleset.get("BTCUSDT").retrieved_at.replace("Z", "+00:00")

@@ -84,6 +84,8 @@ from core.execution_portfolio_foundation import (
 )
 from core.fee_accounting import FeeNormalizer, FeeRejected
 from core.instrument_rules import (
+    FULL_EXIT_ABOVE_VENUE_MAXIMUM,
+    VENUE_UPPER_BOUNDS_UNAVAILABLE,
     InstrumentRuleset,
     floor_to_step,
     is_aligned_to_step,
@@ -534,6 +536,28 @@ class ExecutionManager:
                 decision.report.maximum_age_seconds,
                 decision.report.observed_at,
             )
+
+        # Block 6B (readiness gate V1): a runtime that can actually reach a
+        # venue may not come online against rules that do not model the
+        # venue's upper bounds. Unmodelled maxima are only tolerable while no
+        # order can reach a venue at all, which is precisely what live
+        # authority ends. Bounded PAPER is unaffected by design: it is the
+        # existing, recorded policy that unmodelled maxima are safe there
+        # because nothing leaves the paper book.
+        if self.live_authorized:
+            unbounded = [
+                symbol
+                for symbol in sorted(symbols)
+                if not self.instrument_rules.get(symbol).has_complete_venue_bounds
+            ]
+
+            if unbounded:
+                logger.error(
+                    "Live authority refused: venue upper bounds unmodelled "
+                    "symbols=%s",
+                    unbounded,
+                )
+                return False, VENUE_UPPER_BOUNDS_UNAVAILABLE
 
         return True, None
 
@@ -2920,6 +2944,38 @@ class ExecutionManager:
                     },
                 }
 
+            # Block 6B (readiness gate V1): the venue's upper bounds, on the
+            # same fill this gate just derived and in the same fail-closed
+            # place its lower bounds are enforced - before any reservation,
+            # before admission is recorded, and before any execution path can
+            # run. An order above ``LOT_SIZE.maxQty``,
+            # ``MARKET_LOT_SIZE.maxQty`` or ``NOTIONAL.maxNotional`` is
+            # refused outright; it is never split, capped, or resized down to
+            # the maximum, exactly as an undersized one is never raised to a
+            # minimum. A bound the config does not model is skipped here and
+            # refused at the live-authority gate instead, so a bounded PAPER
+            # runtime keeps its existing behaviour unchanged.
+            upper_bound = instrument_rules.upper_bound_violation(
+                base_quantity=admission_base_quantity,
+                quote_notional=admission_quote_notional,
+                order_type=request.order_type,
+            )
+
+            if upper_bound is not None:
+                reason, details = upper_bound
+                logger.warning(
+                    "Admission refused above venue maximum symbol=%s "
+                    "request_id=%s reason=%s",
+                    request.symbol,
+                    request.request_id,
+                    reason,
+                )
+                return {
+                    "approved": False,
+                    "reason": reason,
+                    "details": {"symbol": request.symbol, **details},
+                }
+
             # RiskEngine judges against RiskPolicy.total_capital, which is a
             # configured policy figure, not the cash the durable book actually
             # holds. An approved allocation the book cannot fund would reserve
@@ -4228,6 +4284,27 @@ class ExecutionManager:
                 )
                 return None
 
+            # Block 6B: a holding larger than the venue's maximum order is
+            # not sellable in one order either. Refused for operator
+            # reconciliation - never silently split into several orders, which
+            # would be this manager inventing an execution plan the risk
+            # authority never approved.
+            full_exit_bound = instrument_rules.upper_bound_violation(
+                base_quantity=held,
+                quote_notional=full_exit_notional,
+                order_type=request.order_type,
+            )
+
+            if full_exit_bound is not None:
+                bound_reason, bound_details = full_exit_bound
+                self._mark_result_failure(
+                    result=result,
+                    message="Full exit is above the venue maximum quantity or notional",
+                    error_code=FULL_EXIT_ABOVE_VENUE_MAXIMUM,
+                    details={"exceeded_bound": bound_reason, **bound_details},
+                )
+                return None
+
             result.data["executed_quote_reduction"] = format(exposure, "f")
             result.data["unreduced_quote_remainder"] = "0"
             return held
@@ -4283,6 +4360,27 @@ class ExecutionManager:
                     "floored_quote_notional": format(submitted_notional, "f"),
                     "min_notional": format(instrument_rules.min_notional, "f"),
                 },
+            )
+            return None
+
+        # Block 6B: the same upper bounds the BUY admission gate applies, on
+        # the reduction actually being submitted. A partial exit above the
+        # venue maximum is refused rather than clipped down to it: the size is
+        # the risk-approved reduction, and this path prices it, never revises
+        # it.
+        reduction_bound = instrument_rules.upper_bound_violation(
+            base_quantity=base_quantity,
+            quote_notional=submitted_notional,
+            order_type=request.order_type,
+        )
+
+        if reduction_bound is not None:
+            bound_reason, bound_details = reduction_bound
+            self._mark_result_failure(
+                result=result,
+                message="Reduction is above the venue maximum quantity or notional",
+                error_code=bound_reason,
+                details=bound_details,
             )
             return None
 
@@ -4736,6 +4834,51 @@ class ExecutionManager:
     # LIVE EXECUTION
     # =========================================================
 
+    def _block_live_dispatch(
+        self,
+        request: ExecutionRequest,
+        *,
+        status: str,
+        message: str,
+        error_code: str | None,
+        data: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Refuse one live dispatch at a venue-readiness gate.
+
+        The shared shape of every pre-adapter refusal: counted as blocked,
+        published on the same channel the other live denials use, and carrying
+        a status outside ``SUCCESS_STATUSES`` so the terminal classifier
+        resolves it as not-committed with no durable consequence.
+        """
+        with self._lock:
+            self.stats["live_blocked"] += 1
+
+        blocked = ExecutionResult(
+            success=False,
+            status=status,
+            message=message,
+            symbol=request.symbol,
+            action=request.action,
+            mode=self.MODE_LIVE,
+            data={"request_id": request.request_id, **(data or {})},
+            metadata=self._normalize_metadata(
+                request.metadata
+            ),
+            timestamp=request.timestamp,
+            error_code=error_code,
+            requested_price=request.price,
+            requested_amount=request.amount,
+        )
+
+        payload = blocked.to_dict()
+
+        self.publish(
+            "LIVE_EXECUTION_BLOCKED",
+            payload,
+        )
+
+        return payload
+
     def live_execute(
         self,
         request: ExecutionRequest,
@@ -4753,6 +4896,11 @@ class ExecutionManager:
         its live flag flipped after startup never passed the live startup
         gate at all and is already denied below for want of an approved
         adapter, so nothing reaches a venue either way.
+
+        Block 6B adds the second half of the same pre-adapter check: the
+        venue's upper bounds must be modelled for the symbol being
+        dispatched. Both refusals happen before the adapter step, which is
+        the last place either can be caught.
         """
 
         if not self._has_risk_admission(request):
@@ -4804,9 +4952,6 @@ class ExecutionManager:
             )
 
             if not freshness.allowed:
-                with self._lock:
-                    self.stats["live_blocked"] += 1
-
                 logger.error(
                     "LIVE execution blocked: venue rules %s "
                     "age_seconds=%s maximum_age_seconds=%s",
@@ -4815,37 +4960,46 @@ class ExecutionManager:
                     freshness.report.maximum_age_seconds,
                 )
 
-                blocked = ExecutionResult(
-                    success=False,
+                return self._block_live_dispatch(
+                    request,
                     status="VENUE_RULES_NOT_FRESH",
                     message=(
                         "Live execution requires fresh venue instrument "
                         "rules"
                     ),
-                    symbol=request.symbol,
-                    action=request.action,
-                    mode=self.MODE_LIVE,
-                    data={
-                        "request_id": request.request_id,
-                        "venue_rules": freshness.report.to_dict(),
-                    },
-                    metadata=self._normalize_metadata(
-                        request.metadata
-                    ),
-                    timestamp=request.timestamp,
                     error_code=freshness.reason,
-                    requested_price=request.price,
-                    requested_amount=request.amount,
+                    data={"venue_rules": freshness.report.to_dict()},
                 )
 
-                blocked_payload = blocked.to_dict()
+            # Block 6B: the venue's upper bounds must be modelled for the
+            # symbol being dispatched, checked here - the last point before
+            # the adapter seam - and not only at startup, so a ruleset
+            # replaced in a running process cannot open an unbounded live
+            # path. The numeric bounds themselves were already enforced at
+            # admission, which no request can reach this line without having
+            # passed.
+            dispatch_rules = (
+                self.instrument_rules.get(request.symbol)
+                if self.instrument_rules is not None
+                else None
+            )
 
-                self.publish(
-                    "LIVE_EXECUTION_BLOCKED",
-                    blocked_payload,
+            if dispatch_rules is None or not dispatch_rules.has_complete_venue_bounds:
+                logger.error(
+                    "LIVE execution blocked: venue upper bounds unmodelled "
+                    "symbol=%s",
+                    request.symbol,
                 )
 
-                return blocked_payload
+                return self._block_live_dispatch(
+                    request,
+                    status=VENUE_UPPER_BOUNDS_UNAVAILABLE,
+                    message=(
+                        "Live execution requires modelled venue upper bounds"
+                    ),
+                    error_code=VENUE_UPPER_BOUNDS_UNAVAILABLE,
+                    data={"symbol": request.symbol},
+                )
 
         with self._lock:
             self.stats["live_blocked"] += 1

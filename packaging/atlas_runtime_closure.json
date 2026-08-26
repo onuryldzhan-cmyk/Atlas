@@ -90,6 +90,7 @@
     "core/service_container.py",
     "core/technical_analyzer.py",
     "core/tool_gateway_contracts.py",
+    "core/venue_rule_freshness.py",
     "data_layer/__init__.py",
     "data_layer/canonical_evidence.py",
     "data_layer/config.py",

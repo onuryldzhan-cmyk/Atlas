@@ -78,38 +78,49 @@ def _fill(
 
 
 # ===========================================================================
-# Gate 1 - venue upper bounds (Block 5D M4) stay unreachable
+# Gate 1 - venue upper bounds: re-decided and CLOSED by Package 6B
 # ===========================================================================
 
 
-def test_instrument_rules_still_model_no_upper_venue_bound() -> None:
-    """The premise of the accepted M4 limitation, pinned.
+def test_instrument_rules_model_the_venue_upper_bounds() -> None:
+    """Gate 1, re-decided.
 
-    `LOT_SIZE.maxQty`, `NOTIONAL.maxNotional` and `MARKET_LOT_SIZE` are not
-    modelled. This test fails the moment an upper bound *is* added, which is
-    the moment the live-readiness gate in the closure record has to be
-    re-decided rather than left standing as written."""
+    This gate was written to fail the day an upper bound was added to
+    `InstrumentRules`, forcing the accepted M4 limitation to be re-decided
+    rather than silently inherited. Package 6B added them and closed
+    readiness gate V1, so the gate is re-decided here in the direction that
+    keeps it honest: it now fails the day the bounds are *removed* or a
+    fourth venue axis is modelled without this record being revisited.
+
+    The enforcement behaviour those fields must have lives in
+    `tests/test_block6b_venue_upper_bounds.py`; this stays a schema gate."""
 
     modelled = {field.name for field in fields(InstrumentRules)}
 
     assert {"quantity_step", "min_quantity", "min_notional", "price_tick"} <= modelled
-    assert not {
-        name for name in modelled
-        if name.startswith("max_") or "market_lot" in name
+    assert {"max_quantity", "max_notional", "market_max_quantity"} <= modelled
+    assert {name for name in modelled if name.startswith("max_")} == {
+        "max_quantity",
+        "max_notional",
     }
 
 
 def test_live_execution_cannot_reach_a_venue_while_upper_bounds_are_unmodelled(
     tmp_path: Path,
 ) -> None:
-    """The safety coupling that makes M4 acceptable, enforced.
+    """The safety coupling that made M4 acceptable, still enforced.
 
     An unmodelled venue maximum can only be *violated* by an order that
     actually reaches a venue. No such path exists: live execution is denied
     by default, and even with the flag explicitly enabled there is no
     approved adapter, so the request is refused rather than sent. This test
-    fails the day a live adapter is wired in without upper bounds being
-    modelled first."""
+    fails the day a live adapter is wired in.
+
+    Package 6B modelled the bounds and made a live-authorized runtime fail
+    closed when a symbol lacks them, so this is no longer the only thing
+    standing between an unbounded order and a venue - but it remains the
+    outer coupling, and the adapter seam is still what must re-open every
+    live-readiness decision at once."""
 
     for enabled in (False, True):
         manager = ExecutionManager(

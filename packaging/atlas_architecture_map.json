@@ -480,6 +480,7 @@
     "core/service_container.py": "L2",
     "core/technical_analyzer.py": "L3",
     "core/tool_gateway_contracts.py": "L1",
+    "core/venue_rule_freshness.py": "L3",
     "data_layer/__init__.py": "L2",
     "data_layer/canonical_evidence.py": "L1",
     "data_layer/config.py": "L2",
