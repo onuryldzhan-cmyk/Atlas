@@ -90,6 +90,10 @@ from core.instrument_rules import (
     InstrumentRulesConfigError,
     load_instrument_ruleset,
 )
+from core.venue_rule_freshness import (
+    VenueRuleFreshnessPolicy,
+    VenueRuleFreshnessService,
+)
 from core.risk_state_store import JsonRiskStateStore
 from core.execution_portfolio_foundation import (
     AppliedExecutionArchiveStore,
@@ -180,6 +184,7 @@ class AtlasApplication:
         symbols: list[str] | None = None,
         market_interval: float = 10.0,
         state_directory: str | Path = DEFAULT_STATE_DIRECTORY,
+        venue_rule_freshness_policy: VenueRuleFreshnessPolicy | None = None,
     ) -> None:
         logger.info(
             "Initializing %s v%s",
@@ -192,6 +197,15 @@ class AtlasApplication:
         self.symbols = list(symbols) if symbols else None
         self.market_interval = float(market_interval)
         self.state_directory = Path(state_directory)
+
+        # Block 6A: the venue-rule freshness policy in force for this run.
+        # Operator-configurable at the composition boundary; the documented
+        # default bounds staleness at the operator refresh cadence.
+        self.venue_rule_freshness_policy = (
+            venue_rule_freshness_policy
+            if venue_rule_freshness_policy is not None
+            else VenueRuleFreshnessPolicy()
+        )
 
         self.running = False
         self.initialized = False
@@ -320,6 +334,7 @@ class AtlasApplication:
             risk_state_store=self.risk_state_store,
             portfolio_foundation=self.portfolio_foundation,
             instrument_rules=self.instrument_ruleset,
+            instrument_rule_freshness=self.venue_rule_freshness,
             configured_symbols=configured_symbols,
         )
 
@@ -520,7 +535,18 @@ class AtlasApplication:
         ``INSTRUMENT_RULES_UNAVAILABLE`` for any trade-enabled or held
         symbol, exactly as an unready durable store already halts startup
         above.
+
+        Block 6A: this is also where the runtime's single venue-rule
+        freshness authority is built. The composition root owns the clock -
+        the financial core is handed the service, never an ambient
+        ``datetime.now()`` - and the same instance backs the startup gate and
+        every health/status surface, so they cannot disagree about how old
+        the rules are.
         """
+
+        self.venue_rule_freshness = VenueRuleFreshnessService(
+            policy=self.venue_rule_freshness_policy,
+        )
 
         try:
             self.instrument_ruleset = load_instrument_ruleset(
@@ -535,9 +561,16 @@ class AtlasApplication:
             )
             return
 
+        freshness = self.venue_rule_freshness.assess(self.instrument_ruleset)
+
         logger.info(
-            "Instrument rules loaded symbols=%s",
+            "Instrument rules loaded symbols=%s schema_version=%s "
+            "freshness=%s age_seconds=%s maximum_age_seconds=%s",
             self.instrument_ruleset.symbols,
+            self.instrument_ruleset.schema_version,
+            freshness.status.value,
+            freshness.age_seconds,
+            freshness.maximum_age_seconds,
         )
 
     # =========================================================

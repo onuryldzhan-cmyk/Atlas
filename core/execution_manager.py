@@ -88,6 +88,10 @@ from core.instrument_rules import (
     floor_to_step,
     is_aligned_to_step,
 )
+from core.venue_rule_freshness import (
+    VenueRuleFreshnessReport,
+    VenueRuleFreshnessService,
+)
 
 from core.risk_engine import (
     PositionExposure,
@@ -236,6 +240,7 @@ class ExecutionManager:
         risk_state_store: Any | None = None,
         portfolio_foundation: ExecutionPortfolioFoundation | None = None,
         instrument_rules: InstrumentRuleset | None = None,
+        instrument_rule_freshness: VenueRuleFreshnessService | None = None,
         configured_symbols: list[str] | tuple[str, ...] | None = None,
     ) -> None:
         # Retained for status/compatibility reporting only. No execution path
@@ -260,6 +265,17 @@ class ExecutionManager:
         # missing rule for any of them halts startup fail-closed rather than
         # being discovered on the first admitted request.
         self.instrument_rules = instrument_rules
+
+        # Block 6A: how old those rules are allowed to be, and what happens
+        # when they are older. Defaulted rather than left ``None`` so no
+        # construction path is silently ungated; the composition root injects
+        # the shared instance so its policy and clock are the ones in force.
+        self.instrument_rule_freshness = (
+            instrument_rule_freshness
+            if instrument_rule_freshness is not None
+            else VenueRuleFreshnessService()
+        )
+
         self._configured_symbols: tuple[str, ...] = tuple(
             sorted(
                 {
@@ -278,6 +294,9 @@ class ExecutionManager:
         # own durable book, so once that boundary is crossed an interrupted
         # request has an outcome this manager cannot prove either way.
         self._execution_side_effect_ids: set[str] = set()
+
+        # Set by start(): whether this run came online holding live authority.
+        self._live_authorized_at_start = False
 
         self.mode = self._normalize_mode(
             mode
@@ -491,7 +510,53 @@ class ExecutionManager:
             ):
                 return False, "INSTRUMENT_RULES_POSITION_MISALIGNED"
 
+        # Block 6A: rules that exist for every needed symbol can still be too
+        # old to trade on. A live-authorized runtime halts unless they are
+        # FRESH; a bounded PAPER runtime continues on STALE rules only
+        # because the policy explicitly permits it, and never silently -
+        # ``venue_rules`` on health() and status() carries the state, and the
+        # warning below names it at startup.
+        decision = self.instrument_rule_freshness.evaluate_gate(
+            self.instrument_rules,
+            live_authorized=self.live_authorized,
+        )
+
+        if not decision.allowed:
+            return False, decision.reason
+
+        if not decision.report.is_fresh:
+            logger.warning(
+                "Venue instrument rules not fresh status=%s venue=%s "
+                "age_seconds=%s maximum_age_seconds=%s observed_at=%s",
+                decision.report.status.value,
+                decision.report.venue,
+                decision.report.age_seconds,
+                decision.report.maximum_age_seconds,
+                decision.report.observed_at,
+            )
+
         return True, None
+
+    @property
+    def live_authorized(self) -> bool:
+        """True when this runtime could actually reach a venue.
+
+        LIVE *mode* alone is not authority: with ``live_execution_enabled``
+        false, ``live_execute`` denies every request before any adapter step,
+        so no venue rule - fresh or stale - can be acted on. Authority is the
+        conjunction, and it is what the venue-rule freshness gate keys on.
+        """
+        return self.mode == self.MODE_LIVE and bool(self.live_execution_enabled)
+
+    def assess_venue_rule_freshness(self) -> VenueRuleFreshnessReport:
+        """Evaluate the current venue-rule freshness state.
+
+        Re-evaluated on each call against the injected clock rather than
+        cached at startup: rules are immutable for the life of the process
+        (Block 5D owner decision 9), but their *age* is not, so a long-running
+        process must be able to observe them crossing the threshold.
+        """
+        return self.instrument_rule_freshness.assess(self.instrument_rules)
 
     def start(self) -> bool:
         """
@@ -506,6 +571,12 @@ class ExecutionManager:
                 return True
 
             self.running = True
+
+            # Block 6A: the authority this run actually started with. A live
+            # dispatch re-checks venue-rule freshness only for a runtime that
+            # started live-authorized and therefore passed the fail-closed
+            # startup gate below; see live_execute.
+            self._live_authorized_at_start = self.live_authorized
 
             readiness = self._assess_financial_readiness()
 
@@ -4673,6 +4744,15 @@ class ExecutionManager:
         Deny live execution unless explicitly enabled.
 
         Even when enabled, a concrete live execution adapter is required.
+
+        Block 6A adds one further denial ahead of the adapter step, for a
+        runtime that came online holding live authority: venue rules that
+        were FRESH at startup can age past the threshold during a long run,
+        and a dispatch is where that must be caught. The re-check is scoped
+        to ``_live_authorized_at_start`` deliberately - a runtime that had
+        its live flag flipped after startup never passed the live startup
+        gate at all and is already denied below for want of an approved
+        adapter, so nothing reaches a venue either way.
         """
 
         if not self._has_risk_admission(request):
@@ -4716,6 +4796,56 @@ class ExecutionManager:
             )
 
             return payload
+
+        if self._live_authorized_at_start:
+            freshness = self.instrument_rule_freshness.evaluate_gate(
+                self.instrument_rules,
+                live_authorized=True,
+            )
+
+            if not freshness.allowed:
+                with self._lock:
+                    self.stats["live_blocked"] += 1
+
+                logger.error(
+                    "LIVE execution blocked: venue rules %s "
+                    "age_seconds=%s maximum_age_seconds=%s",
+                    freshness.report.status.value,
+                    freshness.report.age_seconds,
+                    freshness.report.maximum_age_seconds,
+                )
+
+                blocked = ExecutionResult(
+                    success=False,
+                    status="VENUE_RULES_NOT_FRESH",
+                    message=(
+                        "Live execution requires fresh venue instrument "
+                        "rules"
+                    ),
+                    symbol=request.symbol,
+                    action=request.action,
+                    mode=self.MODE_LIVE,
+                    data={
+                        "request_id": request.request_id,
+                        "venue_rules": freshness.report.to_dict(),
+                    },
+                    metadata=self._normalize_metadata(
+                        request.metadata
+                    ),
+                    timestamp=request.timestamp,
+                    error_code=freshness.reason,
+                    requested_price=request.price,
+                    requested_amount=request.amount,
+                )
+
+                blocked_payload = blocked.to_dict()
+
+                self.publish(
+                    "LIVE_EXECUTION_BLOCKED",
+                    blocked_payload,
+                )
+
+                return blocked_payload
 
         with self._lock:
             self.stats["live_blocked"] += 1
@@ -6302,6 +6432,11 @@ class ExecutionManager:
                         else None
                     ),
                 },
+                # Block 6A: venue rule age is operational state a monitor must
+                # be able to see without inferring it from a halt reason.
+                "venue_rules": (
+                    self.assess_venue_rule_freshness().to_dict()
+                ),
                 "statistics": dict(
                     self.stats
                 ),
@@ -6350,6 +6485,9 @@ class ExecutionManager:
                         else None
                     ),
                 },
+                "venue_rules": (
+                    self.assess_venue_rule_freshness().to_dict()
+                ),
                 "transaction_journal": (
                     self.transaction_journal.status()
                 ),

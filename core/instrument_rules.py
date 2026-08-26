@@ -13,6 +13,10 @@ immutable for the lifetime of one process (owner decision 9). A symbol with
 no checked-in rule is not defaulted to a permissive quantum - it is
 unexecutable, and every caller in this module and in ``ExecutionManager``
 fails closed rather than inventing a value.
+
+How *old* those immutable rules are allowed to be is a separate contract,
+held outside this module by ``core.venue_rule_freshness`` (Block 6A). It
+reads the provenance defined here and adds no field to it.
 """
 
 from __future__ import annotations
@@ -24,6 +28,13 @@ import json
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Mapping
+
+
+# The only config schema version this loader accepts. Carried onto the loaded
+# ``InstrumentRuleset`` so a runtime can report which rule schema it is
+# actually trading on (Block 6A observability) instead of the loader knowing
+# it and then discarding it.
+INSTRUMENT_RULES_SCHEMA_VERSION = "1.0"
 
 
 class InstrumentRulesConfigError(ValueError):
@@ -217,11 +228,23 @@ class InstrumentRuleset:
     Lookup is by symbol only: this runtime trades on one configured venue at
     a time, so the ruleset itself is that venue's scope, while each entry
     still carries its own ``venue`` field for identity and evidence.
+
+    ``schema_version`` is the config schema the entries were loaded under. It
+    is set-level metadata, deliberately *not* a field of ``InstrumentRules``:
+    the per-rule ``digest`` seals execution-affecting values only, and Block
+    6A must not perturb the rule identity Block 5D admission and replay
+    already depend on.
     """
 
     rules: Mapping[str, InstrumentRules]
+    schema_version: str = INSTRUMENT_RULES_SCHEMA_VERSION
 
     def __post_init__(self) -> None:
+        schema_version = str(self.schema_version).strip()
+        if not schema_version:
+            raise InstrumentRulesConfigError("schema_version is required")
+        object.__setattr__(self, "schema_version", schema_version)
+
         normalized: dict[str, InstrumentRules] = {}
         for key, entry in self.rules.items():
             if not isinstance(entry, InstrumentRules):
@@ -274,9 +297,13 @@ def load_instrument_ruleset(path: str | Path) -> InstrumentRuleset:
             f"instrument rules config is not valid JSON: {resolved}"
         ) from exc
 
-    if not isinstance(payload, dict) or payload.get("schema_version") != "1.0":
+    if (
+        not isinstance(payload, dict)
+        or payload.get("schema_version") != INSTRUMENT_RULES_SCHEMA_VERSION
+    ):
         raise InstrumentRulesConfigError(
-            "instrument rules config must be a JSON object with schema_version '1.0'"
+            "instrument rules config must be a JSON object with schema_version "
+            f"{INSTRUMENT_RULES_SCHEMA_VERSION!r}"
         )
 
     entries = payload.get("rules")
@@ -314,4 +341,7 @@ def load_instrument_ruleset(path: str | Path) -> InstrumentRuleset:
             )
         rules[rule.symbol] = rule
 
-    return InstrumentRuleset(rules)
+    return InstrumentRuleset(
+        rules,
+        schema_version=str(payload["schema_version"]),
+    )
