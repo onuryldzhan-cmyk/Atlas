@@ -64,8 +64,11 @@ Decision-intelligence work must test missing evidence, missing agents, conflicti
 ## Financial / migration safety
 Every migration-touching change must be checked for: **idempotency, resume, retry, sequence, ordering, duplicates, partial state, conflicts, rollback/recovery.** Corrupted state must be detected and halted, never silently continued through.
 
+## Context discipline (stay narrow)
+Do not scan the whole repository by default — inspect only files directly relevant to the current task. Prefer targeted search over broad recursive reads. Do not read generated, cache, vendor, environment, build, or large-output directories unless required. Do not dump large files, diffs, logs, or test output into chat.
+
 ## Testing rules
-Run the relevant/regression test suite and report exact results, never just "tests pass." Never modify or weaken a test to make it pass — a wrong test is reported, not silently fixed. A feature isn't "done" from tests passing alone: governance registration, architecture review, migration integrity, docs, and audit must also close.
+Run the narrowest relevant tests/checks first; broader validation requires a reason tied to the change's actual impact. Run the relevant/regression test suite and report exact results, never just "tests pass." Never modify or weaken a test to make it pass — a wrong test is reported, not silently fixed. A feature isn't "done" from tests passing alone: governance registration, architecture review, migration integrity, docs, and audit must also close.
 
 ## Git & approval policy
 Explicit confirmation required before: force push, destructive reset, history rewrite, deleting important branches/data, irreversible migrations, or production-impacting operations. Review the actual diff before declaring any task complete — explicitly ask "did I change anything I wasn't supposed to?"
