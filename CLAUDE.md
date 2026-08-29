@@ -87,6 +87,8 @@ Never put secrets (API keys, DB passwords) in prompts or code. Never use product
 ## Checkpoint Protocol ("ATLAS CHECKPOINT")
 Used at meaningful milestones and before ending a session. Must contain: **Objective, Completed, Files changed, Architecture decisions, Tests, Current state, Known issues, Risks, Remaining work, Next exact action** — detailed enough that a different session/agent could continue without guessing.
 
+Checkpoints persist as files under a canonical `checkpoints/` directory at the repository root, one file per checkpoint, named `<UTC ISO8601 compact>_<short-kebab-slug>.md` (e.g. `20260829T143000Z_gov-drift-003-wiring.md`). The "most recent" checkpoint is resolved as the lexicographically last filename in that directory — the compact timestamp prefix sorts correctly under a plain string sort.
+
 ## Context-pressure handling
 Watch both technical (context size) and semantic (old info no longer relevant, requirements hard to retrieve, repeating itself, debugging loops, unrelated accumulation) pressure. When pressure rises: stop unnecessary exploration → checkpoint → summarize → then compact. Never compact in a way that erases the project objective, current task, exact implementation state, files changed, key decisions, test results, known failures, unresolved issues, architectural/security constraints, or next action.
 
