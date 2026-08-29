@@ -457,9 +457,18 @@ class BinancePublicDataProvider(
         symbol: str,
         timeframe: str = "5m",
         limit: int = 100,
+        *,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
     ) -> Sequence[MarketCandle]:
         """
         Fetch and normalize Binance OHLCV candles.
+
+        When ``start_time`` and/or ``end_time`` are supplied the
+        request is bounded to that window. Binance still returns at
+        most ``limit`` candles per call regardless of how wide the
+        window is, so callers walking a long history must page by
+        advancing ``start_time`` past the last returned open time.
         """
 
         normalized_symbol = (
@@ -480,13 +489,41 @@ class BinancePublicDataProvider(
             )
         )
 
+        request_params: dict[str, Any] = {
+            "symbol": normalized_symbol,
+            "interval": normalized_timeframe,
+            "limit": normalized_limit,
+        }
+
+        if start_time is not None:
+            request_params["startTime"] = (
+                self._datetime_to_milliseconds(
+                    start_time,
+                    field_name="start_time",
+                )
+            )
+
+        if end_time is not None:
+            request_params["endTime"] = (
+                self._datetime_to_milliseconds(
+                    end_time,
+                    field_name="end_time",
+                )
+            )
+
+        if (
+            start_time is not None
+            and end_time is not None
+            and request_params["endTime"]
+            < request_params["startTime"]
+        ):
+            raise MarketDataRequestError(
+                "end_time cannot precede start_time."
+            )
+
         payload = self._request_json(
             endpoint="/api/v3/klines",
-            params={
-                "symbol": normalized_symbol,
-                "interval": normalized_timeframe,
-                "limit": normalized_limit,
-            },
+            params=request_params,
         )
 
         if not isinstance(
@@ -1237,6 +1274,39 @@ class BinancePublicDataProvider(
             )
 
         return normalized
+
+    @staticmethod
+    def _datetime_to_milliseconds(
+        value: datetime,
+        *,
+        field_name: str,
+    ) -> int:
+        if not isinstance(
+            value,
+            datetime,
+        ):
+            raise MarketDataRequestError(
+                f"{field_name} must be a datetime."
+            )
+
+        if value.tzinfo is None:
+            raise MarketDataRequestError(
+                f"{field_name} must be timezone "
+                "aware."
+            )
+
+        milliseconds = int(
+            value.timestamp()
+            * 1000
+        )
+
+        if milliseconds < 0:
+            raise MarketDataRequestError(
+                f"{field_name} cannot precede the "
+                "Unix epoch."
+            )
+
+        return milliseconds
 
     @staticmethod
     def _milliseconds_to_datetime(
