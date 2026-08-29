@@ -192,3 +192,6 @@ credentials/
 # =============================================================================
 # END
 # =============================================================================
+
+reports/observability/test_results.junit.xml
+reports/observability/test_results.meta.json

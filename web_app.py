@@ -27,6 +27,10 @@ from fastapi.responses import (
 )
 from fastapi.templating import Jinja2Templates
 
+from observability.panel_router import (
+    build_observability_router,
+)
+
 
 logger = logging.getLogger("AtlasAI.WebApp")
 
@@ -157,6 +161,17 @@ def create_app(
 
     application.state.atlas_runtime = runtime
     application.state.price_provider = price_provider
+
+    # Read-only observability panels (test results artifact, GOV-DRIFT
+    # status). Mounting only registers routes: no file is read here, so
+    # create_app stays free of file I/O. Every read happens per request
+    # inside observability.panel_sources.
+    #
+    # These routes are LOCALHOST-ONLY until authentication exists: /login
+    # below is still a stub, and the router refuses non-loopback peers.
+    application.include_router(
+        build_observability_router(),
+    )
 
     @application.get(
         "/",
