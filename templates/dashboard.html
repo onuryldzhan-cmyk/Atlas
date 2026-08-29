@@ -24,21 +24,82 @@
             <h2 class="text-xs uppercase text-slate-500 font-bold tracking-widest">Otonom İşlem Geçmişi</h2>
             <div id="trade-log" class="mt-4 font-mono text-sm text-slate-400 h-32 overflow-y-auto">> Bot izleme modunda...</div>
         </div>
+        <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800">
+                <h2 class="text-slate-500 text-xs uppercase font-bold tracking-widest">Test Sonuçları</h2>
+                <div id="test-results-panel" class="mt-4 font-mono text-sm text-slate-400">Yükleniyor...</div>
+            </div>
+            <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800">
+                <h2 class="text-slate-500 text-xs uppercase font-bold tracking-widest">Governance (GOV-DRIFT)</h2>
+                <div id="governance-panel" class="mt-4 font-mono text-sm text-slate-400">Yükleniyor...</div>
+            </div>
+        </div>
     </div>
     <script>
         async function updateTerminal() {
             const res = await fetch('/api/analysis');
             const data = await res.json();
             document.getElementById('price-display').innerText = data.price.toLocaleString() + ' TRY';
-            document.getElementById('decision-content').innerHTML = 
+            document.getElementById('decision-content').innerHTML =
                 `<span class="text-2xl">${data.decision.action}</span><br><span class="text-xs text-slate-400">${data.decision.reason}</span>`;
             if (data.decision.action !== "HOLD") {
                 const logBox = document.getElementById('trade-log');
                 logBox.innerHTML += `<br>> ${new Date().toLocaleTimeString()} - Karar: ${data.decision.action} (${data.decision.reason})`;
             }
         }
+
+        function renderUnavailable(elementId, reason) {
+            document.getElementById(elementId).innerHTML =
+                `<span class="text-amber-500">unavailable: ${reason}</span>`;
+        }
+
+        async function fetchPanel(url, elementId, onAvailable) {
+            let payload;
+            try {
+                const res = await fetch(url);
+                payload = await res.json();
+            } catch (error) {
+                renderUnavailable(elementId, 'network error');
+                return;
+            }
+            if (payload && payload.available === true) {
+                onAvailable(payload);
+            } else {
+                const reason = (payload && (payload.reason || payload.status)) || 'UNKNOWN';
+                renderUnavailable(elementId, reason);
+            }
+        }
+
+        function updateTestResultsPanel() {
+            fetchPanel('/api/observability/test-results', 'test-results-panel', (payload) => {
+                const totals = payload.totals || {};
+                const alignment = (payload.commit_alignment && payload.commit_alignment.state) || 'UNKNOWN';
+                const alignmentColor = alignment === 'MATCH' ? 'text-emerald-400'
+                    : alignment === 'STALE' ? 'text-amber-500'
+                    : 'text-slate-400';
+                document.getElementById('test-results-panel').innerHTML =
+                    `<span class="text-emerald-400">${totals.passed}</span> passed / ` +
+                    `<span class="text-red-400">${totals.failed}</span> failed / ` +
+                    `<span class="text-slate-300">${totals.tests}</span> total` +
+                    `<br><span class="${alignmentColor}">commit: ${alignment}</span>`;
+            });
+        }
+
+        function updateGovernancePanel() {
+            fetchPanel('/api/observability/governance', 'governance-panel', (payload) => {
+                const version = payload.schema_version || 'UNKNOWN';
+                const status = (payload.reconciliation && payload.reconciliation.status) || 'UNKNOWN';
+                document.getElementById('governance-panel').innerHTML =
+                    `head version: <span class="text-slate-300">${version}</span>` +
+                    `<br>reconciliation: <span class="text-slate-300">${status}</span>`;
+            });
+        }
+
         setInterval(updateTerminal, 5000);
         updateTerminal();
+        setInterval(() => { updateTestResultsPanel(); updateGovernancePanel(); }, 30000);
+        updateTestResultsPanel();
+        updateGovernancePanel();
     </script>
 </body>
 </html>
