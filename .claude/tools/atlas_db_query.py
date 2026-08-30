@@ -51,12 +51,29 @@ READ_ONLY_ACTIONS = frozenset({
     sqlite3.SQLITE_RECURSIVE,
 })
 
+# SQLITE_PRAGMA is deliberately NOT in READ_ONLY_ACTIONS: most pragmas are
+# introspection (table_info, index_list) but some assign and mutate database
+# state (journal_mode, writable_schema, foreign_keys=off). Blanket-allowing
+# the action would reopen exactly the write surface -readonly/mode=ro is here
+# to close. Only these named, verified-read-only pragmas are permitted; arg1
+# on a PRAGMA action is the pragma name.
+READ_ONLY_PRAGMAS = frozenset({
+    "table_info", "table_xinfo", "index_list", "index_info", "index_xinfo",
+    "foreign_key_list", "foreign_key_check", "database_list",
+    "collation_list", "function_list", "module_list", "pragma_list",
+    "compile_options", "integrity_check", "quick_check", "user_version",
+    "application_id", "schema_version", "page_count", "page_size",
+    "freelist_count", "encoding",
+})
+
 MAX_ROWS_DEFAULT = 100
 
 
 def _authorizer(action, arg1, arg2, db_name, trigger):
-    """Refuse anything that is not a plain read."""
+    """Refuse anything that is not a plain read or a known-safe pragma."""
     if action in READ_ONLY_ACTIONS:
+        return sqlite3.SQLITE_OK
+    if action == sqlite3.SQLITE_PRAGMA and (arg1 or "").lower() in READ_ONLY_PRAGMAS:
         return sqlite3.SQLITE_OK
     return sqlite3.SQLITE_DENY
 
