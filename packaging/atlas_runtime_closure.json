@@ -105,6 +105,9 @@
     "exchange/__init__.py",
     "exchange/market_feed.py",
     "main.py",
+    "observability/__init__.py",
+    "observability/panel_router.py",
+    "observability/panel_sources.py",
     "portfolio/capital_manager.py",
     "web_app.py"
   ]

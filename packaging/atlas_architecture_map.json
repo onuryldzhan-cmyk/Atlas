@@ -359,6 +359,11 @@
       "reason": "explicit: L5 presentation example"
     },
     {
+      "pattern": "observability/*",
+      "layer": "L5",
+      "reason": "read-only dashboard panels for web_app.py, the L5 presentation entry point that is their only consumer; observability/** imports stdlib and fastapi only and reaches no domain, infrastructure, application, or research module, so it introduces no cross-layer edge. Not L2: it owns no store, journal, event bus, or external service integration -- panel_sources.py reads already-produced artifacts off disk and reports them unavailable when absent. Distinct from atlas_os/observability, which is L2 by the atlas_os/* rule below"
+    },
+    {
       "pattern": "ai/*",
       "layer": "L4",
       "reason": "explicit: ai/** is L4 research/intelligence"
@@ -495,6 +500,9 @@
     "exchange/__init__.py": "L2",
     "exchange/market_feed.py": "L2",
     "main.py": "L3",
+    "observability/__init__.py": "L5",
+    "observability/panel_router.py": "L5",
+    "observability/panel_sources.py": "L5",
     "portfolio/capital_manager.py": "L3",
     "web_app.py": "L5"
   },
