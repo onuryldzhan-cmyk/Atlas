@@ -1,16 +1,34 @@
-from decimal import Decimal as D
+from decimal import ROUND_HALF_EVEN, Decimal as D, localcontext
 import json
 
 import pytest
 
 from core.execution_models import ExecutionResult
-from core.execution_portfolio_foundation import ExecutionPortfolioFoundation, FinancialStateStore
+from core.execution_portfolio_foundation import (
+    SETTLEMENT_CONTEXT_PRECISION,
+    AppliedExecutionArchiveStore,
+    ClosedPositionArchiveStore,
+    ExecutionPortfolioFoundation,
+    FinancialStateStore,
+)
+
+
+def sidecars(store):
+    """Derive this store's sidecar paths deterministically from its own
+    path, so a restart (a fresh FinancialStateStore/ExecutionPortfolioFoundation
+    pointing at the same file) trivially points at the same sidecars too -
+    these stores hold no Python-side state, only a path."""
+    return (
+        AppliedExecutionArchiveStore(store.path.with_name(store.path.stem + "-applied.jsonl")),
+        ClosedPositionArchiveStore(store.path.with_name(store.path.stem + "-closed.jsonl")),
+    )
 
 
 def foundation(tmp_path, cash="1000"):
     store = FinancialStateStore(tmp_path / "financial-state.json")
     store.initialize(D(cash))
-    return ExecutionPortfolioFoundation(store), store
+    applied_archive, closed_archive = sidecars(store)
+    return ExecutionPortfolioFoundation(store, applied_archive=applied_archive, closed_archive=closed_archive), store
 
 
 def execution(*, eid="e1", key="request-1", action="BUY", price="10", base="10",
@@ -88,7 +106,16 @@ def test_valid_increase_updates_weighted_position(tmp_path):
     position = book.snapshot()["positions"]["BTCUSDT"]
     assert D(position["base_quantity"]) == D("15")
     assert D(position["cost_quote"]) == D("200")
-    assert D(position["average_entry_price"]) == D("200") / D("15")
+    # 200/15 does not terminate, so the expected value is computed under
+    # the identical explicit context `_open` pins this division under
+    # (Block 5E, final-review MEDIUM #2) - not this test's own ambient
+    # precision, which would otherwise round the repeating decimal to a
+    # different number of digits than the foundation's 50-digit context did.
+    with localcontext() as context:
+        context.prec = SETTLEMENT_CONTEXT_PRECISION
+        context.rounding = ROUND_HALF_EVEN
+        expected_average_entry_price = D("200") / D("15")
+    assert D(position["average_entry_price"]) == expected_average_entry_price
     assert position["version"] == 2
 
 
@@ -98,15 +125,59 @@ def test_duplicate_open_position_identity_rejected(tmp_path):
         apply(book, execution(eid="e2", key="request-2", position="other"), version=1)
 
 
-def test_short_and_partial_close_explicitly_rejected(tmp_path):
-    book, _ = foundation(tmp_path); apply(book, execution())
-    partial = execution(eid="e2", key="request-2", action="SELL", price="11", base="5", fee="0")
-    with pytest.raises(ValueError, match="PARTIAL_CLOSE_DEFERRED"):
-        apply(book, partial, version=1)
+def test_short_close_explicitly_rejected(tmp_path):
     other, _ = foundation(tmp_path / "other")
     short = execution(action="SELL")
     with pytest.raises(ValueError, match="POSITION_NOT_FOUND"):
         apply(other, short, version=0)
+
+
+def test_partial_close_reduces_the_position_pro_rata(tmp_path):
+    """Block-5B: a partial reduction is recorded, not upgraded to a full exit.
+
+    Opened 10 base for 100 quote (avg entry 10). Selling 5 at 11 releases half
+    the cost basis (50), realizes 55 - 50 = 5 gross, and leaves 5 base still
+    held at the same average entry price, re-marked at the price just traded.
+    """
+    book, _ = foundation(tmp_path); apply(book, execution())
+    partial = execution(eid="e2", key="request-2", action="SELL", price="11", base="5", fee="0")
+    snap = apply(book, partial, version=1)
+    position = snap["positions"]["BTCUSDT"]
+    assert D(position["base_quantity"]) == D("5")
+    assert D(position["cost_quote"]) == D("50")
+    assert D(position["average_entry_price"]) == D("10")
+    assert D(position["mark_price"]) == D("11")
+    assert position["version"] == 2
+    assert position["position_id"] == "p1"
+    assert snap["realized_gross_pnl"] == D("5")
+    # Opening debited 100 + 1 fee from 1000; the reduction credits 55 back.
+    assert snap["cash"] == D("954")
+    applied_archive, closed_archive = sidecars(book.store)
+    assert closed_archive.load_index().by_position_id == {}
+
+
+def test_partial_close_then_full_exit_settles_the_remainder(tmp_path):
+    """The remainder stays exitable, and the position closes exactly once."""
+    book, _ = foundation(tmp_path); apply(book, execution())
+    apply(book, execution(eid="e2", key="request-2", action="SELL", price="11",
+                          base="5", fee="0"), version=1)
+    snap = apply(book, execution(eid="e3", key="request-3", action="SELL", price="12",
+                                 base="5", fee="0"), version=2)
+    assert snap["positions"] == {}
+    applied_archive, closed_archive = sidecars(book.store)
+    assert "p1" in closed_archive.load_index().by_position_id
+    # 5 gross on the first half, 60 - 50 = 10 on the second.
+    assert snap["realized_gross_pnl"] == D("15")
+
+
+def test_reduction_larger_than_the_holding_is_rejected(tmp_path):
+    book, _ = foundation(tmp_path); apply(book, execution())
+    oversized = execution(eid="e2", key="request-2", action="SELL", price="11",
+                          base="11", fee="0")
+    with pytest.raises(ValueError, match="REDUCTION_EXCEEDS_POSITION"):
+        apply(book, oversized, version=1)
+    # A failed durable transition requires reconciliation/recovery; no blind retry.
+    assert not book.ready
 
 
 @pytest.mark.parametrize("exit_price,gross", [("12", "20"), ("8", "-20"), ("10", "0")])
@@ -175,17 +246,28 @@ def test_execution_cannot_consume_capital_reserved_elsewhere(tmp_path):
 def test_restart_preserves_positions_cash_fees_and_realized_pnl(tmp_path):
     book, store = foundation(tmp_path); apply(book, execution())
     apply(book, execution(eid="e2", key="request-2", action="SELL", price="12"), version=1)
-    restored = ExecutionPortfolioFoundation(store).snapshot()
+    applied_archive, closed_archive = sidecars(store)
+    restored = ExecutionPortfolioFoundation(
+        store, applied_archive=applied_archive, closed_archive=closed_archive,
+    ).snapshot()
     assert restored["cash"] == D("1018")
     assert restored["realized_gross_pnl"] == D("20")
     assert restored["fees"] == D("2")
 
 
 def test_missing_and_corrupt_state_fail_closed(tmp_path):
-    missing = ExecutionPortfolioFoundation(FinancialStateStore(tmp_path / "missing.json"))
+    missing_store = FinancialStateStore(tmp_path / "missing.json")
+    missing_applied, missing_closed = sidecars(missing_store)
+    missing = ExecutionPortfolioFoundation(
+        missing_store, applied_archive=missing_applied, closed_archive=missing_closed,
+    )
     assert missing.diagnostics()["recovery_required"] is True
     path = tmp_path / "corrupt.json"; path.write_text("{}", encoding="utf-8")
-    corrupt = ExecutionPortfolioFoundation(FinancialStateStore(path))
+    corrupt_store = FinancialStateStore(path)
+    corrupt_applied, corrupt_closed = sidecars(corrupt_store)
+    corrupt = ExecutionPortfolioFoundation(
+        corrupt_store, applied_archive=corrupt_applied, closed_archive=corrupt_closed,
+    )
     assert corrupt.diagnostics()["recovery_required"] is True
 
 
@@ -193,7 +275,10 @@ def test_restart_mid_transition_blocks_ready(tmp_path):
     book, store = foundation(tmp_path)
     with pytest.raises(RuntimeError, match="persist failed"):
         apply_with_failure(book, execution())
-    restarted = ExecutionPortfolioFoundation(store)
+    applied_archive, closed_archive = sidecars(store)
+    restarted = ExecutionPortfolioFoundation(
+        store, applied_archive=applied_archive, closed_archive=closed_archive,
+    )
     assert not restarted.ready and restarted.diagnostics()["recovery_required"]
 
 
@@ -217,4 +302,7 @@ def test_duplicate_position_in_persisted_state_fails_hydration(tmp_path):
     payload["positions"]["ETHUSDT"] = dict(payload["positions"]["BTCUSDT"])
     payload["positions"]["ETHUSDT"]["symbol"] = "ETHUSDT"
     store.save(payload)
-    assert not ExecutionPortfolioFoundation(store).ready
+    applied_archive, closed_archive = sidecars(store)
+    assert not ExecutionPortfolioFoundation(
+        store, applied_archive=applied_archive, closed_archive=closed_archive,
+    ).ready

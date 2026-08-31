@@ -104,6 +104,11 @@
       "reason": "explicit: L1 domain contract example"
     },
     {
+      "pattern": "atlas_finance/market_data/temporal.py",
+      "layer": "L1",
+      "reason": "pure market-data temporal vocabulary (aware-UTC normalization and cutoff-relative closure), stdlib-only with no I/O and no clock; sibling of atlas_finance/market_data/models.py and contracts.py, so it is exempt from the generic atlas_finance/* -> L2 default (Block 4 market-data correctness)"
+    },
+    {
       "pattern": "atlas_os/contracts.py",
       "layer": "L1",
       "reason": "explicit: L1 domain contract example; canonical AtlasOS contract authority (ADR-0002)"
@@ -129,6 +134,16 @@
       "reason": "domain contract vocabulary, sibling of data_layer/contracts.py"
     },
     {
+      "pattern": "data_layer/market_data_models.py",
+      "layer": "L1",
+      "reason": "market-data domain contract value objects, sibling of data_layer/contracts.py and data_layer/models.py (Block 4 market-data contract foundation)"
+    },
+    {
+      "pattern": "data_layer/market_data_contracts.py",
+      "layer": "L1",
+      "reason": "market-data repository contract seams, sibling of data_layer/contracts.py; concrete backends would live at L2 (Block 4 market-data contract foundation)"
+    },
+    {
       "pattern": "core/decision.py",
       "layer": "L1",
       "reason": "explicit: L1 domain contract example"
@@ -142,6 +157,11 @@
       "pattern": "core/risk_engine.py",
       "layer": "L1",
       "reason": "explicit: L1 domain contract example; canonical execution/admission RiskEngine authority"
+    },
+    {
+      "pattern": "core/position_sizing.py",
+      "layer": "L1",
+      "reason": "pure deterministic BUY sizing policy calculator: no I/O, no orchestration, no stores, no ledger ownership, stdlib + L1 dependencies only (core.risk_engine); sibling of core/risk_engine.py, not application orchestration, so it is exempt from the generic core/* -> L3 default (Block 5C M3)"
     },
     {
       "pattern": "core/capital_reservation.py",
@@ -164,9 +184,34 @@
       "reason": "explicit: L1 domain contract example"
     },
     {
+      "pattern": "core/operational_contracts.py",
+      "layer": "L1",
+      "reason": "operation/policy vocabulary; data contracts only, no I/O (Block 3 capability seam)"
+    },
+    {
+      "pattern": "core/model_provider_contracts.py",
+      "layer": "L1",
+      "reason": "provider-neutral model invocation vocabulary; no SDK, client, or credential (Block 3 capability seam)"
+    },
+    {
+      "pattern": "core/tool_gateway_contracts.py",
+      "layer": "L1",
+      "reason": "tool invocation vocabulary and the CapabilityGateway policy chokepoint; contracts only, concrete adapters live at L2 (Block 3 capability seam)"
+    },
+    {
       "pattern": "core/execution_portfolio_foundation.py",
       "layer": "L1",
       "reason": "canonical financial-state/portfolio-foundation domain authority, grouped with risk_engine.py and capital_reservation.py as the M-1 canonical risk services (deliberately unwired in Package 2A)"
+    },
+    {
+      "pattern": "core/instrument_rules.py",
+      "layer": "L1",
+      "reason": "pure venue instrument-precision domain contract: immutable InstrumentRules/InstrumentRuleset value objects plus stdlib-only floor_to_step/is_aligned_to_step helpers, no I/O beyond the checked-in-config loader function which the L3 composition root alone calls; sibling of core/risk_engine.py and core/position_sizing.py, not application orchestration, so it is exempt from the generic core/* -> L3 default (Block 5D)"
+    },
+    {
+      "pattern": "core/fee_accounting.py",
+      "layer": "L1",
+      "reason": "pure fee-currency classification: FeeNormalizer is a stateless static-method classifier with no I/O, no orchestration, no stores, and no ledger ownership, depending only on stdlib and the L1 core/instrument_rules.py contract it classifies fees against; sibling of core/instrument_rules.py and core/position_sizing.py, not application orchestration, so it is exempt from the generic core/* -> L3 default (Block 5E)"
     },
     {
       "pattern": "data_layer/config.py",
@@ -184,6 +229,16 @@
       "reason": "explicit: L2 infrastructure example"
     },
     {
+      "pattern": "data_layer/market_data_migrations.py",
+      "layer": "L2",
+      "reason": "market-data schema migrations are L2 infrastructure, sibling of data_layer/migrations.py; separate forward-only sequence for the market-data bounded context (Block 4 market-data SQLite reference backend)"
+    },
+    {
+      "pattern": "data_layer/market_data_sqlite.py",
+      "layer": "L2",
+      "reason": "concrete SQLite adapter for the L1 market-data repository contracts, sibling of data_layer/sqlite.py; dev/test reference backend, deliberately unwired and outside the runtime closure (Block 4 market-data SQLite reference backend)"
+    },
+    {
       "pattern": "core/audit_event_store.py",
       "layer": "L2",
       "reason": "persistent store, matches L2 example bucket"
@@ -197,6 +252,11 @@
       "pattern": "core/execution_transaction_journal.py",
       "layer": "L2",
       "reason": "journal, matches L2 example bucket"
+    },
+    {
+      "pattern": "core/durable_append_log.py",
+      "layer": "L2",
+      "reason": "durable append-only storage primitive, matches L2 example bucket"
     },
     {
       "pattern": "core/event_bus.py",
@@ -217,6 +277,11 @@
       "pattern": "core/scheduler.py",
       "layer": "L2",
       "reason": "infrastructure scheduler (application.py Infrastructure bucket)"
+    },
+    {
+      "pattern": "core/local_capability_adapter.py",
+      "layer": "L2",
+      "reason": "concrete implementations of the L1 capability contracts (deny-by-default policy gate, local probe tool adapter); L2 keeps the L4->L2 forbidden edge as the structural guarantee that intelligence cannot import an adapter and bypass the gateway"
     },
     {
       "pattern": "core/service_container.py",
@@ -350,6 +415,7 @@
     "atlas_finance/market_data/exceptions.py": "L2",
     "atlas_finance/market_data/market_feed_service.py": "L2",
     "atlas_finance/market_data/models.py": "L1",
+    "atlas_finance/market_data/temporal.py": "L1",
     "atlas_os/__init__.py": "L2",
     "atlas_os/audit/__init__.py": "L2",
     "atlas_os/audit/audit_log.py": "L2",
@@ -389,23 +455,32 @@
     "core/decision.py": "L1",
     "core/decision_adapter.py": "L3",
     "core/decision_intelligence.py": "L1",
+    "core/durable_append_log.py": "L2",
     "core/event_bus.py": "L2",
     "core/execution_idempotency_store.py": "L2",
     "core/execution_manager.py": "L3",
     "core/execution_models.py": "L1",
     "core/execution_portfolio_foundation.py": "L1",
     "core/execution_transaction_journal.py": "L2",
+    "core/fee_accounting.py": "L1",
+    "core/instrument_rules.py": "L1",
     "core/lifecycle.py": "L2",
+    "core/local_capability_adapter.py": "L2",
     "core/logger.py": "L2",
     "core/market_loop.py": "L3",
+    "core/model_provider_contracts.py": "L1",
+    "core/operational_contracts.py": "L1",
     "core/paper_trader.py": "L3",
     "core/position_controller.py": "L3",
+    "core/position_sizing.py": "L1",
     "core/risk_engine.py": "L1",
     "core/risk_state_store.py": "L3",
     "core/runtime.py": "L3",
     "core/scheduler.py": "L2",
     "core/service_container.py": "L2",
     "core/technical_analyzer.py": "L3",
+    "core/tool_gateway_contracts.py": "L1",
+    "core/venue_rule_freshness.py": "L3",
     "data_layer/__init__.py": "L2",
     "data_layer/canonical_evidence.py": "L1",
     "data_layer/config.py": "L2",

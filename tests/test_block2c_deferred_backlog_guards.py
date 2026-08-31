@@ -5,14 +5,22 @@ order: "Do not change behavior merely for conceptual neatness." Each test
 proves the current interlock or invariant that keeps the known medium
 backlog item non-executable; none of them alter production behavior.
 
-M-2 (OPEN): removing a dissenting provider can raise AgentFusion
-confidence. Not activated in Block 2 - no third evidence provider exists.
-H10 proves the current provider/evidence-availability boundary that keeps
-this categorically unreachable today.
+M-2 (semantics CORRECTED in Block 3 / Package 4; interlock RETAINED):
+removing a dissenting provider could raise AgentFusion confidence.
+AgentFusion.fuse now normalizes the winning bucket mass against the whole
+configured roster, so no removal can raise confidence. The provider
+interlock below is deliberately NOT relaxed by that fix: enabling a third
+evidence provider remains a separate, independently reviewed decision, and
+H10 still proves the current provider/evidence-availability boundary.
 
-M-3: ConfidenceEngine's CRITICAL risk-level penalty falls back to the same
-value as MEDIUM (no explicit CRITICAL entry), but the only live call site
-always passes "level": "MEDIUM". H11 proves that call site is unchanged.
+M-3 (CLOSED in Block 3 / Package 4): ConfidenceEngine's CRITICAL risk-level
+penalty used to fall back to the same value as MEDIUM (no explicit CRITICAL
+entry). CRITICAL and UNKNOWN are now explicit maximum-penalty entries and an
+unrecognized PRESENT level fails closed at the maximum instead of MEDIUM.
+H11's characterization test is replaced by the corresponding closure test.
+The live call site still hardcodes "level": "MEDIUM", and that guard is
+retained: M-3's closure is what makes a future dynamic risk level *safe*,
+not a decision to introduce one here.
 
 M-4: the intermediate ConfidenceEngine result used for the advisory risk
 record can differ from the final Decision.confidence, which remains
@@ -88,15 +96,23 @@ def test_three_agent_fusion_clears_the_floor():
 # ---------------------------------------------------------------------------
 
 
-def test_confidence_engine_has_no_explicit_critical_penalty():
-    """Characterizes the latent defect: CRITICAL is not a distinct penalty
-    bucket, so an unknown/CRITICAL level silently falls back to the same
-    0.20 penalty as MEDIUM. Documented, not fixed, per the work order."""
+def test_confidence_engine_has_an_explicit_critical_penalty():
+    """M-3 closure (replaces the Block-2C characterization test).
+
+    CRITICAL is now a distinct maximum-penalty bucket. The previous
+    behavior - CRITICAL resolving to the same 0.20 penalty as MEDIUM via
+    ``penalties.get(level, 0.20)`` - is what this test now forbids.
+    """
 
     engine = ConfidenceEngine()
     medium_penalty = engine.calculate_risk_penalty({"level": "MEDIUM"})
     critical_penalty = engine.calculate_risk_penalty({"level": "CRITICAL"})
-    assert medium_penalty == critical_penalty == 0.20
+    high_penalty = engine.calculate_risk_penalty({"level": "HIGH"})
+
+    assert medium_penalty == 0.20
+    assert critical_penalty != medium_penalty
+    assert critical_penalty > high_penalty > medium_penalty
+    assert critical_penalty == 1.00
 
 
 def test_live_call_site_always_passes_medium_risk_level():

@@ -55,14 +55,20 @@ import time
 import traceback
 
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 
 from atlas_security import sanitize_sensitive_data
 
 from analysis.world_analysis_engine import WorldAnalysisEngine
 
-from core.candle_processor import CandleProcessor
+from core.candle_processor import (
+    CandleContractError,
+    CandleProcessor,
+)
 from core.decision_adapter import DecisionAdapter
+from core.execution_models import normalize_risk
+from core.position_sizing import PositionSizingService, SizingInputs, SizingStatus
 from core.technical_analyzer import TechnicalAnalyzer
 
 
@@ -111,11 +117,13 @@ class MarketLoop:
         event_bus: Any | None = None,
         symbols: list[str] | tuple[str, ...] | None = None,
         interval: float = 10.0,
+        position_sizing_service: PositionSizingService | None = None,
     ) -> None:
         self.brain = brain
         self.market_feed = market_feed
         self.execution = execution
         self.event_bus = event_bus
+        self.position_sizing_service = position_sizing_service
 
         self.symbols = self._normalize_symbols(
             symbols or self.DEFAULT_SYMBOLS
@@ -174,6 +182,7 @@ class MarketLoop:
             "closed_candles_processed": 0,
             "duplicate_candles_skipped": 0,
             "open_candles_excluded": 0,
+            "market_data_contract_violations": 0,
             "decisions_received": 0,
             "decisions_normalized": 0,
             "decisions_rejected": 0,
@@ -360,15 +369,35 @@ class MarketLoop:
     def run_cycle(self) -> None:
         """
         Process one complete multi-symbol market cycle.
+
+        The processing clock is read exactly once here. Every symbol in
+        the cycle is evaluated against that single explicit cutoff, and
+        no component below MarketLoop reads a clock to decide candle
+        closure.
         """
+
+        processing_cutoff = self._processing_cutoff()
 
         for symbol in tuple(self.symbols):
             if not self.running:
                 break
 
             self.process_symbol(
-                symbol
+                symbol,
+                processing_cutoff=processing_cutoff,
             )
+
+    @staticmethod
+    def _processing_cutoff() -> datetime:
+        """
+        Return the single cycle cutoff.
+
+        MarketLoop is the only clock authority on the market-data path.
+        """
+
+        return datetime.now(
+            UTC
+        )
 
     # =========================================================
     # SYMBOL PIPELINE
@@ -377,14 +406,28 @@ class MarketLoop:
     def process_symbol(
         self,
         symbol: str,
+        *,
+        processing_cutoff: datetime | None = None,
     ) -> dict[str, Any] | None:
         """
         Execute the full intelligence pipeline for one symbol.
+
+        Args:
+            symbol:
+                Market symbol to process.
+            processing_cutoff:
+                The explicit cycle cutoff supplied by run_cycle(). When
+                a direct caller omits it, MarketLoop reads the clock
+                here because it is the market-data clock authority.
+                Components below MarketLoop never do.
         """
 
         symbol = str(
             symbol
         ).strip().upper()
+
+        if processing_cutoff is None:
+            processing_cutoff = self._processing_cutoff()
 
         try:
             candles = self._load_candles(
@@ -398,7 +441,8 @@ class MarketLoop:
                 return None
 
             normalized_candles = self.processor.normalize(
-                candles
+                candles,
+                processing_cutoff=processing_cutoff,
             )
 
             if not normalized_candles:
@@ -718,6 +762,33 @@ class MarketLoop:
             )
 
             return result
+
+        except CandleContractError as exc:
+            # Ambiguous or unordered market data. The symbol fails
+            # closed for this cycle instead of guessing a winner.
+            self._increment_metric(
+                "symbols_skipped"
+            )
+
+            self._increment_metric(
+                "market_data_contract_violations"
+            )
+
+            logger.error(
+                "%s skipped: %s | %s",
+                symbol,
+                exc.reason,
+                exc,
+            )
+
+            return {
+                "status": "SKIPPED",
+                "reason": exc.reason,
+                "symbol": symbol,
+                "detail": str(
+                    exc
+                ),
+            }
 
         except Exception as exc:
             self._record_error(
@@ -1132,6 +1203,24 @@ class MarketLoop:
             "execution_requests"
         )
 
+        sizing_refusal = self._apply_position_sizing(
+            action,
+            decision,
+            execution_fingerprint,
+        )
+
+        if sizing_refusal is not None:
+            with self.lock:
+                self.pending_execution_fingerprints.discard(
+                    execution_fingerprint
+                )
+
+            self._increment_metric(
+                "executions_rejected"
+            )
+
+            return sizing_refusal
+
         try:
             result = self.execution.execute(
                 decision,
@@ -1247,6 +1336,183 @@ class MarketLoop:
         )
 
         return result_dict
+
+    # =========================================================
+    # POSITION SIZING (Block 5C)
+    # =========================================================
+
+    def _apply_position_sizing(
+        self,
+        action: str,
+        decision: dict[str, Any],
+        request_id: str,
+    ) -> dict[str, Any] | None:
+        """Propose a BUY quote allocation before ``ExecutionManager.execute()``.
+
+        Sizing happens after decision normalization and before risk
+        admission: ``PositionSizingService`` proposes, ``RiskEngine`` (inside
+        ``risk_check``) approves or rejects, and only ``risk_check`` may ever
+        write ``approved_quote_allocation``. This method never does - it can
+        only write the non-authoritative ``decision["proposed_quote_allocation"]``
+        exact-Decimal transport (Block 5C B1) that ``ExecutionRequest`` carries
+        losslessly through to ``_requested_quote_allocation``. ``decision["amount"]``
+        is never written by this method: it stays the pre-5C compatibility
+        mirror, untouched.
+
+        Returns ``None`` to let ``decision`` proceed into ``execute()``
+        unchanged - because sizing does not apply to this request, because
+        this exact request identity already completed and must be answered
+        from ``ExecutionManager``'s own durable duplicate cache instead,
+        because durable state cannot be read safely, or because a proposal
+        was written onto ``decision["proposed_quote_allocation"]``. No sizer
+        configured, and every SELL or reduce-only request, take this path
+        unchanged, which is what preserves Package 5B's fail-closed
+        ``UNSIZED_REQUEST_REJECTED`` behaviour exactly.
+
+        It returns a terminal rejection only for the one case that must
+        never reach ``execute()``: this exact request identity already holds
+        a reservation for a different amount than this evaluation just
+        proposed. Letting that through would have ``risk_check`` attempt a
+        second, conflicting reservation under the same id, which
+        ``CapitalReservationLedger`` refuses as a collision - turning stale
+        replay input into a halted runtime awaiting operator recovery, a far
+        worse outcome than refusing the replay cleanly here.
+        """
+        sizer = self.position_sizing_service
+
+        if action != "BUY" or sizer is None:
+            return None
+
+        manager = self.execution
+
+        # A request this exact identity already completed - durably, via
+        # ExecutionManager's own idempotency cache - must be answered from
+        # that cache, not re-priced. Durable state (cash, exposure) has
+        # moved past whatever earned the original approval, so recomputing a
+        # proposal here would price an identical replay differently and
+        # misreport a legitimate duplicate as SIZING_REPLAY_CONFLICT.
+        # Returning None here, before any proposal is computed, hands the
+        # request straight to execute() -> _claim_request(), which answers
+        # it from completed_request_results without sizing, a new
+        # reservation, a conflict, or a halt.
+        if request_id in getattr(manager, "completed_request_results", {}):
+            return None
+
+        foundation = getattr(manager, "portfolio_foundation", None)
+        ledger = getattr(manager, "reservation_ledger", None)
+
+        if (
+            foundation is None
+            or ledger is None
+            or not foundation.ready
+            or not ledger.ready
+        ):
+            return None
+
+        symbol = str(decision.get("symbol", "")).strip().upper()
+
+        try:
+            snapshot = foundation.snapshot()
+            position = snapshot["positions"].get(symbol)
+
+            symbol_exposure = (
+                Decimal(str(position["base_quantity"]))
+                * Decimal(str(position["mark_price"]))
+                if position is not None
+                else Decimal("0")
+            )
+
+            free_capital = snapshot["cash"] - ledger.active_reserved_capital(
+                exclude=request_id
+            )
+
+            inputs = SizingInputs(
+                request_id=request_id,
+                symbol=symbol,
+                risk_bucket=normalize_risk(
+                    decision.get(
+                        "risk",
+                        decision.get("risk_level"),
+                    )
+                ),
+                durable_free_quote_capital=free_capital,
+                symbol_exposure=symbol_exposure,
+                committed_quote=snapshot["gross_exposure"],
+            )
+
+            proposal = sizer.propose(inputs)
+
+        except Exception as exc:
+            self._record_error(
+                phase="position_sizing",
+                error=exc,
+            )
+
+            logger.exception(
+                "%s position sizing failed request_id=%s",
+                symbol,
+                request_id,
+            )
+
+            return None
+
+        metadata = decision.get("metadata")
+
+        if not isinstance(metadata, dict):
+            metadata = {}
+            decision["metadata"] = metadata
+
+        metadata["sizing"] = dict(proposal.provenance)
+
+        if proposal.status is not SizingStatus.PROPOSED:
+            logger.info(
+                "%s sizing refused request_id=%s reason=%s",
+                symbol,
+                request_id,
+                proposal.reason_code,
+            )
+
+            return None
+
+        # A prior admission for this exact request identity already reserved
+        # a specific amount. If today's inputs price the same request
+        # differently, that is stale or conflicting replay input, and it
+        # must be refused here - before ``execute()`` - rather than letting
+        # ``risk_check`` discover it as a reservation collision.
+        existing_reservation = ledger.get(request_id)
+
+        if (
+            existing_reservation is not None
+            and existing_reservation.amount != proposal.proposed_quote_allocation
+        ):
+            logger.warning(
+                "%s sizing replay conflict request_id=%s reserved=%s proposed=%s",
+                symbol,
+                request_id,
+                format(existing_reservation.amount, "f"),
+                format(proposal.proposed_quote_allocation, "f"),
+            )
+
+            request = manager.build_request(decision)
+
+            return manager.reject(
+                "SIZING_REPLAY_CONFLICT",
+                request,
+                details={
+                    "reserved_amount": format(existing_reservation.amount, "f"),
+                    "proposed_amount": format(
+                        proposal.proposed_quote_allocation, "f"
+                    ),
+                },
+            )
+
+        # The exact Decimal proposal, transported on its own dedicated field
+        # (Block 5C B1) so it reaches ``risk_check`` without crossing the
+        # lossy ``amount`` float mirror. ``amount`` itself is deliberately
+        # left untouched: it stays compatibility-only and non-authoritative.
+        decision["proposed_quote_allocation"] = proposal.proposed_quote_allocation
+
+        return None
 
     # =========================================================
     # EXECUTION RESULT NORMALIZATION

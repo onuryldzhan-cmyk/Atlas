@@ -34,7 +34,7 @@ from core.execution_portfolio_foundation import (
     ExecutionPortfolioFoundation,
     FinancialStateStore,
 )
-from core.risk_engine import PositionExposure, RiskEngine, RiskState
+from core.risk_engine import RiskEngine, RiskState
 from core.risk_state_store import JsonRiskStateStore, RestoredRiskState
 
 
@@ -64,15 +64,41 @@ def seed_risk_state(state_dir, *, equity="10000", pnl="0"):
     )
 
 
-def seed_financial_state(state_dir, *, cash="10000"):
-    FinancialStateStore(state_dir / EXECUTION_FINANCIAL_STATE_FILE).initialize(D(cash))
+def seed_financial_state(state_dir, *, cash="10000", held=None):
+    """Seed the durable book, optionally with an already-open LONG position.
+
+    ``held`` is ``(symbol, base_quantity, price)``. Block-5A derives both the
+    canonical RiskState and reduce-only intent from this book, so a test that
+    needs an exposure to reduce has to put it here rather than hand
+    ExecutionManager a portfolio of its own.
+    """
+    store = FinancialStateStore(state_dir / EXECUTION_FINANCIAL_STATE_FILE)
+    store.initialize(D(cash))
+
+    if held is None:
+        return
+
+    symbol, base, price = held
+    payload = store.load()
+    payload["positions"][symbol] = {
+        "position_id": f"long:{symbol}",
+        "symbol": symbol,
+        "base_quantity": format(D(base), "f"),
+        "cost_quote": format(D(base) * D(price), "f"),
+        "entry_fees": "0",
+        "average_entry_price": format(D(price), "f"),
+        "mark_price": format(D(price), "f"),
+        "version": 1,
+        "opened_at": datetime.now(UTC).isoformat(),
+    }
+    store.save(payload)
 
 
-def seed_valid_state(state_dir):
+def seed_valid_state(state_dir, *, held=None):
     state_dir.mkdir(parents=True, exist_ok=True)
     seed_reservation_state(state_dir)
     seed_risk_state(state_dir)
-    seed_financial_state(state_dir)
+    seed_financial_state(state_dir, held=held)
 
 
 def application(state_dir) -> AtlasApplication:
@@ -83,6 +109,14 @@ def application(state_dir) -> AtlasApplication:
 def ready_app(tmp_path):
     state_dir = tmp_path / "state"
     seed_valid_state(state_dir)
+    return application(state_dir)
+
+
+@pytest.fixture
+def holding_app(tmp_path):
+    """A runtime whose durable book already holds 10 BTCUSDT marked at 10."""
+    state_dir = tmp_path / "state"
+    seed_valid_state(state_dir, held=("BTCUSDT", "10", "10"))
     return application(state_dir)
 
 
@@ -136,10 +170,6 @@ def risk_state(*positions, pnl="0", equity="10000"):
         datetime.now(UTC).date().isoformat(),
         POLICY_VERSION,
     )
-
-
-def position(symbol="BTCUSDT", quote="100", price="10"):
-    return PositionExposure(symbol, D(quote) / D(price), D(price), D(quote))
 
 
 class DenyingPositionController:
@@ -428,17 +458,22 @@ def test_unsupported_risk_level_is_not_executable(ready_app):
 # --------------------------------------------------------------------------
 
 
-def test_reduce_only_exit_remains_available(ready_app):
-    ready_app.execution.position_controller = DenyingPositionController()
+def test_reduce_only_exit_remains_available(holding_app):
+    """The exit stays available, now proven against the durable book.
 
-    result = ready_app.execution.risk_check(
-        reduce_only_sell(amount="100"), risk_state(position())
-    )
+    Block-5A derives both the canonical RiskState and reduce-only intent from
+    ExecutionPortfolioFoundation, so the exposure being reduced has to be a
+    real held position rather than a portfolio the caller supplies. No
+    ``market_state`` is passed at all, which is exactly the runtime shape.
+    """
+    holding_app.execution.position_controller = DenyingPositionController()
+
+    result = holding_app.execution.risk_check(reduce_only_sell(amount="100"))
 
     assert result["approved"] is True
-    assert ready_app.execution.last_risk_decision["reason_code"] == "RISK_REDUCTION_APPROVED"
-    assert ready_app.execution.reservation_ledger.get("r1") is None
-    assert "r1" in ready_app.execution._risk_admissions
+    assert holding_app.execution.last_risk_decision["reason_code"] == "RISK_REDUCTION_APPROVED"
+    assert holding_app.execution.reservation_ledger.get("r1") is None
+    assert "r1" in holding_app.execution._risk_admissions
 
 
 # --------------------------------------------------------------------------

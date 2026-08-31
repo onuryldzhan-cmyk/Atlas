@@ -23,9 +23,10 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from types import MappingProxyType
 from typing import Any, Mapping, Protocol
 
-from atlas_security import sanitize_sensitive_data
+from atlas_security import sanitize_sensitive_data, sanitize_sensitive_text
 
 
 def _new_id() -> str:
@@ -39,6 +40,39 @@ def _now() -> str:
 def _required(value: str, field_name: str) -> None:
     if not str(value).strip():
         raise ValueError(f"{field_name} is required")
+
+
+def _sanitized_optional(value: str | None) -> str | None:
+    return None if value is None else sanitize_sensitive_text(value)
+
+
+def _freeze(value: Any) -> Any:
+    """Recursively convert a sanitized structure into an immutable one.
+
+    sanitize_sensitive_data already returns structures with no aliasing to
+    caller-owned objects, but the result is still built from plain, mutable
+    dict/list instances. Freezing closes the remaining post-construction
+    mutation path (e.g. ``result.metadata["k"] = "secret"`` or mutating a
+    nested dict reached through the sanitized value).
+    """
+    if isinstance(value, Mapping):
+        return MappingProxyType({key: _freeze(item) for key, item in value.items()})
+    if isinstance(value, (list, tuple)):
+        return tuple(_freeze(item) for item in value)
+    return value
+
+
+def sanitized_metadata(metadata: Mapping[str, Any] | None) -> Mapping[str, Any]:
+    """Sanitize and freeze a caller-supplied metadata mapping.
+
+    The single place any Atlas contract turns untrusted metadata into
+    something safe to hold, repr, and audit. Exposed so that other contract
+    modules reuse this exact boundary instead of growing a second, weaker
+    one; every caller gets the same redaction rules and the same immunity to
+    post-construction mutation.
+    """
+    sanitized = sanitize_sensitive_data(dict(metadata or {}))
+    return _freeze(sanitized if isinstance(sanitized, dict) else {})
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,6 +92,16 @@ class OperationContext:
     def __post_init__(self) -> None:
         _required(self.component, "component")
         _required(self.operation, "operation")
+        # trace_id / operation_id are internally generated UUID identity and
+        # are left untouched. Every other string-bearing field is caller- or
+        # operator-influenced and is sanitized so a secret-shaped value
+        # cannot survive into repr()/str() or a downstream OperationResult.
+        object.__setattr__(self, "component", sanitize_sensitive_text(self.component))
+        object.__setattr__(self, "operation", sanitize_sensitive_text(self.operation))
+        object.__setattr__(self, "request_id", _sanitized_optional(self.request_id))
+        object.__setattr__(self, "actor_id", _sanitized_optional(self.actor_id))
+        object.__setattr__(self, "symbol", _sanitized_optional(self.symbol))
+        object.__setattr__(self, "mode", _sanitized_optional(self.mode))
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,10 +130,26 @@ class OperationResult:
         _required(self.operation, "operation")
         _required(self.status, "status")
         _required(self.component, "component")
-        sanitized = sanitize_sensitive_data(dict(self.metadata))
+        # trace_id is internally generated/propagated UUID identity and is
+        # left untouched. Every other string-bearing scalar, evidence_ids,
+        # and metadata are sanitized so a secret-shaped value cannot survive
+        # into repr()/str() or serialized output, regardless of which field
+        # it arrived through.
+        object.__setattr__(self, "operation", sanitize_sensitive_text(self.operation))
+        object.__setattr__(self, "status", sanitize_sensitive_text(self.status))
+        object.__setattr__(self, "component", sanitize_sensitive_text(self.component))
+        object.__setattr__(self, "reason_code", sanitize_sensitive_text(self.reason_code))
+        object.__setattr__(self, "actor_id", _sanitized_optional(self.actor_id))
+        object.__setattr__(self, "model_provider", _sanitized_optional(self.model_provider))
+        object.__setattr__(self, "model_id", _sanitized_optional(self.model_id))
+        object.__setattr__(self, "tool_id", _sanitized_optional(self.tool_id))
+        object.__setattr__(self, "cost", _sanitized_optional(self.cost))
         object.__setattr__(
-            self, "metadata", sanitized if isinstance(sanitized, dict) else {},
+            self,
+            "evidence_ids",
+            tuple(sanitize_sensitive_text(item) for item in self.evidence_ids),
         )
+        object.__setattr__(self, "metadata", sanitized_metadata(self.metadata))
 
     @classmethod
     def from_context(

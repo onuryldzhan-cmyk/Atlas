@@ -48,7 +48,7 @@ Atlas Brain / Decision Engine
 from __future__ import annotations
 
 import logging
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_DOWN, ROUND_HALF_EVEN, Decimal, InvalidOperation, localcontext
 import threading
 import time
 import uuid
@@ -77,9 +77,26 @@ from core.execution_models import (
     ExecutionResult,
     normalize_risk,
 )
-from core.execution_portfolio_foundation import ExecutionPortfolioFoundation
+from core.execution_portfolio_foundation import (
+    SETTLEMENT_CONTEXT_PRECISION,
+    ExecutionPortfolioFoundation,
+    mint_long_position_id,
+)
+from core.fee_accounting import FeeNormalizer, FeeRejected
+from core.instrument_rules import (
+    FULL_EXIT_ABOVE_VENUE_MAXIMUM,
+    VENUE_UPPER_BOUNDS_UNAVAILABLE,
+    InstrumentRuleset,
+    floor_to_step,
+    is_aligned_to_step,
+)
+from core.venue_rule_freshness import (
+    VenueRuleFreshnessReport,
+    VenueRuleFreshnessService,
+)
 
 from core.risk_engine import (
+    PositionExposure,
     RiskEngine,
     RiskRequest,
     RiskState,
@@ -96,6 +113,20 @@ logger = logging.getLogger(
 )
 
 
+class ExecutionResetRefusedError(RuntimeError):
+    """``ExecutionManager.reset()`` refused a destructive runtime reset.
+
+    Block 5J. The transaction journal and the idempotency store are a paired
+    execution authority: the journal owns the commit outcome, the idempotency
+    store owns the terminal result a replayed request must be answered with,
+    and ``FinancialRuntimeSafetyService`` requires every COMMITTED journal
+    entry to still have its idempotency counterpart. Erasing one half while
+    leaving the other manufactures ``SOURCE_DISAGREEMENT`` out of a healthy
+    book, so ``reset()`` refuses rather than proceeding. The message is a
+    fixed reason token (never a request_id, execution_id, or state payload).
+    """
+
+
 class ExecutionManager:
     """
     Validate, route, execute, and observe Atlas execution requests.
@@ -104,11 +135,35 @@ class ExecutionManager:
     exposing ``to_dict()``. All inputs are converted into the canonical
     ``ExecutionRequest`` contract before validation.
 
-    Notes
-    -----
-    ``amount`` is treated as allocated quote-currency capital in the current
-    paper-trading pipeline. The same value is passed to PaperTrader and
-    PositionController so both components describe the same position size.
+    Sizing authority
+    ----------------
+    ``amount`` is quote-currency capital throughout, never base units.
+
+    This manager sizes nothing. A request arrives carrying the allocation its
+    caller intends, ``RiskEngine`` either approves that exact amount or
+    refuses the request, and from approval onward the approved amount is the
+    only quantity execution may commit. A BUY that carries no allocation is
+    refused as ``UNSIZED_REQUEST_REJECTED`` rather than being handed a size
+    from anywhere: policy ceilings bound an intent, they never manufacture
+    one. There is no post-risk allocation step, no CapitalManager sizing, no
+    confidence-derived size, and no default-allocation fallback.
+
+    The one exception is not sizing at all: a reduction that names no amount
+    means "exit this position", so it resolves to the exposure the durable
+    book actually holds (``_requested_quote_allocation``).
+
+    Financial precision
+    -------------------
+    The approved allocation is carried as an exact ``Decimal`` on
+    ``ExecutionRequest.approved_quote_allocation`` and read from there by
+    every authoritative consumer - admission key, reservation, execution and
+    durable finalization alike. ``ExecutionRequest.amount`` is a lossy
+    ``float`` mirror maintained for historical callers; changing it cannot
+    change what executes.
+
+    ``CapitalManager`` is composed for status and compatibility reporting
+    only. It holds no execution authority - it cannot size, veto, override,
+    or reinterpret a canonical ``RiskDecision``.
     """
 
     VERSION = "31.3"
@@ -119,8 +174,6 @@ class ExecutionManager:
     MODE_LIVE = "LIVE"
 
     MIN_CONFIDENCE = 60.0
-
-    DEFAULT_ALLOCATION = 100.0
 
     MAX_HISTORY = 500
     MAX_REJECTIONS = 500
@@ -188,7 +241,15 @@ class ExecutionManager:
         reservation_ledger: CapitalReservationLedger | None = None,
         risk_state_store: Any | None = None,
         portfolio_foundation: ExecutionPortfolioFoundation | None = None,
+        instrument_rules: InstrumentRuleset | None = None,
+        instrument_rule_freshness: VenueRuleFreshnessService | None = None,
+        configured_symbols: list[str] | tuple[str, ...] | None = None,
     ) -> None:
+        # Retained for status/compatibility reporting only. No execution path
+        # reads it: it is never asked to size an allocation and never asked to
+        # approve a request. Removing the parameter outright would break every
+        # existing caller for no safety gain, so the authority is withdrawn
+        # rather than the composition.
         self.capital_manager = capital_manager
         self.position_controller = position_controller
         self.paper_trader = paper_trader
@@ -197,8 +258,47 @@ class ExecutionManager:
         self.reservation_ledger = reservation_ledger
         self.risk_state_store = risk_state_store
         self.portfolio_foundation = portfolio_foundation
+
+        # Block 5D: the sole venue instrument-precision authority. This
+        # manager consumes it but never constructs, mutates, or invents an
+        # entry - the composition root loads it once from the checked-in
+        # static config and injects it here. ``configured_symbols`` is the
+        # trade-enabled symbol universe the composition root knows about; a
+        # missing rule for any of them halts startup fail-closed rather than
+        # being discovered on the first admitted request.
+        self.instrument_rules = instrument_rules
+
+        # Block 6A: how old those rules are allowed to be, and what happens
+        # when they are older. Defaulted rather than left ``None`` so no
+        # construction path is silently ungated; the composition root injects
+        # the shared instance so its policy and clock are the ones in force.
+        self.instrument_rule_freshness = (
+            instrument_rule_freshness
+            if instrument_rule_freshness is not None
+            else VenueRuleFreshnessService()
+        )
+
+        self._configured_symbols: tuple[str, ...] = tuple(
+            sorted(
+                {
+                    str(symbol).strip().upper()
+                    for symbol in (configured_symbols or ())
+                    if str(symbol).strip()
+                }
+            )
+        )
+
         self.last_risk_decision: dict[str, Any] | None = None
         self._risk_admissions: dict[str, tuple[str, ...]] = {}
+
+        # Request ids whose execution has passed the paper/live side-effect
+        # boundary.  PaperTrader.open_trade()/close_trade() persist to their
+        # own durable book, so once that boundary is crossed an interrupted
+        # request has an outcome this manager cannot prove either way.
+        self._execution_side_effect_ids: set[str] = set()
+
+        # Set by start(): whether this run came online holding live authority.
+        self._live_authorized_at_start = False
 
         self.mode = self._normalize_mode(
             mode
@@ -365,6 +465,123 @@ class ExecutionManager:
             return False, str(reason or "FINANCIAL_STATE_RECOVERY_REQUIRED")
         return True, None
 
+    def _instrument_rules_startup_check(self) -> tuple[bool, str | None]:
+        """Verify venue instrument rules cover every symbol this run needs.
+
+        Block 5D owner decisions 2 and 4. Two independent symbol sources are
+        checked: the composition root's configured trade-enabled symbols
+        (decision 2 - a symbol Atlas is set up to trade must have a verified
+        rule before the first order attempt, not discovered as a runtime
+        admission failure) and every symbol the durable book currently holds
+        a position in (a held position is implicitly configured regardless of
+        whether it is still in the trade-enabled list, and its alignment
+        cannot even be checked without a rule for it).
+
+        A configured or held symbol with no rule halts as
+        ``INSTRUMENT_RULES_UNAVAILABLE``. A held position whose durable
+        ``base_quantity`` is not an exact multiple of the rule's
+        ``quantity_step`` halts as ``INSTRUMENT_RULES_POSITION_MISALIGNED``
+        - never floored, rounded, or written off; only an operator can
+        resolve it. Both are startup-only: this manager never mutates the
+        durable book to fix either condition.
+        """
+        symbols = set(self._configured_symbols)
+
+        foundation = self.portfolio_foundation
+        foundation_usable = foundation is not None and foundation.ready
+        if foundation_usable:
+            positions = self._derived_position_exposures()
+            symbols.update(position.symbol for position in positions)
+        else:
+            positions = ()
+
+        if not symbols:
+            return True, None
+
+        if self.instrument_rules is None:
+            return False, "INSTRUMENT_RULES_UNAVAILABLE"
+
+        for symbol in sorted(symbols):
+            if self.instrument_rules.get(symbol) is None:
+                return False, "INSTRUMENT_RULES_UNAVAILABLE"
+
+        for position in positions:
+            rules = self.instrument_rules.get(position.symbol)
+            if rules is not None and not is_aligned_to_step(
+                position.base_quantity, rules.quantity_step
+            ):
+                return False, "INSTRUMENT_RULES_POSITION_MISALIGNED"
+
+        # Block 6A: rules that exist for every needed symbol can still be too
+        # old to trade on. A live-authorized runtime halts unless they are
+        # FRESH; a bounded PAPER runtime continues on STALE rules only
+        # because the policy explicitly permits it, and never silently -
+        # ``venue_rules`` on health() and status() carries the state, and the
+        # warning below names it at startup.
+        decision = self.instrument_rule_freshness.evaluate_gate(
+            self.instrument_rules,
+            live_authorized=self.live_authorized,
+        )
+
+        if not decision.allowed:
+            return False, decision.reason
+
+        if not decision.report.is_fresh:
+            logger.warning(
+                "Venue instrument rules not fresh status=%s venue=%s "
+                "age_seconds=%s maximum_age_seconds=%s observed_at=%s",
+                decision.report.status.value,
+                decision.report.venue,
+                decision.report.age_seconds,
+                decision.report.maximum_age_seconds,
+                decision.report.observed_at,
+            )
+
+        # Block 6B (readiness gate V1): a runtime that can actually reach a
+        # venue may not come online against rules that do not model the
+        # venue's upper bounds. Unmodelled maxima are only tolerable while no
+        # order can reach a venue at all, which is precisely what live
+        # authority ends. Bounded PAPER is unaffected by design: it is the
+        # existing, recorded policy that unmodelled maxima are safe there
+        # because nothing leaves the paper book.
+        if self.live_authorized:
+            unbounded = [
+                symbol
+                for symbol in sorted(symbols)
+                if not self.instrument_rules.get(symbol).has_complete_venue_bounds
+            ]
+
+            if unbounded:
+                logger.error(
+                    "Live authority refused: venue upper bounds unmodelled "
+                    "symbols=%s",
+                    unbounded,
+                )
+                return False, VENUE_UPPER_BOUNDS_UNAVAILABLE
+
+        return True, None
+
+    @property
+    def live_authorized(self) -> bool:
+        """True when this runtime could actually reach a venue.
+
+        LIVE *mode* alone is not authority: with ``live_execution_enabled``
+        false, ``live_execute`` denies every request before any adapter step,
+        so no venue rule - fresh or stale - can be acted on. Authority is the
+        conjunction, and it is what the venue-rule freshness gate keys on.
+        """
+        return self.mode == self.MODE_LIVE and bool(self.live_execution_enabled)
+
+    def assess_venue_rule_freshness(self) -> VenueRuleFreshnessReport:
+        """Evaluate the current venue-rule freshness state.
+
+        Re-evaluated on each call against the injected clock rather than
+        cached at startup: rules are immutable for the life of the process
+        (Block 5D owner decision 9), but their *age* is not, so a long-running
+        process must be able to observe them crossing the threshold.
+        """
+        return self.instrument_rule_freshness.assess(self.instrument_rules)
+
     def start(self) -> bool:
         """
         Bring the execution service online.
@@ -379,6 +596,12 @@ class ExecutionManager:
 
             self.running = True
 
+            # Block 6A: the authority this run actually started with. A live
+            # dispatch re-checks venue-rule freshness only for a runtime that
+            # started live-authorized and therefore passed the fail-closed
+            # startup gate below; see live_execute.
+            self._live_authorized_at_start = self.live_authorized
+
             readiness = self._assess_financial_readiness()
 
             durable_ready = True
@@ -386,11 +609,23 @@ class ExecutionManager:
             if self.portfolio_foundation is not None:
                 durable_ready, durable_reason = self._durable_financial_ready()
 
-            if not readiness.ready or not durable_ready:
+            instrument_rules_ready = True
+            instrument_rules_reason = None
+            if readiness.ready and durable_ready:
+                # Position alignment can only be checked once the durable
+                # book itself is known ready; a not-ready foundation already
+                # halts above with its own reason.
+                instrument_rules_ready, instrument_rules_reason = (
+                    self._instrument_rules_startup_check()
+                )
+
+            if not readiness.ready or not durable_ready or not instrument_rules_ready:
                 self.execution_halted = True
                 self.recovery_required = True
                 self.halt_reason = (
-                    readiness.decision.reason if not readiness.ready else durable_reason
+                    readiness.decision.reason if not readiness.ready
+                    else durable_reason if not durable_ready
+                    else instrument_rules_reason
                 )
 
         logger.info(
@@ -1197,9 +1432,140 @@ class ExecutionManager:
             # =================================================
             # RETRYABLE FAILURE / NOT COMMITTED
             # =================================================
+            #
+            # Terminal classification is a SUCCESS allow-list, not a
+            # failure allow-list. Only a status this manager itself
+            # recognises as a completed execution may continue into
+            # durable finalization; every other terminal status resolves
+            # through the unsuccessful-execution path.
+            #
+            # The previous `status in FAILURE_STATUSES` test admitted
+            # everything outside {FAILED, ERROR} into the durable-commit
+            # branch. The statuses that actually reach this point are
+            # PAPER_EXECUTED and FAILED (paper_execute), REJECTED (the
+            # canonical-admission guard inside paper_execute and
+            # live_execute), and LIVE_DISABLED / LIVE_NOT_IMPLEMENTED
+            # (live_execute). So a correctly denied LIVE request - one
+            # that provably performed no side effect at all - was
+            # finalized as a confirmed execution: it failed inside
+            # _finalize_durable_financial_state and left the runtime
+            # halted with an unresolved journal entry, INDETERMINATE
+            # capital, and an audit record asserting that an execution
+            # "was confirmed" which had never occurred.
+            #
+            # Inverting the test is also what makes an unrecognised
+            # terminal status fail closed. ExecutionResult.status
+            # defaults to "UNKNOWN", and any status added in future is
+            # treated as not-committed until it is deliberately declared
+            # a success here, rather than being silently durable.
+            #
+            # This changes only how a status is classified, never how a
+            # side effect is judged: _resolve_unsuccessful_execution
+            # still decides deterministic rollback versus genuine
+            # uncertainty from the recorded side-effect marker alone, so
+            # a post-side-effect failure remains INDETERMINATE exactly
+            # as before.
 
-            if status in self.FAILURE_STATUSES:
-                self._release_capital_reservation(request_id)
+            if status not in self.SUCCESS_STATUSES:
+                # An unsuccessful result is classified by the same
+                # side-effect boundary as a raised exception. A paper
+                # mutation that already persisted is not undone by the
+                # execution then reporting FAILED.
+                side_effect_possible = (
+                    self._resolve_unsuccessful_execution(
+                        request_id=request_id,
+                        reason=status,
+                        result=result,
+                    )
+                )
+
+                self._release_request(
+                    request_id
+                )
+
+                request_claimed = False
+
+                if side_effect_possible:
+                    # The original business failure is preserved in
+                    # error_code, message, and original_status; only the
+                    # commit classification changes, because this runtime
+                    # can no longer claim nothing happened.
+                    result[
+                        "original_status"
+                    ] = status
+
+                    result[
+                        "success"
+                    ] = False
+
+                    result[
+                        "status"
+                    ] = (
+                        CommitOutcome
+                        .COMMIT_STATUS_UNKNOWN
+                        .value
+                    )
+
+                    result[
+                        "commit_outcome"
+                    ] = (
+                        CommitOutcome
+                        .COMMIT_STATUS_UNKNOWN
+                        .value
+                    )
+
+                    result[
+                        "recovery_required"
+                    ] = True
+
+                    with self._lock:
+                        self.stats[
+                            "failed"
+                        ] += 1
+
+                    self._record_result(
+                        result
+                    )
+
+                    self._write_audit_event(
+                        event_type=(
+                            "EXECUTION_COMMIT_STATUS_UNKNOWN"
+                        ),
+                        request=request,
+                        payload={
+                            "success": False,
+                            "status": result.get(
+                                "status"
+                            ),
+                            "original_status": status,
+                            "message": result.get(
+                                "message"
+                            ),
+                            "error_code": result.get(
+                                "error_code"
+                            ),
+                            "latency_ms": result.get(
+                                "latency_ms"
+                            ),
+                            "retryable": False,
+                            "commit_outcome": (
+                                result.get(
+                                    "commit_outcome"
+                                )
+                            ),
+                        },
+                        causation_id=(
+                            last_audit_event_id
+                        ),
+                    )
+
+                    self.publish(
+                        "EXECUTION_COMMIT_STATUS_UNKNOWN",
+                        result,
+                    )
+
+                    return result
+
                 result[
                     "commit_outcome"
                 ] = (
@@ -1207,34 +1573,6 @@ class ExecutionManager:
                     .NOT_COMMITTED
                     .value
                 )
-
-                mark_not_committed = getattr(
-                    self.transaction_journal,
-                    "mark_not_committed",
-                    None,
-                )
-
-                if callable(
-                    mark_not_committed
-                ):
-                    try:
-                        mark_not_committed(
-                            request_id,
-                            reason=status,
-                            result=result,
-                        )
-
-                    except Exception:
-                        logger.exception(
-                            "Transaction NOT_COMMITTED "
-                            "journal update failed"
-                        )
-
-                self._release_request(
-                    request_id
-                )
-
-                request_claimed = False
 
                 self._record_result(
                     result
@@ -1320,7 +1658,34 @@ class ExecutionManager:
                     self.publish("EXECUTION_COMMIT_STATUS_UNKNOWN", unknown_result)
                     return unknown_result
 
-                if not self._commit_capital_reservation(request_id):
+                # Block 5E: commit the reservation at the exact settled
+                # amount - notional + quote fee - rather than the full
+                # reservation, so the deterministic sub-quantum remainder a
+                # BUY never spent stops being permanently encumbered by this
+                # reservation. `None` when either figure is absent (e.g. a
+                # non-paper/live result), which preserves the historical
+                # full-amount commit for that case. The addition is pinned
+                # to the same explicit context as the rest of the 5E
+                # settlement slice (final-review MEDIUM #2), so a caller
+                # thread's ambient precision can never round this sum
+                # differently than `_finalize_durable_financial_state`
+                # already rounded the identical `notional + fee` figure it
+                # checked against the approval moments earlier - a
+                # divergence here would either under-commit or spuriously
+                # halt on `settled_amount exceeds reserved amount`.
+                settled_amount = None
+                notional_raw = result.get("filled_quote_notional")
+                settled_fee_raw = result.get("fee_amount")
+                if notional_raw is not None and settled_fee_raw is not None:
+                    try:
+                        with localcontext() as context:
+                            context.prec = SETTLEMENT_CONTEXT_PRECISION
+                            context.rounding = ROUND_HALF_EVEN
+                            settled_amount = Decimal(str(notional_raw)) + Decimal(str(settled_fee_raw))
+                    except (InvalidOperation, ValueError, TypeError):
+                        settled_amount = None
+
+                if not self._commit_capital_reservation(request_id, settled_amount):
                     try:
                         self.transaction_journal.mark_unknown(
                             request_id,
@@ -1535,6 +1900,12 @@ class ExecutionManager:
                         "fee": result.get(
                             "fee"
                         ),
+                        "fee_amount": result.get(
+                            "fee_amount"
+                        ),
+                        "fee_currency": result.get(
+                            "fee_currency"
+                        ),
                         "pnl": result.get(
                             "pnl"
                         ),
@@ -1578,17 +1949,67 @@ class ExecutionManager:
                 "Execution pipeline failed"
             )
 
-            failure = self._failure_result(
-                request=request,
-                status="FAILED",
-                message=(
-                    "Execution pipeline failed"
-                ),
-                error_code=(
-                    "EXECUTION_PIPELINE_EXCEPTION"
-                ),
-                error=exc,
+            # An exception after risk admission must not leave capital
+            # reserved, an admission stale, and the runtime running.
+            side_effect_possible = (
+                self._resolve_unsuccessful_execution(
+                    request_id=request_id,
+                    reason="EXECUTION_PIPELINE_EXCEPTION",
+                )
+                if request_id
+                else False
             )
+
+            if side_effect_possible:
+                failure = self._failure_result(
+                    request=request,
+                    status=(
+                        CommitOutcome
+                        .COMMIT_STATUS_UNKNOWN
+                        .value
+                    ),
+                    message=(
+                        "Execution was interrupted after a paper "
+                        "execution side effect"
+                    ),
+                    error_code=(
+                        "EXECUTION_PIPELINE_EXCEPTION"
+                    ),
+                    error=exc,
+                )
+
+                failure[
+                    "commit_outcome"
+                ] = (
+                    CommitOutcome
+                    .COMMIT_STATUS_UNKNOWN
+                    .value
+                )
+
+                failure[
+                    "recovery_required"
+                ] = True
+
+            else:
+                failure = self._failure_result(
+                    request=request,
+                    status="FAILED",
+                    message=(
+                        "Execution pipeline failed"
+                    ),
+                    error_code=(
+                        "EXECUTION_PIPELINE_EXCEPTION"
+                    ),
+                    error=exc,
+                )
+
+                failure[
+                    "commit_outcome"
+                ] = (
+                    CommitOutcome
+                    .NOT_COMMITTED
+                    .value
+                )
 
             if request_id:
                 failure.setdefault(
@@ -1616,13 +2037,19 @@ class ExecutionManager:
 
             if request is not None:
                 self._write_audit_event(
-                    event_type="EXECUTION_FAILED",
+                    event_type=(
+                        "EXECUTION_COMMIT_STATUS_UNKNOWN"
+                        if side_effect_possible
+                        else "EXECUTION_FAILED"
+                    ),
                     request=request,
                     payload={
                         "success": False,
-                        "status": "FAILED",
-                        "message": (
-                            "Execution pipeline failed"
+                        "status": failure.get(
+                            "status"
+                        ),
+                        "message": failure.get(
+                            "message"
                         ),
                         "error_code": (
                             "EXECUTION_PIPELINE_EXCEPTION"
@@ -1636,7 +2063,12 @@ class ExecutionManager:
                         "latency_ms": failure.get(
                             "latency_ms"
                         ),
-                        "retryable": True,
+                        "retryable": (
+                            not side_effect_possible
+                        ),
+                        "commit_outcome": failure.get(
+                            "commit_outcome"
+                        ),
                     },
                     causation_id=(
                         last_audit_event_id
@@ -1644,7 +2076,11 @@ class ExecutionManager:
                 )
 
             self.publish(
-                "EXECUTION_FAILED",
+                (
+                    "EXECUTION_COMMIT_STATUS_UNKNOWN"
+                    if side_effect_possible
+                    else "EXECUTION_FAILED"
+                ),
                 failure,
             )
 
@@ -1653,13 +2089,15 @@ class ExecutionManager:
         finally:
             # Defensive release for exceptions or unexpected
             # early exits after a successful atomic claim.
-            if (
-                request_claimed
-                and request_id
-            ):
-                self._release_request(
+            if request_id:
+                self._consume_execution_side_effect(
                     request_id
                 )
+
+                if request_claimed:
+                    self._release_request(
+                        request_id
+                    )
 
     def build_request(
         self,
@@ -1805,6 +2243,13 @@ class ExecutionManager:
                     False,
                 )
             ),
+            # Preserved exactly as the caller supplied it (Block 5C B1): this
+            # is the pre-admission sizing proposal, read straight from the
+            # decision dict rather than through ``_to_float``, so a Decimal
+            # proposal reaches ``ExecutionRequest`` losslessly.
+            proposed_quote_allocation=data.get(
+                "proposed_quote_allocation"
+            ),
         )
 
         return request
@@ -1946,6 +2391,275 @@ class ExecutionManager:
         }
 
     # =========================================================
+    # AUTHORITATIVE RISK STATE DERIVATION
+    # =========================================================
+
+    def _derived_position_exposures(self) -> tuple[PositionExposure, ...]:
+        """Project the durable LONG book onto the canonical exposure contract.
+
+        Each position is valued at the ``mark_price`` the foundation already
+        holds, which is the same basis its own ``snapshot()`` reports. No new
+        market-price authority is introduced here: a mark that has not been
+        refreshed is carried exactly as the durable book states it, so the
+        derived exposure is never fresher than the accounting it comes from.
+
+        That mark is the single exposure basis for the whole admission-to-exit
+        path. Risk admission measures a position here,
+        ``_requested_quote_allocation`` resolves an unsized exit against the
+        same number, and ``_resolve_reduction_quantity`` converts an approved
+        reduction back into base units at the same number. Because every step
+        shares one basis, a complete exit is requested as exactly the exposure
+        it is compared against and can never be refused for a disagreement
+        between cost basis and current execution price. The execution price
+        prices the proceeds; it never decides how much is sold, and it is
+        never consulted here.
+        """
+        positions = self.portfolio_foundation.snapshot()["positions"]
+
+        exposures = []
+        for symbol, position in sorted(positions.items()):
+            base = Decimal(str(position["base_quantity"]))
+            mark = Decimal(str(position["mark_price"]))
+            exposures.append(
+                PositionExposure(symbol, base, mark, base * mark)
+            )
+
+        return tuple(exposures)
+
+    def _derive_risk_state(
+        self,
+        market_state: Any | None = None,
+    ) -> RiskState:
+        """Assemble the canonical ``RiskState`` from authoritative state.
+
+        Contract
+        --------
+        Position state and committed exposure come from
+        ``ExecutionPortfolioFoundation``, the durable owner of LONG position
+        accounting. Realized daily P&L, peak/current equity, the UTC
+        accounting day and the policy version come from the durable risk
+        accounting record behind ``risk_state_store``. Nothing is inferred or
+        defaulted: every field is read from one of those two authorities, and
+        an authority that cannot answer raises so ``risk_check`` refuses the
+        request instead of evaluating risk against a fabricated portfolio.
+
+        ``CapitalReservationLedger`` is deliberately not consulted. There is
+        no reserved-capital field on ``RiskState``; ``RiskEngine`` derives
+        reserved and allocatable capital from ``RiskPolicy`` itself. The
+        ledger's readiness remains a precondition ``risk_check`` enforces
+        before this runs, so it still gates admission without contributing a
+        value that cannot be proven from the state it owns.
+
+        Compatibility
+        -------------
+        When no portfolio foundation is configured - the documented opt-out
+        described in ``_durable_financial_ready`` - the caller-supplied
+        ``RiskState`` remains the position authority exactly as before. A
+        foundation that *is* configured but is not ready never falls back to
+        caller-supplied positions: an unrecoverable book fails closed.
+        """
+        if self.risk_engine is None:
+            raise RuntimeError("CANONICAL_RISK_SERVICE_REQUIRED")
+
+        if self.risk_state_store is None:
+            raise RuntimeError("RISK_ACCOUNTING_STATE_STORE_REQUIRED")
+
+        foundation = self.portfolio_foundation
+
+        if foundation is not None:
+            if not foundation.ready:
+                raise RuntimeError(
+                    "DURABLE_FINANCIAL_FOUNDATION_NOT_READY"
+                )
+
+            positions = self._derived_position_exposures()
+
+        else:
+            supplied = (
+                market_state
+                if isinstance(market_state, RiskState)
+                else (
+                    market_state.get("risk_state")
+                    if isinstance(market_state, Mapping)
+                    else None
+                )
+            )
+
+            if not isinstance(supplied, RiskState) or not supplied.state_ready:
+                raise ValueError(
+                    "authoritative position exposure state is required"
+                )
+
+            positions = supplied.positions
+
+        restored = self.risk_state_store.load(
+            expected_policy_version=self.risk_engine.policy.version,
+            today_utc=datetime.now(UTC).date(),
+        )
+
+        return RiskState(
+            positions=positions,
+            committed_quote=sum(
+                (position.quote_exposure for position in positions),
+                Decimal("0"),
+            ),
+            realized_daily_pnl=restored.realized_daily_pnl,
+            peak_equity=restored.peak_equity,
+            current_equity=restored.current_equity,
+            state_ready=True,
+            accounting_day_utc=restored.accounting_day_utc.isoformat(),
+            policy_version=restored.policy_version,
+        )
+
+    @staticmethod
+    def _derive_reduce_only(
+        request: ExecutionRequest,
+        state: RiskState,
+    ) -> bool:
+        """Derive risk-reduction intent from authoritative held-position state.
+
+        Atlas is LONG-only, so exposure can only fall by selling a symbol that
+        is actually held. A SELL against a held position is therefore handed to
+        ``RiskEngine`` as reduce-only, and the engine keeps sole authority over
+        whether the requested size is a *valid* reduction: an over-sized one
+        still fails closed as ``INVALID_RISK_REDUCTION``. A SELL against a
+        symbol that is not held is not a reduction at all and stays
+        ``NON_RISK_REDUCING_SELL``.
+
+        A BUY can never reduce exposure, so it derives False unconditionally.
+        That also stops a caller-supplied flag from waiving the capital
+        reservation the BUY path requires.
+
+        The derived value is authoritative. A contradicting caller flag is
+        logged and then discarded, because held-position state - not caller
+        intent - decides whether exposure is being reduced.
+        """
+        if str(request.action).strip().upper() != "SELL":
+            return False
+
+        symbol = str(request.symbol).strip().upper()
+
+        return any(
+            position.symbol == symbol
+            for position in state.positions
+        )
+
+    # =========================================================
+    # REQUESTED ALLOCATION (PRE-RISK)
+    # =========================================================
+
+    def _durable_free_quote_capital(
+        self,
+        *,
+        exclude: str | None = None,
+    ) -> Decimal | None:
+        """Quote capital the durable book could actually spend right now.
+
+        Cash comes from ``ExecutionPortfolioFoundation``, the owner of the
+        durable ledger; capital already spoken for by in-flight admissions
+        comes from ``CapitalReservationLedger``.  The foundation's own
+        ``reserved_capital`` field is deliberately not used: it is synchronized
+        during finalization, so mid-flight it lags the ledger.
+
+        ``exclude`` names the one reservation this measurement is being taken
+        *for*, and is the reservation id of the request being admitted. A
+        re-evaluated request already holds its own RESERVED entry from its
+        first admission, and counting that entry would charge the request for
+        its own approval: near the durable bound the second verdict flips to
+        INSUFFICIENT_DURABLE_CAPITAL purely because the request was approved
+        once already. Every other reservation still encumbers capital, so this
+        cannot fund two requests out of the same cash, and the ledger's own
+        ``available`` check - which excludes nothing - remains the bound on
+        what may actually be reserved.
+
+        Returns ``None`` when no durable book is configured - the documented
+        opt-out - so the caller can fall back to policy limits alone rather
+        than treating an absent book as zero capital.
+        """
+        if self.portfolio_foundation is None or self.reservation_ledger is None:
+            return None
+
+        cash = Decimal(str(self.portfolio_foundation.snapshot()["cash"]))
+
+        return cash - self.reservation_ledger.active_reserved_capital(
+            exclude=exclude
+        )
+
+    def _requested_quote_allocation(
+        self,
+        request: ExecutionRequest,
+        state: RiskState,
+    ) -> Decimal | None:
+        """Read the allocation a request is asking for, before RiskEngine runs.
+
+        This resolves an intent; it does not size one. Nothing here consults a
+        policy ceiling, a confidence score, a CapitalManager or a constant,
+        and nothing here can raise a caller's number.
+
+        Exact sizing proposal (Block 5C B1)
+            A request carrying an exact ``proposed_quote_allocation`` -
+            written only by ``PositionSizingService`` - is asking for exactly
+            that Decimal, and takes priority over the ``amount`` compatibility
+            mirror below. This is what keeps an authoritative proposal from
+            ever crossing the lossy ``amount`` float boundary on its way to
+            ``RiskEngine``.
+
+        Explicit allocation
+            A request carrying a positive ``amount`` and no exact proposal is
+            asking for exactly that, and gets exactly that. It is still
+            subject to every admission verdict - a request above the policy
+            ceiling is refused by ``RiskEngine`` as
+            ``REQUEST_EXCEEDS_RISK_LIMIT``, not silently trimmed to fit.
+
+        Unsized reduction
+            A SELL against a held position that names no amount means "exit
+            this position". That is the position's own size, not a sizing
+            decision, so it resolves to the full held quote exposure on the
+            same durable basis ``_derived_position_exposures`` reports - which
+            is what lets a complete exit be approved as exactly the exposure
+            it is compared against, and lets it settle on the exact held base
+            quantity rather than a re-derived approximation of it.
+
+        Unsized BUY
+            Returns ``None``. New risk with no stated size is not a request
+            this runtime can price, and inheriting the policy ceiling would
+            turn a risk *bound* into a sizing *policy* - the largest trade
+            policy allows, on every unsized decision, forever. The caller
+            refuses it as ``UNSIZED_REQUEST_REJECTED``.
+
+        Unsized non-reducing SELL
+            Resolves to zero, which ``RiskEngine`` refuses as
+            ``INVALID_FINANCIAL_INPUT`` exactly as before: selling a symbol
+            that is not held is malformed, not merely unsized.
+
+        The result is exact ``Decimal`` and deterministic for identical
+        durable state.
+        """
+        if request.proposed_quote_allocation is not None:
+            return request.proposed_quote_allocation
+
+        existing = Decimal(str(request.amount))
+        if existing > 0:
+            return existing
+
+        symbol = str(request.symbol).strip().upper()
+
+        if request.reduce_only:
+            return sum(
+                (
+                    position.quote_exposure
+                    for position in state.positions
+                    if position.symbol == symbol
+                ),
+                Decimal("0"),
+            )
+
+        if str(request.action).strip().upper() == "BUY":
+            return None
+
+        return Decimal("0")
+
+    # =========================================================
     # RISK VALIDATION
     # =========================================================
 
@@ -1954,9 +2668,26 @@ class ExecutionManager:
         request: ExecutionRequest,
         market_state: Any | None = None,
     ) -> dict[str, Any]:
+        """Admit or refuse a request, and fix the amount it may commit.
+
+        Admission and capital reservation happen here, in that order, and only
+        here. The request's own allocation is resolved, ``RiskEngine`` returns
+        the canonical verdict, the remaining reject-capable gates run, and
+        capital is reserved last so that no refusal can leave a reservation or
+        an admission behind.
+
+        On approval the engine's exact ``Decimal`` verdict is written to
+        ``request.approved_quote_allocation`` and sealed into the admission
+        token. That field - not ``amount`` - is what every authoritative
+        consumer downstream reads, which is what makes it the only amount
+        execution can commit. CapitalManager takes no part in any of this.
         """
-        Apply position and optional CapitalManager risk gates.
-        """
+
+        # Any approval this request may be carrying from an earlier evaluation
+        # is void the moment it is re-evaluated. Clearing first means a
+        # refusal below can never leave a stale approval that a later stage
+        # would read as live authority.
+        request.approved_quote_allocation = None
 
         # Phase-3 canonical admission is evaluated before compatibility risk
         # adapters.  Its state must have been restored by the accounting owner;
@@ -1971,43 +2702,77 @@ class ExecutionManager:
             return {"approved": False, "reason": "RISK_ACCOUNTING_STATE_STORE_REQUIRED",
                     "status": "BLOCK_RECOVERY_REQUIRED"}
         if self.risk_engine is not None:
-            risk_state = (
-                market_state
-                if isinstance(market_state, RiskState)
-                else (
-                    market_state.get("risk_state")
-                    if isinstance(market_state, Mapping)
-                    else None
-                )
-            )
             try:
-                if not isinstance(risk_state, RiskState) or not risk_state.state_ready:
-                    raise ValueError("authoritative position exposure state is required")
-                restored = self.risk_state_store.load(
-                    expected_policy_version=self.risk_engine.policy.version,
-                    today_utc=datetime.now(UTC).date(),
+                risk_state = self._derive_risk_state(market_state)
+
+                # Risk-reduction intent is decided by the position state the
+                # engine is about to evaluate against, never by the caller.
+                supplied_reduce_only = bool(request.reduce_only)
+                request.reduce_only = self._derive_reduce_only(
+                    request,
+                    risk_state,
                 )
-                risk_state = RiskState(
-                    positions=risk_state.positions,
-                    committed_quote=risk_state.committed_quote,
-                    realized_daily_pnl=restored.realized_daily_pnl,
-                    peak_equity=restored.peak_equity,
-                    current_equity=restored.current_equity,
-                    state_ready=True,
-                    accounting_day_utc=restored.accounting_day_utc.isoformat(),
-                    policy_version=restored.policy_version,
+
+                if request.reduce_only != supplied_reduce_only:
+                    logger.warning(
+                        "Reduce-only intent re-derived from authoritative "
+                        "position state symbol=%s action=%s supplied=%s "
+                        "derived=%s",
+                        request.symbol,
+                        request.action,
+                        supplied_reduce_only,
+                        request.reduce_only,
+                    )
+
+                requested = self._requested_quote_allocation(request, risk_state)
+            except Exception as exc:
+                self._record_error(phase="canonical_risk", error=exc, request=request)
+                return {"approved": False, "reason": "RISK_STATE_RESTORATION_FAILED",
+                        "status": "BLOCK_RECOVERY_REQUIRED"}
+
+            if requested is None:
+                # New risk that names no size. This manager does not size
+                # requests, and the policy ceiling is a bound rather than a
+                # size, so there is nothing to evaluate. Refused before the
+                # engine, before any reservation, and distinctly from a
+                # request that named a size the book cannot fund.
+                logger.warning(
+                    "Unsized new-risk request refused symbol=%s action=%s "
+                    "request_id=%s",
+                    request.symbol,
+                    request.action,
+                    request.request_id,
                 )
+                return {
+                    "approved": False,
+                    "reason": "UNSIZED_REQUEST_REJECTED",
+                    "details": {
+                        "symbol": request.symbol,
+                        "action": request.action,
+                    },
+                }
+
+            try:
+                # `request.amount` is deliberately left exactly as the caller
+                # set it. Writing the resolved Decimal back through `float()`
+                # would make this method non-idempotent: a re-evaluated unsized
+                # exit would then read its own rounded mirror as an explicit
+                # allocation instead of re-resolving the durable exposure, and
+                # a mirror that rounded up turns a legitimate full exit into
+                # INVALID_RISK_REDUCTION - trapping the exposure it was meant
+                # to release. The canonical Decimal is published on
+                # `approved_quote_allocation`; the mirror stays caller input.
                 canonical = self.risk_engine.evaluate(
                     RiskRequest(
                         symbol=request.symbol,
                         action=request.action,
                         confidence=Decimal(str(request.confidence)) / Decimal("100"),
-                        requested_quote_allocation=Decimal(str(request.amount)),
+                        requested_quote_allocation=requested,
                         execution_price=Decimal(str(request.price)),
                         risk_bucket=request.risk,
                         reduce_only=request.reduce_only,
                     ),
-                    risk_state if isinstance(risk_state, RiskState) else RiskState(),
+                    risk_state,
                 )
                 self.last_risk_decision = canonical.to_dict()
             except Exception as exc:
@@ -2022,9 +2787,45 @@ class ExecutionManager:
                     "details": self.last_risk_decision,
                 }
             # The pure evaluator never silently reduces an approved request.
-            # Keep this explicit assertion at the execution seam.
-            if canonical.approved_allocation != Decimal(str(request.amount)):
+            # Keep this explicit assertion at the execution seam, and compare
+            # the two Decimals directly - routing either side through the float
+            # mirror would be the very round-trip this field exists to avoid.
+            if canonical.approved_allocation != requested:
                 return {"approved": False, "reason": "RISK_ALLOCATION_MISMATCH"}
+
+        # Block 5D owner decisions 2/3/7: venue instrument precision is a
+        # fail-closed admission gate for every action, not only BUY. A
+        # symbol with no checked-in rule can never be admitted - there is no
+        # fallback quantum - and a request price that does not land exactly
+        # on the venue's price tick is refused outright rather than rounded
+        # to the nearest valid one. Both run before any reservation and
+        # before the BUY-only quantity checks below, and neither this
+        # manager nor any caller ever writes a rounded price back.
+        instrument_rules = (
+            self.instrument_rules.get(request.symbol)
+            if self.instrument_rules is not None
+            else None
+        )
+
+        if instrument_rules is None:
+            return {
+                "approved": False,
+                "reason": "INSTRUMENT_RULES_UNAVAILABLE",
+                "details": {"symbol": request.symbol},
+            }
+
+        request_price = Decimal(str(request.price))
+
+        if not is_aligned_to_step(request_price, instrument_rules.price_tick):
+            return {
+                "approved": False,
+                "reason": "PRICE_TICK_MISALIGNED",
+                "details": {
+                    "symbol": request.symbol,
+                    "price": format(request_price, "f"),
+                    "price_tick": format(instrument_rules.price_tick, "f"),
+                },
+            }
 
         # Every reject-capable compatibility gate must run before capital is
         # reserved and admission is recorded, so a rejection here never
@@ -2043,15 +2844,186 @@ class ExecutionManager:
                     },
                 }
 
-        capital_result = self._capital_risk_check(
-            request=request,
-            market_state=market_state,
-        )
-
-        if not capital_result["approved"]:
-            return capital_result
+        # CapitalManager is not consulted here. It holds no admission
+        # authority over a canonical RiskDecision: it cannot veto one, cannot
+        # resize one, and cannot reinterpret one. The reject-capable gates
+        # that remain are the canonical engine itself, the position-limit
+        # check above, and the executable-quantum and durable-capital checks
+        # below - all of which run before any capital is reserved.
 
         if request.action == "BUY" and not request.reduce_only:
+            # An approval that cannot fund one whole venue quantity_step, or
+            # that floors to less than the venue's min_quantity/min_notional,
+            # can never produce a valid fill, so it is refused here rather
+            # than discovered after the paper book has already been mutated.
+            # `_resolve_base_fill` is the same pure derivation the
+            # post-component defense-in-depth check in `_execute_paper_buy`
+            # uses, so the two can never drift apart on how a fill is sized -
+            # only on the fee, which is not yet known at admission and is
+            # taken as zero here (Block 5D owner decision: reuse the same
+            # fill/step derivation for both).
+            #
+            # Reaching this condition past admission turns an unexecutable
+            # request into EXECUTION_INTERRUPTED_AFTER_SIDE_EFFECT -
+            # INDETERMINATE capital, an unresolved journal entry, a paper
+            # position the durable book never receives, and a halted runtime
+            # awaiting operator recovery. Refusing at admission leaves none
+            # of that behind.
+            #
+            # This sizes nothing. It is a pure feasibility bound on the
+            # amount the caller already asked for and the engine already
+            # approved: no allocation is raised, lowered, or manufactured
+            # (Block 5D owner decision: never raise allocation to satisfy a
+            # minimum), and a request below the bound is refused rather than
+            # rounded up to it.
+            admission_fill = self._resolve_base_fill(
+                allocation=canonical.approved_allocation,
+                price=request_price,
+                fee=Decimal("0"),
+                quantity_step=instrument_rules.quantity_step,
+            )
+
+            if admission_fill is None:
+                logger.warning(
+                    "Approved allocation cannot fund one whole "
+                    "quantity_step symbol=%s request_id=%s approved=%s "
+                    "price=%s quantity_step=%s",
+                    request.symbol,
+                    request.request_id,
+                    format(canonical.approved_allocation, "f"),
+                    format(request_price, "f"),
+                    format(instrument_rules.quantity_step, "f"),
+                )
+                return {
+                    "approved": False,
+                    "reason": "QUANTITY_BELOW_VENUE_MINIMUM",
+                    "details": {
+                        "approved_allocation": format(
+                            canonical.approved_allocation, "f"
+                        ),
+                        "execution_price": format(request_price, "f"),
+                        "quantity_step": format(
+                            instrument_rules.quantity_step, "f"
+                        ),
+                    },
+                }
+
+            admission_base_quantity, admission_quote_notional = admission_fill
+
+            if admission_base_quantity < instrument_rules.min_quantity:
+                return {
+                    "approved": False,
+                    "reason": "QUANTITY_BELOW_VENUE_MINIMUM",
+                    "details": {
+                        "floored_base_quantity": format(
+                            admission_base_quantity, "f"
+                        ),
+                        "min_quantity": format(
+                            instrument_rules.min_quantity, "f"
+                        ),
+                    },
+                }
+
+            if admission_quote_notional < instrument_rules.min_notional:
+                # Terminal for this request/cycle only (Block 5D owner
+                # decision 6): this admission is refused outright, but it
+                # halts nothing - a future independent request (a new
+                # request_id, e.g. the next market-loop tick with an updated
+                # price or allocation) is evaluated fresh against the same
+                # rule.
+                return {
+                    "approved": False,
+                    "reason": "NOTIONAL_BELOW_VENUE_MINIMUM",
+                    "details": {
+                        "floored_quote_notional": format(
+                            admission_quote_notional, "f"
+                        ),
+                        "min_notional": format(
+                            instrument_rules.min_notional, "f"
+                        ),
+                    },
+                }
+
+            # Block 6B (readiness gate V1): the venue's upper bounds, on the
+            # same fill this gate just derived and in the same fail-closed
+            # place its lower bounds are enforced - before any reservation,
+            # before admission is recorded, and before any execution path can
+            # run. An order above ``LOT_SIZE.maxQty``,
+            # ``MARKET_LOT_SIZE.maxQty`` or ``NOTIONAL.maxNotional`` is
+            # refused outright; it is never split, capped, or resized down to
+            # the maximum, exactly as an undersized one is never raised to a
+            # minimum. A bound the config does not model is skipped here and
+            # refused at the live-authority gate instead, so a bounded PAPER
+            # runtime keeps its existing behaviour unchanged.
+            upper_bound = instrument_rules.upper_bound_violation(
+                base_quantity=admission_base_quantity,
+                quote_notional=admission_quote_notional,
+                order_type=request.order_type,
+            )
+
+            if upper_bound is not None:
+                reason, details = upper_bound
+                logger.warning(
+                    "Admission refused above venue maximum symbol=%s "
+                    "request_id=%s reason=%s",
+                    request.symbol,
+                    request.request_id,
+                    reason,
+                )
+                return {
+                    "approved": False,
+                    "reason": reason,
+                    "details": {"symbol": request.symbol, **details},
+                }
+
+            # RiskEngine judges against RiskPolicy.total_capital, which is a
+            # configured policy figure, not the cash the durable book actually
+            # holds. An approved allocation the book cannot fund would reserve
+            # capital, execute, and only then fail inside apply_confirmed as
+            # INSUFFICIENT_CASH - halting the runtime with an unresolved
+            # journal entry and INDETERMINATE capital. Checking it here turns
+            # that into an ordinary admission refusal that leaves no
+            # reservation and no admission behind, and gives capital
+            # exhaustion its own reason code instead of letting it surface as
+            # malformed input.
+            #
+            # The bound is fee-inclusive because the approved allocation is:
+            # settlement debits notional + fee, and the BUY path sizes the
+            # fill so that notional + fee never exceeds the approval. So
+            # reserving the approval reserves the whole economic requirement.
+            #
+            # The request's own reservation is excluded from the funding
+            # measurement, because re-evaluating a request must not be able to
+            # defund it: without the exclusion a request admitted once near the
+            # durable bound would refuse itself on its next evaluation, having
+            # been charged for capital it already holds. It still reserves at
+            # most once - `reserve` returns the identical existing entry rather
+            # than adding a second - and every other request's reservation
+            # continues to encumber this one's capital.
+            try:
+                free_capital = self._durable_free_quote_capital(
+                    exclude=request.request_id
+                )
+            except Exception as exc:
+                self._record_error(phase="durable_capital", error=exc, request=request)
+                return {"approved": False, "reason": "DURABLE_CAPITAL_STATE_UNAVAILABLE",
+                        "status": "BLOCK_RECOVERY_REQUIRED"}
+
+            if (
+                free_capital is not None
+                and canonical.approved_allocation > free_capital
+            ):
+                return {
+                    "approved": False,
+                    "reason": "INSUFFICIENT_DURABLE_CAPITAL",
+                    "details": {
+                        "approved_allocation": format(
+                            canonical.approved_allocation, "f"
+                        ),
+                        "available_quote_capital": format(free_capital, "f"),
+                    },
+                }
+
             try:
                 self.reservation_ledger.reserve(request.request_id, request.request_id,
                                                 canonical.approved_allocation)
@@ -2059,11 +3031,24 @@ class ExecutionManager:
                 self._record_error(phase="capital_reservation", error=exc, request=request)
                 return {"approved": False, "reason": "CAPITAL_RESERVATION_FAILED",
                         "status": "BLOCK_RECOVERY_REQUIRED"}
+
+        # The single write of the canonical allocation, made only once every
+        # reject-capable gate has passed. It is the engine's own Decimal, not
+        # a re-derived one, and the admission token is sealed around it below.
+        request.approved_quote_allocation = canonical.approved_allocation
         self._risk_admissions[request.request_id] = self._risk_admission_key(request)
 
         return {
             "approved": True,
             "reason": "RISK_APPROVED",
+            # Block 5D: recorded here so it reaches the RISK_APPROVED audit
+            # event through the existing details pass-through, alongside the
+            # fill-time evidence _execute_paper_buy/_execute_paper_sell write
+            # onto result.data.
+            "details": {
+                "instrument_rules_digest": instrument_rules.digest,
+                "instrument_rules_source_version": instrument_rules.source_version,
+            },
         }
 
     def _can_open_position(
@@ -2161,31 +3146,62 @@ class ExecutionManager:
 
         return True
 
-    @staticmethod
-    def _risk_admission_key(request: ExecutionRequest) -> tuple[str, ...]:
+    def _risk_admission_key(self, request: ExecutionRequest) -> tuple[str, ...]:
+        """Seal the terms a request was admitted on.
+
+        The allocation term is the canonical ``Decimal``, never the ``amount``
+        mirror. Two consequences follow, and both are intended: mutating the
+        approved Decimal after admission invalidates the token and the request
+        cannot execute, while mutating the lossy ``amount`` mirror changes
+        nothing at all - it is not one of the admitted terms and no consumer
+        downstream reads it.
+
+        An unapproved request has no allocation to seal and is keyed as such,
+        so a hand-built token can never stand in for an engine verdict.
+
+        Block 5D: the symbol's current instrument-rules digest is sealed in
+        too, so a rules change between admission and execution invalidates
+        the admission exactly as an altered approval would - even though
+        rules are immutable for the lifetime of one process (owner decision
+        9), the seal is what makes that invariant structurally enforced
+        rather than merely assumed.
+        """
+        approved = request.approved_quote_allocation
+
+        rules = (
+            self.instrument_rules.get(request.symbol)
+            if self.instrument_rules is not None
+            else None
+        )
+
         return (
             request.symbol,
             request.action,
             str(Decimal(str(request.price))),
-            str(Decimal(str(request.amount))),
+            format(approved, "f") if approved is not None else "UNAPPROVED",
             str(Decimal(str(request.confidence))),
             request.risk,
             str(bool(request.reduce_only)),
+            rules.digest if rules is not None else "NO_INSTRUMENT_RULES",
             request.mode,
         )
 
     def _has_risk_admission(self, request: ExecutionRequest) -> bool:
         return self._risk_admissions.get(request.request_id) == self._risk_admission_key(request)
 
+    # Each of these three helpers ends the execution authority of one
+    # request. The admission is dropped even when the ledger write fails,
+    # because a request whose capital could not be resolved must never keep
+    # a token that would let a later stage treat it as still authorized;
+    # the failing ledger write itself is what halts the runtime.
+
     def _release_capital_reservation(self, request_id: str) -> bool:
         if self.reservation_ledger is None:
             return False
-        if self.reservation_ledger.get(request_id) is None:
-            self._risk_admissions.pop(request_id, None)
-            return True
         try:
+            if self.reservation_ledger.get(request_id) is None:
+                return True
             self.reservation_ledger.release(request_id)
-            self._risk_admissions.pop(request_id, None)
             return True
         except Exception as exc:
             self._record_error(phase="capital_release", error=exc)
@@ -2194,34 +3210,152 @@ class ExecutionManager:
                 self.recovery_required = True
                 self.halt_reason = "CAPITAL_RESERVATION_RELEASE_FAILED"
             return False
+        finally:
+            self._risk_admissions.pop(request_id, None)
 
-    def _commit_capital_reservation(self, request_id: str) -> bool:
+    def _commit_capital_reservation(
+        self, request_id: str, settled_amount: Decimal | None = None
+    ) -> bool:
+        """Commit a reservation, at ``settled_amount`` when one is known.
+
+        ``settled_amount`` (Block 5E) is ``filled_quote_notional +
+        quote_fee`` - the exact economic amount durable settlement spent.
+        ``None`` preserves the historical behaviour of committing at the
+        full reserved amount, for a caller that has no settled figure to
+        offer (e.g. a non-paper/live path).
+        """
         if self.reservation_ledger is None:
             return False
-        if self.reservation_ledger.get(request_id) is None:
-            self._risk_admissions.pop(request_id, None)
-            return True
         try:
-            self.reservation_ledger.commit(request_id)
-            self._risk_admissions.pop(request_id, None)
+            if self.reservation_ledger.get(request_id) is None:
+                return True
+            self.reservation_ledger.commit(request_id, settled_amount)
             return True
         except Exception as exc:
             self._record_error(phase="capital_commit", error=exc)
             return False
+        finally:
+            self._risk_admissions.pop(request_id, None)
 
     def _mark_capital_indeterminate(self, request_id: str) -> bool:
         if self.reservation_ledger is None:
             return False
-        if self.reservation_ledger.get(request_id) is None:
-            self._risk_admissions.pop(request_id, None)
-            return True
         try:
+            if self.reservation_ledger.get(request_id) is None:
+                return True
             self.reservation_ledger.mark_indeterminate(request_id)
-            self._risk_admissions.pop(request_id, None)
             return True
         except Exception as exc:
             self._record_error(phase="capital_indeterminate", error=exc)
             return False
+        finally:
+            self._risk_admissions.pop(request_id, None)
+
+    def _mark_execution_side_effect(self, request_id: str) -> None:
+        """Record that this request has reached the paper/live side effect.
+
+        Called immediately before the first component mutation of an
+        execution, so a later exception cannot be mistaken for a request
+        that never touched anything.
+        """
+        canonical_id = str(request_id).strip()
+        if not canonical_id:
+            return
+        with self._lock:
+            self._execution_side_effect_ids.add(canonical_id)
+
+    def _consume_execution_side_effect(self, request_id: str) -> bool:
+        """Clear and report the side-effect marker for one request."""
+        canonical_id = str(request_id).strip()
+        if not canonical_id:
+            return False
+        with self._lock:
+            crossed = canonical_id in self._execution_side_effect_ids
+            self._execution_side_effect_ids.discard(canonical_id)
+            return crossed
+
+    def _resolve_unsuccessful_execution(
+        self,
+        *,
+        request_id: str,
+        reason: str,
+        result: Mapping[str, Any] | None = None,
+    ) -> bool:
+        """Restore deterministic financial authority after a failed execution.
+
+        This is the single resolution path for every unsuccessful terminal
+        outcome after risk admission — a raised pipeline exception and an
+        explicit FAILED/ERROR result alike. How a failure was reported says
+        nothing about whether the paper book was already mutated, so both
+        are classified by the same recorded side-effect boundary rather than
+        by the shape of the failure.
+
+        Such a failure must never leave a RESERVED reservation, a stale
+        admission, and a running runtime behind at the same time.
+
+        Two outcomes are possible, and which one applies is decided by
+        recorded fact rather than inference:
+
+        - the side-effect boundary was never crossed, so nothing external can
+          have happened: the reservation is RELEASED, the journal entry is
+          resolved NOT_COMMITTED, and the request stays retryable;
+        - the boundary was crossed, so the execution outcome is genuinely
+          unknown: the reservation is marked INDETERMINATE, the journal entry
+          is left COMMIT_STATUS_UNKNOWN, and the runtime halts for operator
+          recovery instead of releasing capital it cannot prove is free.
+
+        Returns True when an execution side effect may already have occurred.
+        """
+        side_effect_possible = self._consume_execution_side_effect(request_id)
+
+        if side_effect_possible:
+            self._mark_capital_indeterminate(request_id)
+
+            try:
+                self.transaction_journal.mark_unknown(
+                    request_id,
+                    reason=reason,
+                    result=result,
+                )
+            except Exception:
+                logger.exception(
+                    "Unable to mark interrupted execution unknown"
+                )
+
+            with self._lock:
+                self.execution_halted = True
+                self.recovery_required = True
+                self.halt_reason = (
+                    "EXECUTION_INTERRUPTED_AFTER_SIDE_EFFECT"
+                )
+
+        else:
+            self._release_capital_reservation(request_id)
+
+            # Only an already prepared transaction is resolved here. A
+            # request that never reached the prepare barrier must not gain a
+            # journal entry from its own failure.
+            prepared_entries = getattr(
+                self.transaction_journal,
+                "entries",
+                {},
+            )
+
+            if request_id in prepared_entries:
+                try:
+                    self.transaction_journal.mark_not_committed(
+                        request_id,
+                        reason=reason,
+                        result=result,
+                    )
+                except Exception:
+                    logger.exception(
+                        "Unable to mark interrupted execution not committed"
+                    )
+
+        self._risk_admissions.pop(request_id, None)
+
+        return side_effect_possible
 
     def _finalize_durable_financial_state(
         self,
@@ -2255,6 +3389,27 @@ class ExecutionManager:
         evidence = ExecutionResult.from_dict(result)
         evidence.idempotency_key = request.request_id
         evidence.provenance_ref = f"transaction-journal:{request.request_id}"
+
+        # Last reconciliation against the canonical approval before the
+        # durable book is touched. New risk settles as notional + fee, which is
+        # the same economic quantity admission bounded and the reservation
+        # reserved, so evidence that exceeds it must never reach the ledger -
+        # whatever produced it.
+        approved = self._admitted_quote_allocation(request)
+        if reservation_required:
+            if approved is None:
+                raise PermissionError("CANONICAL_ALLOCATION_MISSING")
+            # Pinned to the same explicit settlement context the commit-time
+            # `notional + fee` recomputation above uses (final-review
+            # MEDIUM #2), so the two can never round this identical figure
+            # differently under a caller's ambient precision.
+            with localcontext() as context:
+                context.prec = SETTLEMENT_CONTEXT_PRECISION
+                context.rounding = ROUND_HALF_EVEN
+                settled = (evidence.filled_quote_notional or Decimal("0")) + evidence.fee_amount
+            if settled > approved:
+                raise PermissionError("SETTLEMENT_EXCEEDS_APPROVED_ALLOCATION")
+
         expected_version = None
         snapshot = foundation.snapshot()
         current = snapshot["positions"].get(request.symbol)
@@ -2273,115 +3428,6 @@ class ExecutionManager:
             "position_id": evidence.position_id,
         }
         return finalized
-
-    def _capital_risk_check(
-        self,
-        *,
-        request: ExecutionRequest,
-        market_state: Any | None,
-    ) -> dict[str, Any]:
-        """
-        Use CapitalManager validation when it exposes a compatible method.
-        """
-
-        if self.capital_manager is None:
-            return {
-                "approved": True,
-                "reason": "CAPITAL_MANAGER_NOT_CONFIGURED",
-            }
-
-        for method_name in (
-            "validate_execution",
-            "validate_request",
-            "risk_check",
-            "approve",
-        ):
-            method = getattr(
-                self.capital_manager,
-                method_name,
-                None,
-            )
-
-            if not callable(
-                method
-            ):
-                continue
-
-            try:
-                result = method(
-                    request.to_dict(),
-                    market_state,
-                )
-
-            except TypeError:
-                try:
-                    result = method(
-                        request.to_dict()
-                    )
-
-                except TypeError:
-                    try:
-                        result = method(
-                            request
-                        )
-
-                    except Exception as exc:
-                        self._record_error(
-                            phase="capital_risk",
-                            error=exc,
-                            request=request,
-                        )
-                        return {
-                            "approved": False,
-                            "reason": "CAPITAL_RISK_CHECK_FAILED",
-                            "details": {
-                                "error": str(
-                                    exc
-                                ),
-                            },
-                        }
-
-                except Exception as exc:
-                    self._record_error(
-                        phase="capital_risk",
-                        error=exc,
-                        request=request,
-                    )
-                    return {
-                        "approved": False,
-                        "reason": "CAPITAL_RISK_CHECK_FAILED",
-                        "details": {
-                            "error": str(
-                                exc
-                            ),
-                        },
-                    }
-
-            except Exception as exc:
-                self._record_error(
-                    phase="capital_risk",
-                    error=exc,
-                    request=request,
-                )
-                return {
-                    "approved": False,
-                    "reason": "CAPITAL_RISK_CHECK_FAILED",
-                    "details": {
-                        "error": str(
-                            exc
-                        ),
-                    },
-                }
-
-            return self._normalize_approval_result(
-                result,
-                default_reason="CAPITAL_RISK_REJECTED",
-            )
-
-        return {
-            "approved": True,
-            "reason": "CAPITAL_RISK_NOT_EXPOSED",
-        }
 
     # =========================================================
     # PAPER EXECUTION
@@ -2465,44 +3511,235 @@ class ExecutionManager:
     # PAPER BUY
     # =========================================================
 
+    def _admitted_quote_allocation(
+        self,
+        request: ExecutionRequest,
+    ) -> Decimal | None:
+        """The one quote amount execution is allowed to commit.
+
+        This is the canonical ``RiskDecision.approved_allocation`` itself, as
+        an exact ``Decimal``, read from the field ``risk_check`` wrote it to.
+        It never passes through ``ExecutionRequest.amount``: that mirror is a
+        ``float``, and a binary round-trip of an approved allocation is
+        precisely the corruption this field exists to prevent.
+
+        ``risk_check`` refuses to admit a request whose requested allocation
+        differs from the engine's verdict (``RISK_ALLOCATION_MISMATCH``), and
+        ``_risk_admission_key`` seals the Decimal into the admission token, so
+        an approval altered after admission invalidates the admission rather
+        than being executed. There is no second source: CapitalManager sizing,
+        available-capital defaults, and the historical ``DEFAULT_ALLOCATION``
+        fallback have all been removed.
+
+        Returns ``None`` when the request carries no approval at all, which
+        every caller treats as a fail-closed condition.
+        """
+
+        return request.approved_quote_allocation
+
+    @staticmethod
+    def _resolve_base_fill(
+        *,
+        allocation: Decimal,
+        price: Decimal,
+        fee: Decimal,
+        quantity_step: Decimal,
+    ) -> tuple[Decimal, Decimal] | None:
+        """Size a new-risk fill inside an approved allocation, exactly.
+
+        Quantity first, notional second. The largest whole venue
+        ``quantity_step`` the allocation can pay for is chosen, and the quote
+        notional is then *derived* from that quantity at the execution price.
+        Because the notional is a product rather than the input to a
+        division, the canonical identity
+
+            execution_price * filled_base_quantity == filled_quote_notional
+
+        holds exactly, under the same arithmetic
+        ``ExecutionResult.validate_financial_evidence`` re-checks it with.
+        The historical order - notional first, quantity = notional / price -
+        could not hold it for any price the allocation does not divide by,
+        which is nearly all of them.
+
+        Fee inclusion
+        -------------
+        ``ExecutionPortfolioFoundation`` debits ``notional + fee`` at
+        settlement, so the fee is taken out of the allocation here rather than
+        charged on top of it. The approved allocation is therefore the whole
+        economic commitment, which is exactly what admission bounded and what
+        the capital reservation reserves; a fee can no longer turn an admitted
+        request into an ``INSUFFICIENT_CASH`` failure at settlement.
+
+        Remainder
+        ---------
+        The unspent remainder is deterministic, is strictly smaller than one
+        quantum of notional, and always favours less risk: rounding is
+        ``ROUND_DOWN`` on the quantity, so the executed notional can only ever
+        be at or below the approval, never above it. Callers record it.
+
+        Returns ``None`` when no positive whole ``quantity_step`` is
+        affordable - an allocation consumed entirely by its fee, a
+        non-positive price, or a price so high that a single step costs more
+        than was approved. That is a fail-closed refusal, never a rounded-up
+        fill. This is the one derivation both the pre-reservation admission
+        feasibility check in ``risk_check`` and this post-component
+        defense-in-depth call site use (Block 5D), so the two can never
+        disagree on how a fill is sized.
+        """
+        if not price.is_finite() or price <= 0:
+            return None
+        if not allocation.is_finite() or not fee.is_finite() or fee < 0:
+            return None
+
+        spendable = allocation - fee
+        if spendable <= 0:
+            return None
+
+        try:
+            with localcontext() as context:
+                # ROUND_DOWN on the division as well as the step flooring: a
+                # quotient rounded up in its last representable digit could
+                # otherwise cross a step boundary and buy one step more than
+                # the allocation covers.
+                context.rounding = ROUND_DOWN
+                quotient = spendable / price
+
+            base = floor_to_step(quotient, quantity_step)
+            quote = price * base
+        except (InvalidOperation, ZeroDivisionError, ValueError):
+            return None
+
+        if base <= 0 or quote <= 0 or quote + fee > allocation:
+            return None
+
+        return base, quote
+
     def _execute_paper_buy(
         self,
         *,
         request: ExecutionRequest,
         result: ExecutionResult,
     ) -> None:
-        """
-        Coordinate paper BUY and authoritative position registration.
+        """Coordinate a paper BUY and authoritative position registration.
+
+        The approved allocation is a *ceiling* on what the fill may cost, not
+        the notional itself: the executed quantity is chosen inside it and the
+        notional is derived from that quantity, so the fill is exact and can
+        never exceed what risk approved. See ``_resolve_base_fill``.
         """
 
-        allocation = self.allocate_capital(
+        approved = self._admitted_quote_allocation(
             request
         )
 
-        # Historical compatibility: filled_amount remains the quote allocation
-        # on this path.  Canonical consumers must use the explicit Decimal fields.
-        result.filled_amount = allocation
-        quote_notional = Decimal(str(allocation))
-        result.requested_quote_allocation = Decimal(str(request.amount))
-        result.filled_quote_notional = quote_notional
         result.data = result.data or {}
-        result.data["allocation"] = allocation
 
-        if allocation <= 0:
+        if approved is None or approved <= 0:
+            # An admitted request always carries a positive approved Decimal.
+            # Reaching here means the approval was removed after admission.
             self._mark_result_failure(
                 result=result,
-                message="Capital allocation returned zero",
-                error_code="ZERO_ALLOCATION",
+                message="Request carries no canonical approved allocation",
+                error_code="CANONICAL_ALLOCATION_MISSING",
             )
             return
 
+        result.requested_quote_allocation = approved
+        result.data["approved_quote_allocation"] = format(approved, "f")
+
+        # Defense-in-depth (Block 5D): admission already required a rule for
+        # this symbol, so this can only be reached if the rule disappeared
+        # between admission and execution - which the admission-key seal
+        # below also catches. Checked before the side-effect boundary so a
+        # somehow-missing rule still refuses cleanly instead of mutating the
+        # paper book first.
+        instrument_rules = (
+            self.instrument_rules.get(request.symbol)
+            if self.instrument_rules is not None
+            else None
+        )
+
+        if instrument_rules is None:
+            self._mark_result_failure(
+                result=result,
+                message="No instrument rules for symbol",
+                error_code="INSTRUMENT_RULES_UNAVAILABLE",
+            )
+            return
+
+        result.data["instrument_rules_digest"] = instrument_rules.digest
+        result.data["instrument_rules_source"] = instrument_rules.source
+        result.data["instrument_rules_source_version"] = (
+            instrument_rules.source_version
+        )
+
+        # Block 5G: a flat-book BUY is about to mint a new lifetime identity
+        # from (symbol, request_id) alone, which is decidable now rather
+        # than after the fact - checked before the side-effect boundary for
+        # the same reason as the instrument-rules check above, so a mint
+        # failure refuses cleanly instead of opening a paper trade that
+        # would then need an INDETERMINATE halt to recover from. Since
+        # mint_long_position_id hashes request_id rather than embedding it,
+        # request_id's own content/length can no longer make the mint fail
+        # (any request_id, including MarketLoop's pipe-delimited
+        # convention, always produces a valid, bounded digest) - this now
+        # guards only the always-should-be-unreachable case of a
+        # malformed symbol reaching this point, kept as the same
+        # defense-in-depth the instrument-rules check above already
+        # applies to a rule that "can only be reached if [it] disappeared
+        # between admission and execution". An add-to-position BUY reuses
+        # the existing live position_id and never mints, so it is exempt.
+        if self.portfolio_foundation is not None:
+            preflight_position = self.portfolio_foundation.snapshot()["positions"].get(request.symbol)
+            if preflight_position is None:
+                try:
+                    mint_long_position_id(request.symbol, request.request_id)
+                except ValueError:
+                    self._mark_result_failure(
+                        result=result,
+                        message="symbol/request_id do not produce a valid composite position identity",
+                        error_code="INVALID_POSITION_IDENTITY",
+                    )
+                    return
+
+        # Side-effect boundary: PaperTrader.open_trade() persists its own
+        # durable book, so from here an interrupted request has an outcome
+        # this manager cannot prove.
+        self._mark_execution_side_effect(request.request_id)
+
+        # The compatibility paper book has to be called before the fill can be
+        # sized, because it is what reports the price and fee the fill is
+        # derived from. It therefore sees the approved allocation, and its
+        # record can differ from the durable one by the sub-quantum remainder.
+        # The durable foundation is the position authority; this book is not.
         paper_trade = self._paper_open_trade(
             request=request,
-            allocation=allocation,
+            allocation=float(approved),
         )
 
         if paper_trade is not None:
             result.data["paper_trade"] = paper_trade
+
+            # PaperTrader is the authority on whether the trade was
+            # recorded. A denied mutation must not be able to continue into
+            # durable finalization as a confirmed execution.
+            if self._component_reported_failure(
+                paper_trade
+            ):
+                self._mark_result_failure(
+                    result=result,
+                    message=str(
+                        paper_trade.get(
+                            "reason",
+                            "Paper trade was not recorded",
+                        )
+                    ),
+                    error_code="PAPER_TRADE_REJECTED",
+                    details=dict(
+                        paper_trade
+                    ),
+                )
+                return
 
             self._hydrate_result_from_component(
                 result=result,
@@ -2514,19 +3751,135 @@ class ExecutionManager:
                 uuid.uuid5(uuid.NAMESPACE_URL, str(request.request_id))
             )
 
+        # Sized after hydration, so the price and fee the executing component
+        # actually reported are the ones the fill is derived from - not the
+        # ones this manager assumed before calling it. `result.fee_amount`
+        # is already the authoritative Decimal `_hydrate_result_from_component`
+        # set - exact when the component reported `fee_amount` directly,
+        # float-derived otherwise (Block 5E).
         try:
             execution_price = Decimal(str(result.filled_price))
-            if quote_notional <= 0 or execution_price <= 0:
-                raise ValueError("non-positive paper fill inputs")
-            result.filled_base_quantity = quote_notional / execution_price
-            result.fee_amount = Decimal(str(result.fee))
-        except (InvalidOperation, ValueError, TypeError, ZeroDivisionError):
+        except (InvalidOperation, ValueError, TypeError):
             self._mark_result_failure(
                 result=result,
                 message="Paper fill quantity semantics are invalid",
                 error_code="INVALID_FINANCIAL_QUANTITY",
             )
             return
+
+        # Block 5E: only a fee this venue's quote asset can settle exactly is
+        # ever allowed to reach durable settlement. A base-asset fee, a
+        # third-asset fee, or an undeclared nonzero fee is refused here -
+        # before `_finalize_durable_financial_state` - never inferred and
+        # never converted, because there is no FX or fee-rate policy
+        # anywhere in this repository.
+        try:
+            normalized_fee = FeeNormalizer.normalize(
+                fee_amount=result.fee_amount,
+                fee_currency=result.fee_currency,
+                instrument=instrument_rules,
+            )
+        except FeeRejected as exc:
+            self._mark_result_failure(
+                result=result,
+                message="Component-reported fee cannot be settled: only this venue's quote-asset fee is supported",
+                error_code=exc.reason.value,
+                details={
+                    "fee_amount": (
+                        format(exc.fee_amount, "f") if exc.fee_amount is not None else None
+                    ),
+                    "fee_currency": exc.fee_currency,
+                    "quote_asset": instrument_rules.quote_asset,
+                    "base_asset": instrument_rules.base_asset,
+                },
+            )
+            return
+
+        fee_amount = normalized_fee.quote_amount
+
+        fill = self._resolve_base_fill(
+            allocation=approved,
+            price=execution_price,
+            fee=fee_amount,
+            quantity_step=instrument_rules.quantity_step,
+        )
+
+        if fill is None:
+            self._mark_result_failure(
+                result=result,
+                message="Approved allocation cannot fund one whole quantity_step at the fill price",
+                error_code="ALLOCATION_BELOW_EXECUTABLE_QUANTUM",
+                details={
+                    "approved_quote_allocation": format(approved, "f"),
+                    "execution_price": format(execution_price, "f"),
+                    "fee_amount": format(fee_amount, "f"),
+                    "quantity_step": format(instrument_rules.quantity_step, "f"),
+                },
+            )
+            return
+
+        base_quantity, quote_notional = fill
+
+        # Block 5D owner ruling (SELL-venue-minimums remediation, M1): the
+        # admission-time bound above used fee=0, because the fee is not
+        # known until the executing component reports it here. A
+        # component-reported fee can shrink the fee-adjusted fill enough to
+        # cross below the venue's minimum even though admission cleared it
+        # against a zero fee, so both minimums are re-asserted against the
+        # actual fill before durable settlement - using the same
+        # post-side-effect failure machinery the `fill is None` check above
+        # already relies on, so a violation here halts for operator
+        # recovery with capital INDETERMINATE rather than settling a
+        # venue-invalid fill.
+        if base_quantity < instrument_rules.min_quantity:
+            self._mark_result_failure(
+                result=result,
+                message="Fee-adjusted fill quantity is below the venue minimum quantity",
+                error_code="QUANTITY_BELOW_VENUE_MINIMUM",
+                details={
+                    "filled_base_quantity": format(base_quantity, "f"),
+                    "fee_amount": format(fee_amount, "f"),
+                    "min_quantity": format(instrument_rules.min_quantity, "f"),
+                },
+            )
+            return
+
+        if quote_notional < instrument_rules.min_notional:
+            self._mark_result_failure(
+                result=result,
+                message="Fee-adjusted fill notional is below the venue minimum notional",
+                error_code="NOTIONAL_BELOW_VENUE_MINIMUM",
+                details={
+                    "filled_quote_notional": format(quote_notional, "f"),
+                    "fee_amount": format(fee_amount, "f"),
+                    "min_notional": format(instrument_rules.min_notional, "f"),
+                },
+            )
+            return
+
+        result.filled_base_quantity = base_quantity
+        result.filled_quote_notional = quote_notional
+        result.fee_amount = fee_amount
+        result.fee_currency = normalized_fee.currency
+
+        # Historical compatibility: filled_amount stays quote capital on this
+        # path.  Canonical consumers must use the explicit Decimal fields.
+        result.filled_amount = float(quote_notional)
+
+        # The unspent remainder is stated rather than absorbed silently, so a
+        # reviewer can see exactly how much of the approval the quantum bound
+        # left behind.
+        result.data["executed_quote_notional"] = format(quote_notional, "f")
+        result.data["unallocated_quote_remainder"] = format(
+            approved - quote_notional - fee_amount, "f"
+        )
+
+        # The compatibility position path is told what was executed, not what
+        # was approved. They differ by the sub-quantum remainder, and a
+        # position recorded at the approval would overstate the exposure the
+        # book actually holds.
+        executed_allocation = float(quote_notional)
+        result.data["allocation"] = executed_allocation
 
         position_metadata = {
             **self._normalize_metadata(
@@ -2538,7 +3891,8 @@ class ExecutionManager:
             "execution_timestamp": self._serialize_timestamp(
                 request.timestamp
             ),
-            "allocation": allocation,
+            "allocation": executed_allocation,
+            "approved_quote_allocation": format(approved, "f"),
             "source": request.source,
             "order_type": request.order_type,
             "time_in_force": request.time_in_force,
@@ -2549,13 +3903,13 @@ class ExecutionManager:
             existing = self.portfolio_foundation.snapshot()["positions"].get(request.symbol)
             result.position_id = (
                 existing["position_id"] if existing is not None
-                else "long:" + request.symbol
+                else mint_long_position_id(request.symbol, request.request_id)
             )
             position = None
         else:
             position = self._position_open(
                 request=request,
-                allocation=allocation,
+                allocation=executed_allocation,
                 metadata=position_metadata,
             )
 
@@ -2773,17 +4127,310 @@ class ExecutionManager:
     # PAPER SELL
     # =========================================================
 
+    def _resolve_reduction_quantity(
+        self,
+        *,
+        request: ExecutionRequest,
+        result: ExecutionResult,
+        position: Mapping[str, Any],
+    ) -> Decimal | None:
+        """Convert the approved quote reduction into base units to sell.
+
+        Exposure basis
+        --------------
+        Both sides of this conversion use the durable position's own
+        ``mark_price`` - the same basis ``_derived_position_exposures`` reports
+        to RiskEngine and the same basis the approval was measured against. No
+        market price is consulted and no new price authority is introduced, so
+        admission and execution can never disagree about what the position is
+        worth.
+
+        The execution price affects only the proceeds - ``filled_quote_notional``
+        is the fill, priced at the fill - never how much is sold.
+
+        Full exit
+        ---------
+        An approval equal to the whole held exposure returns the durable
+        ``base_quantity`` *itself*, byte for byte, rather than a quantity
+        re-derived by dividing the approval back by the basis. That is what
+        makes a full close leave nothing behind: the foundation removes a
+        position only when the sold quantity equals the held quantity exactly,
+        and a re-derived quantity can miss it by a rounding remainder and
+        strand un-exitable dust in the book.
+
+        Partial exit
+        ------------
+        The reduction is floored to a whole venue ``quantity_step`` (Block
+        5D), so the exposure actually removed is at or just below what was
+        approved - a deterministic remainder smaller than one step, always on
+        the side of reducing less than permitted rather than more. It can
+        never reach the held quantity, so a partial reduction stays partial.
+
+        Returns ``None`` after marking ``result`` failed. Failure modes are
+        fail-closed and none can under- or over-sell:
+
+        ``INSTRUMENT_RULES_UNAVAILABLE``
+            no rule for this symbol. Admission already required one, so
+            reaching this is the same defense-in-depth case
+            ``_execute_paper_buy`` guards against.
+
+        ``REDUCTION_EXCEEDS_POSITION``
+            more was approved than is held. RiskEngine already refuses this as
+            ``INVALID_RISK_REDUCTION``, so reaching it means the durable book
+            moved after admission.
+
+        ``REDUCTION_BELOW_EXECUTABLE_QUANTUM``
+            the approved reduction is smaller than one ``quantity_step`` at
+            this basis, so no positive quantity can be sold for it.
+
+        Venue minimums (Block 5D SELL-venue-minimums owner ruling)
+        ------------------------------------------------------------
+        Exact durable-quantity preservation on a full exit and never-round-up
+        flooring on a partial exit do not exempt a SELL from the venue's own
+        ``min_quantity``/``min_notional`` - a venue would refuse either order
+        exactly as it would refuse an undersized BUY. Neither side is ever
+        raised, floored to a minimum, or auto-upgraded to a full close:
+
+        ``FULL_EXIT_BELOW_VENUE_MINIMUM``
+            the exact durable holding itself - quantity or notional - is
+            below what the venue would accept as a close order. Left for
+            operator reconciliation; never floored, rounded, or written off.
+
+        ``QUANTITY_BELOW_VENUE_MINIMUM`` / ``NOTIONAL_BELOW_VENUE_MINIMUM``
+            the floored partial-reduction quantity itself, or its notional at
+            the same exposure basis, is below the venue minimum - the same
+            gate ``risk_check`` already applies to a new-risk BUY.
+
+        ``REDUCTION_STRANDS_SUBMINIMUM_REMAINDER``
+            the partial reduction itself is venue-valid, but the durable
+            quantity it would leave behind is not - neither zero nor at or
+            above the venue minimum. Rather than silently promote the
+            request to a full close, the partial reduction is refused
+            outright; the caller may resubmit an unsized (full) exit.
+        """
+
+        held = Decimal(str(position["base_quantity"]))
+        basis = Decimal(str(position["mark_price"]))
+        exposure = held * basis
+        reduction = self._admitted_quote_allocation(request)
+
+        result.data["risk_basis_price"] = format(basis, "f")
+        result.data["held_base_quantity"] = format(held, "f")
+
+        instrument_rules = (
+            self.instrument_rules.get(request.symbol)
+            if self.instrument_rules is not None
+            else None
+        )
+
+        if instrument_rules is None:
+            self._mark_result_failure(
+                result=result,
+                message="No instrument rules for symbol",
+                error_code="INSTRUMENT_RULES_UNAVAILABLE",
+            )
+            return None
+
+        result.data["instrument_rules_digest"] = instrument_rules.digest
+        result.data["instrument_rules_source"] = instrument_rules.source
+        result.data["instrument_rules_source_version"] = (
+            instrument_rules.source_version
+        )
+
+        if reduction is None:
+            self._mark_result_failure(
+                result=result,
+                message="Request carries no canonical approved allocation",
+                error_code="CANONICAL_ALLOCATION_MISSING",
+            )
+            return None
+
+        result.data["approved_quote_reduction"] = format(reduction, "f")
+
+        if reduction <= 0 or basis <= 0 or reduction > exposure:
+            self._mark_result_failure(
+                result=result,
+                message="Approved reduction is not covered by the held position",
+                error_code="REDUCTION_EXCEEDS_POSITION",
+                details={
+                    "approved_quote_reduction": format(reduction, "f"),
+                    "held_quote_exposure": format(exposure, "f"),
+                },
+            )
+            return None
+
+        if reduction == exposure:
+            # Block 5D SELL-venue-minimums owner ruling: exact durable
+            # quantity is preserved on a full exit, but that quantity is not
+            # exempt from the venue's own minimums. A close order the venue
+            # itself would refuse fails closed here, before any side effect,
+            # for operator reconciliation - never floored, rounded up, or
+            # written off.
+            full_exit_notional = held * basis
+            if (
+                held < instrument_rules.min_quantity
+                or full_exit_notional < instrument_rules.min_notional
+            ):
+                self._mark_result_failure(
+                    result=result,
+                    message="Full exit is below the venue minimum quantity or notional",
+                    error_code="FULL_EXIT_BELOW_VENUE_MINIMUM",
+                    details={
+                        "held_base_quantity": format(held, "f"),
+                        "held_quote_notional": format(full_exit_notional, "f"),
+                        "min_quantity": format(instrument_rules.min_quantity, "f"),
+                        "min_notional": format(instrument_rules.min_notional, "f"),
+                    },
+                )
+                return None
+
+            # Block 6B: a holding larger than the venue's maximum order is
+            # not sellable in one order either. Refused for operator
+            # reconciliation - never silently split into several orders, which
+            # would be this manager inventing an execution plan the risk
+            # authority never approved.
+            full_exit_bound = instrument_rules.upper_bound_violation(
+                base_quantity=held,
+                quote_notional=full_exit_notional,
+                order_type=request.order_type,
+            )
+
+            if full_exit_bound is not None:
+                bound_reason, bound_details = full_exit_bound
+                self._mark_result_failure(
+                    result=result,
+                    message="Full exit is above the venue maximum quantity or notional",
+                    error_code=FULL_EXIT_ABOVE_VENUE_MAXIMUM,
+                    details={"exceeded_bound": bound_reason, **bound_details},
+                )
+                return None
+
+            result.data["executed_quote_reduction"] = format(exposure, "f")
+            result.data["unreduced_quote_remainder"] = "0"
+            return held
+
+        try:
+            with localcontext() as context:
+                context.rounding = ROUND_DOWN
+                quotient = reduction / basis
+            base_quantity = floor_to_step(quotient, instrument_rules.quantity_step)
+        except (InvalidOperation, ZeroDivisionError, ValueError):
+            base_quantity = None
+
+        if base_quantity is None or base_quantity <= 0 or base_quantity >= held:
+            self._mark_result_failure(
+                result=result,
+                message="Approved reduction is smaller than one executable base quantum",
+                error_code="REDUCTION_BELOW_EXECUTABLE_QUANTUM",
+                details={
+                    "approved_quote_reduction": format(reduction, "f"),
+                    "risk_basis_price": format(basis, "f"),
+                },
+            )
+            return None
+
+        # Block 5D SELL-venue-minimums owner ruling: the floored quantity
+        # actually being submitted must itself clear the venue minimums -
+        # the same gate `risk_check` already applies to a new-risk BUY - and
+        # the durable quantity this reduction would leave behind must remain
+        # itself either exactly zero or venue-sellable. Neither side is ever
+        # rounded up, and a reduction that would strand an unsellable
+        # remainder is refused rather than silently promoted to a full
+        # close.
+        submitted_notional = base_quantity * basis
+
+        if base_quantity < instrument_rules.min_quantity:
+            self._mark_result_failure(
+                result=result,
+                message="Reduction quantity is below the venue minimum quantity",
+                error_code="QUANTITY_BELOW_VENUE_MINIMUM",
+                details={
+                    "floored_base_quantity": format(base_quantity, "f"),
+                    "min_quantity": format(instrument_rules.min_quantity, "f"),
+                },
+            )
+            return None
+
+        if submitted_notional < instrument_rules.min_notional:
+            self._mark_result_failure(
+                result=result,
+                message="Reduction notional is below the venue minimum notional",
+                error_code="NOTIONAL_BELOW_VENUE_MINIMUM",
+                details={
+                    "floored_quote_notional": format(submitted_notional, "f"),
+                    "min_notional": format(instrument_rules.min_notional, "f"),
+                },
+            )
+            return None
+
+        # Block 6B: the same upper bounds the BUY admission gate applies, on
+        # the reduction actually being submitted. A partial exit above the
+        # venue maximum is refused rather than clipped down to it: the size is
+        # the risk-approved reduction, and this path prices it, never revises
+        # it.
+        reduction_bound = instrument_rules.upper_bound_violation(
+            base_quantity=base_quantity,
+            quote_notional=submitted_notional,
+            order_type=request.order_type,
+        )
+
+        if reduction_bound is not None:
+            bound_reason, bound_details = reduction_bound
+            self._mark_result_failure(
+                result=result,
+                message="Reduction is above the venue maximum quantity or notional",
+                error_code=bound_reason,
+                details=bound_details,
+            )
+            return None
+
+        remainder_base = held - base_quantity
+        remainder_notional = remainder_base * basis
+
+        if remainder_base > 0 and (
+            remainder_base < instrument_rules.min_quantity
+            or remainder_notional < instrument_rules.min_notional
+        ):
+            self._mark_result_failure(
+                result=result,
+                message=(
+                    "Partial reduction would strand a durable remainder "
+                    "below the venue minimum quantity or notional"
+                ),
+                error_code="REDUCTION_STRANDS_SUBMINIMUM_REMAINDER",
+                details={
+                    "remainder_base_quantity": format(remainder_base, "f"),
+                    "remainder_quote_notional": format(remainder_notional, "f"),
+                    "min_quantity": format(instrument_rules.min_quantity, "f"),
+                    "min_notional": format(instrument_rules.min_notional, "f"),
+                },
+            )
+            return None
+
+        result.data["executed_quote_reduction"] = format(submitted_notional, "f")
+        result.data["unreduced_quote_remainder"] = format(
+            reduction - submitted_notional, "f"
+        )
+
+        return base_quantity
+
     def _execute_paper_sell(
         self,
         *,
         request: ExecutionRequest,
         result: ExecutionResult,
     ) -> None:
-        """
-        Coordinate paper SELL and authoritative position closure.
+        """Coordinate a paper SELL and the authoritative position reduction.
+
+        The size sold is the risk-approved reduction, converted to base units
+        at the durable risk basis - never the whole holding. A reduction
+        smaller than the position reduces it; a reduction equal to it closes
+        it; a reduction larger than it fails closed. The approved size is
+        never revised here, only priced.
         """
 
         result.data = result.data or {}
+        partial_reduction = False
 
         if self.portfolio_foundation is not None:
             position = self.portfolio_foundation.snapshot()["positions"].get(request.symbol)
@@ -2794,25 +4441,137 @@ class ExecutionManager:
                     error_code="POSITION_NOT_FOUND",
                 )
                 return
-            result.position_id = position["position_id"]
-            result.filled_base_quantity = Decimal(position["base_quantity"])
-            result.filled_quote_notional = (
-                result.filled_base_quantity * Decimal(str(result.filled_price))
-            )
-            result.filled_amount = float(result.filled_quote_notional)
-            result.fee_amount = Decimal(str(result.fee))
 
-        paper_trade = self._paper_close_trade(
-            request
+            base_quantity = self._resolve_reduction_quantity(
+                request=request,
+                result=result,
+                position=position,
+            )
+
+            if base_quantity is None:
+                return
+
+            partial_reduction = base_quantity != Decimal(str(position["base_quantity"]))
+            result.data["partial_reduction"] = partial_reduction
+
+            result.position_id = position["position_id"]
+            result.filled_base_quantity = base_quantity
+
+        # Side-effect boundary: PaperTrader.close_trade() persists its own
+        # durable book, so from here an interrupted request has an outcome
+        # this manager cannot prove.
+        self._mark_execution_side_effect(request.request_id)
+
+        # PaperTrader.close_trade() can only express a *complete* exit: it pops
+        # the symbol outright. Calling it for a partial reduction would drop a
+        # position the durable book still holds, and every later exit of the
+        # remainder would then be refused as "No position" - trapping exposure
+        # in the compatibility book. The durable foundation is the position
+        # authority, so a partial reduction leaves the paper book untouched and
+        # says so in the result rather than desynchronizing it.
+        paper_trade = (
+            None
+            if partial_reduction
+            else self._paper_close_trade(
+                request
+            )
         )
+
+        if partial_reduction:
+            result.data["paper_book_mutated"] = False
 
         if paper_trade is not None:
             result.data["paper_trade"] = paper_trade
+
+            # Same authority contract as the BUY path: a close the paper
+            # book refused is not a completed exit.
+            if self._component_reported_failure(
+                paper_trade
+            ):
+                self._mark_result_failure(
+                    result=result,
+                    message=str(
+                        paper_trade.get(
+                            "reason",
+                            "Paper trade was not recorded",
+                        )
+                    ),
+                    error_code="PAPER_TRADE_REJECTED",
+                    details=dict(
+                        paper_trade
+                    ),
+                )
+                return
 
             self._hydrate_result_from_component(
                 result=result,
                 payload=paper_trade,
             )
+
+        # Proceeds are priced after hydration, so the fill price the paper
+        # book reported - not the price this manager assumed - is the one the
+        # notional is derived from. The quantity sold is already fixed and is
+        # never revised here: only the price of that quantity is.
+        if result.filled_base_quantity is not None:
+            try:
+                execution_price = Decimal(str(result.filled_price))
+                if execution_price <= 0:
+                    raise ValueError("non-positive paper fill price")
+                result.filled_quote_notional = (
+                    result.filled_base_quantity * execution_price
+                )
+                result.filled_amount = float(result.filled_quote_notional)
+            except (InvalidOperation, ValueError, TypeError):
+                self._mark_result_failure(
+                    result=result,
+                    message="Paper fill quantity semantics are invalid",
+                    error_code="INVALID_FINANCIAL_QUANTITY",
+                )
+                return
+
+            # Block 5E: the same quote-asset-only fee gate `_execute_paper_buy`
+            # applies. Admission already required an instrument rule to
+            # exist for this symbol, so re-fetching it here can only miss if
+            # it disappeared between admission and execution - the same
+            # defense-in-depth case `_execute_paper_buy` guards against.
+            instrument_rules = (
+                self.instrument_rules.get(request.symbol)
+                if self.instrument_rules is not None
+                else None
+            )
+
+            if instrument_rules is None:
+                self._mark_result_failure(
+                    result=result,
+                    message="No instrument rules for symbol",
+                    error_code="INSTRUMENT_RULES_UNAVAILABLE",
+                )
+                return
+
+            try:
+                normalized_fee = FeeNormalizer.normalize(
+                    fee_amount=result.fee_amount,
+                    fee_currency=result.fee_currency,
+                    instrument=instrument_rules,
+                )
+            except FeeRejected as exc:
+                self._mark_result_failure(
+                    result=result,
+                    message="Component-reported fee cannot be settled: only this venue's quote-asset fee is supported",
+                    error_code=exc.reason.value,
+                    details={
+                        "fee_amount": (
+                            format(exc.fee_amount, "f") if exc.fee_amount is not None else None
+                        ),
+                        "fee_currency": exc.fee_currency,
+                        "quote_asset": instrument_rules.quote_asset,
+                        "base_asset": instrument_rules.base_asset,
+                    },
+                )
+                return
+
+            result.fee_amount = normalized_fee.quote_amount
+            result.fee_currency = normalized_fee.currency
 
         close_metadata = {
             **self._normalize_metadata(
@@ -3072,202 +4831,53 @@ class ExecutionManager:
             }
 
     # =========================================================
-    # CAPITAL ALLOCATION
-    # =========================================================
-
-    def allocate_capital(
-        self,
-        request: ExecutionRequest,
-    ) -> float:
-        """
-        Calculate quote-currency capital allocated to a paper position.
-
-        Priority
-        --------
-        1. CapitalManager position-sizing method
-        2. Explicit request.amount
-        3. Available-capital bounded default
-        4. DEFAULT_ALLOCATION
-        """
-
-        manager_value = self._calculate_manager_position_size(
-            request
-        )
-
-        if manager_value > 0:
-            return manager_value
-
-        if request.amount > 0:
-            return request.amount
-
-        available_capital = self._available_capital()
-
-        if available_capital is not None:
-            return max(
-                0.0,
-                min(
-                    self.DEFAULT_ALLOCATION,
-                    available_capital,
-                ),
-            )
-
-        return self.DEFAULT_ALLOCATION
-
-    def _calculate_manager_position_size(
-        self,
-        request: ExecutionRequest,
-    ) -> float:
-        """
-        Query CapitalManager position-sizing contracts.
-        """
-
-        if self.capital_manager is None:
-            return 0.0
-
-        for method_name in (
-            "calculate_position_size",
-            "allocate",
-            "allocate_capital",
-        ):
-            method = getattr(
-                self.capital_manager,
-                method_name,
-                None,
-            )
-
-            if not callable(
-                method
-            ):
-                continue
-
-            try:
-                value = method(
-                    request.to_dict()
-                )
-
-            except TypeError:
-                try:
-                    value = method(
-                        confidence=request.confidence,
-                        risk_level=request.risk,
-                        price=request.price,
-                        symbol=request.symbol,
-                    )
-
-                except TypeError:
-                    try:
-                        value = method(
-                            request
-                        )
-
-                    except Exception as exc:
-                        self._record_error(
-                            phase="capital_allocation",
-                            error=exc,
-                            request=request,
-                        )
-                        continue
-
-                except Exception as exc:
-                    self._record_error(
-                        phase="capital_allocation",
-                        error=exc,
-                        request=request,
-                    )
-                    continue
-
-            except Exception as exc:
-                self._record_error(
-                    phase="capital_allocation",
-                    error=exc,
-                    request=request,
-                )
-                continue
-
-            normalized = self._extract_numeric_value(
-                value,
-                keys=(
-                    "amount",
-                    "allocation",
-                    "position_size",
-                    "capital",
-                    "approved_amount",
-                ),
-            )
-
-            if normalized > 0:
-                return normalized
-
-        return 0.0
-
-    def _available_capital(
-        self,
-    ) -> float | None:
-        """
-        Read available capital from attribute or method contracts.
-        """
-
-        if self.capital_manager is None:
-            return None
-
-        value = getattr(
-            self.capital_manager,
-            "available_capital",
-            None,
-        )
-
-        if callable(
-            value
-        ):
-            try:
-                value = value()
-
-            except Exception as exc:
-                self._record_error(
-                    phase="available_capital",
-                    error=exc,
-                )
-                return None
-
-        if value is None:
-            method = getattr(
-                self.capital_manager,
-                "get_available_capital",
-                None,
-            )
-
-            if callable(
-                method
-            ):
-                try:
-                    value = method()
-
-                except Exception as exc:
-                    self._record_error(
-                        phase="available_capital",
-                        error=exc,
-                    )
-                    return None
-
-        normalized = self._extract_numeric_value(
-            value,
-            keys=(
-                "available_capital",
-                "available",
-                "cash",
-                "balance",
-            ),
-        )
-
-        return (
-            normalized
-            if normalized >= 0
-            else None
-        )
-
-    # =========================================================
     # LIVE EXECUTION
     # =========================================================
+
+    def _block_live_dispatch(
+        self,
+        request: ExecutionRequest,
+        *,
+        status: str,
+        message: str,
+        error_code: str | None,
+        data: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Refuse one live dispatch at a venue-readiness gate.
+
+        The shared shape of every pre-adapter refusal: counted as blocked,
+        published on the same channel the other live denials use, and carrying
+        a status outside ``SUCCESS_STATUSES`` so the terminal classifier
+        resolves it as not-committed with no durable consequence.
+        """
+        with self._lock:
+            self.stats["live_blocked"] += 1
+
+        blocked = ExecutionResult(
+            success=False,
+            status=status,
+            message=message,
+            symbol=request.symbol,
+            action=request.action,
+            mode=self.MODE_LIVE,
+            data={"request_id": request.request_id, **(data or {})},
+            metadata=self._normalize_metadata(
+                request.metadata
+            ),
+            timestamp=request.timestamp,
+            error_code=error_code,
+            requested_price=request.price,
+            requested_amount=request.amount,
+        )
+
+        payload = blocked.to_dict()
+
+        self.publish(
+            "LIVE_EXECUTION_BLOCKED",
+            payload,
+        )
+
+        return payload
 
     def live_execute(
         self,
@@ -3277,6 +4887,20 @@ class ExecutionManager:
         Deny live execution unless explicitly enabled.
 
         Even when enabled, a concrete live execution adapter is required.
+
+        Block 6A adds one further denial ahead of the adapter step, for a
+        runtime that came online holding live authority: venue rules that
+        were FRESH at startup can age past the threshold during a long run,
+        and a dispatch is where that must be caught. The re-check is scoped
+        to ``_live_authorized_at_start`` deliberately - a runtime that had
+        its live flag flipped after startup never passed the live startup
+        gate at all and is already denied below for want of an approved
+        adapter, so nothing reaches a venue either way.
+
+        Block 6B adds the second half of the same pre-adapter check: the
+        venue's upper bounds must be modelled for the symbol being
+        dispatched. Both refusals happen before the adapter step, which is
+        the last place either can be caught.
         """
 
         if not self._has_risk_admission(request):
@@ -3320,6 +4944,62 @@ class ExecutionManager:
             )
 
             return payload
+
+        if self._live_authorized_at_start:
+            freshness = self.instrument_rule_freshness.evaluate_gate(
+                self.instrument_rules,
+                live_authorized=True,
+            )
+
+            if not freshness.allowed:
+                logger.error(
+                    "LIVE execution blocked: venue rules %s "
+                    "age_seconds=%s maximum_age_seconds=%s",
+                    freshness.report.status.value,
+                    freshness.report.age_seconds,
+                    freshness.report.maximum_age_seconds,
+                )
+
+                return self._block_live_dispatch(
+                    request,
+                    status="VENUE_RULES_NOT_FRESH",
+                    message=(
+                        "Live execution requires fresh venue instrument "
+                        "rules"
+                    ),
+                    error_code=freshness.reason,
+                    data={"venue_rules": freshness.report.to_dict()},
+                )
+
+            # Block 6B: the venue's upper bounds must be modelled for the
+            # symbol being dispatched, checked here - the last point before
+            # the adapter seam - and not only at startup, so a ruleset
+            # replaced in a running process cannot open an unbounded live
+            # path. The numeric bounds themselves were already enforced at
+            # admission, which no request can reach this line without having
+            # passed.
+            dispatch_rules = (
+                self.instrument_rules.get(request.symbol)
+                if self.instrument_rules is not None
+                else None
+            )
+
+            if dispatch_rules is None or not dispatch_rules.has_complete_venue_bounds:
+                logger.error(
+                    "LIVE execution blocked: venue upper bounds unmodelled "
+                    "symbol=%s",
+                    request.symbol,
+                )
+
+                return self._block_live_dispatch(
+                    request,
+                    status=VENUE_UPPER_BOUNDS_UNAVAILABLE,
+                    message=(
+                        "Live execution requires modelled venue upper bounds"
+                    ),
+                    error_code=VENUE_UPPER_BOUNDS_UNAVAILABLE,
+                    data={"symbol": request.symbol},
+                )
 
         with self._lock:
             self.stats["live_blocked"] += 1
@@ -3447,28 +5127,67 @@ class ExecutionManager:
         if filled_price > 0:
             result.filled_price = filled_price
 
-        # Do not hydrate canonical base quantity from ambiguous legacy keys.
-        filled_amount = ExecutionManager._extract_numeric_value(
+        # `filled_amount` and `allocation` are not hydrated at all. Their unit
+        # is not declared by the payload, so a component reporting a base
+        # quantity under either key would have been copied straight onto a
+        # field the paper paths otherwise carry quote capital in. The canonical
+        # Decimal fields - filled_base_quantity and filled_quote_notional - are
+        # owned by the execution paths that derive them from the risk-approved
+        # allocation, and they remain the only financially material quantities.
+
+        # Block 5E exact fee ingress: a component may report `fee_amount`
+        # directly as a Decimal or decimal string, taken verbatim and never
+        # routed through the lossy float `fee` mirror below. Only when the
+        # key itself is absent does hydration fall back to the historical
+        # `fee`/`commission` float keys - a present-but-invalid `fee_amount`
+        # (negative, non-finite, or unparseable) still comes back from
+        # `_extract_exact_decimal` as a `Decimal`, so it is carried through
+        # here and left for the `FeeNormalizer` gate below to refuse; it
+        # never falls back to `fee`/`commission` (final-review MEDIUM #1).
+        exact_fee = ExecutionManager._extract_exact_decimal(
             payload,
-            keys=(
-                "filled_amount",
-                "allocation",
-            ),
+            keys=("fee_amount",),
         )
 
-        if filled_amount > 0:
-            result.filled_amount = filled_amount
+        if exact_fee is not None:
+            result.fee_amount = exact_fee
+            result.fee = float(exact_fee) if exact_fee.is_finite() else 0.0
 
-        fee = ExecutionManager._extract_numeric_value(
-            payload,
-            keys=(
-                "fee",
-                "commission",
-            ),
-        )
+            # The currency comes from the component that charged the fee,
+            # and from nowhere else. `InstrumentRules.base_asset`/
+            # `quote_asset` (Block 5D) let `FeeNormalizer` (Block 5E)
+            # classify a stated currency against the venue; a fee whose
+            # currency nobody stated is still rejected rather than assumed
+            # to be quote currency.
+            result.fee_currency = (
+                result.fee_currency
+                or ExecutionManager._extract_nested(
+                    payload,
+                    "fee_currency",
+                    "commission_asset",
+                )
+            )
+        else:
+            fee = ExecutionManager._extract_numeric_value(
+                payload,
+                keys=(
+                    "fee",
+                    "commission",
+                ),
+            )
 
-        if fee != 0:
-            result.fee = fee
+            if fee != 0:
+                result.fee = fee
+                result.fee_amount = Decimal(str(fee))
+
+                result.fee_currency = (
+                    result.fee_currency
+                    or ExecutionManager._extract_nested(
+                        payload,
+                        "fee_currency",
+                        "commission_asset",
+                    )
+                )
 
         pnl = ExecutionManager._extract_numeric_value(
             payload,
@@ -3481,6 +5200,49 @@ class ExecutionManager:
 
         if pnl != 0:
             result.pnl = pnl
+
+    @staticmethod
+    def _component_reported_failure(
+        payload: Any,
+    ) -> bool:
+        """Report whether a component payload explicitly denies success.
+
+        Hydration deliberately copies identifiers and numerics only, because
+        component status vocabularies are their own: PaperTrader answers a
+        successful open with ``OPENED``, which is not one of this manager's
+        success statuses. Copying a component status straight onto the
+        execution result would therefore turn successful paper BUYs into
+        failures, so the outcome is inspected separately here.
+
+        Absence of an outcome is not failure. Only an explicit denial — a
+        false ``success`` flag, or a status this manager itself treats as
+        terminal failure — counts, so component payloads that simply carry
+        no outcome field keep behaving exactly as before.
+        """
+        if not isinstance(
+            payload,
+            Mapping,
+        ):
+            return False
+
+        if (
+            "success" in payload
+            and not bool(
+                payload.get(
+                    "success"
+                )
+            )
+        ):
+            return True
+
+        status = str(
+            payload.get(
+                "status",
+                "",
+            )
+        ).strip().upper()
+
+        return status in ExecutionManager.FAILURE_STATUSES
 
     @staticmethod
     def _mark_result_failure(
@@ -3921,59 +5683,6 @@ class ExecutionManager:
         }
 
     @staticmethod
-    def _normalize_approval_result(
-        result: Any,
-        *,
-        default_reason: str,
-    ) -> dict[str, Any]:
-        if isinstance(
-            result,
-            Mapping,
-        ):
-            approved = bool(
-                result.get(
-                    "approved",
-                    result.get(
-                        "allowed",
-                        result.get(
-                            "success",
-                            False,
-                        ),
-                    ),
-                )
-            )
-
-            return {
-                "approved": approved,
-                "reason": str(
-                    result.get(
-                        "reason",
-                        (
-                            "APPROVED"
-                            if approved
-                            else default_reason
-                        ),
-                    )
-                ),
-                "details": dict(
-                    result
-                ),
-            }
-
-        approved = bool(
-            result
-        )
-
-        return {
-            "approved": approved,
-            "reason": (
-                "APPROVED"
-                if approved
-                else default_reason
-            ),
-        }
-
-    @staticmethod
     def _extract_numeric_value(
         value: Any,
         *,
@@ -4008,6 +5717,60 @@ class ExecutionManager:
         return ExecutionManager._to_float(
             value
         )
+
+    @staticmethod
+    def _extract_exact_decimal(
+        value: Any,
+        *,
+        keys: tuple[str, ...],
+    ) -> Decimal | None:
+        """Read an exact ``Decimal`` straight from a payload, never through float.
+
+        Mirrors ``_extract_numeric_value``'s key/``data``-fallback lookup,
+        but for a field a component may report as an exact ``Decimal`` or
+        decimal string (Block 5E ``fee_amount`` ingress) - so an exact
+        component-reported figure never has to round-trip through a float
+        mirror to become authoritative. Returns ``None`` only when the key
+        itself is absent (or explicitly ``None``) - that is the one case
+        the caller is allowed to fall back to the legacy ``fee``/
+        ``commission`` mirror for.
+
+        A key that *is* present but cannot stand as an authoritative fee -
+        negative, non-finite, or not parseable as a ``Decimal`` at all - is
+        never silently discarded into that same ``None``/fallback path
+        (final-review MEDIUM #1): it comes back as a ``Decimal`` regardless,
+        valid or not, so the caller's existing ``FeeNormalizer`` gate is the
+        one place that decides whether it may settle. A value ``Decimal()``
+        itself cannot represent - unparseable garbage - is poisoned as
+        ``NaN``, which that same gate already refuses via its
+        ``is_finite()`` check, so the failure reason a caller sees is
+        identical whether the fee was unparseable, negative, or already
+        non-finite.
+        """
+        if not isinstance(value, Mapping):
+            return None
+
+        candidate = None
+        for key in keys:
+            if key in value:
+                candidate = value[key]
+                break
+
+        if candidate is None:
+            data = value.get("data")
+            if isinstance(data, Mapping):
+                for key in keys:
+                    if key in data:
+                        candidate = data[key]
+                        break
+
+        if candidate is None:
+            return None
+
+        try:
+            return Decimal(str(candidate))
+        except (InvalidOperation, ValueError, TypeError):
+            return Decimal("NaN")
 
     @staticmethod
     def _extract_nested(
@@ -4656,18 +6419,110 @@ class ExecutionManager:
             return None
 
 
+    def _reset_refusal_reason(self) -> str | None:
+        """Return a fixed refusal token, or ``None`` when reset is provably safe.
+
+        Called with ``self._lock`` held. Attributes are read defensively
+        (``getattr`` with the same conventions
+        ``FinancialRuntimeSafetyService._base_evidence`` uses) so an injected
+        test double cannot make the guard raise instead of refuse.
+        """
+
+        idempotency_loaded = bool(
+            getattr(
+                self.idempotency_store,
+                "loaded",
+                False,
+            )
+        )
+
+        journal_loaded = bool(
+            getattr(
+                self.transaction_journal,
+                "loaded",
+                False,
+            )
+        ) and not bool(
+            getattr(
+                self.transaction_journal,
+                "load_failed",
+                False,
+            )
+        )
+
+        if not idempotency_loaded or not journal_loaded:
+            # An authority that did not load reports zero records, which is
+            # indistinguishable from "no history" - and is exactly the state
+            # in which erasing the other half is most damaging.
+            return "EXECUTION_HISTORY_INDETERMINATE"
+
+        if self.pending_request_ids or self._execution_side_effect_ids:
+            return "EXECUTION_REQUESTS_IN_FLIGHT"
+
+        completed = getattr(
+            self.idempotency_store,
+            "completed_requests",
+            None,
+        )
+
+        entries = getattr(
+            self.transaction_journal,
+            "entries",
+            None,
+        )
+
+        if not isinstance(completed, dict) or not isinstance(entries, dict):
+            return "EXECUTION_HISTORY_INDETERMINATE"
+
+        if completed or entries or self.completed_request_results:
+            return "EXECUTION_HISTORY_PRESENT"
+
+        return None
+
     def reset(self) -> None:
+        """Clear in-memory runtime diagnostics only.
+
+        Block 5J (finding B5H-0-9). This operation used to call
+        ``idempotency_store.reset()``, erasing the durable terminal-result
+        authority while leaving every COMMITTED transaction-journal entry in
+        place. That is precisely the state
+        ``FinancialRuntimeSafetyService._authorities_agree`` classifies as
+        ``SOURCE_DISAGREEMENT``, so a single reset could halt the next start
+        of an otherwise healthy runtime - and, because ``_claim_request``
+        answers duplicates from ``completed_request_results`` alone, could
+        also let an already-executed request execute a second time in the
+        current process.
+
+        The durable erase is gone: this method now writes no state file at
+        all. It refuses outright (``ExecutionResetRefusedError``) whenever
+        durable execution history exists, whenever either authority failed to
+        load, and whenever a request is still in flight - so it can no longer
+        manufacture divergence, and it can no longer discard committed
+        financial evidence for convenience. Deliberately destructive
+        maintenance is an explicit operator action against the state files
+        themselves (see ADR-0005 and
+        ``tools/reconcile_execution_authorities.py``), never a runtime call.
+
+        The single-authority ``ExecutionIdempotencyStore.reset()`` /
+        ``ExecutionTransactionJournal.reset()`` primitives are deliberately
+        left as they are: neither store can see its counterpart, so the
+        pairing invariant can only be enforced here, where both are held.
+        """
+
         with self._lock:
+            refusal = self._reset_refusal_reason()
+
+            if refusal is not None:
+                logger.warning(
+                    "Execution Manager reset refused reason=%s",
+                    refusal,
+                )
+
+                raise ExecutionResetRefusedError(refusal)
+
             self.history.clear()
             self.rejections.clear()
             self.errors.clear()
-
-            self.pending_request_ids.clear()
-            self.completed_request_results.clear()
-
-            self.idempotency_store.reset(
-                delete_file=False
-            )
 
             self.stats = self._new_stats()
 
@@ -4731,6 +6586,11 @@ class ExecutionManager:
                         else None
                     ),
                 },
+                # Block 6A: venue rule age is operational state a monitor must
+                # be able to see without inferring it from a halt reason.
+                "venue_rules": (
+                    self.assess_venue_rule_freshness().to_dict()
+                ),
                 "statistics": dict(
                     self.stats
                 ),
@@ -4779,6 +6639,9 @@ class ExecutionManager:
                         else None
                     ),
                 },
+                "venue_rules": (
+                    self.assess_venue_rule_freshness().to_dict()
+                ),
                 "transaction_journal": (
                     self.transaction_journal.status()
                 ),

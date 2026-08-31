@@ -31,6 +31,12 @@ from core.market_loop import MarketLoop
 from core.technical_analyzer import TechnicalAnalyzer
 
 
+# CandleProcessor owns no clock: every call needs an explicit cutoff.
+# These fixtures are entirely historical, so a fixed cutoff after the
+# last close time keeps the expectations deterministic.
+PROCESSING_CUTOFF = datetime(2026, 6, 1, tzinfo=UTC)
+
+
 def build_legacy_candles(
     count: int = 200,
     *,
@@ -116,7 +122,10 @@ class MarketLoopIntegrationTests(unittest.TestCase):
         processor = CandleProcessor()
         rows = build_legacy_candles(200)
 
-        normalized = processor.normalize(rows)
+        normalized = processor.normalize(
+            rows,
+            processing_cutoff=PROCESSING_CUTOFF,
+        )
 
         self.assertEqual(len(normalized), 200)
         self.assertIsNotNone(normalized[0])
@@ -126,7 +135,10 @@ class MarketLoopIntegrationTests(unittest.TestCase):
         processor = CandleProcessor()
         analyzer = TechnicalAnalyzer()
 
-        normalized = processor.normalize(build_legacy_candles(200))
+        normalized = processor.normalize(
+            build_legacy_candles(200),
+            processing_cutoff=PROCESSING_CUTOFF,
+        )
         result = analyzer.analyze(normalized)
 
         self.assertIsNotNone(result)

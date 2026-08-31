@@ -34,7 +34,8 @@ Final Confidence
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List
+from enum import Enum
+from typing import Dict, Mapping
 
 
 
@@ -387,6 +388,68 @@ class ConfidenceEngine:
     # =================================================
 
 
+    # -------------------------------------------------
+    # RISK PENALTY TAXONOMY (M-3)
+    # -------------------------------------------------
+    #
+    # LOW/MEDIUM/HIGH keep their existing values exactly. CRITICAL and
+    # UNKNOWN are added, and they are the two states the previous
+    # `penalties.get(level, 0.20)` silently resolved to the MEDIUM
+    # penalty - i.e. a maximum-risk or uninterpretable classification
+    # was scored as *less* dangerous than a HIGH one and produced a
+    # higher confidence than the evidence justified. That is M-3.
+    #
+    # Both are pinned at the maximum penalty rather than at some value
+    # merely above HIGH, because both are non-executable states in the
+    # canonical execution authority (core.risk_engine rejects them with
+    # CRITICAL_RISK_NOT_EXECUTABLE / UNSUPPORTED_RISK_LEVEL and zero
+    # allocation). Nothing this advisory layer computes should read as
+    # partial confidence in a state execution refuses outright, and a
+    # penalty of 1.0 spends the whole risk term of the confidence
+    # formula, which is the strongest statement available here.
+
+    RISK_PENALTIES = {
+
+        "LOW":
+            0.05,
+
+        "MEDIUM":
+            0.20,
+
+        "HIGH":
+            0.40,
+
+        "CRITICAL":
+            1.00,
+
+        "UNKNOWN":
+            1.00,
+
+    }
+
+
+    # Applied when a risk classification is PRESENT but not understood
+    # ("EXTREME", "SEVERE", a number, any future label). It fails closed
+    # at the maximum rather than at MEDIUM: an unrecognized label is not
+    # evidence of moderate risk, and treating it as such let unknown
+    # input buy back confidence.
+
+    UNSUPPORTED_RISK_PENALTY = 1.00
+
+
+    # Applied when risk is genuinely ABSENT (no mapping, or no/empty
+    # level inside it). This is the one legacy default deliberately
+    # retained, matching the frozen Block-1 convention that a
+    # missing/None/empty risk value keeps its MEDIUM default and is
+    # never confused with malformed PRESENT input. It is no longer 0:
+    # scoring "no risk information at all" as *zero* risk penalty made
+    # absence the single most favourable input this method accepted,
+    # which is the same missing-evidence-is-good-evidence failure M-2
+    # removed from fusion.
+
+    ABSENT_RISK_PENALTY = 0.20
+
+
     def calculate_risk_penalty(
 
         self,
@@ -397,52 +460,103 @@ class ConfidenceEngine:
 
 
 
-        if not risk:
+        level = self._risk_level_token(
 
-
-            return 0
-
-
-
-        level = risk.get(
-
-            "level",
-
-            "MEDIUM"
+            risk
 
         )
 
 
 
-        penalties = {
+        if level is None:
 
 
-            "LOW":
-
-                0.05,
-
-
-            "MEDIUM":
-
-                0.20,
-
-
-            "HIGH":
-
-                0.40
-
-
-        }
+            return self.ABSENT_RISK_PENALTY
 
 
 
-        return penalties.get(
+        return self.RISK_PENALTIES.get(
 
             level,
 
-            0.20
+            self.UNSUPPORTED_RISK_PENALTY
 
         )
+
+
+
+
+    @staticmethod
+    def _risk_level_token(
+
+        risk
+
+    ):
+
+        """
+        Resolve a risk input to a canonical level token.
+
+        Returns None for genuine absence (no risk mapping, no "level"
+        entry, or an empty/None level) and an upper-cased token
+        otherwise. A present but non-textual value is returned as text
+        rather than as absence, so it fails closed as unsupported
+        instead of inheriting the absence default.
+
+        Case/whitespace normalization mirrors
+        core.risk_engine.analytical_risk_level() on purpose: Atlas must
+        not grow a second, differently-strict risk vocabulary in the
+        advisory layer.
+        """
+
+        if not risk:
+
+            return None
+
+
+        if isinstance(
+            risk,
+            Mapping,
+        ):
+
+            value = risk.get(
+                "level"
+            )
+
+        else:
+
+            value = getattr(
+                risk,
+                "level",
+                None,
+            )
+
+
+        if value is None:
+
+            return None
+
+
+        if isinstance(
+            value,
+            Enum,
+        ):
+
+            value = (
+                value.value
+                if isinstance(
+                    value.value,
+                    str,
+                )
+                else value.name
+            )
+
+
+        token = str(
+            value
+        ).strip().upper()
+
+
+        return token or None
 
 
 

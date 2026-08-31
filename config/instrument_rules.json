@@ -1,0 +1,70 @@
+{
+  "schema_version": "1.0",
+  "rules": [
+    {
+      "venue": "BINANCE",
+      "symbol": "BTCUSDT",
+      "base_asset": "BTC",
+      "quote_asset": "USDT",
+      "quantity_step": "0.00001",
+      "min_quantity": "0.00001",
+      "min_notional": "5",
+      "price_tick": "0.01",
+      "source": "https://api.binance.com/api/v3/exchangeInfo",
+      "source_version": "1787161613022",
+      "retrieved_at": "2026-08-19T17:47:48Z"
+    },
+    {
+      "venue": "BINANCE",
+      "symbol": "ETHUSDT",
+      "base_asset": "ETH",
+      "quote_asset": "USDT",
+      "quantity_step": "0.0001",
+      "min_quantity": "0.0001",
+      "min_notional": "5",
+      "price_tick": "0.01",
+      "source": "https://api.binance.com/api/v3/exchangeInfo",
+      "source_version": "1787161613022",
+      "retrieved_at": "2026-08-19T17:47:48Z"
+    },
+    {
+      "venue": "BINANCE",
+      "symbol": "BNBUSDT",
+      "base_asset": "BNB",
+      "quote_asset": "USDT",
+      "quantity_step": "0.001",
+      "min_quantity": "0.001",
+      "min_notional": "5",
+      "price_tick": "0.01",
+      "source": "https://api.binance.com/api/v3/exchangeInfo",
+      "source_version": "1787161613022",
+      "retrieved_at": "2026-08-19T17:47:48Z"
+    },
+    {
+      "venue": "BINANCE",
+      "symbol": "SOLUSDT",
+      "base_asset": "SOL",
+      "quote_asset": "USDT",
+      "quantity_step": "0.001",
+      "min_quantity": "0.001",
+      "min_notional": "5",
+      "price_tick": "0.01",
+      "source": "https://api.binance.com/api/v3/exchangeInfo",
+      "source_version": "1787161613022",
+      "retrieved_at": "2026-08-19T17:47:48Z"
+    },
+    {
+      "venue": "BINANCE",
+      "symbol": "XRPUSDT",
+      "base_asset": "XRP",
+      "quote_asset": "USDT",
+      "quantity_step": "0.1",
+      "min_quantity": "0.1",
+      "min_notional": "5",
+      "price_tick": "0.0001",
+      "source": "https://api.binance.com/api/v3/exchangeInfo",
+      "source_version": "1787161613022",
+      "retrieved_at": "2026-08-19T17:47:48Z"
+    }
+  ]
+}

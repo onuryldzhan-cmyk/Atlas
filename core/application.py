@@ -72,42 +72,95 @@ from core.market_loop import MarketLoop
 from exchange.market_feed import MarketFeed
 
 from core.execution_manager import ExecutionManager
+from core.audit_event_store import AuditEventStore
+from core.execution_idempotency_store import ExecutionIdempotencyStore
+from core.execution_transaction_journal import ExecutionTransactionJournal
 from portfolio.capital_manager import CapitalManager
 from core.position_controller import PositionController
 from core.paper_trader import PaperTrader
 
 from core.risk_engine import RiskEngine, RiskPolicy
+from core.position_sizing import PositionSizingService
 from core.capital_reservation import (
     CapitalReservationLedger,
     JsonReservationStore,
+    ReservationArchiveStore,
+)
+from core.instrument_rules import (
+    InstrumentRulesConfigError,
+    load_instrument_ruleset,
+)
+from core.venue_rule_freshness import (
+    VenueRuleFreshnessPolicy,
+    VenueRuleFreshnessService,
 )
 from core.risk_state_store import JsonRiskStateStore
 from core.execution_portfolio_foundation import (
+    AppliedExecutionArchiveStore,
+    ClosedPositionArchiveStore,
     ExecutionPortfolioFoundation,
     FinancialStateStore,
 )
 
 from core.controller.atlas_controller import AtlasController
 
+from core.tool_gateway_contracts import CapabilityGateway
+from core.local_capability_adapter import (
+    LocalCapabilityProbeAdapter,
+    UnconfiguredPolicyGate,
+)
+
 
 logger = logging.getLogger("AtlasAI.Application")
 
 
 # =============================================================
-# DURABLE FINANCIAL STATE LOCATION
+# DURABLE STATE LOCATION
 # =============================================================
 #
-# Durable financial state lives beside the already canonical
-# execution stores (idempotency, audit, transaction journal),
-# which resolve their own defaults under the same directory.
-# The composition root owns these locations so that no domain
-# or execution module has to invent a path of its own.
+# Every durable file Atlas execution depends on — financial state
+# and execution durability alike — is located here, in the
+# composition root, and derived from one configured persistence
+# root. No domain or execution module invents a path of its own,
+# and none of them resolve a default against the process working
+# directory: the same configured state directory must produce the
+# same durable behaviour from any CWD.
+#
+# The default root is anchored to the installation directory
+# rather than to the CWD for the same reason. The file names and
+# the layout below are the established ones; no stored format is
+# renamed or migrated here.
 
-DEFAULT_STATE_DIRECTORY = "memory_data"
+DEFAULT_STATE_DIRECTORY = Path(__file__).resolve().parent.parent / "memory_data"
+
+# Block 5D: the checked-in static venue instrument-precision authority
+# (owner decision 1). Anchored to the installation directory for the same
+# reason DEFAULT_STATE_DIRECTORY is: the same runtime must load the same
+# rules regardless of the process's working directory.
+DEFAULT_INSTRUMENT_RULES_PATH = (
+    Path(__file__).resolve().parent.parent / "config" / "instrument_rules.json"
+)
 
 RISK_ACCOUNTING_STATE_FILE = "risk_accounting_state.json"
 CAPITAL_RESERVATION_STATE_FILE = "capital_reservations.json"
+# Block 5H: immutable, append-only archive of terminal (COMMITTED/RELEASED)
+# reservations CapitalReservationLedger.compact() has moved out of the
+# working-set file above. Read through by CapitalReservationLedger.get()
+# forever; never auto-compacted or read by AtlasApplication itself.
+CAPITAL_RESERVATION_ARCHIVE_FILE = "capital_reservations_archive.jsonl"
 EXECUTION_FINANCIAL_STATE_FILE = "execution_financial_state.json"
+# Block 5I: immutable, append-only sidecars execution_financial_state.json's
+# (schema v2) applied_checkpoint / closed_checkpoint point at. Read through
+# by ExecutionPortfolioFoundation at construction; never auto-compacted or
+# migrated by AtlasApplication itself.
+EXECUTION_APPLIED_EXECUTIONS_FILE = "execution_applied_executions.jsonl"
+EXECUTION_CLOSED_POSITIONS_FILE = "execution_closed_positions.jsonl"
+
+EXECUTION_IDEMPOTENCY_STATE_FILE = "execution_idempotency.jsonl"
+EXECUTION_TRANSACTION_JOURNAL_FILE = "execution_transaction_journal.jsonl"
+EXECUTION_AUDIT_EVENT_FILE = "audit/atlas_audit_events.jsonl"
+
+PAPER_TRADE_BOOK_FILE = "paper_trades.json"
 
 
 class AtlasApplication:
@@ -131,6 +184,7 @@ class AtlasApplication:
         symbols: list[str] | None = None,
         market_interval: float = 10.0,
         state_directory: str | Path = DEFAULT_STATE_DIRECTORY,
+        venue_rule_freshness_policy: VenueRuleFreshnessPolicy | None = None,
     ) -> None:
         logger.info(
             "Initializing %s v%s",
@@ -143,6 +197,15 @@ class AtlasApplication:
         self.symbols = list(symbols) if symbols else None
         self.market_interval = float(market_interval)
         self.state_directory = Path(state_directory)
+
+        # Block 6A: the venue-rule freshness policy in force for this run.
+        # Operator-configurable at the composition boundary; the documented
+        # default bounds staleness at the operator refresh cadence.
+        self.venue_rule_freshness_policy = (
+            venue_rule_freshness_policy
+            if venue_rule_freshness_policy is not None
+            else VenueRuleFreshnessPolicy()
+        )
 
         self.running = False
         self.initialized = False
@@ -195,7 +258,17 @@ class AtlasApplication:
         # -----------------------------------------------------
 
         self.capital = CapitalManager()
-        self.paper_trader = PaperTrader()
+
+        # The paper book is a durable execution side effect: open_trade()
+        # and close_trade() persist it, and an interrupted execution is
+        # classified against it. It therefore belongs under the same
+        # configured root as the other durable execution state, not beside
+        # whatever directory the process happened to start in.
+        self.paper_trader = PaperTrader(
+            filename=str(
+                self.state_directory / PAPER_TRADE_BOOK_FILE
+            ),
+        )
 
         self.position_controller = PositionController(
             event_bus=self.event_bus,
@@ -224,8 +297,28 @@ class AtlasApplication:
         self._build_financial_services()
 
         # -----------------------------------------------------
+        # Durable execution stores
+        # -----------------------------------------------------
+
+        self._build_execution_durability()
+
+        # -----------------------------------------------------
+        # Venue instrument precision (Block 5D)
+        # -----------------------------------------------------
+
+        self._build_instrument_rules()
+
+        # -----------------------------------------------------
         # Execution
         # -----------------------------------------------------
+
+        # The trade-enabled symbol universe this run is configured for. A
+        # symbol left unspecified falls back to MarketLoop's own default
+        # list, so the instrument-rules startup gate checks exactly the
+        # symbols MarketLoop will actually scan and trade.
+        configured_symbols = (
+            list(self.symbols) if self.symbols else list(MarketLoop.DEFAULT_SYMBOLS)
+        )
 
         self.execution = ExecutionManager(
             capital_manager=self.capital,
@@ -233,10 +326,16 @@ class AtlasApplication:
             paper_trader=self.paper_trader,
             event_bus=self.event_bus,
             mode=self.execution_mode,
+            idempotency_store=self.idempotency_store,
+            audit_store=self.audit_store,
+            transaction_journal=self.transaction_journal,
             risk_engine=self.risk_engine,
             reservation_ledger=self.reservation_ledger,
             risk_state_store=self.risk_state_store,
             portfolio_foundation=self.portfolio_foundation,
+            instrument_rules=self.instrument_ruleset,
+            instrument_rule_freshness=self.venue_rule_freshness,
+            configured_symbols=configured_symbols,
         )
 
         # -----------------------------------------------------
@@ -250,6 +349,7 @@ class AtlasApplication:
             event_bus=self.event_bus,
             symbols=self.symbols,
             interval=self.market_interval,
+            position_sizing_service=self.position_sizing_service,
         )
 
         # -----------------------------------------------------
@@ -261,6 +361,47 @@ class AtlasApplication:
             market_loop=self.market_loop,
             execution=self.execution,
         )
+
+        self._build_capability_gateway()
+
+    # =========================================================
+    # CAPABILITY GATEWAY
+    # =========================================================
+
+    def _build_capability_gateway(self) -> None:
+        """
+        Bind the capability contracts to their concrete implementations.
+
+        This is the only place in Atlas allowed to decide which policy gate
+        and which adapters exist, exactly as it is for the risk services
+        below. Intelligence cannot reach an adapter directly — the L4->L2
+        forbidden edge makes that a structural impossibility rather than a
+        convention — so the composition root is the sole binding point.
+
+        Nothing built here runs. The gateway is not started, not scheduled,
+        not subscribed to the event bus, and not referenced by the brain,
+        the market loop, or the execution path. It performs work only if a
+        caller invokes it, and today no caller does.
+
+        It also cannot perform work if one did. `UnconfiguredPolicyGate`
+        denies every operation, and the gateway consults the policy before
+        it touches an adapter, so every invocation through this instance
+        stops at POLICY_DENIED with no side effect. Widening that requires
+        constructing a different gate here, which is a visible diff and a
+        reviewable decision.
+
+        The adapter is registered rather than hidden so that the wiring is
+        inspectable and injectable — a caller receives the adapter from the
+        container instead of importing the concrete class.
+        """
+
+        self.capability_policy_gate = UnconfiguredPolicyGate()
+
+        self.capability_gateway = CapabilityGateway(
+            self.capability_policy_gate,
+        )
+
+        self.capability_probe_adapter = LocalCapabilityProbeAdapter()
 
     # =========================================================
     # CANONICAL FINANCIAL RISK SERVICES
@@ -295,6 +436,14 @@ class AtlasApplication:
             self.risk_policy,
         )
 
+        # The single upstream sizing authority (Block 5C). It proposes a BUY
+        # quote allocation only; it shares this exact RiskPolicy instance
+        # rather than a duplicate, so its bucket allocation percentage can
+        # never drift from the one RiskEngine approves against.
+        self.position_sizing_service = PositionSizingService(
+            self.risk_policy,
+        )
+
         self.risk_state_store = JsonRiskStateStore(
             self.state_directory / RISK_ACCOUNTING_STATE_FILE,
         )
@@ -304,11 +453,20 @@ class AtlasApplication:
                 self.state_directory / CAPITAL_RESERVATION_STATE_FILE,
             ),
             self.risk_policy.allocatable_capital,
+            archive=ReservationArchiveStore(
+                self.state_directory / CAPITAL_RESERVATION_ARCHIVE_FILE,
+            ),
         )
 
         self.portfolio_foundation = ExecutionPortfolioFoundation(
             FinancialStateStore(
                 self.state_directory / EXECUTION_FINANCIAL_STATE_FILE,
+            ),
+            applied_archive=AppliedExecutionArchiveStore(
+                self.state_directory / EXECUTION_APPLIED_EXECUTIONS_FILE,
+            ),
+            closed_archive=ClosedPositionArchiveStore(
+                self.state_directory / EXECUTION_CLOSED_POSITIONS_FILE,
             ),
         )
 
@@ -319,6 +477,100 @@ class AtlasApplication:
             self.risk_policy.version,
             self.reservation_ledger.ready,
             self.portfolio_foundation.ready,
+        )
+
+    # =========================================================
+    # DURABLE EXECUTION STORES
+    # =========================================================
+
+    def _build_execution_durability(self) -> None:
+        """
+        Construct the durable execution stores from the configured root.
+
+        Idempotency, audit, and transaction-journal persistence decide
+        whether a restarted Atlas recognises a completed request, detects an
+        unresolved transaction, and continues the same audit chain. Leaving
+        those locations to a CWD-relative default inside ExecutionManager
+        made restart behaviour depend on where the process happened to be
+        started; owning them here makes it depend only on configuration.
+
+        Each store keeps its own fail-closed load semantics. A missing or
+        corrupt file is not repaired or replaced here.
+        """
+
+        self.idempotency_store = ExecutionIdempotencyStore(
+            self.state_directory / EXECUTION_IDEMPOTENCY_STATE_FILE,
+        )
+
+        self.transaction_journal = ExecutionTransactionJournal(
+            self.state_directory / EXECUTION_TRANSACTION_JOURNAL_FILE,
+        )
+
+        self.audit_store = AuditEventStore(
+            self.state_directory / EXECUTION_AUDIT_EVENT_FILE,
+        )
+
+        logger.info(
+            "Durable execution stores constructed under %s "
+            "idempotency_loaded=%s journal_unresolved=%s",
+            self.state_directory,
+            self.idempotency_store.loaded,
+            self.transaction_journal.has_unresolved(),
+        )
+
+    # =========================================================
+    # VENUE INSTRUMENT PRECISION (BLOCK 5D)
+    # =========================================================
+
+    def _build_instrument_rules(self) -> None:
+        """
+        Load the checked-in static venue instrument-rules config.
+
+        This is the sole place that reads ``config/instrument_rules.json``
+        (owner decision 1): ``ExecutionManager`` consumes the result but
+        never constructs, mutates, or invents an entry. A missing, malformed,
+        or contract-invalid config does not fabricate a permissive ruleset -
+        it leaves ``self.instrument_ruleset`` as ``None``, and
+        ``ExecutionManager.start()`` then halts fail-closed with
+        ``INSTRUMENT_RULES_UNAVAILABLE`` for any trade-enabled or held
+        symbol, exactly as an unready durable store already halts startup
+        above.
+
+        Block 6A: this is also where the runtime's single venue-rule
+        freshness authority is built. The composition root owns the clock -
+        the financial core is handed the service, never an ambient
+        ``datetime.now()`` - and the same instance backs the startup gate and
+        every health/status surface, so they cannot disagree about how old
+        the rules are.
+        """
+
+        self.venue_rule_freshness = VenueRuleFreshnessService(
+            policy=self.venue_rule_freshness_policy,
+        )
+
+        try:
+            self.instrument_ruleset = load_instrument_ruleset(
+                DEFAULT_INSTRUMENT_RULES_PATH
+            )
+        except InstrumentRulesConfigError as exc:
+            self.instrument_ruleset = None
+            logger.error(
+                "Instrument rules unavailable path=%s error=%s",
+                DEFAULT_INSTRUMENT_RULES_PATH,
+                exc,
+            )
+            return
+
+        freshness = self.venue_rule_freshness.assess(self.instrument_ruleset)
+
+        logger.info(
+            "Instrument rules loaded symbols=%s schema_version=%s "
+            "freshness=%s age_seconds=%s maximum_age_seconds=%s",
+            self.instrument_ruleset.symbols,
+            self.instrument_ruleset.schema_version,
+            freshness.status.value,
+            freshness.age_seconds,
+            freshness.maximum_age_seconds,
         )
 
     # =========================================================
@@ -347,11 +599,18 @@ class AtlasApplication:
             self.reservation_ledger,
             self.risk_state_store,
             self.portfolio_foundation,
+            self.idempotency_store,
+            self.transaction_journal,
+            self.audit_store,
             self.brain,
             self.market_feed,
             self.execution,
             self.market_loop,
             self.controller,
+            # Registered, not started: these have no lifecycle, and the
+            # startup sequence below never references them.
+            self.capability_gateway,
+            self.capability_probe_adapter,
         )
 
         for service in services:

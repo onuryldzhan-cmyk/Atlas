@@ -1,6 +1,6 @@
 """
 ============================================================
-ATLAS EXECUTION IDEMPOTENCY STORE v1.0
+ATLAS EXECUTION IDEMPOTENCY STORE v2.0
 ============================================================
 
 Restart-Safe Execution Request Registry
@@ -14,31 +14,55 @@ Responsibilities
 ----------------
 - Persist completed request IDs
 - Restore completed execution results
-- Perform atomic JSON writes
+- Append one durable terminal record per completed request
 - Protect state with a reentrant lock
-- Maintain bounded storage
+- Retain every completed request indefinitely in production; bounded
+      retention is opt-in and reserved for explicit test callers
 - Recover safely from invalid state files
 - Expose health, status, diagnostics, and reset operations
 
-Storage Model
--------------
-{
-    "version": "1.0",
-    "updated_at": "...",
-    "completed_requests": {
-        "<request_id>": {
-            "status": "PAPER_EXECUTED",
-            ...
-        }
-    }
-}
+Storage Model (Block 5K)
+------------------------
+An append-only JSON-Lines log (``DurableAppendLog``)::
+
+    {"log":"execution_idempotency","version":2}
+    {"request_id":"...","result":{...},"sequence":0}
+    {"request_id":"...","result":{...},"sequence":1}
+
+Recording one terminal result appends one line. Nothing already written is
+rewritten, so the cost of completing a request no longer grows with the
+number of requests completed before it. The in-memory
+``completed_requests`` map is the same O(1) lookup index it has always been
+and is rebuilt by replaying the log at startup.
+
+Replay authority
+----------------
+Exactly one terminal record per request_id is the protocol. On read, a
+repeated request_id is resolved as follows and never by picking a side:
+
+- an identical payload is a harmless idempotent duplicate and is tolerated
+- a differing payload is a conflicting terminal authority and fails closed
+
+The same rule guards the write path: ``record()`` refuses to durably replace
+a request_id's existing terminal result with a different one, so a
+conflicting authority can never be created in the first place.
+
+Legacy state (v1.0)
+-------------------
+The v1.0 store persisted one whole-file JSON object in
+``execution_idempotency.json``. That file is never reinterpreted, migrated,
+or read as authority by the runtime. If it is present and the v2 log is not,
+the store reports ``migration_required`` and refuses to load, which fails
+runtime startup closed. ``tools/migrate_execution_authority_logs.py`` is the
+operator path.
 
 Safety Principles
 -----------------
 - Pending requests are never persisted
 - FAILED and ERROR results are never persisted
-- Writes use temporary-file replacement
-- Invalid files do not crash Atlas
+- Appends are flushed and fsynced before success is reported
+- Compaction (reset, removal, bounded test retention) rewrites atomically
+- Invalid files do not crash Atlas; they fail closed
 - Runtime state remains serializable
 
 ============================================================
@@ -46,17 +70,19 @@ Safety Principles
 
 from __future__ import annotations
 
-import json
 import logging
-import os
 import threading
 
 from datetime import UTC, datetime
-from enum import Enum
 from pathlib import Path
 from typing import Any, Mapping
 
 from atlas_security import sanitize_sensitive_data
+
+from core.durable_append_log import (
+    DurableAppendLog,
+    DurableAppendLogCorruptError,
+)
 
 
 logger = logging.getLogger(
@@ -69,15 +95,26 @@ class ExecutionIdempotencyStore:
     Persistent terminal-result registry indexed by request_id.
     """
 
-    VERSION = "1.0"
+    VERSION = "2.0"
 
     NAME = "ExecutionIdempotencyStore"
 
+    LOG_NAME = "execution_idempotency"
+
+    LOG_VERSION = 2
+
     DEFAULT_FILE = (
-        "memory_data/execution_idempotency.json"
+        "memory_data/execution_idempotency.jsonl"
     )
 
-    DEFAULT_MAX_RECORDS = 5_000
+    # The v1.0 whole-file JSON object this store no longer writes. Its
+    # presence beside an absent v2 log means operator migration is required.
+    LEGACY_SUFFIX = ".json"
+
+    # Production is unbounded: a COMMITTED request_id must remain replayable
+    # indefinitely. Explicit positive values remain supported for tests that
+    # need to exercise bounded retention; production wiring never sets one.
+    DEFAULT_MAX_RECORDS = None
 
     FAILURE_STATUSES = {
         "FAILED",
@@ -87,28 +124,52 @@ class ExecutionIdempotencyStore:
     def __init__(
         self,
         file_path: str | Path = DEFAULT_FILE,
-        max_records: int = DEFAULT_MAX_RECORDS,
+        max_records: int | None = DEFAULT_MAX_RECORDS,
         auto_load: bool = True,
     ) -> None:
         self.file_path = Path(
             file_path
         )
 
-        self.max_records = max(
-            1,
-            int(
-                max_records
-            ),
+        # None means unbounded (the production default). An explicit
+        # positive integer still enables the bounded mode reserved for
+        # tests; invalid explicit values normalize the same way this
+        # already did before unbounded retention existed.
+        self.max_records = (
+            None
+            if max_records is None
+            else max(
+                1,
+                int(
+                    max_records
+                ),
+            )
         )
 
         self._lock = threading.RLock()
+
+        self._log = DurableAppendLog(
+            self.file_path,
+            log_name=self.LOG_NAME,
+            version=self.LOG_VERSION,
+        )
 
         self.completed_requests: dict[
             str,
             dict[str, Any],
         ] = {}
 
+        # What the durable log is known to already hold. It is what makes an
+        # append-only save() able to write only the new records, and what
+        # lets a conflicting durable replacement be refused rather than
+        # silently appended.
+        self._durable_requests: dict[
+            str,
+            dict[str, Any],
+        ] = {}
+
         self.loaded = False
+        self.migration_required = False
 
         self.last_loaded_at: str | None = None
         self.last_saved_at: str | None = None
@@ -119,6 +180,8 @@ class ExecutionIdempotencyStore:
             "saves": 0,
             "records_loaded": 0,
             "records_saved": 0,
+            "records_appended": 0,
+            "records_rewritten": 0,
             "cache_hits": 0,
             "cache_misses": 0,
             "records_added": 0,
@@ -141,6 +204,32 @@ class ExecutionIdempotencyStore:
         )
 
     # =========================================================
+    # LEGACY DETECTION
+    # =========================================================
+
+    @property
+    def legacy_file_path(self) -> Path:
+        """The v1.0 whole-file JSON path this store superseded."""
+
+        return self.file_path.with_suffix(
+            self.LEGACY_SUFFIX
+        )
+
+    def _legacy_state_present(self) -> bool:
+        try:
+            legacy_path = self.legacy_file_path
+        except ValueError:
+            return False
+
+        if legacy_path == self.file_path:
+            return False
+
+        try:
+            return legacy_path.is_file()
+        except OSError:
+            return False
+
+    # =========================================================
     # LOAD
     # =========================================================
 
@@ -148,86 +237,132 @@ class ExecutionIdempotencyStore:
         self,
     ) -> dict[str, dict[str, Any]]:
         """
-        Load completed request results from disk.
+        Load completed request results from the durable log.
         """
 
         with self._lock:
             self.stats["loads"] += 1
 
-            if not self.file_path.exists():
+            self.migration_required = False
+
+            if not self._log.exists():
+                if self._legacy_state_present():
+                    # A v1.0 authority is real history. Treating it as an
+                    # empty v2 store would let every completed request
+                    # execute again, so this fails closed and waits for the
+                    # operator migration tool.
+                    self.completed_requests = {}
+                    self._durable_requests = {}
+                    self.loaded = False
+                    self.migration_required = True
+
+                    logger.error(
+                        "Execution idempotency legacy state requires "
+                        "operator migration file=%s",
+                        self.file_path,
+                    )
+
+                    return {}
+
                 self.completed_requests = {}
+                self._durable_requests = {}
                 self.loaded = True
                 self.last_loaded_at = self._utc_now()
 
                 return {}
 
             try:
-                with self.file_path.open(
-                    "r",
-                    encoding="utf-8",
-                ) as file:
-                    payload = json.load(
-                        file
-                    )
+                records = self._log.read()
 
-                raw_records = payload.get(
-                    "completed_requests",
-                    {},
-                )
-
-                if not isinstance(
-                    raw_records,
-                    Mapping,
-                ):
-                    raise ValueError(
-                        "completed_requests must be a mapping"
-                    )
-
-                normalized: dict[
+                durable: dict[
                     str,
                     dict[str, Any],
                 ] = {}
 
-                for raw_request_id, raw_result in (
-                    raw_records.items()
-                ):
+                for record in records:
                     request_id = str(
-                        raw_request_id
+                        record.get(
+                            "request_id",
+                            "",
+                        )
                     ).strip()
 
                     if not request_id:
-                        continue
+                        raise DurableAppendLogCorruptError(
+                            "terminal record has no request_id"
+                        )
+
+                    raw_result = record.get(
+                        "result"
+                    )
 
                     if not isinstance(
                         raw_result,
                         Mapping,
                     ):
-                        continue
+                        raise DurableAppendLogCorruptError(
+                            "terminal record has no result mapping"
+                        )
 
                     result = self._safe_payload(
                         raw_result
                     )
 
-                    status = str(
-                        result.get(
-                            "status",
-                            "UNKNOWN",
+                    if not isinstance(
+                        result,
+                        Mapping,
+                    ):
+                        raise DurableAppendLogCorruptError(
+                            "terminal record result is not a mapping"
                         )
-                    ).strip().upper()
 
-                    if status in self.FAILURE_STATUSES:
-                        continue
+                    result = dict(
+                        result
+                    )
 
                     result.setdefault(
                         "request_id",
                         request_id,
                     )
 
-                    normalized[
+                    if str(
+                        result.get(
+                            "status",
+                            "UNKNOWN",
+                        )
+                    ).strip().upper() in self.FAILURE_STATUSES:
+                        # record() refuses to persist a failure result, so
+                        # one in the durable log is not this store's own
+                        # output. It is never filtered away silently.
+                        raise DurableAppendLogCorruptError(
+                            "terminal record holds a failure status"
+                        )
+
+                    previous = durable.get(
+                        request_id
+                    )
+
+                    if previous is not None and previous != result:
+                        # Two durable terminal answers for one request. The
+                        # replayed request has no single canonical result,
+                        # so the whole authority fails closed rather than
+                        # one of them being chosen.
+                        raise DurableAppendLogCorruptError(
+                            "conflicting terminal records for one request_id"
+                        )
+
+                    durable[
                         request_id
                     ] = result
 
-                self.completed_requests = normalized
+                self._durable_requests = durable
+
+                self.completed_requests = {
+                    request_id: dict(
+                        result
+                    )
+                    for request_id, result in durable.items()
+                }
 
                 self._prune_locked()
 
@@ -259,6 +394,7 @@ class ExecutionIdempotencyStore:
 
             except Exception as exc:
                 self.completed_requests = {}
+                self._durable_requests = {}
                 self.loaded = False
 
                 self._record_error(
@@ -280,52 +416,88 @@ class ExecutionIdempotencyStore:
         self,
     ) -> bool:
         """
-        Atomically persist all completed request results.
+        Durably persist every in-memory record the log does not hold yet.
+
+        The production path appends only the new terminal records, so its
+        cost is independent of how much history the log already holds.
+        Compaction - bounded test retention, or any removal - rewrites the
+        whole log atomically instead, and is never on the execution path.
         """
 
         with self._lock:
             try:
-                self.file_path.parent.mkdir(
-                    parents=True,
-                    exist_ok=True,
-                )
-
                 self._prune_locked()
 
-                payload = {
-                    "version": self.VERSION,
-                    "updated_at": self._utc_now(),
-                    "completed_requests": (
+                removed = (
+                    set(
+                        self._durable_requests
+                    )
+                    - set(
                         self.completed_requests
-                    ),
-                }
-
-                temporary_path = self.file_path.with_suffix(
-                    self.file_path.suffix + ".tmp"
+                    )
                 )
 
-                with temporary_path.open(
-                    "w",
-                    encoding="utf-8",
-                ) as file:
-                    json.dump(
-                        payload,
-                        file,
-                        ensure_ascii=False,
-                        indent=2,
-                        sort_keys=True,
-                    )
+                if self.max_records is not None or removed:
+                    self._rewrite_locked()
 
-                    file.flush()
+                else:
+                    pending: list[
+                        tuple[str, dict[str, Any]]
+                    ] = []
 
-                    os.fsync(
-                        file.fileno()
-                    )
+                    for request_id, result in (
+                        self.completed_requests.items()
+                    ):
+                        durable = self._durable_requests.get(
+                            request_id
+                        )
 
-                os.replace(
-                    temporary_path,
-                    self.file_path,
-                )
+                        if durable is None:
+                            pending.append(
+                                (
+                                    request_id,
+                                    result,
+                                )
+                            )
+
+                        elif durable != result:
+                            # A terminal result is permanent replay
+                            # authority. Appending a second, different
+                            # answer for the same request would leave the
+                            # log with no canonical result at all.
+                            logger.error(
+                                "Refusing to durably replace an existing "
+                                "terminal idempotency result"
+                            )
+
+                            raise ValueError(
+                                "conflicting terminal result for an "
+                                "already durable request_id"
+                            )
+
+                    if pending:
+                        self._log.append(
+                            [
+                                {
+                                    "request_id": request_id,
+                                    "result": result,
+                                }
+                                for request_id, result in pending
+                            ]
+                        )
+
+                        self.stats[
+                            "records_appended"
+                        ] += len(
+                            pending
+                        )
+
+                    for request_id, result in pending:
+                        self._durable_requests[
+                            request_id
+                        ] = dict(
+                            result
+                        )
 
                 self.last_saved_at = self._utc_now()
 
@@ -349,6 +521,32 @@ class ExecutionIdempotencyStore:
                 )
 
                 return False
+
+    def _rewrite_locked(
+        self,
+    ) -> None:
+        """Compact the log to exactly the current in-memory registry."""
+
+        self._log.rewrite(
+            [
+                {
+                    "request_id": request_id,
+                    "result": result,
+                }
+                for request_id, result
+                in self.completed_requests.items()
+            ]
+        )
+
+        self._durable_requests = {
+            request_id: dict(
+                result
+            )
+            for request_id, result
+            in self.completed_requests.items()
+        }
+
+        self.stats["records_rewritten"] += 1
 
     # =========================================================
     # LOOKUP
@@ -419,10 +617,10 @@ class ExecutionIdempotencyStore:
         """
         Store a terminal non-failure result.
 
-        When durable persistence is requested, the in-memory registry
-        is rolled back completely if saving fails. A failed disk write
-        must never leave a request marked as durably completed only in
-        process memory.
+        When durable persistence is requested, the in-memory registry is
+        rolled back to exactly its prior state for this request_id if the
+        durable append fails. A failed disk write must never leave a request
+        marked as durably completed only in process memory.
         """
 
         canonical_id = str(
@@ -473,29 +671,48 @@ class ExecutionIdempotencyStore:
         )
 
         with self._lock:
-            previous_records = {
-                stored_request_id: dict(
-                    stored_result
-                )
-                for stored_request_id, stored_result
-                in self.completed_requests.items()
-            }
-
-            previous_records_added = self.stats[
-                "records_added"
-            ]
-
-            previous_records_replaced = self.stats[
-                "records_replaced"
-            ]
-
-            previous_records_pruned = self.stats[
-                "records_pruned"
-            ]
-
+            # Rollback is scoped to the one record this call touches. The
+            # whole registry used to be deep-copied on every record(), which
+            # made completing a request cost O(history) before a single byte
+            # was written.
             existed = (
                 canonical_id
                 in self.completed_requests
+            )
+
+            previous_result = (
+                dict(
+                    self.completed_requests[
+                        canonical_id
+                    ]
+                )
+                if existed
+                else None
+            )
+
+            previous_stats = {
+                key: self.stats[key]
+                for key in (
+                    "records_added",
+                    "records_replaced",
+                    "records_pruned",
+                )
+            }
+
+            # Bounded retention is a test-only mode in which this call may
+            # additionally evict older records, so its rollback needs the
+            # whole prior key set. Production (unbounded) never prunes and
+            # pays nothing for it.
+            previous_registry = (
+                None
+                if self.max_records is None
+                else {
+                    key: dict(
+                        value
+                    )
+                    for key, value
+                    in self.completed_requests.items()
+                }
             )
 
             self.completed_requests[
@@ -521,19 +738,23 @@ class ExecutionIdempotencyStore:
             if persisted:
                 return True
 
-            self.completed_requests = previous_records
+            if previous_registry is not None:
+                self.completed_requests = previous_registry
 
-            self.stats[
-                "records_added"
-            ] = previous_records_added
+            elif previous_result is None:
+                self.completed_requests.pop(
+                    canonical_id,
+                    None,
+                )
 
-            self.stats[
-                "records_replaced"
-            ] = previous_records_replaced
+            else:
+                self.completed_requests[
+                    canonical_id
+                ] = previous_result
 
-            self.stats[
-                "records_pruned"
-            ] = previous_records_pruned
+            self.stats.update(
+                previous_stats
+            )
 
             logger.error(
                 "Execution idempotency record rolled back "
@@ -550,6 +771,9 @@ class ExecutionIdempotencyStore:
     ) -> bool:
         """
         Remove one request result.
+
+        Durable removal compacts the log; there is no tombstone record and
+        no execution path that reaches this.
         """
 
         canonical_id = str(
@@ -565,13 +789,13 @@ class ExecutionIdempotencyStore:
                 None,
             )
 
-        if existed is None:
-            return False
+            if existed is None:
+                return False
 
-        if save:
-            return self.save()
+            if save:
+                return self.save()
 
-        return True
+            return True
 
     # =========================================================
     # PRUNING
@@ -583,8 +807,14 @@ class ExecutionIdempotencyStore:
         """
         Retain only the newest bounded request records.
 
-        Dictionary insertion order is used as the record order.
+        Production leaves max_records unset (None) and never prunes, so
+        every COMMITTED request_id stays replayable indefinitely. Bounded
+        retention only applies when a caller (a test) passes an explicit
+        max_records. Dictionary insertion order is used as the record order.
         """
+
+        if self.max_records is None:
+            return
 
         excess = (
             len(
@@ -634,6 +864,8 @@ class ExecutionIdempotencyStore:
                         missing_ok=True
                     )
 
+                    self._durable_requests = {}
+
                 except Exception as exc:
                     self._record_error(
                         phase="reset_delete",
@@ -641,7 +873,14 @@ class ExecutionIdempotencyStore:
                     )
 
             else:
-                self.save()
+                try:
+                    self._rewrite_locked()
+
+                except Exception as exc:
+                    self._record_error(
+                        phase="reset",
+                        error=exc,
+                    )
 
         logger.info(
             "Execution idempotency store reset"
@@ -662,6 +901,9 @@ class ExecutionIdempotencyStore:
                     self.file_path
                 ),
                 "loaded": self.loaded,
+                "migration_required": (
+                    self.migration_required
+                ),
                 "records": len(
                     self.completed_requests
                 ),
@@ -680,8 +922,12 @@ class ExecutionIdempotencyStore:
             return {
                 "healthy": (
                     self.last_error is None
+                    and not self.migration_required
                 ),
                 "loaded": self.loaded,
+                "migration_required": (
+                    self.migration_required
+                ),
                 "file_path": str(
                     self.file_path
                 ),

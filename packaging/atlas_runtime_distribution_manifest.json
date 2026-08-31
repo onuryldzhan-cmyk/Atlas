@@ -131,7 +131,6 @@
       "atlas_runtime/**",
       "atlas_paper_trading/**",
       "backtest/**",
-      "config/**",
       "data/**",
       "intelligence/**",
       "assistant/**",

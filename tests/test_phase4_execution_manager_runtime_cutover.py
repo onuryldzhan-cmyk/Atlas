@@ -7,6 +7,8 @@ from core.capital_reservation import ReservationStatus
 from core.execution_manager import ExecutionManager
 from core.execution_models import ExecutionRequest
 from core.execution_portfolio_foundation import (
+    AppliedExecutionArchiveStore,
+    ClosedPositionArchiveStore,
     ExecutionPortfolioFoundation,
     FinancialStateStore,
 )
@@ -29,12 +31,18 @@ def manager_with(book):
     manager.portfolio_foundation = book
     manager.reservation_ledger = Reservations()
     manager._risk_admissions = {}
+    # Block 5D: _risk_admission_key() (used by _has_risk_admission(), which
+    # _finalize_durable_financial_state() calls) now reads this too.
+    manager.instrument_rules = None
     return manager
 
 
 def request():
+    # An admitted request carries the engine's approval as an exact Decimal;
+    # finalization reconciles the settled notional + fee against it.
     return ExecutionRequest(
-        "BTCUSDT", "BUY", 10, 20, confidence=90, request_id="request-1"
+        "BTCUSDT", "BUY", 10, 20, confidence=90, request_id="request-1",
+        approved_quote_allocation=Decimal("20"),
     )
 
 
@@ -57,7 +65,11 @@ def confirmed_result():
 def durable_book(tmp_path):
     store = FinancialStateStore(tmp_path / "financial.json")
     store.initialize(Decimal("100"))
-    return ExecutionPortfolioFoundation(store)
+    return ExecutionPortfolioFoundation(
+        store,
+        applied_archive=AppliedExecutionArchiveStore(tmp_path / "financial-applied.jsonl"),
+        closed_archive=ClosedPositionArchiveStore(tmp_path / "financial-closed.jsonl"),
+    )
 
 
 def test_runtime_finalization_updates_durable_position_and_portfolio(tmp_path):
@@ -123,7 +135,11 @@ def test_runtime_finalization_failure_propagates_and_cannot_be_success(tmp_path)
 def test_corrupt_durable_state_blocks_runtime_readiness(tmp_path):
     path = tmp_path / "financial.json"
     path.write_text("not-json", encoding="utf-8")
-    manager = manager_with(ExecutionPortfolioFoundation(FinancialStateStore(path)))
+    manager = manager_with(ExecutionPortfolioFoundation(
+        FinancialStateStore(path),
+        applied_archive=AppliedExecutionArchiveStore(tmp_path / "financial-applied.jsonl"),
+        closed_archive=ClosedPositionArchiveStore(tmp_path / "financial-closed.jsonl"),
+    ))
     ready, reason = manager._durable_financial_ready()
     assert not ready
     assert reason

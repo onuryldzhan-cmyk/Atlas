@@ -49,7 +49,7 @@ from dataclasses import dataclass
 from dataclasses import field
 from datetime import UTC
 from datetime import datetime
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, localcontext
 from enum import Enum
 from typing import Any
 from uuid import uuid4
@@ -58,6 +58,14 @@ from uuid import uuid4
 # ============================================================
 # HELPERS
 # ============================================================
+
+
+#: Floor for the local precision ``validate_financial_evidence`` uses to
+#: compute an exact price x quantity product. The operand-digit sum is what
+#: actually guarantees exactness; this floor keeps the context no narrower
+#: than the interpreter default so the gate can never become *stricter* than
+#: it was before Block 5L made it context-independent.
+_MINIMUM_EXACT_PRODUCT_PRECISION = 28
 
 
 def utc_now_iso() -> str:
@@ -341,6 +349,27 @@ class ExecutionRequest:
     time_in_force: str = "GTC"
     reduce_only: bool = False
 
+    #: The risk-approved quote allocation, in quote currency, as an exact
+    #: ``Decimal``. This is the single financially authoritative allocation on
+    #: a request: ``RiskEngine`` produces it, ``ExecutionManager.risk_check``
+    #: writes it once on approval, and every authoritative consumer downstream
+    #: reads it. ``amount`` is a lossy ``float`` mirror kept for historical
+    #: callers and carries no authority. ``None`` means "not approved", which
+    #: is the only state an unadmitted request may ever be in.
+    approved_quote_allocation: Decimal | None = None
+
+    #: The pre-admission BUY sizing proposal, in quote currency, as an exact
+    #: ``Decimal`` (Block 5C B1). ``PositionSizingService`` is the only writer
+    #: of this field's *value*; it is sizing intent only, never an approval -
+    #: ``approved_quote_allocation`` stays the sole canonical admitted
+    #: allocation, written only by ``risk_check``. This field exists so that
+    #: intent can reach ``risk_check`` as the same exact ``Decimal`` it was
+    #: proposed as, instead of crossing the lossy ``amount`` float mirror.
+    #: ``None`` means "no exact proposal", in which case admission falls back
+    #: to the ``amount`` compatibility mirror exactly as before this field
+    #: existed.
+    proposed_quote_allocation: Decimal | None = None
+
     def __post_init__(
         self,
     ) -> None:
@@ -429,6 +458,59 @@ class ExecutionRequest:
             self.trailing_stop = float(
                 self.trailing_stop
             )
+
+        if self.approved_quote_allocation is not None:
+            # A float would defeat the whole point of the field, so the only
+            # accepted inputs are ones that convert without a binary
+            # round-trip. Anything malformed, negative or non-finite is
+            # rejected outright rather than carried as an approval.
+            if isinstance(self.approved_quote_allocation, float):
+                raise ValueError(
+                    "approved_quote_allocation must not be float"
+                )
+
+            try:
+                approved = Decimal(
+                    str(self.approved_quote_allocation)
+                )
+
+            except (InvalidOperation, ValueError) as exc:
+                raise ValueError(
+                    "Invalid approved_quote_allocation"
+                ) from exc
+
+            if not approved.is_finite() or approved <= 0:
+                raise ValueError(
+                    "Invalid approved_quote_allocation"
+                )
+
+            self.approved_quote_allocation = approved
+
+        if self.proposed_quote_allocation is not None:
+            # Same contract as ``approved_quote_allocation``: a float would
+            # defeat the whole point of this field (Block 5C B1), so only
+            # exact-conversion inputs are accepted.
+            if isinstance(self.proposed_quote_allocation, float):
+                raise ValueError(
+                    "proposed_quote_allocation must not be float"
+                )
+
+            try:
+                proposed = Decimal(
+                    str(self.proposed_quote_allocation)
+                )
+
+            except (InvalidOperation, ValueError) as exc:
+                raise ValueError(
+                    "Invalid proposed_quote_allocation"
+                ) from exc
+
+            if not proposed.is_finite() or proposed <= 0:
+                raise ValueError(
+                    "Invalid proposed_quote_allocation"
+                )
+
+            self.proposed_quote_allocation = proposed
 
     @property
     def risk_level(
@@ -580,6 +662,26 @@ class ExecutionRequest:
             "notional"
         ] = self.notional
 
+        # Serialized as an exact decimal string, never as a float, so a
+        # round-tripped request carries the same approval it was admitted with.
+        if self.approved_quote_allocation is not None:
+            payload[
+                "approved_quote_allocation"
+            ] = format(
+                self.approved_quote_allocation,
+                "f",
+            )
+
+        # Same round-trip guarantee as ``approved_quote_allocation`` (Block 5C B1):
+        # an exact decimal string, never a float.
+        if self.proposed_quote_allocation is not None:
+            payload[
+                "proposed_quote_allocation"
+            ] = format(
+                self.proposed_quote_allocation,
+                "f",
+            )
+
         return payload
 
     @classmethod
@@ -682,6 +784,10 @@ class ExecutionResult:
     filled_base_quantity: Decimal | None = None
     filled_quote_notional: Decimal | None = None
 
+    # Historical compatibility mirror only, never authoritative (Block 5E).
+    # ``fee_amount`` is the exact Decimal every settlement path reads; a
+    # component may report it directly as a Decimal or decimal string and
+    # it is carried through verbatim below, with no float round-trip.
     fee: float = 0.0
     fee_amount: Decimal = Decimal("0")
     fee_currency: str | None = None
@@ -898,7 +1004,23 @@ class ExecutionResult:
         assert self.execution_price is not None
         assert self.filled_base_quantity is not None
         assert self.filled_quote_notional is not None
-        expected = self.execution_price * self.filled_base_quantity
+        # Block 5L: this is an *exact* equality gate on a confirmed fill, so
+        # the product it compares against must itself be exact. Computed
+        # under the ambient context it was not: a product needing more
+        # significant digits than the caller's `decimal` precision was
+        # rounded, and the fill was then refused as a mismatch even though
+        # price x quantity did equal the notional. That is fail-closed rather
+        # than wrong, but it refuses money that already moved. An explicit
+        # local context wide enough for the full product removes the false
+        # rejection and keeps every true one - a genuinely disagreeing
+        # notional still differs from the exact product.
+        with localcontext() as exact:
+            exact.prec = max(
+                len(self.execution_price.as_tuple().digits)
+                + len(self.filled_base_quantity.as_tuple().digits),
+                _MINIMUM_EXACT_PRODUCT_PRECISION,
+            )
+            expected = self.execution_price * self.filled_base_quantity
         if expected != self.filled_quote_notional:
             raise ValueError("Execution quantity/notional mismatch")
         if self.filled_base_quantity <= 0 or self.filled_quote_notional <= 0:

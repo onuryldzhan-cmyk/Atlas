@@ -2,7 +2,13 @@
 
 A canonical-approved BUY must not leave a stale capital reservation or a
 stale `_risk_admissions` entry behind when a later compatibility gate
-(position limit, capital-manager risk check) rejects the request.
+rejects the request.
+
+The reject-capable gate that proves this is the position-limit check (T1,
+T7, T9). Block-5B withdrew the capital-manager risk check: CapitalManager no
+longer holds admission authority over a canonical RiskDecision, so T2 now
+pins that demotion instead of a rollback it can no longer trigger. The
+rollback invariant itself is unchanged and still proven by T1/T4/T7/T9.
 """
 
 from decimal import Decimal
@@ -15,10 +21,23 @@ from core.risk_engine import PositionExposure, RiskEngine, RiskPolicy, RiskState
 from core.execution_manager import ExecutionManager
 from core.execution_models import ExecutionRequest
 from core.capital_reservation import CapitalReservationLedger
+from core.instrument_rules import InstrumentRules, InstrumentRuleset
 from core.risk_state_store import RestoredRiskState
 
 
 D = Decimal
+
+# A minimal, hermetic stand-in for the real checked-in BTCUSDT rule (Block
+# 5D): every request built by buy_request()/reduce_only_sell() below trades
+# BTCUSDT at price 10 with amount "100", both comfortably valid against it.
+BTCUSDT_RULES = InstrumentRuleset({
+    "BTCUSDT": InstrumentRules(
+        venue="BINANCE", symbol="BTCUSDT", base_asset="BTC", quote_asset="USDT",
+        quantity_step="0.00001", min_quantity="0.00001", min_notional="5",
+        price_tick="0.01", source="test-fixture", source_version="v1",
+        retrieved_at="2026-01-01T00:00:00Z",
+    ),
+})
 
 
 def policy(**changes):
@@ -57,9 +76,12 @@ class DenyingPositionController:
 
 
 class DenyingCapitalManager:
-    """Always rejects the legacy capital risk gate."""
+    """Rejects everything it is asked - and after 5B it is asked nothing."""
     def validate_execution(self, request_dict, market_state):
         return {"approved": False, "reason": "CAPITAL_RISK_CHECK_TRIPPED"}
+
+    def calculate_position_size(self, *args, **kwargs):
+        return 1
 
 
 def ledger(total="800"):
@@ -71,10 +93,14 @@ def execution_manager(*, position_controller=None, capital_manager=None, reserva
     manager.risk_engine = RiskEngine(policy())
     manager.reservation_ledger = reservations if reservations is not None else ledger()
     manager.risk_state_store = MemoryRiskStateStore()
+    # No durable portfolio book is configured here, so the supplied
+    # RiskState remains the position authority for these unit contracts.
+    manager.portfolio_foundation = None
     manager.position_controller = position_controller
     manager.capital_manager = capital_manager
     manager.last_risk_decision = None
     manager._risk_admissions = {}
+    manager.instrument_rules = BTCUSDT_RULES
     manager.mode = "PAPER"
     manager.event_bus = None
     manager._lock = threading.RLock()
@@ -122,32 +148,40 @@ def test_position_limit_rejection_does_not_accumulate_across_repeats():
 
 
 # --------------------------------------------------------------------------
-# T2 — CAPITAL_RISK_* rejection rollback
+# T2 — CapitalManager holds no admission authority (Block-5B)
 # --------------------------------------------------------------------------
 
-def test_capital_risk_rejection_leaves_no_reservation_or_admission():
+def test_capital_manager_cannot_veto_an_approved_canonical_decision():
+    """A denying CapitalManager is not consulted and changes nothing.
+
+    Before 5B this same manager turned a canonical RISK_APPROVED into a
+    rejection. It now has no gate to reject from, so the approval, the
+    reservation and the admission all stand exactly as the engine decided.
+    """
     manager = execution_manager(capital_manager=DenyingCapitalManager())
-    before = manager.reservation_ledger.active_reserved_capital()
 
     result = manager.risk_check(buy_request("r1"), state())
 
-    assert result["approved"] is False
-    assert result["reason"] == "CAPITAL_RISK_CHECK_TRIPPED"
-    assert manager.reservation_ledger.active_reserved_capital() == before
-    assert manager.reservation_ledger.get("r1") is None
-    assert "r1" not in manager._risk_admissions
+    assert result["approved"] is True
+    assert result["reason"] == "RISK_APPROVED"
+    assert manager.last_risk_decision["reason_code"] == "RISK_APPROVED"
+    reservation = manager.reservation_ledger.get("r1")
+    assert reservation is not None
+    assert reservation.amount == D("100")
+    assert "r1" in manager._risk_admissions
 
 
-def test_capital_risk_rejection_does_not_accumulate_across_repeats():
+def test_capital_manager_denial_cannot_shrink_the_approved_allocation():
+    """Demotion covers sizing as well as vetoing."""
     manager = execution_manager(capital_manager=DenyingCapitalManager())
-    before = manager.reservation_ledger.active_reserved_capital()
+    request = buy_request("r1")
 
-    for i in range(10):
-        result = manager.risk_check(buy_request(f"r{i}"), state())
-        assert result["approved"] is False
+    manager.risk_check(request, state())
 
-    assert manager.reservation_ledger.active_reserved_capital() == before
-    assert manager._risk_admissions == {}
+    approved = D(manager.last_risk_decision["approved_allocation"])
+    assert approved == D("100")
+    assert D(str(request.amount)) == approved
+    assert manager.reservation_ledger.get("r1").amount == approved
 
 
 # --------------------------------------------------------------------------
@@ -156,15 +190,19 @@ def test_capital_risk_rejection_does_not_accumulate_across_repeats():
 
 def test_approved_buy_retains_reservation_and_admission():
     manager = execution_manager()
+    request = buy_request("r1")
 
-    result = manager.risk_check(buy_request("r1"), state())
+    result = manager.risk_check(request, state())
 
     assert result["approved"] is True
     assert result["reason"] == "RISK_APPROVED"
     reservation = manager.reservation_ledger.get("r1")
     assert reservation is not None
     assert reservation.amount == D("100")
-    assert manager._risk_admissions.get("r1") == manager._risk_admission_key(buy_request("r1"))
+    # The token seals the approval the engine granted, so it is reproducible
+    # only from the admitted request - never from an unapproved copy of it.
+    assert manager._risk_admissions.get("r1") == manager._risk_admission_key(request)
+    assert manager._risk_admissions.get("r1") != manager._risk_admission_key(buy_request("r1"))
     assert manager.reservation_ledger.active_reserved_capital() == D("100")
 
 
@@ -238,7 +276,10 @@ def test_repeated_mixed_rejections_never_leave_stale_reservation():
 @pytest.mark.parametrize("position_controller,capital_manager,expect_approved", [
     (None, None, True),
     (DenyingPositionController(), None, False),
-    (None, DenyingCapitalManager(), False),
+    # Block-5B: a denying CapitalManager is no longer a terminal state at all,
+    # so this row asserts an approved outcome whose reservation and admission
+    # must both be present and consistent.
+    (None, DenyingCapitalManager(), True),
 ])
 def test_reservation_and_admission_consistency(position_controller, capital_manager, expect_approved):
     manager = execution_manager(position_controller=position_controller, capital_manager=capital_manager)
