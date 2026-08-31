@@ -1,8 +1,17 @@
-# ADR-0005: Historical Market Data Archive with Recorded Provenance
+# ADR-0006: Historical Market Data Archive with Recorded Provenance
 
 ## Status
 
 Accepted. Research / edge validation.
+
+Originally authored as ADR-0005 on `research/edge-validation` (commit
+`c86d5ad`, 2026-08-29). Renumbered to ADR-0006 when that branch was
+reconciled with `feat/block3-execution-safety`, which had already used
+number 0005 for "Operator Financial-State Bootstrap Entry Point and Runbook"
+(commit `22f8bba`, 2026-08-13) under the governance-ratified
+BLOCK3-EXECUTION-SAFETY stream. The earlier, ratified number keeps 0005; this
+record takes the next free number. Content is otherwise unchanged apart from
+the module rename recorded below.
 
 ## Context
 
@@ -21,8 +30,13 @@ acquisition cannot silently change history.
 
 ## Decisions
 
-- **A separate store** (`data_layer/market_data_sqlite.py`,
-  `MarketDataSQLiteStorage`). The market-data archive does not share a
+- **A separate store** (`data_layer/market_data_archive_sqlite.py`,
+  `MarketDataSQLiteStorage`; originally `data_layer/market_data_sqlite.py`,
+  renamed during the same reconciliation because
+  `feat/block3-execution-safety` had independently created a different
+  `data_layer/market_data_sqlite.py` — the Package-1 dataset manifest/identity
+  backend — under the ratified Block-4 stream). The market-data archive does
+  not share a
   database or a lifecycle with `data_layer/sqlite.py`. That backend owns the
   financial ledger (orders, executions, positions) and fails closed on
   integrity problems; a bulk, rebuildable price archive has different

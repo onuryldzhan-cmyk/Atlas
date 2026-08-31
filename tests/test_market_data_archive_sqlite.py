@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 import pytest
 
 from data_layer.contracts import StorageError
-from data_layer.market_data_sqlite import (
+from data_layer.market_data_archive_sqlite import (
     ArchivedBar,
     FetchBatch,
     MarketDataSQLiteStorage,

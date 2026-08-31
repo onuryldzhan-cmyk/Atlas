@@ -33,7 +33,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Protocol, Sequence
 
-from data_layer.market_data_sqlite import (
+from data_layer.market_data_archive_sqlite import (
     ArchivedBar,
     BarConflict,
     FetchBatch,

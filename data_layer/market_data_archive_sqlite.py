@@ -6,6 +6,13 @@ fails closed on integrity problems; a bulk market-data archive has different
 durability, size and rebuild characteristics and must never share a lifecycle
 with the ledger.
 
+It is also distinct from ``data_layer.market_data_sqlite``, the Package-1
+reference backend that persists dataset *manifests and identities* and stores
+no bars at all. Both modules happen to name their lifecycle object
+``MarketDataSQLiteStorage``, but their constructors and contracts differ
+(``database_path`` here, keyword-only ``state_directory`` there); import by
+module path and never assume the two are interchangeable. See ADR-0006.
+
 Provenance contract
 -------------------
 Every bar is attributed to exactly one fetch batch. A batch records the

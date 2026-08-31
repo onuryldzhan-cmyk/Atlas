@@ -12,7 +12,7 @@ from atlas_finance.market_data.historical_archive import (
     StopReason,
 )
 from atlas_finance.market_data.models import MarketCandle
-from data_layer.market_data_sqlite import MarketDataSQLiteStorage
+from data_layer.market_data_archive_sqlite import MarketDataSQLiteStorage
 
 HOUR = timedelta(hours=1)
 ORIGIN = datetime(2017, 8, 17, 4, 0, tzinfo=UTC)

@@ -35,7 +35,7 @@ from atlas_finance.market_data.historical_archive import (  # noqa: E402
     HistoricalArchiver,
     StopReason,
 )
-from data_layer.market_data_sqlite import (  # noqa: E402
+from data_layer.market_data_archive_sqlite import (  # noqa: E402
     CoverageReport,
     MarketDataSQLiteStorage,
 )
