@@ -1,0 +1,3337 @@
+{
+  "schema_version": "4.30",
+  "supersedes": "governance/current/ATLAS_MILESTONE_REGISTRY_v4.29.json",
+  "registry_status": "CANONICAL_CURRENT_STATE_REGISTRY_WITH_REM_001_SPECIFICATION_ARTIFACT_INTEGRITY_FINDING_RECORDED",
+  "active_milestone": "FIN-004.1a-C1",
+  "live_status": "BLOCKED",
+  "specification_development_focus": "REM-001",
+  "feature_expansion_status": "PAUSED_PENDING_REM_GATE_1",
+  "critical_roadmap_additions_state": "PROPOSED_RECONCILIATION_REQUIRED",
+  "governance_frameworks": {
+    "ECM-1.0": {
+      "name": "Enterprise Company Model",
+      "status": "SPECIFICATION_REGISTERED",
+      "scope": "ORGANIZATIONAL_IDENTITY_AND_ACCOUNTABILITY",
+      "production_authority": "NONE"
+    },
+    "EMS-1.0": {
+      "name": "Enterprise Management System",
+      "status": "SPECIFICATION_REGISTERED",
+      "scope": "EXECUTIVE_MANAGEMENT_AND_DECISION_GOVERNANCE",
+      "production_authority": "NONE"
+    },
+    "AEOS-1.0": {
+      "name": "Atlas Enterprise Operating System",
+      "status": "SPECIFICATION_REGISTERED",
+      "scope": "ENTERPRISE_OPERATING_MODEL_AND_COORDINATION",
+      "production_authority": "NONE"
+    }
+  },
+  "queued_foundation_sequence": [
+    "FIN-004.1a-C2",
+    "FIN-004.1a-C3",
+    "CFG-001",
+    "ARCH-001",
+    "CODE-001",
+    "OBS-001",
+    "TEST-001",
+    "PERF-001",
+    "REL-001",
+    "SEC-001.1",
+    "DATA-001",
+    "GOV-001",
+    "SEC-002"
+  ],
+  "milestones": {
+    "CFG-001": {
+      "status": "QUEUED",
+      "priority": "P1",
+      "category": "FOUNDATIONAL_CONFIGURATION_SPECIFICATION",
+      "specification_state": "COMPLETE",
+      "configuration_model": "CANONICAL",
+      "certification": "NOT_STARTED",
+      "implementation_authorized": false,
+      "production_authority": "NONE",
+      "successors": [
+        "ARCH-001",
+        "CODE-001",
+        "OBS-001",
+        "TEST-001",
+        "PERF-001",
+        "REL-001",
+        "SEC-001.1",
+        "DATA-001",
+        "GOV-001"
+      ],
+      "live_effect": "NONE"
+    },
+    "ARCH-001": {
+      "status": "QUEUED",
+      "prerequisites": [
+        "FIN-004.1a-C3",
+        "CFG-001"
+      ],
+      "specification_state": "COMPLETE",
+      "architecture_state": "CANONICAL",
+      "certification": "NOT_STARTED",
+      "implementation_authorized": false,
+      "production_activation": "INDEPENDENT_REVIEW_AND_OWNER_APPROVAL"
+    },
+    "CODE-001": {
+      "status": "QUEUED",
+      "priority": "P1",
+      "prerequisites": [
+        "FIN-004.1a-C3",
+        "CFG-001",
+        "ARCH-001"
+      ],
+      "successors": [
+        "OBS-001",
+        "TEST-001"
+      ],
+      "authority": "CodeQualityAuthority",
+      "production_activation": "INDEPENDENT_REVIEW_AND_OWNER_APPROVAL",
+      "live_effect": "NONE"
+    },
+    "OBS-001": {
+      "status": "QUEUED",
+      "priority": "P1",
+      "enterprise_architecture_specification_state": "COMPLETE",
+      "enterprise_observability_model": "CANONICAL",
+      "certification": "NOT_STARTED",
+      "implementation_authorized": false,
+      "production_authority": "NONE",
+      "prerequisites": [
+        "FIN-004.1a-C3",
+        "CFG-001",
+        "ARCH-001",
+        "CODE-001"
+      ],
+      "successors": [
+        "TEST-001",
+        "PERF-001",
+        "REL-001",
+        "SEC-001.1"
+      ],
+      "authorities": [
+        "ObservabilityAuthority",
+        "MetricsAuthority",
+        "LoggingAuthority",
+        "TracingAuthority",
+        "HealthAuthority",
+        "AlertAuthority"
+      ],
+      "production_activation": "INDEPENDENT_REVIEW_AND_OWNER_APPROVAL",
+      "live_effect": "NONE"
+    },
+    "TEST-001": {
+      "status": "QUEUED",
+      "priority": "P1",
+      "category": "FOUNDATIONAL_PRODUCTION_ASSURANCE",
+      "enterprise_architecture_specification_state": "COMPLETE",
+      "enterprise_testing_model": "CANONICAL",
+      "certification": "NOT_STARTED",
+      "implementation_authorized": false,
+      "production_authority": "NONE",
+      "prerequisites": [
+        "FIN-004.1a-C3",
+        "CFG-001",
+        "ARCH-001",
+        "CODE-001",
+        "OBS-001"
+      ],
+      "successors": [
+        "PERF-001",
+        "REL-001",
+        "SEC-001.1"
+      ],
+      "authorities": [
+        "ValidationAuthority",
+        "TestRegistryAuthority",
+        "TestExecutionAuthority",
+        "TestEvidenceAuthority",
+        "CoverageAuthority",
+        "CertificationAuthority",
+        "EnvironmentAuthority",
+        "FaultInjectionAuthority"
+      ],
+      "profiles": [
+        "FAST",
+        "NORMAL",
+        "EXTENDED",
+        "STRESS",
+        "SOAK",
+        "RED_TEAM",
+        "CERTIFICATION"
+      ],
+      "production_activation": "INDEPENDENT_REVIEW_AND_OWNER_APPROVAL",
+      "live_effect": "NONE"
+    },
+    "PERF-001": {
+      "status": "QUEUED",
+      "priority": "P1",
+      "category": "FOUNDATIONAL_PRODUCTION_PERFORMANCE_ASSURANCE",
+      "prerequisites": [
+        "FIN-004.1a-C3",
+        "CFG-001",
+        "ARCH-001",
+        "CODE-001",
+        "OBS-001",
+        "TEST-001"
+      ],
+      "successors": [
+        "REL-001",
+        "SEC-001.1",
+        "RISK-OPS-001"
+      ],
+      "authorities": [
+        "PerformanceAuthority",
+        "BenchmarkRegistryAuthority",
+        "WorkloadAuthority",
+        "CapacityAuthority",
+        "RegressionAuthority",
+        "ResourceProfilingAuthority",
+        "PerformanceEvidenceAuthority",
+        "PerformanceCertificationAuthority"
+      ],
+      "profiles": [
+        "FAST",
+        "NORMAL",
+        "EXTENDED",
+        "STRESS",
+        "SOAK",
+        "CAPACITY",
+        "SCALABILITY",
+        "CERTIFICATION"
+      ],
+      "production_activation": "INDEPENDENT_REVIEW_AND_OWNER_APPROVAL",
+      "live_effect": "NONE"
+    },
+    "REL-001": {
+      "status": "QUEUED",
+      "priority": "P1",
+      "category": "FOUNDATIONAL_PRODUCTION_RELIABILITY_ASSURANCE",
+      "prerequisites": [
+        "FIN-004.1a-C3",
+        "CFG-001",
+        "ARCH-001",
+        "CODE-001",
+        "OBS-001",
+        "TEST-001",
+        "PERF-001"
+      ],
+      "successors": [
+        "SEC-001.1",
+        "DATA-001",
+        "RISK-OPS-001",
+        "BUS-001"
+      ],
+      "authorities": [
+        "ReliabilityAuthority",
+        "FailureDetectionAuthority",
+        "FaultContainmentAuthority",
+        "RecoveryAuthority",
+        "RestartAuthority",
+        "ReplayRecoveryAuthority",
+        "IntegrityRecoveryAuthority",
+        "ReliabilityEvidenceAuthority",
+        "ReliabilityCertificationAuthority"
+      ],
+      "profiles": [
+        "FAST",
+        "NORMAL",
+        "EXTENDED",
+        "FAULT",
+        "CHAOS",
+        "RECOVERY",
+        "SOAK",
+        "CERTIFICATION"
+      ],
+      "production_activation": "INDEPENDENT_REVIEW_AND_OWNER_APPROVAL",
+      "live_effect": "NONE"
+    },
+    "SEC-001.1": {
+      "status": "QUEUED",
+      "priority": "P1",
+      "category": "FOUNDATIONAL_PRODUCTION_SECURITY_ASSURANCE",
+      "prerequisites": [
+        "FIN-004.1a-C3",
+        "CFG-001",
+        "ARCH-001",
+        "CODE-001",
+        "OBS-001",
+        "TEST-001",
+        "PERF-001",
+        "REL-001"
+      ],
+      "successors": [
+        "DATA-001",
+        "SEC-002",
+        "RISK-OPS-001",
+        "WEB-001",
+        "BUS-001"
+      ],
+      "authorities": [
+        "SecurityAuthority",
+        "IdentityAuthority",
+        "AuthenticationAuthority",
+        "AuthorizationAuthority",
+        "SessionAuthority",
+        "SecretAuthority",
+        "EndpointSecurityAuthority",
+        "BackupAuthority",
+        "RestoreAuthority",
+        "BackupIntegrityAuthority",
+        "KeyManagementAuthority",
+        "SecurityEvidenceAuthority",
+        "SecurityCertificationAuthority"
+      ],
+      "profiles": [
+        "FAST",
+        "NORMAL",
+        "EXTENDED",
+        "PENETRATION",
+        "NEGATIVE",
+        "RED_TEAM",
+        "SOAK",
+        "CERTIFICATION"
+      ],
+      "production_activation": "INDEPENDENT_ENGINEERING_AND_SECURITY_REVIEW_PLUS_OWNER_APPROVAL",
+      "live_effect": "NONE"
+    },
+    "DATA-001": {
+      "status": "QUEUED",
+      "priority": "P1",
+      "category": "FOUNDATIONAL_PRODUCTION_DATA_ASSURANCE",
+      "governance_specification_state": "COMPLETE",
+      "enterprise_architecture_specification_state": "COMPLETE",
+      "enterprise_data_model": "CANONICAL",
+      "certification": "NOT_STARTED",
+      "implementation_authorized": false,
+      "production_authority": "NONE",
+      "prerequisites": [
+        "FIN-004.1a-C3",
+        "CFG-001",
+        "ARCH-001",
+        "CODE-001",
+        "OBS-001",
+        "TEST-001",
+        "PERF-001",
+        "REL-001",
+        "SEC-001.1"
+      ],
+      "successors": [
+        "GOV-001",
+        "SEC-002",
+        "RISK-OPS-001",
+        "WEB-001",
+        "BUS-001",
+        "OPS-001",
+        "MODEL-001",
+        "SIM-001"
+      ],
+      "authorities": [
+        "DataGovernanceAuthority",
+        "DataRegistryAuthority",
+        "DataOwnershipAuthority",
+        "DataClassificationAuthority",
+        "AuthoritativeSourceAuthority",
+        "SchemaAuthority",
+        "DataLineageAuthority",
+        "DatasetVersionAuthority",
+        "DataQualityAuthority",
+        "TemporalIntegrityAuthority",
+        "RetentionAuthority",
+        "ArchiveAuthority",
+        "SecureDeletionAuthority",
+        "DataEvidenceAuthority",
+        "DataCertificationAuthority"
+      ],
+      "profiles": [
+        "FAST",
+        "NORMAL",
+        "EXTENDED",
+        "RECONCILIATION",
+        "TEMPORAL",
+        "CORRUPTION",
+        "RECOVERY",
+        "RETENTION",
+        "CERTIFICATION"
+      ],
+      "production_activation": "INDEPENDENT_ENGINEERING_DATA_GOVERNANCE_AND_SECURITY_REVIEW_PLUS_OWNER_APPROVAL",
+      "live_effect": "NONE"
+    },
+    "GOV-001": {
+      "version": "1.0",
+      "status": "SPECIFICATION_COMPLETE",
+      "registry_state": "REGISTRY_READY",
+      "priority": "P1",
+      "category": "FOUNDATIONAL_ENTERPRISE_GOVERNANCE",
+      "milestone_type": "FOUNDATIONAL_CROSS_CUTTING",
+      "prerequisites": [
+        "CFG-001",
+        "ARCH-001",
+        "CODE-001",
+        "OBS-001",
+        "TEST-001",
+        "PERF-001",
+        "REL-001",
+        "SEC-001.1",
+        "DATA-001"
+      ],
+      "successors": [
+        "SEC-002",
+        "RISK-OPS-001",
+        "WEB-001",
+        "BUS-001",
+        "OPS-001",
+        "DEV-001",
+        "KNOW-001",
+        "RELEASE-001",
+        "COM-001",
+        "MODEL-001",
+        "AI-OPS-001",
+        "SIM-001",
+        "TECH-001",
+        "LEARN-001"
+      ],
+      "authorities": [
+        "EnterpriseGovernanceAuthority",
+        "OrganizationalRegistryAuthority",
+        "PolicyAuthority",
+        "DecisionAuthority",
+        "ApprovalAuthority",
+        "DelegationAuthority",
+        "ExceptionAuthority",
+        "WaiverAuthority",
+        "ConflictResolutionAuthority",
+        "GovernanceEvidenceAuthority",
+        "GovernanceReviewAuthority",
+        "GovernanceHealthAuthority",
+        "GovernanceCertificationAuthority"
+      ],
+      "canonical_contract_count": 96,
+      "validation_profile_count": 20,
+      "finding_registry": "CANONICAL_RECONCILED",
+      "implementation": "NOT_AUTHORIZED",
+      "certification": "NOT_STARTED",
+      "production_authority": "NONE",
+      "live_effect": "NONE"
+    },
+    "SEC-002": {
+      "version": "1.0",
+      "status": "QUEUED",
+      "priority": "P1",
+      "category": "FOUNDATIONAL_PRODUCTION_SECURITY_OPERATIONS",
+      "prerequisites": [
+        "FIN-004.1a-C3",
+        "CFG-001",
+        "ARCH-001",
+        "CODE-001",
+        "OBS-001",
+        "TEST-001",
+        "PERF-001",
+        "REL-001",
+        "SEC-001.1",
+        "DATA-001",
+        "GOV-001"
+      ],
+      "successors": [
+        "RISK-OPS-001",
+        "WEB-001",
+        "BUS-001",
+        "OPS-001",
+        "MODEL-001",
+        "AI-OPS-001"
+      ],
+      "authorities": [
+        "SOCAuthority",
+        "ThreatIntelligenceAuthority",
+        "BehaviorAnalysisAuthority",
+        "IncidentAuthority",
+        "ForensicsAuthority",
+        "SecurityMonitoringAuthority",
+        "DetectionAuthority",
+        "ContainmentAuthority",
+        "RecoveryCoordinationAuthority",
+        "IsolationAuthority",
+        "ExternalTrustAuthority",
+        "VaultAuthority",
+        "KMSAuthority",
+        "SecurityHealthAuthority",
+        "ThreatEvidenceAuthority",
+        "SecurityOperationsCertificationAuthority"
+      ],
+      "profiles": [
+        "FAST",
+        "NORMAL",
+        "EXTENDED",
+        "THREAT_INTELLIGENCE",
+        "BEHAVIORAL",
+        "CORRELATION",
+        "FORENSICS",
+        "INCIDENT_RESPONSE",
+        "CONTAINMENT",
+        "LOCKDOWN",
+        "RECOVERY",
+        "RED_TEAM",
+        "SOAK",
+        "CERTIFICATION"
+      ],
+      "contract_registry": "CANONICAL_RECONCILED",
+      "finding_registry": "IMMUTABLE_RECONCILED",
+      "certification_state": "NOT_STARTED",
+      "production_activation": "INDEPENDENT_ENGINEERING_SECURITY_AND_SOC_REVIEW_PLUS_OWNER_APPROVAL",
+      "implementation_authorized": false,
+      "live_effect": "NONE"
+    },
+    "DEP-001": {
+      "version": "1.0",
+      "status": "SPECIFICATION_COMPLETE_NOT_SEQUENCED",
+      "priority": "P1",
+      "category": "FOUNDATIONAL_ENTERPRISE_DEPLOYMENT_ARCHITECTURE",
+      "enterprise_architecture_specification_state": "COMPLETE",
+      "enterprise_deployment_model": "CANONICAL",
+      "roadmap_placement": "RECONCILIATION_REQUIRED",
+      "proposed_prerequisites": [
+        "TEST-001",
+        "PERF-001",
+        "REL-001",
+        "SEC-001.1",
+        "DATA-001",
+        "GOV-001",
+        "SEC-002"
+      ],
+      "proposed_successors": [
+        "RELEASE-001",
+        "OPS-001"
+      ],
+      "proposed_authorities": [
+        "DeploymentAuthority",
+        "ReleaseAuthority",
+        "EnvironmentPromotionAuthority",
+        "ArtifactAuthority",
+        "PipelineAuthority",
+        "RollbackAuthority",
+        "DeploymentEvidenceAuthority"
+      ],
+      "certification": "NOT_STARTED",
+      "implementation_authorized": false,
+      "production_authority": "NONE",
+      "live_effect": "NONE"
+    },
+    "OPS-001": {
+      "version": "1.0",
+      "status": "SPECIFICATION_COMPLETE_NOT_SEQUENCED",
+      "priority": "P1",
+      "category": "FOUNDATIONAL_ENTERPRISE_OPERATIONS_ARCHITECTURE",
+      "enterprise_architecture_specification_state": "COMPLETE",
+      "enterprise_operations_model": "CANONICAL",
+      "roadmap_placement": "RECONCILIATION_REQUIRED",
+      "proposed_prerequisites": [
+        "DEP-001",
+        "OBS-001",
+        "TEST-001",
+        "PERF-001",
+        "REL-001",
+        "SEC-001.1",
+        "DATA-001",
+        "GOV-001",
+        "SEC-002"
+      ],
+      "proposed_successors": [
+        "BUS-001",
+        "AI-OPS-001"
+      ],
+      "proposed_authorities": [
+        "OperationsCoordinationAuthority",
+        "RunbookRegistryAuthority",
+        "OperationsEvidenceAuthority",
+        "ShiftHandoverAuthority",
+        "OperationalCommunicationAuthority"
+      ],
+      "certification": "NOT_STARTED",
+      "implementation_authorized": false,
+      "production_authority": "NONE",
+      "live_effect": "NONE"
+    },
+    "AI-001": {
+      "version": "1.0",
+      "status": "PROPOSED_NOT_SEQUENCED",
+      "priority": "P1",
+      "category": "ENTERPRISE_AI_ARCHITECTURE",
+      "enterprise_architecture_specification_state": "PARTIAL_PARTS_2_TO_5",
+      "missing_specification_parts": [
+        "PART_1"
+      ],
+      "roadmap_placement": "RECONCILIATION_REQUIRED",
+      "proposed_prerequisites": [
+        "ARCH-001",
+        "GOV-001",
+        "DATA-001",
+        "SEC-001.1",
+        "SEC-002",
+        "OBS-001",
+        "TEST-001",
+        "DEP-001",
+        "OPS-001"
+      ],
+      "overlap_reconciliation_required": [
+        "MODEL-001",
+        "AI-OPS-001",
+        "KNOW-001",
+        "TECH-001",
+        "LEARN-001"
+      ],
+      "proposed_authorities": [
+        "AIOrganizationRegistryAuthority",
+        "AICoordinationAuthority",
+        "ReasoningEvidenceAuthority",
+        "PlanningRegistryAuthority",
+        "AIMemoryContractAuthority",
+        "ExperimentRegistryAuthority",
+        "EvolutionProposalAuthority"
+      ],
+      "certification": "NOT_STARTED",
+      "implementation_authorized": false,
+      "production_authority": "NONE",
+      "live_effect": "NONE"
+    },
+    "INT-001": {
+      "version": "1.0",
+      "status": "PAUSED_AFTER_PART_3",
+      "priority": "P1",
+      "category": "FOUNDATIONAL_ENTERPRISE_INTEGRATION_ARCHITECTURE",
+      "enterprise_architecture_specification_state": "PARTIAL_PARTS_1_TO_3",
+      "roadmap_placement": "RECONCILIATION_REQUIRED",
+      "proposed_prerequisites": [
+        "ARCH-001",
+        "CFG-001",
+        "SEC-001.1",
+        "DATA-001",
+        "OBS-001",
+        "TEST-001",
+        "REL-001",
+        "DEP-001",
+        "OPS-001"
+      ],
+      "overlap_reconciliation_required": [
+        "ARCH-001_EVENT_DRIVEN_ARCHITECTURE",
+        "DATA-001_STREAMING",
+        "SEC-001.1_IDENTITY",
+        "SEC-002_MONITORING"
+      ],
+      "proposed_authorities": [
+        "IntegrationRegistryAuthority",
+        "InterfaceContractAuthority",
+        "ServiceRegistryAuthority",
+        "EventSchemaRegistryAuthority",
+        "IntegrationEvidenceAuthority"
+      ],
+      "certification": "NOT_STARTED",
+      "implementation_authorized": false,
+      "production_authority": "NONE",
+      "live_effect": "NONE"
+    },
+    "REM-001": {
+      "version": "1.0",
+      "status": "SPECIFICATION_COMPLETE_GATE_1_OPEN",
+      "priority": "CRITICAL",
+      "category": "MANDATORY_CODEBASE_REMEDIATION_ARCHITECTURE",
+      "specification_state": "SPECIFICATION_COMPLETE_PARTS_1_TO_13",
+      "part_4_status": "SPECIFICATION_COMPLETE",
+      "part_5_status": "SPECIFICATION_COMPLETE",
+      "part_6_status": "SPECIFICATION_COMPLETE",
+      "part_7_status": "SPECIFICATION_COMPLETE",
+      "domain_registry_state": "SPECIFICATION_ONLY",
+      "ontology_state": "SPECIFICATION_ONLY",
+      "implementation_authorized": false,
+      "canonical_mapping_execution_authorized": false,
+      "source_changes_authorized": false,
+      "production_authority": "NONE",
+      "live_trading_authority": "DENIED",
+      "feature_expansion_freeze": true,
+      "current_gate": "GATE_1_CANONICAL_COMPONENT_MAPPING",
+      "gates": [
+        "CANONICAL_COMPONENT_MAPPING",
+        "REPRODUCIBLE_BUILD",
+        "DETERMINISTIC_CORE_TESTS",
+        "OFFLINE_AND_REPLAY_RUNTIME",
+        "CORE_REFACTORING",
+        "END_TO_END_PAPER_VERIFICATION",
+        "PAPER_SOAK_TESTING",
+        "TESTNET_VALIDATION",
+        "PRODUCTION_READINESS_REVIEW",
+        "LIVE_TRADING_AUTHORIZATION"
+      ],
+      "registered_findings": [
+        "REM-P0-001",
+        "REM-P0-002",
+        "REM-P0-003",
+        "REM-P0-004",
+        "REM-P1-001",
+        "REM-P1-002",
+        "REM-P1-003",
+        "REM-P1-004",
+        "REM-P1-005",
+        "REM-P1-006",
+        "REM-P0-005",
+        "REM-P0-006",
+        "REM-P1-007",
+        "REM-P1-008",
+        "REM-P1-009",
+        "REM-P1-010",
+        "REM-P0-007",
+        "REM-P0-008",
+        "REM-P0-009",
+        "REM-P1-011",
+        "REM-P1-012",
+        "REM-P1-013",
+        "REM-P1-014",
+        "REM-P1-015",
+        "REM-P1-016",
+        "REM-P0-010",
+        "REM-P0-011",
+        "REM-P0-012",
+        "REM-P0-013",
+        "REM-P1-017",
+        "REM-P1-018",
+        "REM-P1-019",
+        "REM-P1-020",
+        "REM-P1-021",
+        "REM-P0-014",
+        "REM-P0-015",
+        "REM-P1-022",
+        "REM-P1-023",
+        "REM-P1-024",
+        "REM-P1-025",
+        "REM-P0-016",
+        "REM-P0-017",
+        "REM-P0-018",
+        "REM-P0-019",
+        "REM-P1-026",
+        "REM-P1-027",
+        "REM-P1-028",
+        "REM-P1-029",
+        "REM-P1-030",
+        "REM-P0-020",
+        "REM-P0-021",
+        "REM-P1-031",
+        "REM-P1-032",
+        "REM-P1-033",
+        "REM-P0-022",
+        "REM-P0-023",
+        "REM-P0-024",
+        "REM-P0-025",
+        "REM-P0-026",
+        "REM-P0-027",
+        "REM-P0-028",
+        "REM-P0-029",
+        "REM-P0-030",
+        "REM-P1-034",
+        "REM-P1-035",
+        "REM-P1-036",
+        "REM-P1-037",
+        "REM-P1-038",
+        "REM-P1-039",
+        "REM-P1-040",
+        "REM-P1-041",
+        "REM-P1-042",
+        "REM-P1-043",
+        "REM-P1-044",
+        "REM-P1-045",
+        "REM-P1-046",
+        "REM-P1-047",
+        "REM-P0-031",
+        "REM-P1-048",
+        "REM-P1-049"
+      ],
+      "gate_1_expected_deliverables": [
+        "REM-001_CANONICAL_COMPONENT_MATRIX.json",
+        "REM-001_CANONICAL_COMPONENT_MATRIX.md",
+        "REM-001_IMPORT_GRAPH.json",
+        "REM-001_RUNTIME_CONSTRUCTION_PATHS.md",
+        "REM-001_STATE_AUTHORITY_MAP.md",
+        "REM-001_OVERLAP_REGISTER.json",
+        "REM-001_LEGACY_RETIREMENT_REGISTER.json",
+        "REM-001_SPECIFICATION_RECONCILIATION_MATRIX.md",
+        "REM-001_GATE1_VALIDATOR.ps1"
+      ],
+      "proposed_roadmap_extensions": {
+        "new_milestone_candidates": [
+          "CONTRACT-001",
+          "INV-001"
+        ],
+        "existing_authority_extensions": [
+          "GOV-001_ADR_GOVERNANCE",
+          "CONTRACT-001_COMPATIBILITY_GOVERNANCE",
+          "TEST-001_CONTRACT_TESTING",
+          "ARCH-001_CHANGE_IMPACT_ENGINE",
+          "ARCH-001_ARCHITECTURE_FITNESS_ENGINE",
+          "CODE-001_REPOSITORY_HEALTH_ENGINE",
+          "SEC-001.1_DEPENDENCY_HEALTH_SECURITY",
+          "CODE-001_DEPENDENCY_MAINTAINABILITY",
+          "REL-001_RUNTIME_REPLAY_ENGINE",
+          "ARCH-001_CONTINUOUS_ARCHITECTURE_EVOLUTION",
+          "OBS-001_ENTERPRISE_SCORECARD_TELEMETRY",
+          "GOV-001_ENTERPRISE_SCORECARD_POLICY"
+        ],
+        "independent_review_roles": [
+          "DESIGN_REVIEW_AI",
+          "CODE_REVIEW_AI",
+          "SECURITY_REVIEW_AI",
+          "PERFORMANCE_REVIEW_AI",
+          "FINANCIAL_REVIEW_AI"
+        ],
+        "roadmap_admission": "NOT_AUTHORIZED_PENDING_GATE_1_AND_GOV_RECONCILIATION"
+      },
+      "part_3_registration_outputs": [
+        "REM-001_PART3_CANONICAL_MAPPING_EXECUTION_PROTOCOL.md",
+        "REM-001_PART3_VERIFY.ps1",
+        "ATLAS_MILESTONE_REGISTRY_v4.2.json"
+      ],
+      "future_analysis_tooling_authorized": false,
+      "tooling_trust_state": "UNVALIDATED",
+      "tooling_trust_level": "L0_PROTOTYPE_NOT_IMPLEMENTED",
+      "tooling_gate": "T1_NOT_STARTED",
+      "part_4_registration_outputs": [
+        "REM-001_PART4_SAFE_ANALYSIS_TOOLING_ARCHITECTURE.md",
+        "REM-001_PART4_VERIFY.ps1",
+        "ATLAS_MILESTONE_REGISTRY_v4.3.json"
+      ],
+      "part_5_registration_outputs": [
+        "REM-001_PART5_TOOL_IMPLEMENTATION_AUTHORIZATION_SPECIFICATION.md",
+        "REM-001_PART5_VERIFY.ps1",
+        "ATLAS_MILESTONE_REGISTRY_v4.4.json"
+      ],
+      "tool_implementation_authorized": false,
+      "tooling_implementation_authorized": false,
+      "tooling_execution_authorized": false,
+      "tooling_current_gate": "T1_NOT_STARTED",
+      "tooling_sub_milestones": [
+        "REM-T01",
+        "REM-T02",
+        "REM-T03",
+        "REM-T04",
+        "REM-T05",
+        "REM-T06",
+        "REM-T07",
+        "REM-T08",
+        "REM-T09",
+        "REM-T10",
+        "REM-T11",
+        "REM-T12",
+        "REM-T13",
+        "REM-T14"
+      ],
+      "part_6_registration_outputs": [
+        "REM-001_PART6_TOOLING_IMPLEMENTATION_AUTHORIZATION_AND_CERTIFICATION.md",
+        "REM-001_PART6_VERIFY.ps1",
+        "ATLAS_MILESTONE_REGISTRY_v4.5.json"
+      ],
+      "canonical_domain_ids": [
+        "APP",
+        "RUNTIME",
+        "CONFIGURATION",
+        "SECURITY",
+        "SECRETS",
+        "MARKET_DATA",
+        "CANDLES",
+        "TECHNICAL_ANALYSIS",
+        "WORLD_ANALYSIS",
+        "AI",
+        "DECISION",
+        "RISK",
+        "CAPITAL",
+        "EXECUTION",
+        "POSITION",
+        "PORTFOLIO",
+        "LEDGER",
+        "SETTLEMENT",
+        "RECONCILIATION",
+        "EVENTS",
+        "MEMORY",
+        "KNOWLEDGE",
+        "LEARNING",
+        "AGENTS",
+        "OBSERVABILITY",
+        "TESTING",
+        "OPERATIONS",
+        "DEPLOYMENT",
+        "WEB"
+      ],
+      "part_7_future_evidence_artifacts": [
+        "DOMAIN_REGISTRY.json",
+        "RESPONSIBILITY_REGISTRY.json",
+        "STATE_ONTOLOGY.json",
+        "EVENT_ONTOLOGY.json",
+        "CONCEPT_DICTIONARY.json",
+        "AGGREGATE_REGISTRY.json",
+        "SEMANTIC_EQUIVALENCE_MAP.json"
+      ],
+      "part_7_registration_outputs": [
+        "REM-001_PART7_CANONICAL_DOMAIN_AND_STATE_ONTOLOGY.md",
+        "REM-001_PART7_VERIFY.ps1",
+        "ATLAS_MILESTONE_REGISTRY_v4.6.json"
+      ],
+      "part_6_registry_version_note": "SPEC_PROPOSED_V4.4_BUT_V4.4_ALREADY_IMMUTABLE_PART5_SNAPSHOT_SO_V4.5_USED",
+      "tool_governance_board_state": "PROPOSED_UNDER_GOV_001",
+      "long_term_roadmap_candidates": {
+        "existing_ids_preserved": [
+          "MODEL-001",
+          "RISK-OPS-001",
+          "RELEASE-001"
+        ],
+        "new_candidates": [
+          "EXP-001",
+          "FEATURE-STORE-001",
+          "RESEARCH-001",
+          "MODEL-RISK-001"
+        ],
+        "alias_reconciliation_required": {
+          "COMPLIANCE-001": "COM-001",
+          "KNOWLEDGE-001": "KNOW-001",
+          "DIGITAL-TWIN-001": "SIM-001"
+        },
+        "admission": "PROPOSED_NOT_SEQUENCED"
+      },
+      "gate_1_closure_authority": "OWNER_ACCEPTANCE_REQUIRED",
+      "live_effect": "NONE",
+      "part_8_status": "SPECIFICATION_COMPLETE",
+      "part_9_status": "SPECIFICATION_COMPLETE",
+      "part_10_status": "SPECIFICATION_COMPLETE",
+      "part_11_status": "SPECIFICATION_COMPLETE",
+      "part_12_status": "SPECIFICATION_COMPLETE",
+      "decision_governance_state": "SPECIFICATION_ONLY",
+      "evidence_governance_state": "SPECIFICATION_ONLY",
+      "finding_governance_state": "SPECIFICATION_ONLY",
+      "gate_governance_state": "SPECIFICATION_ONLY",
+      "gate_1_state": "OPEN_NOT_CERTIFIED",
+      "specification_completion_effect": "NO_IMPLEMENTATION_CERTIFICATION_PRODUCTION_OR_LIVE_AUTHORITY",
+      "final_registration_outputs": [
+        "REM-001_FINAL_SPECIFICATION.md",
+        "REM-001_SCOPE_BOUNDARY.md",
+        "REM-001_HANDOVER_MATRIX.md",
+        "REM-001_CROSS_SPEC_CONTRACTS.md",
+        "REM-001_FINAL_VALIDATOR.ps1",
+        "ATLAS_MILESTONE_REGISTRY_v4.7.json"
+      ],
+      "successor_sequence_reconciliation": "RESPONSIBILITY_HANDOVER_ONLY_EXISTING_REGISTRY_ORDER_AND_STATES_PRESERVED",
+      "part_13_status": "SPECIFICATION_COMPLETE_NORMATIVE_ADDENDUM",
+      "normative_status": "PRIMARY_REMEDIATION_GOVERNANCE_REFERENCE",
+      "compliance_declaration_required": true,
+      "override_policy": "EXPLICIT_APPROVAL_AND_COMPATIBILITY_RECORD_REQUIRED",
+      "part_13_registration_outputs": [
+        "REM-001_PART13_NORMATIVE_GOVERNANCE_ADDENDUM.md",
+        "ATLAS_MILESTONE_REGISTRY_v4.8.json",
+        "ATLAS_GOVERNANCE_LAYER_VERIFY.ps1"
+      ],
+      "gate_1_mapping_entry_contract": "REM_GATE1_REAL_ARCHITECTURE_MAPPING_ENTRY_CONTRACT.md",
+      "gate_1_mapping_execution_state": "ARCH_001_1_CLOSED_CONDITIONAL_ARCH_001_2_1_SCHEMA_COMPLETE",
+      "next_authorized_work_candidate": "GATE_1_SOURCE_BOUND_CANONICAL_ARCHITECTURE_MAPPING",
+      "gate_1_owner_authorization_record": "REM_GATE1_OWNER_AUTHORIZATION_RECORD_TEMPLATE.md",
+      "architecture_baseline_findings": [
+        "ARCH-P0-001",
+        "ARCH-P1-001",
+        "ARCH-P1-002",
+        "ARCH-P1-003",
+        "ARCH-P1-004",
+        "ARCH-P1-005"
+      ],
+      "feature_expansion_freeze_scope": "REPOSITORY_WIDE_EXCEPT_RATIFIED_BOUNDED_SUBSTREAMS",
+      "source_changes_authorized_scope_exceptions": [
+        "BLOCK3-EXECUTION-SAFETY",
+        "BLOCK6C-VENUE-METADATA-ADAPTER"
+      ],
+      "ratified_bounded_substreams": {
+        "BLOCK3-EXECUTION-SAFETY": {
+          "id": "BLOCK3-EXECUTION-SAFETY",
+          "branch": "feat/block3-execution-safety",
+          "status": "AUTHORIZED_IN_FLIGHT_BOUNDED_SUBTRACK",
+          "authorization": "OWNER_RATIFIED_OPTION_A",
+          "authorizing_finding": "GOV-DRIFT-002",
+          "authorizing_record": "governance/ATLAS_EXECUTION_STREAM_SCOPE_RECONCILIATION_v1.0.md",
+          "classification": "BOUNDED_REMEDIATION_WITHIN_REM_001_INTENT",
+          "ratified_commit_count": 58,
+          "ratified_range": "3aca7cf..ddd6c45",
+          "ratified_first_commit": "12dca92f3d5c8bfdd20de28318e7f6eb86f06343",
+          "ratified_last_commit": "ddd6c45405a6409eb814e4daaa26f275ed03767f",
+          "ratified_date_range": "2026-08-09..2026-08-27",
+          "scope": "EXECUTION_RISK_CAPITAL_AND_VENUE_SAFETY_HARDENING",
+          "scope_limits": [
+            "NO_LIVE_EXECUTION_ADAPTER",
+            "NO_PRODUCTION_DEPLOYMENT",
+            "NO_ROADMAP_PHASE_EXPANSION",
+            "NO_AUTHORITY_CHANGE",
+            "PAPER_ONLY"
+          ],
+          "continuation_authorized": true,
+          "continuation_conditions": [
+            "BOUNDED_PACKAGES_WITH_EVIDENCE_RECORDS",
+            "TESTS_AND_EVIDENCE_PER_PACKAGE",
+            "NO_TEST_WEAKENING",
+            "NO_LIVE_OR_PRODUCTION_AUTHORITY_CLAIM",
+            "GOVERNANCE_RECORD_FOR_ANY_AUTHORITY_AFFECTING_CHANGE"
+          ],
+          "ratification_is_production_readiness": false,
+          "ratification_is_independent_review": false,
+          "live_effect": "NONE",
+          "production_authority": "NONE",
+          "live_trading_authority": "DENIED"
+        },
+        "BLOCK6C-VENUE-METADATA-ADAPTER": {
+          "id": "BLOCK6C-VENUE-METADATA-ADAPTER",
+          "branch": "feat/block3-execution-safety",
+          "status": "AUTHORIZED_BOUNDED_SUBTRACK_RATIFIED_AT_HEAD",
+          "authorization": "OWNER_RATIFIED",
+          "authorizing_finding": "GOV-DRIFT-003",
+          "authorizing_record": "governance/current/ATLAS_MILESTONE_REGISTRY_v4.28.json",
+          "classification": "BOUNDED_REMEDIATION_WITHIN_REM_001_INTENT",
+          "ratified_commit_count": 1,
+          "ratified_range": "ddd6c45..3265b44",
+          "ratified_first_commit": "3265b4485c33a2de82d63ab49cd58c2ea59d72c6",
+          "ratified_last_commit": "3265b4485c33a2de82d63ab49cd58c2ea59d72c6",
+          "ratified_date_range": "2026-08-27..2026-08-27",
+          "scope": "OFFLINE_OPERATOR_VENUE_METADATA_ADAPTER_TOOLING",
+          "scope_limits": [
+            "NO_LIVE_EXECUTION_ADAPTER",
+            "NO_PRODUCTION_DEPLOYMENT",
+            "NO_ROADMAP_PHASE_EXPANSION",
+            "NO_AUTHORITY_CHANGE",
+            "NO_CANONICAL_RUNTIME_WIRING",
+            "PAPER_ONLY"
+          ],
+          "continuation_authorized": false,
+          "continuation_authorization_state": "NOT_REQUESTED_NOT_GRANTED",
+          "continuation_note": "This substream is ratified at commit 3265b44 only. Any further commit on this branch is again uncovered and requires a new versioned successor record.",
+          "ratification_is_production_readiness": false,
+          "ratification_is_independent_review": false,
+          "live_effect": "NONE",
+          "production_authority": "NONE",
+          "live_trading_authority": "DENIED"
+        }
+      },
+      "freeze_scope_note": "REM-001 feature_expansion_freeze and source_changes_authorized remain in force repository-wide. The only exceptions are the explicitly ratified BLOCK3-EXECUTION-SAFETY and BLOCK6C-VENUE-METADATA-ADAPTER substreams recorded above; no other branch, milestone, or workstream is released by this registry."
+    }
+  },
+  "documentation_governance": {
+    "constitution_001": {
+      "status": "PROPOSED_OWNER_RATIFICATION_REQUIRED",
+      "authority": "NONE",
+      "implementation_authorized": false,
+      "production_authority": "NONE",
+      "live_effect": "NONE"
+    },
+    "aeb_001": {
+      "status": "PROPOSED_DOCUMENTATION_PROGRAM",
+      "type": "NON_RUNTIME_HANDBOOK",
+      "authority": "NONE",
+      "canonical_architecture_source": "ARCH-001",
+      "implementation_authorized": false,
+      "live_effect": "NONE"
+    },
+    "aeos_identity": {
+      "canonical_id": "AEOS-1.0",
+      "proposed_alias": "AEOS-001",
+      "alias_admission": "REJECTED_DUPLICATE_IDENTITY"
+    }
+  },
+  "enterprise_reference_layer": {
+    "ERM-001": {
+      "version": "1.0",
+      "status": "PROPOSED",
+      "type": "IMPLEMENTATION_INDEPENDENT_REFERENCE_MODEL",
+      "implementation_authorized": false,
+      "production_authority": "NONE",
+      "live_effect": "NONE"
+    },
+    "AEF-001": {
+      "version": "1.0",
+      "status": "PROPOSED",
+      "type": "ENGINEERING_METHOD_FRAMEWORK",
+      "implementation_authorized": false,
+      "production_authority": "NONE",
+      "live_effect": "NONE"
+    },
+    "AES-001": {
+      "version": "1.0",
+      "status": "PROPOSED",
+      "type": "ENGINEERING_EVIDENCE_SCIENCE",
+      "implementation_authorized": false,
+      "production_authority": "NONE",
+      "live_effect": "NONE"
+    },
+    "ARF-001": {
+      "version": "1.0",
+      "status": "PROPOSED",
+      "type": "ENTERPRISE_RESILIENCE_FRAMEWORK",
+      "implementation_authorized": false,
+      "production_authority": "NONE",
+      "live_effect": "NONE"
+    },
+    "BLUEPRINT-001": {
+      "version": "1.0",
+      "status": "PROPOSED_SYNTHESIS",
+      "type": "NON_RUNTIME_ENTERPRISE_BLUEPRINT",
+      "implementation_authorized": false,
+      "production_authority": "NONE",
+      "live_effect": "NONE"
+    }
+  },
+  "conceptual_capstone_layer": {
+    "FC-001": {
+      "status": "PROPOSED_OWNER_RATIFICATION_REQUIRED",
+      "type": "FOUNDING_CHARTER",
+      "authority": "NONE",
+      "live_effect": "NONE"
+    },
+    "AOP-001": {
+      "status": "PROPOSED",
+      "type": "OPERATING_PHILOSOPHY",
+      "authority": "NONE",
+      "live_effect": "NONE"
+    },
+    "AMM-001": {
+      "status": "PROPOSED",
+      "type": "TECHNOLOGY_INDEPENDENT_META_MODEL",
+      "authority": "NONE",
+      "live_effect": "NONE"
+    },
+    "LSC-001": {
+      "status": "PROPOSED",
+      "type": "LIVING_SYSTEM_CHARTER",
+      "authority": "NONE",
+      "live_effect": "NONE"
+    },
+    "vision_freeze": {
+      "status": "PROPOSED_OWNER_APPROVAL_REQUIRED",
+      "decision_id": "ADR-VISION-001",
+      "new_manifesto_default": "REJECT_UNLESS_GOVERNANCE_GAP_PROVEN"
+    },
+    "execution_era": {
+      "status": "PENDING_GATE_1_OWNER_AUTHORIZATION",
+      "meaning": "ENGINEERING_MAPPING_NOT_PRODUCTION_OR_LIVE"
+    }
+  },
+  "proposal_dispositions": {
+    "AEC-001": {
+      "admission": "REJECTED_DUPLICATE_SCOPE",
+      "canonical_destinations": [
+        "AEF-001",
+        "AES-001",
+        "LSC-001",
+        "REM-001"
+      ]
+    },
+    "ADI-001": {
+      "admission": "REJECTED_DUPLICATE_SCOPE",
+      "canonical_destinations": [
+        "ERM-001",
+        "AEOS-1.0",
+        "GOV-001",
+        "DATA-001"
+      ]
+    },
+    "ACI-001": {
+      "admission": "REJECTED_DUPLICATE_SCOPE",
+      "canonical_destinations": [
+        "AES-001",
+        "ARF-001",
+        "AEB-001",
+        "FC-001"
+      ]
+    },
+    "AET-001": {
+      "admission": "REJECTED_DUPLICATE_SCOPE",
+      "canonical_destinations": [
+        "AEF-001",
+        "AES-001",
+        "ARF-001",
+        "LSC-001",
+        "OBS-001",
+        "AMP-001"
+      ]
+    },
+    "AGS-001": {
+      "admission": "REJECTED_AUTHORITY_OVERLAP",
+      "canonical_destinations": [
+        "GOV-001",
+        "EMS-1.0",
+        "AEOS-1.0",
+        "AI-001",
+        "AMP-001"
+      ]
+    }
+  },
+  "master_program": {
+    "id": "AMP-001",
+    "version": "1.0",
+    "status": "PROGRAM_BASELINE_EXECUTION_PENDING_GATE_AUTHORIZATION",
+    "phase_0": "DOCUMENTED_NOT_FULLY_RATIFIED_OR_CERTIFIED",
+    "phase_1": "NEXT_CANDIDATE_NOT_AUTHORIZED",
+    "phases_2_to_8": "BLOCKED_OR_FUTURE",
+    "implementation_authorized": false,
+    "production_authority": "NONE",
+    "live_effect": "NONE",
+    "programs": [
+      "ATLAS_RECOVERY",
+      "ATLAS_COMPLETION",
+      "ATLAS_EVOLUTION"
+    ],
+    "program_governance_profile": "AMP-001_PROGRAM_GOVERNANCE_PROFILE_v1.0.md",
+    "program_office": {
+      "id": "AEPO",
+      "status": "SPECIFICATION_ONLY",
+      "scope": "PORTFOLIO_COORDINATION_AND_REPORTING",
+      "runtime_authority": "NONE",
+      "approval_authority": "NONE",
+      "production_authority": "NONE",
+      "live_effect": "NONE"
+    },
+    "execution_era_readiness": "NOT_READY_MISSING_OWNER_AUTHORIZATION_AND_CERTIFIED_TOOLING"
+  },
+  "architecture_execution_program": {
+    "id": "ARCH-001-CURRENT-STATE-PROGRAM",
+    "status": "ACTIVE_EVIDENCE_PHASE",
+    "source_root": "C:\\Users\\HUAWEİ\\OneDrive\\Masaüstü\\Project_Atlas_AI",
+    "phase_1": {
+      "id": "ARCH-001.1",
+      "status": "CLOSED_CONDITIONAL_PASS",
+      "canonical_admission": "CANDIDATE_BASELINE_IDENTITY_CONFLICT_OPEN",
+      "python_files": 691,
+      "source_tree_sha256": "B256D596C36974753795A67B2BBB46A3B2C1651D765D26627FDDDF88A3E20371",
+      "compile_exit": 1,
+      "pytest_collection_exit": 1,
+      "source_hash_mismatches_after_analysis": 0
+    },
+    "phase_2": {
+      "id": "ARCH-001.2",
+      "status": "ACTIVE_SCHEMA_ONLY",
+      "reason": "ARCH-001.2.1_AUTHORIZED_SCANNER_AND_GENERATION_NOT_AUTHORIZED"
+    },
+    "source_changes_authorized": false,
+    "production_authority": "NONE",
+    "live_effect": "NONE",
+    "phase_2_1": {
+      "id": "ARCH-001.2.1",
+      "status": "SPECIFICATION_COMPLETE",
+      "outputs": [
+        "ARCH-001.2.1_MODULE_INVENTORY_SCHEMA.md",
+        "ARCH-001.2.1_MODULE_INVENTORY_SCHEMA.json"
+      ],
+      "scanner_implementation_authorized": false,
+      "scanner_execution_authorized": false,
+      "inventory_generation_authorized": false,
+      "successor": "ARCH-001.2.2_STATIC_MODULE_SCANNER"
+    },
+    "architectural_freeze": {
+      "decision": "ADR-ARCH-FREEZE-001",
+      "status": "ACTIVE",
+      "major_modules": true,
+      "major_refactors": true,
+      "new_privileged_agents": true,
+      "control_center_primary_integration": true,
+      "live_expansion": true
+    },
+    "sprint_roadmap": [
+      {
+        "sprint": 1,
+        "name": "ARCHITECTURE_DISCOVERY",
+        "stages": [
+          "ARCH-001.2"
+        ],
+        "status": "SCHEMA_COMPLETE_SCANNER_NOT_AUTHORIZED"
+      },
+      {
+        "sprint": 2,
+        "name": "DEPENDENCY_DISCOVERY",
+        "stages": [
+          "ARCH-001.5"
+        ],
+        "status": "BLOCKED"
+      },
+      {
+        "sprint": 3,
+        "name": "DOMAIN_DISCOVERY",
+        "stages": [
+          "ARCH-001.4"
+        ],
+        "status": "BLOCKED"
+      },
+      {
+        "sprint": 4,
+        "name": "CAPABILITY_DISCOVERY",
+        "stages": [
+          "ARCH-001.3"
+        ],
+        "status": "BLOCKED"
+      },
+      {
+        "sprint": 5,
+        "name": "OWNERSHIP_DISCOVERY",
+        "stages": [
+          "ARCH-001.4",
+          "ARCH-001.9"
+        ],
+        "status": "BLOCKED"
+      },
+      {
+        "sprint": 6,
+        "name": "STATE_OWNERSHIP",
+        "stages": [
+          "ARCH-001.6"
+        ],
+        "status": "BLOCKED"
+      },
+      {
+        "sprint": 7,
+        "name": "RUNTIME_DISCOVERY",
+        "stages": [
+          "ARCH-001.8"
+        ],
+        "status": "BLOCKED"
+      },
+      {
+        "sprint": 8,
+        "name": "ARCHITECTURE_RISK_REVIEW",
+        "stages": [
+          "ARCH-001.9"
+        ],
+        "status": "BLOCKED"
+      },
+      {
+        "sprint": 9,
+        "name": "TARGET_ARCHITECTURE",
+        "stages": [
+          "ARCH-001.10",
+          "ARCH-001.11"
+        ],
+        "status": "BLOCKED"
+      },
+      {
+        "sprint": 10,
+        "name": "REFACTORING_PROGRAM",
+        "stages": [
+          "ARCH-001.12",
+          "ARCH-001.13"
+        ],
+        "status": "BLOCKED_NO_CODE_AUTHORITY"
+      }
+    ],
+    "phase_2_2": {
+      "id": "ARCH-001.2.2",
+      "status": "CLOSED_CONDITIONAL_PASS",
+      "implementation_authorized": false,
+      "execution_authorized": false,
+      "inventory_admission_authorized": false,
+      "requirements": "ARCH-001.2.2_STATIC_SCANNER_AUTHORIZATION_REQUIREMENTS.md",
+      "title": "SOURCE_SCOPE_AND_CANONICAL_BASELINE_RESOLUTION",
+      "baseline_identity": "APPROVED_CANONICAL_REPOSITORY_ROOT",
+      "canonical_decision": "APPROVED_WITH_SCOPE_CONTROLS",
+      "python_files": 691,
+      "candidate_scope_counts": {
+        "ARCHIVE": 276,
+        "UNKNOWN": 230,
+        "TEST": 73,
+        "BACKUP": 38,
+        "REPORT_COPY": 34,
+        "TOOL": 26,
+        "QUARANTINE": 14
+      },
+      "duplicate_filename_groups": 101,
+      "runtime_entrypoint_pattern_matches": 529,
+      "source_hash_mismatches": 0,
+      "exit_blockers": [],
+      "canonical_module_set": "NOT_YET_DETERMINED",
+      "admitted_discovery_scopes": [
+        "ACTIVE_CANDIDATE",
+        "TEST",
+        "TOOL"
+      ],
+      "excluded_discovery_scopes": [
+        "ARCHIVE",
+        "BACKUP",
+        "QUARANTINE",
+        "REPORT_COPY"
+      ],
+      "unresolved_scope": "UNKNOWN",
+      "top_level_human_classification": {
+        "status": "PASS",
+        "records": 212,
+        "active_candidate": 20,
+        "test": 52,
+        "tool": 10,
+        "backup": 29,
+        "archive": 1,
+        "quarantine": 1,
+        "report_copy": 1,
+        "unknown_no_python": 98,
+        "open": 0
+      },
+      "root_python_human_classification": {
+        "status": "PASS",
+        "records": 63,
+        "open": 0
+      },
+      "human_review_validation": "PASS",
+      "closure_package_state": "READY"
+    },
+    "proposed_cao": {
+      "status": "PROPOSED_GOVERNANCE_ROLE_CLUSTER",
+      "runtime_authority": "NONE",
+      "deployment_authority": "NONE",
+      "live_effect": "NONE"
+    },
+    "phase_2_3": {
+      "id": "ARCH-001.2.3",
+      "title": "STATIC_MODULE_SCANNER_SPECIFICATION",
+      "status": "AUTHORIZED_TO_BEGIN_SPECIFICATION_ONLY",
+      "scanner_implementation_authorized": false,
+      "scanner_execution_authorized": false,
+      "inventory_generation_authorized": false,
+      "source_changes_authorized": false
+    }
+  },
+  "governance_reconciliation": {
+    "id": "GOV-DRIFT-001",
+    "status": "RECONCILED_BY_VERSIONED_SUCCESSOR",
+    "severity": "P1",
+    "historical_registry": "governance/history/ATLAS_MILESTONE_REGISTRY_v4.18.json",
+    "historical_registry_policy": "IMMUTABLE_SNAPSHOT",
+    "alignment_record": "governance/ATLAS_CURRENT_STATE_ALIGNMENT_v1.0.md",
+    "alignment_decision": "REPOSITORY_STATE_ALIGNMENT_ACCEPTED",
+    "historical_state_preserved": true,
+    "historical_state_rewritten": false,
+    "compatibility_mode": "PRESERVE_HISTORICAL_MILESTONES_AND_ADD_CURRENT_STATE_OVERLAY"
+  },
+  "current_repository_state": {
+    "identity_model": "GIT_COMMIT_AUTHORITATIVE",
+    "workstation_absolute_path_authoritative": false,
+    "alignment_branch": "fix/governance-state-alignment",
+    "historical_architecture_baseline_commit": "101908b36cbd15567c56e1b42282680d8d790795",
+    "alignment_parent_commit": "08aadd1ed70e146e2d620efa84a2dee1ba725084",
+    "alignment_record_commit": "b506da1962b74c4afddd3eb02f02b9cc7988faac",
+    "remediation_chain": [
+      {
+        "commit": "3047701ae7b3d62dae9a75e508adad3322dd8ee2",
+        "short": "3047701",
+        "change": "TRACK_ATLAS_SECRET_MANAGEMENT_SOURCE",
+        "state": "VERIFIED"
+      },
+      {
+        "commit": "f04ca2a3a432f3e94a9b4ce190eb1d91cdee3b85",
+        "short": "f04ca2a",
+        "change": "WEB_RUNTIME_DEPENDENCY_AGGREGATION",
+        "state": "VERIFIED"
+      },
+      {
+        "commit": "c7c3a40abd366660b5e1aa37a297af497100d8a6",
+        "short": "c7c3a40",
+        "change": "AUTOMATED_CI_PIPELINE",
+        "state": "VERIFIED_LOCALLY"
+      },
+      {
+        "commit": "5cd6608e178e76b9eb12af37d9efe5a39c06cbdf",
+        "short": "5cd6608",
+        "change": "OFFICIAL_BINANCE_SPOT_SDK_MIGRATION",
+        "state": "VERIFIED"
+      },
+      {
+        "commit": "08aadd1ed70e146e2d620efa84a2dee1ba725084",
+        "short": "08aadd1",
+        "change": "DEPENDENCY_GRAPH_LOCKING",
+        "state": "VERIFIED"
+      },
+      {
+        "commit": "b506da1962b74c4afddd3eb02f02b9cc7988faac",
+        "short": "b506da1",
+        "change": "GOVERNANCE_STATE_ALIGNMENT_RECORD",
+        "state": "VERIFIED"
+      },
+      {
+        "commit": "71855a028180260f091430fe6d926dc7db79cea0",
+        "short": "71855a0",
+        "change": "GOVERNANCE_REGISTRY_RECONCILIATION",
+        "state": "VERIFIED"
+      },
+      {
+        "commit": "a39087e01c139c2739c793629087f1f176b5a780",
+        "short": "a39087e",
+        "change": "ARCH_001_2_3_REVIEW_COMPLETENESS_GAP_RECORD",
+        "state": "VERIFIED"
+      },
+      {
+        "commit": "f1485140709a7dc0027c8be0d00cdeab237a3017",
+        "short": "f148514",
+        "change": "README_VERIFIED_STATE_ALIGNMENT",
+        "state": "VERIFIED"
+      },
+      {
+        "commit": "9b5cda35864eeadd85811d952b58eb998a074a1e",
+        "short": "9b5cda3",
+        "change": "ISOLATED_REPRODUCIBLE_VALIDATION_SCRIPT",
+        "state": "VERIFIED"
+      },
+      {
+        "commit": "d8ad410e687b380233459d807f8885608d829de0",
+        "short": "d8ad410",
+        "change": "PYTEST_KERNEL_COLLECTION_REMEDIATION",
+        "state": "VERIFIED"
+      },
+      {
+        "commit": "42081160f1359da89c4e9573cf436b3040299603",
+        "short": "4208116",
+        "change": "GITHUB_ACTIONS_IMMUTABLE_SHA_PINNING",
+        "state": "VERIFIED"
+      },
+      {
+        "commit": "0c6f4a915f7cfd2f2e5ad576bb5ae53b576d97b4",
+        "short": "0c6f4a9",
+        "change": "HASHED_PYTHON_DEPENDENCY_LOCK_ENFORCEMENT",
+        "state": "VERIFIED"
+      },
+      {
+        "commit": "6f9486f7ab2429f71b9e86548913f1a4fc660a47",
+        "short_commit": "6f9486f",
+        "change": "PHASE1_CANONICAL_BOUNDARY_REMEDIATION",
+        "state": "OWNER_VALIDATED_PENDING_INDEPENDENT_REVIEW"
+      }
+    ],
+    "validation": {
+      "owner_side_canonical_validation": {
+        "tested_commit": "6f9486f7ab2429f71b9e86548913f1a4fc660a47",
+        "tests_passed": 405,
+        "tests_failed": 0,
+        "dependency_isolation": "PASS",
+        "pip_check": "PASS",
+        "test_suite": "PASS"
+      },
+      "hosted_ci_execution_evidence": "NOT_EVIDENCED",
+      "production_certification": "NOT_GRANTED"
+    },
+    "state_registry_branch": "fix/phase1-canonical-boundary-remediation",
+    "readme_alignment_commit": "f1485140709a7dc0027c8be0d00cdeab237a3017",
+    "environment_isolation_commit": "9b5cda35864eeadd85811d952b58eb998a074a1e",
+    "test_quality_remediation_commit": "d8ad410e687b380233459d807f8885608d829de0",
+    "supply_chain_remediation_commit": "0c6f4a915f7cfd2f2e5ad576bb5ae53b576d97b4",
+    "current_git_commit": "41cab140ac184a11a156d17d1e6a96a99c1c748e",
+    "phase1_canonical_boundary_remediation_commit": "6f9486f7ab2429f71b9e86548913f1a4fc660a47",
+    "current_git_tree": "b5a4d17992333922fe13cfa80149fd200c2b75a7",
+    "governance_successor_commit": "250626bd6d49833c9f1015cbfb292744cf8a5414",
+    "current_branch": "research/edge-validation",
+    "ratified_stream_head": "ddd6c45405a6409eb814e4daaa26f275ed03767f",
+    "governance_conflict_record_commit": "eab9a210b04be19896236c11329e6b6a652b5548",
+    "stream_ratification_registry": "governance/current/ATLAS_MILESTONE_REGISTRY_v4.27.json",
+    "ratified_stream_head_note": "ratified_stream_head names the BLOCK3-EXECUTION-SAFETY head ratified by GOV-DRIFT-002 in registry v4.27 and is unchanged. The BLOCK6C-VENUE-METADATA-ADAPTER head ratified by GOV-DRIFT-003 in this registry is block6c_ratified_head.",
+    "block6c_ratified_head": "3265b4485c33a2de82d63ab49cd58c2ea59d72c6",
+    "block6c_ratification_registry": "governance/current/ATLAS_MILESTONE_REGISTRY_v4.28.json",
+    "previous_registry_branch": "feat/block3-execution-safety",
+    "previous_registry_branch_note": "current_branch moved to research/edge-validation in this registry because the ratified feat/block3-execution-safety state was merged into it at 86955ee. feat/block3-execution-safety itself is unchanged by this registry and still points at 59225d1; ratified_stream_head and block6c_ratified_head continue to name commits on that branch and are not modified.",
+    "research_edge_validation_ratified_head": "41cab140ac184a11a156d17d1e6a96a99c1c748e",
+    "research_edge_validation_ratification_registry": "governance/current/ATLAS_MILESTONE_REGISTRY_v4.29.json",
+    "research_edge_validation_reconciliation_merge_commit": "86955ee806ff80ee7356d20e4243f08a9948308c",
+    "research_edge_validation_conflict_record": "governance/ATLAS_RESEARCH_STREAM_RECONCILIATION_v1.0.md",
+    "research_edge_validation_conflict_record_commit": "2e23df4d0bb4c027d8d836f7efce2debee8f67c4",
+    "specification_integrity_conflict_record": "governance/ATLAS_REM001_SPECIFICATION_ARTIFACT_INTEGRITY_v1.0.md",
+    "specification_integrity_conflict_record_commit": "6059c8feaa2a41de8f56600440c7f3622e4f518f",
+    "specification_integrity_registry": "governance/current/ATLAS_MILESTONE_REGISTRY_v4.30.json",
+    "current_git_commit_note": "current_git_commit remains 41cab140ac184a11a156d17d1e6a96a99c1c748e, the research/edge-validation head ratified by GOV-DRIFT-004 in registry v4.29. No source commit has occurred since. Commits 2e23df4 (v4.29 conflict record), 92225ba (registry v4.29) and 6059c8f (this registry's conflict record) are governance instruments, not source commits, and none of them advances the ratified source state."
+  },
+  "authority_state": {
+    "production_authority": "NONE",
+    "live_authority": "DENIED",
+    "autonomous_deployment_authority": "DENIED",
+    "historical_architectural_freeze_preserved": true,
+    "bounded_remediation_is_blanket_architecture_authority": false,
+    "owner_approval_required_for_authority_change": true,
+    "owner_gate_eligibility": "ELIGIBLE",
+    "independent_review_required_before_owner_gate_claim": true,
+    "owner_gate_status": "APPROVED",
+    "owner_gate_decision": "OWNER_GATE_APPROVED",
+    "deployment_authority": "DENIED",
+    "real_money_trading_authority": "DENIED",
+    "owner_gate_approval_is_production_readiness": false,
+    "stream_ratification_is_production_readiness": false,
+    "stream_ratification_grants_no_live_authority": true
+  },
+  "review_state": {
+    "repository_tests": "PASS",
+    "independent_architecture_review": "PASS_WITH_RECORDED_LIMITATIONS",
+    "independent_security_review": "PASS_WITH_RECORDED_LIMITATIONS",
+    "independent_financial_review": "PASS_WITH_RECORDED_LIMITATIONS",
+    "independent_performance_review": "NOT_ASSERTED_COMPLETE",
+    "arch_001_2_3_independent_re_review": "COMPLETED",
+    "test_success_equals_independent_review": false,
+    "arch_001_2_3_review_completion": "COMPLETED",
+    "arch_001_2_3_owner_gate_eligibility": "ELIGIBLE",
+    "pass_eligible_for_owner_gate_evidence": "EVIDENCED",
+    "fail_changes_required_evidence": "NOT_FOUND",
+    "review_output_evidence": "HASH_IDENTIFIED",
+    "absence_of_fail_implies_pass": false,
+    "arch_001_2_3_independent_review": "PASS_ELIGIBLE_FOR_OWNER_GATE",
+    "owner_gate_status": "APPROVED",
+    "test_success_is_not_independent_review": true,
+    "phase1_remediation_independent_review": "COMPLETED",
+    "governance_closure": "OWNER_GATE_APPROVED_WITH_F006_OPEN",
+    "arch_001_2_3_final_disposition": "PASS_ELIGIBLE_FOR_OWNER_GATE"
+  },
+  "registry_invariants": {
+    "historical_v4_18_immutable": true,
+    "historical_architecture_fields_preserved": true,
+    "repository_truth_separate_from_historical_authority": true,
+    "live_authority_must_be_explicit": true,
+    "missing_live_denial_implies_authority": false,
+    "missing_review_output_must_not_be_interpreted_as_pass": true,
+    "missing_fail_artifact_must_not_be_interpreted_as_pass": true,
+    "owner_gate_requires_explicit_review_evidence": true,
+    "review_preparation_is_not_review_completion": true,
+    "validation_must_use_isolated_environment": true,
+    "global_python_is_not_validation_authority": true,
+    "successful_tests_do_not_imply_production_readiness": true,
+    "closed_documentation_findings_do_not_change_authority": true,
+    "closed_environment_findings_do_not_change_authority": true,
+    "pytest_warnings_must_not_be_silently_ignored": true,
+    "test_files_must_contain_collectable_tests": true,
+    "test_count_changes_require_evidence": true,
+    "local_ci_validation_is_not_hosted_ci_execution": true,
+    "missing_hosted_ci_evidence_must_not_imply_pass": true,
+    "missing_hosted_ci_evidence_must_not_imply_fail": true,
+    "hosted_ci_closure_requires_external_run_evidence": true,
+    "external_ci_actions_must_be_sha_pinned": true,
+    "canonical_python_install_requires_hashes": true,
+    "hash_lock_changes_require_validation": true,
+    "owner_validation_is_not_independent_review": true,
+    "findings_not_silently_closed_by_test_success": true,
+    "hosted_ci_evidence_gap_remains_open": true,
+    "historical_governance_records_remain_immutable": true,
+    "production_and_live_authority_not_granted": true,
+    "historical_v4_26_immutable": true,
+    "stream_ratification_is_scope_limited": true,
+    "ratification_does_not_grant_production_or_live_authority": true,
+    "freeze_remains_in_force_outside_ratified_substreams": true,
+    "ratified_substream_requires_per_package_evidence": true,
+    "historical_v4_27_immutable": true,
+    "governance_record_commits_cannot_self_ratify": true,
+    "each_drift_instance_requires_its_own_finding_id": true,
+    "ratification_does_not_extend_to_later_commits_on_the_same_branch": true,
+    "waived_audit_scope_must_be_recorded_not_implied_as_clean": true,
+    "unverified_environment_class_recorded_as_unknown": true
+  },
+  "governance_findings": {
+    "GOV-REVIEW-001": {
+      "id": "GOV-REVIEW-001",
+      "title": "ARCH-001.2.3 Independent Re-review Completion Evidence Missing",
+      "severity": "P1",
+      "status": "RESOLVED_BY_FINAL_INDEPENDENT_REVIEW",
+      "finding_type": "GOVERNANCE_EVIDENCE_COMPLETENESS",
+      "artifact": "governance/findings/GOV-REVIEW-001_ARCH-001.2.3_INDEPENDENT_RE_REVIEW_COMPLETENESS.md",
+      "independent_re_review_final_disposition": "PASS_ELIGIBLE_FOR_OWNER_GATE",
+      "independent_review_completion": "COMPLETED",
+      "owner_gate_eligibility": "ELIGIBLE",
+      "blocking_effect": "CLOSED",
+      "production_authority": "NONE",
+      "live_authority": "DENIED",
+      "closure_requires_explicit_final_review_artifact": false,
+      "final_review_report": "ATLAS_ARCH-001.2.3_POST_REMEDIATION_INDEPENDENT_RE_REVIEW_250626b.md",
+      "final_review_sha256": "AB8D8EDC3AE151AB758FAFF6FB0406B7B85F99D25024A96AA70AABCAEEDC057A"
+    },
+    "DOC-DRIFT-001": {
+      "id": "DOC-DRIFT-001",
+      "title": "Root README metadata was stale relative to verified Git state",
+      "severity": "P2",
+      "status": "CLOSED",
+      "finding_type": "DOCUMENTATION_STATE_DRIFT",
+      "resolution_commit": "f1485140709a7dc0027c8be0d00cdeab237a3017",
+      "resolution": "ROOT_README_ALIGNED_WITH_VERIFIED_REPOSITORY_AND_GOVERNANCE_STATE",
+      "production_effect": "NONE",
+      "live_effect": "NONE"
+    },
+    "ENV-ISOLATION-001": {
+      "id": "ENV-ISOLATION-001",
+      "title": "Atlas validation was being executed in a contaminated global Python environment",
+      "severity": "P2",
+      "status": "CLOSED",
+      "finding_type": "VALIDATION_ENVIRONMENT_ISOLATION",
+      "resolution_commit": "9b5cda35864eeadd85811d952b58eb998a074a1e",
+      "canonical_validation_environment": "ISOLATED_VIRTUAL_ENVIRONMENT",
+      "canonical_validation_script": "scripts/validate_atlas.ps1",
+      "isolated_pip_check": "PASS",
+      "isolated_pytest_passed": 381,
+      "isolated_pytest_warnings": 1,
+      "global_python_environment": "NON_CANONICAL_FOR_ATLAS_VALIDATION",
+      "production_effect": "NONE",
+      "live_effect": "NONE"
+    },
+    "TEST-QUALITY-001": {
+      "id": "TEST-QUALITY-001",
+      "title": "Atlas OS kernel test module was not collected by pytest",
+      "severity": "P2",
+      "status": "CLOSED",
+      "finding_type": "TEST_COLLECTION_AND_ASSURANCE_GAP",
+      "resolution_commit": "d8ad410e687b380233459d807f8885608d829de0",
+      "previous_pytest_passed": 381,
+      "previous_pytest_warnings": 1,
+      "previous_kernel_collected_tests": 0,
+      "current_pytest_passed": 385,
+      "current_pytest_warnings": 0,
+      "current_kernel_collected_tests": 4,
+      "resolution": "MANUAL_KERNEL_TEST_CONVERTED_TO_REAL_PYTEST_COLLECTABLE_TESTS",
+      "production_effect": "NONE",
+      "live_effect": "NONE"
+    },
+    "CI-EVIDENCE-001": {
+      "id": "CI-EVIDENCE-001",
+      "title": "Hosted CI execution evidence is not established",
+      "severity": "P2",
+      "status": "CONFIRMED",
+      "finding_type": "CI_EXECUTION_EVIDENCE_COMPLETENESS",
+      "artifact": "governance/findings/CI-EVIDENCE-001_HOSTED_CI_EXECUTION_EVIDENCE.md",
+      "repository_workflow": ".github/workflows/atlas_ci_cd.yml",
+      "repository_workflow_state": "PRESENT",
+      "local_workflow_validation": "EVIDENCED",
+      "git_remote": "NOT_CONFIGURED",
+      "hosted_ci_execution": "NOT_EVIDENCED",
+      "hosted_ci_pass": "NOT_ASSERTED",
+      "closure_requires_hosted_run_evidence": true,
+      "production_authority": "NONE",
+      "live_authority": "DENIED"
+    },
+    "SUPPLY-CHAIN-001": {
+      "id": "SUPPLY-CHAIN-001",
+      "title": "CI actions and Python dependency artifacts were not fully immutable",
+      "severity": "P2",
+      "status": "CLOSED",
+      "finding_type": "SUPPLY_CHAIN_IMMUTABILITY_AND_REPRODUCIBILITY",
+      "subfindings": {
+        "A": {
+          "title": "GitHub Actions used mutable major-version tags",
+          "status": "REMEDIATED",
+          "commit": "42081160f1359da89c4e9573cf436b3040299603"
+        },
+        "B": {
+          "title": "Python dependency artifacts lacked hash enforcement",
+          "status": "REMEDIATED",
+          "commit": "0c6f4a915f7cfd2f2e5ad576bb5ae53b576d97b4"
+        }
+      },
+      "runtime_lock": "requirements/locks/windows-py314-runtime.txt",
+      "development_lock": "requirements/locks/windows-py314-dev.txt",
+      "runtime_packages": 41,
+      "runtime_hashes": 41,
+      "development_packages": 46,
+      "development_hashes": 46,
+      "canonical_installation": "PIP_REQUIRE_HASHES",
+      "canonical_test_baseline": {
+        "pytest_passed": 385,
+        "pytest_warnings": 0
+      },
+      "production_effect": "NONE",
+      "live_effect": "NONE"
+    },
+    "F-001": {
+      "classification": "PROVENANCE_BINDING",
+      "finding_state": "CLOSED",
+      "severity_after_re_evaluation": "CLOSED",
+      "blocking_state": "CLOSED",
+      "basis": "Independent provenance re-evaluation resolved the immutable ZIP-to-declared-Git-baseline binding.",
+      "production_authority_effect": "NONE",
+      "live_authority_effect": "NONE",
+      "independent_review_decision": "CLOSED",
+      "severity_after_review": "CLOSED",
+      "independent_review": "COMPLETED"
+    },
+    "F-002": {
+      "classification": "LEGACY_NON_CANONICAL",
+      "proposed_post_remediation_state": "RETIRED_NON_CANONICAL",
+      "basis": "Legacy dashboard is explicitly retired/non-canonical, disabled by default, localhost-only when explicitly enabled, has no static secret, and is excluded from canonical runtime distribution.",
+      "evidence": [
+        "dashboard/app.py",
+        "packaging/atlas_runtime_distribution_manifest.json",
+        "tests/test_runtime_distribution_boundary.py"
+      ],
+      "independent_review": "COMPLETED",
+      "independent_review_decision": "RETIRED_NON_CANONICAL",
+      "severity_after_review": "CLOSED",
+      "blocking_state": "CLOSED"
+    },
+    "F-003": {
+      "classification": "NOT_CONFIRMED",
+      "finding_state": "CLOSED_AS_ORIGINALLY_STATED",
+      "basis": "No contradictory evidence was identified; unusual httpx2/httpcore2 names alone do not confirm the prior finding.",
+      "independent_review_decision": "NOT_CONFIRMED",
+      "severity_after_review": "CLOSED_AS_ORIGINALLY_STATED",
+      "blocking_state": "CLOSED",
+      "independent_review": "COMPLETED"
+    },
+    "F-004": {
+      "classification": "LEGACY_NON_CANONICAL",
+      "proposed_post_remediation_state": "REMEDIATED_PENDING_INDEPENDENT_REVIEW",
+      "basis": "Deprecated execution state now fails closed for corrupt, unreadable, or schema-invalid state and provides durable recovery-required state plus an explicit recovery workflow, without canonical runtime wiring.",
+      "evidence": [
+        "core/execution_state.py",
+        "tests/test_deprecated_execution_state_recovery.py"
+      ],
+      "independent_review": "COMPLETED",
+      "independent_review_decision": "CLOSED",
+      "severity_after_review": "CLOSED",
+      "blocking_state": "CLOSED"
+    },
+    "F-005": {
+      "classification": "LEGACY_NON_CANONICAL",
+      "proposed_post_remediation_state": "RETIRED_NON_CANONICAL",
+      "basis": "Legacy dashboard exposure and default-success risk are isolated from the canonical runtime distribution.",
+      "evidence": [
+        "dashboard/app.py",
+        "packaging/atlas_runtime_distribution_manifest.json",
+        "tests/test_runtime_distribution_boundary.py"
+      ],
+      "independent_review": "COMPLETED",
+      "independent_review_decision": "RETIRED_NON_CANONICAL",
+      "severity_after_review": "CLOSED",
+      "blocking_state": "CLOSED"
+    },
+    "F-006": {
+      "classification": "CONFIRMED",
+      "finding_state": "OPEN",
+      "evidence_state": "HOSTED_CI_NOT_EVIDENCED",
+      "basis": "Owner-side validation does not establish hosted CI execution evidence.",
+      "related_governance_finding": "CI-EVIDENCE-001",
+      "independent_review_decision": "REMAINS_OPEN",
+      "severity_after_review": "OPEN",
+      "blocking_state": "OPEN",
+      "independent_review": "COMPLETED",
+      "production_readiness_effect": "BLOCKING",
+      "owner_gate_effect": "NON_BLOCKING"
+    },
+    "F-007": {
+      "classification": "LEGACY_TEST_DEBT",
+      "proposed_post_remediation_state": "REMEDIATED_PENDING_INDEPENDENT_REVIEW",
+      "basis": "All 51 root scripts are individually classified by a machine-readable inventory and remain outside canonical pytest and distribution scope.",
+      "evidence": [
+        "tests/legacy_test_inventory.json",
+        "tests/test_runtime_distribution_boundary.py"
+      ],
+      "independent_review": "COMPLETED",
+      "independent_review_decision": "RETIRED_NON_CANONICAL",
+      "severity_after_review": "P3_RESIDUAL_LEGACY_TEST_DEBT",
+      "blocking_state": "NON_BLOCKING_FOR_OWNER_GATE"
+    },
+    "F-008": {
+      "classification": "REPOSITORY_PACKAGE_BOUNDARY_DEBT",
+      "proposed_post_remediation_state": "REMEDIATED_PENDING_INDEPENDENT_REVIEW",
+      "basis": "A machine-readable canonical distribution boundary and deterministic packaging tool exclude non-canonical archives, quarantine, backups, generated reports, runtime state, legacy dashboard, root manual tests, and duplicate execution implementations while preserving repository history.",
+      "evidence": [
+        "packaging/atlas_runtime_distribution_manifest.json",
+        "tools/build_runtime_distribution.py",
+        "tests/test_runtime_distribution_boundary.py"
+      ],
+      "independent_review": "COMPLETED",
+      "independent_review_decision": "CLOSED",
+      "severity_after_review": "CLOSED",
+      "blocking_state": "CLOSED"
+    },
+    "GOV-DRIFT-002": {
+      "id": "GOV-DRIFT-002",
+      "title": "REM-001 freeze scope versus the feat/block3-execution-safety stream was undefined",
+      "severity": "P1",
+      "status": "RECONCILED_BY_VERSIONED_SUCCESSOR_RECORD",
+      "finding_type": "GOVERNANCE_SCOPE_DRIFT",
+      "artifact": "governance/ATLAS_EXECUTION_STREAM_SCOPE_RECONCILIATION_v1.0.md",
+      "reconciled_in_registry_version": "4.27",
+      "resolution": "OWNER_RATIFIED_BOUNDED_SUBSTREAM_OPTION_A",
+      "ratified_commit_count": 58,
+      "blocking_effect": "CLOSED",
+      "production_authority": "NONE",
+      "live_authority": "DENIED",
+      "production_effect": "NONE",
+      "live_effect": "NONE"
+    },
+    "GOV-DRIFT-003": {
+      "id": "GOV-DRIFT-003",
+      "title": "Commit 3265b44 on feat/block3-execution-safety landed outside the GOV-DRIFT-002 ratified range and was covered by no governance record",
+      "severity": "P1",
+      "status": "RECONCILED_BY_VERSIONED_SUCCESSOR_RECORD",
+      "finding_type": "GOVERNANCE_SCOPE_DRIFT",
+      "drift_class_predecessor": "GOV-DRIFT-002",
+      "relationship_to_predecessor": "SAME_DRIFT_CLASS_SEPARATE_INSTANCE_NOT_FOLDED_INTO_GOV_DRIFT_002",
+      "predecessor_record_left_unmodified": true,
+      "reconciled_in_registry_version": "4.28",
+      "resolution": "OWNER_RATIFIED_NEW_BOUNDED_SUBSTREAM",
+      "ratified_substream": "BLOCK6C-VENUE-METADATA-ADAPTER",
+      "ratified_commit_count": 1,
+      "ratified_commit": "3265b4485c33a2de82d63ab49cd58c2ea59d72c6",
+      "detail_record": "block6c_venue_metadata_adapter_ratification",
+      "blocking_effect": "CLOSED",
+      "production_authority": "NONE",
+      "live_authority": "DENIED",
+      "production_effect": "NONE",
+      "live_effect": "NONE"
+    },
+    "GOV-DRIFT-004": {
+      "id": "GOV-DRIFT-004",
+      "title": "Twenty commits on research/edge-validation were covered by no governance record while the REM-001 freeze was in force",
+      "severity": "P1",
+      "status": "RECONCILED_BY_VERSIONED_SUCCESSOR_RECORD",
+      "finding_type": "GOVERNANCE_SCOPE_DRIFT",
+      "drift_class_predecessor": "GOV-DRIFT-003",
+      "relationship_to_predecessor": "SAME_DRIFT_CLASS_SEPARATE_INSTANCE_NOT_FOLDED_INTO_GOV_DRIFT_002_OR_003",
+      "predecessor_record_left_unmodified": true,
+      "artifact": "governance/ATLAS_RESEARCH_STREAM_RECONCILIATION_v1.0.md",
+      "reconciled_in_registry_version": "4.29",
+      "resolution": "OWNER_RATIFIED_RESEARCH_EDGE_VALIDATION_STREAM",
+      "ratified_substream": "RESEARCH-EDGE-VALIDATION",
+      "ratified_commit_count": 23,
+      "detail_record": "research_edge_validation_stream_ratification",
+      "blocking_effect": "CLOSED",
+      "production_authority": "NONE",
+      "live_authority": "DENIED",
+      "production_effect": "NONE",
+      "live_effect": "NONE",
+      "index_entry_added_by_registry_version": "4.30",
+      "index_entry_note": "Registry v4.29 recorded GOV-DRIFT-004 in its research_edge_validation_stream_ratification block but did not add it to governance_findings, where GOV-DRIFT-002 and GOV-DRIFT-003 both appear. This entry repairs that index omission forward, in this new document only. Registry v4.29 is left exactly as committed and this entry changes nothing about the finding's status, ratified range, or effect."
+    },
+    "GOV-DRIFT-005": {
+      "id": "GOV-DRIFT-005",
+      "title": "REM-001 is recorded as SPECIFICATION_COMPLETE but all 42 artifacts it names are absent from the repository",
+      "severity": "P1",
+      "status": "CONFIRMED_AND_RECORDED_BY_VERSIONED_SUCCESSOR_RECORD",
+      "finding_type": "GOVERNANCE_SPECIFICATION_ARTIFACT_INTEGRITY",
+      "drift_class_note": "Same GOV-DRIFT-* family as findings 001 through 004 but a different class. GOV-DRIFT-002, 003 and 004 are GOVERNANCE_SCOPE_DRIFT, about commits landing outside a ratified range. This finding is about governance artifacts the registry asserts exist and which do not. No earlier finding is reopened, widened, or folded into this one.",
+      "artifact": "governance/ATLAS_REM001_SPECIFICATION_ARTIFACT_INTEGRITY_v1.0.md",
+      "conflict_record_document_id": "ATLAS-SPEC-INTEGRITY-001",
+      "recorded_in_registry_version": "4.30",
+      "resolution": "RECORDED_NOT_RESOLVED_SPECIFICATION_REMAINS_ABSENT",
+      "blocking_effect": "OPEN",
+      "detail_record": "rem001_specification_artifact_integrity",
+      "production_authority": "NONE",
+      "live_authority": "DENIED",
+      "production_effect": "NONE",
+      "live_effect": "NONE"
+    }
+  },
+  "review_completeness_reconciliation": {
+    "finding": "GOV-REVIEW-001",
+    "source_registry": "ATLAS_MILESTONE_REGISTRY_v4.19.json",
+    "source_registry_commit": "71855a028180260f091430fe6d926dc7db79cea0",
+    "finding_branch": "fix/arch-001-2-3-review-completeness",
+    "search_result": {
+      "PASS_ELIGIBLE_FOR_OWNER_GATE": "NOT_FOUND",
+      "FAIL_CHANGES_REQUIRED": "NOT_FOUND",
+      "INDEPENDENT_RE_REVIEW": "NOT_FOUND",
+      "INDEPENDENT RE-REVIEW": "NOT_FOUND",
+      "REVIEW_OUTPUT": "NOT_FOUND"
+    },
+    "correct_interpretation": "FINAL_DISPOSITION_NOT_EVIDENCED",
+    "historical_review_rewritten": false,
+    "historical_registry_rewritten": false,
+    "production_effect": "NONE",
+    "live_effect": "DENIED"
+  },
+  "repository_hygiene_reconciliation": {
+    "source_registry": "ATLAS_MILESTONE_REGISTRY_v4.20.json",
+    "branch": "docs/governance-state-v4.21",
+    "closed_findings": [
+      "DOC-DRIFT-001",
+      "ENV-ISOLATION-001"
+    ],
+    "readme_alignment_commit": "f1485140709a7dc0027c8be0d00cdeab237a3017",
+    "validation_isolation_commit": "9b5cda35864eeadd85811d952b58eb998a074a1e",
+    "canonical_validation_script": "scripts/validate_atlas.ps1",
+    "isolated_dependency_validation": "PASS",
+    "isolated_test_validation": {
+      "pytest_passed": 381,
+      "pytest_warnings": 1
+    },
+    "gov_review_001_remains_open": true,
+    "production_authority_changed": false,
+    "live_authority_changed": false,
+    "historical_registry_rewritten": false
+  },
+  "test_quality_reconciliation": {
+    "source_registry": "ATLAS_MILESTONE_REGISTRY_v4.21.json",
+    "branch": "docs/governance-state-v4.22",
+    "finding": "TEST-QUALITY-001",
+    "resolution_commit": "d8ad410e687b380233459d807f8885608d829de0",
+    "previous_suite": {
+      "pytest_passed": 381,
+      "pytest_warnings": 1
+    },
+    "current_suite": {
+      "pytest_passed": 385,
+      "pytest_warnings": 0
+    },
+    "new_collectable_kernel_tests": 4,
+    "gov_review_001_remains_open": true,
+    "production_authority_changed": false,
+    "live_authority_changed": false,
+    "historical_registry_rewritten": false
+  },
+  "ci_evidence_reconciliation": {
+    "finding": "CI-EVIDENCE-001",
+    "source_registry": "ATLAS_MILESTONE_REGISTRY_v4.22.json",
+    "branch": "fix/ci-evidence-001",
+    "workflow": ".github/workflows/atlas_ci_cd.yml",
+    "workflow_present": true,
+    "git_remote_configured": false,
+    "hosted_ci_execution_evidence": "NOT_EVIDENCED",
+    "hosted_ci_pass_asserted": false,
+    "local_test_baseline": {
+      "pytest_passed": 385,
+      "pytest_warnings": 0
+    },
+    "gov_review_001_remains_open": true,
+    "production_authority_changed": false,
+    "live_authority_changed": false,
+    "historical_registry_rewritten": false
+  },
+  "supply_chain_reconciliation": {
+    "finding": "SUPPLY-CHAIN-001",
+    "source_registry": "ATLAS_MILESTONE_REGISTRY_v4.23.json",
+    "branch": "docs/governance-state-v4.24",
+    "action_pinning_commit": "42081160f1359da89c4e9573cf436b3040299603",
+    "hash_lock_enforcement_commit": "0c6f4a915f7cfd2f2e5ad576bb5ae53b576d97b4",
+    "github_actions_sha_pinned": true,
+    "python_hash_enforcement": true,
+    "runtime_lock_verified": true,
+    "development_lock_verified": true,
+    "pip_check_passed": true,
+    "pytest_passed": 385,
+    "pytest_warnings": 0,
+    "ci_evidence_001_remains_open": true,
+    "gov_review_001_remains_open": true,
+    "production_authority_changed": false,
+    "live_authority_changed": false,
+    "historical_registry_rewritten": false
+  },
+  "phase1_canonical_boundary_reconciliation": {
+    "predecessor_registry": "governance/current/ATLAS_MILESTONE_REGISTRY_v4.24.json",
+    "remediation_commit": "6f9486f7ab2429f71b9e86548913f1a4fc660a47",
+    "remediation_branch": "fix/phase1-canonical-boundary-remediation",
+    "owner_side_validation": {
+      "tests_passed": 405,
+      "tests_failed": 0,
+      "dependency_isolation": "PASS",
+      "pip_check": "PASS",
+      "test_suite": "PASS"
+    },
+    "finding_states": {
+      "F-001": "CLOSED",
+      "F-002": "RETIRED_NON_CANONICAL",
+      "F-003": "NOT_CONFIRMED / CLOSED_AS_ORIGINALLY_STATED",
+      "F-004": "REMEDIATED_PENDING_INDEPENDENT_REVIEW",
+      "F-005": "RETIRED_NON_CANONICAL",
+      "F-006": "CONFIRMED / OPEN / HOSTED_CI_NOT_EVIDENCED",
+      "F-007": "REMEDIATED_PENDING_INDEPENDENT_REVIEW",
+      "F-008": "REMEDIATED_PENDING_INDEPENDENT_REVIEW"
+    },
+    "governance_closure": "OWNER_GATE_APPROVED_F006_REMAINS_OPEN",
+    "owner_gate_status": "APPROVED",
+    "production_authority": "NONE",
+    "live_authority": "DENIED",
+    "independent_review_report": "ATLAS_ARCH-001.2.3_POST_REMEDIATION_INDEPENDENT_RE_REVIEW_250626b.md",
+    "independent_review_sha256": "AB8D8EDC3AE151AB758FAFF6FB0406B7B85F99D25024A96AA70AABCAEEDC057A",
+    "final_disposition": "PASS_ELIGIBLE_FOR_OWNER_GATE",
+    "owner_gate_eligibility": "ELIGIBLE",
+    "phase1_status": "TECHNICALLY_ACCEPTED_WITH_EXTERNAL_CI_BLOCKER"
+  },
+  "owner_gate_governance_reconciliation": {
+    "predecessor_registry": "governance/current/ATLAS_MILESTONE_REGISTRY_v4.25.json",
+    "current_git_baseline": {
+      "commit": "250626bd6d49833c9f1015cbfb292744cf8a5414",
+      "tree": "d4a0815b4c39b241bc7106dc441aa067f9812f20"
+    },
+    "remediation_commit": "6f9486f7ab2429f71b9e86548913f1a4fc660a47",
+    "independent_review": {
+      "report": "ATLAS_ARCH-001.2.3_POST_REMEDIATION_INDEPENDENT_RE_REVIEW_250626b.md",
+      "sha256": "AB8D8EDC3AE151AB758FAFF6FB0406B7B85F99D25024A96AA70AABCAEEDC057A",
+      "final_disposition": "PASS_ELIGIBLE_FOR_OWNER_GATE",
+      "owner_gate_eligibility": "ELIGIBLE",
+      "evidence_state": "HASH_VERIFIED"
+    },
+    "owner_decision": {
+      "decision": "APPROVED",
+      "owner_gate_state": "OWNER_GATE_APPROVED",
+      "recorded_at_utc": "2026-08-08T23:37:02.542790Z",
+      "decision_timestamp_evidence_state": "RECORDING_TIME_ONLY_EXACT_OWNER_DECISION_TIME_NOT_SEPARATELY_SUPPLIED",
+      "decision_evidence_state": "OWNER_EXPLICITLY_ASSERTED_IN_GOVERNANCE_INSTRUCTION",
+      "basis": [
+        "INDEPENDENTLY_VERIFIED_IMMUTABLE_REVIEW_PACKAGE",
+        "PROVENANCE_PASS",
+        "PASS_ELIGIBLE_FOR_OWNER_GATE",
+        "OWNER_SIDE_405_TEST_CANONICAL_VALIDATION_PASS",
+        "EXPLICIT_OWNER_APPROVAL"
+      ]
+    },
+    "owner_side_validation": {
+      "canonical_python": "3.14",
+      "tests_passed": 405,
+      "tests_failed": 0,
+      "dependency_isolation": "PASS",
+      "pip_check": "PASS",
+      "test_suite": "PASS"
+    },
+    "finding_states": {
+      "F-001": "CLOSED",
+      "F-002": "RETIRED_NON_CANONICAL / BLOCKING_CLOSED",
+      "F-003": "NOT_CONFIRMED / CLOSED_AS_ORIGINALLY_STATED",
+      "F-004": "CLOSED",
+      "F-005": "RETIRED_NON_CANONICAL / BLOCKING_CLOSED",
+      "F-006": "REMAINS_OPEN / P2 / HOSTED_CI_NOT_EVIDENCED",
+      "F-007": "RETIRED_NON_CANONICAL / P3_RESIDUAL_LEGACY_TEST_DEBT / OWNER_GATE_NON_BLOCKING",
+      "F-008": "CLOSED"
+    },
+    "unresolved_p1_findings": 0,
+    "phase1_status": "TECHNICALLY_ACCEPTED_WITH_EXTERNAL_CI_BLOCKER",
+    "phase_complete": false,
+    "production_ready": false,
+    "hosted_ci_status": "NOT_EVIDENCED",
+    "production_authority": "NONE",
+    "live_authority": "DENIED",
+    "deployment_authority": "DENIED",
+    "real_money_trading_authority": "DENIED",
+    "autonomous_deployment_authority": "DENIED",
+    "owner_gate_approval_is_production_or_live_approval": false,
+    "historical_records_immutable": true
+  },
+  "feature_expansion_freeze_scope": "REPOSITORY_WIDE_EXCEPT_RATIFIED_BOUNDED_SUBSTREAMS",
+  "ratified_bounded_substreams": [
+    "BLOCK3-EXECUTION-SAFETY",
+    "BLOCK6C-VENUE-METADATA-ADAPTER",
+    "RESEARCH-EDGE-VALIDATION"
+  ],
+  "block3_execution_safety_stream_reconciliation": {
+    "predecessor_registry": "governance/current/ATLAS_MILESTONE_REGISTRY_v4.26.json",
+    "finding": "GOV-DRIFT-002",
+    "finding_status": "RECONCILED_BY_VERSIONED_SUCCESSOR_RECORD",
+    "conflict_record": "governance/ATLAS_EXECUTION_STREAM_SCOPE_RECONCILIATION_v1.0.md",
+    "conflict_record_commit": "eab9a210b04be19896236c11329e6b6a652b5548",
+    "conflict_summary": "REM-001 recorded a repository-wide feature_expansion_freeze and source_changes_authorized=false while 58 source commits existed on feat/block3-execution-safety that no governance record covered.",
+    "owner_decision": {
+      "decision": "OPTION_A_RATIFY_AS_BOUNDED_REMEDIATION",
+      "decision_evidence_state": "OWNER_EXPLICITLY_ASSERTED_IN_GOVERNANCE_INSTRUCTION",
+      "recorded_in_registry_version": "4.27",
+      "basis": [
+        "GOV_DRIFT_002_EVIDENCE_RECORD",
+        "GIT_VERIFIED_COMMIT_RANGE",
+        "PER_PACKAGE_EVIDENCE_RECORDS_UNDER_DOCS_EVIDENCE",
+        "FULL_SUITE_VALIDATION_AT_RATIFIED_HEAD",
+        "EXPLICIT_OWNER_RATIFICATION"
+      ]
+    },
+    "ratified_stream": {
+      "id": "BLOCK3-EXECUTION-SAFETY",
+      "branch": "feat/block3-execution-safety",
+      "range": "3aca7cf..ddd6c45",
+      "range_base_commit_note": "3aca7cf is the commit that introduced v4.26; it is the boundary, not a ratified commit",
+      "commit_count": 58,
+      "date_range": "2026-08-09..2026-08-27",
+      "governance_commits_in_range": 0,
+      "commits": [
+        {
+          "commit": "12dca92f3d5c8bfdd20de28318e7f6eb86f06343",
+          "short": "12dca92",
+          "date": "2026-08-09",
+          "subject": "feat: establish phase2 data layer foundation"
+        },
+        {
+          "commit": "3b64988c495f97405305f46a61e27f4694177e0d",
+          "short": "3b64988",
+          "date": "2026-08-09",
+          "subject": "feat: harden phase2 persistence recovery and runtime safety"
+        },
+        {
+          "commit": "ab283ea7a0408a0ef8bbaaa92878c3be21f7055a",
+          "short": "ab283ea",
+          "date": "2026-08-10",
+          "subject": "feat: establish phase3 risk and capital safety foundation"
+        },
+        {
+          "commit": "0af7acc374d60679589a3863d288953e5dfe60b3",
+          "short": "0af7acc",
+          "date": "2026-08-10",
+          "subject": "feat: establish phase4 execution position portfolio core"
+        },
+        {
+          "commit": "04d0c2a5dbebd92db2985db65f6df7ab0fbcdda5",
+          "short": "04d0c2a",
+          "date": "2026-08-10",
+          "subject": "chore: add Claude Code project contract and settings"
+        },
+        {
+          "commit": "83c5fb58aeb6e74ac16981c92524995e5b68c9f2",
+          "short": "83c5fb5",
+          "date": "2026-08-10",
+          "subject": "feat: establish phase5 decision intelligence foundation"
+        },
+        {
+          "commit": "7f8a8f74f1273eb72195d42479592eb080d99e1b",
+          "short": "7f8a8f7",
+          "date": "2026-08-10",
+          "subject": "feat: persist phase5 canonical decision audit records"
+        },
+        {
+          "commit": "90e5b95b288970813b540881458e985f12dc087c",
+          "short": "90e5b95",
+          "date": "2026-08-10",
+          "subject": "feat: add phase5 shadow proposal metadata integration"
+        },
+        {
+          "commit": "b62717898bc155a9cc3fe87c1e3ff52313e32970",
+          "short": "b627178",
+          "date": "2026-08-12",
+          "subject": "fix: freeze block1 evidence and confidence correctness"
+        },
+        {
+          "commit": "9457791d0cb9ba8b4c5ae9ddbe6228b03349069f",
+          "short": "9457791",
+          "date": "2026-08-12",
+          "subject": "fix: freeze block1 risk and execution safety"
+        },
+        {
+          "commit": "472b213fd70014a85fdb8d141d59b58b5600a708",
+          "short": "472b213",
+          "date": "2026-08-12",
+          "subject": "docs: record block1 freeze evidence"
+        },
+        {
+          "commit": "a817b7690ae7126d2a62b43e7dc9dc0693b1dbb1",
+          "short": "a817b76",
+          "date": "2026-08-12",
+          "subject": "chore: quarantine Phase-1 legacy backup files and duplicate capital_manager"
+        },
+        {
+          "commit": "b08486dcb3af9634d44d331b36b72cd92d61fbb0",
+          "short": "b08486d",
+          "date": "2026-08-12",
+          "subject": "fix: resolve dual-producer collision on decision metadata phase5_proposal"
+        },
+        {
+          "commit": "909f6149a927ac81a89497b35404fe89b4c46ed5",
+          "short": "909f614",
+          "date": "2026-08-12",
+          "subject": "refactor(2A): resolve risk and fusion authority-name collisions"
+        },
+        {
+          "commit": "7b2e921b51f94e3fbc241087b9dd3a2c7e265816",
+          "short": "7b2e921",
+          "date": "2026-08-12",
+          "subject": "chore(2A): quarantine non-canonical unreachable modules"
+        },
+        {
+          "commit": "6f9a6bdbeb265a8721d87f897dfb6cb7b6c9c089",
+          "short": "6f9a6bd",
+          "date": "2026-08-12",
+          "subject": "feat(2A): enforce architecture boundaries and runtime closure"
+        },
+        {
+          "commit": "457a90e46a33a6b1a4a70af0d3594e9d4e4f624d",
+          "short": "457a90e",
+          "date": "2026-08-12",
+          "subject": "docs(2A): record canonical architecture authorities"
+        },
+        {
+          "commit": "5c30bc3e3d9e7a1dbef17ad0452865dba6080112",
+          "short": "5c30bc3",
+          "date": "2026-08-12",
+          "subject": "fix(2B): make risk admission and capital reservation atomic"
+        },
+        {
+          "commit": "184255fa0b426b1e38dd9cdbf176e17b5a51be96",
+          "short": "184255f",
+          "date": "2026-08-12",
+          "subject": "feat(2B): wire canonical risk services into application"
+        },
+        {
+          "commit": "b86d46aae9c41dcecc6dde696e5b79e2bab74f38",
+          "short": "b86d46a",
+          "date": "2026-08-12",
+          "subject": "feat(2C): add explicit financial state bootstrap contract"
+        },
+        {
+          "commit": "53e127fc53d6b1513f4eb8dff1d8fd1f9f58503b",
+          "short": "53e127f",
+          "date": "2026-08-12",
+          "subject": "feat(2C): establish operational safety contracts"
+        },
+        {
+          "commit": "0942391dc2a2b7c4255751864831cd55bf526e9f",
+          "short": "0942391",
+          "date": "2026-08-13",
+          "subject": "docs: record block2 freeze evidence"
+        },
+        {
+          "commit": "a38854e4312bc823e47a27ec08e33a10ea5513fb",
+          "short": "a38854e",
+          "date": "2026-08-13",
+          "subject": "fix(3): close post-reservation execution failure leaks"
+        },
+        {
+          "commit": "b34f0f44045e98bf51dfdce0cccc1d93ddf011b3",
+          "short": "b34f0f4",
+          "date": "2026-08-13",
+          "subject": "refactor(3): centralize durable execution and paper state paths"
+        },
+        {
+          "commit": "95f25c66a410c86658c40676bddbf9bc6e584e7f",
+          "short": "95f25c6",
+          "date": "2026-08-13",
+          "subject": "feat(3): harden operational metadata sanitization"
+        },
+        {
+          "commit": "3f253377f6ffa9bff9f9ff31f981db2b8d186d72",
+          "short": "3f25337",
+          "date": "2026-08-13",
+          "subject": "fix(3): validate financial bootstrap state and policy consistency"
+        },
+        {
+          "commit": "22f8bba2b47df135ab515ffca11eef9e7e27f896",
+          "short": "22f8bba",
+          "date": "2026-08-13",
+          "subject": "feat(3): add safe operator financial bootstrap workflow"
+        },
+        {
+          "commit": "08f09ddc251de26432a0c05926ccde2ce5de2bd3",
+          "short": "08f09dd",
+          "date": "2026-08-13",
+          "subject": "refactor(3): expose shared sanitized metadata boundary"
+        },
+        {
+          "commit": "842118cdaa523a1458d293c4aad8b1649e9435c0",
+          "short": "842118c",
+          "date": "2026-08-13",
+          "subject": "feat(3): add provider and tool capability governance contracts"
+        },
+        {
+          "commit": "9b2ccb89a5e7e7c5df081a80dd1f76fc59541f13",
+          "short": "9b2ccb8",
+          "date": "2026-08-14",
+          "subject": "fix(3): correct evidence-removal monotonicity in agent fusion"
+        },
+        {
+          "commit": "4d271849b2d9719f9951fe1cefaa45fe84d3891d",
+          "short": "4d27184",
+          "date": "2026-08-14",
+          "subject": "fix(3): fail closed on critical and unsupported risk penalties"
+        },
+        {
+          "commit": "6bb857b0bc14cd2e22de1f16dd9d3f93f7d9d8d5",
+          "short": "6bb857b",
+          "date": "2026-08-14",
+          "subject": "fix(3): preserve opaque machine identity in invocation results"
+        },
+        {
+          "commit": "f3c5239ca7d6e50bda41f923cb867ba85e680f99",
+          "short": "f3c5239",
+          "date": "2026-08-14",
+          "subject": "test(3): prove confidence authority boundaries"
+        },
+        {
+          "commit": "5d2f5f496b3b0cc37caf9a90d5170f1daeb1dd31",
+          "short": "5d2f5f4",
+          "date": "2026-08-14",
+          "subject": "feat(3): add local capability adapter behind the gateway"
+        },
+        {
+          "commit": "0fa4ffe9e1c036214876da4b80a0676718ff13dc",
+          "short": "0fa4ffe",
+          "date": "2026-08-14",
+          "subject": "fix(3): classify terminal execution outcomes by success allow-list"
+        },
+        {
+          "commit": "954fb834c2c4c326b822c49aa8b2edc8984346f9",
+          "short": "954fb83",
+          "date": "2026-08-14",
+          "subject": "fix(3): take M-2 winner selection off display rounding"
+        },
+        {
+          "commit": "bc96d447cd82a47233c4c348ca819cb6d41d4d41",
+          "short": "bc96d44",
+          "date": "2026-08-14",
+          "subject": "docs(3): align M-2 comment with winner-selection authority"
+        },
+        {
+          "commit": "f261a56807f0cfe1e71088c11f2a8cd4b32638c6",
+          "short": "f261a56",
+          "date": "2026-08-14",
+          "subject": "docs(3): record Block-3 freeze evidence"
+        },
+        {
+          "commit": "f3a18a615e8f0ffd81384cbffc56756c4c93e6dd",
+          "short": "f3a18a6",
+          "date": "2026-08-15",
+          "subject": "fix(3): split machine output_digest from descriptive output_reference"
+        },
+        {
+          "commit": "431da9bf27dc334cd90f6f18be6238827578194b",
+          "short": "431da9b",
+          "date": "2026-08-15",
+          "subject": "feat(4): add market-data contract foundation"
+        },
+        {
+          "commit": "a7b95c8a00e76b52bb065ab41d3f781c765e6595",
+          "short": "a7b95c8",
+          "date": "2026-08-15",
+          "subject": "feat(4): add market-data SQLite reference backend"
+        },
+        {
+          "commit": "a1bd58de6de317385720bc752a363fb5cab970b0",
+          "short": "a1bd58d",
+          "date": "2026-08-16",
+          "subject": "feat(4): make live market-data path deterministic and fail-closed"
+        },
+        {
+          "commit": "01e137d706775d7cfc6dd16b8fd38b8db2fd923c",
+          "short": "01e137d",
+          "date": "2026-08-16",
+          "subject": "docs(4): freeze data correctness and storage foundation"
+        },
+        {
+          "commit": "5e84c02d21083e981c8e870578d6241fea64cfce",
+          "short": "5e84c02",
+          "date": "2026-08-16",
+          "subject": "feat(5a): derive canonical RiskState and reduce-only intent from durable state"
+        },
+        {
+          "commit": "923a9a2abfc9b9b3abb47edce359931bfbb978e6",
+          "short": "923a9a2",
+          "date": "2026-08-17",
+          "subject": "feat: close block 5b financial precision and sizing authority"
+        },
+        {
+          "commit": "6ce5153f895ee4ba7e0c082a8705896a3b7e6f73",
+          "short": "6ce5153",
+          "date": "2026-08-19",
+          "subject": "feat: add upstream position sizing authority"
+        },
+        {
+          "commit": "bd950fdca16c999034ff984b7f8e437755f6c1d9",
+          "short": "bd950fd",
+          "date": "2026-08-20",
+          "subject": "feat: add venue instrument precision contract"
+        },
+        {
+          "commit": "fc69e97b7af8877a1ad098360b277f05d85ddfd6",
+          "short": "fc69e97",
+          "date": "2026-08-20",
+          "subject": "feat: close fee settlement accounting contract"
+        },
+        {
+          "commit": "a2a9049d949bb6806a53d4fab10e08e8338fbaee",
+          "short": "a2a9049",
+          "date": "2026-08-21",
+          "subject": "feat: reclaim committed reservation capital"
+        },
+        {
+          "commit": "803a12da249ab0625b0688e7caa9e9f33175128e",
+          "short": "803a12d",
+          "date": "2026-08-21",
+          "subject": "feat: add deterministic position lifetime identity"
+        },
+        {
+          "commit": "a81426066b6ac110946fa01cf56b554201986435",
+          "short": "a814260",
+          "date": "2026-08-22",
+          "subject": "feat: align execution evidence authorities"
+        },
+        {
+          "commit": "f2901741600a872cc5a9451ab15e25548cc7342b",
+          "short": "f290174",
+          "date": "2026-08-22",
+          "subject": "feat: add durable reservation archive"
+        },
+        {
+          "commit": "a0b34941ffccfade5600f53c35d5af27fd3072b6",
+          "short": "a0b3494",
+          "date": "2026-08-23",
+          "subject": "feat: externalize durable financial state history"
+        },
+        {
+          "commit": "2b79c71fd05a508b2bb89cecdc20a793d5c379f1",
+          "short": "2b79c71",
+          "date": "2026-08-25",
+          "subject": "feat: harden execution authority recovery"
+        },
+        {
+          "commit": "7f58271701dcf46b424e77af0498a46b234b1fe7",
+          "short": "7f58271",
+          "date": "2026-08-25",
+          "subject": "feat: harden durable execution storage"
+        },
+        {
+          "commit": "2e3d7d8b4aaececb6f9fc581ca95a4a25f91dbba",
+          "short": "2e3d7d8",
+          "date": "2026-08-25",
+          "subject": "feat: close block 5 execution hardening"
+        },
+        {
+          "commit": "93821c7b3b0442cba2fe13cc901fa35d2a8933fd",
+          "short": "93821c7",
+          "date": "2026-08-27",
+          "subject": "feat: add venue rule freshness safety"
+        },
+        {
+          "commit": "ddd6c45405a6409eb814e4daaa26f275ed03767f",
+          "short": "ddd6c45",
+          "date": "2026-08-27",
+          "subject": "feat: enforce venue upper bound safety"
+        }
+      ]
+    },
+    "validation_evidence": {
+      "validated_commit": "ddd6c45",
+      "validated_commit_full": "ddd6c45405a6409eb814e4daaa26f275ed03767f",
+      "command": "python -m pytest tests/ -q",
+      "tests_passed": 2421,
+      "tests_failed": 0,
+      "working_tree": "CLEAN",
+      "evidence_class": "IMPLEMENTATION_VALIDATION_ONLY",
+      "is_production_readiness_certification": false,
+      "is_independent_review": false
+    },
+    "package_evidence_records": [
+      "docs/evidence/block5_final_closure.md",
+      "docs/evidence/block6a_venue_rule_freshness.md",
+      "docs/evidence/block6b_venue_upper_bounds.md"
+    ],
+    "scope_limits": [
+      "RATIFICATION_APPLIES_ONLY_TO_THE_NAMED_COMMIT_RANGE_AND_BRANCH",
+      "FREEZE_REMAINS_IN_FORCE_ELSEWHERE",
+      "NO_ROADMAP_PHASE_OPENED",
+      "NO_MILESTONE_STATE_ADVANCED_BY_RATIFICATION"
+    ],
+    "historical_state_preserved": true,
+    "historical_state_rewritten": false,
+    "historical_registries_immutable": true,
+    "compatibility_mode": "PRESERVE_HISTORICAL_MILESTONES_AND_ADD_RATIFICATION_OVERLAY",
+    "production_authority": "NONE",
+    "live_authority": "DENIED",
+    "deployment_authority": "DENIED",
+    "real_money_trading_authority": "DENIED",
+    "ratification_is_production_or_live_approval": false
+  },
+  "block6c_venue_metadata_adapter_ratification": {
+    "predecessor_registry": "governance/current/ATLAS_MILESTONE_REGISTRY_v4.27.json",
+    "predecessor_registry_commit": "46df9208f6f2bda9710a179551a1b38921e5eaec",
+    "finding": "GOV-DRIFT-003",
+    "finding_status": "RECONCILED_BY_VERSIONED_SUCCESSOR_RECORD",
+    "drift_class": "GOVERNANCE_SCOPE_DRIFT",
+    "relationship_to_gov_drift_002": "SAME_DRIFT_CLASS_SEPARATE_INSTANCE. GOV-DRIFT-002 and the v4.27 record are left unmodified; this is a new finding with its own identifier.",
+    "conflict_summary": "GOV-DRIFT-002 ratified feat/block3-execution-safety through ddd6c45 in registry v4.27. Commit 3265b44 landed on the same branch after that range closed and is covered by no governance record, while REM-001 feature_expansion_freeze and source_changes_authorized=false remained in force repository-wide.",
+    "owner_decision": {
+      "decision": "RATIFY_SINGLE_COMMIT_AS_NEW_BOUNDED_SUBSTREAM",
+      "decision_evidence_state": "OWNER_EXPLICITLY_ASSERTED_IN_GOVERNANCE_INSTRUCTION",
+      "recorded_in_registry_version": "4.28",
+      "full_branch_audit": "EXPLICITLY_WAIVED_BY_OWNER",
+      "full_branch_audit_note": "The owner directed that no full branch audit be performed for this record. This registry therefore asserts coverage only for the range ddd6c45..3265b44 and makes no claim about any commit outside that range or outside the GOV-DRIFT-002 ratified range.",
+      "basis": [
+        "GIT_VERIFIED_COMMIT_RANGE",
+        "GIT_VERIFIED_PARENT_LINKAGE_TO_V4_27_COMMIT",
+        "PACKAGE_EVIDENCE_RECORD_IN_RATIFIED_COMMIT",
+        "FULL_SUITE_VALIDATION_AT_RATIFIED_HEAD",
+        "TEST_COUNT_DELTA_ATTRIBUTED_TO_RATIFIED_COMMIT",
+        "EXPLICIT_OWNER_RATIFICATION"
+      ]
+    },
+    "ratified_stream": {
+      "id": "BLOCK6C-VENUE-METADATA-ADAPTER",
+      "branch": "feat/block3-execution-safety",
+      "range": "ddd6c45..3265b44",
+      "range_base_commit_note": "ddd6c45 is the last commit ratified by GOV-DRIFT-002 in registry v4.27; it is the boundary, not a re-ratified commit.",
+      "commits_in_range": 3,
+      "ratified_commit_count": 1,
+      "date_range": "2026-08-27..2026-08-27",
+      "governance_commits_in_range": 2,
+      "commits": [
+        {
+          "commit": "3265b4485c33a2de82d63ab49cd58c2ea59d72c6",
+          "short": "3265b44",
+          "date": "2026-08-27",
+          "subject": "feat: add bounded venue metadata adapter",
+          "parent": "46df9208f6f2bda9710a179551a1b38921e5eaec",
+          "disposition": "RATIFIED_BY_THIS_REGISTRY"
+        }
+      ]
+    },
+    "governance_commit_exclusion": {
+      "verification_command": "git log ddd6c45..3265b44 -- governance/",
+      "verification_result": "NOT_EMPTY",
+      "emptiness_asserted": false,
+      "emptiness_assertion_note": "This registry does NOT assert that the range contains no governance commits. Two governance commits are present and are enumerated below. They are excluded from the ratified source commit count because they are the governance instruments themselves, not source changes requiring ratification.",
+      "excluded_commits": [
+        {
+          "commit": "eab9a210b04be19896236c11329e6b6a652b5548",
+          "short": "eab9a21",
+          "date": "2026-08-27",
+          "subject": "docs: record REM-001 execution stream scope conflict",
+          "role": "GOVERNANCE_CONFLICT_RECORD",
+          "artifact": "governance/ATLAS_EXECUTION_STREAM_SCOPE_RECONCILIATION_v1.0.md",
+          "accounted_for_by": "Cited by registry v4.27 as block3_execution_safety_stream_reconciliation.conflict_record_commit",
+          "disposition": "NOT_A_SOURCE_COMMIT_NO_RATIFICATION_REQUIRED"
+        },
+        {
+          "commit": "46df9208f6f2bda9710a179551a1b38921e5eaec",
+          "short": "46df920",
+          "date": "2026-08-27",
+          "subject": "docs: ratify block3 execution safety stream in registry v4.27",
+          "role": "GOVERNANCE_REGISTRY_COMMIT",
+          "artifact": "governance/current/ATLAS_MILESTONE_REGISTRY_v4.27.json",
+          "accounted_for_by": "IS_THE_COMMIT_THAT_INTRODUCED_REGISTRY_V4_27",
+          "disposition": "NOT_A_SOURCE_COMMIT_NO_RATIFICATION_REQUIRED"
+        }
+      ],
+      "exclusion_basis": "A governance record cannot ratify itself. Both excluded commits touch only governance/ and are the instruments through which GOV-DRIFT-002 was reconciled.",
+      "source_commits_touching_governance_in_range": 0
+    },
+    "ratified_commit_detail": {
+      "commit": "3265b4485c33a2de82d63ab49cd58c2ea59d72c6",
+      "files_changed": 3,
+      "insertions": 1408,
+      "deletions": 0,
+      "change_shape": "PURELY_ADDITIVE",
+      "files": [
+        "docs/evidence/block6c_venue_metadata_adapter.md",
+        "tests/test_block6c_venue_metadata_adapter.py",
+        "tools/venue_metadata_adapter.py"
+      ],
+      "touches_governance_directory": false,
+      "touches_canonical_runtime_packages": false,
+      "canonical_runtime_import_references": 0,
+      "canonical_runtime_import_verification": "Repository-wide content search for 'venue_metadata_adapter' matched only tests/test_block6c_venue_metadata_adapter.py and docs/evidence/block6c_venue_metadata_adapter.md; no canonical runtime module imports the adapter.",
+      "runtime_wiring_state": "NOT_WIRED_OFFLINE_OPERATOR_TOOLING"
+    },
+    "validation_evidence": {
+      "validated_commit": "3265b44",
+      "validated_commit_full": "3265b4485c33a2de82d63ab49cd58c2ea59d72c6",
+      "command": "python -m pytest tests/ -q",
+      "basetemp_override": "ASCII_SCRATCH_PATH_REQUIRED_ON_THIS_HOST",
+      "python_version": "3.14.6",
+      "environment_class": "OWNER_WORKSTATION_INTERPRETER",
+      "environment_is_canonical_isolated_validation_environment": "UNKNOWN",
+      "environment_note": "Run with the interpreter available on PATH. Whether this satisfies the ENV-ISOLATION-001 canonical isolated-virtual-environment requirement was not established and is recorded as UNKNOWN rather than inferred.",
+      "tests_passed": 2443,
+      "tests_failed": 0,
+      "warnings": 1,
+      "warning_class": "PYTEST_CACHE_PATH_ENVIRONMENT_WARNING_NOT_TEST_QUALITY",
+      "warning_detail": "PytestCacheWarning: could not create .pytest_cache nodeids path on the non-ASCII workstation path. Filesystem/environment artifact; no test assertion or collection was affected.",
+      "duration_seconds": 66.63,
+      "previous_baseline_commit": "ddd6c45405a6409eb814e4daaa26f275ed03767f",
+      "previous_baseline_tests_passed": 2421,
+      "test_count_delta": 22,
+      "test_count_delta_attribution": "tests/test_block6c_venue_metadata_adapter.py collects exactly 22 tests, verified by pytest --collect-only. The delta is fully accounted for by the ratified commit.",
+      "test_count_delta_unexplained": 0,
+      "working_tree_tracked_files": "CLEAN",
+      "untracked_paths_present": [
+        "reports/observability/"
+      ],
+      "untracked_paths_note": "reports/observability/ is a generated report directory produced by work on another branch. It contains no tracked source, is not part of the ratified commit, and was present before validation.",
+      "evidence_class": "IMPLEMENTATION_VALIDATION_ONLY",
+      "is_production_readiness_certification": false,
+      "is_independent_review": false
+    },
+    "package_evidence_records": [
+      "docs/evidence/block6c_venue_metadata_adapter.md"
+    ],
+    "scope_limits": [
+      "RATIFICATION_APPLIES_ONLY_TO_COMMIT_3265B44_ON_THE_NAMED_BRANCH",
+      "FREEZE_REMAINS_IN_FORCE_ELSEWHERE",
+      "NO_ROADMAP_PHASE_OPENED",
+      "NO_MILESTONE_STATE_ADVANCED_BY_RATIFICATION",
+      "NO_CONTINUATION_AUTHORITY_GRANTED_BEYOND_THIS_COMMIT",
+      "NO_CLAIM_MADE_ABOUT_COMMITS_OUTSIDE_THE_NAMED_RANGE"
+    ],
+    "historical_state_preserved": true,
+    "historical_state_rewritten": false,
+    "historical_registries_immutable": true,
+    "predecessor_registry_modified": false,
+    "gov_drift_002_record_modified": false,
+    "rem_001_freeze_flags_modified": false,
+    "compatibility_mode": "PRESERVE_HISTORICAL_MILESTONES_AND_ADD_RATIFICATION_OVERLAY",
+    "production_authority": "NONE",
+    "live_authority": "DENIED",
+    "deployment_authority": "DENIED",
+    "real_money_trading_authority": "DENIED",
+    "ratification_is_production_or_live_approval": false
+  },
+  "research_edge_validation_stream_ratification": {
+    "predecessor_registry": "governance/current/ATLAS_MILESTONE_REGISTRY_v4.28.json",
+    "predecessor_registry_commit": "59225d1ad57258caa3a549a0a85a72c201e8c7ed",
+    "finding": "GOV-DRIFT-004",
+    "finding_status": "RECONCILED_BY_VERSIONED_SUCCESSOR_RECORD",
+    "drift_class": "GOVERNANCE_SCOPE_DRIFT",
+    "conflict_record": "governance/ATLAS_RESEARCH_STREAM_RECONCILIATION_v1.0.md",
+    "conflict_record_document_id": "ATLAS-SCOPE-RECONCILIATION-002",
+    "relationship_to_prior_drift_findings": "SAME_DRIFT_CLASS_SEPARATE_INSTANCE. GOV-DRIFT-002 (registry v4.27) and GOV-DRIFT-003 (registry v4.28) are left unmodified, as are their records. This is a third instance on a different branch with its own identifier. ATLAS-SCOPE-RECONCILIATION-001 is likewise left unmodified.",
+    "conflict_summary": "REM-001 recorded a repository-wide feature_expansion_freeze and source_changes_authorized=false, with exceptions only for the ratified BLOCK3-EXECUTION-SAFETY and BLOCK6C-VENUE-METADATA-ADAPTER substreams, while 20 source, tooling and documentation commits existed on research/edge-validation that no governance record covered. That branch was simultaneously 40 ratified commits behind on the execution, risk and capital core, so new research and observability work was being written on a 2026-08-13 snapshot that predated blocks 3, 4, 5, 5a, 5b, 5c and 6c.",
+    "owner_decision": {
+      "decision": "RATIFY_UNCOVERED_RANGE_AND_RECORD_RECONCILIATION_AS_ONE_ACTION",
+      "decision_evidence_state": "OWNER_EXPLICITLY_ASSERTED_IN_GOVERNANCE_INSTRUCTION",
+      "recorded_in_registry_version": "4.29",
+      "basis": [
+        "GIT_VERIFIED_COMMIT_RANGE_RE_DERIVED_IN_SESSION",
+        "GIT_VERIFIED_ANCESTRY_OF_MERGE_BASE_INSIDE_RATIFIED_RANGE",
+        "GIT_VERIFIED_ZERO_GOVERNANCE_COMMITS_IN_RATIFIED_RANGE",
+        "FULL_SUITE_VALIDATION_AT_RATIFIED_HEAD",
+        "TEST_COUNT_DELTA_FULLY_ATTRIBUTED",
+        "EXPLICIT_OWNER_RATIFICATION"
+      ],
+      "stale_figure_note": "The owner's instruction explicitly directed that commit counts recorded in prior session checkpoints be treated as stale and re-derived from git. Every count in this section was re-derived in session on 2026-08-31; none was carried forward from a checkpoint.",
+      "out_of_scope_by_owner_instruction": [
+        "C1_NO_DOCUMENT_ENUMERATES_PHASE_0_10_ROADMAP",
+        "C2_ACTIVE_MILESTONE_FIN_004_1A_C1_HAS_NO_STATUS_OBJECT"
+      ],
+      "out_of_scope_note": "C1 and C2 were placed out of scope by the owner. They remain open and are neither addressed nor closed by this registry."
+    },
+    "incoming_side_coverage_verification": {
+      "branch": "feat/block3-execution-safety",
+      "head": "59225d1ad57258caa3a549a0a85a72c201e8c7ed",
+      "commits_since_merge_base": 40,
+      "uncovered_source_commits": 0,
+      "verification_note": "The predecessor registries' coverage claims were checked against git rather than accepted at face value.",
+      "ranges": [
+        {
+          "range": "3aca7cf..ddd6c45",
+          "commits": 58,
+          "instrument": "GOV-DRIFT-002, registry v4.27 (46df920)",
+          "verified_by": "git rev-list --count -> 58, matches the registry claim"
+        },
+        {
+          "range": "ddd6c45..3265b44",
+          "commits": 3,
+          "instrument": "GOV-DRIFT-003, registry v4.28 (59225d1)",
+          "verified_by": "git rev-list --count -> 3; 1 source commit ratified, 2 governance instruments excluded by v4.28"
+        },
+        {
+          "range": "59225d1",
+          "commits": 1,
+          "instrument": "the registry v4.28 commit itself",
+          "verified_by": "git show --name-only 59225d1 touches only governance/current/ATLAS_MILESTONE_REGISTRY_v4.28.json; a governance record cannot ratify itself"
+        }
+      ],
+      "merge_base": "0942391dc2a2b7c4255751864831cd55bf526e9f",
+      "merge_base_ancestry_check": "git merge-base --is-ancestor 3aca7cf 0942391",
+      "merge_base_ancestry_result": true,
+      "merge_base_ancestry_consequence": "The merge base lies inside the GOV-DRIFT-002 ratified range, so all 40 incoming commits since the merge base fall within a ratified range."
+    },
+    "ratified_stream": {
+      "id": "RESEARCH-EDGE-VALIDATION",
+      "branch": "research/edge-validation",
+      "merge_base": "0942391dc2a2b7c4255751864831cd55bf526e9f",
+      "merge_base_subject": "docs: record block2 freeze evidence",
+      "head_before_reconciliation": "127a05d2dc0e9a08f995e311339adfd58c61eae8",
+      "ratified_head": "41cab140ac184a11a156d17d1e6a96a99c1c748e",
+      "total_ratified_commits": 23,
+      "range_expression_note": "Expressed as two parts rather than one A..B range because the reconciliation introduced a merge commit, which makes a single two-dot range ambiguous about what it covers. The canonical enumeration is 'git rev-list 0942391..41cab14 --not feat/block3-execution-safety', which returns exactly these 23 commits and excludes every commit already ratified by v4.27 and v4.28.",
+      "pre_reconciliation_range": {
+        "range": "0942391..127a05d",
+        "commits": [
+          {
+            "commit": "a3317d76e33a788adb4f82f7c8a56e48b22b3bb1",
+            "short": "a3317d7",
+            "date": "2026-08-28",
+            "subject": "feat(research): add hypothesis lifecycle, splitting, and multiple-testing infrastructure"
+          },
+          {
+            "commit": "c86d5ad211b4e80556cc334956f4e7bb5f20255d",
+            "short": "c86d5ad",
+            "date": "2026-08-29",
+            "subject": "feat(data): add historical market data acquisition with recorded provenance"
+          },
+          {
+            "commit": "4d6f8b50d405a88921a5238a65a16901a8eda080",
+            "short": "4d6f8b5",
+            "date": "2026-08-29",
+            "subject": "docs: add CLAUDE.md project instructions for Claude Code"
+          },
+          {
+            "commit": "45496d86437995a79bb3550886e1d5c45c5a04f9",
+            "short": "45496d8",
+            "date": "2026-08-29",
+            "subject": "docs: merge Context Discipline section from prior CLAUDE.md"
+          },
+          {
+            "commit": "5d033a7165acb80a18545053020e4ac4f53842d6",
+            "short": "5d033a7",
+            "date": "2026-08-29",
+            "subject": "feat(observability): add read-only test-results and GOV-DRIFT panels"
+          },
+          {
+            "commit": "1a49178e362b5ff1efb5f8e3968fd0aac59a96b6",
+            "short": "1a49178",
+            "date": "2026-08-29",
+            "subject": "feat(observability): render test-results and GOV-DRIFT panels on dashboard"
+          },
+          {
+            "commit": "128916be09e200d74d34bc8476286fd197420281",
+            "short": "128916b",
+            "date": "2026-08-29",
+            "subject": "feat(checkpoint): add atlas-checkpoint skill and wire canonical checkpoints/ storage"
+          },
+          {
+            "commit": "93c5083ef6fe6bbd6d7aae14fa610a23d0b4467e",
+            "short": "93c5083",
+            "date": "2026-08-29",
+            "subject": "feat(skills): add atlas-task-classifier skill with model/effort rubric"
+          },
+          {
+            "commit": "bd10cd334a6b9e455cba04596f5cfe1bd8b59166",
+            "short": "bd10cd3",
+            "date": "2026-08-29",
+            "subject": "docs: checkpoint after atlas-task-classifier skill"
+          },
+          {
+            "commit": "99ba1837ac723a9ee7ec0ed73d4a0862d237a8fc",
+            "short": "99ba183",
+            "date": "2026-08-29",
+            "subject": "feat(skills): add atlas-migration-safety skill (idempotency + NB-4/NB-5 checklists)"
+          },
+          {
+            "commit": "5569ccb113f37679a24d81a10dc9f9116ec8851e",
+            "short": "5569ccb",
+            "date": "2026-08-29",
+            "subject": "feat(skills): add atlas-audit-governance skill (findings + successor-record reconciliation)"
+          },
+          {
+            "commit": "47b1166245ed5f7a22333f21194ed733ef196e46",
+            "short": "47b1166",
+            "date": "2026-08-29",
+            "subject": "feat(skills): add atlas-prompt-builder skill (structures prompts, composes with other 3 skills)"
+          },
+          {
+            "commit": "ca12c58b946d4895512c56a11aa64f2466601612",
+            "short": "ca12c58",
+            "date": "2026-08-30",
+            "subject": "feat(agents): add atlas-db-reader subagent (read-only, tool-restriction enforced, 35/35 adversarial tests)"
+          },
+          {
+            "commit": "3d6cd04a6c181e69931d72253d48548985668a15",
+            "short": "3d6cd04",
+            "date": "2026-08-30",
+            "subject": "fix(gitignore): exclude market data archive db and WAL sidecars from git"
+          },
+          {
+            "commit": "e3708f2808530292e70b012531a05a42dab1e27d",
+            "short": "e3708f2",
+            "date": "2026-08-30",
+            "subject": "fix(atlas-db-reader): allowlist known-safe PRAGMA introspection, keep mutating pragmas denied"
+          },
+          {
+            "commit": "1edb01c6d1b45b75ae916b29d736029ff7515ab4",
+            "short": "1edb01c",
+            "date": "2026-08-30",
+            "subject": "feat(agents): add atlas-obsidian-writer subagent (inline mcpServers, pinned filesystem-server v2026.7.10, unverified on installed CLI build until restart)"
+          },
+          {
+            "commit": "b954a05d240497e8e25bbc36484a9f784ffdf525",
+            "short": "b954a05",
+            "date": "2026-08-30",
+            "subject": "docs: checkpoint - atlas-obsidian-writer MCP arg-passthrough bug diagnosed, not a repo-side fix"
+          },
+          {
+            "commit": "657196564b16e45bfe5957cb6739fcbf1caa6174",
+            "short": "6571965",
+            "date": "2026-08-31",
+            "subject": "docs: checkpoint - MCP filesystem leak absent in resumed session, session freshness unresolved"
+          },
+          {
+            "commit": "d3dbeeab4fc1b7fade89ac3b6d3e51bef91d9500",
+            "short": "d3dbeea",
+            "date": "2026-08-31",
+            "subject": "docs: checkpoint - obsidian-writer restart verification, subagent bug confirmed reproducible"
+          },
+          {
+            "commit": "127a05d2dc0e9a08f995e311339adfd58c61eae8",
+            "short": "127a05d",
+            "date": "2026-08-31",
+            "subject": "docs: checkpoint - MCP filesystem leak closed, was stale banner in resumed conversation"
+          }
+        ],
+        "date_range": "2026-08-28..2026-08-31",
+        "governance_commits_in_range": 0,
+        "governance_commit_verification": "Every one of the 20 commits was checked individually with git show --name-only <c> -- governance/; all 20 returned empty. Unlike the GOV-DRIFT-003 range there are no governance instruments to exclude."
+      },
+      "reconciliation_commits": {
+        "count": 3,
+        "note": "Created under the owner's governance instruction of 2026-08-31 and ratified by this registry alongside the pre-existing range.",
+        "commits": [
+          {
+            "commit": "9d3b101f77f528ff7f4427806a849733e0c87b00",
+            "short": "9d3b101",
+            "date": "2026-08-31",
+            "subject": "refactor: resolve ADR and module collisions with the ratified block3 stream",
+            "role": "PRE_MERGE_COLLISION_RESOLUTION",
+            "files_changed": 6,
+            "insertions": 28,
+            "deletions": 7,
+            "touches_governance_directory": false,
+            "touches_ratified_files": false
+          },
+          {
+            "commit": "86955ee806ff80ee7356d20e4243f08a9948308c",
+            "short": "86955ee",
+            "date": "2026-08-31",
+            "subject": "merge: reconcile ratified block3/4/5/6c execution safety into research/edge-validation",
+            "role": "RECONCILIATION_MERGE",
+            "parents": [
+              "9d3b101f77f528ff7f4427806a849733e0c87b00",
+              "59225d1ad57258caa3a549a0a85a72c201e8c7ed"
+            ],
+            "conflicts_resolved_in_merge": 0,
+            "conflict_free_verification": "git merge-tree --write-tree against the collision-resolved tree returned exit 0 before the merge was performed",
+            "touches_governance_directory": false
+          },
+          {
+            "commit": "41cab140ac184a11a156d17d1e6a96a99c1c748e",
+            "short": "41cab14",
+            "date": "2026-08-31",
+            "subject": "fix(architecture): register observability/* as L5 in the architecture map",
+            "role": "CONCEALED_DEFECT_REMEDIATION",
+            "files_changed": 2,
+            "insertions": 11,
+            "deletions": 0,
+            "change_shape": "PURELY_ADDITIVE",
+            "touches_governance_directory": false
+          }
+        ]
+      },
+      "commit_classification": {
+        "runtime_source_in_runtime_closure": [
+          "5d033a7",
+          "1a49178",
+          "c86d5ad"
+        ],
+        "source_deliberately_unwired": [
+          "a3317d7",
+          "c86d5ad"
+        ],
+        "claude_code_tooling": [
+          "93c5083",
+          "99ba183",
+          "5569ccb",
+          "47b1166",
+          "ca12c58",
+          "e3708f2",
+          "1edb01c"
+        ],
+        "project_documentation": [
+          "4d6f8b5",
+          "45496d8",
+          "128916b"
+        ],
+        "checkpoint_records": [
+          "bd10cd3",
+          "b954a05",
+          "6571965",
+          "d3dbeea",
+          "127a05d"
+        ],
+        "repository_hygiene": [
+          "3d6cd04"
+        ],
+        "reconciliation": [
+          "9d3b101",
+          "86955ee",
+          "41cab14"
+        ],
+        "classification_note": "c86d5ad appears in two classes because it added both a runtime-closure file (atlas_finance/market_data/binance_public_provider.py) and an unwired store."
+      },
+      "runtime_closure_impact": {
+        "research_side_files_inside_runtime_closure": 5,
+        "files": [
+          "atlas_finance/market_data/binance_public_provider.py",
+          "observability/__init__.py",
+          "observability/panel_router.py",
+          "observability/panel_sources.py",
+          "web_app.py"
+        ],
+        "research_package_in_runtime_closure": false,
+        "market_data_archive_store_in_runtime_closure": false,
+        "unwired_note": "Nothing reachable from main.py or web_app.py imports the research/ package or either market-data SQLite module; they are deliberately unwired."
+      }
+    },
+    "name_collision_resolution": {
+      "resolved_in_commit": "9d3b101f77f528ff7f4427806a849733e0c87b00",
+      "resolved_before_merge": true,
+      "rule_applied": "In each collision the earlier claim, which is also the governance-ratified one, keeps the name; the later, ungoverned claim yields. No ratified file was touched.",
+      "collisions": [
+        {
+          "name": "docs/adr/0005-*.md",
+          "ratified_side": {
+            "file": "docs/adr/0005-operator-bootstrap-runbook.md",
+            "commit": "22f8bba",
+            "date": "2026-08-13",
+            "outcome": "KEPT_NUMBER_0005"
+          },
+          "ungoverned_side": {
+            "file": "docs/adr/0005-historical-market-data-archive.md",
+            "commit": "c86d5ad",
+            "date": "2026-08-29",
+            "outcome": "RENUMBERED_TO_0006"
+          },
+          "would_git_have_blocked_the_merge": false,
+          "hazard": "Different filenames, so git would have merged both in silently and left two ADR-0005 documents in the repository."
+        },
+        {
+          "name": "data_layer/market_data_sqlite.py",
+          "ratified_side": {
+            "content": "Package-1 dataset manifest/identity SQLite reference backend",
+            "commit": "a7b95c8",
+            "date": "2026-08-15",
+            "outcome": "KEPT_MODULE_PATH"
+          },
+          "ungoverned_side": {
+            "content": "OHLCV bar archive with per-batch provenance",
+            "commit": "c86d5ad",
+            "date": "2026-08-29",
+            "outcome": "RENAMED_TO_data_layer/market_data_archive_sqlite.py"
+          },
+          "would_git_have_blocked_the_merge": true,
+          "hazard": "The only merge conflict (git merge-tree reported CONFLICT (add/add)). The two modules are not variants of one another: they share a filename and the class name MarketDataSQLiteStorage but have incompatible constructors (database_path positional vs. keyword-only state_directory)."
+        }
+      ],
+      "collateral_renames": [
+        "tests/test_market_data_sqlite.py -> tests/test_market_data_archive_sqlite.py"
+      ],
+      "import_sites_updated": 4,
+      "history_preservation": "Renames performed with git mv and detected by git as renames (R098 / R080 / R099).",
+      "residual_duplicate_class_name": {
+        "class": "MarketDataSQLiteStorage",
+        "modules": [
+          "data_layer/market_data_sqlite.py",
+          "data_layer/market_data_archive_sqlite.py"
+        ],
+        "correctness_impact": "NONE",
+        "reason": "Neither module is re-exported from data_layer/__init__.py and all imports are module-qualified, so Python resolves them independently.",
+        "disposition": "DEFERRED_IMPROVEMENT_NOT_IMPLEMENTED",
+        "deferred_note": "Renaming the archive class was outside the scope the owner authorized and was not performed. Both module docstrings and ADR-0006 record the distinction instead."
+      }
+    },
+    "concealed_defect": {
+      "id": "ARCH-INVENTORY-001",
+      "severity": "HIGH",
+      "status": "REMEDIATED",
+      "introduced_by_commit": "5d033a7",
+      "introduced_date": "2026-08-29",
+      "remediated_by_commit": "41cab140ac184a11a156d17d1e6a96a99c1c748e",
+      "statement": "Commit 5d033a7 added the observability/ package and imported it from web_app.py, a declared runtime entry point, without adding a layer_rules entry to packaging/atlas_architecture_map.json or regenerating packaging/atlas_runtime_closure.json.",
+      "failing_tests": [
+        "tests/architecture/test_layer_assignment_is_total.py",
+        "tests/architecture/test_forbidden_layer_imports.py",
+        "tests/architecture/test_runtime_closure_matches_inventory.py"
+      ],
+      "failure_duration": "2026-08-29 to 2026-08-31, continuous",
+      "pre_existing_not_introduced_by_merge": true,
+      "why_unobserved": "Nothing on research/edge-validation was gated on a governance record, an evidence document, or a green suite, because no governance record covered the branch. This is a demonstrated consequence of GOV-DRIFT-004, not an unrelated coincidence.",
+      "remediation": {
+        "layer_assigned": "L5",
+        "layer_name": "PRESENTATION",
+        "basis": [
+          "Only consumer is web_app.py, itself L5; L5 -> L5 is not a forbidden edge.",
+          "observability/** imports stdlib and fastapi only and reaches no domain, infrastructure, application, or research module, so the assignment introduces no cross-layer edge.",
+          "L2 is excluded on the layer's own definition: the package owns no store, journal, event bus, or external service integration, and panel_sources.py reads already-produced artifacts off disk.",
+          "An L2 assignment would make the shipped web_app.py -> observability import a hard forbidden L5 -> L2 edge."
+        ],
+        "artifacts_regenerated_with_documented_generator": true,
+        "generator_commands": [
+          "python tools/build_architecture_inventory.py closure --write",
+          "python tools/build_architecture_inventory.py map --write"
+        ],
+        "hand_edited_artifacts": false,
+        "runtime_closure_modules_before": 102,
+        "runtime_closure_modules_after": 105,
+        "existing_module_layer_assignments_changed": 0,
+        "tests_modified_or_weakened": 0,
+        "verification_command": "python tools/build_architecture_inventory.py check",
+        "verification_result": "ALL_THREE_CHECKS_OK",
+        "adr_authored": false,
+        "adr_required": "UNKNOWN",
+        "adr_note": "The assignment registers an existing package against existing layer definitions and creates no new architectural rule, so no ADR was authored. Whether the owner nevertheless wants one is UNKNOWN and is not inferred."
+      }
+    },
+    "validation_evidence": {
+      "validated_commit": "41cab14",
+      "validated_commit_full": "41cab140ac184a11a156d17d1e6a96a99c1c748e",
+      "command": "python -m pytest tests/ -q",
+      "basetemp_override": "ASCII_SCRATCH_PATH_REQUIRED_ON_THIS_HOST",
+      "python_version": "3.14.6",
+      "pytest_version": "9.1.1",
+      "environment_class": "OWNER_WORKSTATION_INTERPRETER",
+      "environment_is_canonical_isolated_validation_environment": "UNKNOWN",
+      "environment_note": "Run with the interpreter available on PATH. Whether this satisfies the ENV-ISOLATION-001 canonical isolated-virtual-environment requirement was not established and is recorded as UNKNOWN rather than inferred, exactly as registry v4.28 recorded the same question for its own baseline.",
+      "tests_passed": 2641,
+      "tests_failed": 0,
+      "duration_seconds": 72.46,
+      "pre_reconciliation_baseline": {
+        "commit": "127a05d2dc0e9a08f995e311339adfd58c61eae8",
+        "tests_passed": 1398,
+        "tests_failed": 3,
+        "failed_tests": [
+          "tests/architecture/test_forbidden_layer_imports.py::test_forbidden_layer_imports",
+          "tests/architecture/test_layer_assignment_is_total.py::test_layer_assignment_is_total",
+          "tests/architecture/test_runtime_closure_matches_inventory.py::test_runtime_closure_matches_inventory"
+        ],
+        "failures_disposition": "REMEDIATED_BY_41CAB14_SEE_CONCEALED_DEFECT"
+      },
+      "delta_attribution": {
+        "ratified_side_baseline": 2443,
+        "ratified_side_baseline_source": "registry v4.28 validation_evidence, measured at 3265b44",
+        "ratified_side_baseline_still_valid_at_head": true,
+        "ratified_side_baseline_validity_basis": "git show --name-only 59225d1 touches only governance/current/ATLAS_MILESTONE_REGISTRY_v4.28.json, so no test changed between 3265b44 and the merged-in head 59225d1.",
+        "research_side_tests_added": 198,
+        "research_side_attribution_command": "python -m pytest <8 files> --collect-only -q",
+        "research_side_test_files": [
+          "tests/test_binance_public_provider_time_window.py",
+          "tests/test_historical_archive.py",
+          "tests/test_market_data_archive_sqlite.py",
+          "tests/test_observability_panel.py",
+          "tests/test_research_hypothesis_registry.py",
+          "tests/test_research_lifecycle.py",
+          "tests/test_research_multiple_testing.py",
+          "tests/test_research_splitting.py"
+        ],
+        "expected_total": 2641,
+        "measured_total": 2641,
+        "test_count_delta_unexplained": 0
+      },
+      "working_tree_tracked_files": "CLEAN",
+      "untracked_paths_present": [
+        ".agents/",
+        ".claude/skills/claude-automation-recommender/",
+        "skills-lock.json"
+      ],
+      "untracked_paths_note": "Present before the reconciliation began and untouched by it. None is part of any ratified commit, and no file on the incoming side collides with these paths (verified with git diff --name-only over the incoming range).",
+      "evidence_class": "IMPLEMENTATION_VALIDATION_ONLY",
+      "is_production_readiness_certification": false,
+      "is_independent_review": false
+    },
+    "recovery": {
+      "pre_reconciliation_state_preserved_at": "127a05d2dc0e9a08f995e311339adfd58c61eae8",
+      "backup_branch": "backup/pre-block3-merge-research-edge-validation",
+      "backup_tag": "pre-block3-merge/research-edge-validation",
+      "note": "Both refs were created before any change was made, so the reconciliation is reversible without relying on the reflog."
+    },
+    "scope_limits": [
+      "RATIFICATION_APPLIES_ONLY_TO_THE_23_ENUMERATED_COMMITS_ON_THE_NAMED_BRANCH",
+      "FREEZE_REMAINS_IN_FORCE_ELSEWHERE",
+      "NO_ROADMAP_PHASE_OPENED",
+      "NO_MILESTONE_STATE_ADVANCED_BY_RATIFICATION",
+      "NO_CONTINUATION_AUTHORITY_GRANTED_BEYOND_THESE_COMMITS",
+      "NO_CLAIM_MADE_ABOUT_COMMITS_OUTSIDE_THE_NAMED_RANGE",
+      "C1_AND_C2_REMAIN_OPEN_AND_ARE_NOT_ADDRESSED"
+    ],
+    "historical_state_preserved": true,
+    "historical_state_rewritten": false,
+    "historical_registries_immutable": true,
+    "predecessor_registry_modified": false,
+    "gov_drift_002_record_modified": false,
+    "gov_drift_003_record_modified": false,
+    "scope_reconciliation_001_record_modified": false,
+    "rem_001_freeze_flags_modified": false,
+    "compatibility_mode": "PRESERVE_HISTORICAL_MILESTONES_AND_ADD_RATIFICATION_OVERLAY",
+    "production_authority": "NONE",
+    "live_authority": "DENIED",
+    "deployment_authority": "DENIED",
+    "real_money_trading_authority": "DENIED",
+    "ratification_is_production_or_live_approval": false,
+    "conflict_record_commit": "2e23df4d0bb4c027d8d836f7efce2debee8f67c4",
+    "conflict_record_commit_note": "The conflict record was committed immediately before this registry, mirroring the v4.27 pattern in which ATLAS_EXECUTION_STREAM_SCOPE_RECONCILIATION_v1.0.md landed in eab9a21 before registry v4.27 landed in 46df920. Commit 2e23df4 touches only governance/ATLAS_RESEARCH_STREAM_RECONCILIATION_v1.0.md; like eab9a21 it is a governance instrument, not a source commit, and requires no ratification of its own.",
+    "conflict_record_commit_short": "2e23df4"
+  },
+  "rem001_specification_artifact_integrity": {
+    "predecessor_registry": "governance/current/ATLAS_MILESTONE_REGISTRY_v4.29.json",
+    "predecessor_registry_commit": "92225ba",
+    "finding": "GOV-DRIFT-005",
+    "finding_status": "CONFIRMED_AND_RECORDED_BY_VERSIONED_SUCCESSOR_RECORD",
+    "drift_class": "GOVERNANCE_SPECIFICATION_ARTIFACT_INTEGRITY",
+    "conflict_record": "governance/ATLAS_REM001_SPECIFICATION_ARTIFACT_INTEGRITY_v1.0.md",
+    "conflict_record_document_id": "ATLAS-SPEC-INTEGRITY-001",
+    "relationship_to_prior_drift_findings": "SAME_FAMILY_DIFFERENT_CLASS. GOV-DRIFT-002 (v4.27), GOV-DRIFT-003 (v4.28) and GOV-DRIFT-004 (v4.29) are GOVERNANCE_SCOPE_DRIFT findings about uncovered commit ranges; their records and registries are left unmodified. This finding concerns the integrity of governance artifacts the registry names, and is a separate instance with its own identifier.",
+    "conflict_summary": "REM-001 records specification_state SPECIFICATION_COMPLETE_PARTS_1_TO_13, part_4_status through part_13_status as SPECIFICATION_COMPLETE, and status SPECIFICATION_COMPLETE_GATE_1_OPEN, and names 42 artifacts across gate_1_expected_deliverables, the part_3 through part_13 registration outputs, final_registration_outputs, part_7_future_evidence_artifacts, gate_1_mapping_entry_contract and gate_1_owner_authorization_record. All 42 are absent from the Git repository, the surrounding delivery package and the Atlas Memory vault. The specification the status field asserts is complete cannot be read, cited, validated, or executed against.",
+    "verification": {
+      "performed_on": "2026-09-01",
+      "performed_at_commit": "92225ba",
+      "evidence_class": "GIT_AND_FILESYSTEM_VERIFIED_IN_SESSION",
+      "checks": [
+        {
+          "check": "every .md/.json/.ps1/.py/.csv path named in milestones.REM-001, matched by basename against git ls-files",
+          "result": "42 of 42 absent"
+        },
+        {
+          "check": "find for *GATE1*, *GATE_1*, REM-001*, REM_GATE* across the whole delivery package and the Atlas Memory vault",
+          "result": "zero hits"
+        },
+        {
+          "check": "git log --all --pretty=format: --name-only --diff-filter=A -- governance/**",
+          "result": "only the 17 files presently under governance/ were ever added; no REM-001 Part, validator, or registry v4.2-v4.8 has ever existed in this repository's history"
+        },
+        {
+          "check": "definition text for the 79 registered_findings REM-P0-001 .. REM-P1-049",
+          "result": "none; the identifiers occur only inside registry JSON files, which are the index and not the definition"
+        },
+        {
+          "check": "REM-001 block compared across v4.18 .. v4.29",
+          "result": "byte-identical except the four freeze-scope fields added by v4.27 and revised by v4.28"
+        },
+        {
+          "check": "delivery-package v4.18 compared to governance/history v4.18",
+          "result": "identical whole-file; there is no richer copy of REM-001 outside Git"
+        }
+      ],
+      "no_artifact_invented": true,
+      "no_missing_document_reconstructed_from_its_filename": true
+    },
+    "absent_artifact_census": {
+      "total": 42,
+      "gate_1_expected_deliverables": 9,
+      "specification_parts_validators_and_registries_v4_2_to_v4_8": 20,
+      "part_7_future_evidence_artifacts": 7,
+      "gate_1_mapping_entry_contract": 1,
+      "gate_1_owner_authorization_record": 1,
+      "part_7_note": "The seven part_7_future_evidence_artifacts are labelled 'future' by the registry itself and their absence is expected. They are counted for census completeness, not asserted as missing deliverables."
+    },
+    "surviving_rem_001_content": {
+      "note": "The registry fields are the only surviving REM-001 content.",
+      "gates": 10,
+      "registered_finding_identifiers_without_definitions": 79,
+      "canonical_domain_identifiers": 29,
+      "gate_1_deliverable_filenames_without_content_specification_or_directory": 9,
+      "tooling_sub_milestone_identifiers_without_definitions": 14
+    },
+    "nearest_surviving_specification": {
+      "artifact": "SOURCE_REPOSITORY/GOVERNANCE_AND_ARCHITECTURE/ARCH-001.2.1_MODULE_INVENTORY_SCHEMA.json",
+      "companion": "SOURCE_REPOSITORY/GOVERNANCE_AND_ARCHITECTURE/ARCH-001.2.1_MODULE_INVENTORY_SCHEMA.md",
+      "relevance": "Defines an 18-field per-module inventory record whose domain field is specified as 'One canonical REM domain ID', dovetailing with the 29 canonical_domain_ids in REM-001. It is the closest surviving contract for the Gate 1 canonical component matrix.",
+      "git_tracked": false,
+      "custody_risk": "It sits in the delivery package only, under the same custody that already lost the 42 artifacts.",
+      "should_it_be_git_tracked": "UNKNOWN",
+      "unknown_note": "Not decided by this registry and not inferred."
+    },
+    "owner_decision": {
+      "decision": "RECORD_FINDING_AND_GRANT_ONE_NARROW_READ_ONLY_EMISSION_AUTHORIZATION",
+      "decision_evidence_state": "OWNER_EXPLICITLY_ASSERTED_IN_GOVERNANCE_INSTRUCTION",
+      "recorded_in_registry_version": "4.30",
+      "basis": [
+        "EXHAUSTIVE_ARTIFACT_EXISTENCE_VERIFICATION_RE_DERIVED_IN_SESSION",
+        "GIT_HISTORY_VERIFIED_NO_ARTIFACT_EVER_EXISTED_IN_REPOSITORY",
+        "REM_001_BLOCK_INVARIANCE_VERIFIED_ACROSS_ELEVEN_REGISTRY_VERSIONS",
+        "EXPLICIT_OWNER_INSTRUCTION"
+      ],
+      "out_of_scope_by_owner_instruction": [
+        "ARCH_P0_001_BASELINE_IDENTITY_CONFLICT",
+        "GATE_1_SELF_CONTRADICTING_AUTHORIZATION_STATE"
+      ],
+      "out_of_scope_note": "Both were surfaced in the same investigation and both were placed out of scope by the owner. They remain open with owner decisions pending and are neither addressed nor closed by this registry."
+    },
+    "narrow_authorization": {
+      "authorization_id": "REM-001-GATE1-D3-EMISSION",
+      "READ_THIS_FIRST": "This authorization covers exactly one action. It is not a general unblock of REM-001, of Gate 1, or of analysis tooling. Any reader citing it as authority for anything beyond the single action in authorized_action is misreading it.",
+      "authorized_action": "Read-only emission of one artifact, REM-001_IMPORT_GRAPH.json (Gate 1 deliverable 3 of 9), from the existing already-tested generator tools/build_architecture_inventory.py, together with the smallest additive code change required to make that generator emit the graph it already computes.",
+      "basis_for_narrowness": "The generator's AST import-resolution logic already traverses this exact graph twice and discards it both times: compute_runtime_closure walks resolved import edges and returns only the visited module list, and find_forbidden_edges materialises importer/imported pairs and retains only the violations. The authorized change adds an emit path over that existing traversal and adds, alters, or relaxes no analysis rule.",
+      "conditions": [
+        "NO_NEW_ANALYSIS_SEMANTICS_EMISSION_ONLY",
+        "READ_ONLY_WITH_RESPECT_TO_ANALYZED_SOURCE",
+        "NO_CLASSIFICATION_JUDGMENT_ENCODED_IN_THE_ARTIFACT",
+        "ARTIFACT_SELF_DESCRIBING_BY_GIT_COMMIT_AND_TREE",
+        "REGRESSION_GATE_BFS_FROM_ENTRY_POINTS_MUST_REPRODUCE_CHECKED_IN_RUNTIME_CLOSURE",
+        "EXISTING_TESTS_REMAIN_GREEN_AND_UNMODIFIED"
+      ],
+      "condition_detail": {
+        "no_classification_judgment": "The emitted graph carries no source_scope, domain, owner, lifecycle, criticality or responsibility field. Those require the human review gate ARCH-001.2.1 reserves, and asserting them here would convert UNKNOWN into inferred truth.",
+        "regression_gate": "Breadth-first traversal from the declared entry points over the emitted edge set must reproduce exactly the module set checked in at packaging/atlas_runtime_closure.json. A divergence invalidates the emission."
+      },
+      "explicit_non_grants": {
+        "note": "This authorization does not set, imply, or create a basis for setting any of the following true, in any general sense or for any other purpose.",
+        "flags_not_set_true": [
+          "tooling_execution_authorized",
+          "tooling_implementation_authorized",
+          "tool_implementation_authorized",
+          "canonical_mapping_execution_authorized",
+          "future_analysis_tooling_authorized",
+          "implementation_authorized",
+          "source_changes_authorized"
+        ],
+        "actions_not_authorized": [
+          "ANY_OF_THE_OTHER_EIGHT_GATE_1_DELIVERABLES",
+          "ADVANCING_TOOLING_GATE_BEYOND_T1_NOT_STARTED",
+          "RAISING_TOOLING_TRUST_LEVEL_ABOVE_L0_PROTOTYPE_NOT_IMPLEMENTED",
+          "CLOSING_OR_PARTIALLY_CERTIFYING_GATE_1",
+          "RESOLVING_ARCH_P0_001_OR_SELECTING_A_CANONICAL_BASELINE",
+          "RESOLVING_THE_GATE_1_AUTHORIZATION_CONTRADICTION",
+          "RECONSTRUCTING_OR_SUBSTITUTING_FOR_ANY_OF_THE_42_ABSENT_ARTIFACTS",
+          "RELIEF_FROM_THE_REM_001_FEATURE_EXPANSION_FREEZE",
+          "ANY_PRODUCTION_DEPLOYMENT_OR_LIVE_AUTHORITY"
+        ]
+      },
+      "gate_1_closure_authority_unchanged": "OWNER_ACCEPTANCE_REQUIRED",
+      "why_this_deliverable_specifically": [
+        "It is the only one of the nine Gate 1 deliverables with no dependency on the other eight.",
+        "Its entire input is already computed by tracked, tested tooling, so it requires no new analysis and no new trust in an unvalidated tool.",
+        "It is a pure function of the current Git tree and is stamped with its own commit, so it does not depend on resolving ARCH-P0-001.",
+        "It requires no human classification judgment, so it cannot encode an inferred truth.",
+        "It is mechanically falsifiable against an artifact that already exists."
+      ],
+      "deliverable_state_at_this_registry": "AUTHORIZED_NOT_YET_PRODUCED",
+      "deliverable_state_note": "This registry grants the authorization prospectively and is committed before the emission occurs, so it records no measured evidence for the artifact. The produced artifact, its generation commit, its counts and its regression-gate result require a further versioned successor registry. Until that registry exists, no evidence claim about the emitted artifact is carried by this one.",
+      "gate_1_progress_effect": "NONE. Producing one deliverable does not advance gate_1_state, which remains OPEN_NOT_CERTIFIED, and does not constitute partial gate closure."
+    },
+    "findings_explicitly_left_open": {
+      "ARCH-P0-001": {
+        "title": "Baseline identity conflict",
+        "status": "OPEN_OWNER_DECISION_PENDING",
+        "source_record": "SOURCE_REPOSITORY/GOVERNANCE_AND_ARCHITECTURE/ARCH-001.1_CLOSE_DECISION.md",
+        "source_record_git_tracked": false,
+        "statement": "ARCH-001.1_CLOSE_DECISION.md records ARCH-P0-001 BASELINE_IDENTITY_CONFLICT as an open condition: the desktop repository differed from the prior canonical extracted package across 581 paths and hashes. ARCH-001.2.2_OWNER_CANONICAL_BASELINE_DECISION.md approves the Project_Atlas_AI root and its 691-file Python baseline as the canonical repository root.",
+        "verified_2026_09_01": "That approved path does not exist on disk. The current repository has 860 Git-tracked .py files, of which 735 are outside tests/ and 105 are in the runtime closure.",
+        "authoritative_baseline": "UNKNOWN",
+        "effect_on_gate_1": "Gate 1 computes a matrix of a baseline. Which baseline is authoritative is UNKNOWN. The narrow authorization above is deliberately confined to a deliverable that does not depend on the answer.",
+        "resolved_by_this_registry": false
+      },
+      "GATE-1-AUTHORIZATION-CONTRADICTION": {
+        "title": "Gate 1 is open and named as next work while every execution path for it is unauthorized",
+        "status": "OPEN_OWNER_DECISION_PENDING",
+        "contradicting_fields": {
+          "current_gate": "GATE_1_CANONICAL_COMPONENT_MAPPING",
+          "gate_1_state": "OPEN_NOT_CERTIFIED",
+          "next_authorized_work_candidate": "GATE_1_SOURCE_BOUND_CANONICAL_ARCHITECTURE_MAPPING",
+          "canonical_mapping_execution_authorized": false,
+          "future_analysis_tooling_authorized": false,
+          "tooling_implementation_authorized": false,
+          "tooling_execution_authorized": false,
+          "tooling_gate": "T1_NOT_STARTED",
+          "tooling_trust_level": "L0_PROTOTYPE_NOT_IMPLEMENTED"
+        },
+        "statement": "A gate that is open, is named as the next work candidate, and whose every execution path is unauthorized cannot be advanced without an owner decision.",
+        "resolved_by_this_registry": false,
+        "relationship_to_narrow_authorization": "The narrow authorization grants one explicit exception to this contradiction for a single artifact. It changes none of the flags listed above and does not resolve the general contradiction."
+      }
+    },
+    "scope_limits": [
+      "FINDING_IS_RECORDED_NOT_RESOLVED_THE_42_ARTIFACTS_REMAIN_ABSENT",
+      "AUTHORIZATION_COVERS_EXACTLY_ONE_ARTIFACT_AND_ONE_ADDITIVE_EMIT_CHANGE",
+      "NO_GENERAL_TOOLING_OR_MAPPING_AUTHORIZATION_IS_GRANTED",
+      "NO_GATE_1_PROGRESS_CERTIFICATION_OR_CLOSURE_IS_IMPLIED",
+      "FREEZE_REMAINS_IN_FORCE_REPOSITORY_WIDE",
+      "NO_ROADMAP_PHASE_OPENED",
+      "NO_MILESTONE_STATE_ADVANCED",
+      "ARCH_P0_001_AND_THE_GATE_1_AUTHORIZATION_CONTRADICTION_REMAIN_OPEN"
+    ],
+    "historical_state_preserved": true,
+    "historical_state_rewritten": false,
+    "historical_registries_immutable": true,
+    "predecessor_registry_modified": false,
+    "gov_drift_002_record_modified": false,
+    "gov_drift_003_record_modified": false,
+    "gov_drift_004_record_modified": false,
+    "scope_reconciliation_001_record_modified": false,
+    "scope_reconciliation_002_record_modified": false,
+    "rem_001_milestone_object_modified": false,
+    "rem_001_freeze_flags_modified": false,
+    "compatibility_mode": "PRESERVE_HISTORICAL_MILESTONES_AND_ADD_FINDING_OVERLAY",
+    "production_authority": "NONE",
+    "live_authority": "DENIED",
+    "deployment_authority": "DENIED",
+    "real_money_trading_authority": "DENIED",
+    "conflict_record_commit": "6059c8feaa2a41de8f56600440c7f3622e4f518f",
+    "conflict_record_commit_note": "The conflict record was committed immediately before this registry, mirroring the v4.27 pattern in which ATLAS_EXECUTION_STREAM_SCOPE_RECONCILIATION_v1.0.md landed in eab9a21 before registry v4.27 landed in 46df920, and the v4.29 pattern in which ATLAS_RESEARCH_STREAM_RECONCILIATION_v1.0.md landed in 2e23df4 before registry v4.29 landed in 92225ba. Commit 6059c8f touches only governance/ATLAS_REM001_SPECIFICATION_ARTIFACT_INTEGRITY_v1.0.md; like eab9a21 and 2e23df4 it is a governance instrument, not a source commit, and requires no ratification of its own.",
+    "conflict_record_commit_short": "6059c8f"
+  }
+}
