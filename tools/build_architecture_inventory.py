@@ -22,6 +22,7 @@ from typing import Any, Iterable
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 ARCHITECTURE_MAP_PATH = REPOSITORY_ROOT / "packaging" / "atlas_architecture_map.json"
 RUNTIME_CLOSURE_PATH = REPOSITORY_ROOT / "packaging" / "atlas_runtime_closure.json"
+IMPORT_GRAPH_PATH = REPOSITORY_ROOT / "packaging" / "REM-001_IMPORT_GRAPH.json"
 ENTRY_POINTS = ("main.py", "web_app.py")
 
 
@@ -234,6 +235,123 @@ def compute_runtime_closure(
 
 
 # ---------------------------------------------------------------------------
+# Import graph emission (REM-001 Gate 1 deliverable 3 of 9)
+#
+# Authorized by GOV-DRIFT-005 / registry v4.30, authorization
+# REM-001-GATE1-D3-EMISSION: read-only emission of the graph this module
+# already traverses. The functions below add no analysis rule of their own.
+# They reuse _tracked_python_files, _build_module_index, _resolve_imports and
+# _ancestor_package_files unchanged, and compose them into an edge list.
+#
+# compute_runtime_closure is deliberately left untouched so that its BFS
+# remains an independent reference: cmd_graph's regression gate checks the
+# emitted edge set against it rather than against itself.
+# ---------------------------------------------------------------------------
+
+
+def _first_party_targets(dotted: str, module_index: dict[str, str]) -> list[str]:
+    """Tracked files a dotted import name resolves to.
+
+    Same resolution the runtime-closure BFS performs: a direct module match and
+    a package ``__init__`` match. Names that resolve to nothing are third-party
+    or stdlib and carry no first-party edge.
+    """
+
+    candidates: list[str] = []
+    direct_file = module_index.get(dotted)
+    if direct_file is not None:
+        candidates.append(direct_file)
+    init_file = module_index.get(dotted + ".__init__")
+    if init_file is not None:
+        candidates.append(init_file)
+    return candidates
+
+
+def compute_import_graph(
+    repository_root: Path = REPOSITORY_ROOT,
+) -> dict[str, Any]:
+    """First-party import edges over every tracked Python file.
+
+    Returns sorted, de-duplicated edges plus any files that could not be
+    parsed. Parse failures are retained rather than silently dropped, so the
+    graph never presents itself as more complete than it is.
+
+    Two edge kinds are emitted, both of which are real runtime dependencies:
+
+    ``import``
+        the importer references the target module directly.
+    ``package_init``
+        the importer references a submodule, which makes Python execute the
+        ancestor package's ``__init__.py``. The runtime-closure BFS follows
+        these too, so omitting them would make the graph unable to reproduce
+        the closure.
+    """
+
+    tracked_files = _tracked_python_files(repository_root)
+    module_index = _build_module_index(tracked_files)
+
+    edges: set[tuple[str, str, str]] = set()
+    parse_failures: list[dict[str, str]] = []
+
+    for relative_path in tracked_files:
+        try:
+            source = (repository_root / relative_path).read_text(encoding="utf-8-sig")
+            tree = ast.parse(source, filename=relative_path)
+        except (SyntaxError, ValueError, UnicodeDecodeError) as exc:
+            parse_failures.append(
+                {
+                    "file_path": relative_path,
+                    "error_type": type(exc).__name__,
+                    "detail": str(exc),
+                }
+            )
+            continue
+
+        for dotted in _resolve_imports(relative_path, tree):
+            for candidate in _first_party_targets(dotted, module_index):
+                candidate_module = _module_name_for_path(candidate)
+                for ancestor in _ancestor_package_files(candidate_module, module_index):
+                    if ancestor != relative_path:
+                        edges.add((relative_path, ancestor, "package_init"))
+                if candidate != relative_path:
+                    edges.add((relative_path, candidate, "import"))
+
+    return {
+        "modules": tracked_files,
+        "edges": sorted(edges),
+        "parse_failures": sorted(parse_failures, key=lambda item: item["file_path"]),
+    }
+
+
+def reachable_over_edges(
+    edges: Iterable[tuple[str, str, str]],
+    entry_points: Iterable[str] = ENTRY_POINTS,
+) -> list[str]:
+    """Modules reachable from the entry points by following emitted edges."""
+
+    adjacency: dict[str, list[str]] = {}
+    for importer, imported, _kind in edges:
+        adjacency.setdefault(importer, []).append(imported)
+
+    visited: set[str] = set()
+    queue: list[str] = []
+    for entry in entry_points:
+        entry = _normalize_relative_path(entry)
+        if entry not in visited:
+            visited.add(entry)
+            queue.append(entry)
+
+    while queue:
+        current = queue.pop(0)
+        for target in adjacency.get(current, ()):
+            if target not in visited:
+                visited.add(target)
+                queue.append(target)
+
+    return sorted(visited)
+
+
+# ---------------------------------------------------------------------------
 # Architecture map I/O and validation
 # ---------------------------------------------------------------------------
 
@@ -413,6 +531,163 @@ def cmd_map(args: argparse.Namespace) -> int:
     return 0
 
 
+def _git_identity(repository_root: Path) -> dict[str, Any]:
+    """Commit and tree the graph is being generated from.
+
+    The artifact is generated from the working tree before its own commit
+    exists, so the stamped commit is the parent of the commit that will carry
+    it. ``tracked_working_tree_clean`` records whether the tree matched that
+    commit at generation time; when it is false the stamped commit does not
+    fully describe what was analysed.
+    """
+
+    def run(*args: str) -> str:
+        return subprocess.run(
+            ["git", "-c", f"safe.directory={repository_root.as_posix()}", *args],
+            cwd=repository_root,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+    dirty = run("status", "--porcelain", "--untracked-files=no")
+    return {
+        "generated_from_commit": run("rev-parse", "HEAD"),
+        "generated_from_tree": run("rev-parse", "HEAD^{tree}"),
+        "tracked_working_tree_clean": dirty == "",
+        "modified_tracked_paths_at_generation": sorted(
+            line[3:] for line in dirty.splitlines() if line
+        ),
+    }
+
+
+def cmd_graph(args: argparse.Namespace) -> int:
+    graph = compute_import_graph(REPOSITORY_ROOT)
+    edges = [tuple(edge) for edge in graph["edges"]]
+
+    # Regression gate (registry v4.30, REM-001-GATE1-D3-EMISSION condition 5):
+    # traversing the emitted edges from the entry points must reproduce the
+    # checked-in runtime closure exactly. compute_runtime_closure is not used
+    # to build the edges, so this compares two independent computations.
+    reachable = reachable_over_edges(edges, ENTRY_POINTS)
+    checked_in = list(load_runtime_closure()["modules"])
+
+    if reachable != checked_in:
+        missing = sorted(set(checked_in) - set(reachable))
+        extra = sorted(set(reachable) - set(checked_in))
+        print("FAIL: import graph does not reproduce the checked-in runtime closure")
+        print(f"  reachable over emitted edges: {len(reachable)}")
+        print(f"  checked-in closure:           {len(checked_in)}")
+        for m in missing:
+            print(f"    - unreachable but in closure: {m}")
+        for m in extra:
+            print(f"    + reachable but not in closure: {m}")
+        return 1
+
+    print(
+        "OK: BFS over emitted edges reproduces "
+        f"packaging/atlas_runtime_closure.json exactly ({len(reachable)} modules)"
+    )
+
+    if not args.write:
+        if not IMPORT_GRAPH_PATH.exists():
+            print(f"note: {IMPORT_GRAPH_PATH.name} not written (pass --write to emit)")
+        return 0
+
+    reachable_set = set(reachable)
+    data = {
+        "schema_version": "1.0",
+        "artifact": "REM-001_IMPORT_GRAPH",
+        "gate": "REM-001 GATE_1 CANONICAL_COMPONENT_MAPPING",
+        "deliverable": "3 of 9",
+        "authorization": {
+            "authorization_id": "REM-001-GATE1-D3-EMISSION",
+            "finding": "GOV-DRIFT-005",
+            "registry": "governance/current/ATLAS_MILESTONE_REGISTRY_v4.30.json",
+            "conflict_record": (
+                "governance/ATLAS_REM001_SPECIFICATION_ARTIFACT_INTEGRITY_v1.0.md"
+            ),
+            "scope": (
+                "Read-only emission of this one artifact. This file is not a "
+                "certification, does not advance gate_1_state, and carries no "
+                "authority of any kind."
+            ),
+        },
+        "generator": {
+            "tool": "tools/build_architecture_inventory.py",
+            "command": "python tools/build_architecture_inventory.py graph --write",
+            "analysis": (
+                "Static AST import resolution over git-tracked Python files, "
+                "excluding imports guarded by if TYPE_CHECKING:. Third-party and "
+                "stdlib targets resolve to nothing and carry no edge."
+            ),
+        },
+        "source_identity": _git_identity(REPOSITORY_ROOT),
+        "scope": {
+            "universe": "ALL_GIT_TRACKED_PYTHON_FILES",
+            "universe_note": (
+                "The tool's existing tracked-file definition, used unchanged. No "
+                "source-scope classification (ACTIVE_CANDIDATE / TEST / TOOL / "
+                "ARCHIVE / BACKUP / QUARANTINE / REPORT_COPY) is applied or "
+                "implied: that classification requires the human review gate "
+                "ARCH-001.2.1 reserves and belongs to Gate 1 deliverable 1."
+            ),
+            "modules_total": len(graph["modules"]),
+            "modules_runtime_reachable": len(reachable),
+            "modules_outside_runtime_closure": len(graph["modules"]) - len(reachable),
+            "edges_total": len(edges),
+            "edges_import": sum(1 for _f, _t, k in edges if k == "import"),
+            "edges_package_init": sum(1 for _f, _t, k in edges if k == "package_init"),
+            "parse_failures": len(graph["parse_failures"]),
+        },
+        "entry_points": list(ENTRY_POINTS),
+        "runtime_closure_reference": {
+            "artifact": "packaging/atlas_runtime_closure.json",
+            "modules": len(checked_in),
+            "regression_gate": (
+                "BFS from entry_points over edges reproduces the referenced "
+                "artifact exactly"
+            ),
+            "regression_gate_result": "PASS",
+        },
+        "classification_fields_deliberately_absent": [
+            "source_scope",
+            "domain",
+            "owner",
+            "current_responsibility",
+            "intended_responsibility",
+            "state_ownership",
+            "lifecycle",
+            "criticality",
+        ],
+        "classification_note": (
+            "Asserting any of the above from static import evidence alone would "
+            "convert UNKNOWN into inferred truth, which ARCH-001.2.1 forbids: "
+            "scanner evidence may propose but never approve those values."
+        ),
+        "parse_failures": graph["parse_failures"],
+        "parse_failure_note": (
+            "Retained, not dropped. None is in the runtime closure, so none "
+            "affects the regression gate. Their edges are absent from this graph."
+        ),
+        "nodes": [
+            {"module": module, "runtime_reachable": module in reachable_set}
+            for module in graph["modules"]
+        ],
+        "edges": [
+            {"from": importer, "to": imported, "kind": kind}
+            for importer, imported, kind in edges
+        ],
+    }
+
+    _write_json(IMPORT_GRAPH_PATH, data)
+    print(
+        f"wrote {len(data['nodes'])} nodes and {len(edges)} edges to "
+        f"{IMPORT_GRAPH_PATH}"
+    )
+    return 0
+
+
 def cmd_check(args: argparse.Namespace) -> int:
     exit_code = 0
 
@@ -468,6 +743,12 @@ def main() -> int:
     map_parser = subparsers.add_parser("map", help="compute/validate the architecture map module_layers")
     map_parser.add_argument("--write", action="store_true")
     map_parser.set_defaults(func=cmd_map)
+
+    graph_parser = subparsers.add_parser(
+        "graph", help="validate/emit the REM-001 import graph (Gate 1 deliverable 3)"
+    )
+    graph_parser.add_argument("--write", action="store_true")
+    graph_parser.set_defaults(func=cmd_graph)
 
     check_parser = subparsers.add_parser("check", help="run all inventory checks (read-only)")
     check_parser.set_defaults(func=cmd_check)
