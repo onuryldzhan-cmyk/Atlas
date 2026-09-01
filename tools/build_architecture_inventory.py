@@ -638,6 +638,13 @@ def cmd_graph(args: argparse.Namespace) -> int:
             "edges_total": len(edges),
             "edges_import": sum(1 for _f, _t, k in edges if k == "import"),
             "edges_package_init": sum(1 for _f, _t, k in edges if k == "package_init"),
+            "edges_distinct_module_pairs": len({(f, t) for f, t, _k in edges}),
+            "edges_count_note": (
+                "edges_total counts (from, to, kind) triples. A pair can carry "
+                "both kinds when a file both imports a package directly and "
+                "references one of its submodules, so edges_distinct_module_pairs "
+                "is the figure to use when counting dependencies between modules."
+            ),
             "parse_failures": len(graph["parse_failures"]),
         },
         "entry_points": list(ENTRY_POINTS),
