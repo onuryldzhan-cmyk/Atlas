@@ -12,7 +12,7 @@ Responsibilities
 - Start the Atlas lifecycle
 - Display startup diagnostics
 - Keep the main process alive
-- Handle Ctrl+C safely
+- Handle Ctrl+C / Ctrl+Break safely
 - Handle fatal startup/runtime errors
 - Guarantee graceful application shutdown
 
@@ -280,6 +280,13 @@ class AtlasProcess:
       accepting work that reaches into the runtime before the runtime is
       torn down. It can never prevent ``stop()``: a failure there is
       recorded as a non-zero exit code and swallowed.
+    - ``is_subordinate_alive`` is polled by ``run_forever()`` on the same
+      one-second tick that already watches ``application.running``. It
+      answers one question - is the subordinate component still alive -
+      and returning ``False`` is an unexpected stop, handled by the exit
+      code 1 path that condition already uses. Returning ``True``, raising,
+      or being absent all mean "nothing known to be wrong"; see
+      ``_subordinate_alive``.
     """
 
     VERSION = "1.0"
@@ -289,11 +296,17 @@ class AtlasProcess:
         *,
         on_started: Callable[[AtlasApplication], None] | None = None,
         on_stopping: Callable[[], None] | None = None,
+        is_subordinate_alive: Callable[[], bool] | None = None,
     ) -> None:
         self.application: AtlasApplication | None = None
 
         self.on_started = on_started
         self.on_stopping = on_stopping
+        self.is_subordinate_alive = is_subordinate_alive
+
+        # Latches once so a permanently failing liveness probe cannot fill
+        # the runtime log with one traceback per second.
+        self._liveness_probe_failed = False
 
         self.shutdown_event = threading.Event()
 
@@ -322,6 +335,24 @@ class AtlasProcess:
         if hasattr(signal, "SIGTERM"):
             signal.signal(
                 signal.SIGTERM,
+                self._handle_signal,
+            )
+
+        # Windows only. Ctrl+Break - and the CTRL_BREAK_EVENT a parent sends
+        # to a child started with CREATE_NEW_PROCESS_GROUP - arrives as
+        # SIGBREAK, not SIGINT: on Windows a child cannot be sent SIGINT from
+        # outside at all. Without this registration the default SIGBREAK
+        # disposition terminates the process, so AtlasApplication.stop() -
+        # and the financial-state flush it guarantees - never runs.
+        #
+        # Guarded exactly like SIGTERM above, because signal.SIGBREAK does not
+        # exist on POSIX. It is bound to the same handler deliberately: the
+        # shutdown path must never branch by signal type, so an
+        # operator-requested stop stays a clean exit-0 shutdown whichever
+        # signal delivered it.
+        if hasattr(signal, "SIGBREAK"):
+            signal.signal(
+                signal.SIGBREAK,
                 self._handle_signal,
             )
 
@@ -440,6 +471,52 @@ class AtlasProcess:
                 )
 
                 break
+
+            if not self._subordinate_alive():
+                self.exit_code = 1
+                self.shutdown_reason = (
+                    "Subordinate component stopped unexpectedly"
+                )
+
+                logger.error(
+                    self.shutdown_reason
+                )
+
+                break
+
+    def _subordinate_alive(self) -> bool:
+        """
+        Ask the composition hook whether its component is still alive.
+
+        Only an explicit ``False`` is evidence of death. No hook, a hook
+        that answers anything else, and a hook that raises all read as
+        alive - the same "unknown never flips the verdict on its own" rule
+        AtlasApplication.health() already applies to thread liveness.
+
+        A raising probe deliberately does not stop Atlas. This value decides
+        whether the process exits 1, and an exit 1 is what a supervisor
+        restarts on, so a buggy probe that threw would turn into a restart
+        loop around a perfectly healthy runtime. Missing one dead web thread
+        is the smaller failure, and the exception is logged either way.
+        """
+
+        probe = self.is_subordinate_alive
+
+        if probe is None:
+            return True
+
+        try:
+            return probe() is not False
+        except Exception:
+            if not self._liveness_probe_failed:
+                self._liveness_probe_failed = True
+
+                logger.exception(
+                    "Subordinate liveness probe failed; "
+                    "treating the component as alive"
+                )
+
+            return True
 
     # --------------------------------------------------------
     # ERROR DETAILS

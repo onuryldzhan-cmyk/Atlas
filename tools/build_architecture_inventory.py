@@ -30,7 +30,19 @@ IMPORT_GRAPH_PATH = REPOSITORY_ROOT / "packaging" / "REM-001_IMPORT_GRAPH.json"
 # other two remain entry points in their own right - main.py still runs the
 # runtime alone, and web_app.py is still served directly by run_dashboard.ps1
 # - so all three are roots of the runtime closure.
-ENTRY_POINTS = ("main.py", "web_app.py", "atlas_service.py")
+#
+# atlas_supervisor.py is a fourth root: an operator-launched parent process
+# that supervises atlas_service.py. It imports nothing from Atlas - its whole
+# contract with the runtime is a child exit code and a signal - so it adds
+# exactly itself to the closure and introduces no cross-layer edge. It is
+# still declared here rather than left out, because an undeclared live entry
+# point is drift: the map would silently stop describing what actually runs.
+ENTRY_POINTS = (
+    "main.py",
+    "web_app.py",
+    "atlas_service.py",
+    "atlas_supervisor.py",
+)
 
 
 class ArchitectureInventoryError(RuntimeError):

@@ -360,6 +360,11 @@
       "reason": "merged single-process entry point: composes main.py's L3 process controller with web_app.py's L5 application factory, injecting the started runtime into the presentation surface. L3 rather than L5 because it owns process lifecycle rather than presentation, and because the dependency direction is the permitted one -- an entry point may know its presentation adapter (L3 -> L5), while the reverse (L5 -> L3) stays forbidden, which is what keeps web_app.py itself free of runtime construction"
     },
     {
+      "pattern": "atlas_supervisor.py",
+      "layer": "L3",
+      "reason": "operator-launched process supervisor for atlas_service.py: it owns process lifecycle (launch, restart policy, graceful stop), which is the same L3 responsibility main.py and atlas_service.py hold. It imports nothing first-party at all, so it creates no edge in either direction and cannot reach domain, infrastructure, application, or research code; the L3 assignment records what it is responsible for, not what it depends on"
+    },
+    {
       "pattern": "web_app.py",
       "layer": "L5",
       "reason": "explicit: L5 presentation example"
@@ -455,6 +460,7 @@
     "atlas_security/__init__.py": "L0",
     "atlas_security/sensitive_data_guard.py": "L0",
     "atlas_service.py": "L3",
+    "atlas_supervisor.py": "L3",
     "core/__init__.py": "L3",
     "core/application.py": "L3",
     "core/audit_event.py": "L1",

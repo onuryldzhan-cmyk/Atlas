@@ -52,6 +52,8 @@ AtlasApplication
 from __future__ import annotations
 
 import logging
+import os
+import re
 import traceback
 
 from datetime import UTC, datetime
@@ -163,6 +165,56 @@ EXECUTION_AUDIT_EVENT_FILE = "audit/atlas_audit_events.jsonl"
 PAPER_TRADE_BOOK_FILE = "paper_trades.json"
 
 
+# =============================================================
+# SUPERVISOR PROVENANCE
+# =============================================================
+#
+# atlas_supervisor.py hands these to the child it launches, so the
+# operator surface can say whether Atlas is being supervised and how
+# many times it has already been restarted. They are read once at
+# construction - the values cannot change during a process lifetime -
+# and never written.
+#
+# Both are validated strictly rather than trusted. health() is returned
+# verbatim to /api/health, so anything able to set this process's
+# environment could otherwise place arbitrary text into an HTTP
+# response body. A value that does not match its expected shape is
+# reported as absent, not echoed: an unverifiable claim of supervision
+# is not published as a verified one.
+
+SUPERVISOR_EPOCH_ENV = "ATLAS_SUPERVISOR_EPOCH"
+SUPERVISOR_RESTART_COUNT_ENV = "ATLAS_SUPERVISOR_RESTART_COUNT"
+
+_SUPERVISOR_EPOCH_PATTERN = re.compile(r"\A[0-9a-f]{32}\Z")
+
+
+def _read_supervisor_epoch() -> str | None:
+    """Return the supervisor run identifier, or None when unverifiable."""
+
+    value = os.environ.get(SUPERVISOR_EPOCH_ENV)
+
+    if value is None:
+        return None
+
+    return value if _SUPERVISOR_EPOCH_PATTERN.match(value) else None
+
+
+def _read_supervisor_restart_count() -> int | None:
+    """Return the restart count, or None when absent or malformed."""
+
+    value = os.environ.get(SUPERVISOR_RESTART_COUNT_ENV)
+
+    if value is None:
+        return None
+
+    try:
+        count = int(value)
+    except (TypeError, ValueError):
+        return None
+
+    return count if count >= 0 else None
+
+
 class AtlasApplication:
     """
     Central Atlas composition root.
@@ -216,6 +268,11 @@ class AtlasApplication:
 
         self.errors: list[dict[str, Any]] = []
         self.started_services: list[str] = []
+
+        # Read once: a supervisor cannot change these mid-process, and
+        # health() must not touch the environment on every call.
+        self.supervisor_epoch = _read_supervisor_epoch()
+        self.supervisor_restart_count = _read_supervisor_restart_count()
 
         self._build_infrastructure()
         self._build_services()
@@ -1241,6 +1298,44 @@ class AtlasApplication:
         market service does not expose thread liveness at all, which is
         unknown rather than evidence of a dead thread, so it does not flip
         healthy on its own.
+
+        Execution recovery state
+        ------------------------
+        execution_halted and execution_recovery_required also gate healthy,
+        for the same reason thread_alive does. ExecutionManager.start()
+        returns True when it finds corrupt or unresolved durable state: it
+        sets execution_halted / recovery_required, keeps running True, and
+        every later admission fails closed with RECOVERY_REQUIRED. Reading
+        only execution_status["running"] therefore reported a runtime that
+        will never trade again as healthy - and under process supervision
+        that is indistinguishable from a working Atlas, because the process
+        is alive and answering.
+
+        This is a read-only correction. Nothing here changes when execution
+        halts, what halts it, or how it recovers; it only stops health()
+        from contradicting the halt.
+
+        Only an explicit True flips healthy. An absent operational_state, or
+        a non-dictionary one, means the execution service does not expose
+        recovery state at all - unknown, not evidence of a halt - exactly as
+        an absent thread_alive is treated above.
+
+        The halt *reason* is deliberately not published here. health() is
+        returned verbatim to /api/health (see web_app._safe_runtime_health),
+        and ExecutionManager.halt_reason can carry a portfolio-foundation
+        diagnostic that embeds a raw execution_id, idempotency_key,
+        position_id, or archive line number. The booleans say that an
+        operator is needed; the logs and status() say why.
+
+        Supervisor provenance
+        ---------------------
+        supervised / supervisor_epoch / supervisor_restart_count report
+        whether atlas_supervisor.py launched this process and how many times
+        it has restarted it. They are read from the environment once at
+        construction and validated there; an absent or malformed value is
+        reported as absent rather than echoed. They are provenance only and
+        never gate healthy - a restarted Atlas is not by itself an unhealthy
+        one, and the conditions that are unhealthy are already above.
         """
 
         runtime_status = self._safe_status(
@@ -1259,9 +1354,26 @@ class AtlasApplication:
             self.market_loop,
         )
 
+        execution_operational_state = execution_status.get(
+            "operational_state",
+        )
+
+        if not isinstance(execution_operational_state, dict):
+            execution_operational_state = {}
+
+        execution_halted = execution_operational_state.get(
+            "execution_halted",
+        )
+
+        execution_recovery_required = execution_operational_state.get(
+            "recovery_required",
+        )
+
         healthy = bool(
             runtime_status.get("healthy", True)
             and execution_status.get("running", True)
+            and execution_halted is not True
+            and execution_recovery_required is not True
             and market_status.get("running", True)
             and market_status.get("thread_alive") is not False
             and not self.errors
@@ -1270,6 +1382,11 @@ class AtlasApplication:
         return {
             "healthy": healthy,
             "running": self.running,
+            "execution_halted": execution_halted,
+            "execution_recovery_required": execution_recovery_required,
+            "supervised": self.supervisor_epoch is not None,
+            "supervisor_epoch": self.supervisor_epoch,
+            "supervisor_restart_count": self.supervisor_restart_count,
             "runtime_state": runtime_status.get(
                 "state",
                 "UNKNOWN",

@@ -21,6 +21,12 @@ GUARD
     ``/dashboard`` and ``/`` serve live runtime state once a runtime is
     attached, so they enforce the same loopback guard as the API routes.
 
+SIGBREAK
+    A CTRL_BREAK_EVENT sent from *another* process reaches
+    ``AtlasProcess._handle_signal`` and produces a clean exit-0 shutdown with
+    the financial-state flush run exactly once. Before the SIGBREAK
+    registration the default disposition killed the process without it.
+
 Every AtlasApplication built here is given an isolated ``tmp_path`` state
 directory: the durable execution stores and the paper book must never be
 written by a test run.
@@ -28,6 +34,8 @@ written by a test run.
 
 from __future__ import annotations
 
+import signal
+import sys
 import threading
 
 from pathlib import Path
@@ -721,10 +729,12 @@ def test_service_binds_loopback_only() -> None:
 # rebound rather than AtlasProcess.start being replaced, so AtlasProcess.start
 # still runs its own real body.
 #
-# Not covered: delivery of a signal sent by another process. On Windows a
-# child cannot be sent SIGINT from outside (only CTRL_BREAK_EVENT, which
-# Atlas does not handle), so the child raises SIGINT to itself. Everything
-# downstream of the handler is identical either way.
+# Not covered *here*: delivery of a signal sent by another process. On
+# Windows a child cannot be sent SIGINT from outside (only CTRL_BREAK_EVENT),
+# so this child raises SIGINT to itself. Everything downstream of the handler
+# is identical either way. External delivery is covered by
+# test_external_ctrl_break_is_a_clean_exit_zero_shutdown at the end of this
+# module, which sends a real CTRL_BREAK_EVENT to a real child process group.
 _SMOKE_CHILD = '''
 import json
 import signal
@@ -911,3 +921,408 @@ def test_merged_process_starts_serves_and_shuts_down(tmp_path: Path) -> None:
     assert results["stop_calls"] == 1
     assert results["stopped_while_server_alive"] is False
     assert results["server_thread_cleared"] is True
+
+
+# =====================================================================
+# SIGBREAK: an externally delivered CTRL_BREAK_EVENT is a clean exit 0
+# =====================================================================
+
+
+def test_install_signal_handlers_binds_sigbreak_to_the_shared_handler() -> None:
+    """SIGBREAK is registered, and to the *same* handler as SIGINT/SIGTERM.
+
+    The shutdown path must never branch by signal type: an operator-requested
+    stop is a clean exit-0 shutdown whichever signal delivered it. Binding
+    every termination signal to one handler is what makes that structural
+    rather than a convention, so it is asserted directly.
+
+    Handlers are restored afterwards - installing real ones would otherwise
+    leak out of this test and into the rest of the pytest process.
+    """
+
+    process = AtlasProcess()
+
+    candidates = [
+        getattr(signal, name)
+        for name in ("SIGINT", "SIGTERM", "SIGBREAK")
+        if hasattr(signal, name)
+    ]
+
+    previous = {number: signal.getsignal(number) for number in candidates}
+
+    try:
+        process.install_signal_handlers()
+
+        for number in candidates:
+            assert signal.getsignal(number) == process._handle_signal, (
+                f"{signal.Signals(number).name} is not bound to the shared "
+                "AtlasProcess handler"
+            )
+    finally:
+        for number, handler in previous.items():
+            signal.signal(number, handler)
+
+    if sys.platform == "win32":
+        assert hasattr(signal, "SIGBREAK"), (
+            "SIGBREAK must exist on Windows; the production guard in "
+            "main.install_signal_handlers would silently skip registration"
+        )
+
+
+# Run in a child process, because the point is delivery from *outside*: the
+# parent sends a genuine CTRL_BREAK_EVENT to the child's own process group.
+# Nothing about the signal is mocked - the only stub is AtlasApplication
+# itself, which a test may not start (it connects to an exchange and writes
+# the durable execution stores and the paper book).
+#
+# The child announces readiness before the parent signals it. AtlasProcess
+# installs its handlers at the top of execute(), strictly before start() sets
+# application.running, so waiting on running closes the race where a signal
+# could arrive ahead of the handler.
+_SIGBREAK_CHILD = '''
+import json
+import sys
+import threading
+
+# The script lives in a temporary directory, so the repository root is passed
+# in rather than inferred.
+sys.path.insert(0, sys.argv[1])
+
+import main
+
+RESULTS = {}
+
+
+class StubApplication:
+    instance = None
+
+    def __init__(self, **kwargs):
+        StubApplication.instance = self
+        self.running = False
+        self.stop_calls = 0
+
+    def start(self):
+        self.running = True
+        return True
+
+    def stop(self):
+        self.stop_calls += 1
+        self.running = False
+        return True
+
+    def status(self):
+        return {
+            "application": {"name": "Stub", "running": self.running},
+            "runtime": {"state": "RUNNING"},
+            "health": {"healthy": self.running},
+            "services": {"registered": [], "started": []},
+            "errors": {"count": 0, "latest": None},
+        }
+
+
+main.AtlasApplication = StubApplication
+
+PROCESS = main.AtlasProcess()
+
+
+def announce():
+    for _ in range(1200):
+        application = PROCESS.application
+        if application is not None and application.running:
+            break
+        threading.Event().wait(0.05)
+
+    print("ATLAS_SIGBREAK_READY")
+    sys.stdout.flush()
+
+
+threading.Thread(target=announce, daemon=True).start()
+
+EXIT_CODE = PROCESS.execute()
+
+RESULTS["exit_code"] = EXIT_CODE
+RESULTS["shutdown_reason"] = PROCESS.shutdown_reason
+RESULTS["stop_calls"] = StubApplication.instance.stop_calls
+
+print("ATLAS_SIGBREAK_RESULT " + json.dumps(RESULTS))
+sys.stdout.flush()
+
+raise SystemExit(EXIT_CODE)
+'''
+
+
+@pytest.mark.skipif(
+    not hasattr(signal, "SIGBREAK"),
+    reason="SIGBREAK / CTRL_BREAK_EVENT are Windows-only",
+)
+def test_external_ctrl_break_is_a_clean_exit_zero_shutdown(
+    tmp_path: Path,
+) -> None:
+    """A CTRL_BREAK_EVENT from another process exits 0 and still flushes.
+
+    This is the assertion the whole supervisor design rests on. A supervisor
+    stops Atlas by sending CTRL_BREAK_EVENT to its process group; if that
+    produced a non-zero exit code, the supervisor's own restart policy would
+    read every graceful stop as a fault and restart it - an operator-requested
+    shutdown would become an infinite restart loop.
+    """
+
+    import json
+    import subprocess
+
+    script = tmp_path / "atlas_sigbreak_child.py"
+    script.write_text(_SIGBREAK_CHILD, encoding="utf-8")
+
+    repository_root = Path(__file__).resolve().parents[1]
+
+    # CREATE_NEW_PROCESS_GROUP is what makes the child addressable: the event
+    # goes to the child's group alone and never reaches the pytest process.
+    child = subprocess.Popen(
+        [sys.executable, str(script), str(repository_root)],
+        cwd=str(repository_root),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
+    )
+
+    captured: list[str] = []
+    ready = threading.Event()
+
+    def drain() -> None:
+        assert child.stdout is not None
+        for line in child.stdout:
+            captured.append(line)
+            if line.startswith("ATLAS_SIGBREAK_READY"):
+                ready.set()
+
+    reader = threading.Thread(target=drain, daemon=True)
+    reader.start()
+
+    try:
+        assert ready.wait(timeout=120), (
+            "child never reported ready\n"
+            f"OUTPUT:\n{''.join(captured)}"
+        )
+
+        child.send_signal(signal.CTRL_BREAK_EVENT)
+
+        returncode = child.wait(timeout=120)
+    finally:
+        if child.poll() is None:
+            child.kill()
+            child.wait(timeout=30)
+
+    reader.join(timeout=30)
+
+    output = "".join(captured)
+
+    marker = "ATLAS_SIGBREAK_RESULT "
+    lines = [line for line in output.splitlines() if line.startswith(marker)]
+
+    assert lines, (
+        "child produced no result line - it did not reach the end of "
+        f"execute()\nexit={returncode}\nOUTPUT:\n{output}"
+    )
+
+    results = json.loads(lines[-1][len(marker):])
+
+    # The signal reached AtlasProcess._handle_signal rather than the default
+    # SIGBREAK disposition (which would have killed the process outright) or
+    # any other exit path.
+    assert results["shutdown_reason"] == "Operating-system signal: SIGBREAK", (
+        results
+    )
+
+    # THE assertion: a graceful signal shutdown is exit 0, both as the process
+    # controller computed it and as the operating system saw it.
+    assert results["exit_code"] == 0, results
+    assert returncode == 0, output
+
+    # And the shutdown was real, not merely quiet: the financial-state flush
+    # ran exactly once.
+    assert results["stop_calls"] == 1, results
+
+
+# =====================================================================
+# LIVENESS: a web server thread that dies after startup is an exit 1
+# =====================================================================
+#
+# MERGE audit Finding 4. _await_startup only covers the startup window, and
+# run_forever() watches application.running - which a dead *web* thread never
+# changes. Atlas kept running with no operator surface and no error.
+#
+# The fix reuses the exit-1 path run_forever() already takes when the
+# application stops unexpectedly, so a dead surface reaches a supervisor as
+# the same fault every other unexpected stop does.
+
+
+class _StubRunningApplication:
+    """Just enough application for run_forever() to keep looping."""
+
+    def __init__(self) -> None:
+        self.running = True
+
+
+def _dead_thread() -> threading.Thread:
+    """A thread that has genuinely run and finished."""
+
+    thread = threading.Thread(target=lambda: None)
+    thread.start()
+    thread.join(timeout=10)
+
+    assert not thread.is_alive()
+
+    return thread
+
+
+def test_is_alive_before_start_is_not_a_death() -> None:
+    """A surface that was never started has not been lost."""
+
+    assert AtlasWebServer().is_alive() is True
+
+
+def test_is_alive_is_true_for_a_thread_that_has_not_started_yet() -> None:
+    """The assigned-but-not-started window is not a death.
+
+    start() sets self.thread before it calls thread.start(), and a Thread
+    reports is_alive() False until started - so a probe reading is_alive()
+    alone would call a healthy startup a dead server.
+    """
+
+    server = AtlasWebServer()
+    server.thread = threading.Thread(target=lambda: None)
+
+    assert server.thread.is_alive() is False
+    assert server.is_alive() is True
+
+
+def test_is_alive_is_false_once_the_server_thread_dies() -> None:
+    server = AtlasWebServer()
+    server.thread = _dead_thread()
+
+    assert server.is_alive() is False
+
+
+def test_is_alive_stays_true_across_a_graceful_stop() -> None:
+    """stop() must never read as an unexpected death on the way down.
+
+    stop() clears ``server`` and ``thread`` before it joins, so the shutdown
+    path cannot race the liveness probe into a spurious exit code 1.
+    """
+
+    class _FakeServer:
+        def __init__(self) -> None:
+            self.should_exit = False
+
+    server = AtlasWebServer()
+    server.server = _FakeServer()
+    server.thread = _dead_thread()
+
+    server.stop()
+
+    assert server.thread is None
+    assert server.is_alive() is True
+
+
+def test_build_process_wires_the_web_server_liveness_probe() -> None:
+    """The hook must actually be connected, not merely available."""
+
+    web_server = AtlasWebServer()
+    process = build_process(server=web_server)
+
+    assert process.is_subordinate_alive == web_server.is_alive
+
+
+# ---------------------------------------------------------------------
+# run_forever()'s handling of the probe
+# ---------------------------------------------------------------------
+
+
+def _run_forever_with(
+    probe: Any,
+    *,
+    release_after: float = 8.0,
+) -> AtlasProcess:
+    """Drive run_forever() with a liveness probe and a guaranteed way out.
+
+    run_forever() only returns when something breaks its loop. The timer is
+    what makes a regression *fail* rather than hang: if the liveness branch
+    ever stops breaking the loop, the shutdown event still ends it and the
+    assertions below then report the wrong exit code instead of blocking the
+    suite forever.
+
+    For the cases that expect the probe to end the loop, the timer is slack -
+    the loop ticks once a second, so it exits in about one. For the cases
+    that expect the loop to survive, the timer is the intended exit.
+    """
+
+    process = AtlasProcess(is_subordinate_alive=probe)
+    process.application = _StubRunningApplication()
+
+    release = threading.Timer(release_after, process.shutdown_event.set)
+    release.start()
+
+    try:
+        process.run_forever()
+    finally:
+        release.cancel()
+
+    return process
+
+
+def test_run_forever_exits_one_when_the_subordinate_dies() -> None:
+    process = _run_forever_with(lambda: False)
+
+    assert process.exit_code == 1
+    assert process.shutdown_reason == "Subordinate component stopped unexpectedly"
+
+
+def test_run_forever_keeps_running_while_the_subordinate_lives() -> None:
+    """The live case must not exit; only the shutdown event ends the loop."""
+
+    process = _run_forever_with(lambda: True, release_after=2.5)
+
+    assert process.exit_code == 0
+    assert process.shutdown_reason == ""
+
+
+def test_a_raising_liveness_probe_does_not_stop_atlas() -> None:
+    """A probe that cannot answer is unknown, never evidence of death.
+
+    This value decides whether the process exits 1, and an exit 1 is what a
+    supervisor restarts on - so a buggy probe that threw would become a
+    restart loop around a perfectly healthy runtime.
+    """
+
+    calls: list[int] = []
+
+    def probe() -> bool:
+        calls.append(1)
+        raise RuntimeError("probe is broken")
+
+    process = _run_forever_with(probe, release_after=2.5)
+
+    assert calls, "the probe was never consulted"
+    assert process.exit_code == 0
+    assert process.shutdown_reason == ""
+
+    # Latched, so a permanently failing probe cannot fill the log with one
+    # traceback per second.
+    assert process._liveness_probe_failed is True
+
+
+def test_no_liveness_hook_preserves_the_previous_behaviour() -> None:
+    """The default must reproduce the single-component process exactly."""
+
+    process = AtlasProcess()
+
+    assert process.is_subordinate_alive is None
+    assert process._subordinate_alive() is True
+
+
+def test_a_non_boolean_probe_result_is_not_a_death() -> None:
+    """Only an explicit False is evidence; anything else is unknown."""
+
+    assert AtlasProcess(is_subordinate_alive=lambda: None)._subordinate_alive() is True
+    assert AtlasProcess(is_subordinate_alive=lambda: 0)._subordinate_alive() is True

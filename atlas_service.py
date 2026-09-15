@@ -37,10 +37,10 @@ is one). uvicorn needs an asyncio loop. The two are composed by running
 ``uvicorn.Server.run()`` on a dedicated non-main thread:
 
 - uvicorn's ``capture_signals`` is a no-op off the main thread (verified
-  against uvicorn 0.52.1), so it cannot replace ``AtlasProcess``'s SIGINT /
-  SIGTERM handlers. That matters on Windows, where Ctrl+C is delivered to
-  the main thread and ``AtlasProcess.run_forever()`` is the only thing
-  allowed to observe it.
+  against uvicorn 0.52.1), so it cannot replace ``AtlasProcess``'s
+  SIGINT / SIGTERM / SIGBREAK handlers. That matters on Windows, where
+  Ctrl+C and Ctrl+Break are delivered to the main thread and
+  ``AtlasProcess.run_forever()`` is the only thing allowed to observe them.
 - Shutdown is therefore still driven by the main thread: it sets
   ``Server.should_exit`` and joins, rather than relying on a signal
   reaching uvicorn at all.
@@ -186,8 +186,9 @@ class AtlasWebServer:
         )
 
         # uvicorn only installs signal handlers from the main thread, so
-        # running the server here leaves AtlasProcess's SIGINT/SIGTERM
-        # handlers in place - which is why the thread is not optional.
+        # running the server here leaves AtlasProcess's
+        # SIGINT/SIGTERM/SIGBREAK handlers in place - which is why the
+        # thread is not optional.
         thread = threading.Thread(
             target=server.run,
             name="atlas-web-server",
@@ -254,6 +255,50 @@ class AtlasWebServer:
             f"{self.startup_timeout} seconds "
             f"(host={self.host} port={self.port})"
         )
+
+    # --------------------------------------------------------
+    # LIVENESS
+    # --------------------------------------------------------
+
+    def is_alive(self) -> bool:
+        """
+        Report whether a started web surface is still serving.
+
+        ``_await_startup`` only covers the startup window. After it returns,
+        nothing watches the server thread: ``AtlasProcess.run_forever()``
+        watches ``application.running``, which a dead *web* thread never
+        changes. Atlas would then keep running with no operator surface and
+        no error - the merged process hiding exactly the condition the
+        operator launched it to watch.
+
+        False means the one condition that is genuinely wrong: a thread that
+        came up and has since died. Every other state reports True, because
+        every other state is either fine or not yet knowable:
+
+        - never started (``thread is None``) - ``start()`` has not run, and
+          a process that has not started its surface has not lost it.
+        - assigned but not yet running - ``start()`` sets ``self.thread``
+          before it calls ``thread.start()``, and a Thread reports
+          ``is_alive() is False`` until it is started. Reading that window
+          as a death would be wrong, so ``ident`` (None until the thread
+          actually starts, and never cleared afterwards) separates "has not
+          begun" from "has ended". Today the composition hook runs to
+          completion before ``run_forever()`` polls, so nothing observes the
+          window - this does not depend on that staying true.
+        - already stopping or stopped - ``stop()`` clears ``server`` and
+          ``thread`` *before* it joins, so a graceful shutdown never reads
+          as an unexpected death on its way down.
+        """
+
+        thread = self.thread
+
+        if thread is None:
+            return True
+
+        if thread.ident is None:
+            return True
+
+        return thread.is_alive()
 
     # --------------------------------------------------------
     # STOP
@@ -353,6 +398,7 @@ def build_process(
     return AtlasProcess(
         on_started=web_server.start,
         on_stopping=web_server.stop,
+        is_subordinate_alive=web_server.is_alive,
     )
 
 
