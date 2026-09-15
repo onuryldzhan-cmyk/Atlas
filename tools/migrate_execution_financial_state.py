@@ -64,6 +64,16 @@ Idempotent and resumable:
   Only if that hard gate passes does the tool rewrite the working file from
   v1 to v2. If it fails, the tool returns FAILED and leaves the v1 working
   file untouched.
+- A sidecar that is present but cannot be read at all - permission denied,
+  an I/O error, a Windows file lock - is never treated as absent or empty.
+  Every point at which this tool reads a sidecar fails closed on ``OSError``
+  with a fixed reason token (SIDECAR_INVALID / *_SIDECAR_UNREADABLE before
+  any append, POST_APPEND_VERIFICATION_FAILED:* at the step-6 gate), so an
+  I/O failure is a structured, reason-coded refusal rather than an unhandled
+  traceback that would leak a raw path and exit 1 (the EXIT_USAGE code).
+  *_SIDECAR_UNREADABLE is deliberately distinct from *_SIDECAR_CORRUPT: the
+  archive's contents may be entirely valid and the operator's remediation is
+  access, not repair.
 - The existing v1 working file remains the authoritative rollback source
   until both sidecars are durably complete, the post-append verification
   gate above passes, and the working-file rewrite (the final step)
@@ -317,6 +327,20 @@ def migrate(
     if applied_path.exists():
         try:
             already_applied = applied_store.load_index().by_execution_id
+        except OSError:
+            # A present-but-unreadable sidecar (permission denied, I/O
+            # error, a Windows file lock) is not evidence that migration is
+            # safe - it is evidence that this run cannot establish what the
+            # archive already holds. Fail closed with a fixed token, exactly
+            # as a corrupt or conflicting sidecar does, rather than letting
+            # the OSError escape as a traceback that would leak a raw path
+            # and exit 1 (colliding with EXIT_USAGE). Distinct from
+            # *_SIDECAR_CORRUPT: the content may be perfectly valid and the
+            # operator's remediation is access, not repair.
+            return MigrationResult(
+                MigrationOutcome.SIDECAR_INVALID, "APPLIED_SIDECAR_UNREADABLE",
+                str(working_path), str(applied_path), str(closed_path),
+            )
         except AppliedExecutionArchiveCorruptError:
             return MigrationResult(
                 MigrationOutcome.SIDECAR_INVALID, "APPLIED_SIDECAR_CORRUPT",
@@ -341,6 +365,12 @@ def migrate(
     if closed_path.exists():
         try:
             closed_index = closed_store.load_index()
+        except OSError:
+            # Same fail-closed rule as the applied guard above.
+            return MigrationResult(
+                MigrationOutcome.SIDECAR_INVALID, "CLOSED_SIDECAR_UNREADABLE",
+                str(working_path), str(applied_path), str(closed_path),
+            )
         except ClosedPositionArchiveCorruptError:
             return MigrationResult(
                 MigrationOutcome.SIDECAR_INVALID, "CLOSED_SIDECAR_CORRUPT",
@@ -472,10 +502,18 @@ def _verify_post_append(
     complete deterministic migration output. Returns a fixed reason code if
     verification fails, else ``None``. Never embeds raw exception text: the
     caller uses this reason_code as an operator-visible token.
+
+    A sidecar that cannot be re-read at all (``OSError``) fails this gate
+    exactly as a corrupt or conflicting one does: the gate's contract is
+    positive proof that the archive on disk reproduces this run's complete
+    output, and an unreadable file supplies no such proof. Both causes
+    collapse into the same per-sidecar token deliberately - the operator
+    action is identical (do not treat the migration as committed; the v1
+    working file is still intact and the run is resumable).
     """
     try:
         verified_applied = AppliedExecutionArchiveStore(applied_path).load_index()
-    except (AppliedExecutionArchiveCorruptError, AppliedExecutionArchiveConflictError):
+    except (OSError, AppliedExecutionArchiveCorruptError, AppliedExecutionArchiveConflictError):
         return "POST_APPEND_VERIFICATION_FAILED:APPLIED_SIDECAR"
     expected_applied = {record.execution_id: _applied_identity(record) for record in applied_records}
     actual_applied = {
@@ -487,7 +525,7 @@ def _verify_post_append(
 
     try:
         verified_closed = ClosedPositionArchiveStore(closed_path).load_index()
-    except (ClosedPositionArchiveCorruptError, ClosedPositionArchiveConflictError):
+    except (OSError, ClosedPositionArchiveCorruptError, ClosedPositionArchiveConflictError):
         return "POST_APPEND_VERIFICATION_FAILED:CLOSED_SIDECAR"
     expected_closed = {
         position_id: _closed_identity(sequence, record)
@@ -507,6 +545,15 @@ def _verify_already_migrated(working_path: Path, applied_path: Path, closed_path
     if applied_path.exists():
         try:
             AppliedExecutionArchiveStore(applied_path).load_index()
+        except OSError:
+            # ALREADY_MIGRATED is an assertion that both sidecars were
+            # confirmed healthy, not merely that nothing objected. An
+            # unreadable sidecar cannot support that assertion, so it
+            # refuses here for the same reason the pre-append guards do.
+            return MigrationResult(
+                MigrationOutcome.SIDECAR_INVALID, "APPLIED_SIDECAR_UNREADABLE",
+                str(working_path), str(applied_path), str(closed_path),
+            )
         except AppliedExecutionArchiveCorruptError:
             return MigrationResult(
                 MigrationOutcome.SIDECAR_INVALID, "APPLIED_SIDECAR_CORRUPT",
@@ -520,6 +567,12 @@ def _verify_already_migrated(working_path: Path, applied_path: Path, closed_path
     if closed_path.exists():
         try:
             ClosedPositionArchiveStore(closed_path).load_index()
+        except OSError:
+            # Same rule as the applied sidecar above.
+            return MigrationResult(
+                MigrationOutcome.SIDECAR_INVALID, "CLOSED_SIDECAR_UNREADABLE",
+                str(working_path), str(applied_path), str(closed_path),
+            )
         except ClosedPositionArchiveCorruptError:
             return MigrationResult(
                 MigrationOutcome.SIDECAR_INVALID, "CLOSED_SIDECAR_CORRUPT",

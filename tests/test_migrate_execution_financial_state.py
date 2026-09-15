@@ -377,3 +377,155 @@ def test_sorted_order_is_consistent_with_resume_conflict_check(tmp_path):
         assert index.sequence_by_position_id[pid] == i
     assert index.tail_sequence == 2
     assert index.tail_position_id == ordered_ids[2]
+
+
+# ===========================================================================
+# 5 - Sidecar-read I/O failure fails closed (Gap G1)
+#
+# A sidecar that is present but unreadable - permission denied, an I/O
+# error, a Windows file lock - must produce a structured, reason-coded
+# MigrationResult, never an unhandled traceback. An escaping OSError would
+# leak a raw filesystem path and OS message to stderr against this tool's
+# ADR-0005 output-safety contract, and Python's default exit 1 would
+# collide with EXIT_USAGE, making an I/O failure look like a mistyped flag.
+# ===========================================================================
+
+
+_REAL_PATH_OPEN = Path.open
+
+
+def _make_reads_fail(monkeypatch, target: Path) -> None:
+    """Make every *read* open of ``target`` raise OSError, leaving append
+    ("a") and write ("w") opens - and every other path - untouched.
+
+    Patching at ``Path.open`` rather than at the store's ``load_index``
+    exercises the real read path the tool actually depends on, so the test
+    would still fail if a future refactor read a sidecar some other way.
+    The OSError deliberately carries a filename and an OS message so the
+    test can assert neither reaches operator-visible output.
+    """
+    resolved = target.resolve()
+
+    def fake_open(self, mode="r", *args, **kwargs):
+        if "r" in mode and Path(self).resolve() == resolved:
+            raise OSError(13, "Permission denied", str(self))
+        return _REAL_PATH_OPEN(self, mode, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", fake_open)
+
+
+@pytest.mark.parametrize("sidecar, expected_reason", [
+    ("applied", "APPLIED_SIDECAR_UNREADABLE"),
+    ("closed", "CLOSED_SIDECAR_UNREADABLE"),
+])
+def test_unreadable_sidecar_refuses_structurally_before_any_append(
+    tmp_path, monkeypatch, sidecar, expected_reason,
+):
+    """An OSError raised by a pre-append sidecar read is caught and mapped
+    to a fixed reason token under SIDECAR_INVALID, at an exit code distinct
+    from EXIT_USAGE, with nothing written and no exception text leaked."""
+    p = _pid("io-pre")
+    _write_v1(_working(tmp_path),
+               closed_positions={p: _closed_record(p)},
+               applied_executions={"exec-io": "key-io"})
+
+    # Only the sidecar under test exists, so only its guard is reached.
+    if sidecar == "applied":
+        AppliedExecutionArchiveStore(_applied(tmp_path)).append(
+            migration_module.AppliedExecutionRecord(0, "exec-io", "key-io", _NOW))
+        target = _applied(tmp_path)
+    else:
+        ClosedPositionArchiveStore(_closed(tmp_path)).append(0, _closed_record(p))
+        target = _closed(tmp_path)
+
+    before_source = _working(tmp_path).read_bytes()
+    before_sidecar = target.read_bytes()
+    _make_reads_fail(monkeypatch, target)
+
+    # No traceback: migrate() returns a MigrationResult rather than raising.
+    result = migration_module.migrate(tmp_path)
+
+    assert result.outcome is migration_module.MigrationOutcome.SIDECAR_INVALID
+    assert result.reason_code == expected_reason
+    # Refusal happened before any append, so the counters are all zero.
+    assert (result.applied_count, result.closed_count) == (0, 0)
+    assert (result.applied_appended, result.closed_appended) == (0, 0)
+    assert result.working_path == str(_working(tmp_path))
+    assert result.applied_path == str(_applied(tmp_path))
+    assert result.closed_path == str(_closed(tmp_path))
+
+    exit_code = migration_module._exit_code(result)
+    assert exit_code == migration_module.EXIT_REFUSED
+    assert exit_code != migration_module.EXIT_USAGE
+
+    # Output safety: the OS message never reaches the operator-visible text.
+    for rendered in (migration_module._render_human(result, exit_code),
+                     migration_module._render_json(result, exit_code)):
+        assert expected_reason in rendered
+        assert "Permission denied" not in rendered
+        assert "Errno" not in rendered
+
+    # Nothing was written: the v1 source and the sidecar are byte-identical.
+    monkeypatch.undo()
+    assert _working(tmp_path).read_bytes() == before_source
+    assert target.read_bytes() == before_sidecar
+    assert json.loads(_working(tmp_path).read_text(encoding="utf-8"))["schema_version"] == 1
+
+
+def test_unreadable_sidecar_during_post_append_verification_leaves_v1_resumable(
+    tmp_path, monkeypatch,
+):
+    """An OSError raised by the step-6 re-read, after appends have already
+    happened, fails the verification gate with the existing fixed token,
+    leaves v1 and the already-appended sidecar content intact, and leaves
+    the migration resumable once the I/O fault clears."""
+    p_a, p_b = _pid("io-post-a"), _pid("io-post-b")
+    records = {p_a: _closed_record(p_a, gross_pnl="1"),
+               p_b: _closed_record(p_b, gross_pnl="2")}
+    _write_v1(_working(tmp_path), closed_positions=records,
+               applied_executions={"exec-p1": "key-p1"})
+    before_source = _working(tmp_path).read_bytes()
+
+    # Neither sidecar exists yet, so both pre-append guards are skipped and
+    # the appends run for real; the first read of the closed sidecar is the
+    # one _verify_post_append performs.
+    _make_reads_fail(monkeypatch, _closed(tmp_path))
+
+    result = migration_module.migrate(tmp_path)
+
+    assert result.outcome is migration_module.MigrationOutcome.FAILED
+    assert result.reason_code == "POST_APPEND_VERIFICATION_FAILED:CLOSED_SIDECAR"
+    # The appends really happened before the gate rejected the run.
+    assert result.closed_count == 2
+    assert result.closed_appended == 2
+    assert result.applied_count == 1
+    assert result.applied_appended == 1
+
+    exit_code = migration_module._exit_code(result)
+    assert exit_code == migration_module.EXIT_FAILED
+    assert exit_code != migration_module.EXIT_USAGE
+    rendered = migration_module._render_json(result, exit_code)
+    assert "Permission denied" not in rendered
+    assert "Errno" not in rendered
+
+    # The working file was never rewritten: v1 remains the rollback source.
+    assert _working(tmp_path).read_bytes() == before_source
+    assert json.loads(_working(tmp_path).read_text(encoding="utf-8"))["schema_version"] == 1
+
+    # Once the I/O fault clears, the appended sidecar content is intact,
+    # correctly ordered, and a valid prefix - so the run resumes to
+    # completion without appending anything a second time.
+    monkeypatch.undo()
+    index = ClosedPositionArchiveStore(_closed(tmp_path)).load_index()
+    assert index.count == 2
+    ordered_ids = sorted(records)
+    for i, pid in enumerate(ordered_ids):
+        assert index.sequence_by_position_id[pid] == i
+
+    resumed = migration_module.migrate(tmp_path)
+    assert resumed.outcome is migration_module.MigrationOutcome.MIGRATED
+    assert resumed.closed_appended == 0
+    assert resumed.applied_appended == 0
+    working = json.loads(_working(tmp_path).read_text(encoding="utf-8"))
+    assert working["schema_version"] == SCHEMA_VERSION
+    assert working["closed_checkpoint"]["sequence"] == 1
