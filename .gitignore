@@ -199,3 +199,12 @@ reports/observability/test_results.meta.json
 data/market_archive/*.sqlite3
 data/market_archive/*.sqlite3-shm
 data/market_archive/*.sqlite3-wal
+
+# =============================================================================
+# QUARANTINE
+# =============================================================================
+#
+# Holding area for unattributed / unreviewed artifacts pending triage.
+# Must never enter history via a bulk `git add -A`.
+
+_quarantine/
