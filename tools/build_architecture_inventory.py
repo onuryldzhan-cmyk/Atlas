@@ -1,9 +1,11 @@
 """Build and validate the Atlas Block-2 architecture inventory.
 
 Computes the statically-reachable first-party runtime closure from the
-canonical entry points (main.py, web_app.py) via AST import analysis, and
-validates it against the checked-in architecture map and runtime closure
-artifacts under packaging/. This tool does not mutate repository source; it
+canonical entry points (main.py, web_app.py, atlas_service.py) via AST
+import analysis, and validates it against the checked-in architecture map
+and runtime closure artifacts under packaging/.
+
+This tool does not mutate repository source; it
 only reads tracked files and writes the two inventory JSON artifacts when
 explicitly asked to (--write).
 """
@@ -23,7 +25,12 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 ARCHITECTURE_MAP_PATH = REPOSITORY_ROOT / "packaging" / "atlas_architecture_map.json"
 RUNTIME_CLOSURE_PATH = REPOSITORY_ROOT / "packaging" / "atlas_runtime_closure.json"
 IMPORT_GRAPH_PATH = REPOSITORY_ROOT / "packaging" / "REM-001_IMPORT_GRAPH.json"
-ENTRY_POINTS = ("main.py", "web_app.py")
+# atlas_service.py is the merged single-process entry point: it composes
+# main.py's process controller with web_app.py's application factory. The
+# other two remain entry points in their own right - main.py still runs the
+# runtime alone, and web_app.py is still served directly by run_dashboard.ps1
+# - so all three are roots of the runtime closure.
+ENTRY_POINTS = ("main.py", "web_app.py", "atlas_service.py")
 
 
 class ArchitectureInventoryError(RuntimeError):

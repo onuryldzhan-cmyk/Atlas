@@ -218,11 +218,46 @@ def test_legacy_inventory_covers_every_root_test_script() -> None:
 
 
 def test_canonical_launchers_never_route_to_legacy_dashboard() -> None:
-    for relative_path in ("atlas.ps1", "run_dashboard.ps1"):
+    """No launcher may start the legacy dashboard package.
+
+    Each launcher must also actually start a canonical surface. Which one
+    differs since the Core/Dashboard process merge: atlas.ps1 now launches
+    the merged entry point atlas_service.py, which serves the canonical web
+    application in-process with the runtime attached, while
+    run_dashboard.ps1 still serves web_app:app standalone. Asserting the
+    literal "web_app:app" against atlas.ps1 would now only be satisfiable
+    by a comment, which would test nothing.
+    """
+
+    canonical_route = {
+        "atlas.ps1": "atlas_service.py",
+        "run_dashboard.ps1": "web_app:app",
+    }
+
+    for relative_path, expected_route in canonical_route.items():
         content = (REPOSITORY_ROOT / relative_path).read_text(encoding="utf-8-sig")
-        assert "web_app:app" in content
-        assert "dashboard.app" not in content
-        assert "dashboard/app.py" not in content
+        assert expected_route in content, relative_path
+        assert "dashboard.app" not in content, relative_path
+        assert "dashboard/app.py" not in content, relative_path
+
+
+def test_merged_entry_point_is_in_the_canonical_distribution() -> None:
+    """The launcher's target and everything it imports must ship.
+
+    web_app.py imports observability/ at module scope, so a distribution
+    without it cannot start the web surface at all.
+    """
+
+    manifest = _load_manifest(DEFAULT_MANIFEST)
+    selected = select_distribution_files(
+        REPOSITORY_ROOT,
+        manifest,
+        include_tests=False,
+    )
+
+    assert "atlas_service.py" in selected
+    assert "observability/panel_router.py" in selected
+    assert "observability/panel_sources.py" in selected
 
 
 def test_legacy_dashboard_is_machine_marked_and_default_disabled() -> None:

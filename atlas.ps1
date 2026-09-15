@@ -1,6 +1,15 @@
+# Atlas launcher.
+#
+# 'Run' starts the merged single-process runtime: atlas_service.py builds the
+# AtlasApplication runtime through main.AtlasProcess and serves the canonical
+# operator surface - the FastAPI application from web_app.create_app, with the
+# live runtime injected - in the same process, on loopback only. It replaces
+# the former two-process 'Core' (main.py) plus 'Dashboard' (a standalone
+# uvicorn serving an unattached application) pair, which could not share a
+# runtime. The legacy dashboard package is never launched from here.
 [CmdletBinding()]
 param(
-    [ValidateSet('Setup','Validate','Core','Dashboard','Package')]
+    [ValidateSet('Setup','Validate','Run','Package')]
     [string]$Action = 'Validate'
 )
 
@@ -25,7 +34,7 @@ function Install-Atlas {
 
 function Test-Atlas {
     $python = Get-AtlasPython
-    & $python -m compileall -q core atlas_os atlas_runtime atlas_finance intelligence assistant ai main.py web_app.py
+    & $python -m compileall -q core atlas_os atlas_runtime atlas_finance intelligence assistant ai main.py web_app.py atlas_service.py
     if ($LASTEXITCODE -ne 0) { throw 'Python derleme kontrolü başarısız.' }
     & $python -m pytest -q
     if ($LASTEXITCODE -ne 0) { throw 'Test paketi başarısız.' }
@@ -35,8 +44,12 @@ function Test-Atlas {
 switch ($Action) {
     'Setup' { Install-Atlas; Copy-Item .env.example .env -ErrorAction SilentlyContinue; Test-Atlas }
     'Validate' { Test-Atlas }
-    'Core' { $python = Get-AtlasPython; & $python main.py }
-    'Dashboard' { $python = Get-AtlasPython; & $python -m uvicorn web_app:app --host 127.0.0.1 --port 8000 }
+    'Run' {
+        $python = Get-AtlasPython
+        Write-Host 'Atlas merged process: runtime + operator surface on http://127.0.0.1:8000 (loopback only)' -ForegroundColor Cyan
+        & $python atlas_service.py
+        exit $LASTEXITCODE
+    }
     'Package' {
         Test-Atlas
         $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'

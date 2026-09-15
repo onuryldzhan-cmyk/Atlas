@@ -28,6 +28,7 @@ import threading
 import time
 import traceback
 
+from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
@@ -258,12 +259,41 @@ class AtlasProcess:
 
     Signal handlers do not perform shutdown work directly. They only set
     the shutdown event so the main thread can stop Atlas safely.
+
+    Composition hooks
+    -----------------
+    ``on_started`` and ``on_stopping`` let a composition entry point attach
+    a second, subordinate component to this process - today the in-process
+    web surface built by ``atlas_service.py`` - without moving the lifecycle
+    authority out of this class. Both default to ``None``, which reproduces
+    the single-component behaviour this class has always had.
+
+    The contract they must satisfy:
+
+    - ``on_started`` runs on the main thread after AtlasApplication has
+      started successfully and before ``run_forever()`` begins. It receives
+      the live application. Raising from it is a startup failure: the
+      exception is handled exactly like any other fatal error, so the
+      process still reaches ``stop()`` and still returns a non-zero code.
+    - ``on_stopping`` runs inside ``execute()``'s ``finally``, *before*
+      AtlasApplication is stopped, so a subordinate component stops
+      accepting work that reaches into the runtime before the runtime is
+      torn down. It can never prevent ``stop()``: a failure there is
+      recorded as a non-zero exit code and swallowed.
     """
 
     VERSION = "1.0"
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        on_started: Callable[[AtlasApplication], None] | None = None,
+        on_stopping: Callable[[], None] | None = None,
+    ) -> None:
         self.application: AtlasApplication | None = None
+
+        self.on_started = on_started
+        self.on_stopping = on_stopping
 
         self.shutdown_event = threading.Event()
 
@@ -493,6 +523,62 @@ class AtlasProcess:
         return stopped
 
     # --------------------------------------------------------
+    # COMPOSITION HOOKS
+    # --------------------------------------------------------
+
+    def _notify_started(self) -> None:
+        """
+        Hand the started application to the composition hook.
+
+        Exceptions are deliberately not caught here: a subordinate
+        component that cannot start is a startup failure, and execute()'s
+        own handler already turns that into exit_code 1 plus a guaranteed
+        shutdown.
+        """
+
+        if self.on_started is None:
+            return
+
+        if self.application is None:
+            return
+
+        logger.info(
+            "Running composition start hook"
+        )
+
+        self.on_started(
+            self.application
+        )
+
+    def _notify_stopping(self) -> None:
+        """
+        Let the composition hook stop before AtlasApplication does.
+
+        This runs on the shutdown path, where the only thing that matters
+        is that AtlasApplication.stop() is still reached: a failure here
+        is recorded and swallowed, never propagated.
+        """
+
+        if self.on_stopping is None:
+            return
+
+        logger.info(
+            "Running composition stop hook"
+        )
+
+        try:
+            self.on_stopping()
+        except Exception:
+            self.exit_code = max(
+                self.exit_code,
+                1,
+            )
+
+            logger.exception(
+                "Composition stop hook failed"
+            )
+
+    # --------------------------------------------------------
     # COMPLETE PROCESS
     # --------------------------------------------------------
 
@@ -506,6 +592,8 @@ class AtlasProcess:
         try:
             if not self.start():
                 return self.exit_code
+
+            self._notify_started()
 
             self.run_forever()
 
@@ -536,6 +624,8 @@ class AtlasProcess:
             )
 
         finally:
+            self._notify_stopping()
+
             try:
                 self.stop()
             except Exception:

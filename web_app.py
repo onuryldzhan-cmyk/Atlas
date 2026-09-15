@@ -19,7 +19,7 @@ import logging
 from pathlib import Path
 from typing import Any, Callable
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.responses import (
     HTMLResponse,
     JSONResponse,
@@ -66,6 +66,25 @@ PUBLIC_ANALYSIS_KEYS = (
     "reason",
 )
 
+# Keys of the sanitised decision that may be published.
+#
+# DecisionAdapter.convert produces the full execution-ready contract
+# (action, symbol, confidence, strategy, risk_level, price, created_at,
+# metadata). All of it has passed sanitisation, so none of it is unsafe -
+# but the dashboard reads only action, confidence and risk_level, and
+# "metadata" in particular carries the decision's internal derivation
+# (raw risk level, confidence provenance, the shadow phase-5 proposal).
+# Least exposure is the default: publish what the client consumes, not
+# everything that happens to be safe to publish.
+#
+# This is the same allowlist-projection pattern as PUBLIC_ANALYSIS_KEYS
+# above, applied one level down. It adds no new sanitisation of its own.
+PUBLIC_DECISION_KEYS = (
+    "action",
+    "confidence",
+    "risk_level",
+)
+
 NON_LOOPBACK_RESPONSE = {
     "status": "FORBIDDEN",
     "reason": "ATLAS_WEB_PANEL_IS_LOCALHOST_ONLY",
@@ -76,6 +95,36 @@ NON_LOOPBACK_RESPONSE = {
 }
 
 
+def _public_decision(
+    decision: Any,
+) -> dict[str, Any] | None:
+    """
+    Project a sanitised decision onto the fields the client consumes.
+
+    Fails closed on shape: a decision that is not a mapping is published as
+    null rather than passed through, because an unexpected shape is exactly
+    the case where "publish only these keys" cannot be enforced. The
+    dashboard already renders a null decision as "no decision".
+    """
+
+    if decision is None:
+        return None
+
+    if not isinstance(decision, dict):
+        logger.warning(
+            "Dropping decision with unexpected type: %s",
+            type(decision).__name__,
+        )
+
+        return None
+
+    return {
+        key: decision[key]
+        for key in PUBLIC_DECISION_KEYS
+        if key in decision
+    }
+
+
 def _public_analysis_payload(
     result: dict[str, Any],
 ) -> dict[str, Any]:
@@ -83,14 +132,23 @@ def _public_analysis_payload(
     Project a brain result onto the fields that are safe to publish.
 
     Only keys actually present in the result are emitted, so a brain that
-    does not produce a field does not gain a fabricated null one.
+    does not produce a field does not gain a fabricated null one. The
+    ``decision`` value is projected a second time, onto
+    PUBLIC_DECISION_KEYS.
     """
 
-    return {
+    payload = {
         key: result[key]
         for key in PUBLIC_ANALYSIS_KEYS
         if key in result
     }
+
+    if "decision" in payload:
+        payload["decision"] = _public_decision(
+            payload["decision"]
+        )
+
+    return payload
 
 
 def _safe_runtime_health(
@@ -128,12 +186,24 @@ def _safe_runtime_health(
                 method_name,
             )
 
+            # str(exc) stays in the log and never in the body - the same
+            # rule /api/analysis's except branch already follows. It
+            # mattered less while no runtime was ever attached; now that
+            # this calls AtlasApplication.health(), the message could carry
+            # a state-directory path, an exchange client detail, or any
+            # other internal a raising dependency chose to put in it. Only
+            # the exception's class name is published.
+            logger.debug(
+                "Runtime %s error: %s",
+                method_name,
+                exc,
+            )
+
             return {
                 "healthy": False,
                 "state": "ERROR",
                 "reason": "RUNTIME_HEALTH_FAILED",
                 "error_type": type(exc).__name__,
-                "error": str(exc),
             }
 
         if isinstance(result, dict):
@@ -232,7 +302,16 @@ def create_app(
     )
     async def root(
         request: Request,
-    ) -> HTMLResponse:
+    ) -> Response:
+        # Same guard as the API routes. Once a runtime is attached this
+        # page renders live runtime state, so the 127.0.0.1 bind is no
+        # longer the only thing that must stand between it and a peer.
+        if not is_loopback_request(request):
+            return JSONResponse(
+                status_code=403,
+                content=NON_LOOPBACK_RESPONSE,
+            )
+
         return templates.TemplateResponse(
             request=request,
             name="login.html",
@@ -249,7 +328,18 @@ def create_app(
     )
     async def dashboard(
         request: Request,
-    ) -> HTMLResponse:
+    ) -> Response:
+        # The dashboard serves live price, runtime state and - through the
+        # endpoints it polls - the current decision. It is guarded exactly
+        # like those endpoints, and the guard runs before the price
+        # provider is called, so a non-loopback peer cannot even induce an
+        # exchange call.
+        if not is_loopback_request(request):
+            return JSONResponse(
+                status_code=403,
+                content=NON_LOOPBACK_RESPONSE,
+            )
+
         provider = application.state.price_provider
         price = 0.0
         price_status = "UNAVAILABLE"
@@ -444,7 +534,8 @@ if __name__ == "__main__":
 
     logger.warning(
         "Starting Atlas web dashboard in observation-only mode. "
-        "No Atlas runtime is attached."
+        "No Atlas runtime is attached. Run atlas_service.py for the "
+        "merged process that attaches one."
     )
 
     uvicorn.run(
@@ -452,4 +543,11 @@ if __name__ == "__main__":
         host="127.0.0.1",
         port=8000,
         reload=False,
+        # Every route here is loopback-guarded on the socket peer address.
+        # uvicorn's default proxy_headers=True lets X-Forwarded-For rewrite
+        # that address, with the trusted-proxy set coming from the
+        # FORWARDED_ALLOW_IPS environment variable - so leaving the default
+        # in place would let an environment variable disable the guard.
+        proxy_headers=False,
+        forwarded_allow_ips=[],
     )

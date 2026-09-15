@@ -6,7 +6,8 @@
     "canonical": "core/application.py",
     "entry_scripts": [
       "main.py",
-      "web_app.py"
+      "web_app.py",
+      "atlas_service.py"
     ],
     "note": "core/application.py is the sole authorized cross-layer composition point (ADR-0001). It may construct services from any layer; this is the documented composition-root exception to the layer dependency rules."
   },
@@ -354,6 +355,11 @@
       "reason": "process entry point that constructs and starts the L3 composition root; treated as part of the application layer"
     },
     {
+      "pattern": "atlas_service.py",
+      "layer": "L3",
+      "reason": "merged single-process entry point: composes main.py's L3 process controller with web_app.py's L5 application factory, injecting the started runtime into the presentation surface. L3 rather than L5 because it owns process lifecycle rather than presentation, and because the dependency direction is the permitted one -- an entry point may know its presentation adapter (L3 -> L5), while the reverse (L5 -> L3) stays forbidden, which is what keeps web_app.py itself free of runtime construction"
+    },
+    {
       "pattern": "web_app.py",
       "layer": "L5",
       "reason": "explicit: L5 presentation example"
@@ -448,6 +454,7 @@
     "atlas_os/services/registry.py": "L2",
     "atlas_security/__init__.py": "L0",
     "atlas_security/sensitive_data_guard.py": "L0",
+    "atlas_service.py": "L3",
     "core/__init__.py": "L3",
     "core/application.py": "L3",
     "core/audit_event.py": "L1",

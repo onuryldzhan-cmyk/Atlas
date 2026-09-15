@@ -2,7 +2,8 @@
   "schema_version": "1.0",
   "entry_points": [
     "main.py",
-    "web_app.py"
+    "web_app.py",
+    "atlas_service.py"
   ],
   "modules": [
     "ai/core/atlas_brain.py",
@@ -53,6 +54,7 @@
     "atlas_os/services/registry.py",
     "atlas_security/__init__.py",
     "atlas_security/sensitive_data_guard.py",
+    "atlas_service.py",
     "core/__init__.py",
     "core/application.py",
     "core/audit_event.py",

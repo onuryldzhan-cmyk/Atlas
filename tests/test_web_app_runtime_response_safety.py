@@ -173,7 +173,14 @@ def test_analysis_endpoint_does_not_leak_unsanitised_analysis() -> None:
 
 
 def test_analysis_endpoint_still_returns_the_sanitised_decision() -> None:
-    """A1 must drop ``analysis`` without dropping the useful decision."""
+    """A1 must drop ``analysis`` without dropping the useful decision.
+
+    The decision itself is now projected onto web_app.PUBLIC_DECISION_KEYS
+    (action, confidence, risk_level) rather than published whole, so the
+    instrument is read from the response's own ``symbol`` field. The
+    decision's ``symbol`` was redundant with it: both name the symbol the
+    request asked about.
+    """
 
     payload = (
         _client()
@@ -187,7 +194,7 @@ def test_analysis_endpoint_still_returns_the_sanitised_decision() -> None:
     assert payload["status"] == "SUCCESS"
     assert payload["symbol"] == "BTCUSDT"
     assert payload["decision"]["action"] == "BUY"
-    assert payload["decision"]["symbol"] == "BTCUSDT"
+    assert payload["decision"]["risk_level"] == "MEDIUM"
     assert isinstance(payload["time"], str)
 
 

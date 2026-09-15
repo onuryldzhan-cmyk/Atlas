@@ -5,6 +5,7 @@
   "canonical_runtime_files": [
     ".env.example",
     "atlas.ps1",
+    "atlas_service.py",
     "main.py",
     "run_atlas.ps1",
     "run_dashboard.ps1",
@@ -27,6 +28,7 @@
     "exchange",
     "intelligence",
     "learning",
+    "observability",
     "portfolio",
     "strategy",
     "templates"
