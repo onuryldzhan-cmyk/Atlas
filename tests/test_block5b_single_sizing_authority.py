@@ -1575,9 +1575,13 @@ def test_state_reservation_and_foundation_reconcile_after_success(flat_app):
 
 
 def test_state_reservation_and_foundation_reconcile_after_failure(flat_app):
+    # A component refusal is no longer a failure trigger: the paper book
+    # cannot veto an execution any more. An undeclared fee currency is the
+    # equivalent still-reachable post-seam failure that mutates nothing, so
+    # the reconciliation invariants below are unchanged.
     manager = flat_app.execution
     manager._paper_open_trade = lambda **kwargs: {
-        "success": False, "reason": "paper book refused"
+        "success": True, "fee": 2.5
     }
     request = buy(amount=1000)
     manager.risk_check(request)

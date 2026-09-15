@@ -488,6 +488,148 @@ class PaperTrader:
 
 
     # ==================================================
+    # DURABLE PROJECTION
+    # ==================================================
+
+
+    def apply_projection(
+
+        self,
+
+        *,
+
+        symbol,
+
+        position,
+
+        history_entry=None,
+
+    ):
+
+        """Overwrite one symbol's record from the durable authority.
+
+        ExecutionPortfolioFoundation owns position truth; this book only
+        mirrors it, so nothing here is derived, averaged, or accumulated.
+        ``position`` is that authority's own snapshot record, or ``None``
+        when the symbol is flat, in which case the symbol is dropped.
+
+        Schema: the authority's decimal-string fields are stored verbatim
+        under their own names, plus the legacy float ``entry_price`` /
+        ``current_price`` display pair that ``calculate_profit()`` and
+        older readers of this file still expect. The legacy ``amount``
+        field is deliberately NOT written: it held quote capital, while
+        the authority records ``base_quantity`` in base units, and a
+        mirrored record must never blur the two.
+        """
+
+        if position is None:
+
+            self.positions.pop(
+                symbol,
+                None,
+            )
+
+        else:
+
+            self.positions[symbol] = (
+                self._projected_record(
+                    symbol=symbol,
+                    position=position,
+                )
+            )
+
+        if history_entry is not None:
+
+            self.history.append(
+                history_entry
+            )
+
+        self.save()
+
+
+
+    @staticmethod
+    def _projected_record(
+
+        *,
+
+        symbol,
+
+        position,
+
+    ):
+
+        """Shape one durable position record for this book."""
+
+        def _text(name):
+
+            value = position.get(
+                name
+            )
+
+            return None if value is None else str(
+                value
+            )
+
+
+        def _display(name):
+
+            try:
+                return float(
+                    position.get(
+                        name
+                    )
+                )
+
+            except (TypeError, ValueError):
+                return None
+
+
+        return {
+
+            "symbol":
+            symbol,
+
+            "position_id":
+            _text("position_id"),
+
+            "base_quantity":
+            _text("base_quantity"),
+
+            "average_entry_price":
+            _text("average_entry_price"),
+
+            "mark_price":
+            _text("mark_price"),
+
+            "cost_quote":
+            _text("cost_quote"),
+
+            "entry_fees":
+            _text("entry_fees"),
+
+            "version":
+            position.get("version"),
+
+            "opened_at":
+            _text("opened_at"),
+
+            # Legacy display pair, derived from the authority's own
+            # figures rather than tracked independently.
+            "entry_price":
+            _display("average_entry_price"),
+
+            "current_price":
+            _display("mark_price"),
+
+            "mirrored_from":
+            "execution_financial_state",
+
+        }
+
+
+
+    # ==================================================
     # STORAGE
     # ==================================================
 

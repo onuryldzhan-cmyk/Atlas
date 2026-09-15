@@ -13,11 +13,20 @@ contract: an interrupted execution is classified by whether it crossed the
 paper side-effect boundary, and neither classification can leave RESERVED
 capital, a stale admission, and a running runtime behind together.
 
-The boundary is PaperTrader.open_trade()/close_trade(), which persist their
-own durable book (paper_trades.json). Before it, nothing external can have
-happened and capital is released. After it, this manager cannot prove the
-outcome either way, so capital is marked INDETERMINATE and the runtime halts
-for operator recovery rather than being released as if nothing happened.
+The boundary is ``_finalize_durable_financial_state``, which applies the
+confirmed execution to ExecutionPortfolioFoundation. Before it, nothing
+external can have happened and capital is released. After it, this manager
+cannot prove the outcome either way, so capital is marked INDETERMINATE and
+the runtime halts for operator recovery rather than being released as if
+nothing happened.
+
+It was previously PaperTrader.open_trade()/close_trade(). PaperTrader is now
+a passive mirror projected from the durable authority after the commit, so it
+mutates nothing the pipeline depends on and can no longer classify anything;
+the only configuration where it is not the authority that mutates first is
+the foundation-less one, where PositionController still carries the marker.
+Test names in the T1 family retain their historical "paper_side_effect"
+wording for continuity.
 
 No risk bucket, allocation percentage, confidence threshold, exposure
 ceiling, or sizing formula is exercised or changed here.
@@ -116,17 +125,20 @@ def reservation_status(app: AtlasApplication, request_id: str) -> str | None:
 
 
 def break_after_side_effect(app: AtlasApplication) -> None:
-    """Raise after PaperTrader has already persisted the opened trade.
+    """Raise once the side-effect boundary has been crossed.
 
-    ``_execute_paper_buy`` reads the durable portfolio snapshot to resolve the
-    position identity only after ``_paper_open_trade`` has returned, so a
-    failure there reproduces an interruption on the far side of the boundary.
+    The boundary is no longer PaperTrader. PaperTrader is a passive mirror
+    projected from the durable authority *after* the commit, so the only
+    mutation an execution can be interrupted on the far side of is
+    ``_finalize_durable_financial_state`` itself. The marker is set
+    immediately before it, and this injection fails the durable snapshot
+    read taken inside it, which reproduces a post-boundary interruption.
 
-    Block-5A also reads that snapshot to derive the canonical RiskState, which
-    happens during ``risk_check`` and therefore *before* any component is
-    touched. The injection is scoped to reads taken once the side-effect
-    boundary has actually been crossed, so it keeps reproducing the post-side
-    -effect interruption instead of degenerating into an admission refusal.
+    Block-5A also reads that snapshot to derive the canonical RiskState,
+    which happens during ``risk_check`` and therefore before the boundary.
+    Scoping the injection to reads taken once the marker is set keeps this
+    reproducing the post-side-effect interruption instead of degenerating
+    into an admission refusal.
     """
     durable_snapshot = app.execution.portfolio_foundation.snapshot
 
@@ -183,7 +195,11 @@ def test_exception_after_paper_side_effect_halts_the_runtime(running_app):
 
     assert running_app.execution.execution_halted is True
     assert running_app.execution.recovery_required is True
-    assert running_app.execution.halt_reason == "EXECUTION_INTERRUPTED_AFTER_SIDE_EFFECT"
+    # The boundary moved to durable finalization, so an interruption on its
+    # far side is now owned by that stage's own reason token. The safety
+    # outcome - halted, recovery required, capital INDETERMINATE - is
+    # unchanged; only which stage reports the halt is.
+    assert running_app.execution.halt_reason == "DURABLE_FINANCIAL_FINALIZATION_FAILED"
 
 
 def test_exception_after_paper_side_effect_resolves_the_journal_as_unknown(running_app):
@@ -205,10 +221,10 @@ def test_exception_after_paper_side_effect_returns_an_uncertain_result(running_a
     assert result["status"] == CommitOutcome.COMMIT_STATUS_UNKNOWN.value
     assert result["commit_outcome"] == CommitOutcome.COMMIT_STATUS_UNKNOWN.value
     assert result["recovery_required"] is True
-    # The original failure reason is preserved rather than replaced.
-    assert result["error_code"] == "EXECUTION_PIPELINE_EXCEPTION"
-    assert result["error_details"]["error"] == "durable snapshot read failed"
-    assert result["error_details"]["type"] == "RuntimeError"
+    # The interruption is now caught by durable finalization's own handler
+    # rather than the outer pipeline handler, so the stage that owns the
+    # failure names it. The uncertainty contract above is unchanged.
+    assert result["error_code"] == "DURABLE_FINANCIAL_FINALIZATION_FAILED"
 
 
 def test_interrupted_execution_never_reports_failed_while_running(running_app):
@@ -700,29 +716,29 @@ def test_sell_without_a_held_position_stays_before_the_boundary(running_app):
 
 
 # --------------------------------------------------------------------------
-# H-3 — a denied paper mutation can never become a successful execution
+# H-3 — PaperTrader can never affect an execution
 # --------------------------------------------------------------------------
 #
-# PaperTrader answers a refused mutation without raising:
+# PaperTrader used to be called *before* durable finalization, and its answer
+# was treated as authoritative:
 #
 #   open_trade  -> {"status": "FAILED", "reason": "Position exists"}
 #   close_trade -> {"status": "FAILED", "reason": "No position"}
 #
-# and ExecutionManager's own wrapper adds {"success": False, ...} when the
-# call raises. Hydration copies identifiers and numerics only — deliberately,
-# because a successful open answers "OPENED", which is not one of this
-# manager's success statuses — so the outcome has to be inspected separately.
-# Before this fix it was not inspected at all, and a refused paper trade
-# still finished as PAPER_EXECUTED with a fabricated durable position.
+# Both refusals are returned without the book being written at all, yet they
+# landed past the side-effect marker, so a legitimate add-to-position BUY (or
+# a SELL of a position the book had lost) became PAPER_TRADE_REJECTED, marked
+# capital INDETERMINATE and halted the whole runtime for operator recovery -
+# for a side effect that provably never happened.
 #
-# The refusals above happen to be raised before PaperTrader mutates anything,
-# but the exception wrapper case is not: save() truncates the book before
-# writing, so a failure there can leave a partially written file. The manager
-# cannot tell those cases apart from outside, so every component-reported
-# failure past the side-effect marker is treated as uncertain.
+# PaperTrader is now a passive mirror: it is projected from
+# ExecutionPortfolioFoundation *after* the commit and is never consulted
+# before one. These tests pin the inverted invariant - a refusing, stale, or
+# outright broken paper book cannot change a trade's outcome in any way.
 
 
 def refuse_paper_open(app: AtlasApplication) -> None:
+    """A paper book that refuses every open, as a stale book would."""
     def refusing_open(symbol, price, amount=100):
         return {"status": "FAILED", "reason": "Position exists"}
 
@@ -736,39 +752,85 @@ def refuse_paper_close(app: AtlasApplication) -> None:
     app.paper_trader.close_trade = refusing_close
 
 
-# T1 — BUY component failure
+def break_paper_mirror(app: AtlasApplication) -> None:
+    """Make the passive mirror's own persistence fail."""
+    def failing_save():
+        raise OSError("paper book write failed")
 
-def test_refused_paper_open_is_not_a_successful_execution(running_app):
+    app.paper_trader.save = failing_save
+
+
+# T1 — a refusing paper book no longer affects a BUY
+
+def test_refused_paper_open_no_longer_affects_the_execution(running_app):
     refuse_paper_open(running_app)
 
     result = execute(running_app)
 
-    assert result["success"] is False
-    assert result["status"] != "PAPER_EXECUTED"
-    assert result["status"] == CommitOutcome.COMMIT_STATUS_UNKNOWN.value
-    assert result["original_status"] == "FAILED"
-    assert result["error_code"] == "PAPER_TRADE_REJECTED"
-    assert result["message"] == "Position exists"
+    assert result["success"] is True
+    assert result["status"] == "PAPER_EXECUTED"
+    assert result["commit_outcome"] == CommitOutcome.COMMITTED.value
+    assert "PAPER_TRADE_REJECTED" not in str(result.get("error_code"))
 
 
-def test_refused_paper_open_resolves_as_uncertain(running_app):
+def test_refused_paper_open_never_halts_the_runtime(running_app):
     refuse_paper_open(running_app)
 
     execute(running_app)
 
-    assert reservation_status(running_app, "r1") == ReservationStatus.INDETERMINATE.value
-    assert journal_state(running_app, "r1") == (
-        CommitOutcome.COMMIT_STATUS_UNKNOWN.value
-    )
-    assert running_app.execution._risk_admissions == {}
-    assert running_app.execution.execution_halted is True
-    assert running_app.execution.recovery_required is True
+    assert reservation_status(running_app, "r1") == ReservationStatus.COMMITTED.value
+    assert journal_state(running_app, "r1") == CommitOutcome.COMMITTED.value
+    assert running_app.execution.execution_halted is False
+    assert running_app.execution.recovery_required is False
 
 
-# T2 — SELL component failure
+def test_stale_paper_book_position_does_not_block_a_buy(running_app):
+    """The reachable form of the "Position exists" bug: a diverged book.
 
-def test_refused_paper_close_is_not_a_successful_execution(running_app):
-    """A durable position the paper book does not know about."""
+    A genuine add-to-position BUY is refused earlier and independently by
+    RiskEngine (DUPLICATE_OPEN_POSITION, core/risk_engine.py), so it never
+    reached PaperTrader. What did reach it was divergence: a paper book
+    holding a symbol the authority is flat on - a book restored from an
+    older file, or left stale by the by-design partial-exit skip. That used
+    to answer "Position exists", which became PAPER_TRADE_REJECTED, marked
+    capital INDETERMINATE and halted the runtime, for a refusal that wrote
+    nothing. The stale entry must now simply be overwritten by the
+    projection.
+    """
+    running_app.paper_trader.positions["BTCUSDT"] = {
+        "symbol": "BTCUSDT",
+        "stale_marker": True,
+    }
+    assert running_app.portfolio_foundation.snapshot()["positions"] == {}
+
+    result = execute(running_app)
+
+    assert result["success"] is True
+    assert result["commit_outcome"] == CommitOutcome.COMMITTED.value
+    assert running_app.execution.execution_halted is False
+    assert running_app.execution.recovery_required is False
+
+    durable = running_app.portfolio_foundation.snapshot()["positions"]["BTCUSDT"]
+    mirrored = running_app.paper_trader.positions["BTCUSDT"]
+
+    # Projection, not accumulation: the mirror equals durable truth exactly
+    # and the stale record is gone rather than merged with.
+    assert "stale_marker" not in mirrored
+    assert mirrored["base_quantity"] == str(durable["base_quantity"])
+    assert mirrored["position_id"] == str(durable["position_id"])
+    assert D(mirrored["base_quantity"]) > D("0")
+    assert running_app.paper_trader.history[-1]["type"] == "OPEN"
+
+
+# T2 — a SELL whose symbol the paper book never had
+
+def test_sell_succeeds_when_the_paper_book_lacks_the_symbol(running_app):
+    """A durable position the paper book does not know about.
+
+    This is the state the runtime was left in whenever paper_trades.json was
+    lost or archived while durable state survived. It used to halt the
+    runtime; the mirror must simply catch up.
+    """
     assert execute(running_app)["status"] == "PAPER_EXECUTED"
     running_app.paper_trader.positions.clear()
     refuse_paper_close(running_app)
@@ -787,20 +849,17 @@ def test_refused_paper_close_is_not_a_successful_execution(running_app):
 
     result = running_app.execution.execute(decision, risk_state_with(exposure))
 
-    assert result["success"] is False
-    assert result["status"] == CommitOutcome.COMMIT_STATUS_UNKNOWN.value
-    assert result["error_code"] == "PAPER_TRADE_REJECTED"
-    assert result["message"] == "No position"
-    assert journal_state(running_app, "s1") == (
-        CommitOutcome.COMMIT_STATUS_UNKNOWN.value
-    )
-    assert running_app.execution._risk_admissions == {}
-    assert running_app.execution.execution_halted is True
+    assert result["success"] is True
+    assert journal_state(running_app, "s1") == CommitOutcome.COMMITTED.value
+    assert running_app.execution.execution_halted is False
+    # Projected from the authority: flat there means absent here.
+    durable = running_app.portfolio_foundation.snapshot()["positions"]
+    assert ("BTCUSDT" in running_app.paper_trader.positions) == ("BTCUSDT" in durable)
 
 
-# T3 — a raising component keeps the M-A contract
+# T3 — a raising paper book cannot reach the execution at all
 
-def test_raising_paper_component_is_still_uncertain(running_app):
+def test_raising_paper_book_cannot_affect_the_execution(running_app):
     def raising_open(symbol, price, amount=100):
         raise RuntimeError("paper book write failed")
 
@@ -808,18 +867,67 @@ def test_raising_paper_component_is_still_uncertain(running_app):
 
     result = execute(running_app)
 
-    # The wrapper converts the exception into {"success": False, ...}, which
-    # the same authority check now rejects.
-    assert result["success"] is False
-    assert result["status"] == CommitOutcome.COMMIT_STATUS_UNKNOWN.value
-    assert reservation_status(running_app, "r1") == ReservationStatus.INDETERMINATE.value
-    assert journal_state(running_app, "r1") == (
-        CommitOutcome.COMMIT_STATUS_UNKNOWN.value
-    )
-    assert running_app.execution.execution_halted is True
+    assert result["success"] is True
+    assert result["status"] == "PAPER_EXECUTED"
+    assert reservation_status(running_app, "r1") == ReservationStatus.COMMITTED.value
+    assert journal_state(running_app, "r1") == CommitOutcome.COMMITTED.value
+    assert running_app.execution.execution_halted is False
 
 
-# T4 — a succeeding component is unchanged
+def test_failing_authority_read_inside_the_mirror_cannot_affect_the_trade(running_app):
+    """The mirror's own durable read is inside its containment, too.
+
+    ``_mirror_paper_book`` reads the authority's snapshot to project from.
+    That read is the one call in it that touches durable machinery, so it
+    must not be able to escape and be reclassified as an interrupted
+    execution - the commit has already landed by then.
+    """
+    foundation = running_app.execution.portfolio_foundation
+    durable_snapshot = foundation.snapshot
+    committed = {"done": False}
+    apply_confirmed = foundation.apply_confirmed
+
+    def marking_apply(*args, **kwargs):
+        outcome = apply_confirmed(*args, **kwargs)
+        committed["done"] = True
+        return outcome
+
+    def failing_snapshot(*args, **kwargs):
+        if committed["done"]:
+            raise RuntimeError("authority read failed inside the mirror")
+        return durable_snapshot(*args, **kwargs)
+
+    foundation.apply_confirmed = marking_apply
+    foundation.snapshot = failing_snapshot
+
+    result = execute(running_app)
+
+    assert result["success"] is True
+    assert result["commit_outcome"] == CommitOutcome.COMMITTED.value
+    assert result["data"]["paper_mirror"] == "DEGRADED"
+    assert running_app.execution.execution_halted is False
+    assert running_app.execution.recovery_required is False
+    assert journal_state(running_app, "r1") == CommitOutcome.COMMITTED.value
+    assert reservation_status(running_app, "r1") == ReservationStatus.COMMITTED.value
+
+
+def test_failing_mirror_persistence_leaves_the_trade_successful(running_app):
+    """A mirror that cannot write is reported, never escalated."""
+    break_paper_mirror(running_app)
+
+    result = execute(running_app)
+
+    assert result["success"] is True
+    assert result["status"] == "PAPER_EXECUTED"
+    assert result["commit_outcome"] == CommitOutcome.COMMITTED.value
+    assert result["data"]["paper_mirror"] == "DEGRADED"
+    assert running_app.execution.execution_halted is False
+    assert running_app.execution.recovery_required is False
+    # The authority is untouched by the mirror's failure.
+    assert "BTCUSDT" in running_app.portfolio_foundation.snapshot()["positions"]
+
+
+# T4 — a succeeding execution projects the book
 
 def test_successful_paper_component_is_unchanged(running_app):
     result = execute(running_app)
@@ -828,67 +936,58 @@ def test_successful_paper_component_is_unchanged(running_app):
     assert result["status"] == "PAPER_EXECUTED"
     assert result["commit_outcome"] == CommitOutcome.COMMITTED.value
     assert reservation_status(running_app, "r1") == ReservationStatus.COMMITTED.value
-    assert running_app.paper_trader.positions["BTCUSDT"]["amount"] > 0
+    assert result["data"]["paper_mirror"] == "OK"
+
+    # The mirrored schema carries the authority's base quantity, never the
+    # legacy quote-denominated `amount` the old book wrote.
+    mirrored = running_app.paper_trader.positions["BTCUSDT"]
+    assert D(mirrored["base_quantity"]) > D("0")
+    assert "amount" not in mirrored
+    assert mirrored["mirrored_from"] == "execution_financial_state"
 
 
-def test_component_success_shapes_are_not_read_as_failure():
-    """PaperTrader's own success vocabulary must not trip the check."""
-    assert ExecutionManager._component_reported_failure(
-        {"status": "OPENED", "position": {}}
-    ) is False
-    assert ExecutionManager._component_reported_failure(
-        {"status": "CLOSED", "profit": 5}
-    ) is False
-    assert ExecutionManager._component_reported_failure({}) is False
-    assert ExecutionManager._component_reported_failure(None) is False
-    assert ExecutionManager._component_reported_failure(
-        {"status": "FAILED", "reason": "Position exists"}
-    ) is True
-    assert ExecutionManager._component_reported_failure(
-        {"success": False, "status": "FAILED"}
-    ) is True
+# T5 — the fill is derived from the request, not from the paper book
 
-
-# T5 — hydration of identifiers and numerics is untouched
-
-def test_successful_component_fields_still_hydrate(running_app):
+def test_fill_fields_do_not_come_from_the_paper_book(running_app):
     result = execute(running_app)
 
     assert result["order_id"]
     assert result["filled_price"] == 10
     assert result["filled_amount"] > 0
-    assert result["data"]["paper_trade"]["status"] == "OPENED"
+    # No paper execution adapter reports a fill, so nothing is hydrated.
+    assert "paper_trade" not in result["data"]
 
 
-# T6 — the false-success invariant
+# T6 — the inverted false-failure invariant
 
-def test_component_failure_can_never_end_successful(running_app):
+def test_paper_book_failure_can_never_end_unsuccessful(running_app):
     refuse_paper_open(running_app)
 
     result = execute(running_app)
 
     forbidden = (
-        bool(result.get("success"))
-        or result["status"] == "PAPER_EXECUTED"
-        or reservation_status(running_app, "r1") == ReservationStatus.COMMITTED.value
-        or journal_state(running_app, "r1") == CommitOutcome.COMMITTED.value
+        not bool(result.get("success"))
+        or result["status"] != "PAPER_EXECUTED"
+        or reservation_status(running_app, "r1") != ReservationStatus.COMMITTED.value
+        or journal_state(running_app, "r1") != CommitOutcome.COMMITTED.value
     )
     assert forbidden is False
 
 
-def test_component_failure_confirms_no_durable_position(running_app):
+def test_paper_book_refusal_does_not_block_the_durable_position(running_app):
     refuse_paper_open(running_app)
 
     execute(running_app)
 
-    # The authoritative book must not gain a position the paper book refused.
-    assert running_app.portfolio_foundation.snapshot()["positions"] == {}
-    assert running_app.paper_trader.positions == {}
+    # The authority owns the position; the paper book cannot veto it, and is
+    # projected from it afterwards.
+    assert "BTCUSDT" in running_app.portfolio_foundation.snapshot()["positions"]
+    assert "BTCUSDT" in running_app.paper_trader.positions
 
 
-# T7 — restart after a component failure stays recovery-gated
+# T7 — restart after a refusing paper book is not recovery-gated
 
-def test_restart_after_component_failure_is_recovery_gated(tmp_path):
+def test_restart_after_a_refusing_paper_book_is_not_recovery_gated(tmp_path):
     state_dir = tmp_path / "state"
     seed_valid_state(state_dir)
 
@@ -900,14 +999,10 @@ def test_restart_after_component_failure_is_recovery_gated(tmp_path):
     restarted = AtlasApplication(state_directory=state_dir)
     restarted.execution.start()
 
-    assert restarted.transaction_journal.has_unresolved() is True
-
-    result = execute(restarted, request_id="r2")
-
-    assert result["status"] == "RECOVERY_REQUIRED"
-    assert restarted.execution.reservation_ledger.get("r2") is None
-    assert restarted.execution._risk_admissions == {}
-    assert restarted.portfolio_foundation.snapshot()["positions"] == {}
+    # Nothing was left unresolved, because nothing failed.
+    assert restarted.transaction_journal.has_unresolved() is False
+    assert restarted.execution.execution_halted is False
+    assert "BTCUSDT" in restarted.portfolio_foundation.snapshot()["positions"]
 
 
 # --------------------------------------------------------------------------

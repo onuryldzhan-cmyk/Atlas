@@ -477,13 +477,13 @@ def test_component_fee_pushes_buy_fill_below_min_notional_and_fails_closed(flat_
 def test_component_fee_below_min_notional_halts_through_full_orchestration(flat_app):
     """Same regression, driven through the real ``execute()`` orchestration.
 
-    Proves the full safety contract the owner ruling requires: because the
-    compatibility paper book was already mutated by the time the fee is
-    known, this is classified exactly like the pre-existing
-    ``ALLOCATION_BELOW_EXECUTABLE_QUANTUM`` fill-time failure - the runtime
-    halts for operator recovery with the reservation moved to
-    INDETERMINATE, never silently committed or released, and the durable
-    book never sees the fill.
+    Proves the full safety contract the owner ruling requires: the fill is
+    refused once the component-reported fee is known, and the durable book
+    never sees it. It is classified exactly like the pre-existing
+    ``ALLOCATION_BELOW_EXECUTABLE_QUANTUM`` fill-time failure - which, now
+    that the paper book is a passive post-commit mirror rather than a
+    pre-commit mutation, provably precedes every side effect and so resolves
+    NOT_COMMITTED with the reservation released, never silently committed.
     """
     manager = flat_app.execution
     original_open_trade = manager._paper_open_trade
@@ -504,16 +504,19 @@ def test_component_fee_below_min_notional_halts_through_full_orchestration(flat_
     result = manager.execute(decision)
 
     assert result["success"] is False
-    assert result["commit_outcome"] == "COMMIT_STATUS_UNKNOWN"
-    assert result["recovery_required"] is True
-    assert manager.execution_halted is True
-    assert manager.recovery_required is True
-    assert manager.halt_reason == "EXECUTION_INTERRUPTED_AFTER_SIDE_EFFECT"
+    # The paper book is no longer mutated before the fee is known - it is a
+    # passive mirror projected after the commit - so this fill-time refusal
+    # now provably precedes every side effect. It is therefore classified
+    # NOT_COMMITTED and stays retryable, instead of halting the runtime for
+    # a side effect that never happened. The refusal itself is unchanged.
+    assert result["commit_outcome"] == "NOT_COMMITTED"
+    assert manager.execution_halted is False
+    assert manager.recovery_required is False
 
     assert position_of(flat_app) is None
     reservation = manager.reservation_ledger.get("fee-edge-orch")
     assert reservation is not None
-    assert reservation.status.value == "INDETERMINATE"
+    assert reservation.status.value == "RELEASED"
 
 
 # ===========================================================================

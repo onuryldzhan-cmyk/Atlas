@@ -1615,9 +1615,20 @@ class ExecutionManager:
             # =================================================
 
             else:
+                finalized = None
+
                 try:
                     if self.portfolio_foundation is not None:
-                        self._finalize_durable_financial_state(
+                        # Side-effect boundary. apply_confirmed() mutates the
+                        # durable financial authority, so from here an
+                        # interrupted request has an outcome this manager
+                        # cannot prove. Nothing earlier in the paper flow
+                        # mutates anything any more: the paper paths are
+                        # purely computational, and PaperTrader is projected
+                        # from this authority only after the commit lands.
+                        self._mark_execution_side_effect(request_id)
+
+                        finalized = self._finalize_durable_financial_state(
                             request=request,
                             result=result,
                         )
@@ -1640,6 +1651,11 @@ class ExecutionManager:
                         self.execution_halted = True
                         self.recovery_required = True
                         self.halt_reason = "DURABLE_FINANCIAL_FINALIZATION_FAILED"
+                    # Same claim discipline as the unsuccessful-result branch
+                    # above: an interrupted execution must not leave its
+                    # request_id claimed in flight, which would outlive the
+                    # halt and answer EXECUTION_REQUESTS_IN_FLIGHT forever.
+                    self._release_request(request_id)
                     request_claimed = False
                     unknown_result = {
                         "success": False,
@@ -1712,6 +1728,15 @@ class ExecutionManager:
                         "mode": self.mode,
                         "timestamp": self._utc_now(),
                     }
+
+                # The durable authority is committed and the reservation is
+                # settled; only now is the passive book projected from it.
+                # This can neither fail nor alter the execution.
+                self._mirror_paper_book(
+                    request=request,
+                    result=result,
+                    finalized=finalized,
+                )
 
                 result[
                     "commit_outcome"
@@ -3430,6 +3455,166 @@ class ExecutionManager:
         return finalized
 
     # =========================================================
+    # PASSIVE PAPER BOOK MIRROR
+    # =========================================================
+
+    def _mirror_paper_book(
+        self,
+        *,
+        request: ExecutionRequest,
+        result: dict[str, Any],
+        finalized: Mapping[str, Any] | None = None,
+    ) -> None:
+        """Project the committed durable position onto the passive paper book.
+
+        PaperTrader holds no authority. Its record for this symbol is
+        overwritten from ExecutionPortfolioFoundation's own post-commit
+        snapshot - never from PaperTrader's prior contents, and never by
+        replaying open/close semantics against it. That makes both
+        add-to-position and partial-exit ordinary cases: the symbol is
+        written to current durable truth, or dropped when the authority
+        shows it flat.
+
+        Every failure here is contained. The execution is already committed
+        and the authority already holds the truth, so a mirror that could
+        raise - or could turn a committed execution into a reported failure
+        - would reintroduce the very veto this method exists to remove. The
+        outcome is published as observability data only, under
+        ``result["data"]["paper_mirror"]``.
+        """
+
+        status = "OK"
+
+        try:
+            if (
+                self.paper_trader is None
+                or self.portfolio_foundation is None
+            ):
+                return
+
+            symbol = request.symbol
+
+            position = self.portfolio_foundation.snapshot()[
+                "positions"
+            ].get(symbol)
+
+            self.paper_trader.apply_projection(
+                symbol=symbol,
+                position=position,
+                history_entry=self._paper_mirror_history_entry(
+                    request=request,
+                    result=result,
+                    position=position,
+                    finalized=finalized,
+                ),
+            )
+
+        except Exception:
+            status = "DEGRADED"
+
+            logger.exception(
+                "Paper book mirror failed; durable financial state "
+                "is unaffected and the execution stands"
+            )
+
+        finally:
+            self._set_paper_mirror_status(
+                result,
+                status,
+            )
+
+    def _paper_mirror_history_entry(
+        self,
+        *,
+        request: ExecutionRequest,
+        result: Mapping[str, Any],
+        position: Mapping[str, Any] | None,
+        finalized: Mapping[str, Any] | None,
+    ) -> dict[str, Any]:
+        """Describe the committed outcome for the mirrored book's history.
+
+        Classified from the durable authority's own post-commit record: a
+        surviving position's ``version`` is what distinguishes a first open
+        from an add, so PaperTrader's prior contents are never consulted.
+        """
+
+        def _text(value: Any) -> str | None:
+            return None if value is None else str(value)
+
+        action = str(
+            request.action or ""
+        ).strip().upper()
+
+        if position is None:
+            event = "CLOSE"
+
+        elif action == "SELL":
+            event = "REDUCE"
+
+        else:
+            try:
+                opened_before = int(position.get("version") or 1) > 1
+            except (TypeError, ValueError):
+                opened_before = False
+
+            event = "ADD" if opened_before else "OPEN"
+
+        entry: dict[str, Any] = {
+            "type": event,
+            "action": action,
+            "symbol": request.symbol,
+            "executed_base_quantity": _text(
+                result.get("filled_base_quantity")
+            ),
+            "executed_quote_notional": _text(
+                result.get("filled_quote_notional")
+            ),
+            "price": result.get("filled_price"),
+            "request_id": request.request_id,
+            "execution_id": result.get("execution_id"),
+            "position_id": (
+                None if position is None
+                else _text(position.get("position_id"))
+            ),
+            "resulting_base_quantity": (
+                None if position is None
+                else _text(position.get("base_quantity"))
+            ),
+            "time": self._utc_now(),
+        }
+
+        if isinstance(finalized, Mapping) and "replayed" in finalized:
+            entry["replayed"] = bool(
+                finalized["replayed"]
+            )
+
+        return entry
+
+    @staticmethod
+    def _set_paper_mirror_status(
+        result: Any,
+        status: str,
+    ) -> None:
+        """Record the mirror outcome as observability data, nothing more."""
+
+        try:
+            if not isinstance(result, dict):
+                return
+
+            data = result.get("data")
+
+            if not isinstance(data, dict):
+                data = {}
+                result["data"] = data
+
+            data["paper_mirror"] = status
+
+        except Exception:
+            logger.exception(
+                "Unable to record paper mirror status"
+            )
+
+    # =========================================================
     # PAPER EXECUTION
     # =========================================================
 
@@ -3702,16 +3887,11 @@ class ExecutionManager:
                     )
                     return
 
-        # Side-effect boundary: PaperTrader.open_trade() persists its own
-        # durable book, so from here an interrupted request has an outcome
-        # this manager cannot prove.
-        self._mark_execution_side_effect(request.request_id)
-
-        # The compatibility paper book has to be called before the fill can be
-        # sized, because it is what reports the price and fee the fill is
-        # derived from. It therefore sees the approved allocation, and its
-        # record can differ from the durable one by the sub-quantum remainder.
-        # The durable foundation is the position authority; this book is not.
+        # Fill-evidence seam. No paper execution adapter is configured in
+        # this runtime, so this reports nothing and the fill is derived
+        # from the request price below. PaperTrader is NOT consulted here:
+        # it is a passive mirror of the durable authority (see
+        # _mirror_paper_book) and can neither report a fill nor refuse one.
         paper_trade = self._paper_open_trade(
             request=request,
             allocation=float(approved),
@@ -3719,27 +3899,6 @@ class ExecutionManager:
 
         if paper_trade is not None:
             result.data["paper_trade"] = paper_trade
-
-            # PaperTrader is the authority on whether the trade was
-            # recorded. A denied mutation must not be able to continue into
-            # durable finalization as a confirmed execution.
-            if self._component_reported_failure(
-                paper_trade
-            ):
-                self._mark_result_failure(
-                    result=result,
-                    message=str(
-                        paper_trade.get(
-                            "reason",
-                            "Paper trade was not recorded",
-                        )
-                    ),
-                    error_code="PAPER_TRADE_REJECTED",
-                    details=dict(
-                        paper_trade
-                    ),
-                )
-                return
 
             self._hydrate_result_from_component(
                 result=result,
@@ -3907,6 +4066,11 @@ class ExecutionManager:
             )
             position = None
         else:
+            # Side-effect boundary for the foundation-less configuration:
+            # PositionController is mutated here and there is no durable
+            # finalization afterwards to carry the marker instead.
+            self._mark_execution_side_effect(request.request_id)
+
             position = self._position_open(
                 request=request,
                 allocation=executed_allocation,
@@ -3964,78 +4128,22 @@ class ExecutionManager:
         request: ExecutionRequest,
         allocation: float,
     ) -> Any | None:
+        """Report a paper BUY fill from an execution adapter, if one exists.
+
+        This is the fill-evidence seam only: whatever it returns is
+        hydrated onto the result (price, fee, identifiers) before the fill
+        is sized. It deliberately does NOT call PaperTrader. PaperTrader
+        is a passive mirror of ExecutionPortfolioFoundation, projected
+        after the durable commit by ``_mirror_paper_book``; letting it
+        report a fill here would let a simulation book set the figures the
+        durable authority then settles, and letting it refuse here let a
+        phantom refusal halt the runtime.
+
+        No paper execution adapter is configured in this runtime, so this
+        reports nothing and the fill is derived from the request price.
         """
-        Call PaperTrader.open_trade through supported contracts.
-        """
 
-        if self.paper_trader is None:
-            return None
-
-        open_trade = getattr(
-            self.paper_trader,
-            "open_trade",
-            None,
-        )
-
-        if not callable(
-            open_trade
-        ):
-            return None
-
-        try:
-            return open_trade(
-                request.symbol,
-                request.price,
-                allocation,
-            )
-
-        except TypeError:
-            try:
-                return open_trade(
-                    symbol=request.symbol,
-                    price=request.price,
-                    amount=allocation,
-                    strategy=request.strategy,
-                    confidence=request.confidence,
-                    risk=request.risk,
-                    metadata=self._normalize_metadata(
-                        request.metadata
-                    ),
-                )
-
-            except Exception as exc:
-                self._record_error(
-                    phase="paper_buy",
-                    error=exc,
-                    request=request,
-                )
-                logger.exception(
-                    "PaperTrader BUY failed"
-                )
-                return {
-                    "success": False,
-                    "status": "FAILED",
-                    "reason": str(
-                        exc
-                    ),
-                }
-
-        except Exception as exc:
-            self._record_error(
-                phase="paper_buy",
-                error=exc,
-                request=request,
-            )
-            logger.exception(
-                "PaperTrader BUY failed"
-            )
-            return {
-                "success": False,
-                "status": "FAILED",
-                "reason": str(
-                    exc
-                ),
-            }
+        return None
 
     def _position_open(
         self,
@@ -4457,18 +4565,12 @@ class ExecutionManager:
             result.position_id = position["position_id"]
             result.filled_base_quantity = base_quantity
 
-        # Side-effect boundary: PaperTrader.close_trade() persists its own
-        # durable book, so from here an interrupted request has an outcome
-        # this manager cannot prove.
-        self._mark_execution_side_effect(request.request_id)
-
-        # PaperTrader.close_trade() can only express a *complete* exit: it pops
-        # the symbol outright. Calling it for a partial reduction would drop a
-        # position the durable book still holds, and every later exit of the
-        # remainder would then be refused as "No position" - trapping exposure
-        # in the compatibility book. The durable foundation is the position
-        # authority, so a partial reduction leaves the paper book untouched and
-        # says so in the result rather than desynchronizing it.
+        # Fill-evidence seam, mirroring the BUY path: no paper execution
+        # adapter is configured, so nothing is reported and nothing is
+        # mutated here. A partial reduction still skips the seam entirely,
+        # because a full-exit-only component cannot describe one.
+        # PaperTrader itself is projected from the durable authority after
+        # the commit instead (see _mirror_paper_book).
         paper_trade = (
             None
             if partial_reduction
@@ -4482,26 +4584,6 @@ class ExecutionManager:
 
         if paper_trade is not None:
             result.data["paper_trade"] = paper_trade
-
-            # Same authority contract as the BUY path: a close the paper
-            # book refused is not a completed exit.
-            if self._component_reported_failure(
-                paper_trade
-            ):
-                self._mark_result_failure(
-                    result=result,
-                    message=str(
-                        paper_trade.get(
-                            "reason",
-                            "Paper trade was not recorded",
-                        )
-                    ),
-                    error_code="PAPER_TRADE_REJECTED",
-                    details=dict(
-                        paper_trade
-                    ),
-                )
-                return
 
             self._hydrate_result_from_component(
                 result=result,
@@ -4587,10 +4669,18 @@ class ExecutionManager:
             "reduce_only": request.reduce_only,
         }
 
-        position = (
-            None if self.portfolio_foundation is not None
-            else self._position_close(request=request, metadata=close_metadata)
-        )
+        if self.portfolio_foundation is not None:
+            position = None
+        else:
+            # Side-effect boundary for the foundation-less configuration,
+            # matching the BUY path: PositionController is mutated here and
+            # no durable finalization follows to carry the marker instead.
+            self._mark_execution_side_effect(request.request_id)
+
+            position = self._position_close(
+                request=request,
+                metadata=close_metadata,
+            )
 
         if position is not None:
             result.data["position"] = position
@@ -4663,72 +4753,14 @@ class ExecutionManager:
         self,
         request: ExecutionRequest,
     ) -> Any | None:
+        """Report a paper SELL fill from an execution adapter, if one exists.
+
+        The SELL counterpart of ``_paper_open_trade``, with the same
+        contract: fill evidence only, never PaperTrader, which is
+        projected from the durable authority after the commit instead.
         """
-        Call PaperTrader.close_trade through supported contracts.
-        """
 
-        if self.paper_trader is None:
-            return None
-
-        close_trade = getattr(
-            self.paper_trader,
-            "close_trade",
-            None,
-        )
-
-        if not callable(
-            close_trade
-        ):
-            return None
-
-        try:
-            return close_trade(
-                request.symbol
-            )
-
-        except TypeError:
-            try:
-                return close_trade(
-                    symbol=request.symbol,
-                    price=request.price,
-                    metadata=self._normalize_metadata(
-                        request.metadata
-                    ),
-                )
-
-            except Exception as exc:
-                self._record_error(
-                    phase="paper_sell",
-                    error=exc,
-                    request=request,
-                )
-                logger.exception(
-                    "PaperTrader SELL failed"
-                )
-                return {
-                    "success": False,
-                    "status": "FAILED",
-                    "reason": str(
-                        exc
-                    ),
-                }
-
-        except Exception as exc:
-            self._record_error(
-                phase="paper_sell",
-                error=exc,
-                request=request,
-            )
-            logger.exception(
-                "PaperTrader SELL failed"
-            )
-            return {
-                "success": False,
-                "status": "FAILED",
-                "reason": str(
-                    exc
-                ),
-            }
+        return None
 
     def _position_close(
         self,
@@ -5200,49 +5232,6 @@ class ExecutionManager:
 
         if pnl != 0:
             result.pnl = pnl
-
-    @staticmethod
-    def _component_reported_failure(
-        payload: Any,
-    ) -> bool:
-        """Report whether a component payload explicitly denies success.
-
-        Hydration deliberately copies identifiers and numerics only, because
-        component status vocabularies are their own: PaperTrader answers a
-        successful open with ``OPENED``, which is not one of this manager's
-        success statuses. Copying a component status straight onto the
-        execution result would therefore turn successful paper BUYs into
-        failures, so the outcome is inspected separately here.
-
-        Absence of an outcome is not failure. Only an explicit denial — a
-        false ``success`` flag, or a status this manager itself treats as
-        terminal failure — counts, so component payloads that simply carry
-        no outcome field keep behaving exactly as before.
-        """
-        if not isinstance(
-            payload,
-            Mapping,
-        ):
-            return False
-
-        if (
-            "success" in payload
-            and not bool(
-                payload.get(
-                    "success"
-                )
-            )
-        ):
-            return True
-
-        status = str(
-            payload.get(
-                "status",
-                "",
-            )
-        ).strip().upper()
-
-        return status in ExecutionManager.FAILURE_STATUSES
 
     @staticmethod
     def _mark_result_failure(

@@ -242,7 +242,11 @@ def test_prepare_record_is_durable_before_financial_side_effect(
         ("PREPARE", "durable-request-001"),
         ("COMMITTED", "durable-request-001"),
     ]
-    assert trader.open_count == 1
+    # PaperTrader is no longer on the execution path at all: it is a passive
+    # mirror projected from the durable authority after the commit, and this
+    # manager is built without one. The prepare-before-side-effect ordering
+    # this test owns is carried by the journal call sequence above.
+    assert trader.open_count == 0
 
 
 def test_prepare_failure_blocks_side_effect_as_not_committed(
@@ -294,7 +298,8 @@ def test_terminal_persistence_failure_returns_unknown_and_halts(
         == "COMMIT_STATUS_UNKNOWN"
     )
     assert result["error_code"] == "DURABLE_COMMIT_FAILED"
-    assert trader.open_count == 1
+    # As above: the execution path never invokes PaperTrader any more.
+    assert trader.open_count == 0
     assert journal.unknown_count == 1
 
     operational = manager.status()["operational_state"]
