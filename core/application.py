@@ -1162,6 +1162,60 @@ class AtlasApplication:
                 "status_error": str(exc),
             }
 
+    @staticmethod
+    def _safe_health(
+        service: Any,
+    ) -> dict[str, Any]:
+        """
+        Obtain a service health report without allowing one broken service
+        to break the complete Atlas health response.
+
+        This mirrors _safe_status for services that expose health() as a
+        surface distinct from status(). MarketLoop is one: its staleness
+        verdict lives on health(), while thread liveness lives on both.
+        """
+
+        if service is None:
+            return {
+                "available": False,
+            }
+
+        health_method = getattr(
+            service,
+            "health",
+            None,
+        )
+
+        if not callable(health_method):
+            return {
+                "available": True,
+                "health_supported": False,
+            }
+
+        try:
+            result = health_method()
+
+            if isinstance(result, dict):
+                return result
+
+            return {
+                "available": True,
+                "value": result,
+            }
+
+        except Exception as exc:
+            logger.exception(
+                "Service health failed: %s",
+                type(service).__name__,
+            )
+
+            return {
+                "available": True,
+                "healthy": False,
+                "health_unreadable": True,
+                "health_error": str(exc),
+            }
+
     # =========================================================
     # HEALTH
     # =========================================================
@@ -1169,6 +1223,24 @@ class AtlasApplication:
     def health(self) -> dict[str, Any]:
         """
         Return a concise application health report.
+
+        Market-data signals
+        -------------------
+        market_data_stale is reported only. It mirrors MarketLoop.health()'s
+        own contract, where staleness never affects healthy and never gates
+        trading or decisions - so it must not silently become a health gate
+        one layer up either. A market_data_stale of None is genuinely
+        "unknown", and an unreadable health() is not the same condition as
+        an absent one: market_data_stale_reason names the unreadable case
+        explicitly, because the operator's remediation differs.
+
+        market_loop_thread_alive, by contrast, does gate healthy: the market
+        worker is a daemon thread, and a thread that has died while the loop
+        still believes it is running is a genuinely unhealthy application,
+        not a stale-data condition. An absent thread_alive key means the
+        market service does not expose thread liveness at all, which is
+        unknown rather than evidence of a dead thread, so it does not flip
+        healthy on its own.
         """
 
         runtime_status = self._safe_status(
@@ -1183,10 +1255,15 @@ class AtlasApplication:
             self.market_loop,
         )
 
+        market_health = self._safe_health(
+            self.market_loop,
+        )
+
         healthy = bool(
             runtime_status.get("healthy", True)
             and execution_status.get("running", True)
             and market_status.get("running", True)
+            and market_status.get("thread_alive") is not False
             and not self.errors
         )
 
@@ -1198,6 +1275,17 @@ class AtlasApplication:
                 "UNKNOWN",
             ),
             "error_count": len(self.errors),
+            "market_data_stale": market_health.get(
+                "market_data_stale",
+            ),
+            "market_data_stale_reason": (
+                "MARKET_HEALTH_UNREADABLE"
+                if market_health.get("health_unreadable") is True
+                else None
+            ),
+            "market_loop_thread_alive": market_status.get(
+                "thread_alive",
+            ),
         }
 
     # =========================================================

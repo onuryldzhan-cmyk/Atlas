@@ -53,7 +53,16 @@ NON_LOOPBACK_RESPONSE = {
 }
 
 
-def _is_loopback(request: Request) -> bool:
+def is_loopback_request(request: Request) -> bool:
+    """Return True when the request's peer address is a loopback address.
+
+    This is the single loopback predicate for the whole web surface:
+    ``web_app`` imports it to guard its own runtime endpoints
+    (``/api/health``, ``/api/analysis``) so that both the panel routes and
+    the runtime routes refuse the same set of peers, rather than drifting
+    apart behind two separate implementations.
+    """
+
     client = request.client
 
     if client is None:
@@ -90,7 +99,7 @@ def build_observability_router(
 
     @router.get("/test-results", response_class=JSONResponse)
     async def test_results(request: Request) -> JSONResponse:
-        if not _is_loopback(request):
+        if not is_loopback_request(request):
             return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
 
         try:
@@ -111,7 +120,7 @@ def build_observability_router(
 
     @router.get("/governance", response_class=JSONResponse)
     async def governance(request: Request) -> JSONResponse:
-        if not _is_loopback(request):
+        if not is_loopback_request(request):
             return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
 
         try:
