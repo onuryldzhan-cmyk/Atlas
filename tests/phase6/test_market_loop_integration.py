@@ -116,6 +116,27 @@ class FakeBrain:
         }
 
 
+class FailingSymbolFeed:
+    """Legacy feed that raises for one configured symbol only."""
+
+    def __init__(self, failing_symbols: set[str]) -> None:
+        self.failing_symbols = failing_symbols
+        self.calls: list[str] = []
+
+    def candles(
+        self,
+        symbol: str,
+        interval: str = "1m",
+        limit: int = 500,
+    ) -> list[list[Any]]:
+        self.calls.append(symbol)
+
+        if symbol in self.failing_symbols:
+            raise RuntimeError(f"simulated provider failure for {symbol}")
+
+        return build_legacy_candles(limit)
+
+
 class MarketLoopIntegrationTests(unittest.TestCase):
 
     def test_candle_processor_accepts_binance_legacy_rows(self) -> None:
@@ -190,6 +211,44 @@ class MarketLoopIntegrationTests(unittest.TestCase):
                 )
             ).upper()
             self.assertIn(action, {"HOLD", ""})
+
+    def test_run_cycle_isolates_one_symbol_failure_from_its_sibling(
+        self,
+    ) -> None:
+        """One symbol's processing failure must not affect a sibling
+        symbol processed in the same run_cycle - no shared per-cycle
+        state is introduced before each symbol's own try/except
+        boundary."""
+
+        feed = FailingSymbolFeed(failing_symbols={"ETHUSDT"})
+        brain = FakeBrain()
+        loop = MarketLoop(
+            brain=brain,
+            market_feed=feed,
+            execution=None,
+            event_bus=None,
+            symbols=["BTCUSDT", "ETHUSDT"],
+            interval=10,
+        )
+
+        loop.running = True
+        loop.run_cycle()
+
+        self.assertEqual(sorted(feed.calls), ["BTCUSDT", "ETHUSDT"])
+
+        # The healthy sibling reached the brain and recorded a signal.
+        self.assertEqual(len(brain.calls), 1)
+        self.assertEqual(brain.calls[0]["symbol"], "BTCUSDT")
+        self.assertIn("BTCUSDT", loop.last_signals)
+        self.assertIn("BTCUSDT", loop.last_processed_candles)
+
+        # The failing symbol recorded its own isolated error and never
+        # reached the brain or produced a signal.
+        self.assertNotIn("ETHUSDT", loop.last_signals)
+        self.assertNotIn("ETHUSDT", loop.last_processed_candles)
+        self.assertEqual(loop.metrics["errors"], 1)
+        self.assertEqual(len(loop.errors), 1)
+        self.assertEqual(loop.errors[0]["phase"], "symbol:ETHUSDT")
 
 
 if __name__ == "__main__":

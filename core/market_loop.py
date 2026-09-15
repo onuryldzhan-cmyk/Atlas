@@ -54,7 +54,7 @@ import threading
 import time
 import traceback
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -109,6 +109,15 @@ class MarketLoop:
         "NO_ACTION",
     }
 
+    # Recovery window for health(): an error older than this no longer
+    # latches healthy=False. Cumulative metrics["errors"] is unaffected.
+    HEALTH_ERROR_RECOVERY_SECONDS: float = 300.0
+
+    # A symbol is reported stale in status()/health() when no market-data
+    # fetch has succeeded for it within this many seconds. Observability
+    # only: this never gates or blocks trading/decisions.
+    STALENESS_THRESHOLD_SECONDS: float = 180.0
+
     def __init__(
         self,
         brain: Any,
@@ -160,6 +169,11 @@ class MarketLoop:
         # }
         self.last_processed_candles: dict[str, str] = {}
 
+        # Last time a market-data fetch succeeded (did not raise) for
+        # each symbol, independent of whether the returned candles were
+        # new. Used only for staleness reporting - never gates decisions.
+        self.last_symbol_fetch_success_at: dict[str, datetime] = {}
+
         # Execution idempotency state.
         #
         # pending:
@@ -195,6 +209,7 @@ class MarketLoop:
             "execution_failures": 0,
             "errors": 0,
             "latency": 0.0,
+            "backfill_gap_exceeded": 0,
         }
 
         self.errors: list[dict[str, Any]] = []
@@ -434,6 +449,13 @@ class MarketLoop:
                 symbol
             )
 
+            with self.lock:
+                self.last_symbol_fetch_success_at[
+                    symbol
+                ] = datetime.now(
+                    UTC
+                )
+
             if not candles:
                 self._increment_metric(
                     "symbols_skipped"
@@ -530,6 +552,12 @@ class MarketLoop:
                         symbol
                     )
                 )
+
+            self._check_backfill_gap(
+                symbol,
+                previous_identity=previous_identity,
+                closed_candles=closed_candles,
+            )
 
             if previous_identity == candle_identity:
                 self._increment_metric(
@@ -833,6 +861,151 @@ class MarketLoop:
             interval="1m",
             limit=200,
         )
+
+    # =========================================================
+    # BACKFILL GAP DETECTION
+    # =========================================================
+
+    def _check_backfill_gap(
+        self,
+        symbol: str,
+        *,
+        previous_identity: str | None,
+        closed_candles: list[dict[str, Any]],
+    ) -> None:
+        """
+        Detect an outage longer than the just-fetched backfill window.
+
+        Each cycle refetches the latest closed candles, which silently
+        self-heals any outage shorter than that window - correct
+        behavior, left unchanged here. But when the previous cycle's
+        last-processed candle predates the oldest candle in this fetch
+        by more than the fetched window itself spans, the candles
+        between them were never retrieved and are permanently lost.
+        This only detects and reports that condition; it never attempts
+        to backfill it (CandleProcessor's fail-closed philosophy: detect
+        and report, don't silently repair).
+        """
+
+        previous_open_time_ms = (
+            self._identity_open_time_ms(
+                previous_identity
+            )
+        )
+
+        if previous_open_time_ms is None:
+            return
+
+        if not closed_candles:
+            return
+
+        oldest_open_time_ms = closed_candles[0].get(
+            "open_time"
+        )
+
+        newest_open_time_ms = closed_candles[-1].get(
+            "open_time"
+        )
+
+        if (
+            oldest_open_time_ms is None
+            or newest_open_time_ms is None
+        ):
+            return
+
+        if oldest_open_time_ms <= previous_open_time_ms:
+            # The previous last-processed candle still falls inside
+            # (or at the edge of) this fetch's window - no gap.
+            return
+
+        window_span_ms = (
+            newest_open_time_ms
+            - oldest_open_time_ms
+        )
+
+        gap_ms = (
+            oldest_open_time_ms
+            - previous_open_time_ms
+        )
+
+        if gap_ms <= window_span_ms:
+            return
+
+        gap_start_iso = self._milliseconds_to_iso(
+            previous_open_time_ms
+        )
+
+        gap_end_iso = self._milliseconds_to_iso(
+            oldest_open_time_ms
+        )
+
+        logger.warning(
+            "%s backfill gap exceeded fetch window: "
+            "data loss between %s and %s",
+            symbol,
+            gap_start_iso,
+            gap_end_iso,
+        )
+
+        self._increment_metric(
+            "backfill_gap_exceeded"
+        )
+
+        self.publish(
+            "MARKET_DATA_BACKFILL_GAP_EXCEEDED",
+            {
+                "symbol": symbol,
+                "gap_start": gap_start_iso,
+                "gap_end": gap_end_iso,
+                "gap_minutes": round(
+                    gap_ms / 60_000,
+                    2,
+                ),
+            },
+        )
+
+    @staticmethod
+    def _identity_open_time_ms(
+        identity: str | None,
+    ) -> int | None:
+        """
+        Parse the epoch-millisecond open time out of a candle identity.
+
+        Only the "open:<ms>" identity form carries a usable timestamp.
+        Any other form (or none) is not a comparable time and is
+        treated as unavailable rather than guessed.
+        """
+
+        if (
+            not isinstance(
+                identity,
+                str,
+            )
+            or not identity.startswith(
+                "open:"
+            )
+        ):
+            return None
+
+        try:
+            return int(
+                identity.split(
+                    ":",
+                    1,
+                )[1]
+            )
+
+        except (ValueError, IndexError):
+            return None
+
+    @staticmethod
+    def _milliseconds_to_iso(
+        value: int,
+    ) -> str:
+        return datetime.fromtimestamp(
+            value / 1000,
+            tz=UTC,
+        ).isoformat()
 
     # =========================================================
     # DECISION NORMALIZATION
@@ -1853,6 +2026,16 @@ class MarketLoop:
     def health(self) -> dict[str, Any]:
         """
         Return concise health information.
+
+        healthy reflects recent state (no error within the health
+        recovery window), not lifetime-cumulative state: a historical
+        transient error does not permanently latch healthy=False once
+        the loop has run cleanly since. metrics["errors"] itself stays
+        a lifetime-cumulative counter for other consumers and is
+        reported unchanged below.
+
+        market_data_stale is reported only - it never affects healthy
+        and never gates or blocks trading/decisions.
         """
 
         with self.lock:
@@ -1866,9 +2049,14 @@ class MarketLoop:
                     not self.running
                     or thread_alive
                 )
-                and self.metrics[
-                    "errors"
-                ] == 0
+                and not self._has_recent_error()
+            )
+
+            staleness = self._staleness_snapshot()
+
+            market_data_stale = any(
+                entry["stale"]
+                for entry in staleness.values()
             )
 
             return {
@@ -1879,7 +2067,101 @@ class MarketLoop:
                 "errors": self.metrics[
                     "errors"
                 ],
+                "market_data_stale": (
+                    market_data_stale
+                ),
             }
+
+    def _has_recent_error(self) -> bool:
+        """
+        Return True when the most recent recorded error is within the
+        health recovery window.
+
+        self.errors is append-only in chronological order (_record_error
+        always appends), so the last entry is always the most recent -
+        checking it alone is sufficient.
+        """
+
+        if not self.errors:
+            return False
+
+        last_error_time = self.errors[-1].get(
+            "time"
+        )
+
+        if not isinstance(
+            last_error_time,
+            str,
+        ):
+            # A malformed diagnostic record is not evidence of recovery.
+            return True
+
+        try:
+            parsed = datetime.fromisoformat(
+                last_error_time
+            )
+
+        except ValueError:
+            return True
+
+        threshold = datetime.now(
+            UTC
+        ) - timedelta(
+            seconds=(
+                self.HEALTH_ERROR_RECOVERY_SECONDS
+            )
+        )
+
+        return parsed >= threshold
+
+    # =========================================================
+    # STALENESS
+    # =========================================================
+
+    def _staleness_snapshot(
+        self,
+    ) -> dict[str, dict[str, Any]]:
+        """
+        Return per-symbol market-data staleness state.
+
+        Reporting only: this must never gate or block trading/decisions.
+        A symbol that has never had a successful fetch is reported stale
+        with no measured age, rather than assumed fresh.
+        """
+
+        now = datetime.now(
+            UTC
+        )
+
+        snapshot: dict[str, dict[str, Any]] = {}
+
+        for symbol in self.symbols:
+            last_success = self.last_symbol_fetch_success_at.get(
+                symbol
+            )
+
+            if last_success is None:
+                snapshot[symbol] = {
+                    "seconds_since_last_success": None,
+                    "stale": True,
+                }
+                continue
+
+            seconds_since = (
+                now - last_success
+            ).total_seconds()
+
+            snapshot[symbol] = {
+                "seconds_since_last_success": (
+                    seconds_since
+                ),
+                "stale": (
+                    seconds_since
+                    > self.STALENESS_THRESHOLD_SECONDS
+                ),
+            }
+
+        return snapshot
 
     # =========================================================
     # STATUS
@@ -1925,6 +2207,9 @@ class MarketLoop:
                 ),
                 "last_processed_candles": dict(
                     self.last_processed_candles
+                ),
+                "market_data_staleness": (
+                    self._staleness_snapshot()
                 ),
                 "errors": {
                     "count": len(
