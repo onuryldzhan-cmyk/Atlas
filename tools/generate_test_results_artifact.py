@@ -81,6 +81,45 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def write_meta_sidecar(
+    *,
+    repository_root: Path,
+    commit: str | None,
+    started_at: datetime,
+    finished_at: datetime,
+    command: list[str],
+    pytest_exit_code: int,
+    target: str,
+) -> Path:
+    """Write the provenance sidecar the observability panel reads.
+
+    Shared by this script's own ``main()`` and by the repository-root
+    ``conftest.py`` hook that refreshes the artifact after a local
+    full-suite run, so both producers stamp provenance identically rather
+    than maintaining two copies of the same payload shape.
+    """
+
+    meta_path = repository_root / TEST_RESULTS_META_RELPATH
+    meta_path.parent.mkdir(parents=True, exist_ok=True)
+
+    meta = {
+        "commit": commit,
+        "generated_at": finished_at.isoformat(),
+        "started_at": started_at.isoformat(),
+        "command": command,
+        "pytest_exit_code": pytest_exit_code,
+        "target": target,
+        "artifact": TEST_RESULTS_ARTIFACT_RELPATH,
+    }
+
+    meta_path.write_text(
+        json.dumps(meta, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+    return meta_path
+
+
 def build_command(
     *,
     target: str,
@@ -144,19 +183,14 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 1
 
-    meta = {
-        "commit": commit,
-        "generated_at": finished_at.isoformat(),
-        "started_at": started_at.isoformat(),
-        "command": command,
-        "pytest_exit_code": completed.returncode,
-        "target": arguments.target,
-        "artifact": TEST_RESULTS_ARTIFACT_RELPATH,
-    }
-
-    meta_path.write_text(
-        json.dumps(meta, indent=2) + "\n",
-        encoding="utf-8",
+    write_meta_sidecar(
+        repository_root=REPOSITORY_ROOT,
+        commit=commit,
+        started_at=started_at,
+        finished_at=finished_at,
+        command=command,
+        pytest_exit_code=completed.returncode,
+        target=arguments.target,
     )
 
     print(f"\nArtifact: {artifact_path}")

@@ -120,12 +120,46 @@ jobs:
       # TESTS
       # ==================================================
 
+      # The suite is invoked plainly, exactly as before this change. CI
+      # deliberately does NOT wrap it in tools/generate_test_results_artifact.py:
+      # the repository-root conftest.py hook already refreshes
+      # reports/observability/test_results.{junit.xml,meta.json} as a side
+      # effect of any complete full-suite run, so this plain invocation
+      # produces the artifact here for free - and, more importantly, does the
+      # same thing on the operator's machine, which is where the dashboard
+      # actually reads from. $LASTEXITCODE is checked explicitly, matching
+      # the compilation step above.
       - name: Run Atlas test suite
+        id: tests
         shell: pwsh
         run: |
           python -m pytest `
             -q `
             --basetemp .pytest_atlas_ci
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Atlas test suite failed (pytest exit code $LASTEXITCODE)."
+          }
+
+      # Auditability only: makes each run's exact pass/fail breakdown, and
+      # the commit it ran at, downloadable from the Actions run itself. It
+      # does NOT reach the operator's locally-running dashboard -
+      # reports/observability/ is gitignored by design and CI cannot write to
+      # a local machine; the conftest.py hook covers that case instead.
+      #
+      # Gated on the test step having actually produced a verdict (rather
+      # than always()), so `if-no-files-found: error` can stay strict and act
+      # as a canary for the conftest hook silently breaking, without adding
+      # confusing failures to builds that broke before the tests ever ran.
+      - name: Upload observability test-results artifact
+        if: always() && (steps.tests.conclusion == 'success' || steps.tests.conclusion == 'failure')
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: atlas-observability-test-results
+          path: |
+            reports/observability/test_results.junit.xml
+            reports/observability/test_results.meta.json
+          if-no-files-found: error
 
       # ==================================================
       # FINAL DIAGNOSTICS
