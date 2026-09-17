@@ -40,6 +40,15 @@ from data_layer.market_data_archive_sqlite import (  # noqa: E402
     MarketDataSQLiteStorage,
 )
 
+# The archive root is operator-relocatable, and the composition root owns
+# that resolution for both relocatable roots. Importing it here - rather
+# than re-reading the environment variable locally - is what keeps this
+# tool and the runtime from ever disagreeing about where the archive lives,
+# or about which override values are acceptable.
+from core.application import (  # noqa: E402
+    resolve_market_archive_directory,
+)
+
 DEFAULT_SYMBOLS = (
     "BTCUSDT",
     "ETHUSDT",
@@ -49,7 +58,20 @@ DEFAULT_SYMBOLS = (
 )
 
 DEFAULT_TIMEFRAME = "1h"
-DEFAULT_DATABASE = REPOSITORY_ROOT / "data" / "market_archive" / "market_data.sqlite3"
+DATABASE_FILENAME = "market_data.sqlite3"
+
+
+def default_database_path() -> Path:
+    """
+    Return the archive database path for this invocation.
+
+    Resolved when the tool runs rather than at import, so that a mistyped
+    ATLAS_MARKET_ARCHIVE_DIRECTORY fails with this module's own error
+    message instead of an import-time traceback, and so --help still works
+    the same way it always did.
+    """
+
+    return resolve_market_archive_directory() / DATABASE_FILENAME
 
 logger = logging.getLogger("atlas.tools.fetch_historical_market_data")
 
@@ -68,7 +90,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--symbols", nargs="+", default=list(DEFAULT_SYMBOLS))
     parser.add_argument("--timeframe", default=DEFAULT_TIMEFRAME)
-    parser.add_argument("--database", type=Path, default=DEFAULT_DATABASE)
+    # Default deferred to main(): argparse evaluates defaults at parser
+    # construction, which would resolve the archive root even for --help.
+    parser.add_argument("--database", type=Path, default=None)
     parser.add_argument(
         "--request-interval-seconds",
         type=float,
@@ -177,7 +201,11 @@ def main(argv: list[str] | None = None) -> int:
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
 
-    storage = MarketDataSQLiteStorage(args.database)
+    database = (
+        args.database if args.database is not None else default_database_path()
+    )
+
+    storage = MarketDataSQLiteStorage(database)
     storage.open()
 
     runs: list[ArchiveRunResult] = []

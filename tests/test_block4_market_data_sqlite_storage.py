@@ -274,7 +274,20 @@ def test_nothing_is_written_to_the_repository_root_or_working_directory(tmp_path
     for root in (REPOSITORY_ROOT, Path.cwd()):
         assert not (root / "market_data").exists()
         assert not (root / MarketDataSQLiteStorage.DATABASE_FILENAME).exists()
-    assert not (REPOSITORY_ROOT / "memory_data" / "market_data").exists()
+
+    # The real durable state root, resolved the same way the composition
+    # root resolves it. Anchoring this on REPOSITORY_ROOT / "memory_data"
+    # alone would keep passing - vacuously - the moment an operator
+    # relocates the state directory via ATLAS_STATE_DIRECTORY, which is
+    # exactly when this guard matters most.
+    from core.application import resolve_state_directory
+
+    configured_state_root = resolve_state_directory()
+
+    assert not (configured_state_root / "market_data").exists()
+    assert not (
+        configured_state_root / MarketDataSQLiteStorage.DATABASE_FILENAME
+    ).exists()
 
 
 def test_backend_is_not_usable_before_open_or_after_close(tmp_path: Path) -> None:

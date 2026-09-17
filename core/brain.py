@@ -55,6 +55,7 @@ import logging
 
 from datetime import UTC
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from core.decision_adapter import DecisionAdapter
@@ -101,9 +102,23 @@ class AtlasBrain:
     def __init__(
         self,
         event_bus: Any | None = None,
+        state_directory: str | Path | None = None,
     ) -> None:
         self.event_bus = event_bus
         self.state = BrainState()
+
+        # Where the intelligence layer persists its memory, world model and
+        # reasoning records. The composition root passes the same durable
+        # root the execution stores use, so AI state can never land in a
+        # different directory - or, when the root is relocated, be left
+        # behind in the old one.
+        #
+        # None preserves the historical behaviour for a bare AtlasBrain():
+        # no data_dir is supplied and the intelligence layer keeps its own
+        # default. The composition root never relies on that.
+        self.state_directory = (
+            None if state_directory is None else Path(state_directory)
+        )
 
         self.intelligence: Any | None = None
 
@@ -253,7 +268,9 @@ class AtlasBrain:
                 AtlasBrain as IntelligenceBrain,
             )
 
-            self.intelligence = IntelligenceBrain()
+            self.intelligence = IntelligenceBrain(
+                config=self._intelligence_config(),
+            )
 
             logger.info(
                 "Intelligence Brain connected",
@@ -274,6 +291,20 @@ class AtlasBrain:
             )
 
             return False
+
+    def _intelligence_config(self) -> dict[str, Any] | None:
+        """
+        Build the intelligence layer's config for this run.
+
+        Returns None when no state directory was supplied, which leaves the
+        intelligence layer on its own default exactly as before this was
+        threaded through.
+        """
+
+        if self.state_directory is None:
+            return None
+
+        return {"data_dir": str(self.state_directory)}
 
     # =========================================================
     # OBSERVATION

@@ -6,12 +6,18 @@ This is a black-box construction of the real AtlasApplication (no mocking).
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from core.application import AtlasApplication
 from core.execution_manager import ExecutionManager
 
 
-def test_live_execution_is_denied_by_default() -> None:
-    app = AtlasApplication()
+def test_live_execution_is_denied_by_default(tmp_path: Path) -> None:
+    # Constructed against tmp_path, never the default root: a bare
+    # AtlasApplication() binds to the real durable state directory and
+    # would let a test read - or on any execution path write - the
+    # operator's live financial state.
+    app = AtlasApplication(state_directory=tmp_path)
 
     assert app.execution_mode == ExecutionManager.MODE_PAPER
     assert app.execution.mode == ExecutionManager.MODE_PAPER

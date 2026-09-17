@@ -19,6 +19,8 @@ appears in the live runtime graph.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from core.application import AtlasApplication
 from core.capital_reservation import CapitalReservationLedger
 from core.execution_portfolio_foundation import ExecutionPortfolioFoundation
@@ -26,8 +28,14 @@ from core.risk_engine import RiskEngine
 from core.risk_state_store import JsonRiskStateStore
 
 
-def test_composition_root_wires_canonical_risk_services() -> None:
-    app = AtlasApplication()
+def test_composition_root_wires_canonical_risk_services(
+    tmp_path: Path,
+) -> None:
+    # Constructed against tmp_path, never the default root: a bare
+    # AtlasApplication() binds to the real durable state directory and
+    # would let a test read - or on any execution path write - the
+    # operator's live financial state.
+    app = AtlasApplication(state_directory=tmp_path)
 
     assert type(app.execution.risk_engine) is RiskEngine, (
         "the composition root must wire core.risk_engine.RiskEngine as the "
@@ -44,10 +52,16 @@ def test_composition_root_wires_canonical_risk_services() -> None:
     )
 
 
-def test_execution_manager_shares_the_composition_root_instances() -> None:
+def test_execution_manager_shares_the_composition_root_instances(
+    tmp_path: Path,
+) -> None:
     """No hidden second ledger, engine, store, or portfolio authority."""
 
-    app = AtlasApplication()
+    # Constructed against tmp_path, never the default root: a bare
+    # AtlasApplication() binds to the real durable state directory and
+    # would let a test read - or on any execution path write - the
+    # operator's live financial state.
+    app = AtlasApplication(state_directory=tmp_path)
 
     assert app.execution.risk_engine is app.risk_engine
     assert app.execution.reservation_ledger is app.reservation_ledger
@@ -55,8 +69,14 @@ def test_execution_manager_shares_the_composition_root_instances() -> None:
     assert app.execution.portfolio_foundation is app.portfolio_foundation
 
 
-def test_canonical_risk_services_are_registered_in_the_container() -> None:
-    app = AtlasApplication()
+def test_canonical_risk_services_are_registered_in_the_container(
+    tmp_path: Path,
+) -> None:
+    # Constructed against tmp_path, never the default root: a bare
+    # AtlasApplication() binds to the real durable state directory and
+    # would let a test read - or on any execution path write - the
+    # operator's live financial state.
+    app = AtlasApplication(state_directory=tmp_path)
 
     registered = app.container.list_services()
 

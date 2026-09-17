@@ -48,7 +48,7 @@ from fastapi.testclient import TestClient
 import atlas_service
 
 from atlas_service import AtlasWebServer, build_process, build_web_application
-from core.application import AtlasApplication
+from core.application import AtlasApplication, resolve_state_directory
 from main import AtlasProcess
 
 
@@ -247,6 +247,7 @@ class _RaisingHealthRuntime:
     def health(self) -> dict[str, Any]:
         raise RuntimeError(
             r"C:\Users\operator\OneDrive\Atlas\memory_data\state.json "
+            f"{resolve_state_directory()} "
             "HEALTH-INTERNAL-MARKER"
         )
 
@@ -273,6 +274,10 @@ def test_raising_runtime_health_message_never_reaches_the_client(
 
     assert "HEALTH-INTERNAL-MARKER" not in response.text, route
     assert "memory_data" not in response.text, route
+    # The literal above stops discriminating the moment an operator
+    # relocates the state root via ATLAS_STATE_DIRECTORY, so the run's
+    # actually-resolved root is asserted on as well.
+    assert str(resolve_state_directory()) not in response.text, route
 
     # The failure is still reported - the fix removes the message, not the
     # signal. The HTML pages render the fixed reason code; only the JSON

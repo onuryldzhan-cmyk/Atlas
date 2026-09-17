@@ -1,5 +1,7 @@
 ﻿from __future__ import annotations
 
+from pathlib import Path
+
 from typing import Any
 
 from core.application import AtlasApplication
@@ -130,8 +132,15 @@ def test_shutdown_releases_intelligence() -> None:
     assert intelligence.shutdown_called is True
 
 
-def test_application_constructor_does_not_start_brain() -> None:
+def test_application_constructor_does_not_start_brain(
+    tmp_path: Path,
+) -> None:
+    # Constructed against tmp_path, never the default root: a bare
+    # AtlasApplication() binds to the real durable state directory and
+    # would let a test read - or on any execution path write - the
+    # operator's live financial state.
     app = AtlasApplication(
+        state_directory=tmp_path,
         execution_mode="PAPER",
         symbols=[
             "BTCUSDT",

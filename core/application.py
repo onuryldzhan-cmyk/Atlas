@@ -135,6 +135,137 @@ logger = logging.getLogger("AtlasAI.Application")
 
 DEFAULT_STATE_DIRECTORY = Path(__file__).resolve().parent.parent / "memory_data"
 
+# The bulk historical market-data archive root. Nothing in the running
+# application opens it - tools/fetch_historical_market_data.py is its only
+# writer - but it is resolved here so both operator-relocatable roots answer
+# to one validation implementation instead of drifting into two.
+DEFAULT_MARKET_ARCHIVE_DIRECTORY = (
+    Path(__file__).resolve().parent.parent / "data" / "market_archive"
+)
+
+# =============================================================
+# OPERATOR-CONFIGURED ROOT OVERRIDES
+# =============================================================
+#
+# Both roots above are installation-anchored defaults, and both may be
+# relocated by the operator - the durable state root in particular must be
+# movable off a cloud-synced volume, where sync-driven locking and delayed
+# or partial writes can corrupt execution state.
+#
+# The override is an environment variable rather than a CLI flag or a config
+# file because the supervisor already hands its child a full copy of
+# os.environ (atlas_supervisor.py), so a variable exported once in the
+# operator's shell survives every supervised restart without changing how
+# Atlas is launched, and because core/application.py already reads the
+# supervisor provenance variables the same way.
+#
+# The failure mode these functions exist to prevent is silent: an override
+# that is mistyped, not yet created, or points at a file would - if it fell
+# back to the default - open a DIFFERENT, EMPTY financial state while the
+# operator believes the configured one is in use. That is why an override
+# that is present but unusable raises instead of falling back. An absent
+# override is not an error: it is the documented default.
+
+STATE_DIRECTORY_ENV = "ATLAS_STATE_DIRECTORY"
+MARKET_ARCHIVE_DIRECTORY_ENV = "ATLAS_MARKET_ARCHIVE_DIRECTORY"
+
+
+class ConfiguredDirectoryError(RuntimeError):
+    """
+    An operator-supplied directory override is present but unusable.
+
+    Raised at construction time, never swallowed and never downgraded to a
+    fallback: the whole point of the check is that continuing with the
+    default would be worse than not starting.
+    """
+
+
+def _resolve_configured_directory(
+    *,
+    variable: str,
+    default: Path,
+) -> Path:
+    """
+    Return the operator override for one root, or the default when unset.
+
+    An override must be absolute, must already exist, and must be a
+    directory. It is never created here: creating it would turn a typo into
+    a new empty state root, which is exactly the outcome being guarded
+    against. ``~`` is expanded first, so ``~/atlas_state`` is accepted while
+    a genuinely relative path is not.
+    """
+
+    raw = os.environ.get(variable)
+
+    if raw is None:
+        return default
+
+    candidate_text = raw.strip()
+
+    if not candidate_text:
+        raise ConfiguredDirectoryError(
+            f"{variable} is set but empty. Unset it to use the default "
+            f"({default}), or set it to an absolute path to an existing "
+            f"directory.",
+        )
+
+    candidate = Path(candidate_text).expanduser()
+
+    if not candidate.is_absolute():
+        raise ConfiguredDirectoryError(
+            f"{variable} must be an absolute path, got {candidate_text!r}. "
+            f"A relative path would make durable state depend on the "
+            f"process working directory.",
+        )
+
+    if not candidate.exists():
+        raise ConfiguredDirectoryError(
+            f"{variable} points at {str(candidate)!r}, which does not "
+            f"exist. Create the directory (and move the existing state "
+            f"into it) before setting the variable; it is deliberately "
+            f"not created here.",
+        )
+
+    if not candidate.is_dir():
+        raise ConfiguredDirectoryError(
+            f"{variable} points at {str(candidate)!r}, which is not a "
+            f"directory.",
+        )
+
+    return candidate.resolve()
+
+
+def resolve_state_directory() -> Path:
+    """
+    Return the durable state root in force for a run starting now.
+
+    Read at construction time rather than at import time so the value
+    reflects the environment Atlas is actually started in, and so a bad
+    override surfaces as a startup failure with a usable message rather
+    than an import error in an unrelated tool.
+    """
+
+    return _resolve_configured_directory(
+        variable=STATE_DIRECTORY_ENV,
+        default=DEFAULT_STATE_DIRECTORY,
+    )
+
+
+def resolve_market_archive_directory() -> Path:
+    """
+    Return the historical market-data archive root in force right now.
+
+    Same contract as resolve_state_directory(). Imported by
+    tools/fetch_historical_market_data.py, which is the only writer of that
+    archive, so the tool and the runtime can never disagree about where it
+    lives.
+    """
+
+    return _resolve_configured_directory(
+        variable=MARKET_ARCHIVE_DIRECTORY_ENV,
+        default=DEFAULT_MARKET_ARCHIVE_DIRECTORY,
+    )
+
 # Block 5D: the checked-in static venue instrument-precision authority
 # (owner decision 1). Anchored to the installation directory for the same
 # reason DEFAULT_STATE_DIRECTORY is: the same runtime must load the same
@@ -235,7 +366,7 @@ class AtlasApplication:
         execution_mode: str = "PAPER",
         symbols: list[str] | None = None,
         market_interval: float = 10.0,
-        state_directory: str | Path = DEFAULT_STATE_DIRECTORY,
+        state_directory: str | Path | None = None,
         venue_rule_freshness_policy: VenueRuleFreshnessPolicy | None = None,
     ) -> None:
         logger.info(
@@ -248,7 +379,22 @@ class AtlasApplication:
         self.execution_mode = str(execution_mode).upper()
         self.symbols = list(symbols) if symbols else None
         self.market_interval = float(market_interval)
-        self.state_directory = Path(state_directory)
+        # None means "resolve from the environment now", which is the
+        # documented default path; an explicit argument always wins, so every
+        # test and tool can still point a runtime at its own directory and is
+        # never affected by what the operator has exported.
+        self.state_directory = (
+            resolve_state_directory()
+            if state_directory is None
+            else Path(state_directory)
+        )
+
+        # Resolved for provenance and for the startup log only: nothing in
+        # AtlasApplication opens the market archive. Resolving it here anyway
+        # means a mistyped override is refused when Atlas starts rather than
+        # silently at the next archive fetch, which is the fail-closed
+        # direction for a root the operator believes is configured.
+        self.market_archive_directory = resolve_market_archive_directory()
 
         # Block 6A: the venue-rule freshness policy in force for this run.
         # Operator-configurable at the composition boundary; the documented
@@ -335,8 +481,15 @@ class AtlasApplication:
         # Intelligence
         # -----------------------------------------------------
 
+        # The intelligence layer persists its own memory, world model and
+        # reasoning records. Those defaulted to a CWD-relative "memory_data"
+        # directory, which put AI state wherever the process happened to be
+        # started and split it away from the configured durable root. The
+        # resolved root is threaded through so both land in exactly the same
+        # place, whatever the operator configured.
         self.brain = AtlasBrain(
             event_bus=self.event_bus,
+            state_directory=self.state_directory,
         )
 
         # -----------------------------------------------------
@@ -569,11 +722,29 @@ class AtlasApplication:
 
         logger.info(
             "Durable execution stores constructed under %s "
+            "(state_root_source=%s market_archive_root=%s "
+            "market_archive_root_source=%s) "
             "idempotency_loaded=%s journal_unresolved=%s",
             self.state_directory,
+            self._root_source(STATE_DIRECTORY_ENV),
+            self.market_archive_directory,
+            self._root_source(MARKET_ARCHIVE_DIRECTORY_ENV),
             self.idempotency_store.loaded,
             self.transaction_journal.has_unresolved(),
         )
+
+    @staticmethod
+    def _root_source(variable: str) -> str:
+        """
+        Report whether a root came from an override or from the default.
+
+        The path alone does not say that: an operator who exported a variable
+        pointing at the installation default would see an identical line. The
+        source is what makes a wrong-directory incident diagnosable from the
+        log.
+        """
+
+        return variable if os.environ.get(variable) else "default"
 
     # =========================================================
     # VENUE INSTRUMENT PRECISION (BLOCK 5D)

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from typing import Any
 
 import pytest
@@ -393,10 +395,15 @@ def deny_network(
 
 def test_application_complete_mocked_lifecycle(
     deny_network: None,
+    tmp_path: Path,
 ) -> None:
     events: list[str] = []
 
-    application = AtlasApplication()
+    # Constructed against tmp_path, never the default root: a bare
+    # AtlasApplication() binds to the real durable state directory and
+    # would let a test read - or on any execution path write - the
+    # operator's live financial state.
+    application = AtlasApplication(state_directory=tmp_path)
 
     services = _replace_services(
         application,
@@ -516,10 +523,15 @@ def test_application_complete_mocked_lifecycle(
 
 def test_application_brain_fails_closed_after_stop(
     deny_network: None,
+    tmp_path: Path,
 ) -> None:
     events: list[str] = []
 
-    application = AtlasApplication()
+    # Constructed against tmp_path, never the default root: a bare
+    # AtlasApplication() binds to the real durable state directory and
+    # would let a test read - or on any execution path write - the
+    # operator's live financial state.
+    application = AtlasApplication(state_directory=tmp_path)
 
     _replace_services(
         application,
