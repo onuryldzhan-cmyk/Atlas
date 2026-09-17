@@ -7,15 +7,16 @@
     <div class="max-w-6xl mx-auto">
         <h1 class="text-3xl font-bold mb-2 italic text-blue-500">ATLAS AI <span class="text-white not-italic text-lg">TERMINAL v2.0</span></h1>
         <p class="mb-6 text-xs text-slate-500">
-            Loopback-only operator panel &mdash; no authentication. Symbol: <span class="text-slate-300">{{ symbol }}</span> (binance_global)
+            Loopback-only operator panel &mdash; no authentication. Referans sembol: <span class="text-slate-300">{{ symbol }}</span> (binance_global)
         </p>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800">
-                <h2 class="text-slate-500 text-xs uppercase font-bold">Güncel Fiyat</h2>
+                <h2 class="text-slate-500 text-xs uppercase font-bold">Güncel Fiyat ({{ symbol }})</h2>
                 {#
                   The price is server-rendered from the dashboard route's own
-                  price provider. /api/analysis returns no price field, so the
-                  polling loop below must never claim to update this tile.
+                  price provider, for the reference symbol only. /api/signals
+                  returns no price field, so the polling loop below must
+                  never claim to update this tile.
                 #}
                 <div id="price-display" class="text-3xl font-mono mt-2">
                     {% if price_status == "AVAILABLE" %}
@@ -25,10 +26,6 @@
                     {% endif %}
                 </div>
                 <div class="text-xs text-slate-600 mt-1">sayfa yüklendiğinde alındı</div>
-            </div>
-            <div class="bg-slate-900 p-6 rounded-2xl border border-blue-500">
-                <h2 class="text-blue-400 text-xs uppercase font-bold">Otonom Karar</h2>
-                <div id="decision-content" class="mt-2 font-bold">Analiz ediliyor...</div>
             </div>
             <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800">
                 <h2 class="text-slate-500 text-xs uppercase font-bold">Sistem Durumu</h2>
@@ -49,10 +46,30 @@
                 {% endif %}
             </div>
         </div>
+
+        <div class="mt-8">
+            <h2 class="text-xs uppercase text-slate-500 font-bold tracking-widest mb-3">Otonom Kararlar (5 Sembol)</h2>
+            <div id="signals-grid" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <div class="col-span-full text-slate-500 text-sm">Analiz ediliyor...</div>
+            </div>
+        </div>
+
         <div class="mt-8 bg-slate-900 p-6 rounded-2xl border border-slate-800">
             <h2 class="text-xs uppercase text-slate-500 font-bold tracking-widest">Otonom İşlem Geçmişi</h2>
             <div id="trade-log" class="mt-4 font-mono text-sm text-slate-400 h-32 overflow-y-auto">&gt; Bot izleme modunda...</div>
         </div>
+
+        <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800">
+                <h2 class="text-slate-500 text-xs uppercase font-bold tracking-widest">Execution / Sağlık Durumu</h2>
+                <div id="execution-health-panel" class="mt-4 font-mono text-sm text-slate-400">Yükleniyor...</div>
+            </div>
+            <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800">
+                <h2 class="text-slate-500 text-xs uppercase font-bold tracking-widest">Performans (Win Rate)</h2>
+                <div id="trade-history-panel" class="mt-4 font-mono text-sm text-slate-400">Yükleniyor...</div>
+            </div>
+        </div>
+
         <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800">
                 <h2 class="text-slate-500 text-xs uppercase font-bold tracking-widest">Test Sonuçları</h2>
@@ -90,56 +107,101 @@
             logBox.scrollTop = logBox.scrollHeight;
         }
 
-        // /api/analysis returns {status, symbol, time, decision} and nothing
-        // else. decision is null whenever the analysis is not SUCCESS, and
-        // there is no top-level price field, so neither may be dereferenced
-        // unconditionally. This mirrors fetchPanel()'s pattern below: a
-        // source is rendered only when it explicitly reports itself usable,
-        // and anything else renders a reason instead of inventing data. The
-        // whole tick is wrapped so one bad response can never permanently
-        // kill the 5s interval.
-        async function updateTerminal() {
+        const AGENT_LABELS = {
+            technical: 'Teknik',
+            macro: 'Makro',
+            sentiment: 'Sentiment',
+            risk: 'Risk',
+            momentum: 'Momentum',
+        };
+
+        function renderAgentRow(name, agent) {
+            const label = AGENT_LABELS[name] || esc(name);
+            if (!agent || agent.status !== 'EVALUATED') {
+                const reason = agent ? agent.reason : 'UNKNOWN';
+                return `<div class="text-slate-600 leading-tight py-0.5">` +
+                    `<div>${label} <span class="text-slate-700">excluded</span></div>` +
+                    `<div class="text-slate-700 truncate" title="${esc(reason)}">${esc(reason)}</div></div>`;
+            }
+            return `<div class="flex justify-between gap-2 py-0.5">` +
+                `<span class="text-slate-400">${label}</span>` +
+                `<span class="text-right">${esc(agent.action)} (${esc(agent.score)})</span></div>`;
+        }
+
+        function renderSignalTile(signal) {
+            const action = esc(signal.action);
+            const confidence = signal.confidence === undefined || signal.confidence === null
+                ? 'UNKNOWN' : esc(signal.confidence);
+            const agentRows = Object.keys(AGENT_LABELS)
+                .map((name) => renderAgentRow(name, signal.agents && signal.agents[name]))
+                .join('');
+            return `<div class="bg-slate-900 p-4 rounded-2xl border border-slate-800">` +
+                `<h3 class="text-blue-400 text-xs uppercase font-bold">${esc(signal.symbol)}</h3>` +
+                `<div class="text-xl font-bold mt-1">${action}</div>` +
+                `<div class="text-xs text-slate-400">confidence: ${confidence} / risk: ${esc(signal.risk_level)}</div>` +
+                `<div class="mt-3 text-xs space-y-0.5">${agentRows}</div>` +
+                `</div>`;
+        }
+
+        // Fallback placeholder list only - shown as "beklemede" tiles before
+        // MarketLoop has attached/completed a first cycle. The symbols
+        // MarketLoop actually runs are operator-configurable
+        // (core/application.py) and are not knowable from the frontend, so
+        // the render step below always renders every symbol /api/signals
+        // actually returns, appending any not in this fallback list rather
+        // than dropping it - this list only fills in placeholders, it never
+        // limits what live data gets shown.
+        const DEFAULT_SYMBOL_PLACEHOLDERS = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT'];
+
+        async function updateSignalsGrid() {
+            const grid = document.getElementById('signals-grid');
+            // The whole body - fetch, parse and render - is inside this
+            // try/catch, not just the fetch: a render-time error must never
+            // abort mid-DOM-mutation and leave the grid in a partial state.
             try {
                 let payload;
                 try {
-                    const res = await fetch('/api/analysis');
+                    const res = await fetch('/api/signals');
                     payload = await res.json();
                 } catch (error) {
-                    renderUnavailable('decision-content', 'network error');
-                    appendTradeLog('&gt; analiz kaynağı erişilemiyor: network error');
+                    grid.innerHTML = `<div class="col-span-full text-amber-500">unavailable: network error</div>`;
                     return;
                 }
 
-                const usable = payload
-                    && payload.status === 'SUCCESS'
-                    && payload.decision;
-
-                if (!usable) {
+                if (!payload || payload.status !== 'SUCCESS') {
                     const reason = (payload && (payload.reason || payload.status)) || 'UNKNOWN';
-                    renderUnavailable('decision-content', reason);
-                    appendTradeLog(`&gt; karar yok: ${esc(reason)}`);
+                    grid.innerHTML = `<div class="col-span-full text-amber-500">unavailable: ${esc(reason)}</div>`;
                     return;
                 }
 
-                const decision = payload.decision;
-                const action = esc(decision.action);
-                const confidence = decision.confidence === undefined
-                    || decision.confidence === null
-                    ? 'UNKNOWN'
-                    : esc(decision.confidence);
-                document.getElementById('decision-content').innerHTML =
-                    `<span class="text-2xl">${action}</span><br>` +
-                    `<span class="text-xs text-slate-400">confidence: ${confidence} ` +
-                    `/ risk: ${esc(decision.risk_level)}</span>`;
+                const signals = payload.signals || {};
+                const extraSymbols = Object.keys(signals)
+                    .filter((symbol) => !DEFAULT_SYMBOL_PLACEHOLDERS.includes(symbol))
+                    .sort();
+                const displaySymbols = DEFAULT_SYMBOL_PLACEHOLDERS.concat(extraSymbols);
 
-                if (decision.action && decision.action !== 'HOLD') {
+                grid.innerHTML = displaySymbols.map((symbol) => {
+                    const signal = signals[symbol];
+                    if (!signal) {
+                        return `<div class="bg-slate-900 p-4 rounded-2xl border border-slate-800">` +
+                            `<h3 class="text-slate-500 text-xs uppercase font-bold">${esc(symbol)}</h3>` +
+                            `<div class="text-sm text-slate-600 mt-2">beklemede...</div></div>`;
+                    }
+                    return renderSignalTile(signal);
+                }).join('');
+
+                {# symbol is DEFAULT_SYMBOL, a fixed server-side constant,
+                   never user input - a plain quoted interpolation is safe
+                   here. #}
+                const reference = signals['{{ symbol }}'];
+                if (reference && reference.action && reference.action !== 'HOLD') {
                     appendTradeLog(
                         `&gt; ${esc(new Date().toLocaleTimeString())}` +
-                        ` - Karar: ${action} (confidence: ${confidence})`
+                        ` - ${esc(reference.symbol)}: ${esc(reference.action)} (confidence: ${esc(reference.confidence)})`
                     );
                 }
             } catch (error) {
-                renderUnavailable('decision-content', 'render error');
+                grid.innerHTML = `<div class="col-span-full text-amber-500">unavailable: render error</div>`;
             }
         }
 
@@ -185,11 +247,70 @@
             });
         }
 
-        setInterval(updateTerminal, 5000);
-        updateTerminal();
-        setInterval(() => { updateTestResultsPanel(); updateGovernancePanel(); }, 30000);
+        // /api/health is not a {available} panel like the two above - it
+        // already returns {healthy, ...} directly, and a 503 there is a
+        // meaningful "unhealthy" state to render, not a fetch failure.
+        async function updateExecutionHealthPanel() {
+            const elementId = 'execution-health-panel';
+            let payload;
+            try {
+                const res = await fetch('/api/health');
+                payload = await res.json();
+            } catch (error) {
+                renderUnavailable(elementId, 'network error');
+                return;
+            }
+            if (!payload || typeof payload !== 'object') {
+                renderUnavailable(elementId, 'UNKNOWN');
+                return;
+            }
+            // badWhen: true means this field is a warning sign when it is
+            // true (halted/recovery_required/stale); false means it is a
+            // warning sign when it is false (supervised/thread_alive).
+            // Fields with no boolean polarity (the two counters) are never
+            // colored.
+            const rows = [
+                ['halted', payload.execution_halted, true],
+                ['recovery_required', payload.execution_recovery_required, true],
+                ['supervised', payload.supervised, false],
+                ['supervisor_epoch', payload.supervisor_epoch, null],
+                ['supervisor_restart_count', payload.supervisor_restart_count, null],
+                ['market_data_stale', payload.market_data_stale, true],
+                ['market_loop_thread_alive', payload.market_loop_thread_alive, false],
+            ];
+            document.getElementById(elementId).innerHTML = rows.map(([label, value, badWhen]) => {
+                if (value === undefined) return '';
+                const flagged = badWhen !== null && value === badWhen;
+                const color = flagged ? 'text-amber-500' : 'text-slate-300';
+                return `<div class="flex justify-between"><span class="text-slate-500">${label}</span>` +
+                    `<span class="${color}">${esc(value)}</span></div>`;
+            }).join('');
+        }
+
+        function updateTradeHistoryPanel() {
+            fetchPanel('/api/trades', 'trade-history-panel', (payload) => {
+                const winRate = payload.win_rate === null || payload.win_rate === undefined
+                    ? 'n/a' : `${esc(payload.win_rate)}%`;
+                document.getElementById('trade-history-panel').innerHTML =
+                    `<div>toplam işlem: <span class="text-slate-300">${esc(payload.total_trades)}</span></div>` +
+                    `<div>win rate: <span class="text-emerald-400">${winRate}</span> ` +
+                    `(${esc(payload.wins)}W / ${esc(payload.losses)}L)</div>` +
+                    `<div>toplam gross P&amp;L: <span class="text-slate-300">${esc(payload.total_gross_pnl)}</span></div>`;
+            });
+        }
+
+        setInterval(updateSignalsGrid, 5000);
+        updateSignalsGrid();
+        setInterval(() => {
+            updateTestResultsPanel();
+            updateGovernancePanel();
+            updateExecutionHealthPanel();
+            updateTradeHistoryPanel();
+        }, 30000);
         updateTestResultsPanel();
         updateGovernancePanel();
+        updateExecutionHealthPanel();
+        updateTradeHistoryPanel();
     </script>
 </body>
 </html>

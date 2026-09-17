@@ -16,6 +16,7 @@ Design principles
 from __future__ import annotations
 
 import logging
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, Callable
 
@@ -84,6 +85,61 @@ PUBLIC_DECISION_KEYS = (
     "confidence",
     "risk_level",
 )
+
+# The 5 agents AgentFusion.evaluate() (ai/core/intelligence/agent_fusion.py)
+# always attempts, in the order its AGENT_EVIDENCE_STATUS_KEYS dict declares
+# them. Each name is included in exactly one of a normalized decision's
+# metadata.agents (evaluated: {"action", "score"}) or
+# metadata.unavailable_agents ({name: reason string}) per cycle - never
+# both, never neither - so listing them here lets /api/signals report a
+# fixed 5-row breakdown per symbol instead of a breakdown that silently
+# shrinks whenever an agent is excluded.
+SIGNAL_AGENT_NAMES = (
+    "technical",
+    "macro",
+    "sentiment",
+    "risk",
+    "momentum",
+)
+
+# Fields of a per-agent evaluation (metadata.agents[name]) that may be
+# published. Same least-exposure allowlist pattern as PUBLIC_DECISION_KEYS:
+# AgentFusion currently only ever puts "action" and "score" here, but this
+# is enforced rather than assumed, so an internal field added later does
+# not cross this boundary silently.
+PUBLIC_AGENT_KEYS = (
+    "action",
+    "score",
+)
+
+# Keys of a normalized MarketLoop signal (one entry of last_signals[symbol])
+# that may be published directly, before the agents/metadata projection
+# below is added under a separate "agents" key. Mirrors PUBLIC_DECISION_KEYS
+# - action/confidence/risk_level only, never metadata's fusion internals,
+# reasoning text or memory diagnostics.
+PUBLIC_SIGNAL_KEYS = (
+    "action",
+    "confidence",
+    "risk_level",
+)
+
+# Fields of a closed-position archive record (core/execution_portfolio_
+# foundation.py ClosedPositionArchiveStore) that may be published per trade.
+# The full record also carries position_id, cost_quote, entry_fees,
+# average_entry_price, mark_price and version - internal financial
+# accounting detail the trade-history panel does not need and should not
+# expose, per the same least-exposure default used throughout this module.
+PUBLIC_TRADE_KEYS = (
+    "symbol",
+    "gross_pnl",
+    "opened_at",
+    "closed_at",
+)
+
+# Trade history responses are capped to the N most recently closed
+# positions. The archive is unbounded and append-only; a dashboard panel
+# has no use for the full lifetime history on every 30s poll.
+TRADE_HISTORY_LIMIT = 50
 
 NON_LOOPBACK_RESPONSE = {
     "status": "FORBIDDEN",
@@ -256,6 +312,123 @@ def _resolve_brain(
         )
 
     return None
+
+
+def _resolve_attr(
+    runtime: Any | None,
+    name: str,
+) -> Any | None:
+    """
+    Resolve an attribute from an injected runtime, falling back to
+    ``runtime.application`` the same way ``_resolve_brain`` does. Used for
+    ``market_loop`` and ``portfolio_foundation``, which live on
+    AtlasApplication next to ``brain``.
+    """
+
+    if runtime is None:
+        return None
+
+    value = getattr(
+        runtime,
+        name,
+        None,
+    )
+
+    if value is not None:
+        return value
+
+    application = getattr(
+        runtime,
+        "application",
+        None,
+    )
+
+    if application is not None:
+        return getattr(
+            application,
+            name,
+            None,
+        )
+
+    return None
+
+
+def _public_signal(
+    symbol: str,
+    decision: dict[str, Any],
+) -> dict[str, Any]:
+    """
+    Project one symbol's MarketLoop.last_signals entry onto public fields.
+
+    Builds a fixed 5-row agent breakdown from metadata.agents (evaluated)
+    and metadata.unavailable_agents (excluded, with a reason) so a symbol
+    missing evidence for some agents still reports all 5 names rather than
+    a shrinking list.
+    """
+
+    payload: dict[str, Any] = {
+        "symbol": symbol,
+        **{
+            key: decision[key]
+            for key in PUBLIC_SIGNAL_KEYS
+            if key in decision
+        },
+    }
+
+    metadata = decision.get("metadata")
+
+    if not isinstance(metadata, dict):
+        metadata = {}
+
+    evaluated = metadata.get("agents")
+
+    if not isinstance(evaluated, dict):
+        evaluated = {}
+
+    unavailable = metadata.get("unavailable_agents")
+
+    if not isinstance(unavailable, dict):
+        unavailable = {}
+
+    agents: dict[str, Any] = {}
+
+    for agent_name in SIGNAL_AGENT_NAMES:
+        evaluation = evaluated.get(agent_name)
+
+        if isinstance(evaluation, dict):
+            agents[agent_name] = {
+                "status": "EVALUATED",
+                **{
+                    key: evaluation[key]
+                    for key in PUBLIC_AGENT_KEYS
+                    if key in evaluation
+                },
+            }
+
+            continue
+
+        reason = unavailable.get(agent_name)
+
+        agents[agent_name] = {
+            "status": "EXCLUDED",
+            "reason": reason if isinstance(reason, str) else "UNKNOWN",
+        }
+
+    payload["agents"] = agents
+
+    return payload
+
+
+def _public_trade(
+    record: dict[str, Any],
+) -> dict[str, Any]:
+    """Project one closed-position archive record onto public fields."""
+
+    return {
+        key: record[key]
+        for key in PUBLIC_TRADE_KEYS
+        if key in record
+    }
 
 
 def create_app(
@@ -506,6 +679,273 @@ def create_app(
                     "error_type": type(exc).__name__,
                 },
             )
+
+    @application.get(
+        "/api/signals",
+        response_class=JSONResponse,
+    )
+    async def api_signals(
+        request: Request,
+    ) -> JSONResponse:
+        # All 5 symbols' latest MarketLoop decisions, including the
+        # per-agent breakdown /api/analysis deliberately drops. Reads
+        # MarketLoop.status() (its own lock-protected, already-public
+        # accessor) rather than a fresh single-symbol brain.process() call,
+        # so this reflects what the loop actually decided this cycle
+        # instead of a lower-fidelity synchronous re-run.
+        if not is_loopback_request(request):
+            return JSONResponse(
+                status_code=403,
+                content=NON_LOOPBACK_RESPONSE,
+            )
+
+        market_loop = _resolve_attr(
+            application.state.atlas_runtime,
+            "market_loop",
+        )
+
+        if market_loop is None:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "status": "OFFLINE",
+                    "reason": "MARKET_LOOP_NOT_ATTACHED",
+                },
+            )
+
+        status_method = getattr(
+            market_loop,
+            "status",
+            None,
+        )
+
+        if not callable(status_method):
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "status": "OFFLINE",
+                    "reason": "MARKET_LOOP_STATUS_UNAVAILABLE",
+                },
+            )
+
+        try:
+            loop_status = status_method()
+
+            if not isinstance(loop_status, dict):
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "status": "ERROR",
+                        "reason": "INVALID_MARKET_LOOP_STATUS",
+                        "result_type": type(loop_status).__name__,
+                    },
+                )
+
+            last_signals = loop_status.get("last_signals")
+
+            if not isinstance(last_signals, dict):
+                last_signals = {}
+
+            signals = {
+                symbol: _public_signal(symbol, decision)
+                for symbol, decision in last_signals.items()
+                if isinstance(decision, dict)
+            }
+
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "status": "SUCCESS",
+                    "signals": signals,
+                },
+            )
+
+        except Exception as exc:
+            logger.exception(
+                "Web signals request failed"
+            )
+
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "status": "ERROR",
+                    "reason": "SIGNALS_FAILED",
+                    "error_type": type(exc).__name__,
+                },
+            )
+
+    @application.get(
+        "/api/trades",
+        response_class=JSONResponse,
+    )
+    async def api_trades(
+        request: Request,
+    ) -> JSONResponse:
+        # Trade/performance history, sourced directly from the durable
+        # closed-position archive (the financial-truth authority) rather
+        # than MarketLoop or the dead AtlasMemoryCore. An empty archive is
+        # reported as available with zero trades, never as an error - a
+        # freshly bootstrapped book has no history yet, that is not a
+        # failure. A corrupt archive fails closed (503) rather than
+        # returning partial/fabricated figures.
+        if not is_loopback_request(request):
+            return JSONResponse(
+                status_code=403,
+                content=NON_LOOPBACK_RESPONSE,
+            )
+
+        portfolio_foundation = _resolve_attr(
+            application.state.atlas_runtime,
+            "portfolio_foundation",
+        )
+
+        if portfolio_foundation is None:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "available": False,
+                    "reason": "PORTFOLIO_FOUNDATION_NOT_ATTACHED",
+                },
+            )
+
+        closed_archive = getattr(
+            portfolio_foundation,
+            "closed_archive",
+            None,
+        )
+
+        load_index = getattr(
+            closed_archive,
+            "load_index",
+            None,
+        )
+
+        if not callable(load_index):
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "available": False,
+                    "reason": "CLOSED_ARCHIVE_UNAVAILABLE",
+                },
+            )
+
+        # load_index() and every step derived from its result are inside
+        # one try/except on purpose (unlike an earlier version of this
+        # handler, which only wrapped load_index() itself): load_index()
+        # already validates every record strictly (validate_closed_position_
+        # record - required fields, a finite gross_pnl, a CLOSED status),
+        # so a record that still fails to parse here, or a closed_at value
+        # that breaks the sort below, is itself evidence of corruption, not
+        # a case to skip and continue past. Silently excluding such a
+        # record from the aggregate totals while still listing it in
+        # recent_trades would produce exactly the partial/fabricated
+        # figures this endpoint exists to avoid.
+        try:
+            index = load_index()
+
+            records = getattr(
+                index,
+                "by_position_id",
+                None,
+            )
+
+            if not isinstance(records, dict):
+                records = {}
+
+            # A closed position counts as a win when its realised gross
+            # P&L is strictly positive. Breakeven (gross_pnl == 0) is
+            # counted as a non-win (a loss) rather than excluded from the
+            # denominator - a flat trade is not evidence of a winning
+            # strategy, and silently excluding it would inflate the
+            # reported win rate.
+            wins = 0
+            losses = 0
+            total_gross_pnl = Decimal("0")
+
+            for record in records.values():
+                if not isinstance(record, dict):
+                    raise ValueError(
+                        "CLOSED_POSITION_RECORD_NOT_A_MAPPING"
+                    )
+
+                pnl = Decimal(
+                    str(record["gross_pnl"])
+                )
+
+                total_gross_pnl += pnl
+
+                if pnl > 0:
+                    wins += 1
+                else:
+                    losses += 1
+
+            total_trades = wins + losses
+
+            win_rate = (
+                round(
+                    wins / total_trades * 100,
+                    2,
+                )
+                if total_trades
+                else None
+            )
+
+            recent = sorted(
+                records.values(),
+                key=lambda record: record["closed_at"],
+                reverse=True,
+            )[:TRADE_HISTORY_LIMIT]
+
+        except (OSError, UnicodeDecodeError) as exc:
+            logger.exception(
+                "Closed position archive is unreadable"
+            )
+
+            # Distinct from CLOSED_ARCHIVE_CORRUPT: an I/O failure means
+            # the data itself may be fine but could not be read (permission,
+            # transient disk error, encoding), which the operator remediates
+            # differently from genuine data corruption.
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "available": False,
+                    "reason": "CLOSED_ARCHIVE_UNREADABLE",
+                    "error_type": type(exc).__name__,
+                },
+            )
+
+        except Exception as exc:
+            logger.exception(
+                "Closed position archive read failed"
+            )
+
+            # str(exc) stays in the log only - the same rule every other
+            # handler in this module follows. Here it could carry a
+            # position_id, a sequence number or a file path from the
+            # archive's own corruption diagnostics.
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "available": False,
+                    "reason": "CLOSED_ARCHIVE_CORRUPT",
+                    "error_type": type(exc).__name__,
+                },
+            )
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "available": True,
+                "total_trades": total_trades,
+                "wins": wins,
+                "losses": losses,
+                "win_rate": win_rate,
+                "total_gross_pnl": str(total_gross_pnl),
+                "recent_trades": [
+                    _public_trade(record) for record in recent
+                ],
+            },
+        )
 
     @application.post(
         "/login",
