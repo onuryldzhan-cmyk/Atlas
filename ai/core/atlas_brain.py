@@ -88,6 +88,11 @@ from core.decision_intelligence import (
     SignalFusion,
 )
 
+# Research evidence recording only (ADR-0008). ClaimSource is a persistence
+# value type and shares nothing with core.decision_intelligence.Evidence,
+# which remains the Phase-5 fusion path's own contract.
+from data_layer.evidence_store import ClaimSource
+
 
 logger = logging.getLogger(
     "AtlasAI.IntelligenceBrain"
@@ -111,6 +116,10 @@ class AtlasBrain:
     STATUS_ACTIVE = "ACTIVE"
     STATUS_ERROR = "ERROR"
     STATUS_STOPPED = "STOPPED"
+
+    # Default change-trigger threshold for research evidence recording
+    # (ADR-0008, OQ-4). Overridable per run via config.
+    DEFAULT_EVIDENCE_CONVICTION_DELTA = 0.15
 
     def __init__(
         self,
@@ -151,6 +160,40 @@ class AtlasBrain:
         self.confidence: ConfidenceEngine | None = None
         self.risk: AdvisoryRiskScorer | None = None
         self.builder: DecisionBuilder | None = None
+
+        # =====================================================
+        # RESEARCH EVIDENCE RECORDING (ADR-0008)
+        # =====================================================
+        #
+        # Observational only. The store is absent by default (a bare
+        # AtlasBrain() records nothing) and every interaction with it is
+        # fail-open: it can never alter agent_results, fusion_result, or
+        # the returned Decision. See _record_evidence_claims().
+        self.evidence_store: Any | None = self.config.get(
+            "evidence_store"
+        )
+
+        # Change-triggered writes (OQ-4). Per-agent and per-symbol state
+        # from the previous cycle, used to decide whether this cycle says
+        # anything new. At the 10s market interval, recording every cycle
+        # would be roughly 79M rows a year of mostly identical readings;
+        # a claim is meant to be an assertion, not telemetry.
+        self._evidence_last_agent: dict[
+            tuple[str, str], tuple[str, float]
+        ] = {}
+        self._evidence_last_fused: dict[str, str] = {}
+
+        # Minimum absolute conviction move that counts as a new claim when
+        # the agent's direction is unchanged. 0.15 on the 0..1 conviction
+        # scale: large enough that ordinary tick-to-tick noise is silent,
+        # small enough that a genuine regime move is captured well before
+        # the direction actually flips.
+        self.evidence_conviction_delta = float(
+            self.config.get(
+                "evidence_conviction_delta",
+                self.DEFAULT_EVIDENCE_CONVICTION_DELTA,
+            )
+        )
 
         self.initialize_modules()
 
@@ -345,6 +388,29 @@ class AtlasBrain:
                 )
 
                 phase5_shadow_proposal = None
+
+            # =================================================
+            # RESEARCH EVIDENCE RECORDING (ADR-0008, observational)
+            # =================================================
+            #
+            # Deliberately fail-open, and deliberately placed after every
+            # value it reads is already final. It assigns to nothing the
+            # pipeline below consumes: agent_results and fusion_result are
+            # passed in and never mutated, no name here is rebound, and the
+            # block produces no value. A failure therefore costs a log line
+            # and a health() counter, never a decision.
+            try:
+                self._record_evidence_claims(
+                    normalized_symbol,
+                    agent_results,
+                    fusion_result,
+                    market_data,
+                )
+            except Exception:
+                logger.exception(
+                    "Research evidence recording failed; continuing "
+                    "without recording this cycle"
+                )
 
             # =================================================
             # INTERMEDIATE CONFIDENCE ANALYSIS
@@ -946,6 +1012,422 @@ class AtlasBrain:
             return 1 - score_value
 
         return score_value
+
+    # =========================================================
+    # RESEARCH EVIDENCE RECORDING (ADR-0008)
+    # =========================================================
+
+    def _record_evidence_claims(
+        self,
+        symbol: str,
+        agent_results: Any,
+        fusion_result: Any,
+        market_data: Any,
+    ) -> None:
+        """
+        Record this cycle's agent claims when the cycle says something new.
+
+        Observational and strictly read-only with respect to the decision
+        pipeline: this method receives ``agent_results`` and
+        ``fusion_result`` and never mutates them, returns nothing, and
+        raises nothing that the caller does not already absorb.
+
+        Change-triggered per OQ-4. An agent is recorded when its direction
+        flips, when its conviction moves by at least
+        ``evidence_conviction_delta``, when the fused action changes, or on
+        the first observation of that agent/symbol pair. Otherwise the
+        cycle is silent - at a 10s interval, recording unchanged readings
+        would bury genuine assertions in telemetry.
+
+        Provenance rule: a claim is only recorded when the market data
+        carries a trustworthy ingestion timestamp. This mirrors
+        _parse_ingestion_timestamp()'s existing contract - a fabricated
+        substitute is worse than no record, because the entire point of
+        this store is that a claim can be traced back to what was actually
+        examined and when.
+        """
+
+        store = self.evidence_store
+
+        if store is None or not isinstance(
+            agent_results,
+            dict,
+        ):
+            return
+
+        observed_at = self._parse_ingestion_timestamp(
+            market_data
+        )
+
+        if observed_at is None:
+            logger.debug(
+                "Evidence recording skipped for %s: market data carries "
+                "no trustworthy ingestion timestamp",
+                symbol,
+            )
+            return
+
+        fused_action = self._normalized_action(
+            getattr(
+                fusion_result,
+                "action",
+                None,
+            )
+        )
+
+        previous_fused = self._evidence_last_fused.get(
+            symbol
+        )
+
+        fused_changed = (
+            fused_action is not None
+            and previous_fused is not None
+            and fused_action != previous_fused
+        )
+
+        current = self._current_agent_signals(
+            agent_results
+        )
+
+        triggered = []
+
+        for name in sorted(
+            current
+        ):
+            action, conviction = current[name]
+
+            previous = self._evidence_last_agent.get(
+                (
+                    symbol,
+                    name,
+                )
+            )
+
+            if previous is None:
+                trigger = "INITIAL_OBSERVATION"
+            elif previous[0] != action:
+                trigger = "ACTION_FLIP"
+            elif (
+                abs(
+                    conviction - previous[1]
+                )
+                >= self.evidence_conviction_delta
+            ):
+                trigger = "CONVICTION_DELTA"
+            elif fused_changed:
+                trigger = "FUSED_ACTION_CHANGE"
+            else:
+                continue
+
+            triggered.append(
+                (
+                    name,
+                    action,
+                    conviction,
+                    trigger,
+                )
+            )
+
+        recorded: dict[str, tuple[str, str]] = {}
+
+        for name, action, conviction, trigger in triggered:
+            claim_id = self._record_one_agent_claim(
+                store,
+                symbol,
+                name,
+                action,
+                conviction,
+                trigger,
+                observed_at,
+                fused_action,
+            )
+
+            if claim_id is not None:
+                recorded[name] = (
+                    claim_id,
+                    action,
+                )
+
+        self._link_contradicting_claims(
+            store,
+            recorded,
+        )
+
+        # State advances even when a write failed, so a persistently
+        # broken store cannot turn every subsequent cycle into a retry
+        # storm. The failure is already counted in health().
+        for name, (action, conviction) in current.items():
+            self._evidence_last_agent[
+                (
+                    symbol,
+                    name,
+                )
+            ] = (
+                action,
+                conviction,
+            )
+
+        if fused_action is not None:
+            self._evidence_last_fused[symbol] = fused_action
+
+    @staticmethod
+    def _normalized_action(
+        action: Any,
+    ) -> str | None:
+        """
+        Normalize an action label, or None when it is absent/unusable.
+        """
+
+        if action is None:
+            return None
+
+        text = str(
+            action
+        ).strip().upper()
+
+        return text or None
+
+    def _current_agent_signals(
+        self,
+        agent_results: dict[Any, Any],
+    ) -> dict[str, tuple[str, float]]:
+        """
+        Extract this cycle's usable (action, conviction) per agent.
+
+        Tolerant by design: an agent this cannot interpret is skipped, not
+        defaulted and not raised on. Malformed-agent accounting already
+        belongs to the Phase-5 path (_build_phase5_agent_evidence), which
+        this deliberately does not touch or duplicate authority over.
+        """
+
+        signals: dict[str, tuple[str, float]] = {}
+
+        for raw_name, data in agent_results.items():
+            if not isinstance(
+                data,
+                dict,
+            ):
+                continue
+
+            action = self._normalized_action(
+                data.get(
+                    "action"
+                )
+            )
+
+            score = data.get(
+                "score"
+            )
+
+            if action is None or score is None:
+                continue
+
+            if isinstance(
+                score,
+                bool,
+            ) or not isinstance(
+                score,
+                (
+                    int,
+                    float,
+                    str,
+                ),
+            ):
+                continue
+
+            try:
+                score_value = float(
+                    score
+                )
+            except (
+                TypeError,
+                ValueError,
+            ):
+                continue
+
+            if not isfinite(
+                score_value
+            ) or not (
+                0.0 <= score_value <= 1.0
+            ):
+                continue
+
+            conviction = self._agent_score_to_conviction(
+                action,
+                score_value,
+            )
+
+            if not isfinite(
+                conviction
+            ) or not (
+                0.0 <= conviction <= 1.0
+            ):
+                continue
+
+            signals[str(raw_name)] = (
+                action,
+                round(
+                    conviction,
+                    6,
+                ),
+            )
+
+        return signals
+
+    def _record_one_agent_claim(
+        self,
+        store: Any,
+        symbol: str,
+        name: str,
+        action: str,
+        conviction: float,
+        trigger: str,
+        observed_at: datetime,
+        fused_action: str | None,
+    ) -> str | None:
+        """
+        Write one agent's claim. Returns its claim_id, or None on failure.
+
+        Every failure is absorbed here and registered on the store's own
+        diagnostics, so one unwritable claim cannot abort the rest of the
+        cycle's recording - and certainly cannot reach the decision path.
+        """
+
+        try:
+            source = ClaimSource(
+                source_kind="MARKET_DATA",
+                source_uri=f"market_data://{symbol}",
+                source_version="1",
+                retrieved_at=observed_at,
+            )
+
+            reason_codes = [
+                trigger,
+            ]
+
+            if fused_action is not None:
+                reason_codes.append(
+                    f"FUSED_{fused_action}"
+                )
+
+            return store.record_claim(
+                claim_text=(
+                    f"{name} reads {action} on {symbol} "
+                    f"at conviction {conviction:.4f}"
+                ),
+                claim_kind="DIRECTIONAL",
+                subject_scope="SYMBOL",
+                subject_symbol=symbol,
+                # Reuses the established agent-source naming from the
+                # Phase-5 path so one agent has one identity everywhere.
+                agent_id=f"agent:{name}",
+                agent_version="1",
+                confidence=Decimal(
+                    str(
+                        conviction
+                    )
+                ),
+                asserted_at=observed_at,
+                sources=[
+                    source,
+                ],
+                payload={
+                    "action": action,
+                    "conviction": conviction,
+                },
+                run_id=self.session_id,
+                reason_codes=reason_codes,
+            )
+
+        except Exception as exc:
+            self._register_evidence_failure(
+                store,
+                exc,
+            )
+
+            logger.warning(
+                "Evidence claim not recorded for %s/%s: %s",
+                symbol,
+                name,
+                exc,
+            )
+
+            return None
+
+    def _link_contradicting_claims(
+        self,
+        store: Any,
+        recorded: dict[str, tuple[str, str]],
+    ) -> None:
+        """
+        Link every directionally opposed pair recorded this cycle.
+
+        A BUY and a SELL asserted about the same symbol in the same cycle
+        genuinely argue against each other, so the counter-evidence graph
+        is populated from real disagreement rather than waiting for an
+        LLM research layer that does not exist yet.
+        """
+
+        names = sorted(
+            recorded
+        )
+
+        for index, first in enumerate(
+            names
+        ):
+            first_id, first_action = recorded[first]
+
+            for second in names[index + 1:]:
+                second_id, second_action = recorded[second]
+
+                if {
+                    first_action,
+                    second_action,
+                } != {
+                    "BUY",
+                    "SELL",
+                }:
+                    continue
+
+                try:
+                    store.link(
+                        from_claim_id=first_id,
+                        to_claim_id=second_id,
+                        relation_kind="CONTRADICTS",
+                        created_by="atlas_brain",
+                    )
+                except Exception as exc:
+                    self._register_evidence_failure(
+                        store,
+                        exc,
+                    )
+
+                    logger.warning(
+                        "Contradiction edge not recorded: %s",
+                        exc,
+                    )
+
+    @staticmethod
+    def _register_evidence_failure(
+        store: Any,
+        error: BaseException,
+    ) -> None:
+        """
+        Record a swallowed failure on the store, never raising itself.
+
+        Fail-open must not also mean fail-silent: this is what keeps a
+        broken store visible in health() after the exception is absorbed.
+        """
+
+        try:
+            store.record_write_failure(
+                error
+            )
+        except Exception:
+            logger.debug(
+                "Evidence store could not register a write failure",
+                exc_info=True,
+            )
 
     # =========================================================
     # PIPELINE VALIDATION

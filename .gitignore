@@ -188,6 +188,17 @@ credentials/
 /paper_trades.json
 /data/trades.json
 
+# STATE-MOVE-1 (2026-09-18, ADR-0007): the durable state root and the market
+# archive moved to C:\AtlasState via ATLAS_STATE_DIRECTORY /
+# ATLAS_MARKET_ARCHIVE_DIRECTORY. The repository copies were renamed in place
+# rather than deleted, which took them out from under the rules above and the
+# data/market_archive/*.sqlite3 rules below. They are retired local state and
+# must never enter history - keep them ignored at their new names too.
+/memory_data.relocated_20260918/
+/memory_data_backup_20260915.relocated_20260918/
+/paper_trades.json.legacy_backup_20260915.relocated_20260918
+/data/market_archive.relocated_20260918/
+
 
 # =============================================================================
 # END
@@ -199,6 +210,11 @@ reports/observability/test_results.meta.json
 data/market_archive/*.sqlite3
 data/market_archive/*.sqlite3-shm
 data/market_archive/*.sqlite3-wal
+
+# Research Evidence Store (ADR-0008). This is the installation-anchored
+# DEFAULT root, used when ATLAS_EVIDENCE_DIRECTORY is unset; the operator's
+# configured root lives outside the repository entirely.
+/evidence_store/
 
 # =============================================================================
 # QUARANTINE

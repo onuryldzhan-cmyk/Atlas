@@ -103,9 +103,17 @@ class AtlasBrain:
         self,
         event_bus: Any | None = None,
         state_directory: str | Path | None = None,
+        evidence_store: Any | None = None,
     ) -> None:
         self.event_bus = event_bus
         self.state = BrainState()
+
+        # The research Evidence Store (ADR-0008), threaded to the
+        # intelligence layer so its agents can record claims. Observational
+        # only: None is a fully supported configuration and leaves the
+        # intelligence layer recording nothing, which is exactly what a
+        # bare AtlasBrain() has always done.
+        self.evidence_store = evidence_store
 
         # Where the intelligence layer persists its memory, world model and
         # reasoning records. The composition root passes the same durable
@@ -296,15 +304,20 @@ class AtlasBrain:
         """
         Build the intelligence layer's config for this run.
 
-        Returns None when no state directory was supplied, which leaves the
-        intelligence layer on its own default exactly as before this was
-        threaded through.
+        Returns None when neither a state directory nor an evidence store
+        was supplied, which leaves the intelligence layer on its own
+        default exactly as before either was threaded through.
         """
 
-        if self.state_directory is None:
-            return None
+        config: dict[str, Any] = {}
 
-        return {"data_dir": str(self.state_directory)}
+        if self.state_directory is not None:
+            config["data_dir"] = str(self.state_directory)
+
+        if self.evidence_store is not None:
+            config["evidence_store"] = self.evidence_store
+
+        return config or None
 
     # =========================================================
     # OBSERVATION

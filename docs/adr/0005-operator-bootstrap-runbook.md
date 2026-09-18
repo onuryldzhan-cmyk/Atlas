@@ -83,10 +83,74 @@ field passes through `sanitize_sensitive_text` before output.
 
 ## Runbook
 
+### 0. Which state directory to pass
+
+Every command below takes `--state-directory` explicitly; the tools have no
+default and never resolve the path against the CWD. Pass the directory the
+*runtime* will actually open, which is not always the installation default:
+
+- If `ATLAS_STATE_DIRECTORY` is set, it **takes precedence** over
+  `core/application.py`'s `DEFAULT_STATE_DIRECTORY`, and the runtime opens
+  the override. Pass that same path to these tools, or they will inspect and
+  bootstrap a directory the runtime never reads.
+- If it is unset, the runtime falls back to the installation default
+  (`<repo>/memory_data`), and that is the path to pass.
+
+The same relationship holds between `ATLAS_MARKET_ARCHIVE_DIRECTORY` and
+`DEFAULT_MARKET_ARCHIVE_DIRECTORY` for the historical market-data archive,
+and between `ATLAS_EVIDENCE_DIRECTORY` and `DEFAULT_EVIDENCE_DIRECTORY` for
+the research Evidence Store (ADR-0008). **None** of the three variables is
+created by the runtime: an override that is present but does not point at an
+existing absolute directory is a startup failure, never a silent fallback
+(see ADR-0007).
+
+There are therefore three operator-relocatable roots:
+
+| Variable | Default | Operator target | Holds |
+| --- | --- | --- | --- |
+| `ATLAS_STATE_DIRECTORY` | `<repo>/memory_data` | `C:\AtlasState\memory_data` | Execution/financial state |
+| `ATLAS_MARKET_ARCHIVE_DIRECTORY` | `<repo>/data/market_archive` | `C:\AtlasState\market_archive` | Historical market data |
+| `ATLAS_EVIDENCE_DIRECTORY` | `<repo>/evidence_store` | `C:\AtlasState\evidence_store` | Research claims (ADR-0008) |
+
+On this deployment as of 2026-09-18 the first two overrides are set and the
+live durable root is `C:\AtlasState\memory_data` (archive:
+`C:\AtlasState\market_archive`), which is why the examples below name them.
+Confirm the values in force before running anything:
+
+```
+echo %ATLAS_STATE_DIRECTORY%
+echo %ATLAS_MARKET_ARCHIVE_DIRECTORY%
+echo %ATLAS_EVIDENCE_DIRECTORY%
+```
+
+**`ATLAS_EVIDENCE_DIRECTORY` is not yet set on this deployment, and
+`C:\AtlasState\evidence_store` does not yet exist.** No directory is ever
+created automatically — not the override and not the installation default —
+so until one is provisioned, Atlas starts normally, logs that the evidence
+store could not be opened, and records no research evidence. That is
+fail-open by design, not a fault. To enable it, create the directory first
+and set the variable second — the order matters, because a variable pointing
+at a directory that does not exist is refused at startup:
+
+```
+mkdir C:\AtlasState\evidence_store
+setx ATLAS_EVIDENCE_DIRECTORY C:\AtlasState\evidence_store
+```
+
+`setx` is per-user and persists across restarts; the supervisor hands its
+child a full copy of `os.environ`, so it survives every supervised restart.
+Open a fresh terminal and echo the value back before restarting Atlas — the
+shell that ran `setx` does not see it. The change takes effect on Atlas's
+next ordinary restart; no migration or data move is involved, because this
+is a new subsystem rather than a relocation. The Evidence Store is also the
+one durable store Atlas will start *without*: if it cannot be opened,
+startup logs the failure and continues, and the failure stays visible in
+`EvidenceStore.health()`.
+
 ### 1. Fresh PAPER environment
 
 ```
-python tools/bootstrap_financial_state.py --state-directory ./memory_data
+python tools/bootstrap_financial_state.py --state-directory C:\AtlasState\memory_data
 ```
 
 Expect exit `0` and three `CREATED` rows. Atlas can now start. This is
@@ -95,7 +159,7 @@ PAPER-only; nothing in this workflow grants live-trading authority.
 ### 2. Existing valid environment / restart / recovery
 
 ```
-python tools/bootstrap_financial_state.py --state-directory ./memory_data --verify-only
+python tools/bootstrap_financial_state.py --state-directory C:\AtlasState\memory_data --verify-only
 ```
 
 Expect exit `0` and three `VALID_EXISTING` rows. `--verify-only` is the
@@ -152,7 +216,7 @@ aside here would discard that accounting history exactly as any other
 manual move would. Run the dedicated, explicit migration tool instead:
 
 ```
-python tools/migrate_execution_financial_state.py --state-directory ./memory_data
+python tools/migrate_execution_financial_state.py --state-directory C:\AtlasState\memory_data
 ```
 
 It rewrites `execution_financial_state.json` in place as schema_version 2
@@ -205,7 +269,7 @@ answered with. Starting with one half missing would let an already-executed
 request execute a second time, so the runtime refuses.
 
 ```
-python tools/reconcile_execution_authorities.py --state-directory ./memory_data
+python tools/reconcile_execution_authorities.py --state-directory C:\AtlasState\memory_data
 ```
 
 The tool is verify-first: without `--apply` it reports and writes nothing.

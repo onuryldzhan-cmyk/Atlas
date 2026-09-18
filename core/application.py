@@ -77,6 +77,10 @@ from core.execution_manager import ExecutionManager
 from core.audit_event_store import AuditEventStore
 from core.execution_idempotency_store import ExecutionIdempotencyStore
 from core.execution_transaction_journal import ExecutionTransactionJournal
+from data_layer.evidence_store import (
+    DATABASE_FILENAME as EVIDENCE_DATABASE_FILENAME,
+    EvidenceStore,
+)
 from portfolio.capital_manager import CapitalManager
 from core.position_controller import PositionController
 from core.paper_trader import PaperTrader
@@ -143,6 +147,17 @@ DEFAULT_MARKET_ARCHIVE_DIRECTORY = (
     Path(__file__).resolve().parent.parent / "data" / "market_archive"
 )
 
+# The research Evidence Store root (ADR-0008). A third operator-relocatable
+# root rather than a subdirectory of the durable state root: it is a
+# continuously-appended SQLite database whose growth and backup profile are
+# nothing like the small, precious financial state in memory_data, and
+# keeping them apart lets the operator back up each on its own terms and put
+# evidence on a different disk. It is anchored to the installation directory
+# by default for the same CWD-independence reason as the two roots above.
+DEFAULT_EVIDENCE_DIRECTORY = (
+    Path(__file__).resolve().parent.parent / "evidence_store"
+)
+
 # =============================================================
 # OPERATOR-CONFIGURED ROOT OVERRIDES
 # =============================================================
@@ -168,6 +183,7 @@ DEFAULT_MARKET_ARCHIVE_DIRECTORY = (
 
 STATE_DIRECTORY_ENV = "ATLAS_STATE_DIRECTORY"
 MARKET_ARCHIVE_DIRECTORY_ENV = "ATLAS_MARKET_ARCHIVE_DIRECTORY"
+EVIDENCE_DIRECTORY_ENV = "ATLAS_EVIDENCE_DIRECTORY"
 
 
 class ConfiguredDirectoryError(RuntimeError):
@@ -264,6 +280,26 @@ def resolve_market_archive_directory() -> Path:
     return _resolve_configured_directory(
         variable=MARKET_ARCHIVE_DIRECTORY_ENV,
         default=DEFAULT_MARKET_ARCHIVE_DIRECTORY,
+    )
+
+
+def resolve_evidence_directory() -> Path:
+    """
+    Return the research Evidence Store root in force right now.
+
+    Same fail-closed contract as the two roots above, and deliberately the
+    same implementation: an override that is mistyped or not yet created
+    raises rather than silently opening a different, empty evidence
+    database while the operator believes the configured one is in use.
+
+    The directory is never created here. That is the whole point of the
+    check: creating it would turn a typo into a new empty evidence root,
+    which is exactly the outcome being guarded against.
+    """
+
+    return _resolve_configured_directory(
+        variable=EVIDENCE_DIRECTORY_ENV,
+        default=DEFAULT_EVIDENCE_DIRECTORY,
     )
 
 # Block 5D: the checked-in static venue instrument-precision authority
@@ -367,6 +403,7 @@ class AtlasApplication:
         symbols: list[str] | None = None,
         market_interval: float = 10.0,
         state_directory: str | Path | None = None,
+        evidence_directory: str | Path | None = None,
         venue_rule_freshness_policy: VenueRuleFreshnessPolicy | None = None,
     ) -> None:
         logger.info(
@@ -395,6 +432,18 @@ class AtlasApplication:
         # silently at the next archive fetch, which is the fail-closed
         # direction for a root the operator believes is configured.
         self.market_archive_directory = resolve_market_archive_directory()
+
+        # The research Evidence Store root (ADR-0008). Same "None means
+        # resolve from the environment" contract as state_directory, so a
+        # test or tool can point the store at its own scratch directory and
+        # is never affected by what the operator has exported. Resolving
+        # here means a mistyped override is refused when Atlas starts, not
+        # at the first claim write.
+        self.evidence_directory = (
+            resolve_evidence_directory()
+            if evidence_directory is None
+            else Path(evidence_directory)
+        )
 
         # Block 6A: the venue-rule freshness policy in force for this run.
         # Operator-configurable at the composition boundary; the documented
@@ -487,9 +536,20 @@ class AtlasApplication:
         # started and split it away from the configured durable root. The
         # resolved root is threaded through so both land in exactly the same
         # place, whatever the operator configured.
+        # The research Evidence Store (ADR-0008). Constructed here so the
+        # composition root owns its path like every other durable store,
+        # and so a future dashboard task can reach it off the runtime
+        # object. Construction touches no disk: the database is opened in
+        # start(), where a failure can be reported without preventing a
+        # bare AtlasApplication() from being built in a test.
+        self.evidence_store = EvidenceStore(
+            self.evidence_directory / EVIDENCE_DATABASE_FILENAME,
+        )
+
         self.brain = AtlasBrain(
             event_bus=self.event_bus,
             state_directory=self.state_directory,
+            evidence_store=self.evidence_store,
         )
 
         # -----------------------------------------------------
@@ -723,12 +783,15 @@ class AtlasApplication:
         logger.info(
             "Durable execution stores constructed under %s "
             "(state_root_source=%s market_archive_root=%s "
-            "market_archive_root_source=%s) "
+            "market_archive_root_source=%s evidence_root=%s "
+            "evidence_root_source=%s) "
             "idempotency_loaded=%s journal_unresolved=%s",
             self.state_directory,
             self._root_source(STATE_DIRECTORY_ENV),
             self.market_archive_directory,
             self._root_source(MARKET_ARCHIVE_DIRECTORY_ENV),
+            self.evidence_directory,
+            self._root_source(EVIDENCE_DIRECTORY_ENV),
             self.idempotency_store.loaded,
             self.transaction_journal.has_unresolved(),
         )
@@ -911,6 +974,45 @@ class AtlasApplication:
                 service=self.market_feed,
                 required=True,
             )
+
+            # -------------------------------------------------
+            # Research evidence (observational, fail-open)
+            # -------------------------------------------------
+            #
+            # Opened before the brain starts so the first cycle can already
+            # record claims. This is the one durable store Atlas starts
+            # WITHOUT: evidence carries no trading authority, so refusing
+            # to trade because a research database would not open would be
+            # a far worse outcome than running without it. The failure is
+            # logged and remains visible in evidence_store.health().
+            # getattr rather than attribute access: the store is optional by
+            # design, and startup must not acquire a hard dependency on a
+            # subsystem that carries no trading authority. That also keeps
+            # the startup-order contract drivable by a partially constructed
+            # application, which is how the lifecycle tests assert it.
+            evidence_store = getattr(self, "evidence_store", None)
+
+            if evidence_store is None:
+                logger.info(
+                    "No evidence store configured; continuing without "
+                    "research evidence recording",
+                )
+            else:
+                evidence_root = getattr(self, "evidence_directory", None)
+                try:
+                    evidence_store.open()
+                    logger.info(
+                        "Evidence store ready (evidence_root=%s "
+                        "evidence_root_source=%s)",
+                        evidence_root,
+                        self._root_source(EVIDENCE_DIRECTORY_ENV),
+                    )
+                except Exception:
+                    logger.exception(
+                        "Evidence store could not be opened at %s; continuing "
+                        "without research evidence recording",
+                        evidence_root,
+                    )
 
             # -------------------------------------------------
             # Intelligence
