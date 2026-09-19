@@ -99,6 +99,7 @@
     "data_layer/canonical_evidence.py",
     "data_layer/config.py",
     "data_layer/contracts.py",
+    "data_layer/evidence_store.py",
     "data_layer/migrations.py",
     "data_layer/models.py",
     "data_layer/projection_replay.py",

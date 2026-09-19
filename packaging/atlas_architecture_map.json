@@ -503,6 +503,7 @@
     "data_layer/canonical_evidence.py": "L1",
     "data_layer/config.py": "L2",
     "data_layer/contracts.py": "L1",
+    "data_layer/evidence_store.py": "L2",
     "data_layer/migrations.py": "L2",
     "data_layer/models.py": "L1",
     "data_layer/projection_replay.py": "L2",
