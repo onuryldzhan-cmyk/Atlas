@@ -385,6 +385,11 @@
       "reason": "explicit: analysis/** is L4 research/intelligence except the shared L1 vocabulary exception listed above"
     },
     {
+      "pattern": "research/*",
+      "layer": "L4",
+      "reason": "research/** is L4 research/intelligence (ADR-0009). research/ holds a stronger invariant than L4 itself: research/__init__.py promises no connection to the Atlas runtime, which is enforced as zero first-party imports outside research/ by tests/test_research_isolation.py -- stricter than L4's stdlib+L0+L1 allowance, and stricter than find_forbidden_edges, which exempts TYPE_CHECKING-guarded imports. This rule is inert today: compute_module_layers iterates only the runtime closure, and research/** is reachable from no entry point, so it assigns no module and leaves module_layers unchanged. It is recorded in advance so the classification is a decision on the record rather than one made under pressure the day research/ is first wired in (W1, ADR-0009)"
+    },
+    {
       "pattern": "atlas_finance/*",
       "layer": "L2",
       "reason": "explicit: atlas_finance/** concrete providers/services default to L2, except the L1 contract/model exceptions listed above"
