@@ -1,10 +1,18 @@
-"""Repository and transaction contracts for financially meaningful records."""
+"""Repository and transaction contracts for financially meaningful records.
+
+Also holds persistence value types that are shared across layers. A value
+type defined beside a concrete store inherits that store's layer, which
+would force any producer of the type to depend on infrastructure; defining
+it here keeps the type importable without that dependency.
+"""
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from contextlib import AbstractContextManager
+from dataclasses import dataclass
+from datetime import datetime
 from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
@@ -93,3 +101,19 @@ class StorageBackend(Protocol):
     def close(self) -> None: ...
     def health(self) -> dict[str, Any]: ...
     def unit_of_work(self) -> UnitOfWork: ...
+
+
+@dataclass(frozen=True)
+class ClaimSource:
+    """One examined source behind a claim.
+
+    Written by the Evidence Store (ADR-0008) and constructed by the claim
+    producers on the intelligence side, which must not import the store
+    itself. Validation stays in the store: this carries values only.
+    """
+
+    source_kind: str
+    source_uri: str
+    source_version: str
+    retrieved_at: datetime
+    source_digest: str | None = None

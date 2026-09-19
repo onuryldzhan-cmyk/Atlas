@@ -48,7 +48,10 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from .contracts import IntegrityViolation, StorageError
+# ClaimSource lives in contracts so a claim producer can build one without
+# importing this store. Re-exported here: it is part of this module's
+# established public API.
+from .contracts import ClaimSource, IntegrityViolation, StorageError
 from .migrations import Migration, apply_migrations
 
 
@@ -324,17 +327,6 @@ def _enum_value(value: Any, enum_type: type[Enum], name: str) -> str:
 # =================================================================
 # RECORDS
 # =================================================================
-
-
-@dataclass(frozen=True)
-class ClaimSource:
-    """One examined source behind a claim."""
-
-    source_kind: str
-    source_uri: str
-    source_version: str
-    retrieved_at: datetime
-    source_digest: str | None = None
 
 
 @dataclass(frozen=True)

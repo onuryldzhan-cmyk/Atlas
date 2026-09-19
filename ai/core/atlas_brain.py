@@ -90,8 +90,10 @@ from core.decision_intelligence import (
 
 # Research evidence recording only (ADR-0008). ClaimSource is a persistence
 # value type and shares nothing with core.decision_intelligence.Evidence,
-# which remains the Phase-5 fusion path's own contract.
-from data_layer.evidence_store import ClaimSource
+# which remains the Phase-5 fusion path's own contract. It is imported from
+# contracts, never from the store: this layer may describe a source but must
+# not reach the infrastructure that persists it.
+from data_layer.contracts import ClaimSource
 
 
 logger = logging.getLogger(
