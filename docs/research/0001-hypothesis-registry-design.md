@@ -4,6 +4,10 @@
 
 Proposed. Track `research/edge-validation`, Step 1 (infrastructure only).
 
+Amended after Step 1 by the five-check validation package, which adds
+**Decision 5** and takes the persisted registry format from version 1 to
+version 2. Decisions 1-4 are unchanged; the amendment is additive.
+
 Branched from `feat/block2-architecture-core` (`0942391`). No `main` branch
 exists in this repository and there are no remotes; `feat/block3-execution-safety`
 is the de-facto trunk but is excluded from this track's base by owner decision,
@@ -286,6 +290,164 @@ the way to keep a state machine from granting it is for the state not to
 exist. Any future promotion beyond PAPER requires explicit owner
 authorisation and a separate, governed design.
 
+## Decision 5 — The five-check validation protocol
+
+Added by a later package on this track, after Decisions 1–4 were implemented
+and the `research/` L4 boundary was settled (ADR-0009). Decisions 1–4 are
+unchanged by it; this decision adds a fifth gate in front of promotion and
+breaks the persisted format once to carry it.
+
+Decision 1 seals *what* will be tested. It does not seal *how thoroughly*.
+A hypothesis could be pre-registered honestly and then validated by whichever
+checks happened to come out well — running a Monte Carlo only after the
+cost-adjusted result disappoints, or quietly not running it at all. That is
+HARKing one level up: not about the hypothesis, but about the validation
+protocol applied to it. Decision 5 seals the protocol too.
+
+### The closed set of checks
+
+| Check | Segment scored | Sealed parameters |
+|---|---|---|
+| `BACKTEST` | TRAIN | `minimum_effect_size` |
+| `WALK_FORWARD` | CALIBRATION | `window_count`, `minimum_fraction_passing` |
+| `OUT_OF_SAMPLE` | TEST | — (identity is the sealed `split_spec` TEST segment) |
+| `COST_ADJUSTED` | TEST | `cost_model_id`, `cost_bps` |
+| `MONTE_CARLO` | TEST | `trial_count`, `null_model_id`, `percentile_threshold` |
+
+The set is closed. A sixth check is a change to the validation protocol and
+belongs in a reviewed change to `CheckName`, not in a free-text field.
+
+`CheckVerdict` has exactly two values, `PASS` and `FAIL`. There is deliberately
+no `INCONCLUSIVE` or `SKIPPED`: a third value is somewhere a failing check can
+hide, and an absent required check already adjudicates as a failure, so a check
+that could not be computed simply is not recorded.
+
+### Three checks, one test read
+
+`OUT_OF_SAMPLE`, `COST_ADJUSTED` and `MONTE_CARLO` all score the TEST segment,
+and Decision 4 allows that segment to be read exactly once. They are therefore
+not three reads: `OUT_OF_SAMPLE` **is** the single irreversible read,
+`COST_ADJUSTED` re-scores that same read under a cost model, and `MONTE_CARLO`
+resamples it. All three ride on one `EvaluationRecord`, and the single-use
+budget is untouched.
+
+This has a consequence worth stating, because it is a feature rather than an
+edge case: `BACKTEST` and `WALK_FORWARD` score segments readable only before
+`TESTED`, so consuming the test read first makes them permanently unrecordable
+and the hypothesis permanently unpromotable. "Look at the test set, then go back
+and do the backtest" is structurally unavailable, not merely discouraged.
+
+### This module adjudicates checks; it does not compute them
+
+A `CheckResult` arrives as plain data — statistic, verdict, the threshold it was
+scored against, and a free-form payload. The engines that compute walk-forward
+windows, cost models and resampled nulls are a separate, later package. What is
+defined here is the contract and the adjudication, not the statistics.
+
+### A sealed threshold is binding, not documentary
+
+Sealing a threshold stops it being *edited* after the fact. On its own it does
+not stop the check being *computed* against a different number and a `PASS`
+handed in regardless — a plan sealing `minimum_effect_size: 0.5` would accept a
+`BACKTEST` PASS decided against `0.0001`, and the sealed number would be
+decoration.
+
+So a result must declare the threshold it used, and it must be the one the plan
+sealed. `CheckPlan.threshold_for()` is where a compute engine reads its
+threshold rather than choosing one. `WALK_FORWARD` binds
+`minimum_fraction_passing` for the same reason — "6 of 10 windows cleared,
+threshold 0.3" is a pass the plan never authorised if it sealed 0.6. A check
+that seals no threshold must declare none, so that a stored number can never be
+mistaken for a binding nothing checked.
+
+Residual, recorded rather than closed: the non-threshold sealed parameters
+(`cost_model_id`, `null_model_id`, `window_count`, `trial_count`) are sealed but
+not bound, because binding them needs fields on `CheckResult` that do not exist
+yet. An engine can still seal one cost model and use another.
+
+### Adjudication is conjunctive
+
+Promotion requires **all four** gates: the family-level FDR decision, the
+hypothesis's own pre-registered `alpha`, its `minimum_effect_size`, and every
+check its sealed plan requires. They are combined with a hard AND. There is no
+weighted or blended score, because a weighted score lets a strong p-value buy
+its way past a failed cost-adjusted check, and those two quantities are not
+exchangeable.
+
+### Ordering: BH first, checks strictly after
+
+Benjamini-Hochberg runs over the p-values of every tested hypothesis in the
+family, with no check verdict consulted while it runs, so `m` is the true number
+of tests. Check gating is applied afterwards, as a further conjunct on a decision
+BH has already made.
+
+The order is not interchangeable. Gating on checks *before* the correction would
+drop the hypotheses that failed their checks from the family, shrinking `m` and
+making every survivor's threshold easier to clear — reintroducing precisely the
+selection bias of Decision 3 by way of the machinery meant to add rigour.
+
+### The two regression guards
+
+**NB-4 analogue — removing evidence never relaxes the verdict.** Adjudication
+iterates the sealed *plan* and looks each required check up among the recorded
+results. A required check with no result is a `FAIL`, never a skip. Deleting a
+recorded result can therefore only move a check from passed to missing; there is
+no subset of the evidence whose removal improves the outcome.
+
+**NB-5 analogue — the denominator is the plan.** "How many checks passed" is
+always scored against the plan's required-check count, never against however many
+results happen to be present. Were it the latter, a hypothesis with two of five
+checks recorded and both passing would read as unanimous — the same false full
+consensus NB-5 describes for a short agent roster.
+
+`CheckPlanStatus` distinguishes `INCOMPLETE` from `COMPLETE_FAIL`, because "three
+checks are still outstanding" and "all five ran and one failed" are different
+operational situations. Both are non-promotable; adjudicating while incomplete
+resolves per NB-4, as a rejection rather than a hypothesis held open.
+
+### Promotion is reachable only through family adjudication, in process
+
+`lifecycle` declares `FAMILY_ADJUDICATED_TRANSITION` as the one transition a
+hypothesis cannot make on its own evidence. The registry's general-purpose state
+mutator now refuses it: `TESTED -> CANDIDATE` is legal for the state machine but
+reachable only through family adjudication, which applies all four gates
+together. Left open, a single call routes around the entire conjunctive gate,
+and the gate is only ever as strong as the path that reaches it. Every other
+transition `advance()` served is unaffected, including `TESTED -> REJECTED`,
+which needs no family evidence because it is never a promotion.
+
+The scope of that claim is the in-process API, and the qualifier is not
+decorative. `state` is mutable by design and therefore outside the seal, so
+hand-editing the stored `state` to `CANDIDATE` still produces a promoted record
+on load. That is pre-existing and belongs to the same class as open items 6 and
+8: the seal binds the pre-registration, not the whole file. Closing the API
+route is still worth doing — it is the route an honest caller can take by
+accident — but it is not a claim about a text editor.
+
+### Write path and load path enforce the same rules
+
+Evaluations are deliberately outside the seal — they grow after registration,
+so a fixed hash cannot cover them. Every invariant the write path enforces is
+therefore re-checked on load: that each recorded check is in the sealed plan,
+that no check appears twice, and that each was scored against its sealed
+threshold. An invariant enforced on only one path holds until the next restart,
+which is not an invariant: appending a passing duplicate after a failing result
+would otherwise launder the verdict without disturbing the seal at all.
+
+This does not make evaluations tamper-evident. An in-place edit of a single
+stored verdict remains undetectable; closing that needs a chained hash over the
+append-only log and is future work.
+
+### Format version 2
+
+The sealed payload now includes `check_plan`, so no version-1 payload can produce
+a valid version-2 seal. This is a clean break: `REGISTRY_FORMAT_VERSION` goes
+`1 -> 2` with **no version-1 loading path**. An exhaustive search found no
+version-1 registry file anywhere — in the repository, in `C:\AtlasState`, or in
+checkpoints — and nothing outside the tests constructs a registry, so there is no
+data to migrate and a revert loses nothing. `_load` refuses any version it does
+not recognise, in both directions, rather than guessing.
+
 ## Storage and runtime-state isolation
 
 The registry persists to JSON at a path the caller **must supply explicitly**.
@@ -311,6 +473,25 @@ never constructs `AtlasApplication`.
    purged split *and* a multiple-testing family of any useful size. Data
    acquisition is a prerequisite for Step 2 of this track, not an optimisation.
 5. **No p-value procedure.** Deferred with the test procedure itself.
+6. **Family membership is not sealed.** The per-record seal binds a record's
+   contents; nothing binds the *set* of records. Deleting a losing hypothesis
+   from the stored file shrinks `m` and relaxes every survivor's BH threshold —
+   the Decision 3 bias, reachable one level above where the defence sits.
+   Closing it needs a family-level manifest (count plus an ordered digest of
+   ids) in the stored payload. Pre-existing; not introduced by Decision 5.
+7. **A registry file with no `records` key loads as an empty registry.**
+   Truncation is therefore indistinguishable from a legitimately empty
+   registry, and duplicate-id detection silently resets. Not promotion-relevant
+   — an empty registry promotes nothing — but `{}` and an absent key are
+   different facts and should be treated as such. Pre-existing; not introduced
+   by Decision 5.
+8. **A record's `state` is not sealed.** It is mutable by design — the seal
+   covers the pre-registration, and `state` must advance — so a hand-edited
+   stored `state` of `CANDIDATE` loads as a promoted hypothesis regardless of
+   its p-value or its checks. Decision 5 closes the in-process route to that
+   state; it does not and cannot close the text-editor route. The same chained
+   hash over the append-only log that would make evaluations tamper-evident is
+   what would close this. Pre-existing; not introduced by Decision 5.
 
 Consequence: this infrastructure is correct and testable on synthetic index
 arrays, and **no hypothesis can be validly evaluated until item 1 is closed.**

@@ -7,6 +7,10 @@ import json
 import pytest
 
 from research.hypothesis_registry import (
+    CheckName,
+    CheckPlan,
+    CheckResult,
+    CheckVerdict,
     DuplicateHypothesisError,
     EvaluationNotPermittedError,
     EvaluationRecord,
@@ -28,6 +32,13 @@ SPLIT_SPEC = SplitSpec(
     label_horizon_bars=10,
     embargo_pct=0.01,
 )
+
+#: The minimal plan: the out-of-sample check alone, which is the single TEST
+#: read every hypothesis performs anyway. Tests in this module exercise the
+#: FDR, alpha and effect-size gates, so they pre-register the smallest plan
+#: that keeps the check gate satisfied rather than a five-check one. The full
+#: five-check plan is exercised in test_research_hypothesis_checks.py.
+MINIMAL_CHECK_PLAN = CheckPlan(required_checks=(CheckName.OUT_OF_SAMPLE,))
 
 
 def make_preregistration(**overrides) -> PreRegistration:
@@ -53,6 +64,7 @@ def make_preregistration(**overrides) -> PreRegistration:
         "minimum_effect_size": 0.5,
         "family_id": "FAM-REVERSAL-2026Q3",
         "split_spec": SPLIT_SPEC,
+        "check_plan": MINIMAL_CHECK_PLAN,
         "feature_spec": {"lookback": 24, "sigma_window": 200},
         "preregistered_at": "2026-08-01T00:00:00+00:00",
     }
@@ -76,6 +88,7 @@ def run_test_segment(
     p_value: float,
     effect_size: float,
 ) -> None:
+    """Consume the single TEST read, satisfying the minimal check plan."""
     registry.record_evaluation(
         hypothesis_id,
         EvaluationRecord(
@@ -83,6 +96,15 @@ def run_test_segment(
             statistic_value=effect_size,
             p_value=p_value,
             effect_size=effect_size,
+            checks=(
+                CheckResult(
+                    check_name=CheckName.OUT_OF_SAMPLE,
+                    verdict=CheckVerdict.PASS,
+                    statistic_value=effect_size,
+                    p_value=p_value,
+                    effect_size=effect_size,
+                ),
+            ),
         ),
     )
 
@@ -167,6 +189,21 @@ def test_seal_is_stable_across_identical_content():
         ("data_end", "2025-06-01T00:00:00+00:00"),
         ("economic_rationale", "a different mechanism entirely"),
         ("feature_spec", {"lookback": 48}),
+        (
+            "check_plan",
+            CheckPlan(
+                required_checks=(
+                    CheckName.OUT_OF_SAMPLE,
+                    CheckName.COST_ADJUSTED,
+                ),
+                parameters={
+                    "COST_ADJUSTED": {
+                        "cost_model_id": "taker_flat",
+                        "cost_bps": 7.5,
+                    }
+                },
+            ),
+        ),
     ],
 )
 def test_changing_any_sealed_field_changes_the_seal(field, value):
@@ -249,6 +286,40 @@ def test_unsupported_format_version_is_refused(tmp_path):
     path.write_text(json.dumps({"version": 99, "records": []}), encoding="utf-8")
     with pytest.raises(RegistryError, match="unsupported registry format"):
         HypothesisRegistry(registry_path=path)
+
+
+def test_a_format_version_1_registry_is_refused(tmp_path):
+    """The version-1 boundary is closed on purpose, not by omission.
+
+    No version-1 registry exists anywhere, so there is no migration path to
+    write. This test pins the resulting behaviour: a version-1 payload -- a
+    pre-registration with no sealed check plan -- fails to load with a
+    version-mismatch error rather than being loaded with an empty plan that
+    would satisfy the check gate vacuously.
+    """
+    path = tmp_path / "hypotheses.json"
+    version_1_preregistration = make_preregistration().sealed_payload()
+    version_1_preregistration.pop("check_plan")
+    path.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "records": [
+                    {
+                        "preregistration": version_1_preregistration,
+                        "preregistration_hash": "0" * 64,
+                        "state": "REGISTERED",
+                        "evaluations": [],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(RegistryError, match="unsupported registry format") as exc:
+        HypothesisRegistry(registry_path=path)
+    assert "expected 2" in str(exc.value)
 
 
 # --- evaluation access rules --------------------------------------------
