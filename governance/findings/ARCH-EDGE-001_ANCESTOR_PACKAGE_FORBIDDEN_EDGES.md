@@ -6,12 +6,149 @@
 | Title | Seventeen forbidden layer edges exist only through ancestor package `__init__.py` execution |
 | Finding type | `ARCHITECTURE_BOUNDARY_EDGE_INVENTORY` |
 | Operating mode | AUDIT MODE |
-| Status | `OPEN_INVENTORY_RECORDED_NO_EDGE_DISPOSED` |
+| Status | `PARTIALLY_RESOLVED_15_OF_17_VIA_RECLASSIFICATION_GROUP_B2_STILL_OPEN` |
+| Status (as recorded 2026-09-21, pre-implementation) | `OPEN_INVENTORY_RECORDED_NO_EDGE_DISPOSED` |
+| Resolving commit | `f2c25e2ca8df92a9a199e4691f5f14fa49c9e193` (branch `research/edge-validation`) |
+| Resolving authority | `governance/current/ATLAS_MILESTONE_REGISTRY_v4.39.json`, GRANT-ANCESTOR-INIT-RECLASSIFICATION |
 | Authorized by | `governance/current/ATLAS_MILESTONE_REGISTRY_v4.38.json`, GRANT-FINDINGS-17-EDGES |
 | Derived at commit | `d85ec6a5ccff50ac033ea4a8ca3c33b57546321c` (branch `research/edge-validation`) |
 | Recorded on | 2026-09-21 |
 | Production effect | NONE |
 | Live effect | NONE |
+
+## Resolution update — 2026-09-21, commit `f2c25e2`
+
+**Everything below this section is the record as originally written and is
+preserved unchanged.** It states the pre-implementation position, and its
+measurements, reasoning and caveats remain the evidence the resolution rests on.
+Nothing in it has been rewritten or deleted; CLAUDE.md's Governance section
+requires that a changed decision record *why* it changed, which is impossible if
+the superseded text is erased. Read the original sections as history and this
+section as their current disposition.
+
+### What changed
+
+Registry v4.39 (`GRANT-ANCESTOR-INIT-RECLASSIFICATION`) authorized, and commit
+`f2c25e2` implemented, a **reclassification** of two ancestor package markers in
+`packaging/atlas_architecture_map.json`:
+
+| File | Was | Now |
+| --- | --- | --- |
+| `core/__init__.py` | L3 (by the generic `core/*` default) | L1 (explicit rule) |
+| `data_layer/__init__.py` | L2 (by the generic `data_layer/*` default) | L1 (explicit rule) |
+
+No source file was modified. No `forbidden_edges` rule was changed. Nothing was
+added to `permitted_exceptions`. `core/__init__.py` and `data_layer/__init__.py`
+are byte-identical to their state at `d85ec6a`, when this record was authored.
+
+### Disposition by group
+
+| Group | Edges | Disposition |
+| --- | --- | --- |
+| A — `core/__init__.py` | 10 | **RESOLVED-VIA-RECLASSIFICATION** at `f2c25e2` |
+| B1 — `data_layer/__init__.py` | 2 | **RESOLVED-VIA-RECLASSIFICATION** at `f2c25e2` |
+| B2 — `atlas_finance` | 2 | **STILL OPEN. MEDIUM.** Not touched, not disposed of, no authority granted |
+| C — L4 → L2/L3 | 3 | **RESOLVED-VIA-RECLASSIFICATION** at `f2c25e2` |
+
+### Why these are genuinely resolved and not merely hidden
+
+The distinction this record drew for itself under *"Reclassification-with-evidence
+is not a permitted exception"* is the one that applies here, and it is worth
+being precise about which of the three instruments was used:
+
+- A **`permitted_exception`** would have named each importer/imported pair and
+  told the detector to stop reporting it. The layer labels would have stayed put
+  and the edges would have remained real cross-layer dependencies that the gate
+  was instructed to tolerate. That was not done, and registry v4.39 explicitly
+  forbids it.
+- **Weakening a `forbidden_edges` rule** would have stopped the detector
+  reporting an entire class of edge. `L4 → L2` and `L4 → L3` are untouched and
+  still carry their original stated reason, *"research/intelligence must not
+  reach execution internals (research cannot trade)."*
+- **Reclassification** changed one input fact: which layer two files belong to.
+
+The Group C edges are the clearest case. `ai/core/atlas_brain.py` imports
+`core.decision_intelligence` and `data_layer.contracts`; `decision_builder.py`
+imports `core.decision`. All three direct targets are L1, and L4 → L1 has always
+been permitted. The violation was entirely against the **parent packages** Python
+executes on the way in. Now that those parents carry accurate L1 labels, the
+traversal is L4 → L1 at every step. These are not tolerated forbidden edges —
+they are no longer forbidden edges at all.
+
+The labels were the thing that was wrong. `core/__init__.py` inherited L3 from a
+default whose recorded reason is *"application-layer orchestration, per the
+composition-root diagram in `core/application.py`'s own docstring"* — true of
+`application.py`, `market_loop.py` and `brain.py`, not of a six-line docstring.
+`data_layer/__init__.py` inherited L2 from a default reasoning that it *"re-exports
+both L1 (models) and L2 (config, sqlite) symbols so is classified at the
+lower-common-denominator L2"* — correct for an eager `__init__`, and no longer
+descriptive of a file whose re-exports are lazy by deliberate design.
+
+### The contingency caveat is now closed, not carried forward
+
+Every group above recorded the same caveat: inertness was *measured at a point in
+time and enforced by nothing*. That caveat was the reason these were candidate
+classifications rather than dispositions. It is now discharged, asymmetrically,
+because the two files are asymmetric:
+
+- **`core/__init__.py` is self-enforcing and needs no new test.** It is now
+  classified L1. Adding an eager import of an L3 module to it — the exact change
+  that would invalidate the reclassification — produces an `ast.Import` or
+  `ast.ImportFrom` node that the existing detector sees, and it re-triggers
+  immediately as a caught L1 → L3 violation. The reclassification made this file
+  *more* sensitive to regression, not less.
+- **`data_layer/__init__.py` is not self-enforcing, and this was the gap.** Its
+  laziness runs through `importlib.import_module` on **string** module names.
+  `tools/build_architecture_inventory._resolve_imports` walks `ast.Import` and
+  `ast.ImportFrom` nodes only; an `importlib.import_module(str)` call is neither.
+  The detector is structurally blind to it, so a future regression there would
+  leave the gate green while an L1-labelled file loaded L2 infrastructure — and,
+  through `ai/core/atlas_brain.py`, put research back on a live path to
+  infrastructure with nothing reporting it.
+
+The **Deferred improvement** recorded at the foot of this document is therefore
+now implemented, as a binding condition of the grant rather than as an optional
+follow-up: `tests/architecture/test_data_layer_init_is_lazy.py`.
+
+It is a runtime check, not another static one. It measures `sys.modules` in a
+**clean subprocess interpreter** against that subprocess's own baseline, so
+modules already loaded by the pytest process cannot mask the result. It derives
+the forbidden L2 set from `packaging/atlas_architecture_map.json` at test time —
+not from a hardcoded list, and not from `module_layers`, which covers only the
+runtime closure and would have missed `data_layer/config.py` and
+`data_layer/sqlite.py`, the very modules the lazy table references. It honours
+the map's pre-existing `permitted_exceptions` rather than re-litigating the
+`canonical_evidence` → `projection_replay` edge. And it asserts that lazy access
+still *resolves*, so the guard cannot be satisfied by an `__init__.py` that
+passed the layering check by dropping the feature.
+
+The check was **proven to discriminate**, not merely proven to pass:
+
+| Subject | Guard result |
+| --- | --- |
+| Production `data_layer/__init__.py` (PEP 562 lazy) | passes |
+| Synthetic package with an eager `from .sqlite import …` | **fails** |
+| Synthetic package with an `importlib.import_module("…sqlite")` at import time | **fails** |
+| Scratch copy of the **real** `data_layer`, `__init__.py` regressed to eager | **fails**, leaking `data_layer.sqlite` and `data_layer.migrations` |
+| Scratch copy of the **real** `data_layer`, `__init__.py` regressed to importlib-string | **fails**, leaking `data_layer.sqlite` and `data_layer.migrations` |
+
+The detector-blind importlib-string case is covered explicitly, because it is the
+one no static check can see and therefore the only one that actually needed a
+runtime guard. The regressions were constructed as fixtures and as scratch copies
+under a temporary directory; the real `data_layer/__init__.py` was never edited
+to manufacture a failure, since it is the evidence the reclassification rests on.
+
+### Group B2 is not resolved by any of this
+
+`atlas_finance/market_data/contracts.py`'s two edges into
+`atlas_finance/__init__.py` and `atlas_finance/market_data/__init__.py` remain
+**OPEN at MEDIUM**. No inertness argument is available for them and none is
+offered: both ancestors are eager, and importing the L1 contracts module loads
+313 modules including a live `requests` HTTP client. Registry v4.39 explicitly
+excludes any change to them. The architecture gate is still red, and these two
+edges are why.
+
+---
 
 ## Why this record exists
 
@@ -59,7 +196,25 @@ entry module in a fresh interpreter and diffing `sys.modules` against its
 baseline. Claims of "zero coupling" below rest on that measurement, not on
 reading the source.
 
-## Current gate status: RED
+## Gate status after `f2c25e2`: STILL RED, on 2 edges
+
+`tests/architecture/test_forbidden_layer_imports.py::test_forbidden_layer_imports`
+asserts `violations == []` and has no accepted-exception mechanism, so any
+remaining edge fails it. Measured on the post-reclassification tree:
+
+- **2 violations**, both Group B2 (`atlas_finance`).
+- 15 resolved: Group A (10) + Group B1 (2) + Group C (3).
+- **0 newly introduced**, measured as a set difference against the 17-edge
+  baseline, not asserted.
+- `tests/architecture/` reports `1 failed, 23 passed` before the new guard file;
+  the single failure is this gate, now naming 2 edges instead of 17.
+
+The gate was **not** made to pass. Turning it green would require disposing of
+Group B2, which registry v4.39 explicitly does not authorize. Describing this
+work as having cleaned the gate would be misreporting.
+
+### Gate status as originally recorded (pre-implementation): RED on 17 edges
+
 
 The architecture gate `tests/architecture/test_forbidden_layer_imports.py::test_forbidden_layer_imports`
 **is currently failing at commit `d85ec6a`** on these exact 17 edges. Verified by
@@ -84,6 +239,12 @@ reason to weaken the gate, and this record weakens nothing.
 ---
 
 ## Group A — 10 edges into `core/__init__.py`
+
+> **STATUS: RESOLVED-VIA-RECLASSIFICATION at `f2c25e2`.** `core/__init__.py` is
+> classified L1. All ten edges are L1 → L1 or L2 → L1 and are no longer forbidden.
+> The caveat below is discharged by self-enforcement, not by a new test: an eager
+> L3 import added here would re-trigger as a caught L1 → L3 violation. Original
+> pre-implementation text follows unchanged.
 
 **Candidate classification: LOW.** Structurally present, zero runtime coupling.
 
@@ -132,6 +293,12 @@ materially different severities, and is *not* uniformly LOW.
 
 ### B1 — `data_layer` (2 edges). Candidate classification: LOW.
 
+> **STATUS: RESOLVED-VIA-RECLASSIFICATION at `f2c25e2`.** `data_layer/__init__.py`
+> is classified L1; both edges are L1 → L1 and no longer forbidden. The caveat
+> below — laziness enforced by no test — is discharged by
+> `tests/architecture/test_data_layer_init_is_lazy.py`, a binding condition of the
+> authorizing grant. Original pre-implementation text follows unchanged.
+
 | # | Source | Target | Layers |
 | --- | --- | --- | --- |
 | B1.1 | `data_layer/canonical_evidence.py` | `data_layer/__init__.py` | L1 → L2 |
@@ -154,6 +321,12 @@ design and documented intent, which is stronger than Group A's incidental
 emptiness, but still not enforced by any test.
 
 ### B2 — `atlas_finance` (2 edges). Candidate classification: MEDIUM.
+
+> **STATUS: STILL OPEN. MEDIUM. UNCHANGED.** These two edges are not resolved,
+> not suppressed, and not disposed of. Registry v4.39 explicitly excludes any
+> change to `atlas_finance`. Both ancestors are eager and the coupling is real and
+> measured — no inertness argument exists here. These are the 2 edges the
+> architecture gate still fails on.
 
 | # | Source | Target | Layers |
 | --- | --- | --- | --- |
@@ -190,6 +363,15 @@ and import weight, not a safety-invariant breach.
 ---
 
 ## Group C — 3 edges crossing L4 → L2/L3
+
+> **STATUS: RESOLVED-VIA-RECLASSIFICATION at `f2c25e2`.** These are no longer
+> L4 → L3 / L4 → L2 edges at all. Every direct target was always L1 and always
+> permitted; only the ancestor packages were mislabelled, and the traversal is now
+> L4 → L1 at every step. The `L4 → L2` and `L4 → L3` rules are untouched and fully
+> enforced — nothing was added to `permitted_exceptions`. The inertness evidence
+> this group called *load-bearing on a safety invariant* is now enforced rather
+> than merely measured, per the resolution section above. Original
+> pre-implementation text follows unchanged.
 
 **Candidate classification: HIGH.** Addressed separately under GRANT-GROUP-C-INVESTIGATION.
 
@@ -233,6 +415,14 @@ for C.
 
 ## Disposition
 
+> **SUPERSEDED at `f2c25e2` by registry v4.39,
+> GRANT-ANCESTOR-INIT-RECLASSIFICATION.** The statement below was accurate for
+> *this record*, which disposed of nothing. Fifteen of the seventeen edges have
+> since been resolved by a separate, separately authorized reclassification — see
+> the resolution section at the top. Group B2's two edges remain undisposed
+> exactly as described below. The text is retained because the Governance section
+> of CLAUDE.md requires a changed decision to record the reason it changed.
+
 **None of the 17 edges is disposed of by this record.** No edge is suppressed,
 whitelisted, resolved, or closed. No entry was added to `permitted_exceptions`.
 No architecture-map rule, layer assignment, or forbidden-edge rule was changed.
@@ -257,7 +447,18 @@ coupling; it changes the reading, not the gate. Everything in this record is the
 second kind, and even that is offered as a *candidate* classification pending
 owner decision.
 
-## Deferred improvement (not implemented, not authorized)
+## Deferred improvement — IMPLEMENTED at `f2c25e2` (originally: not implemented, not authorized)
+
+> **STATUS: CLOSED.** Registry v4.39 made this a *binding condition* of the
+> reclassification grant rather than an optional follow-up, on the owner's
+> explicit instruction that the asymmetry be closed with a real compensating test
+> and not left as a known gap. Implemented as
+> `tests/architecture/test_data_layer_init_is_lazy.py` and proven to discriminate
+> against both an eager and a detector-blind importlib-string regression. The
+> `core/__init__.py` half needs no test: it is self-enforcing once classified L1.
+> See the resolution section at the top for the full discrimination evidence.
+> Original text follows unchanged.
+
 
 The contingency caveat recurs in all three groups: inertness is currently
 asserted by measurement at a point in time and enforced by nothing. A regression
