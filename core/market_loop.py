@@ -169,9 +169,12 @@ class MarketLoop:
         # }
         self.last_processed_candles: dict[str, str] = {}
 
-        # Last time a market-data fetch succeeded (did not raise) for
-        # each symbol, independent of whether the returned candles were
-        # new. Used only for staleness reporting - never gates decisions.
+        # Last time a market-data fetch actually delivered candles for
+        # each symbol, independent of whether those candles were new.
+        # A call that returns no bars does not count, so a symbol whose
+        # provider only ever returns [] stays absent here and is
+        # reported stale. Used only for staleness reporting - never
+        # gates decisions.
         self.last_symbol_fetch_success_at: dict[str, datetime] = {}
 
         # Execution idempotency state.
@@ -449,18 +452,24 @@ class MarketLoop:
                 symbol
             )
 
+            if not candles:
+                self._increment_metric(
+                    "symbols_skipped"
+                )
+                return None
+
+            # Recorded only once real bars are in hand, never merely
+            # because the provider call did not raise. A provider that
+            # keeps returning [] - a delisted symbol, a silently failing
+            # API, empty-response rate limiting - must not refresh
+            # freshness, or staleness reporting would render the absence
+            # of data as positive evidence of data (NB-4).
             with self.lock:
                 self.last_symbol_fetch_success_at[
                     symbol
                 ] = datetime.now(
                     UTC
                 )
-
-            if not candles:
-                self._increment_metric(
-                    "symbols_skipped"
-                )
-                return None
 
             normalized_candles = self.processor.normalize(
                 candles,
@@ -2126,7 +2135,10 @@ class MarketLoop:
 
         Reporting only: this must never gate or block trading/decisions.
         A symbol that has never had a successful fetch is reported stale
-        with no measured age, rather than assumed fresh.
+        with no measured age, rather than assumed fresh. A fetch counts
+        as successful only when it delivered candles, so a symbol whose
+        provider returns no bars indefinitely is reported stale by the
+        same path as one that was never fetched at all.
         """
 
         now = datetime.now(

@@ -438,7 +438,15 @@ def find_forbidden_edges(
     forbidden_edges: Iterable[dict[str, Any]],
     permitted_exceptions: Iterable[dict[str, Any]],
 ) -> list[str]:
-    """Return a sorted list of 'importer -> imported' strings violating forbidden edges."""
+    """Return a sorted list of 'importer -> imported' strings violating forbidden edges.
+
+    Import resolution matches ``compute_runtime_closure`` and
+    ``compute_import_graph``: a dotted name resolves to its direct module and to
+    every ancestor package ``__init__`` that importing it executes. Checking only
+    the direct target would let a forbidden edge reached solely through a
+    package's ``__init__.py`` pass this gate undetected, because the ancestor is
+    a real runtime dependency that never appears as a dotted name of its own.
+    """
 
     tracked_files = list(modules)
     module_index = _build_module_index(tracked_files)
@@ -457,25 +465,32 @@ def find_forbidden_edges(
         tree = ast.parse(source, filename=relative_path)
 
         for dotted in _resolve_imports(relative_path, tree):
-            target_file = module_index.get(dotted) or module_index.get(dotted + ".__init__")
-            if target_file is None or target_file == relative_path:
-                continue
+            for candidate in _first_party_targets(dotted, module_index):
+                candidate_module = _module_name_for_path(candidate)
+                ancestors = _ancestor_package_files(candidate_module, module_index)
 
-            imported_layer = module_layers.get(target_file)
-            if imported_layer is None:
-                continue
+                for target_file in (*ancestors, candidate):
+                    if target_file == relative_path:
+                        continue
 
-            if (relative_path, target_file) in exceptions:
-                continue
+                    imported_layer = module_layers.get(target_file)
+                    if imported_layer is None:
+                        continue
 
-            for rule in forbidden_edges:
-                from_pattern = rule["from"]
-                to_pattern = rule["to"]
-                if fnmatch.fnmatchcase(importer_layer, from_pattern) and fnmatch.fnmatchcase(
-                    imported_layer, to_pattern
-                ):
-                    violations.append(f"{relative_path} -> {target_file} ({rule.get('reason', 'forbidden edge')})")
-                    break
+                    if (relative_path, target_file) in exceptions:
+                        continue
+
+                    for rule in forbidden_edges:
+                        from_pattern = rule["from"]
+                        to_pattern = rule["to"]
+                        if fnmatch.fnmatchcase(importer_layer, from_pattern) and fnmatch.fnmatchcase(
+                            imported_layer, to_pattern
+                        ):
+                            violations.append(
+                                f"{relative_path} -> {target_file} "
+                                f"({rule.get('reason', 'forbidden edge')})"
+                            )
+                            break
 
     return sorted(set(violations))
 

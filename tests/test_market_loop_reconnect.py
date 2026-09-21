@@ -224,6 +224,106 @@ def test_staleness_true_for_symbol_never_fetched() -> None:
 
 
 # ---------------------------------------------------------------------------
+# M-1: an empty provider response is not evidence of freshness
+#
+# last_symbol_fetch_success_at was assigned immediately after _load_candles()
+# returned, before the "if not candles:" guard, so a provider returning []
+# forever - a delisted symbol, a silently failing API, empty-response rate
+# limiting - refreshed the timestamp on every cycle and staleness reported
+# False indefinitely. That is the NB-4 shape: absence of data rendered as
+# positive evidence of data, propagating to the operator surface.
+# ---------------------------------------------------------------------------
+
+
+def test_repeated_empty_responses_report_stale_not_fresh() -> None:
+    """A provider that only ever returns [] must never look fresh."""
+
+    feed = SequencedFeed([[]])
+    loop = MarketLoop(
+        brain=FakeBrain(),
+        market_feed=feed,
+        symbols=["BTCUSDT"],
+    )
+
+    for _ in range(5):
+        result = loop.process_symbol("BTCUSDT", processing_cutoff=FAR_FUTURE_CUTOFF)
+        assert result is None
+
+    assert feed.calls == 5, "the fixture must actually have been polled"
+
+    # No successful fetch was ever recorded, so the never-fetched path applies.
+    assert "BTCUSDT" not in loop.last_symbol_fetch_success_at
+
+    staleness = loop.status()["market_data_staleness"]["BTCUSDT"]
+    assert staleness["stale"] is True
+    assert staleness["seconds_since_last_success"] is None
+    assert loop.health()["market_data_stale"] is True
+
+    # Staleness stays reporting-only even in this case.
+    assert loop.health()["healthy"] is True
+
+
+def test_empty_responses_do_not_refresh_an_aging_timestamp() -> None:
+    """The operational case: a symbol goes fresh, then its provider dries up.
+
+    Pre-fix, each empty response re-stamped the symbol as freshly fetched, so
+    it could never age into staleness no matter how long the data stopped.
+    """
+
+    start_ms = int(datetime(2026, 1, 1, tzinfo=UTC).timestamp() * 1000)
+    feed = SequencedFeed([build_candle_rows(200, start_ms=start_ms), []])
+    loop = MarketLoop(
+        brain=FakeBrain(),
+        market_feed=feed,
+        symbols=["BTCUSDT"],
+    )
+
+    # Cycle 1 delivers real bars and legitimately records freshness.
+    assert loop.process_symbol("BTCUSDT", processing_cutoff=FAR_FUTURE_CUTOFF) is not None
+    assert loop.status()["market_data_staleness"]["BTCUSDT"]["stale"] is False
+
+    # Age that success past the threshold, then let the provider return [].
+    aged_at = datetime.now(UTC) - timedelta(
+        seconds=loop.STALENESS_THRESHOLD_SECONDS + 30
+    )
+    loop.last_symbol_fetch_success_at["BTCUSDT"] = aged_at
+
+    for _ in range(3):
+        assert loop.process_symbol("BTCUSDT", processing_cutoff=FAR_FUTURE_CUTOFF) is None
+
+    # The aged timestamp must be untouched by the empty responses.
+    assert loop.last_symbol_fetch_success_at["BTCUSDT"] == aged_at
+
+    staleness = loop.status()["market_data_staleness"]["BTCUSDT"]
+    assert staleness["stale"] is True
+    assert staleness["seconds_since_last_success"] > loop.STALENESS_THRESHOLD_SECONDS
+    assert loop.health()["market_data_stale"] is True
+
+
+def test_real_candles_still_record_freshness_unchanged() -> None:
+    """The normal path is untouched: delivered bars still mark the symbol fresh."""
+
+    start_ms = int(datetime(2026, 1, 1, tzinfo=UTC).timestamp() * 1000)
+    feed = SequencedFeed([build_candle_rows(200, start_ms=start_ms)])
+    loop = MarketLoop(
+        brain=FakeBrain(),
+        market_feed=feed,
+        symbols=["BTCUSDT"],
+    )
+
+    before = datetime.now(UTC)
+    assert loop.process_symbol("BTCUSDT", processing_cutoff=FAR_FUTURE_CUTOFF) is not None
+    after = datetime.now(UTC)
+
+    recorded = loop.last_symbol_fetch_success_at["BTCUSDT"]
+    assert before <= recorded <= after
+
+    staleness = loop.status()["market_data_staleness"]["BTCUSDT"]
+    assert staleness["stale"] is False
+    assert staleness["seconds_since_last_success"] is not None
+
+
+# ---------------------------------------------------------------------------
 # GAP #3: outage longer than the backfill window is detected and reported
 # ---------------------------------------------------------------------------
 
