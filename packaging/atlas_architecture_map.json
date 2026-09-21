@@ -145,6 +145,11 @@
       "reason": "market-data repository contract seams, sibling of data_layer/contracts.py; concrete backends would live at L2 (Block 4 market-data contract foundation)"
     },
     {
+      "pattern": "data_layer/__init__.py",
+      "layer": "L1",
+      "reason": "PEP 562 lazy package marker: the re-exports of StorageConfiguration, load_storage_configuration, ExecutionRecord, OrderRecord, PositionRecord and SQLiteStorage are resolved per attribute on first access through a module-level __getattr__, so importing this package loads no L2 module at all. The generic data_layer/* -> L2 default classified it at the lower common denominator on the premise that it eagerly re-exports both L1 and L2 symbols; that premise no longer describes the file, and the file's own docstring states the laziness was deliberate precisely to stop any data_layer submodule import from dragging in the L2 SQLite backend. Classified L1 as a correction of a stale label, not as an exception to any forbidden edge. NOT self-enforcing: the importlib.import_module string references are invisible to the AST-based detector, so this assignment is held by the runtime regression test tests/architecture/test_data_layer_init_is_lazy.py, which is a binding condition of the grant authorizing it (registry v4.39 GRANT-ANCESTOR-INIT-RECLASSIFICATION)"
+    },
+    {
       "pattern": "core/decision.py",
       "layer": "L1",
       "reason": "explicit: L1 domain contract example"
@@ -213,6 +218,11 @@
       "pattern": "core/fee_accounting.py",
       "layer": "L1",
       "reason": "pure fee-currency classification: FeeNormalizer is a stateless static-method classifier with no I/O, no orchestration, no stores, and no ledger ownership, depending only on stdlib and the L1 core/instrument_rules.py contract it classifies fees against; sibling of core/instrument_rules.py and core/position_sizing.py, not application orchestration, so it is exempt from the generic core/* -> L3 default (Block 5E)"
+    },
+    {
+      "pattern": "core/__init__.py",
+      "layer": "L1",
+      "reason": "inert package marker: a module docstring and nothing else, with no import statement of any kind, so it owns no orchestration, constructs nothing and executes nothing at import time. The generic core/* -> L3 default describes application-layer orchestration per the composition-root diagram in core/application.py's docstring; that description is true of application.py, market_loop.py and brain.py and is not true of this file. Classified L1 as a correction of a stale label, not as an exception to any forbidden edge: no forbidden_edges rule is changed and nothing is added to permitted_exceptions. Self-enforcing - adding an eager L3 import here would re-trigger immediately as a caught L1 -> L3 violation (registry v4.39 GRANT-ANCESTOR-INIT-RECLASSIFICATION)"
     },
     {
       "pattern": "data_layer/config.py",
@@ -466,7 +476,7 @@
     "atlas_security/sensitive_data_guard.py": "L0",
     "atlas_service.py": "L3",
     "atlas_supervisor.py": "L3",
-    "core/__init__.py": "L3",
+    "core/__init__.py": "L1",
     "core/application.py": "L3",
     "core/audit_event.py": "L1",
     "core/audit_event_store.py": "L2",
@@ -504,7 +514,7 @@
     "core/technical_analyzer.py": "L3",
     "core/tool_gateway_contracts.py": "L1",
     "core/venue_rule_freshness.py": "L3",
-    "data_layer/__init__.py": "L2",
+    "data_layer/__init__.py": "L1",
     "data_layer/canonical_evidence.py": "L1",
     "data_layer/contracts.py": "L1",
     "data_layer/evidence_store.py": "L2",
