@@ -2049,6 +2049,75 @@
       "live_authority": "DENIED",
       "production_effect": "NONE",
       "live_effect": "NONE"
+    },
+    "ARCH-EDGE-001": {
+      "id": "ARCH-EDGE-001",
+      "title": "Seventeen forbidden layer edges exist only through ancestor package __init__.py execution",
+      "severity": "P2",
+      "status": "OPEN_INVENTORY_RECORDED_NO_EDGE_DISPOSED",
+      "finding_type": "ARCHITECTURE_BOUNDARY_EDGE_INVENTORY",
+      "artifact": "governance/findings/ARCH-EDGE-001_ANCESTOR_PACKAGE_FORBIDDEN_EDGES.md",
+      "artifact_sha256": "876FD19BB86B0E06B0B36713DB8EB49B3218A400BC409027CAD5A03DC0851F7F",
+      "authorized_by": "ATLAS_MILESTONE_REGISTRY_v4.38.json GRANT-FINDINGS-17-EDGES",
+      "derived_at_commit": "d85ec6a5ccff50ac033ea4a8ca3c33b57546321c",
+      "origin": "AUDIT-016 A-1 detector widening, commit d85ec6a; edges newly visible, not newly introduced",
+      "total_edges": 17,
+      "group_a_core_init": {
+        "edges": 10,
+        "target": "core/__init__.py",
+        "candidate_classification": "LOW",
+        "basis": "STRUCTURALLY_PRESENT_ZERO_MEASURED_RUNTIME_COUPLING",
+        "evidence": "core/__init__.py is 6 lines, docstring only, no import statement; measured import closure loads no additional first-party module",
+        "disposition": "OPEN_OWNER_DECISION_NOT_RESOLVED_BY_THIS_RECORD"
+      },
+      "group_b1_data_layer": {
+        "edges": 2,
+        "target": "data_layer/__init__.py",
+        "candidate_classification": "LOW",
+        "laziness_verification": "CONFIRMED_LAZY_PEP_562",
+        "evidence": "51-line module __getattr__ with importlib resolution; no eager import of .config, .models or .sqlite; measured import of data_layer.contracts loads only data_layer and data_layer.contracts",
+        "disposition": "OPEN_OWNER_DECISION_NOT_RESOLVED_BY_THIS_RECORD"
+      },
+      "group_b2_atlas_finance": {
+        "edges": 2,
+        "targets": [
+          "atlas_finance/__init__.py",
+          "atlas_finance/market_data/__init__.py"
+        ],
+        "candidate_classification": "MEDIUM",
+        "laziness_verification": "DISCONFIRMED_BOTH_ANCESTORS_EAGER",
+        "premise_correction": "The authorizing task framed Group B as uniformly LOW with atlas_finance laziness recorded as UNKNOWN and requiring verification. The verification was performed and returned the opposite of the premise. Group B is therefore split B1/B2 and is not uniformly LOW.",
+        "evidence": "Both ancestor __init__ files perform unconditional top-level imports; market_data/__init__.py eagerly imports binance_public_provider, which imports the requests HTTP client at module scope. Measured import of the L1 atlas_finance.market_data.contracts loads 313 modules including requests, binance_public_provider and market_feed_service.",
+        "why_not_low": "Real, present, measured L1 to L2 coupling; no inertness argument is available, so a LOW reading would be a downgrade for convenience",
+        "why_not_high": "atlas_finance is public market-data infrastructure only; both package docstrings assert a security boundary excluding order placement, balance access, portfolio mutation, capital allocation, position modification and credential access. No execution or capital authority is reachable through this edge.",
+        "disposition": "OPEN_OWNER_DECISION_NOT_RESOLVED_BY_THIS_RECORD"
+      },
+      "group_c_l4_boundary": {
+        "edges": 3,
+        "edge_list": [
+          "ai/core/atlas_brain.py -> core/__init__.py (L4 -> L3)",
+          "ai/core/atlas_brain.py -> data_layer/__init__.py (L4 -> L2)",
+          "ai/core/intelligence/decision_builder.py -> core/__init__.py (L4 -> L3)"
+        ],
+        "candidate_classification": "HIGH",
+        "boundary_crossed": "RESEARCH_CANNOT_TRADE",
+        "measured_runtime_coupling": "ZERO_SAME_AS_GROUPS_A_AND_B1",
+        "why_high_despite_zero_coupling": "Severity here tracks which invariant the edge sits on, not current coupling. Groups A and B cross structural-hygiene rules whose regression yields a layering defect. Group C crosses the L4 to L2 and L4 to L3 rules, whose stated reason is that research/intelligence must not reach execution internals, the same invariant as CLAUDE.md immutable rules 4 and 5. One eager import added to core/__init__.py would hand L4 research code a live path into L3 execution internals with the gate reporting green. The inertness evidence is load-bearing on a safety invariant for Group C and only on code quality for A and B.",
+        "disposition": "UNDER_INVESTIGATION_PER_GRANT_GROUP_C_INVESTIGATION"
+      },
+      "edges_disposed_by_this_record": 0,
+      "permitted_exceptions_added": 0,
+      "architecture_map_modified": false,
+      "reclassification_is_a_permitted_exception": false,
+      "instrument_distinction": "A permitted_exception is an architecture-map entry that stops the detector reporting an edge and changes the gate. A reclassification-with-evidence is a documented finding that a still-reported edge carries no runtime coupling and changes only the reading. Everything in this artifact is the second kind, offered as a candidate pending owner decision.",
+      "deferred_improvement_not_authorized": "A regression test asserting that core/__init__.py and data_layer/__init__.py load no L2 or L3 first-party module would convert measured inertness into an enforced invariant, and is a prerequisite for any future decision to treat Group A, B1 or C as safe on inertness grounds. Recorded only; outside every v4.38 grant.",
+      "production_effect": "NONE",
+      "live_effect": "NONE",
+      "architecture_gate_status": "RED_AT_d85ec6a_PRE_EXISTING_NOT_A_REGRESSION",
+      "architecture_gate_test": "tests/architecture/test_forbidden_layer_imports.py::test_forbidden_layer_imports",
+      "architecture_gate_measured_result": "1 failed, 23 passed across tests/architecture/",
+      "runtime_closure_and_module_layers_agree": true,
+      "gate_weakened_by_this_record": false
     }
   },
   "review_completeness_reconciliation": {
