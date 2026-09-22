@@ -58,11 +58,18 @@ Atlas's persistence is **not SQL-only**. Know which surface you are looking at:
   `execution_audit.json`, `execution_state.json`, `model_memory.json`,
   `strategy_memory.json`, `trade_memory.json`
 - `data/` — decisions, memory, market snapshots, paper-trading results
-- `memory_data/` — execution journal, idempotency store, audit records
+- the durable state root — execution journal, idempotency store, audit
+  records. Its location is operator-configurable: `ATLAS_STATE_DIRECTORY`
+  when set, otherwise `<repo>/memory_data`. As of 2026-09-18 this
+  deployment sets it, and the live root is `C:\AtlasState\memory_data`;
+  the repository copy was retired in place to
+  `memory_data.relocated_20260918/` and is historical, not live (ADR-0007)
 - `paper_trades.json` at the repository root
 
 **SQLite stores** — binary; you cannot read these:
-- `data/market_archive/market_data.sqlite3` (tables `market_data_bars`,
+- `market_data.sqlite3` under the archive root — `ATLAS_MARKET_ARCHIVE_DIRECTORY`
+  when set (currently `C:\AtlasState\market_archive`), otherwise
+  `<repo>/data/market_archive` (tables `market_data_bars`,
   `market_data_batches`)
 - `atlas-local.sqlite3`, the configured default in `data_layer/config.py`
 
