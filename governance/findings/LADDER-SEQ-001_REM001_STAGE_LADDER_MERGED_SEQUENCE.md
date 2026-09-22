@@ -127,6 +127,42 @@ either.** This is step 2 of the merged sequence, and it is the single largest
 blocker in it: the sequence cannot advance past step 2 while every path to
 executing step 2 is unauthorized.
 
+#### 3.1 Correction — added 2026-09-22, additive, original text above unedited
+
+Authorized by `governance/ATLAS_LADDER_CORRECTION_TESTISO_REMEDIATION_AND_
+D1_STATUS_GRANTS_v1.0.md` (`ATLAS-LADDER-TESTISO-D1-GRANTS-001`), Grant
+`GRANT-LADDER-SEQ-001-CORRECTION`.
+
+The text above describes only the finding's original, 2026-09-01,
+pre-narrowing state. It omits a same-day narrowing decision that has been in
+force, unchanged, ever since. As of
+`governance/current/ATLAS_MILESTONE_REGISTRY_v4.46.json`
+(`governance_findings.GATE-1-AUTHORIZATION-CONTRADICTION`), the authoritative
+current status is:
+
+| field | value |
+| --- | --- |
+| `status` | `NARROWED_BY_OWNER_DECISION_NOT_RESOLVED` |
+| `blocking_effect` | `OPEN_NARROWED` |
+| `narrowed_in_registry_version` | `4.32` |
+| `authorization_id` | `REM-001-GATE1-MECHANICAL` |
+
+Narrowed by `governance/ATLAS_BASELINE_IDENTITY_AND_GATE1_SCOPE_DECISION_v1.0.md`
+(`ATLAS-BASELINE-IDENTITY-001`, commit `a975303e95e6074975eca14af679f5c2c2ff8ecf`)
+§4: mechanical/generated Gate 1 tooling work is authorized as a standing
+class (`REM-001-GATE1-MECHANICAL`), which is no longer *every* execution path
+being unauthorized — the original contradiction as stated above. The
+registry's own `residual_contradiction` field records why this is a
+**narrowing, not a resolution**: "Gate 1 cannot be COMPLETED mechanically.
+Deliverable 1 requires human classification judgment, deliverables 2, 6, 7
+and 9 depend on it, and deliverable 8 is blocked by the absent
+specification."
+
+**This correction changes nothing about §2's table, §3.2's ambiguity, or any
+other section.** It corrects only which status text is accurate: the finding
+is `NARROWED_BY_OWNER_DECISION_NOT_RESOLVED`, not the plain `OPEN` the
+uncorrected text above states. It remains unresolved and unadvanced.
+
 ### 3.2 AMBIGUITY — where REM-001 Gate 1 sits relative to the ladder
 
 Unresolved, as stated in §2. Three readings are available and the repository
@@ -151,6 +187,47 @@ Carried verbatim:
 This bears on the merged sequence because Gate 1 is *canonical component
 mapping* — mapping components of a baseline whose identity carries an open
 conflict. Preserved, not resolved.
+
+#### 3.3 Correction — added 2026-09-22, additive, original text above unedited
+
+Authorized by `governance/ATLAS_LADDER_CORRECTION_TESTISO_REMEDIATION_AND_
+D1_STATUS_GRANTS_v1.0.md` (`ATLAS-LADDER-TESTISO-D1-GRANTS-001`), Grant
+`GRANT-LADDER-SEQ-001-CORRECTION`.
+
+The text above labels this finding open. It has in fact been resolved since
+registry v4.32. As of
+`governance/current/ATLAS_MILESTONE_REGISTRY_v4.46.json`
+(`governance_findings.ARCH-P0-001`), the authoritative current status is:
+
+| field | value |
+| --- | --- |
+| `status` | `RESOLVED_BY_OWNER_DECISION` |
+| `blocking_effect` | `CLOSED` |
+| `resolved_in_registry_version` | `4.32` |
+| `resolution` | `CURRENT_GIT_HEAD_OF_RESEARCH_EDGE_VALIDATION_IS_CANONICAL_BASELINE` |
+
+Resolved by `governance/ATLAS_BASELINE_IDENTITY_AND_GATE1_SCOPE_DECISION_v1.0.md`
+(`ATLAS-BASELINE-IDENTITY-001`, commit `a975303e95e6074975eca14af679f5c2c2ff8ecf`)
+§3: the canonical Atlas baseline is defined as the current Git HEAD of
+branch `research/edge-validation` (a commit, not a filesystem path), which
+superseded — not recovered, not deleted from history — the prior
+`APPROVED_CANONICAL_REPOSITORY_ROOT` 691-file baseline that no longer exists
+on disk. This status has held unchanged across registries v4.32 through
+v4.46, 15 versions inclusive.
+
+**What resolving ARCH-P0-001 does not do, per the same decision record's own
+§3.5:** it does not classify any file, does not determine
+`canonical_module_set` (still `NOT_YET_DETERMINED`), and does not resolve
+`GOV-DRIFT-005` or restore any of the 41 still-absent REM-001 specification
+artifacts. §3's statement that "Gate 1 computes a matrix of a baseline whose
+identity carries an open conflict" is therefore itself superseded — the
+baseline identity conflict is closed — but Gate 1 remains blocked by the
+separate, still-open matters this correction does not touch: §3.1's
+narrowed-not-resolved authorization contradiction and §3.4's Stage 1
+structural gap.
+
+**This correction changes nothing about §2's table or any other section.**
+It corrects only which status text is accurate for this one finding.
 
 ### 3.4 GAP — Stage 1 (Paper) cannot currently complete
 
