@@ -16,6 +16,95 @@
 | Production effect | NONE |
 | Live effect | NONE |
 
+## Group B2 phase (i) resolution update — 2026-09-22, commit `370567f`
+
+**This section is additive.** Everything below it, including the
+supersession annotation, the resolution update of 2026-09-21, and the
+original record beneath that, is preserved unchanged. Nothing has been
+deleted or rewritten.
+
+**Authority.** `governance/current/ATLAS_MILESTONE_REGISTRY_v4.46.json`,
+`GRANT-ARCH-EDGE-001-UPDATE`, successor to `GRANT-B2-PHASE-1-LAZY-ONLY`
+(registry v4.45), whose predicted outcome this section confirms occurred
+exactly as predicted.
+
+**STATUS: Group B2 phase (i) RESOLVED at `370567f`. Phase (ii) remains
+OPEN, UNAUTHORIZED.**
+
+### What changed
+
+`atlas_finance/__init__.py` and `atlas_finance/market_data/__init__.py` were
+converted to PEP 562 module-level `__getattr__`/`__dir__` lazy attribute
+access, mirroring the same pattern that resolved Group B1's
+`data_layer/__init__.py` (§ B1 above). `__all__` is unchanged in both files;
+every previously eager-exported name still resolves, now on first attribute
+access rather than at package-import time.
+
+**Evidence — re-measured, fresh interpreter.** `import
+atlas_finance.market_data.contracts` now loads **49 modules**, down from the
+**313** this record measured before `370567f` (§ B2 above). `requests`,
+`atlas_finance.market_data.binance_public_provider`, and
+`atlas_finance.market_data.market_feed_service` no longer load at
+ancestor-import time.
+
+**Regression guard added.**
+`tests/architecture/test_atlas_finance_init_is_lazy.py` (8 test functions),
+mirroring `tests/architecture/test_data_layer_init_is_lazy.py`'s existing
+non-vacuity pattern for Group B1.
+
+### What did NOT change — the edges and the gate are still open, by design
+
+`tests/architecture/test_forbidden_layer_imports.py::test_forbidden_layer_imports`
+is still **RED**, on exactly the same 2 Group B2 edges (B2.1, B2.2 above).
+This is the accepted, predicted outcome of `GRANT-B2-PHASE-1-LAZY-ONLY`, not
+a regression and not an incomplete fix: `find_forbidden_edges` is a static
+AST-based detector that flags ancestor-package execution — importing
+`atlas_finance.market_data.contracts` still causes Python to execute both
+ancestor `__init__.py` files, and that remains true regardless of what those
+files' bodies now contain. Lazy imports remove the *runtime coupling* the
+edges made possible; they do not remove the *static ancestor-execution
+relationship* the detector measures.
+
+**The B2 section's original blockquote above
+("`STATUS: STILL OPEN. MEDIUM. UNCHANGED.`") is preserved exactly as
+written and is still accurate for edge-disposal and gate-status purposes.**
+What has changed is the *severity rationale* underneath that status, not the
+status itself: the original MEDIUM classification rested on measured,
+present runtime coupling ("importing a pure L1 contract module loads a live
+HTTP client and a market-feed service" — § B2 above). That specific harm no
+longer occurs after `370567f`. Whether that warrants a severity
+reclassification is not decided by this record — reclassifying `atlas_finance`'s
+two `__init__.py` files from L2 to L1 in `packaging/atlas_architecture_map.json`
+is exactly **Group B2 phase (ii)**, and it remains **explicitly OPEN and
+UNAUTHORIZED**. No grant through registry v4.46 authorizes it, per
+`GRANT-B2-PHASE-1-LAZY-ONLY`'s own explicit exclusion
+(`ANY_LAYER_RECLASSIFICATION_OF_ATLAS_FINANCE_INIT_PY_...`) and per this
+record's own `## Reclassification-with-evidence is not a permitted
+exception` section below, which this update does not alter.
+
+### Evidence citations
+
+- Commit `370567f3d46c446f31c021ebad4799dda105137a` (branch
+  `research/edge-validation`), commit message: full regression suite
+  "3224 passed, 1 failed in 151.68s", the 1 failure being this same
+  unchanged architecture-gate failure on the same 2 edges above; nothing
+  else newly failed.
+- `governance/current/ATLAS_MILESTONE_REGISTRY_v4.45.json`,
+  `grant_b_group_b2_phase_1_lazy_only`, whose
+  `the_gate_remaining_red_is_the_expected_and_accepted_outcome` field
+  predicted exactly this result in advance of implementation.
+
+### What this update does not do
+
+- It does **not** dispose of B2.1 or B2.2. Both remain open, undisposed
+  edges.
+- It does **not** change the gate. The architecture test remains red.
+- It does **not** authorize, perform, or imply Group B2 phase (ii).
+- It does **not** edit any historical registry or any text above this
+  section.
+
+---
+
 ## Supersession annotation — 2026-09-22, registry v4.45
 
 **This section is additive.** Everything below it, including the resolution
