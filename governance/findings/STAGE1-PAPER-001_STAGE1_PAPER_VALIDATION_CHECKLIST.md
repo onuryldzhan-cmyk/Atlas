@@ -1100,3 +1100,78 @@ No file on the live decision path (`analysis/world_analysis_engine.py`,
 read from a live process or modified to produce this note; it is drawn
 entirely from static source inspection, and the currently-running process
 was not queried, restarted, or otherwise interacted with.
+
+### 8.7 Test suite baseline update — 2026-09-22, commit `370567f`
+
+**Additive.** Section 8.4's original text (baseline at `f144790`: 3212
+passed, 1 failed, 3213 collected) is preserved unchanged above. This
+subsection records the current baseline and states explicitly what, if
+anything, that change implies for the rest of this document.
+
+Authorized by `governance/current/ATLAS_MILESTONE_REGISTRY_v4.46.json`,
+`GRANT-STAGE1-PAPER-001-BASELINE-UPDATE`.
+
+**Updated baseline.** Full suite at `370567f3d46c446f31c021ebad4799dda105137a`:
+**3224 passed, 1 failed**, per that commit's own message trailer ("Full
+regression suite ... : 3224 passed, 1 failed in 151.68s"). 3225 collected
+follows arithmetically (passed + failed, the same convention 8.4's
+3212 + 1 = 3213 used) and is not independently confirmed by a separately
+quoted "collected" line; it is recorded as computed, not observed.
+
+**The single failure is unchanged in identity.** It is still
+`tests/architecture/test_forbidden_layer_imports.py::test_forbidden_layer_imports`,
+still on the same 2 forbidden edges from
+`atlas_finance/market_data/contracts.py`
+(`governance/findings/ARCH-EDGE-001_ANCESTOR_PACKAGE_FORBIDDEN_EDGES.md`,
+Group B2). It remains excluded from scope, now by registry v4.45's
+`GRANT-B2-PHASE-1-LAZY-ONLY` in addition to the v4.40/v4.41 exclusions 8.4
+already recorded.
+
+**Why the cause is narrower now, without the count or the failing test
+changing.** Of the 17 ancestor-package forbidden edges ARCH-EDGE-001
+originally enumerated, 15 (Groups A, B1, C) were already resolved at
+`f2c25e2`, before `f144790` — 8.4's "two forbidden edges" statement already
+reflected that. What changed between `f144790` and `370567f` is not the edge
+count but the edges' underlying cause: `370567f` removed the *runtime
+coupling* Group B2 measured (importing `atlas_finance.market_data.contracts`
+no longer loads a live `requests` HTTP client or the Binance provider at
+ancestor-import time — see ARCH-EDGE-001's own "Group B2 phase (i)
+resolution update" section). The residual single test failure is therefore
+now a purely static ancestor-execution classification gap (Group B2 phase
+(ii), explicitly unauthorized), with no remaining live runtime coupling
+behind it — narrower in cause, same in count and same in identity.
+
+**Explicit check: does anything else in this document need to change as a
+result of this baseline update?** Reviewed against section 5's top-level
+verdict and against every item this document scores (S-1, S-3, S-4, prior
+Finding 1, prior Finding 2, and 8.6's structurally-HOLD-only paper-run
+finding):
+
+- Section 5's verdict ("Stage 1 (Paper) CANNOT currently be claimed passed")
+  rests on item 7 (S-3, still investigated/pending an owner decision on a
+  threshold value), item 11 (prior Finding 1, crash-recovery, deferred by
+  the owner), item 12 (prior Finding 2, partial-fill, deferred by the
+  owner), and 8.6's structurally-HOLD-only finding. None of these four
+  depend on the Group B2 edge count, the passed/failed count, or anything
+  `370567f` touched (`atlas_finance/__init__.py`,
+  `atlas_finance/market_data/__init__.py`, and one new architecture test
+  file only).
+- S-1 and S-4 (8.1, 8.2) are resolved at `f144790`, on
+  `core/technical_analyzer.py` and
+  `atlas_finance/market_data/binance_public_provider.py`'s error taxonomy
+  respectively; `370567f` did not touch either file, so 8.1/8.2 are
+  unaffected and not re-derived here.
+- S-3 (8.3) is unaffected: its investigation concerned candle-interval and
+  staleness-measurement code in `core/market_loop.py`, which `370567f` did
+  not touch.
+
+**Explicitly stated, not left ambiguous: no other verdict in this document
+requires updating as a result of this baseline change.** This subsection
+updates only the test-count reference; it changes no item's status, no
+finding's status, and no top-level verdict.
+
+**Staleness.** Consistent with 8.5's rule, this update is valid at
+`370567f`. If `core/market_loop.py`, `core/technical_analyzer.py`,
+`atlas_finance/market_data/binance_public_provider.py` change again, or if
+Group B2 phase (ii) is ever authorized and implemented, this subsection must
+be re-derived rather than assumed to still hold.
