@@ -16,6 +16,112 @@
 | Production effect | NONE |
 | Live effect | NONE |
 
+## Supersession annotation — 2026-09-22, registry v4.45
+
+**This section is additive.** Everything below it, including the resolution
+update of 2026-09-21 and the original record beneath that, is preserved
+unchanged. Nothing has been deleted or rewritten. This section records one
+additional fact about what this record *is*, not a change to what it says.
+
+**Authority.** `governance/current/ATLAS_MILESTONE_REGISTRY_v4.45.json`,
+`GRANT-15-SUPERSEDED`. That grant is itself the successor to
+`GRANT-15-CLASSIFICATIONS-SURVEY` (registry v4.43/v4.44), which authorized
+locating the candidates and **required** that the numeric ambiguity be settled
+with evidence rather than assumed in either direction.
+
+### The backlog item this record supersedes
+
+Commit `1ac3a64`'s own message deferred a follow-up package in these words:
+
+> The broader ancestor-edge gap in find_forbidden_edges itself remains open
+> elsewhere (18 violations found in an ad hoc simulation, 15 needing a real
+> `__init__.py` classification decision) — deferred as its own scoped follow-up
+> package, not started here.
+
+That deferral is carried forward as the *"15 pending `__init__.py`
+classifications"* item, quoted in the owner-exclusion lists of registries v4.42,
+v4.43 and v4.44 and, in its original form, at two places in v4.37.
+
+**It is now `SUPERSEDED-BY-ARCH-EDGE-001`.** This record is the authoritative
+current enumeration of that item. The item is not separately open and needs no
+separate survey.
+
+### Why — settled by reproduction, not by assertion
+
+The current post-AUDIT-016-A-1 detector
+(`tools/build_architecture_inventory.find_forbidden_edges`) was run against two
+historical trees extracted with `git archive` into a scratch directory, each
+against its own contemporaneous `packaging/atlas_architecture_map.json`. No
+historical commit was checked out over the working tree; no file in the
+repository was modified by this derivation.
+
+| Tree | Commit | Detector result |
+| --- | --- | --- |
+| `1ac3a64^` | `4af72ee17072df19c1903950e7655428706671b7` | **18** violations |
+| `1ac3a64` | `1ac3a64d90a1695355eee75df478adfad9468887` | **17** violations |
+
+- **FACT.** The 18 at `4af72ee` reproduces the *"18 violations found in an ad hoc
+  simulation"* the commit message reports, and establishes that the simulation
+  was run against the **pre-fix** tree.
+- **FACT.** The 17 at `1ac3a64` is set-identical to the 17 edges this record
+  enumerates.
+- **FACT.** The set difference is exactly one edge:
+  `data_layer/semantic_contracts.py -> data_layer/__init__.py`. It was eliminated
+  by `1ac3a64`'s own `data_layer` laziness fix — which that commit's message
+  independently records as dropping `semantic_contracts.py` out of the runtime
+  closure (108 → 105 modules).
+
+**Conclusion (FACT).** The backlog item's universe of 18 edges is a *strict
+superset* of this record's 17, differing by one edge that `1ac3a64` itself
+closed. Whatever 15-edge subset of the 18 the commit message meant, that subset
+is wholly contained in this record's enumeration.
+
+**Residue (FACT).** Of the 18, **sixteen are now closed** — one by `1ac3a64`
+itself, fifteen by the reclassification at `f2c25e2`. The residual open set is
+**exactly the two Group B2 `atlas_finance` edges, and nothing else.** This holds
+regardless of which 15-subset the commit message meant, so the supersession does
+not depend on resolving that question.
+
+### Two numbers that are equal but are not the same set
+
+This is flagged rather than relied on, because conflating them would misreport
+the disposition.
+
+- **INFERENCE, not FACT.** The most likely reading of *"15 needing a real
+  `__init__.py` classification decision"* is the 18 minus the three edges
+  targeting `data_layer/__init__.py`, which `1ac3a64` had just made lazy and
+  therefore considered handled: Group A (10) + Group B2 (2) + Group C (3) = 15.
+  This is arithmetic and context. The commit message does not say it.
+- This record separately reports **"15 resolved"** at `f2c25e2`, being Group A
+  (10) + Group B1 (2) + Group C (3).
+- Under the inferred reading these two 15s are **numerically equal but not the
+  same set**: the backlog's 15 would *contain* Group B2 and *exclude* Group B1;
+  `f2c25e2`'s resolved 15 is the converse. The correct statement under that
+  reading is that **13 of the backlog's 15 are resolved and 2 remain** — not
+  that all 15 are resolved.
+
+The task statement authorizing registry v4.45 described the backlog item as
+*"15 already resolved at `f2c25e2`, 2 remain as Group B2"*, which conflates the
+two. The supersession stands either way, because it rests on the superset fact
+above and not on the coincidence.
+
+### What this annotation does not do
+
+- It **disposes of no edge.** Group B2's two edges remain **OPEN at MEDIUM**,
+  exactly as the Group B2 section below states.
+- It **changes no gate.** `tests/architecture/test_forbidden_layer_imports.py`
+  remains red on those 2 edges.
+- It **edits no historical registry.** Registries v4.19 onward are immutable once
+  committed. The annotation is placed here and in the additive successor v4.45,
+  never written back into v4.37, v4.42, v4.43 or v4.44.
+- One inaccuracy in the authorizing task statement is recorded rather than
+  silently accepted: it named *"v4.34/v4.37's `not_authorized` lists"* as the
+  references, but v4.34 does not contain the phrase. The references verified at
+  HEAD are v4.37 (original form, two places) and v4.42/v4.43/v4.44 (quoted
+  owner-exclusion list).
+
+---
+
 ## Resolution update — 2026-09-21, commit `f2c25e2`
 
 **Everything below this section is the record as originally written and is
