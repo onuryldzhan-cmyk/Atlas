@@ -39,7 +39,9 @@ Two properties this must never violate
 from __future__ import annotations
 
 import os
+import shutil
 import sys
+import tempfile
 
 from collections.abc import Sequence
 from datetime import UTC, datetime
@@ -49,6 +51,61 @@ from typing import Any
 import pytest
 
 REPOSITORY_ROOT = Path(__file__).resolve().parent
+
+# ---------------------------------------------------------------------------
+# TEST-ISO-001 remediation
+# ---------------------------------------------------------------------------
+# governance/findings/TEST-ISO-001_PYTEST_SHARED_STATE_ROOT_ENVIRONMENT_HAZARD.md
+#
+# core.application._resolve_configured_directory reads these three variables
+# unconditionally from the ambient process environment, with no distinction
+# between a supervised Atlas process and a pytest process. A shell that
+# exports the operator's real, relocated state roots (as this project's own
+# standing operational setup does - see governance memory
+# atlas-execution-state-outside-onedrive) would otherwise have every child
+# pytest invocation silently open the operator's real financial/evidence
+# state instead of disposable test state.
+#
+# The three names are hardcoded here rather than imported from
+# core.application: this isolation must take effect even if importing
+# project code at hook time were to fail for an unrelated reason, and it is a
+# name binding, not the resolution logic itself (that logic keeps its own
+# tests in tests/test_state_directory_configuration.py and
+# tests/test_evidence_store_integration.py).
+_ATLAS_STATE_ROOT_ENV_VARS: tuple[str, ...] = (
+    "ATLAS_STATE_DIRECTORY",
+    "ATLAS_MARKET_ARCHIVE_DIRECTORY",
+    "ATLAS_EVIDENCE_DIRECTORY",
+)
+
+_ISOLATION_STATE_KEY = pytest.StashKey[dict]()
+
+
+def _isolate_state_root_environment(config: pytest.Config) -> None:
+    """Force the three ATLAS state-root overrides to an isolated,
+    session-scoped temp directory for the duration of this pytest session,
+    regardless of what the invoking shell exports.
+
+    Deliberately not wrapped to swallow exceptions, unlike the artifact
+    bookkeeping below. TEST-ISO-001's finding is precisely that the previous
+    only defense was a human remembering to check for a live process before
+    every run - a defense that fails silently open. A failure in the isolation
+    setup itself must abort collection loudly rather than continue with the
+    operator's real roots still exported.
+    """
+
+    temp_root = Path(tempfile.mkdtemp(prefix="atlas_pytest_isolated_state_"))
+    patcher = pytest.MonkeyPatch()
+
+    for variable in _ATLAS_STATE_ROOT_ENV_VARS:
+        isolated_dir = temp_root / variable
+        isolated_dir.mkdir(parents=True, exist_ok=True)
+        patcher.setenv(variable, str(isolated_dir))
+
+    config.stash[_ISOLATION_STATE_KEY] = {
+        "patcher": patcher,
+        "temp_root": temp_root,
+    }
 
 # Written by pytest's junitxml plugin, then promoted over the real artifact
 # only once the run is known to have been a complete full-suite run. Lives
@@ -163,6 +220,8 @@ def pytest_configure(config: pytest.Config) -> None:
     whether to register its ``LogXML`` reporter; setting it afterwards would
     have no effect.
     """
+
+    _isolate_state_root_environment(config)
 
     try:
         eligible = is_full_suite_invocation(
@@ -319,5 +378,29 @@ def _publish(
 def _discard_temp(temp_path: Path) -> None:
     try:
         temp_path.unlink(missing_ok=True)
+    except Exception:
+        pass
+
+
+def pytest_unconfigure(config: pytest.Config) -> None:
+    """Undo the TEST-ISO-001 environment isolation and remove its temp root.
+
+    Cleanup failure here is not a safety hazard - a leftover temp directory
+    is cosmetic - so, unlike setup, this is allowed to fail quietly rather
+    than mask the real test-session outcome on the way out.
+    """
+
+    state = config.stash.get(_ISOLATION_STATE_KEY, None)
+
+    if not state:
+        return
+
+    try:
+        state["patcher"].undo()
+    except Exception:
+        pass
+
+    try:
+        shutil.rmtree(state["temp_root"], ignore_errors=True)
     except Exception:
         pass
