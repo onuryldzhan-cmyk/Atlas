@@ -6,8 +6,9 @@
 | Title | The twelve-item Stage 1 (Paper) validation checklist, with per-item coverage status and evidence |
 | Finding type | `PROMOTION_GATE_DEFINITION_OF_DONE_WITH_COVERAGE_AUDIT` |
 | Operating mode | AUDIT MODE |
-| Status | `OPEN_GATE_NOT_PASSED_4_OF_12_CARRY_A_GAP` |
+| Status | `OPEN_GATE_NOT_PASSED_2_OF_12_CARRY_A_GAP_1_UNDER_OWNER_DECISION` — see §8 |
 | Authorized by | `governance/current/ATLAS_MILESTONE_REGISTRY_v4.40.json`, `GRANT-STAGE1-PAPER-CHECKLIST-PERSISTENCE` and `GRANT-STAGE1-EIGHT-ITEM-READ-ONLY-AUDIT` |
+| Amended by | `governance/current/ATLAS_MILESTONE_REGISTRY_v4.41.json`, `GRANT-S1-S4-TEST-COVERAGE` and `GRANT-S3-INVESTIGATION` — resolution log in §8, added 2026-09-22 at `f144790` |
 | **Last verified against commit** | **`59b8392` (branch `research/edge-validation`)** — the registry v4.40 commit; the audited source tree is identical to `7772024`, which is the last commit touching anything but governance documents |
 | Recorded on | 2026-09-22 |
 | Production effect | NONE |
@@ -127,28 +128,47 @@ merely believed:
 
 ## 2. Summary table
 
-| # | Item | Status | Gap severity | Finding |
-| --- | --- | --- | --- | --- |
-| 1 | Signal correctness | **PARTIAL** | HIGH | S-1 |
-| 2 | Execution correctness | **COVERED** | — | — |
-| 3 | Position-accounting correctness | **COVERED** | — | — |
-| 4 | Risk correctness | **COVERED** | — | — |
-| 5 | Database correctness | **COVERED** (scoped) | INFORMATIONAL | S-2 |
-| 6 | State-survives-restart | **COVERED** | — | — |
-| 7 | Market-data-disconnect handling | **PARTIAL** | HIGH | S-3 |
-| 8 | Exchange-API-error handling | **PARTIAL** | MEDIUM | S-4 |
-| 9 | Reconciliation correctness *[prior pass]* | **COVERED** | — | — |
-| 10 | No duplicate orders *[prior pass]* | **COVERED** | — | — |
-| 11 | Crash handling *[prior pass]* | **PARTIAL** | MEDIUM | Finding 1 (prior) |
-| 12 | Correct partial-fill handling *[prior pass]* | **ABSENT** (safe-by-refusal) | MEDIUM | Finding 2 (prior) |
+Statuses below are as of the §8 resolution log. The column "Status (as
+audited)" preserves the original 2026-09-22 audit verdict at `59b8392`; it is
+not rewritten, so the movement stays visible.
 
-**8 COVERED / 3 PARTIAL / 1 ABSENT.** No BLOCKING finding.
+| # | Item | Status (as audited) | Status now | Gap severity | Finding |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Signal correctness | **PARTIAL** | **COVERED** — resolved at `f144790` | — | S-1 *(resolved)* |
+| 2 | Execution correctness | **COVERED** | **COVERED** | — | — |
+| 3 | Position-accounting correctness | **COVERED** | **COVERED** | — | — |
+| 4 | Risk correctness | **COVERED** | **COVERED** | — | — |
+| 5 | Database correctness | **COVERED** (scoped) | **COVERED** (scoped) | INFORMATIONAL | S-2 |
+| 6 | State-survives-restart | **COVERED** | **COVERED** | — | — |
+| 7 | Market-data-disconnect handling | **PARTIAL** | **PARTIAL — investigated, recommendation pending owner decision** | HIGH | S-3 *(pending)* |
+| 8 | Exchange-API-error handling | **PARTIAL** | **COVERED** — resolved at `f144790` | — | S-4 *(resolved)* |
+| 9 | Reconciliation correctness *[prior pass]* | **COVERED** | **COVERED** | — | — |
+| 10 | No duplicate orders *[prior pass]* | **COVERED** | **COVERED** | — | — |
+| 11 | Crash handling *[prior pass]* | **PARTIAL** | **PARTIAL** (deferred by owner) | MEDIUM | Finding 1 (prior) |
+| 12 | Correct partial-fill handling *[prior pass]* | **ABSENT** (safe-by-refusal) | **ABSENT** (safe-by-refusal, deferred by owner) | MEDIUM | Finding 2 (prior) |
+
+**As audited (2026-09-22, `59b8392`): 8 COVERED / 3 PARTIAL / 1 ABSENT.**
+**Now: 10 COVERED / 1 PARTIAL-pending-owner-decision / 1 PARTIAL / 1 ABSENT**
+(items 7, 11 and 12 respectively — 7 counted once). No BLOCKING finding at
+either point.
+
+S-3 is deliberately **not** recorded as resolved and **not** recorded as
+still-fully-open. It has its own third state: the investigation authorized by
+registry v4.41 was performed and produced a concrete grounded recommendation,
+but the recommendation turns on a threshold value only the owner may set, so
+nothing was implemented. Recording it as resolved would claim a gate that does
+not exist; recording it as untouched would discard real analysis.
 
 ---
 
 ## 3. The twelve items
 
-### Item 1 — Signal correctness — **PARTIAL** (finding S-1, HIGH)
+### Item 1 — Signal correctness — ~~**PARTIAL**~~ → **COVERED** (finding S-1 resolved)
+
+> **RESOLVED at `f144790` (2026-09-22).** `tests/test_indicator_numeric_accuracy.py`
+> adds 34 golden-vector numeric tests over `core/technical_analyzer.py`.
+> The audit text below is preserved verbatim as the record of why the gap
+> existed; see §8.1 for what now covers it.
 
 **What is covered, strongly.** The fail-closed third of the definition is among
 the best-tested behaviour in the repository. `tests/test_nb1_momentum_rsi_failsafe.py`
@@ -456,7 +476,19 @@ relaunching an OS process. That is the correct semantic for *state* survival and
 is why this item is COVERED; the unclean-termination question is the prior
 pass's Finding 1 and is scored there, not double-counted here.
 
-### Item 7 — Market-data-disconnect handling — **PARTIAL** (finding S-3, HIGH)
+### Item 7 — Market-data-disconnect handling — **PARTIAL**, investigated (finding S-3, HIGH, pending owner decision)
+
+> **INVESTIGATED 2026-09-22 under registry v4.41 `GRANT-S3-INVESTIGATION`;
+> NOT RESOLVED, and not still-fully-open either.** The investigation was
+> read-only by authorization: closing this item requires a staleness
+> age-threshold value, which is a financial-safety parameter reserved to the
+> owner. Nothing was implemented, `core/market_loop.py` was not modified, and
+> `FreshnessPolicy`'s shadow-only contract was not touched. §8.3 records what
+> the investigation examined and its disposition. The recommended threshold
+> **value** is deliberately not written here: registry v4.41 forbids committing
+> it to any file — including documentation — before the owner decides, so it
+> was delivered in the session report only. The audit text below stands
+> unchanged.
 
 **Detection is genuinely good.** `tests/test_market_loop_reconnect.py` (406
 lines) proves per-symbol staleness reporting with `seconds_since_last_success`
@@ -548,7 +580,14 @@ provider is caught (`:829–840`), recorded via `_record_error` and returns
 
 ---
 
-### Item 8 — Exchange-API-error handling — **PARTIAL** (finding S-4, MEDIUM)
+### Item 8 — Exchange-API-error handling — ~~**PARTIAL**~~ → **COVERED** (finding S-4 resolved)
+
+> **RESOLVED at `f144790` (2026-09-22).**
+> `tests/test_market_data_api_error_handling.py` adds 21 tests driving the
+> provider's real 418 / 429 / Retry-After / backoff / taxonomy paths and the
+> real `MarketLoop.process_symbol` consumer path. The audit text below is
+> preserved verbatim; see §8.2 for what now covers it, including why the broad
+> consumer catch was deliberately left unnarrowed.
 
 **The order-placement boundary is well covered, including the hard case.**
 `tests/test_exchange_manager_adapter_fail_closed.py` parametrizes adapter
@@ -812,3 +851,174 @@ COVERED.**
 - **Superseding this document** follows CLAUDE.md's Governance rule: add a new
   versioned successor record and state why it changed. Do not edit this record
   in place to make a later claim fit.
+
+---
+
+## 8. Resolution log
+
+Added **2026-09-22**, authorized by
+`governance/current/ATLAS_MILESTONE_REGISTRY_v4.41.json`
+(`s1_s4_test_coverage_and_s3_investigation_authorization`), grants
+`GRANT-S1-S4-TEST-COVERAGE` and `GRANT-S3-INVESTIGATION`.
+
+This section is **additive**. Nothing in sections 0-7 was rewritten to fit it:
+the original audit verdicts, evidence and remediation suggestions stand exactly
+as recorded at `59b8392`, and the summary table in section 2 keeps the original
+verdict alongside the current one so the movement is visible rather than
+erased. Per CLAUDE.md's Governance rule, a changed status records *why* it
+changed.
+
+| Finding | As audited | Now | Closing commit |
+| --- | --- | --- | --- |
+| S-1 (HIGH) | PARTIAL | **RESOLVED** | `f144790` |
+| S-4 (MEDIUM) | PARTIAL | **RESOLVED** | `f144790` |
+| S-3 (HIGH) | PARTIAL | **INVESTIGATED - recommendation pending owner decision** | *(none; nothing implemented)* |
+| S-2 (INFORMATIONAL) | COVERED (scoped) | unchanged | - |
+| Finding 1, Finding 2 (prior) | PARTIAL / ABSENT | unchanged - deferred by the owner until after the first observed paper run | - |
+
+### 8.1 S-1 - resolved at `f144790`
+
+`tests/test_indicator_numeric_accuracy.py` (34 tests) supplies the
+golden-vector numeric accuracy the finding said did not exist anywhere in the
+suite.
+
+It targets `core/technical_analyzer.py`, confirmed in-session as the indicator
+module inside the runtime closure and the one `core/market_loop.py:147`
+instantiates and `:589` calls. Expected values are hand-computed literals with
+the arithmetic written into each test, or come from independent textbook
+reference implementations of EMA, Cutler RSI and Wilder RSI defined at the top
+of the module; tolerance is stated and justified as float-representation noise
+only. Coverage includes at least one edge case per indicator (insufficient
+history, all-flat series, zero total volume, empty candle list, boundary cases
+at exactly `period` and `period + 1`), the 14-period RSI window, the fact that
+volatility measures returns rather than price level, the fact that volume
+pressure is volume-weighted rather than candle-counted, and two tests carrying
+indicator output through to `MarketLoop.calculate_score()` - the only consumer
+of the indicator dict on the decision path.
+
+The pre-existing smoke test `tests/phase6/test_market_loop_integration.py:155`
+was **not** modified, replaced or weakened; these tests were added beside it.
+
+Two behaviours are **pinned but not endorsed**, recorded so they cannot change
+silently and so the owner can decide them later: a perfectly flat series
+reports RSI 100 rather than 50 (conservative in effect - an RSI above 70
+*subtracts* from the market quality score at `core/market_loop.py:1793`), and a
+candle that closes exactly at its open counts as down-volume. Both are pinned
+as the implementation's current behaviour, not asserted as correct.
+
+The finding's open question - which RSI convention is canonical - is **still
+open**. It was not answered, because answering it is an owner decision. The
+implementation computes a simple mean of the last 14 changes (Cutler's RSI, not
+Wilder's smoothed RSI), and a dedicated test now proves the two are
+distinguishable and that the code follows Cutler. Switching conventions is
+therefore now a visible, deliberate change rather than a silent one.
+
+### 8.2 S-4 - resolved at `f144790`
+
+`tests/test_market_data_api_error_handling.py` (21 tests) exercises the error
+taxonomy the finding described as thoroughly implemented and entirely untested.
+
+Provider side, against a stubbed HTTP session and through the real
+`get_candles` / `get_price` path: HTTP 429 with `Retry-After` (asserting the
+header survives into the raised message), 429 without it, HTTP 418, the
+deliberate no-retry-on-rate-limit bypass for both 418 and 429, retry of
+ordinary retryable server errors up to the attempt limit, exponential backoff
+asserted as an exact delay schedule and bounded to `attempts - 1` sleeps, the
+absence of any sleep on the rate-limit path, disconnection after retry
+exhaustion, and the timeout / connection / request / response classifications
+asserted as four distinct types rather than aliases.
+
+Consumer side: `MarketLoop.process_symbol` is driven with a feed that raises,
+parametrized across the whole `MarketData*Error` taxonomy, asserting all four
+components of failing closed - no decision returned, the brain never consulted,
+the error recorded with its own class name intact, and health flipped for the
+window - plus that no exception escapes to abort the cycle's remaining symbols.
+This deliberately does **not** call `_record_error` directly; that bypass at
+`tests/test_market_loop_reconnect.py:132` is the gap the finding names, and
+reproducing it would not have closed anything.
+
+**The broad `except Exception` at `core/market_loop.py:829` was deliberately
+left unnarrowed.** Registry v4.41 permitted narrowing it to name
+`MarketData*Error` types, but only if a raising provider could not otherwise
+reach that handler in a discriminable way. It can: `_record_error`
+(`core/market_loop.py:1915`) already stores `type(error).__name__`, so the
+tests assert the exact exception class that arrived. Narrowing would have been
+a production change with no testability gain, which the grant's own "no
+production behaviour change beyond testability" bright line forbids. The
+handler was verified by reading and by test to do what its source suggests - no
+discrepancy was found, so there is no further finding here.
+
+The finding's suggestion to distinguish rate-limit from other errors **in the
+recorded error phase** for operator diagnosability was **not** implemented. The
+finding itself classifies that as a behaviour change needing its own
+authorization, and it remains unauthorized and open.
+
+### 8.3 S-3 - investigated, recommendation pending owner decision
+
+This is S-3's own honest third state. It is **not resolved**: no gate exists,
+no line of `core/market_loop.py` changed, and a stale-but-valid feed can still
+produce a full decision exactly as section 3 Item 7 describes. It is **not
+still-fully-open** either: the investigation authorized by
+`GRANT-S3-INVESTIGATION` was performed against the repository and produced a
+concrete, evidence-grounded recommendation plus a design description of what
+implementing the gate would require.
+
+What the investigation examined, read-only:
+
+- the candle interval the live path actually requests, and whether the
+  `interval=10` figure carried in older design documents still describes it;
+- whether any max-age value already exists anywhere in the repository,
+  including shadow-only, defaulted or unused ones;
+- whether an "N missed intervals" convention already exists that a threshold
+  could be made consistent with rather than invented against;
+- where a gate would have to sit, how it would interact with the documented
+  decision at `core/market_loop.py:2046` that `market_data_stale` never affects
+  `healthy`, and what test would prove it cannot leak into Phase-5's
+  shadow-only path.
+
+It also sharpened the finding: the existing staleness measure is **fetch
+liveness**, not **candle age**. Freshness is recorded immediately after any
+non-empty fetch (`core/market_loop.py:462-470`), before duplicate detection, so
+a feed that keeps succeeding while serving lagging bars refreshes freshness
+every cycle and is never even *reported* stale. A fully frozen feed is caught
+by the existing `DUPLICATE_CLOSED_CANDLE` refusal
+(`core/market_loop.py:570-587`); the residual uncovered shape is specifically a
+feed that **advances but lags**.
+
+**The recommended threshold value is deliberately absent from this document.**
+Registry v4.41 explicitly does not authorize writing it into any file -
+configuration, constant, documentation, test or comment - before the owner
+decides, precisely because an unbacked financial-safety parameter committed to
+the repository starts being treated as settled. It was delivered in the session
+report of 2026-09-22 for the owner's decision.
+
+**What remains for the owner:** choose the threshold value, and decide
+separately whether `market_data_stale` should influence `healthy`. Section 3
+Item 7 already records that the current separation is deliberate and
+documented, so changing it is an owner decision rather than a bug fix. Until
+both are decided, S-3 stays in this state.
+
+### 8.4 Test suite at the time of this amendment
+
+Full suite at `f144790`: **3212 passed, 1 failed, 3213 collected**, against a
+pre-amendment baseline of **3158 collected** - a growth of exactly the 55 tests
+added by `f144790` (34 for S-1, 21 for S-4) and no other movement.
+
+The single failure is
+`tests/architecture/test_forbidden_layer_imports.py::test_forbidden_layer_imports`,
+reporting two forbidden edges from `atlas_finance/market_data/contracts.py`.
+This is the **pre-existing Group B2 violation**, which registry v4.40 and v4.41
+both exclude from scope. It was confirmed pre-existing by re-running that test
+with the two new test files removed from the tree, leaving it byte-identical to
+`HEAD`: it failed identically. It was not caused by this work, and per the
+governing grants it was not fixed, softened or worked around.
+
+### 8.5 Staleness of this amendment
+
+Section 6 applies to this section too. Section 8 is valid for the tree at
+**`f144790`**. In particular, if `core/market_loop.py`,
+`core/technical_analyzer.py` or
+`atlas_finance/market_data/binance_public_provider.py` changes, the S-1 and S-4
+resolutions must be re-derived rather than assumed to still hold, and the S-3
+investigation's findings about intervals and existing max-age values must be
+re-checked before the owner's decision is acted on.
