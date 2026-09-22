@@ -875,6 +875,7 @@ changed.
 | S-3 (HIGH) | PARTIAL | **INVESTIGATED - recommendation pending owner decision** | *(none; nothing implemented)* |
 | S-2 (INFORMATIONAL) | COVERED (scoped) | unchanged | - |
 | Finding 1, Finding 2 (prior) | PARTIAL / ABSENT | unchanged - deferred by the owner until after the first observed paper run | - |
+| Live paper run configuration (2026-09-22) | N/A | **STRUCTURALLY HOLD-ONLY** - see 8.6; Finding 1 and Finding 2 cannot be validated by this run regardless of duration | - |
 
 ### 8.1 S-1 - resolved at `f144790`
 
@@ -1022,3 +1023,80 @@ Section 6 applies to this section too. Section 8 is valid for the tree at
 resolutions must be re-derived rather than assumed to still hold, and the S-3
 investigation's findings about intervals and existing max-age values must be
 re-checked before the owner's decision is acted on.
+
+### 8.6 Live paper run configuration - structurally HOLD-only (2026-09-22)
+
+Added **2026-09-22**, authorized by
+`governance/current/ATLAS_MILESTONE_REGISTRY_v4.42.json`
+(`hold_only_disclosure_and_provider_scoping_authorization`), grant
+`GRANT-STAGE1-HOLD-ONLY-DISCLOSURE`.
+
+This is a disclosure, not a remediation: it closes nothing, and it does not
+change the top-level verdict in section 5. It records what a read-only,
+in-session code investigation established about the paper run the operator
+is currently observing live under the supervisor.
+
+**Finding.** The currently-running observed paper run is **structurally
+HOLD-only**. It cannot produce a BUY or SELL decision under its current
+configuration, regardless of how long it continues or how strong the
+technical/momentum signal becomes. This is by design, not a malfunction of
+this specific run:
+
+- `analysis/world_analysis_engine.py:34-69` unconditionally reports `macro`,
+  `sentiment` and `market_risk` evidence_status as `UNAVAILABLE_NO_PROVIDER`.
+  The module's own comment states the reason: "No production-grade macro,
+  sentiment, or market-risk provider exists in this repository." There is no
+  code path today by which any of the three can become `AVAILABLE`.
+- `ai/core/intelligence/agent_fusion.py:166` sets
+  `MIN_PARTICIPATING_AGENTS = 3`. Its documented rationale (lines 135-164)
+  explains that a technical+momentum-only pair (combined configured weight
+  0.60) would otherwise be able to clear execution's `MIN_CONFIDENCE = 60.0`
+  gate on its own, despite technical and momentum being derived from the same
+  underlying RSI/EMA-trend observation rather than being independent
+  evidence. The same comment names the consequence explicitly: "since
+  macro/sentiment/market_risk currently have no provider, technical+momentum
+  is the only combination ever reachable today, so this floor is never
+  cleared until a genuine third evidence source exists - this is an
+  intentional, accepted fail-closed state, not a bug."
+- With `participating_count` permanently capped at 2, `AgentFusion.fuse()`
+  (`ai/core/intelligence/agent_fusion.py:639-657`) always returns
+  `action="HOLD"`, `confidence=0.0`, `reason="INSUFFICIENT_EVIDENCE"` before
+  any weighted-vote arithmetic runs. This is a separate, independent
+  mechanism from the NB-5-protected `ConfidenceEngine` calculation that
+  produces the nonzero `intermediate_confidence` figure the operator also
+  observes (`ai/core/atlas_brain.py:421-436`); the two numbers are not in
+  conflict, they measure different things, and only the fusion-side number
+  reaches `decision.confidence`.
+
+**Finding 1 (crash-recovery) and Finding 2 (partial-fill): CANNOT BE
+VALIDATED BY THE CURRENT RUN, REGARDLESS OF DURATION.** Both findings need a
+real trade to occur - one to crash mid-transaction, one to partially fill.
+Under the current provider configuration no trade of any kind will ever be
+placed, so no amount of additional run time changes either finding's status.
+Closing either requires a real macro, sentiment, or risk provider to exist
+first, raising `participating_count` to at least 3. This is tracked as a
+scoping item, not started, at
+`governance/findings/BACKLOG-001_MARKET_DATA_PROVIDER_SCOPING.md`.
+
+**What the current run CAN still validate**, so its value is not
+understated:
+
+- **S-3 candle-age/staleness evidence** - real, continuous observation of the
+  live candle-age distribution under actual market conditions, which is
+  exactly the evidence S-3's pending threshold decision (8.3) needs and which
+  cannot be produced any other way.
+- **RSI/trend live sanity** - the technical+momentum signal path is fully
+  live and exercised every cycle; its behavior against real market data can
+  be observed and sanity-checked even though it can never alone clear the
+  fusion floor.
+- **Process/supervisor health over time** - sustained-uptime evidence for
+  `atlas_supervisor.py` restart behavior, `supervisor_epoch`/
+  `supervisor_restart_count` reporting, and `/api/health` stability across a
+  long unattended run, independent of whether any trade is ever placed.
+
+No file on the live decision path (`analysis/world_analysis_engine.py`,
+`ai/core/atlas_brain.py`, `ai/core/intelligence/agent_fusion.py`,
+`ai/core/intelligence/decision_builder.py`, `core/execution_manager.py`) was
+read from a live process or modified to produce this note; it is drawn
+entirely from static source inspection, and the currently-running process
+was not queried, restarted, or otherwise interacted with.
