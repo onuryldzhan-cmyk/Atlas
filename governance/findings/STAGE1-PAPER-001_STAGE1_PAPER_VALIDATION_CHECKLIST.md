@@ -1175,3 +1175,75 @@ finding's status, and no top-level verdict.
 `atlas_finance/market_data/binance_public_provider.py` change again, or if
 Group B2 phase (ii) is ever authorized and implemented, this subsection must
 be re-derived rather than assumed to still hold.
+
+### 8.8 First canonical isolated-environment baseline — 2026-09-23, commit `b60e9b3`
+
+**Additive.** Sections 8.4 and 8.7's text is preserved unchanged above. This
+subsection records a different thing than either of them: 8.4 and 8.7 both
+recorded *ambient-environment* runs (`python -m pytest tests -q` against
+whatever interpreter and already-installed packages happened to be present),
+not the canonical isolated-venv path (`scripts/validate_atlas.ps1`, which
+builds a fresh `.venv_atlas_validation` from
+`requirements/locks/windows-py314-dev.txt` and installs with
+`--require-hashes`). Until this record, that canonical isolated path had
+never once completed a full run: it aborted at collection with
+`ModuleNotFoundError: No module named 'numpy'` (`research/multiple_testing.py`
+imports numpy, which was absent from the lock file), tracked as
+`governance_findings.TEST-QUALITY-002` from registry v4.53 onward.
+
+Authorized by `governance/current/ATLAS_MILESTONE_REGISTRY_v4.54.json`,
+`GRANT-TESTQUALITY002-NUMPY-LOCK-REMEDIATION`; closed by
+`governance/current/ATLAS_MILESTONE_REGISTRY_v4.55.json`,
+`test_quality_002_closure_authorization`.
+
+**Fix.** Commit `b60e9b3` adds exactly one line to
+`requirements/locks/windows-py314-dev.txt`:
+`numpy==2.5.3 --hash=sha256:2c25dfa72943e4336ddb6b0ee4277b47a0c85bede0807530ec68103bf58e2c10`,
+alphabetically positioned between `multidict` and `packaging`, nothing else
+in the file touched. The hash was independently re-verified in-session
+against PyPI's own published package metadata
+(`https://pypi.org/pypi/numpy/2.5.3/json`) rather than trusted from a prior
+session's self-report: it matches PyPI's published sha256 digest for
+`numpy-2.5.3-cp314-cp314-win_amd64.whl` exactly, and that release is not
+yanked.
+
+**First successful canonical isolated result.** `scripts/validate_atlas.ps1`,
+fresh `.venv_atlas_validation`, run to completion in this session: venv build
+PASS, `pip install --require-hashes` PASS (numpy and all other locked
+packages installed), `pip check` PASS ("No broken requirements found"), test
+collection PASS (all 282 test files, zero `ModuleNotFoundError`, zero
+collection errors - contrast with TEST-QUALITY-002's original 5 collection
+errors and 0 collected). Full suite: **3225 passed, 1 failed, 396.77s
+(0:06:36)**.
+
+**The single failure is unchanged in identity**, exactly as in 8.4 and 8.7: it
+is still
+`tests/architecture/test_forbidden_layer_imports.py::test_forbidden_layer_imports`,
+still the same two forbidden edges from
+`atlas_finance/market_data/contracts.py` (Group B2, `ARCH-EDGE-001`). It
+remains excluded from scope by the same grants 8.7 already recorded. It is
+not new, not caused by the numpy lock change, and not fixed, softened, or
+worked around by this record.
+
+**Reconciliation against the ambient-environment count.**
+`GRANT-TESTQUALITY002-NUMPY-LOCK-REMEDIATION` recorded the most recent
+ambient-environment count at the time of registry v4.54 as 3225 passed / 1
+failed. This session's canonical isolated result (3225 passed, 1 failed)
+matches that ambient count exactly - same pass count, same fail count, same
+single failing test identity. This is the first time the isolated-venv
+canonical path and the ambient-environment path have been directly
+reconciled and found to agree; previously no comparison was possible because
+the canonical path could not produce a count at all.
+
+**Explicit check: does anything else in this document need to change as a
+result of this baseline?** No. This subsection establishes a canonical
+baseline where none existed before; it does not change the passed/failed
+count 8.7 already recorded for the ambient path, does not touch Group B2
+phase (ii)'s excluded status, and does not affect S-1, S-3, S-4, 8.6, or the
+section 5 top-level verdict, none of which this change's one-line dependency
+addition could plausibly bear on.
+
+**Staleness.** Consistent with 8.5's rule, this update is valid at `b60e9b3`.
+If `requirements/locks/windows-py314-dev.txt` changes again, or if Group B2
+phase (ii) is ever authorized and implemented, this subsection must be
+re-derived rather than assumed to still hold.
