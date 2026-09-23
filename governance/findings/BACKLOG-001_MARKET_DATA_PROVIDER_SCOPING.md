@@ -1,5 +1,91 @@
 # BACKLOG-001 — Missing macro / sentiment / risk market-data provider
 
+## Sentiment provider IMPLEMENTED — 2026-09-23, registry v4.66 / v4.67
+
+**This section is additive.** Everything below it, including the v4.65
+live-investigation section and `Status` through `Reaffirmation — 2026-09-23`,
+is preserved unchanged.
+
+**Authority.** `governance/current/ATLAS_MILESTONE_REGISTRY_v4.66.json`,
+`GRANT-SENTIMENT-P3-IMPLEMENTATION` (commit `e432c35`). Result recorded in
+`governance/current/ATLAS_MILESTONE_REGISTRY_v4.67.json`
+(`sentiment_provider_p3_implementation_result`).
+
+**Status of this item.** The **sentiment** slot is **IMPLEMENTED** at commit
+`75c4fce`. The **macro** and **market_risk** slots are unchanged: still
+`UNAVAILABLE_NO_PROVIDER`, still DEFER.
+
+### What was built
+
+| Layer | File | Role |
+|---|---|---|
+| L2 | `atlas_finance/market_data/fear_greed_provider.py` | stdlib-only fetch of `https://api.alternative.me/fng/` (no auth). Strict validation, 1h cache, 5 min retry after failure, 26h freshness ceiling on the value's own timestamp. Fail-closed: never a value on any error. |
+| L3 | `core/market_loop.py` | Optional injected provider. Converts a reading into plain values `{provider_status, value, band, reason}`. |
+| L3 | `core/application.py` | Composition root constructs `FearGreedProvider` and injects it (owner's in-session scope answer). |
+| L4 | `analysis/world_analysis_engine.py` | Applies the confirmed rule to plain values. Imports nothing from L2. |
+| test | `conftest.py` | Autouse guard: the provider's default network transport fails closed under pytest. |
+
+### Confirmed rule (both sides owner-confirmed in v4.66)
+
+| Index | Trend (reused from `TechnicalAnalyzer`) | Sentiment |
+|---|---|---|
+| < 25 | BULLISH | BUY (0.75) |
+| < 25 | BEARISH / ambiguous | SELL (0.25) |
+| ≥ 75 | BULLISH | SELL (0.25) |
+| ≥ 75 | BEARISH / ambiguous | HOLD (0.50) |
+| 25–74 | any | `UNAVAILABLE_NO_PROVIDER`, not a participant |
+| provider error / stale | any | `UNAVAILABLE_PROVIDER_ERROR`, no value |
+
+"Ambiguous" means anything other than an exact `BULLISH`/`BEARISH` string, or
+any trend when technical evidence is not `AVAILABLE`.
+
+### Measured AgentFusion confidence (real implementation)
+
+- **v4.65 baseline reproduced exactly** when fed the fixture's inputs:
+  fear+BULLISH BUY 0.4702, fear+BEARISH SELL 0.4702, fear+ambiguous HOLD 0.4444.
+- **Caveat:** the fixture's momentum 0.55 cannot come out of the real
+  `calculate_momentum()`, which only produces values on a 0.1 grid. Fully
+  real pipeline at RSI 50:
+
+| Band | Trend | Participants | Fused |
+|---|---|---|---|
+| fear | BULLISH | 3 | BUY 0.6491 |
+| fear | BEARISH | 3 | SELL 0.3007 |
+| fear | NEUTRAL | 3 | BUY 0.3537 (sentiment dissents) |
+| greed | BULLISH | 3 | BUY 0.5614 (sentiment dissents) |
+| greed | BEARISH | 3 | HOLD 0.3623 |
+| greed | NEUTRAL | 3 | BUY 0.3662 |
+| neutral | any | 2 | HOLD 0.0 `INSUFFICIENT_EVIDENCE` |
+
+Tested over a 126-state grid:
+- Withholding sentiment never raises confidence (NB-4).
+- Every fused BUY/SELL at or above execution's `MIN_CONFIDENCE` (60) has
+  sentiment voting the same way, in the fear band.
+- A sentiment dissent can clear the 3-agent floor but stays below 60.
+
+### Architecture
+
+The pre-wiring read-only simulation, and the post-regeneration
+`build_architecture_inventory.py check`, both show 106 modules with zero new
+forbidden edges. The only violations are the accepted permanent Group B2 pair.
+
+### Tests
+
+- 435 new tests pass.
+- Canonical `scripts/validate_atlas.ps1`: 3660 passed, 1 failed (the accepted permanent Group B2 `test_forbidden_layer_imports`); baseline 3225/1, +435 = exactly the new tests; nothing else newly fails.
+
+### Open items recorded, not acted on
+
+- The neutral band reuses `UNAVAILABLE_NO_PROVIDER`, as the owner specified;
+  `sentiment_evidence.reason` disambiguates it. A dedicated status would need
+  its own grant.
+- Pre-existing: `ReasoningAdapter` reads `market_data.get("fear_greed", 50)`,
+  so the advisory reasoning path already scores a fabricated neutral 50. That
+  contradicts v4.64's "orphaned" note. The new audit key is named
+  `sentiment_evidence` so this change does not activate that path.
+- No live instance was run. Real-network behaviour of the running process is
+  **UNKNOWN** until the owner starts one.
+
 ## Live sentiment-provider investigation — 2026-09-23, registry v4.65
 
 **This section is additive.** Everything below it, including `Status`
