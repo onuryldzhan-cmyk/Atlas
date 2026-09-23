@@ -16,6 +16,92 @@
 | Production effect | NONE |
 | Live effect | NONE |
 
+## Group B2 permanent closure — 2026-09-23, registry v4.63
+
+**This section is additive.** Everything below it, including the Group B2
+phase (i) resolution update, the supersession annotation, the 2026-09-21
+resolution update, and the original record beneath that, is preserved
+unchanged. Nothing has been deleted or rewritten.
+
+**Authority.** `governance/current/ATLAS_MILESTONE_REGISTRY_v4.63.json`,
+`GRANT-B2-PERMANENT-CLOSURE`.
+
+**STATUS: Group B2's two edges (B2.1, B2.2) are PERMANENTLY ACCEPTED AS
+RED. This is a final owner decision, not a pending state, and not Group B2
+phase (ii).**
+
+### What this closure means
+
+The owner has decided that B2.1 (`atlas_finance/market_data/contracts.py`
+-> `atlas_finance/__init__.py`) and B2.2 (same source ->
+`atlas_finance/market_data/__init__.py`) stay open — undisposed, unresolved,
+uncorrected — permanently, as a deliberate, final disposition rather than a
+state awaiting further work. `tests/architecture/test_forbidden_layer_imports.py`
+is expected to remain red on exactly these 2 edges **indefinitely, by owner
+decision**. This is not a bug, not a regression, and not something a future
+session should attempt to "fix" — by reclassification, by a
+`permitted_exception`, or by any other means — without a new owner decision
+that explicitly supersedes this one.
+
+### Why — the owner's stated reasoning
+
+The owner's reasoning, stated directly: the coupling these two edges
+represent is harmless, and that harmlessness is already measured, not
+merely asserted; closing the gate on these two edges would require Group B2
+phase (ii) (reclassifying `atlas_finance/__init__.py` and
+`atlas_finance/market_data/__init__.py` from L2 to L1 in
+`packaging/atlas_architecture_map.json`), and that reclassification work is
+not worth doing.
+
+This reasoning is corroborated by evidence this record already established
+and is not re-derived here:
+
+- The "Why this is MEDIUM and not LOW" and "Not escalated above MEDIUM"
+  subsections of the original B2 record (below, preserved unchanged) state
+  that `atlas_finance` is public market-data infrastructure only, that both
+  `__init__` docstrings assert an explicit security boundary excluding
+  order placement, balance access, portfolio mutation, capital allocation,
+  position modification and credential access, and that no execution or
+  capital authority is reachable through either edge.
+- The "What changed" subsection of the 2026-09-22 phase (i) update (below)
+  confirms the runtime coupling that originally justified the MEDIUM
+  severity — a live `requests` HTTP client and market-feed service loading
+  on import of a pure L1 contracts module — no longer occurs, since
+  `370567f` made both ancestor `__init__.py` files PEP 562 lazy. What
+  remains open is only the static ancestor-execution relationship the
+  detector measures, not a present runtime harm.
+
+### What permanent acceptance is, and is not
+
+This closure is **not** a `permitted_exception`. No entry has been or may
+be added to `packaging/atlas_architecture_map.json`'s `permitted_exceptions`,
+and the architecture gate's detector logic is unchanged in every respect —
+the gate keeps reporting these 2 edges exactly as it does today, forever,
+by design. The distinction the original record draws for itself under
+"Reclassification-with-evidence is not a permitted exception" (below,
+preserved unchanged) still applies and is not altered by this section: a
+`permitted_exception` changes what the gate reports; this closure changes
+nothing about the gate. It is an owner statement that the gate remaining
+red on these 2 specific, already-measured edges is the intended, final,
+steady-state outcome — not a backdoor around the gate, and not evidence
+that the gate is malfunctioning.
+
+### What this closure does not do
+
+- It does **not** dispose of B2.1 or B2.2 in the sense of resolving them —
+  they remain open, uncorrected edges, permanently, by decision.
+- It does **not** change the gate's behavior, logic, or output in any way.
+- It does **not** authorize, perform, or imply Group B2 phase (ii); phase
+  (ii) remains explicitly unauthorized, now permanently so absent a new
+  superseding owner decision.
+- It does **not** modify any source file, any test file, or any entry in
+  `packaging/atlas_architecture_map.json`.
+- It does **not** edit any historical registry, and it does not edit any
+  text elsewhere in this document — everything below this section is
+  preserved exactly as written.
+
+---
+
 ## Group B2 phase (i) resolution update — 2026-09-22, commit `370567f`
 
 **This section is additive.** Everything below it, including the
