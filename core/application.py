@@ -73,6 +73,8 @@ from core.market_loop import MarketLoop
 
 from exchange.market_feed import MarketFeed
 
+from atlas_finance.market_data.fear_greed_provider import FearGreedProvider
+
 from core.execution_manager import ExecutionManager
 from core.audit_event_store import AuditEventStore
 from core.execution_idempotency_store import ExecutionIdempotencyStore
@@ -612,6 +614,10 @@ class AtlasApplication:
         # Market loop
         # -----------------------------------------------------
 
+        # Sentiment evidence (registry v4.66). Construction performs no
+        # I/O; the provider fetches lazily, caches, and fails closed.
+        self.sentiment_provider = FearGreedProvider()
+
         self.market_loop = MarketLoop(
             brain=self.brain,
             market_feed=self.market_feed,
@@ -620,6 +626,7 @@ class AtlasApplication:
             symbols=self.symbols,
             interval=self.market_interval,
             position_sizing_service=self.position_sizing_service,
+            sentiment_provider=self.sentiment_provider,
         )
 
         # -----------------------------------------------------

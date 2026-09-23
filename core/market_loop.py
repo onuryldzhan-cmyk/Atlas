@@ -60,7 +60,12 @@ from typing import Any
 
 from atlas_security import sanitize_sensitive_data
 
+from analysis.evidence_status import MarketDataEvidenceStatus
 from analysis.world_analysis_engine import WorldAnalysisEngine
+
+from atlas_finance.market_data.fear_greed_provider import (
+    classify_fear_greed_band,
+)
 
 from core.candle_processor import (
     CandleContractError,
@@ -127,12 +132,18 @@ class MarketLoop:
         symbols: list[str] | tuple[str, ...] | None = None,
         interval: float = 10.0,
         position_sizing_service: PositionSizingService | None = None,
+        sentiment_provider: Any | None = None,
     ) -> None:
         self.brain = brain
         self.market_feed = market_feed
         self.execution = execution
         self.event_bus = event_bus
         self.position_sizing_service = position_sizing_service
+
+        # Fear & Greed provider (registry v4.66). Injected by the
+        # composition root; None keeps sentiment UNAVAILABLE_NO_PROVIDER.
+        # Only plain values derived from it ever reach WorldAnalysisEngine.
+        self.sentiment_provider = sentiment_provider
 
         self.symbols = self._normalize_symbols(
             symbols or self.DEFAULT_SYMBOLS
@@ -635,6 +646,7 @@ class MarketLoop:
                 price,
                 analysis,
                 score,
+                sentiment_input=self._sentiment_input(),
             )
 
             raw_decision = self.brain.analyze_and_decide(
@@ -1809,6 +1821,74 @@ class MarketLoop:
             ),
             2,
         )
+
+    # =========================================================
+    # SENTIMENT INPUT (registry v4.66)
+    # =========================================================
+
+    def _sentiment_input(self) -> dict[str, Any] | None:
+        """
+        Plain-value Fear & Greed input for WorldAnalysisEngine.
+
+        The provider object never crosses into L4: this returns a dict of
+        the raw index value and its band. The provider caches, so calling
+        this every cycle does not contact the network every cycle.
+
+        Never raises. Any provider failure, an unavailable reading, or a
+        value the band classifier rejects becomes
+        UNAVAILABLE_PROVIDER_ERROR with no value.
+        """
+
+        provider = self.sentiment_provider
+
+        if provider is None:
+            return None
+
+        try:
+            reading = provider.get_reading()
+            available = getattr(reading, "available", None)
+
+            if available is False:
+                return self._sentiment_unavailable(
+                    getattr(reading, "reason", None)
+                )
+
+            # Only the exact bool True counts; anything else is not a
+            # reading this loop can trust.
+            if available is not True:
+                return self._sentiment_unavailable(
+                    "MALFORMED_READING"
+                )
+
+            value = reading.value
+            band = classify_fear_greed_band(
+                value
+            )
+        except Exception:
+            logger.exception(
+                "Sentiment provider failed; sentiment unavailable this cycle"
+            )
+            return self._sentiment_unavailable(
+                "PROVIDER_EXCEPTION"
+            )
+
+        return {
+            "provider_status": MarketDataEvidenceStatus.AVAILABLE.value,
+            "value": value,
+            "band": band,
+            "reason": "OK",
+        }
+
+    @staticmethod
+    def _sentiment_unavailable(reason: Any) -> dict[str, Any]:
+        return {
+            "provider_status": (
+                MarketDataEvidenceStatus.UNAVAILABLE_PROVIDER_ERROR.value
+            ),
+            "value": None,
+            "band": None,
+            "reason": reason if isinstance(reason, str) else "UNSPECIFIED",
+        }
 
     # =========================================================
     # EVENT BUS

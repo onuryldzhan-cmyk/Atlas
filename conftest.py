@@ -107,6 +107,41 @@ def _isolate_state_root_environment(config: pytest.Config) -> None:
         "temp_root": temp_root,
     }
 
+
+# ---------------------------------------------------------------------------
+# Sentiment provider network guard (registry v4.66)
+# ---------------------------------------------------------------------------
+# core/application.py injects a live FearGreedProvider into MarketLoop, and
+# many tests drive ``app.market_loop.process_symbol()`` through the real
+# composition root. Without this guard each of them would send a real HTTPS
+# request to alternative.me, and its outcome would depend on that day's index.
+#
+# The provider resolves its default transport at fetch time, so replacing it
+# here covers every instance regardless of when it was built. The replacement
+# raises the provider's own network error, which the provider already turns
+# into an unavailable reading - the fail-closed path, never a value. Tests
+# that exercise the provider inject their own transport and are unaffected.
+#
+# Deliberately not wrapped to swallow an import failure, for the same reason
+# as the state-root isolation above: a guard that fails silently fails open.
+
+
+@pytest.fixture(autouse=True)
+def _no_live_fear_greed_requests(monkeypatch: pytest.MonkeyPatch) -> None:
+    from atlas_finance.market_data import fear_greed_provider
+
+    def _network_disabled(url: str, timeout: float) -> bytes:
+        raise fear_greed_provider._TransportError(
+            fear_greed_provider.REASON_NETWORK_ERROR,
+            "network access is disabled under pytest",
+        )
+
+    monkeypatch.setattr(
+        fear_greed_provider,
+        "_urllib_transport",
+        _network_disabled,
+    )
+
 # Written by pytest's junitxml plugin, then promoted over the real artifact
 # only once the run is known to have been a complete full-suite run. Lives
 # beside the artifact (same directory, therefore same filesystem) so the

@@ -444,6 +444,7 @@
     "atlas_finance/market_data/binance_public_provider.py": "L2",
     "atlas_finance/market_data/contracts.py": "L1",
     "atlas_finance/market_data/exceptions.py": "L2",
+    "atlas_finance/market_data/fear_greed_provider.py": "L2",
     "atlas_finance/market_data/market_feed_service.py": "L2",
     "atlas_finance/market_data/models.py": "L1",
     "atlas_finance/market_data/temporal.py": "L1",
