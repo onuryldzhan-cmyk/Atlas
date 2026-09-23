@@ -102,3 +102,40 @@ otherwise). This record covers the operational move itself.
   listeners on port 8000); each of the four renames verified individually by
   destination existence, source absence, and an exact file-count and
   byte-count match against the pre-rename census.
+
+## Addendum (additive, superseded-not-deleted): `memory_data/` has reappeared, empty
+
+The Consequences section above states that `<repo>/memory_data`, the
+`DEFAULT_STATE_DIRECTORY` fallback, "no longer exists" following the
+2026-09-18 rename. That sentence is not rewritten or deleted here, per this
+project's governance rule that drift is reconciled only by adding a new
+record, never by editing history in place - but it is now stale as a literal
+filesystem claim and needs this correction alongside it.
+
+An empty `memory_data/` directory exists at the repository root again,
+confirmed by a fresh check at the time this addendum was written:
+directory present, zero entries inside it (`find memory_data -mindepth 1`
+returns nothing), and still covered by the `.gitignore` `/memory_data/`
+rule this ADR's Decisions section put in place, so it is untracked and
+never entered version control. Its filesystem birth/modify timestamps are
+both `2026-09-18 13:57:2x`, i.e. the same day as STATE-MOVE-1 itself - most
+likely something in that day's activity (not this ADR's rename mechanism,
+which only renames and never creates a state root) recreated an empty
+directory at the old default path after the rename. The exact process that
+created it is UNKNOWN - requires verification; it is not determinable from
+the filesystem alone.
+
+This does not change the substantive finding above. Atlas resolves its live
+durable state root through the `ATLAS_STATE_DIRECTORY` override (this ADR's
+Decisions section), not by checking whether `<repo>/memory_data` exists or
+is empty; an operator who has the override in force is unaffected by this
+directory's presence. The hazard the Consequences section actually warns
+about - a run with the override unset silently opening fresh empty state -
+is unchanged: this reappeared directory is that same "fresh empty state,"
+not a new or different risk. Operators still must confirm
+`ATLAS_STATE_DIRECTORY` is in force before starting, exactly as stated
+above.
+
+Authorized by governance registry v4.58,
+`adr0007_directory_reappearance_correction_and_d6_d7_definition_proposal_authorization.grant_a_adr0007_stale_claim_correction`
+(`GRANT-ADR0007-STALE-CLAIM-CORRECTION`).
