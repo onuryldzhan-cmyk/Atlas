@@ -1,5 +1,53 @@
 # BACKLOG-001 — Missing macro / sentiment / risk market-data provider
 
+## Greed-side confidence-threshold finding — 2026-09-23, registry v4.68
+
+**This section is additive.** Everything below it, including the
+"Sentiment provider IMPLEMENTED" section, is preserved unchanged.
+
+**Authority.** `governance/current/ATLAS_MILESTONE_REGISTRY_v4.68.json`,
+`GRANT-GREED-THRESHOLD-FINDING`.
+
+**Finding.** Under current `AgentFusion` weights, the greed-side rule
+(`GREED+BULLISH` → SELL, the overextension read; `GREED+BEARISH`/ambiguous →
+HOLD) is implemented and tested but never reaches
+`ExecutionManager.MIN_CONFIDENCE` (60) in any measured state. Only the FEAR
+band currently produces actionable (execution-eligible) decisions. This is a
+real, disclosed, accepted-for-now behavior — not a bug — that was previously
+only visible as summary observations in registry v4.67; this record states
+it plainly so nobody later assumes the greed-side protection is
+operationally active when it isn't.
+
+**Evidence (already measured in commit `75c4fce`'s own test suite; nothing
+re-derived here).** `tests/test_backlog001_sentiment_wiring_and_fusion.py`:
+
+- `GRID` (lines 463–466): 7 Fear&Greed index values (0, 24, 25, 50, 74, 75,
+  100) × 3 trends (BULLISH, BEARISH, NEUTRAL) × 6 RSI classes (20, 32, 38,
+  50, 65, 80) = **126 states**.
+- `test_sentiment_never_makes_a_trade_it_voted_against_execution_eligible`
+  (lines 484–498), parametrized over the full 126-state `GRID`, asserts that
+  whenever the fused result is execution-eligible (`action != "HOLD"` and
+  `confidence * 100 >= ExecutionManager.MIN_CONFIDENCE`), sentiment's own
+  vote agrees with that action **and** `sentiment_evidence["band"] ==
+  "FEAR"`. Across all 126 states, no GREED-band or NEUTRAL-band state is
+  ever execution-eligible.
+- `test_withholding_sentiment_never_raises_confidence_nb4` (lines 469–481),
+  parametrized over the same 126-state `GRID`, confirms the companion NB-4
+  guard: removing sentiment evidence never raises fused confidence.
+- `REAL_PIPELINE_RSI_50` (lines 437–447) / `test_real_pipeline_fusion`: at
+  RSI 50, `GREED+BULLISH` fuses to BUY 0.5614 (sentiment dissents SELL) and
+  `GREED+BEARISH` fuses to HOLD 0.3623 — both below the 0.60 confidence
+  needed for execution eligibility. By contrast `FEAR+BULLISH` fuses to BUY
+  0.6491, which clears it.
+
+**Future consideration (PROPOSE-tier, not decided here).** Whether
+`AgentFusion`'s weighting should be revisited so the greed-side protection
+can become operationally meaningful is named as an open option for a future
+owner decision. No recommendation is made, and `GRANT-GREED-THRESHOLD-
+FINDING` explicitly does not authorize any weighting or threshold change,
+any change to the fear/greed rule logic itself, or any change to
+`ExecutionManager.MIN_CONFIDENCE`.
+
 ## Sentiment provider IMPLEMENTED — 2026-09-23, registry v4.66 / v4.67
 
 **This section is additive.** Everything below it, including the v4.65
