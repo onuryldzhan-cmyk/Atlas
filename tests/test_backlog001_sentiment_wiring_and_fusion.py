@@ -208,6 +208,24 @@ def test_pipeline_neutral_band_is_withheld():
     assert brain.results[0].reason == "INSUFFICIENT_EVIDENCE"
 
 
+@pytest.mark.parametrize("value", range(25, 75))
+def test_neutral_band_withholding_unchanged_for_every_value_25_to_74(value):
+    """GRANT-NEUTRAL-BAND-WORDING-FIX (registry v4.68) changed only the
+    module comment above build_market_data(); this pins the runtime
+    behavior it describes as bit-for-bit unchanged across the full
+    neutral band (25-74), independent of trend."""
+    data = loop_input(value)
+
+    assert data["evidence_status"]["sentiment"] == Status.UNAVAILABLE_NO_PROVIDER.value
+    assert "sentiment_score" not in data
+    assert data["sentiment_evidence"] == {
+        "fear_greed_index": value,
+        "band": "NEUTRAL",
+        "vote": None,
+        "reason": "NEUTRAL_BAND_NO_DIRECTIONAL_SIGNAL",
+    }
+
+
 def test_pipeline_provider_error_is_reported_and_withheld():
     brain = run_loop(StubProvider(FearGreedReading.unavailable("STALE")))
     data = brain.market_data[0]

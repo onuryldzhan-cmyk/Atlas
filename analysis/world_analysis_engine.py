@@ -66,11 +66,15 @@ class WorldAnalysisEngine:
         # ---------------------------------------------------
         #
         # macro_score / sentiment_score / risk_score are no longer
-        # emitted. No production-grade macro, sentiment, or market-risk
-        # provider exists in this repository (see Phase 2 Market-Data
-        # Evidence Semantics Review), so there is no genuine numeric
-        # value to report for these fields. Step 2A/2B established that
-        # fabricating one (0.5, None, or any other sentinel) makes
+        # emitted as placeholders. No production-grade macro or
+        # market-risk provider exists in this repository (see Phase 2
+        # Market-Data Evidence Semantics Review), so there is no genuine
+        # numeric value to report for those two fields. Sentiment is the
+        # exception (registry v4.66): a real provider now exists, but in
+        # the neutral band (Fear&Greed 25-74) it reports no directional
+        # signal by design, not because no data source exists for it -
+        # see the sentiment note below. Step 2A/2B established that
+        # fabricating a score (0.5, None, or any other sentinel) makes
         # missing evidence indistinguishable from genuinely observed
         # neutral evidence downstream - so none is fabricated here.
         #
