@@ -1,0 +1,81 @@
+{
+  "artifact": "REM-001_OVERLAP_REGISTER",
+  "gate": "REM-001 GATE_1 OVERLAP_REGISTER",
+  "deliverable": "6 of 9",
+  "schema_version": "1.0",
+  "generated": "2026-09-23",
+  "authorization": {
+    "authorization_id": "GRANT-D6-PRODUCTION",
+    "authorization_record": "governance/current/ATLAS_MILESTONE_REGISTRY_v4.60.json, d6_production_and_d7_definitional_failure_closure_authorization.grant_a_d6_production",
+    "definition_source": "governance/current/ATLAS_MILESTONE_REGISTRY_v4.59.json, rem001_gate1_d6_d7_candidate_definition_proposal.d6_candidate_definition (PROPOSE, subsequently authorized for production by v4.60)",
+    "nature": "Authorizes production of this artifact only, as a formalization of data already present in REM-001_CANONICAL_COMPONENT_MATRIX.json (D1)'s state_authority_overlap_flags array. Producing it is not Owner acceptance of any mapping it documents, and no component listed here is thereby certified, resolved, or authoritative.",
+    "acceptance_status": "NOT_ACCEPTED_EVIDENCE_FOR_REVIEW",
+    "gate_1_state": "OPEN_NOT_CERTIFIED",
+    "gate_1_closure_authority": "OWNER_ACCEPTANCE_REQUIRED"
+  },
+  "definition_used": {
+    "overlap_definition": "Two or more D1-in-scope modules whose evidence shows they reference or write to the same physical state-persistence resource (same file path, same sqlite database/connection identifier, same named store), without an owner-approved record establishing disjoint ownership of that resource.",
+    "interpretive_caveat": "This is one plausible reading of the word 'overlap' - state-authority collision - chosen because it is the only reading this project's own repository already computes mechanical evidence for (D1's state_authority_overlap_flags array). REM-001's original specification, if it ever defined 'overlap' differently (for example as responsibility/domain overlap between modules rather than shared state-resource authority), is permanently lost: GOV-DRIFT-005 (governance/ATLAS_REM001_SPECIFICATION_ARTIFACT_INTEGRITY_v1.0.md) records the original REM-001 specification and 41 of 42 named artifacts as absent from the repository, with that finding's status unchanged and still OPEN as of registry v4.60. This artifact's use of the state-authority-overlap reading is therefore a choice made in the absence of the original definition, not a transcription of it, and is explicitly not a claim that this is what REM-001's author originally meant."
+  },
+  "source_identity": {
+    "generated_from_commit": "05d0bd56752d6d59cc1ad56988c8702a826fa518",
+    "generated_from_tree": "739b33cc35c5b4b85fa29caad55201b1227c6865",
+    "branch": "research/edge-validation",
+    "tracked_working_tree_clean": true
+  },
+  "source_data": {
+    "sole_source_artifact": "REM-001_CANONICAL_COMPONENT_MATRIX.json (D1)",
+    "sole_source_fields": [
+      "state_authority_overlap_flags (top-level array)",
+      "modules[].mechanical_evidence.persistence_signal_hits, for each flagged component",
+      "modules[].classification_disposition.state_ownership, for each flagged component"
+    ],
+    "no_new_analysis_performed": "This artifact performs no new AST scan, regex scan, or source read of its own. Every value below is transcribed from D1's already-committed, already-verified data, cited by exact field path, per GRANT-D6-PRODUCTION's source_data_constraint: 'no overlap entry not already present in D1's verified state_authority_overlap_flags array may be added; this grant authorizes formalization, not new analysis.'"
+  },
+  "overlap_entries": [
+    {
+      "overlap_id": "OVL-001",
+      "state_class": "sqlite-backed durable store (mechanical signal: sqlite3.connect / .sqlite3 reference)",
+      "source": "REM-001_CANONICAL_COMPONENT_MATRIX.json#state_authority_overlap_flags[0], verbatim",
+      "components": [
+        {
+          "module_id": "MOD-DATA_LAYER.CONFIG",
+          "file_path": "data_layer/config.py",
+          "mechanical_evidence_persistence_signal_hits": [
+            "sqlite3 file reference @ line 55"
+          ],
+          "source_field": "REM-001_CANONICAL_COMPONENT_MATRIX.json#modules[file_path=data_layer/config.py].mechanical_evidence.persistence_signal_hits",
+          "state_ownership_disposition": "OWNER_DECISION_REQUIRED",
+          "state_ownership_proposed_value": "DURABLE",
+          "state_ownership_source_field": "REM-001_CANONICAL_COMPONENT_MATRIX.json#modules[file_path=data_layer/config.py].classification_disposition.state_ownership"
+        },
+        {
+          "module_id": "MOD-DATA_LAYER.SQLITE",
+          "file_path": "data_layer/sqlite.py",
+          "mechanical_evidence_persistence_signal_hits": [
+            "sqlite3.connect @ line 361",
+            "open() @ line 370"
+          ],
+          "source_field": "REM-001_CANONICAL_COMPONENT_MATRIX.json#modules[file_path=data_layer/sqlite.py].mechanical_evidence.persistence_signal_hits",
+          "state_ownership_disposition": "OWNER_DECISION_REQUIRED",
+          "state_ownership_proposed_value": "DURABLE",
+          "state_ownership_source_field": "REM-001_CANONICAL_COMPONENT_MATRIX.json#modules[file_path=data_layer/sqlite.py].classification_disposition.state_ownership"
+        }
+      ],
+      "authority_established": "UNKNOWN",
+      "note": "Carried forward verbatim from D1: 'Multiple modules reference SQLite storage. This artifact does not determine whether they share a database, own disjoint tables, or overlap in authority; per this artifact's authorization section 7, the overlap is flagged as data for future D5 review, not resolved here.' D5 (packaging/REM-001_STATE_AUTHORITY_MAP.md) was produced after D1 but did not itself resolve this flag; this D6 entry is the first artifact to formalize it as its own register item, still unresolved.",
+      "disposition": {
+        "overlap_confirmed": "OWNER_DECISION_REQUIRED",
+        "basis": "Both components carry OWNER_DECISION_REQUIRED / DURABLE state_ownership dispositions in D1, each grounded in a mechanical sqlite-related evidence hit at a specific source line, but neither D1 nor any other artifact in the repository has ever determined whether the two modules share one physical database, own disjoint tables within it, or do not actually collide at all. This D6 entry registers the flagged pair; it does not adjudicate it."
+      }
+    }
+  ],
+  "counts": {
+    "total_overlap_entries": 1,
+    "total_components_flagged": 2,
+    "source_flags_formalized_from_d1": 1,
+    "overlap_entries_confirmed": 0,
+    "overlap_entries_owner_decision_required": 1
+  },
+  "methodology_note": "This artifact transcribes; it does not investigate further, reclassify, or resolve D1's OWNER_DECISION_REQUIRED dispositions. Where this document and D1 ever disagree, D1's JSON is authoritative, per the same convention D2 established for its own relationship to D1."
+}
