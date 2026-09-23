@@ -1,5 +1,157 @@
 # BACKLOG-001 — Missing macro / sentiment / risk market-data provider
 
+## Live sentiment-provider investigation — 2026-09-23, registry v4.65
+
+**This section is additive.** Everything below it, including `Status`
+through the `Reaffirmation — 2026-09-23` section, is preserved unchanged.
+Nothing has been deleted or rewritten.
+
+**Authority.** `governance/current/ATLAS_MILESTONE_REGISTRY_v4.65.json`,
+`GRANT-SENTIMENT-LIVE-INVESTIGATION`.
+
+**Relationship to the fear-side/greed-side rule already formalized in
+registry v4.64.** That record (`d7_standing_backlog_and_sentiment_rule_formalization_record`,
+commit `f7a613c`) formalized the owner's fear-side sentiment rule as
+CONFIRMED and a greed-side candidate as PROPOSE, citing only static
+in-repository code (`core/technical_analyzer.py`,
+`ai/core/intelligence/agent_fusion.py`) and a publicly-documented Fear &
+Greed scale convention. It performed no live web/API call, no
+architecture-placement simulation, and no AgentFusion confidence
+measurement, by its own explicit scope. Nothing in v4.64's rule text is
+changed by this section; this section supplies the live-investigation
+evidence layer that record's own grant excluded, per the owner's later
+six-step task instruction requiring the investigation actually be *run*
+rather than assumed. All figures below were independently fetched or
+computed in this session — see registry v4.65 for the full record.
+
+### Discover — candidate re-check
+
+**alternative.me Fear & Greed Index** (`https://api.alternative.me/fng/`)
+remains the sole live-verified sentiment candidate.
+
+- **Live fetch, this session:** `GET https://api.alternative.me/fng/?limit=1`
+  returned `{"value": "71", "value_classification": "Greed", "timestamp":
+  "1790121600"}`. The timestamp resolves to `2026-09-23T00:00:00Z`
+  (verified via `datetime.fromtimestamp(1790121600, UTC)` in-session) —
+  today's daily reading, not a stale or recalled figure.
+- **Significance of today's real value:** 71 falls in the standard
+  50–74 "Greed" band — neither Extreme Fear (<25, the CONFIRMED rule's
+  trigger band) nor Extreme Greed (≥75, the PROPOSE candidate's trigger
+  band per v4.64). Today's real reading illustrates that the two
+  formalized rules do not yet cover the full 0–100 range; that gap is
+  expected and unchanged by this section.
+- **License, re-verified live** (`https://alternative.me/crypto/fear-and-greed-index/`,
+  fetched with and without the `#api` anchor): free, no authentication,
+  will remain free per the page's own statement, commercial use allowed,
+  attribution requested ("You must properly acknowledge the source of the
+  data and prominently reference it accordingly") but not gated behind any
+  registration/agreement mechanism. Restriction: may not use the data to
+  impersonate alternative.me or create a confusable service.
+- **Treasury Fiscal Data API** — re-checked live: free, no-auth (optional
+  key only for higher rate limits), confirmed still viable on
+  License/Security grounds, but it is a macro/fiscal data source (federal
+  debt, interest, revenue series), not a sentiment signal. It does not
+  serve the sentiment agent this rule targets and is not adopted here —
+  not a rejection, just out of scope for BACKLOG-001's sentiment slice. It
+  remains a live no-auth candidate for a future, separately-scoped macro-
+  agent investigation, which this section does not open.
+- **Deribit** — re-checked live against its own API Usage Policy
+  (`docs.deribit.com/articles/api-usage-policy`): public market data needs
+  no auth, but the policy explicitly prohibits aggregating, reselling,
+  publishing, forwarding, or otherwise *processing* market/derived data
+  without prior written approval, except for personal use. Automated
+  ingestion into `AgentFusion`'s evidence pipeline is exactly "processing"
+  in that sense. Deribit remains **License-blocked**, re-confirmed live in
+  this session rather than carried forward from an unverified prior claim.
+
+### Architecture placement — read-only simulation
+
+Using the real `classify_module()` logic and the real `forbidden_edges`/
+`layers` tables loaded live from `packaging/atlas_architecture_map.json`
+in-session (identical to `tools/build_architecture_inventory.py`'s own
+implementation, no repository file created or modified):
+
+| Candidate path | Layer | Matched pattern |
+| --- | --- | --- |
+| `atlas_finance/market_data/sentiment_fear_greed_provider.py` | **L2** | `atlas_finance/*` |
+| `analysis/providers/sentiment_fear_greed_provider.py` | L4 | `analysis/*` |
+| `external_data/sentiment_fear_greed_provider.py` | *(unassigned)* | — |
+
+`L4 -> L2` is a forbidden edge (confirmed live from
+`packaging/atlas_architecture_map.json`'s `forbidden_edges`); L3's
+`allowed_dependencies` includes L2 and L4. **Conclusion:** a new
+sentiment-provider module belongs under `atlas_finance/*` (e.g.
+`atlas_finance/market_data/`, the same bucket as the existing
+`binance_public_provider.py`), auto-classified L2 with zero
+`atlas_architecture_map.json` changes required, and should be wired from
+L3 (`core/market_loop.py`, which already assembles `market_data` before it
+reaches `analysis/world_analysis_engine.py`) — never imported directly by
+`analysis/world_analysis_engine.py` or `ai/core/intelligence/agent_fusion.py`
+(both L4), which would create the forbidden `L4 -> L2` edge above. Placing
+it directly under `analysis/` forces an L4 label onto what is
+definitionally an L2 "external service integration" per the architecture
+map's own layer description — not an AST-detected violation by itself, but
+the same kind of stale-label risk this repository's governance history
+already corrected once (`core/__init__.py`, registry v4.39
+`GRANT-ANCESTOR-INIT-RECLASSIFICATION`).
+
+`python tools/build_architecture_inventory.py check`, re-run live in this
+session: `OK: runtime closure matches (105 modules)`, `OK: architecture map
+assigns every live module a layer (105 modules)`, then `FAIL: forbidden
+dependency edges detected:` listing exactly the same 2 Group B2 edges
+(B2.1, B2.2) and nothing else — the 105-module closure figure and the
+permanently-accepted Group B2 disposition (registry v4.63/`de2de76`) are
+still exactly correct today, unchanged.
+
+This placement finding is derived fresh in this session from the real
+detector logic and the real current architecture map. It does not adopt or
+assume any "P1/P2/P3" label from an earlier, unverified chat conversation —
+per the owner's explicit instruction, that prior framing is not treated as
+fact.
+
+### AgentFusion fixture — real measured confidence
+
+Executed live in-session via `ai.core.intelligence.agent_fusion.AgentFusion().fuse()`
+(standalone scratch script, repository root on `PYTHONPATH`, no test file
+added, no Atlas process constructed), following the `signals()`/`fuse()`
+helper pattern already established in
+`tests/test_block3_package4_confidence_semantics.py`.
+`AgentFusion.VERSION='10.0'`, `MIN_PARTICIPATING_AGENTS=3`,
+`MIN_WEIGHT_COVERAGE=0.5`, `WEIGHTS={'technical': 0.4, 'momentum': 0.2,
+'risk': 0.2, 'macro': 0.1, 'sentiment': 0.1}` — all read live from the
+class this session.
+
+| State | Inputs (technical, momentum, sentiment) | Actions | Result |
+| --- | --- | --- | --- |
+| 0 — today's real ceiling | 0.70, 0.55, *(none)* | BUY, HOLD | **HOLD, confidence 0.0, `INSUFFICIENT_EVIDENCE`** (only 2 of 3 required agents) |
+| 1 — FEAR + BULLISH trend → sentiment BUY (confirmed rule) | 0.70, 0.55, 0.75 | BUY, HOLD, BUY | **BUY, confidence 0.4702** |
+| 2 — FEAR + BEARISH trend → sentiment SELL (confirmed rule, downward branch) | 0.30, 0.55, 0.25 | SELL, HOLD, SELL | **SELL, confidence 0.4702** |
+| 3 — FEAR + NEUTRAL/ambiguous trend → sentiment SELL (confirmed rule, ambiguous branch) | 0.50, 0.55, 0.25 | HOLD, HOLD, SELL | **HOLD, confidence 0.4444** |
+| 4 — comparison only, NOT the confirmed rule: sentiment abstains (HOLD) instead | 0.50, 0.55, 0.50 | HOLD, HOLD, HOLD | **HOLD, confidence 0.5385** |
+
+**NB-4-relevant observation (real, measured, not predicted):** State 3 vs.
+State 4 shows that forcing sentiment to cast a directional SELL vote under
+an ambiguous/NEUTRAL trend reading — the owner's actual confirmed rule —
+does not flip the final action away from HOLD in this fixture, and
+produces a *lower* measured confidence in that HOLD (0.4444) than if
+sentiment had abstained instead (0.5385). This is confidence dilution from
+a dissenting vote, not confidence inflation from removed evidence, so it
+does not itself risk an NB-4 violation — it is recorded because it is real,
+freshly-measured evidence directly bearing on registry v4.64's
+`nb4_nb5_risk_flag` discussion, and because it shows the owner's ambiguous-
+branch SELL choice is not confidence-inflating in this fixture's
+construction.
+
+### What this section does not do
+
+No code was implemented or modified to produce this section. It does not
+authorize a sentiment-provider implementation (that remains separately
+gated per registry v4.62's
+`backlog001_single_provider_investigation_and_conditional_implementation_authorization`),
+does not decide the greed-side rule (registry v4.64's PROPOSE status is
+unchanged), and does not alter Group B2's permanent closure or D7's
+standing-backlog status.
+
 ## Status
 
 **SCOPING ONLY. Decision: DEFER.** No implementation is authorized by this
