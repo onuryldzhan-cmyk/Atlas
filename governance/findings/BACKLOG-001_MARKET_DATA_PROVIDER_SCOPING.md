@@ -180,3 +180,15 @@ macro/sentiment/risk to build first, and does not commit to a timeline. The
 owner decides if and when to accept this work, per CLAUDE.md's "capability
 is never authority" principle and its rule that no new feature is
 auto-accepted.
+
+## Reaffirmation — 2026-09-23
+
+**Status quo, no change.** Authorized by
+`governance/current/ATLAS_MILESTONE_REGISTRY_v4.56.json`,
+`GRANT-BACKLOG001-STATUS-QUO`. The owner reaffirmed this record's DEFER
+decision unchanged, citing CLAUDE.md's roadmap discipline: this item stays
+deprioritized below still-open RISK/ARCHITECTURE-tier items (Group B2 phase
+(ii), GOV-DRIFT-005, incomplete REM-001 Gate 1), the same reasoning applied
+to the compute-engine proposal in that same registry record. Nothing in
+this document's `What`/`Why`/`Where`/`Dependencies`/`Risk`/`Cost`/
+`Alternative` sections above changes as a result.
