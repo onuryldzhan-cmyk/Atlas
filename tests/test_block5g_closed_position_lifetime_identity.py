@@ -418,6 +418,7 @@ def test_reused_closed_position_identity_fails_closed_without_overwriting(tmp_pa
               execution_id="e3", position_id=collision_id),
         risk_authorized=True, reservation_confirmed=True, expected_position_version=None,
     )
+    state_before = store.path.read_bytes()
     with pytest.raises(ValueError, match="CLOSED_POSITION_IDENTITY_CONFLICT"):
         foundation.apply_confirmed(
             _fill("SELL", base="1", price="200", fee="0", fee_ccy="USDT",
@@ -425,18 +426,28 @@ def test_reused_closed_position_identity_fails_closed_without_overwriting(tmp_pa
             risk_authorized=True, reservation_confirmed=True, expected_position_version=1,
         )
 
-    # Fail-closed: the in-memory foundation now requires recovery, exactly
-    # like every other integrity violation in this module.
-    assert foundation.ready is False
-
+    # The collision is refused and the first lifetime's history survives
+    # byte-for-byte - the Block 5G guarantee.
     assert _closed_on_disk(store)[collision_id] == first_record
+
+    # F-6 (execution reconciliation audit, 2026-09-24): the refusal is now
+    # raised before the transition marker is persisted, so it leaves nothing
+    # behind. This test previously asserted the marker stayed on disk and the
+    # book needed recovery; the owner ruled that the defect. System-level
+    # fail-closed is unchanged: ExecutionManager still halts on the raise.
+    assert store.path.read_bytes() == state_before
     on_disk = json.loads(store.path.read_text(encoding="utf-8"))
-    assert on_disk["transition"] is not None
+    assert on_disk["transition"] is None
+    assert foundation.ready is True
 
     applied_archive, closed_archive = _sidecars(store)
     reloaded = ExecutionPortfolioFoundation(store, applied_archive=applied_archive, closed_archive=closed_archive)
+    # A restart still fails closed - on the reused identity itself (a live
+    # position carrying an archived lifetime's id), no longer on a leftover
+    # transition marker.
     assert reloaded.ready is False
-    assert reloaded.diagnostics()["reason"] == "FINANCIAL_TRANSITION_RECOVERY_REQUIRED"
+    assert reloaded.diagnostics()["reason"] == "FINANCIAL_CLOSED_POSITION_LIVE_CONFLICT"
+    assert "e4" not in applied_archive.load_index().by_execution_id
 
 
 # ===========================================================================

@@ -153,7 +153,13 @@ class FinancialStateStore:
             "applied_checkpoint": None, "closed_checkpoint": None,
         })
 
-    def load(self) -> dict[str, Any]:
+    def load(self, *, allow_transition: bool = False) -> dict[str, Any]:
+        """Load the working state; a pending transition marker refuses by default.
+
+        ``allow_transition`` exists for operator recovery only
+        (``inspect_interrupted_transition``), which must read the marker it
+        is resolving. The runtime never passes it.
+        """
         try:
             payload = json.loads(self.path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
@@ -163,7 +169,7 @@ class FinancialStateStore:
             raise FinancialStateMigrationRequiredError("FINANCIAL_MIGRATION_REQUIRED")
         if schema != SCHEMA_VERSION:
             raise RuntimeError("FINANCIAL_STATE_RECOVERY_REQUIRED")
-        if payload.get("transition") is not None:
+        if payload.get("transition") is not None and not allow_transition:
             raise RuntimeError("FINANCIAL_TRANSITION_RECOVERY_REQUIRED")
         return payload
 
@@ -599,21 +605,30 @@ class ExecutionPortfolioFoundation:
         if identity in self._applied_by_idempotency_key:
             raise ValueError("IDEMPOTENCY_IDENTITY_CONFLICT")
 
+        # F-6: the settlement is computed and validated before the transition
+        # marker is persisted. Every refusal `_open`/`_close` can raise
+        # (DUPLICATE_OPEN_POSITION, STALE_POSITION_MUTATION, INSUFFICIENT_CASH,
+        # NEGATIVE_AVAILABLE_CAPITAL, REDUCTION_EXCEEDS_POSITION,
+        # CLOSED_POSITION_IDENTITY_CONFLICT, LONG_ONLY_ACTION_REJECTED) mutates
+        # nothing, so it must leave nothing behind either: a marker written
+        # first would turn a pure refusal into a book that needs operator
+        # recovery. Both methods only read the durable indexes and write the
+        # private candidate copy.
+        candidate = json.loads(json.dumps(self._state))
+        closed_record: dict[str, Any] | None = None
+        if result.action == "BUY":
+            self._open(candidate, result, expected_position_version)
+        elif result.action == "SELL":
+            closed_record = self._close(candidate, result, expected_position_version)
+        else:
+            raise ValueError("LONG_ONLY_ACTION_REJECTED")
+
         transition = dict(self._state)
         transition["transition"] = {"execution_id": result.execution_id, "idempotency_key": identity,
                                     "stage": "CONFIRMED_EXECUTION"}
         self.store.save(transition)
-        closed_record: dict[str, Any] | None = None
         applied_record: AppliedExecutionRecord | None = None
         try:
-            candidate = json.loads(json.dumps(self._state))
-            if result.action == "BUY":
-                self._open(candidate, result, expected_position_version)
-            elif result.action == "SELL":
-                closed_record = self._close(candidate, result, expected_position_version)
-            else:
-                raise ValueError("LONG_ONLY_ACTION_REJECTED")
-
             # Block 5I crash-safety ordering: the closed-position archive
             # (if this apply produced one) is appended and fsynced before
             # the applied-execution authority record, which is itself
@@ -843,3 +858,282 @@ class ExecutionPortfolioFoundation:
         snap = self.snapshot()
         return {key: snap[key] for key in ("ready", "recovery_required", "cash", "reserved_capital",
             "gross_exposure", "realized_gross_pnl", "realized_net_pnl", "unrealized_pnl", "fees", "equity")}
+
+    @classmethod
+    def _pre_transition_view(cls, transition: "InterruptedTransition") -> "ExecutionPortfolioFoundation":
+        """The book exactly as ``apply_confirmed`` saw it before the marker.
+
+        Hydrated from the marker-free working state and from the sidecar
+        indexes *up to their checkpoints* - an orphan record the interrupted
+        call appended is excluded, because at the moment ``_open``/``_close``
+        ran it did not exist yet. Used only to re-run that same settlement
+        arithmetic when resuming; it is never saved through.
+        """
+        view = cls.__new__(cls)
+        view.store = None  # type: ignore[assignment]
+        view.applied_archive = None  # type: ignore[assignment]
+        view.closed_archive = None  # type: ignore[assignment]
+        view._recovery_reason = None
+        view._state = json.loads(json.dumps(transition.pre_state))
+        view._applied_by_execution_id = dict(transition.applied_by_execution_id)
+        view._applied_by_idempotency_key = {
+            record.idempotency_key: record for record in transition.applied_by_execution_id.values()
+        }
+        view._applied_tail = transition.applied_tail
+        view._closed_by_position_id = dict(transition.closed_by_position_id)
+        view._closed_tail_sequence = transition.closed_tail_sequence
+        return view
+
+
+# ---------------------------------------------------------------------------
+# F-1 - operator resolution of an interrupted ``apply_confirmed``
+# ---------------------------------------------------------------------------
+#
+# ``apply_confirmed`` persists a transition marker, then (for a full exit)
+# appends the closed-position record, then the applied-execution record, then
+# commits the working state with the marker cleared. A process killed between
+# the first and the last of those writes leaves the marker on disk, and the
+# foundation refuses to load (FINANCIAL_TRANSITION_RECOVERY_REQUIRED) until an
+# operator resolves it. These helpers are that resolution. They are never
+# called by the runtime: ``tools/reconcile_execution_authorities.py`` is their
+# only caller, and it decides which one applies from the other durable
+# authorities first.
+#
+# Exactly two resolutions exist, because the sidecars are append-only:
+#
+# - nothing was appended beyond either checkpoint: the call provably changed
+#   nothing, and the marker is simply removed (``abandon``);
+# - a sidecar record was appended: it can never be removed, so the only
+#   consistent end state is the one the call was writing, and it is completed
+#   from confirmed execution evidence (``complete``) - every record already on
+#   disk must match that evidence exactly, or nothing is written.
+
+
+class InterruptedTransitionError(RuntimeError):
+    """A pending transition cannot be resolved from the evidence given."""
+
+
+@dataclass(frozen=True, slots=True)
+class InterruptedTransition:
+    """What a working state left mid-``apply_confirmed`` durably shows."""
+
+    execution_id: str
+    idempotency_key: str
+    pre_state: dict[str, Any]
+    applied_orphan: AppliedExecutionRecord | None
+    closed_orphan: dict[str, Any] | None
+    applied_by_execution_id: dict[str, AppliedExecutionRecord]
+    applied_tail: AppliedExecutionRecord | None
+    closed_by_position_id: dict[str, dict[str, Any]]
+    closed_tail_sequence: int | None
+
+
+def _checkpoint_orphan_count(checkpoint_sequence: int | None, count: int) -> int:
+    orphans = count - (0 if checkpoint_sequence is None else checkpoint_sequence + 1)
+    if orphans not in (0, 1):
+        # Zero or one: apply_confirmed appends at most one record to each
+        # sidecar per call, and only the last call can be interrupted.
+        raise InterruptedTransitionError("SIDECAR_CHECKPOINT_DIVERGENT")
+    return orphans
+
+
+def inspect_interrupted_transition(
+    store: FinancialStateStore, *,
+    applied_archive: AppliedExecutionArchiveStore,
+    closed_archive: ClosedPositionArchiveStore,
+) -> InterruptedTransition | None:
+    """Read a pending transition marker and classify each sidecar against it.
+
+    Returns ``None`` when no marker is present. Raises
+    ``InterruptedTransitionError`` whenever the state is anything other than
+    one interrupted ``apply_confirmed`` with at most one record beyond each
+    checkpoint, every one of which belongs to the marker's execution. Reads
+    only; writes nothing.
+    """
+    payload = store.load(allow_transition=True)
+    marker = payload.get("transition")
+    if marker is None:
+        return None
+    if (not isinstance(marker, dict)
+            or set(marker) != {"execution_id", "idempotency_key", "stage"}
+            or marker["stage"] != "CONFIRMED_EXECUTION"
+            or not isinstance(marker["execution_id"], str) or not marker["execution_id"]
+            or not isinstance(marker["idempotency_key"], str) or not marker["idempotency_key"]):
+        raise InterruptedTransitionError("TRANSITION_MARKER_MALFORMED")
+    execution_id, idempotency_key = marker["execution_id"], marker["idempotency_key"]
+
+    pre_state = dict(payload)
+    pre_state["transition"] = None
+    try:
+        ExecutionPortfolioFoundation._validate_state(pre_state)
+    except Exception as exc:
+        raise InterruptedTransitionError("FINANCIAL_STATE_INVALID") from exc
+
+    applied_index = applied_archive.load_index()
+    applied_checkpoint = pre_state["applied_checkpoint"]
+    applied_checkpoint_sequence = None
+    if applied_checkpoint is not None:
+        confirmed = applied_index.by_execution_id.get(applied_checkpoint["execution_id"])
+        if (confirmed is None or confirmed.sequence != applied_checkpoint["sequence"]
+                or confirmed.idempotency_key != applied_checkpoint["idempotency_key"]):
+            raise InterruptedTransitionError("SIDECAR_CHECKPOINT_DIVERGENT")
+        applied_checkpoint_sequence = confirmed.sequence
+    applied_orphan = None
+    if _checkpoint_orphan_count(applied_checkpoint_sequence, applied_index.count):
+        applied_orphan = applied_index.tail
+        if (applied_orphan is None or applied_orphan.execution_id != execution_id
+                or applied_orphan.idempotency_key != idempotency_key):
+            raise InterruptedTransitionError("SIDECAR_CHECKPOINT_DIVERGENT")
+    elif (execution_id in applied_index.by_execution_id
+            or idempotency_key in applied_index.by_idempotency_key):
+        # Already durably applied by an earlier, committed call: this marker
+        # is not an interrupted first application of it.
+        raise InterruptedTransitionError("SIDECAR_CHECKPOINT_DIVERGENT")
+
+    closed_index = closed_archive.load_index()
+    closed_checkpoint = pre_state["closed_checkpoint"]
+    closed_checkpoint_sequence = None
+    if closed_checkpoint is not None:
+        if closed_index.sequence_by_position_id.get(closed_checkpoint["position_id"]) != closed_checkpoint["sequence"]:
+            raise InterruptedTransitionError("SIDECAR_CHECKPOINT_DIVERGENT")
+        closed_checkpoint_sequence = closed_checkpoint["sequence"]
+    closed_orphan = None
+    if _checkpoint_orphan_count(closed_checkpoint_sequence, closed_index.count):
+        closed_orphan = closed_index.by_position_id[closed_index.tail_position_id]  # type: ignore[index]
+
+    applied_confirmed = {
+        key: record for key, record in applied_index.by_execution_id.items()
+        if applied_orphan is None or key != applied_orphan.execution_id
+    }
+    applied_tail = None
+    if applied_checkpoint is not None:
+        applied_tail = applied_confirmed[applied_checkpoint["execution_id"]]
+    closed_confirmed = {
+        key: record for key, record in closed_index.by_position_id.items()
+        if closed_orphan is None or key != closed_orphan["position_id"]
+    }
+    live_ids = {item["position_id"] for item in pre_state["positions"].values()}
+    if live_ids & closed_confirmed.keys():
+        raise InterruptedTransitionError("SIDECAR_CHECKPOINT_DIVERGENT")
+
+    return InterruptedTransition(
+        execution_id, idempotency_key, pre_state, applied_orphan, closed_orphan,
+        applied_confirmed, applied_tail, closed_confirmed, closed_checkpoint_sequence,
+    )
+
+
+def _open_foundation(
+    store: FinancialStateStore, applied_archive: AppliedExecutionArchiveStore,
+    closed_archive: ClosedPositionArchiveStore,
+) -> ExecutionPortfolioFoundation:
+    foundation = ExecutionPortfolioFoundation(
+        store, applied_archive=applied_archive, closed_archive=closed_archive,
+    )
+    if not foundation.ready:
+        raise InterruptedTransitionError("POST_RESOLUTION_NOT_READY")
+    return foundation
+
+
+def abandon_interrupted_transition(
+    store: FinancialStateStore, *,
+    applied_archive: AppliedExecutionArchiveStore,
+    closed_archive: ClosedPositionArchiveStore,
+    idempotency_key: str,
+) -> None:
+    """Remove the marker of a transition that provably changed nothing.
+
+    Allowed only when neither sidecar holds a record beyond its checkpoint:
+    the working state under the marker is then byte-for-byte the pre-call
+    book, so clearing the marker restores exactly what was there. Verified by
+    reloading through the runtime's own loader.
+    """
+    transition = inspect_interrupted_transition(
+        store, applied_archive=applied_archive, closed_archive=closed_archive,
+    )
+    if transition is None or transition.idempotency_key != idempotency_key:
+        raise InterruptedTransitionError("TRANSITION_NOT_FOUND")
+    if transition.applied_orphan is not None or transition.closed_orphan is not None:
+        raise InterruptedTransitionError("TRANSITION_PARTIALLY_APPLIED")
+    store.save(transition.pre_state)
+    _open_foundation(store, applied_archive, closed_archive)
+
+
+def complete_interrupted_transition(
+    store: FinancialStateStore, *,
+    applied_archive: AppliedExecutionArchiveStore,
+    closed_archive: ClosedPositionArchiveStore,
+    evidence: ExecutionResult,
+    verify_only: bool = False,
+) -> dict[str, Any] | None:
+    """Finish an interrupted ``apply_confirmed`` from confirmed evidence.
+
+    Re-runs the same ``_open``/``_close`` settlement on the pre-call book,
+    then requires every sidecar record the interrupted call already appended
+    to equal what that settlement produces - the closed-position record field
+    for field, the applied record by execution_id and idempotency_key - before
+    appending only what is still missing and committing the working state in
+    the original order. Any disagreement raises before anything is written.
+    ``verify_only`` runs every one of those checks and returns ``None``
+    without writing.
+    """
+    transition = inspect_interrupted_transition(
+        store, applied_archive=applied_archive, closed_archive=closed_archive,
+    )
+    if transition is None:
+        raise InterruptedTransitionError("TRANSITION_NOT_FOUND")
+    try:
+        evidence.validate_financial_evidence(position_mutation=True)
+    except Exception as exc:
+        raise InterruptedTransitionError("TRANSITION_EVIDENCE_INVALID") from exc
+    if (evidence.execution_id != transition.execution_id
+            or evidence.idempotency_key != transition.idempotency_key):
+        raise InterruptedTransitionError("TRANSITION_EVIDENCE_MISMATCH")
+
+    view = ExecutionPortfolioFoundation._pre_transition_view(transition)
+    candidate = json.loads(json.dumps(transition.pre_state))
+    current = candidate["positions"].get(evidence.symbol)
+    expected_version = None if current is None else current["version"]
+    closed_record: dict[str, Any] | None = None
+    try:
+        if evidence.action == "BUY":
+            view._open(candidate, evidence, expected_version)
+        elif evidence.action == "SELL":
+            closed_record = view._close(candidate, evidence, expected_version)
+        else:
+            raise ValueError("LONG_ONLY_ACTION_REJECTED")
+    except Exception as exc:
+        raise InterruptedTransitionError("TRANSITION_EVIDENCE_INVALID") from exc
+
+    # A closed record already on disk must be exactly the one this settlement
+    # produces - which also refuses evidence that settles as a partial
+    # reduction (no record at all) against an archived full exit.
+    if transition.closed_orphan is not None and transition.closed_orphan != closed_record:
+        raise InterruptedTransitionError("TRANSITION_EVIDENCE_MISMATCH")
+    if verify_only:
+        return None
+
+    if closed_record is not None:
+        closed_sequence = (0 if transition.closed_tail_sequence is None
+                           else transition.closed_tail_sequence + 1)
+        if transition.closed_orphan is None:
+            closed_archive.append(closed_sequence, closed_record)
+        candidate["closed_checkpoint"] = {
+            "sequence": closed_sequence, "position_id": closed_record["position_id"],
+        }
+
+    applied_record = transition.applied_orphan
+    if applied_record is None:
+        applied_sequence = 0 if transition.applied_tail is None else transition.applied_tail.sequence + 1
+        applied_record = AppliedExecutionRecord(
+            applied_sequence, transition.execution_id, transition.idempotency_key,
+            datetime.now(UTC).isoformat(),
+        )
+        applied_archive.append(applied_record)
+    candidate["applied_checkpoint"] = {
+        "sequence": applied_record.sequence, "execution_id": applied_record.execution_id,
+        "idempotency_key": applied_record.idempotency_key,
+    }
+    candidate["transition"] = None
+    ExecutionPortfolioFoundation._validate_state(candidate)
+    store.save(candidate)
+    return _open_foundation(store, applied_archive, closed_archive).snapshot()

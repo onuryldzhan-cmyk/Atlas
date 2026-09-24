@@ -94,10 +94,16 @@ def test_long_open_accounting_and_observability(tmp_path):
 def test_increase_preserves_identity_and_rejects_stale_mutation(tmp_path):
     book, _ = foundation(tmp_path); apply(book, execution())
     increased = execution(eid="e2", key="request-2", base="5", fee="0")
+    before = book.store.path.read_bytes()
     with pytest.raises(ValueError, match="STALE"):
         apply(book, increased, version=0)
-    # A failed durable transition requires reconciliation/recovery; no blind retry.
-    assert not book.ready
+    # F-6 (execution reconciliation audit, 2026-09-24): this refusal mutates
+    # nothing, so it must leave nothing behind. It previously asserted
+    # `not book.ready` - the marker was persisted before validation, turning
+    # a pure refusal into a book needing operator recovery; the owner ruled
+    # that the defect. The refusal now happens before the marker is written.
+    assert book.ready
+    assert book.store.path.read_bytes() == before
 
 
 def test_valid_increase_updates_weighted_position(tmp_path):
@@ -174,10 +180,12 @@ def test_reduction_larger_than_the_holding_is_rejected(tmp_path):
     book, _ = foundation(tmp_path); apply(book, execution())
     oversized = execution(eid="e2", key="request-2", action="SELL", price="11",
                           base="11", fee="0")
+    before = book.store.path.read_bytes()
     with pytest.raises(ValueError, match="REDUCTION_EXCEEDS_POSITION"):
         apply(book, oversized, version=1)
-    # A failed durable transition requires reconciliation/recovery; no blind retry.
-    assert not book.ready
+    # F-6: see test_increase_preserves_identity_and_rejects_stale_mutation.
+    assert book.ready
+    assert book.store.path.read_bytes() == before
 
 
 @pytest.mark.parametrize("exit_price,gross", [("12", "20"), ("8", "-20"), ("10", "0")])

@@ -206,7 +206,8 @@ decision with financial consequences, not a cleanup step.
 
 `FINANCIAL_TRANSITION_RECOVERY_REQUIRED` specifically means a write was
 interrupted mid-transition. Do not create fresh state over it without first
-establishing what the interrupted transition did.
+establishing what the interrupted transition did. In a PAPER runtime,
+section 7 below is the supported procedure for establishing it.
 
 `FINANCIAL_MIGRATION_REQUIRED` (Block 5I) means `execution_financial_state.json`
 is still on the legacy schema_version 1, which held `closed_positions` and
@@ -313,6 +314,16 @@ unresolved question remains. The idempotency store is the only file this
 tool can ever write; the journal, both sidecars, the financial-state file,
 and the audit log are never modified.
 
+> **Amended 2026-09-24 (execution reconciliation audit, finding F-1).** The
+> sentence above remains true of the *repair* described in this section. The
+> same tool gained a second, separately gated capability - PAPER-only recovery
+> of an interrupted execution, section 7 - which does write the journal, the
+> idempotency store, the reservation ledger, and (to clear or complete an
+> interrupted transition) the financial-state file and its sidecars. It runs
+> only when `--execution-mode PAPER` is given; without that flag the tool
+> behaves exactly as this section describes. The audit log is still never
+> written.
+
 Output safety is the same as the tools above: fixed reason-code tokens,
 outcomes, counts, and the sanitized state-directory path only. No
 `request_id`, `execution_id`, `position_id`, `order_id`, state-file content,
@@ -325,7 +336,48 @@ refuses (`ExecutionResetRefusedError`, reason `EXECUTION_HISTORY_PRESENT` /
 `EXECUTION_REQUESTS_IN_FLIGHT` / `EXECUTION_HISTORY_INDETERMINATE`) whenever
 durable execution history exists.
 
-## Consequences
+### 7. `UNRESOLVED_JOURNAL` after an interrupted PAPER execution (F-1)
+
+A process killed between the journal PREPARE and the journal COMMITTED event
+leaves one PREPARED entry, and every restart halts with the unresolved
+journal (and, if the kill landed inside the durable application itself,
+`FINANCIAL_TRANSITION_RECOVERY_REQUIRED`). In a PAPER runtime the outcome is
+decidable from durable evidence, so the reconcile tool can resolve it:
+
+```
+python tools/reconcile_execution_authorities.py --state-directory C:\AtlasState\memory_data --execution-mode PAPER
+python tools/reconcile_execution_authorities.py --state-directory C:\AtlasState\memory_data --execution-mode PAPER --apply
+```
+
+Run the dry run first: `WOULD_RECOVER` names the class the `--apply` run will
+perform. Classes, ground truth first:
+
+| recovery class | evidence | resolution |
+| --- | --- | --- |
+| `ABORT_NOT_APPLIED` | no applied-execution record and no terminal result; the book is clean, or holds only this request's transition marker with nothing appended to either sidecar | marker cleared, RESERVED capital released, entry NOT_COMMITTED (the request stays retryable) |
+| `COMMIT_APPLIED_EVIDENCE` | the applied-execution archive holds the request's record and the book loads cleanly | reservation committed, terminal result recorded if missing, entry COMMITTED. The result is the recorded idempotency result when one exists; otherwise it carries only proven identity fields and a `recovery` block, never recomputed fill figures |
+| `COMMIT_PAPER_REDERIVATION` | the transition marker is still present but a sidecar record was already appended (append-only, so it cannot be undone) | the fill is re-derived with ExecutionManager's own paper-fill logic from the prepared request, against the pre-transition book, only if the durable `RISK_APPROVED` audit event proves PAPER admission under the current instrument-rules digest; every record already on disk must match, then the application is completed and the entry COMMITTED |
+
+Additional reason codes: `WOULD_RECOVER` / `RECOVERED` outcomes with
+`DRY_RUN` / `RECOVERY_COMPLETE`; refusals `RECOVERY_MODE_UNPROVEN` (the
+prepared request or a committed result is not PAPER),
+`RECOVERY_AUTHORITY_UNREADABLE`, `RECOVERY_EVIDENCE_AMBIGUOUS` (the evidence
+fits none of the classes - including more than one unresolved entry),
+`RECOVERY_DERIVATION_UNAVAILABLE` (re-derivation could not be proven);
+failures `RECOVERY_WRITE_FAILED`, `POST_RECOVERY_VERIFICATION_FAILED`,
+`POST_RECOVERY_RUNTIME_NOT_READY` (every touched file restored
+byte-for-byte); `EXECUTION_MODE_INVALID` for an unknown mode.
+
+What stays refused: without `--execution-mode`, or with `--execution-mode
+LIVE`, every unresolved entry is `JOURNAL_UNRESOLVED` exactly as before - a
+real venue's fill cannot be recomputed from local state. A
+`COMMIT_STATUS_UNKNOWN` entry is also refused; it has no supported recovery
+yet.
+
+A RESERVED reservation whose request never reached the journal at all (a
+kill between capital reservation and PREPARE) needs no operator action: the
+runtime releases it at startup (F-2).
+
 
 - Operators have one documented command with a machine-detectable exit code,
   instead of an undocumented REPL procedure with a misleading

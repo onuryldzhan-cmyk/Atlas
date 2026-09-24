@@ -341,9 +341,34 @@ class CapitalReservationLedger:
                 raise ValueError("reservation id already archived")
             existing = self._items.get(reservation_id)
             if existing is not None:
-                if existing.request_id == request_id and existing.amount == amount:
-                    return existing
-                raise ValueError("reservation id collision")
+                if existing.request_id != request_id:
+                    raise ValueError("reservation id collision")
+                if existing.status is ReservationStatus.RESERVED:
+                    # Idempotent adoption of the live reservation this same
+                    # request already holds - never a second encumbrance.
+                    if existing.amount == amount:
+                        return existing
+                    raise ValueError("reservation id collision")
+                if existing.status is ReservationStatus.RELEASED:
+                    # F-3: a RELEASED reservation is history, not encumbrance,
+                    # so returning it would admit a retried request with no
+                    # live capital behind it (and its settlement would then
+                    # fail on the RELEASED->COMMITTED transition). A retry of
+                    # a request whose earlier attempt provably never crossed
+                    # the side-effect boundary is re-armed instead: a fresh
+                    # RESERVED version, capacity-checked exactly like a new
+                    # reservation.
+                    if amount > self.available:
+                        raise ValueError("insufficient unreserved capital")
+                    item = replace(existing, amount=amount, status=ReservationStatus.RESERVED,
+                                   version=existing.version + 1)
+                    candidate = dict(self._items); candidate[reservation_id] = item
+                    self._persist(candidate)
+                    return item
+                # COMMITTED means the request already settled; INDETERMINATE
+                # means its outcome is unresolved. Neither may ever be
+                # reserved again.
+                raise ValueError(f"reservation already {existing.status.value}")
             if amount > self.available:
                 raise ValueError("insufficient unreserved capital")
             item = CapitalReservation(reservation_id, request_id, amount, ReservationStatus.RESERVED)
@@ -438,6 +463,16 @@ class CapitalReservationLedger:
 
     def mark_indeterminate(self, reservation_id: str) -> CapitalReservation:
         return self._transition(reservation_id, ReservationStatus.INDETERMINATE)
+
+    def reserved(self) -> tuple[CapitalReservation, ...]:
+        """Every RESERVED record in the live working set, in id order."""
+        with self._lock:
+            if not self._ready:
+                raise RuntimeError("reservation state recovery required")
+            return tuple(
+                item for _, item in sorted(self._items.items())
+                if item.status is ReservationStatus.RESERVED
+            )
 
     def get(self, reservation_id: str) -> CapitalReservation | None:
         """Look up a reservation: live working set first, then archive.

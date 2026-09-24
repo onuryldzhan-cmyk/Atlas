@@ -101,7 +101,7 @@ from core.risk_engine import (
     RiskRequest,
     RiskState,
 )
-from core.capital_reservation import CapitalReservationLedger
+from core.capital_reservation import CapitalReservationLedger, ReservationStatus
 
 from data_layer.runtime_safety import (
     FinancialRuntimeSafetyService,
@@ -609,6 +609,9 @@ class ExecutionManager:
             if self.portfolio_foundation is not None:
                 durable_ready, durable_reason = self._durable_financial_ready()
 
+            if readiness.ready and durable_ready:
+                self._release_orphan_reservations()
+
             instrument_rules_ready = True
             instrument_rules_reason = None
             if readiness.ready and durable_ready:
@@ -638,6 +641,80 @@ class ExecutionManager:
         )
 
         return True
+
+    def _release_orphan_reservations(self) -> None:
+        """F-2: free RESERVED capital whose request never reached the journal.
+
+        ``risk_check`` reserves capital before the durable PREPARE barrier in
+        ``execute``. A process killed between the two leaves a RESERVED
+        reservation with no journal entry at all, which is durable proof the
+        request never crossed prepare - so no paper or live side effect can
+        have followed it. Nothing else ever releases such a reservation, and
+        admissible capital shrinks silently by its amount on every restart.
+
+        Deliberately narrow, so a legitimate reservation can never be taken
+        for an orphan:
+
+        - only RESERVED - INDETERMINATE is an unresolved outcome and is never
+          freed here;
+        - only a request with zero journal activity - an entry in any state
+          means prepare happened, and that reservation belongs to the entry's
+          own resolution (or to operator recovery), not to this sweep;
+        - never a request this process holds in flight (claimed, or holding a
+          risk admission), which is exactly the window between reserve and
+          prepare in a live execution;
+        - only against a journal that actually loaded, so a missing entry is
+          evidence rather than a read failure.
+
+        A release that cannot be persisted halts the runtime through
+        ``_release_capital_reservation``'s own fail-closed path.
+        """
+        ledger = self.reservation_ledger
+        journal = self.transaction_journal
+        if ledger is None or not ledger.ready or not callable(getattr(ledger, "reserved", None)):
+            return
+        if not bool(getattr(journal, "loaded", False)) or bool(getattr(journal, "load_failed", True)):
+            return
+        entries = getattr(journal, "entries", None)
+        if not isinstance(entries, Mapping):
+            return
+
+        with self._lock:
+            in_flight = set(self.pending_request_ids) | set(self._risk_admissions)
+
+        try:
+            reserved = tuple(ledger.reserved())
+        except Exception as exc:
+            # Not being able to list reservations is not evidence of an
+            # orphan; nothing is released.
+            self._record_error(phase="orphan_reservation_sweep", error=exc)
+            return
+
+        # Only canonical ids are ever swept: the journal strips request_id,
+        # so a reservation under a non-canonical (whitespace-padded) id could
+        # have journal activity under its stripped key that a raw lookup
+        # would miss. Such a reservation is left for the operator.
+        orphans = [
+            reservation.request_id
+            for reservation in reserved
+            if reservation.request_id == reservation.reservation_id
+            and reservation.request_id == reservation.request_id.strip()
+            and reservation.request_id not in entries
+            and reservation.request_id not in in_flight
+        ]
+        released = 0
+        for request_id in orphans:
+            if not self._release_capital_reservation(request_id):
+                break
+            released += 1
+
+        if orphans:
+            logger.warning(
+                "Released %s orphan capital reservation(s) with no journal "
+                "entry at startup (of %s found)",
+                released,
+                len(orphans),
+            )
 
     def stop(self) -> bool:
         """
@@ -1714,8 +1791,14 @@ class ExecutionManager:
                         self.execution_halted = True
                         self.recovery_required = True
                         self.halt_reason = "CAPITAL_RESERVATION_COMMIT_FAILED"
+                    # F-5: the same claim discipline dac9b72 gave the
+                    # finalization-failure branch above. Clearing only the
+                    # local flag left request_id in pending_request_ids, so
+                    # the claim outlived the halt and reset() refused with
+                    # EXECUTION_REQUESTS_IN_FLIGHT until restart.
+                    self._release_request(request_id)
                     request_claimed = False
-                    return {
+                    unknown_result = {
                         "success": False,
                         "status": CommitOutcome.COMMIT_STATUS_UNKNOWN.value,
                         "commit_outcome": CommitOutcome.COMMIT_STATUS_UNKNOWN.value,
@@ -1728,6 +1811,9 @@ class ExecutionManager:
                         "mode": self.mode,
                         "timestamp": self._utc_now(),
                     }
+                    self._record_result(unknown_result)
+                    self.publish("EXECUTION_COMMIT_STATUS_UNKNOWN", unknown_result)
+                    return unknown_result
 
                 # The durable authority is committed and the reservation is
                 # settled; only now is the passive book projected from it.
@@ -3050,8 +3136,15 @@ class ExecutionManager:
                 }
 
             try:
-                self.reservation_ledger.reserve(request.request_id, request.request_id,
-                                                canonical.approved_allocation)
+                reservation = self.reservation_ledger.reserve(
+                    request.request_id, request.request_id, canonical.approved_allocation,
+                )
+                # F-3: admission is granted only against live encumbrance.
+                # reserve() returns a RESERVED record or raises; this keeps
+                # that contract structurally enforced here rather than
+                # assumed.
+                if reservation.status is not ReservationStatus.RESERVED:
+                    raise ValueError("reservation is not RESERVED")
             except Exception as exc:
                 self._record_error(phase="capital_reservation", error=exc, request=request)
                 return {"approved": False, "reason": "CAPITAL_RESERVATION_FAILED",
