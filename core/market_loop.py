@@ -49,6 +49,7 @@ Responsibilities
 
 from __future__ import annotations
 
+import json
 import logging
 import threading
 import time
@@ -79,6 +80,36 @@ from core.technical_analyzer import TechnicalAnalyzer
 
 logger = logging.getLogger(
     "AtlasAI.MarketLoop"
+)
+
+# Durable operational telemetry (registry v4.71,
+# GRANT-DURABLE-OPERATIONAL-LOGGING): one JSON-lines record per worker
+# cycle per symbol carrying candle age and cycle duration, the evidence
+# the open S-3 and M-2 threshold decisions need.
+#
+# It never propagates, so no telemetry record reaches the console
+# handlers - with or without a durable file attached (a failed file write
+# yields at most one generic warning from core.logger, never a record).
+# The composition root attaches the file only when ATLAS_LOG_DIRECTORY is
+# set.
+# The level is pinned so an unconfigured root level cannot silently
+# drop records once a file is attached.
+TELEMETRY_LOGGER_NAME = "AtlasAI.MarketLoop.Telemetry"
+TELEMETRY_SCHEMA_VERSION = 1
+
+telemetry_logger = logging.getLogger(
+    TELEMETRY_LOGGER_NAME
+)
+telemetry_logger.propagate = False
+telemetry_logger.setLevel(
+    logging.INFO
+)
+
+_EPOCH = datetime(
+    1970,
+    1,
+    1,
+    tzinfo=UTC,
 )
 
 
@@ -122,6 +153,27 @@ class MarketLoop:
     # fetch has succeeded for it within this many seconds. Observability
     # only: this never gates or blocks trading/decisions.
     STALENESS_THRESHOLD_SECONDS: float = 180.0
+
+    # Candle age (registry v4.71): time from the newest closed candle's
+    # own exchange close_time to the cycle's processing cutoff. This is
+    # a different measurement from the fetch-liveness staleness above
+    # and is deliberately kept apart from it: it is measured and logged
+    # only, compared against nothing, and never reaches status(),
+    # health(), decisions, or execution. Every status other than
+    # MEASURED carries no age at all - an age is never guessed.
+    CANDLE_AGE_MEASURED = "MEASURED"
+    CANDLE_AGE_NO_CLOSED_CANDLE = "UNAVAILABLE_NO_CLOSED_CANDLE"
+    CANDLE_AGE_CLOSE_TIME_MISSING = "UNAVAILABLE_CLOSE_TIME_MISSING"
+    CANDLE_AGE_CLOSE_TIME_MALFORMED = "UNAVAILABLE_CLOSE_TIME_MALFORMED"
+    CANDLE_AGE_CLOSE_TIME_NOT_PROVIDER_SUPPLIED = (
+        "UNAVAILABLE_CLOSE_TIME_NOT_PROVIDER_SUPPLIED"
+    )
+    CANDLE_AGE_CLOSE_TIME_AFTER_CUTOFF = (
+        "UNAVAILABLE_CLOSE_TIME_AFTER_CUTOFF"
+    )
+    CANDLE_AGE_CUTOFF_MALFORMED = "UNAVAILABLE_CUTOFF_MALFORMED"
+    CANDLE_AGE_COMPUTATION_ERROR = "UNAVAILABLE_COMPUTATION_ERROR"
+    CANDLE_AGE_NOT_MEASURED_THIS_CYCLE = "NOT_MEASURED_THIS_CYCLE"
 
     def __init__(
         self,
@@ -168,6 +220,17 @@ class MarketLoop:
         self.stopped_at: str | None = None
         self.last_cycle: str | None = None
         self.last_cycle_duration = 0.0
+
+        # Latest candle-age measurement per symbol (registry v4.71).
+        # Not fetch liveness: see CANDLE_AGE_MEASURED above. Each entry
+        # records the worker cycle it was taken in, so a symbol that was
+        # not measured in a cycle is never reported with an older age.
+        self.last_candle_age: dict[str, dict[str, Any]] = {}
+        self._telemetry_cycle_sequence = 0
+        # The cycle number of the worker running on the current thread.
+        # Per-thread, so a measurement is tagged with the cycle of the
+        # worker that took it even if a second worker ever overlaps.
+        self._telemetry_cycle = threading.local()
 
         self.last_signals: dict[str, dict[str, Any]] = {}
         self.last_executions: dict[str, dict[str, Any]] = {}
@@ -347,6 +410,15 @@ class MarketLoop:
         )
 
         while self.running:
+            with self.lock:
+                self._telemetry_cycle_sequence += 1
+
+                cycle_sequence = (
+                    self._telemetry_cycle_sequence
+                )
+
+            self._telemetry_cycle.sequence = cycle_sequence
+
             cycle_started = time.perf_counter()
 
             try:
@@ -382,6 +454,12 @@ class MarketLoop:
                 self.last_cycle = datetime.now(
                     UTC
                 ).isoformat()
+
+            # After the duration is measured, so writing telemetry is
+            # never inside the timed region.
+            self._emit_cycle_telemetry(
+                cycle_sequence
+            )
 
             self.stop_event.wait(
                 self.interval
@@ -495,6 +573,15 @@ class MarketLoop:
 
             closed_candles = self.processor.closed_candles(
                 normalized_candles
+            )
+
+            # Measured before any skip below, so a duplicate or
+            # insufficient-history cycle still records how old the
+            # newest closed candle is. Never raises.
+            self._record_candle_age(
+                symbol,
+                closed_candles,
+                processing_cutoff,
             )
 
             open_candle_count = (
@@ -2202,6 +2289,265 @@ class MarketLoop:
         )
 
         return parsed >= threshold
+
+    # =========================================================
+    # CANDLE AGE AND CYCLE TELEMETRY (REGISTRY v4.71)
+    # =========================================================
+
+    @classmethod
+    def _candle_age(
+        cls,
+        candle: dict[str, Any] | None,
+        processing_cutoff: datetime | int,
+    ) -> tuple[float | None, str]:
+        """
+        Return (candle_age_seconds, status) for one closed candle.
+
+        Fails closed: every status other than CANDLE_AGE_MEASURED
+        carries None, never a substitute value. In particular
+        CandleProcessor falls back to open_time when a provider omits
+        close_time, and a genuine closed kline always closes after it
+        opens, so close_time <= open_time is treated as not
+        provider-supplied rather than aged. A close_time after the
+        cutoff is flagged, never clamped to zero.
+        """
+
+        if candle is None:
+            return None, cls.CANDLE_AGE_NO_CLOSED_CANDLE
+
+        close_time = candle.get(
+            "close_time"
+        )
+        open_time = candle.get(
+            "open_time"
+        )
+
+        if close_time is None:
+            return None, cls.CANDLE_AGE_CLOSE_TIME_MISSING
+
+        if not cls._is_epoch_milliseconds(
+            close_time
+        ) or not cls._is_epoch_milliseconds(
+            open_time
+        ):
+            return None, cls.CANDLE_AGE_CLOSE_TIME_MALFORMED
+
+        if close_time <= open_time:
+            return (
+                None,
+                cls.CANDLE_AGE_CLOSE_TIME_NOT_PROVIDER_SUPPLIED,
+            )
+
+        if isinstance(
+            processing_cutoff,
+            datetime,
+        ):
+            if processing_cutoff.utcoffset() is None:
+                return None, cls.CANDLE_AGE_CUTOFF_MALFORMED
+
+            # Same integer floor arithmetic as the temporal authority
+            # that decided closure, so age and closure agree exactly.
+            cutoff_ms = (
+                processing_cutoff - _EPOCH
+            ) // timedelta(
+                milliseconds=1
+            )
+
+        elif cls._is_epoch_milliseconds(
+            processing_cutoff
+        ):
+            cutoff_ms = processing_cutoff
+
+        else:
+            return None, cls.CANDLE_AGE_CUTOFF_MALFORMED
+
+        age_ms = cutoff_ms - close_time
+
+        if age_ms < 0:
+            return None, cls.CANDLE_AGE_CLOSE_TIME_AFTER_CUTOFF
+
+        return age_ms / 1000, cls.CANDLE_AGE_MEASURED
+
+    @staticmethod
+    def _is_epoch_milliseconds(
+        value: Any,
+    ) -> bool:
+        return isinstance(
+            value,
+            int,
+        ) and not isinstance(
+            value,
+            bool,
+        )
+
+    def _record_candle_age(
+        self,
+        symbol: str,
+        closed_candles: list[dict[str, Any]],
+        processing_cutoff: datetime | int,
+    ) -> None:
+        """
+        Store the newest closed candle's age for this symbol.
+
+        Never raises: an unexpected error is recorded as
+        CANDLE_AGE_COMPUTATION_ERROR, so this measurement can never
+        reach _record_error() and so can never change health(),
+        errors, metrics, or the pipeline's control flow.
+        """
+
+        try:
+            candle = self.processor.latest_closed_candle(
+                closed_candles
+            )
+
+            age, status = self._candle_age(
+                candle,
+                processing_cutoff,
+            )
+
+            close_time = (
+                self._milliseconds_to_iso(
+                    candle["close_time"]
+                )
+                if status == self.CANDLE_AGE_MEASURED
+                else None
+            )
+
+        except Exception:
+            logger.debug(
+                "%s candle age computation failed",
+                symbol,
+                exc_info=True,
+            )
+
+            age = None
+            status = self.CANDLE_AGE_COMPUTATION_ERROR
+            close_time = None
+
+        try:
+            cutoff_text = (
+                processing_cutoff.isoformat()
+                if isinstance(
+                    processing_cutoff,
+                    datetime,
+                )
+                else None
+            )
+
+            with self.lock:
+                self.last_candle_age[
+                    symbol
+                ] = {
+                    "candle_age_seconds": age,
+                    "candle_age_status": status,
+                    "candle_close_time": close_time,
+                    "processing_cutoff": cutoff_text,
+                    # 0 outside a worker: never matches a worker cycle.
+                    "cycle_sequence": getattr(
+                        self._telemetry_cycle,
+                        "sequence",
+                        0,
+                    ),
+                }
+
+        except Exception:
+            logger.debug(
+                "%s candle age could not be stored",
+                symbol,
+                exc_info=True,
+            )
+
+    def _emit_cycle_telemetry(
+        self,
+        cycle_sequence: int,
+    ) -> None:
+        """
+        Emit one JSON-lines telemetry record per symbol for a cycle.
+
+        Called by worker() after the cycle duration is measured. A
+        symbol whose latest measurement belongs to an earlier cycle is
+        reported NOT_MEASURED_THIS_CYCLE with no age, never with the
+        older value. Never raises: a telemetry failure must not stop
+        the worker thread.
+        """
+
+        try:
+            if not telemetry_logger.isEnabledFor(
+                logging.INFO
+            ):
+                return
+
+            with self.lock:
+                cycle_duration = self.last_cycle_duration
+                cycle_finished_at = self.last_cycle
+                cycle_count = self.metrics["cycles"]
+                symbols = tuple(
+                    self.symbols
+                )
+                measurements = {
+                    symbol: dict(
+                        self.last_candle_age[symbol]
+                    )
+                    for symbol in symbols
+                    if symbol in self.last_candle_age
+                }
+
+            for symbol in symbols:
+                measurement = measurements.get(
+                    symbol
+                )
+
+                if (
+                    measurement is None
+                    or measurement.get(
+                        "cycle_sequence"
+                    )
+                    != cycle_sequence
+                ):
+                    measurement = {
+                        "candle_age_seconds": None,
+                        "candle_age_status": (
+                            self.CANDLE_AGE_NOT_MEASURED_THIS_CYCLE
+                        ),
+                        "candle_close_time": None,
+                        "processing_cutoff": None,
+                    }
+
+                record = {
+                    "schema_version": TELEMETRY_SCHEMA_VERSION,
+                    "event": "market_loop_cycle",
+                    "timestamp": cycle_finished_at,
+                    "cycle": cycle_count,
+                    "symbol": symbol,
+                    "cycle_duration_seconds": cycle_duration,
+                    "candle_age_seconds": measurement[
+                        "candle_age_seconds"
+                    ],
+                    "candle_age_status": measurement[
+                        "candle_age_status"
+                    ],
+                    "candle_close_time": measurement[
+                        "candle_close_time"
+                    ],
+                    "processing_cutoff": measurement[
+                        "processing_cutoff"
+                    ],
+                }
+
+                telemetry_logger.info(
+                    "%s",
+                    json.dumps(
+                        record,
+                        sort_keys=True,
+                        allow_nan=False,
+                    ),
+                )
+
+        except Exception:
+            logger.debug(
+                "Market cycle telemetry emission failed",
+                exc_info=True,
+            )
 
     # =========================================================
     # STALENESS

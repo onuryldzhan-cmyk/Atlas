@@ -69,7 +69,7 @@ from core.lifecycle import LifecycleManager
 from core.service_container import ServiceContainer
 
 from core.brain import AtlasBrain
-from core.market_loop import MarketLoop
+from core.market_loop import MarketLoop, TELEMETRY_LOGGER_NAME
 
 from exchange.market_feed import MarketFeed
 
@@ -187,6 +187,13 @@ STATE_DIRECTORY_ENV = "ATLAS_STATE_DIRECTORY"
 MARKET_ARCHIVE_DIRECTORY_ENV = "ATLAS_MARKET_ARCHIVE_DIRECTORY"
 EVIDENCE_DIRECTORY_ENV = "ATLAS_EVIDENCE_DIRECTORY"
 
+# The durable MarketLoop telemetry root (registry v4.71). Unlike the three
+# roots above it has NO installation-anchored default: this installation
+# sits inside a OneDrive-synced tree (ADR-0007), and a disabled telemetry
+# log costs no correctness, so an unset variable means "write no file"
+# rather than "write next to the code".
+LOG_DIRECTORY_ENV = "ATLAS_LOG_DIRECTORY"
+
 
 class ConfiguredDirectoryError(RuntimeError):
     """
@@ -201,8 +208,8 @@ class ConfiguredDirectoryError(RuntimeError):
 def _resolve_configured_directory(
     *,
     variable: str,
-    default: Path,
-) -> Path:
+    default: Path | None,
+) -> Path | None:
     """
     Return the operator override for one root, or the default when unset.
 
@@ -211,6 +218,9 @@ def _resolve_configured_directory(
     a new empty state root, which is exactly the outcome being guarded
     against. ``~`` is expanded first, so ``~/atlas_state`` is accepted while
     a genuinely relative path is not.
+
+    A ``None`` default means the root is optional and simply unconfigured
+    when the variable is unset (the telemetry log root).
     """
 
     raw = os.environ.get(variable)
@@ -221,10 +231,14 @@ def _resolve_configured_directory(
     candidate_text = raw.strip()
 
     if not candidate_text:
+        unset_outcome = (
+            f"use the default ({default})"
+            if default is not None
+            else "leave it unconfigured"
+        )
         raise ConfiguredDirectoryError(
-            f"{variable} is set but empty. Unset it to use the default "
-            f"({default}), or set it to an absolute path to an existing "
-            f"directory.",
+            f"{variable} is set but empty. Unset it to {unset_outcome}, "
+            f"or set it to an absolute path to an existing directory.",
         )
 
     candidate = Path(candidate_text).expanduser()
@@ -302,6 +316,22 @@ def resolve_evidence_directory() -> Path:
     return _resolve_configured_directory(
         variable=EVIDENCE_DIRECTORY_ENV,
         default=DEFAULT_EVIDENCE_DIRECTORY,
+    )
+
+
+def resolve_log_directory() -> Path | None:
+    """
+    Return the durable telemetry log root, or None when unconfigured.
+
+    Same fail-closed validator as the three roots above: a set override
+    that is empty, relative, missing, or not a directory raises rather
+    than silently writing telemetry somewhere the operator did not choose.
+    Unset means disabled - there is no installation-anchored fallback.
+    """
+
+    return _resolve_configured_directory(
+        variable=LOG_DIRECTORY_ENV,
+        default=None,
     )
 
 # Block 5D: the checked-in static venue instrument-precision authority
@@ -407,6 +437,7 @@ class AtlasApplication:
         state_directory: str | Path | None = None,
         evidence_directory: str | Path | None = None,
         venue_rule_freshness_policy: VenueRuleFreshnessPolicy | None = None,
+        log_directory: str | Path | None = None,
     ) -> None:
         logger.info(
             "Initializing %s v%s",
@@ -447,6 +478,15 @@ class AtlasApplication:
             else Path(evidence_directory)
         )
 
+        # Durable MarketLoop telemetry root (registry v4.71). Same "None
+        # means resolve from the environment" contract; the resolved value
+        # may itself be None, which means no telemetry file is written.
+        self.log_directory = (
+            resolve_log_directory()
+            if log_directory is None
+            else Path(log_directory)
+        )
+
         # Block 6A: the venue-rule freshness policy in force for this run.
         # Operator-configurable at the composition boundary; the documented
         # default bounds staleness at the operator refresh cadence.
@@ -475,6 +515,10 @@ class AtlasApplication:
         self._build_services()
         self._register_services()
 
+        # Last, so a construction failure above never leaves an open file
+        # or a running listener thread behind.
+        self.logger_manager.initialize()
+
         self.initialized = True
 
         logger.info(
@@ -491,7 +535,10 @@ class AtlasApplication:
         Create infrastructure-only services.
         """
 
-        self.logger_manager = AtlasLogger()
+        self.logger_manager = AtlasLogger(
+            log_directory=self.log_directory,
+            telemetry_logger_name=TELEMETRY_LOGGER_NAME,
+        )
         self.runtime = AtlasRuntime()
         self.event_bus = EventBus()
         self.scheduler = Scheduler()
@@ -1354,6 +1401,16 @@ class AtlasApplication:
                 phase="runtime_shutdown",
                 error=exc,
             )
+
+        # After the market loop has stopped: drains any queued telemetry
+        # records into the file. A no-op when telemetry is disabled, and
+        # skipped for an instance that never ran __init__ (no manager).
+        # Observability only: close() never raises and is time-bounded, and
+        # its outcome deliberately does not count as a shutdown error, so a
+        # telemetry failure cannot change stop()'s result or the exit code.
+        logger_manager = getattr(self, "logger_manager", None)
+        if logger_manager is not None:
+            logger_manager.close()
 
         if shutdown_errors:
             logger.warning(

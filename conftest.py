@@ -78,6 +78,15 @@ _ATLAS_STATE_ROOT_ENV_VARS: tuple[str, ...] = (
     "ATLAS_EVIDENCE_DIRECTORY",
 )
 
+# The durable telemetry log root (registry v4.71) is removed rather than
+# redirected: unset is its documented "no file" default, so every
+# AtlasApplication built by the suite writes no telemetry unless a test
+# passes its own tmp_path. Otherwise a shell exporting the operator's real
+# log root would append test records to the real S-3/M-2 evidence file.
+_ATLAS_UNSET_ENV_VARS: tuple[str, ...] = (
+    "ATLAS_LOG_DIRECTORY",
+)
+
 _ISOLATION_STATE_KEY = pytest.StashKey[dict]()
 
 
@@ -101,6 +110,9 @@ def _isolate_state_root_environment(config: pytest.Config) -> None:
         isolated_dir = temp_root / variable
         isolated_dir.mkdir(parents=True, exist_ok=True)
         patcher.setenv(variable, str(isolated_dir))
+
+    for variable in _ATLAS_UNSET_ENV_VARS:
+        patcher.delenv(variable, raising=False)
 
     config.stash[_ISOLATION_STATE_KEY] = {
         "patcher": patcher,
