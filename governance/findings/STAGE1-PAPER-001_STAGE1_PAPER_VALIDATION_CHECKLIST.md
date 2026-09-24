@@ -1247,3 +1247,97 @@ addition could plausibly bear on.
 If `requirements/locks/windows-py314-dev.txt` changes again, or if Group B2
 phase (ii) is ever authorized and implemented, this subsection must be
 re-derived rather than assumed to still hold.
+
+### 8.9 S-3 / M-2 data-collection blocker resolved - durable telemetry exists (2026-09-24, commit `ba38ed4`)
+
+Added **2026-09-24**, authorized by
+`governance/current/ATLAS_MILESTONE_REGISTRY_v4.71.json`
+(`candle_age_and_durable_operational_logging_authorization`), grants
+`GRANT-CANDLE-AGE-COMPUTATION`, `GRANT-DURABLE-OPERATIONAL-LOGGING` and
+`GRANT-VERIFICATION`.
+
+This is additive. It **closes neither S-3 nor M-2** and does not change the
+section 5 verdict, section 8.3, or any threshold question. It records that the
+single blocker preventing either threshold decision from ever being evidenced
+has been removed.
+
+**The blocker, as it stood.** `GRANT-RUN-EVIDENCE-EXTRACTION` (registry v4.45)
+was authorized to extract the real candle-age and MarketLoop cycle-duration
+distributions from the first observed paper run, and found no durable artifact
+of either: both values existed only transiently in memory. In addition, the
+"candle age" S-3 needs had never been computed at all. The only existing
+measure is fetch liveness (section 8.3), which a feed that advances but lags
+refreshes on every cycle.
+
+**What now exists (`ba38ed4`).**
+
+- **A real candle-age measurement.** `MarketLoop` computes, per symbol per
+  cycle, the cycle's processing cutoff minus the newest *closed* candle's own
+  exchange `close_time`. This is a separate measurement from
+  `STALENESS_THRESHOLD_SECONDS` / `market_data_stale`, and those are unchanged.
+  It is not surfaced in `status()` or `health()`, is compared against nothing,
+  and gates nothing.
+- **It fails closed.** Each of these cases yields no age plus an explicit
+  `UNAVAILABLE_*` status, never a substitute value:
+  - a missing, malformed or future `close_time`;
+  - `CandleProcessor`'s `open_time` fallback for an absent `close_time`
+    (`close_time <= open_time`);
+  - a naive cutoff;
+  - no closed candle.
+
+  A symbol not measured in a cycle is logged `NOT_MEASURED_THIS_CYCLE`; a
+  previous cycle's age is never re-reported.
+- **Durable telemetry.** One JSON-lines record per worker cycle per symbol goes
+  to `<ATLAS_LOG_DIRECTORY>/market_loop_telemetry.jsonl`. It carries
+  `candle_age_seconds`, `candle_age_status` and `cycle_duration_seconds`, plus
+  the timestamp, cycle count, processing cutoff and candle close time.
+  - It is written off the worker thread, outside the timed region.
+  - Nothing reaches the console.
+  - `print()` output is unchanged.
+- **No default location.** When `ATLAS_LOG_DIRECTORY` is unset, no file is
+  written. There is deliberately no repository-relative default: the
+  installation sits inside OneDrive (ADR-0007).
+
+**What this means for S-3 and M-2.** A future observed paper run started with
+`ATLAS_LOG_DIRECTORY` set will produce, for the first time, the real
+distributions both decisions need:
+
+- **S-3:** the distribution of `candle_age_seconds` over `MEASURED` records.
+- **M-2:** the distribution of `cycle_duration_seconds`, one value per cycle.
+
+The evidence rules of `GRANT-RUN-EVIDENCE-EXTRACTION` still bind that future
+extraction. In particular:
+
+- sample size must be stated alongside every statistic;
+- no M-2 threshold may be proposed from sparse data;
+- no S-3 threshold value is written into any file before the owner decides
+  (v4.41).
+
+**Status after this amendment.**
+
+| Finding | Status | Changed by this amendment? |
+| --- | --- | --- |
+| S-3 (HIGH) | Investigated; threshold pending owner decision (8.3) | Only its data-collection blocker is resolved. **Still OPEN.** |
+| M-2 (stall-detection threshold) | Pending; needs real cycle-duration data | Only its data-collection blocker is resolved. **Still OPEN.** |
+
+**Verification at `ba38ed4`.**
+
+- `tests/test_market_loop_candle_age_telemetry.py`: 59 passed. This includes an
+  end-to-end smoke test. It builds a real `AtlasApplication` with a tmp log
+  directory, runs 3 real `MarketLoop` worker cycles over real-shaped kline rows
+  (only the network feed is replaced), and stops. It then parses every line of
+  the real file back: 15 records, 3 cycles × 5 symbols.
+- The 25 pre-existing test files touching MarketLoop, the composition root, or
+  directory resolution gave 1238 outcomes, identical test-by-test to the
+  pre-change run. That includes every staleness and health test.
+- Full canonical suite: **3871 passed, 1 failed**. That is the pre-change
+  baseline of 3812 plus the 59 new tests. The single failure is the
+  pre-existing Group B2 architecture test.
+- `tools/build_architecture_inventory.py check`: 106 modules, the closure
+  unchanged, and exactly the 2 permanent Group B2 edges. The change adds no
+  first-party import edge.
+
+**Staleness.** Consistent with 8.5, this subsection is valid at
+`ba38ed4`. If `core/market_loop.py`, `core/logger.py` or the log
+directory resolution in `core/application.py` changes, re-derive the record
+format and fail-closed rules before extracting evidence from a run.
