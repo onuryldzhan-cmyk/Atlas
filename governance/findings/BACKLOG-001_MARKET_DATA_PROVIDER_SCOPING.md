@@ -1,5 +1,33 @@
 # BACKLOG-001 — Missing macro / sentiment / risk market-data provider
 
+## Macro and market_risk providers IMPLEMENTED — 2026-09-25, registry v4.79 / v4.80
+
+**This section is additive.** Everything below it is preserved unchanged.
+
+**Authority.** `governance/current/ATLAS_MILESTONE_REGISTRY_v4.79.json`,
+`GRANT-BACKLOG001-MACRO-RISK-IMPLEMENTATION` (commit `6b565bf`). Result:
+`governance/current/ATLAS_MILESTONE_REGISTRY_v4.80.json`
+(`macro_risk_provider_implementation_result`), implementation commit
+`5f974ca`.
+
+**Status of this item.** All three slots now have a real provider. The
+DEFER status for **macro** and **market_risk** is superseded by the owner's
+2026-09-25 decision.
+
+| Slot | Source | Vote rule |
+|---|---|---|
+| macro | US Treasury daily par yield curve CSV (keyless), `atlas_finance/market_data/treasury_yield_provider.py` | 10Y move over 20 trading days: ≥ +25bp → SELL; ≤ −25bp → BUY, or HOLD if 10Y−2Y < 0; else HOLD |
+| market_risk | Realized volatility of the 1m candles already fetched, `core/market_risk_regime.py` | current 30-return window vs p20/p80 of earlier windows: > p80 → SELL; otherwise HOLD (never BUY) |
+
+Neutral zones vote a **participating HOLD** (owner decision). This departs
+from the Part H proposal's withhold-when-neutral recommendation. The
+consequence was disclosed before the owner decided: with sentiment neutral,
+technical and momentum alone can now reach execution eligibility in PAPER
+(for example BUY 0.6575 at RSI 50 / BULLISH). NB-4 and NB-5 are confirmed
+under 2- to 5-agent rosters. AgentFusion is unchanged. See v4.80 for the
+independent audit, the noise base rate (about 22% HIGH) and the deferred
+items.
+
 ## Greed-side confidence-threshold finding — 2026-09-23, registry v4.68
 
 **This section is additive.** Everything below it, including the
