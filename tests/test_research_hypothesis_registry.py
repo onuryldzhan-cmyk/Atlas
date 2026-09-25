@@ -319,7 +319,7 @@ def test_a_format_version_1_registry_is_refused(tmp_path):
 
     with pytest.raises(RegistryError, match="unsupported registry format") as exc:
         HypothesisRegistry(registry_path=path)
-    assert "expected 2" in str(exc.value)
+    assert "expected 3" in str(exc.value)
 
 
 # --- evaluation access rules --------------------------------------------

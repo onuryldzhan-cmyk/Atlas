@@ -62,6 +62,7 @@ from typing import Any, Mapping, Sequence
 from research.lifecycle import (
     FAMILY_ADJUDICATED_TRANSITION,
     HypothesisState,
+    IllegalTransitionError,
     can_evaluate_test,
     validate_transition,
 )
@@ -69,11 +70,22 @@ from research.multiple_testing import FDRDecision, benjamini_hochberg
 from research.splitting import SplitSpec
 
 #: Version 2 added the sealed ``check_plan`` to every pre-registration and
-#: ``checks`` to every evaluation. It is a clean break: the seal covers the
-#: check plan, so no version-1 payload can produce a valid version-2 seal,
-#: and there is deliberately no version-1 loading path. ``_load`` refuses any
-#: version it does not recognise rather than guessing (fail-closed).
-REGISTRY_FORMAT_VERSION = 2
+#: ``checks`` to every evaluation. Version 3 (owner brief 2026-09-25, Part I)
+#: added three more hardening properties: a registry file missing its
+#: ``records`` key refuses to load rather than reading as empty; family
+#: membership is sealed into a ``family_manifests`` list that every load
+#: cross-checks against the actual records, so deleting a member hypothesis
+#: can no longer shrink a multiple-testing family unnoticed; and every
+#: record's ``state`` is sealed via a hash-chained ``state_chain``, so a
+#: hand-edited ``state`` field no longer loads as a silently-promoted
+#: hypothesis. Each version bump here is a clean break: no version-N payload
+#: can produce a valid version-(N+1) seal, and there is deliberately no
+#: backward loading path. ``_load`` refuses any version it does not
+#: recognise rather than guessing (fail-closed). No registry file has ever
+#: been checked into this repository (``registry_path`` has no default and
+#: is never wired to a persisted path in ``core/`` or ``config/``), so this
+#: bump carries no data-migration burden.
+REGISTRY_FORMAT_VERSION = 3
 
 _HYPOTHESIS_ID_PATTERN = re.compile(r"^HYP-[0-9]{4}$")
 _FAMILY_ID_PATTERN = re.compile(r"^FAM-[A-Z0-9-]{1,32}$")
@@ -281,6 +293,29 @@ class FamilyNotReadyError(RegistryError):
 
 class FamilyAlreadyAdjudicatedError(RegistryError):
     """Raised when a family has already been through FDR adjudication."""
+
+
+class FamilyMembershipTamperedError(RegistryError):
+    """Raised when a family's sealed manifest disagrees with its records.
+
+    ``adjudicate_family`` treats ``self.family(family_id)`` as the complete
+    set of tests, so anything that changes what that call returns without
+    going through ``register`` -- most dangerously, deleting a losing
+    hypothesis's record -- must be caught before it can shrink the family
+    size BH corrects against.
+    """
+
+
+class StateChainError(RegistryError):
+    """Raised when a hypothesis record's state hash chain is invalid.
+
+    Covers a missing or empty chain, a recomputed fold hash that disagrees
+    with the stored one, a discontinuity between consecutive links, a link
+    that is not a legal lifecycle transition, and a final link whose
+    ``to_state`` disagrees with the record's stored ``state``. That last
+    case is the one this exists for: a hand-edited ``state`` field with no
+    matching chain link must fail to load rather than load as promoted.
+    """
 
 
 def _now() -> str:
@@ -959,6 +994,157 @@ class CheckAdjudication:
 
 
 @dataclass(frozen=True, slots=True)
+class StateTransition:
+    """One link in a hypothesis's state hash chain.
+
+    ``from_state`` is ``None`` only for the genesis link, which records
+    ``register()`` creating the hypothesis directly into REGISTERED -- the
+    one state a hypothesis enters without a lifecycle transition. Every
+    later link's ``from_state`` must equal the previous link's ``to_state``;
+    that continuity, not just this dataclass's own field validation, is
+    checked by ``HypothesisRecord.verify_state_chain``.
+    """
+
+    from_state: HypothesisState | None
+    to_state: HypothesisState
+    recorded_at: str = field(default_factory=_now)
+
+    def __post_init__(self) -> None:
+        if self.from_state is not None:
+            object.__setattr__(self, "from_state", HypothesisState(self.from_state))
+        object.__setattr__(self, "to_state", HypothesisState(self.to_state))
+        _parse_timestamp(self.recorded_at, "recorded_at")
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "from_state": None if self.from_state is None else self.from_state.value,
+            "to_state": self.to_state.value,
+            "recorded_at": self.recorded_at,
+        }
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, Any]) -> "StateTransition":
+        try:
+            return cls(
+                from_state=payload["from_state"],
+                to_state=payload["to_state"],
+                recorded_at=payload["recorded_at"],
+            )
+        except KeyError as exc:
+            raise RegistryError(f"state transition missing field {exc}") from exc
+        except ValueError as exc:
+            raise RegistryError(f"malformed state transition: {exc}") from exc
+
+
+def _fold_state_chain(
+    hypothesis_id: str, transitions: Sequence["StateTransition"]
+) -> str:
+    """Fold an ordered sequence of state transitions into one chained hash.
+
+    Each step hashes the running hash together with the next transition's
+    canonical content, so the result commits to the entire ordered history
+    from GENESIS through the final link -- not to the final state in
+    isolation. Splicing, reordering, or truncating any link changes every
+    hash folded after it, including the one this function returns, which is
+    what makes the chain a chain rather than one hash per link.
+    """
+    running = "GENESIS"
+    for index, transition in enumerate(transitions):
+        payload = {
+            "hypothesis_id": hypothesis_id,
+            "index": index,
+            "previous_hash": running,
+            **transition.as_dict(),
+        }
+        running = hashlib.sha256(_canonical_json(payload).encode("utf-8")).hexdigest()
+    return running
+
+
+@dataclass(frozen=True, slots=True)
+class FamilyManifest:
+    """Sealed, append-only record of which hypothesis ids belong to a family.
+
+    Established when a family's first hypothesis registers and extended by
+    exactly one id, in registration order, each time another hypothesis
+    joins it. ``HypothesisRegistry._load`` cross-checks every manifest
+    against the hypothesis records actually present: without this, deleting
+    a losing hypothesis's record from ``records`` would silently shrink what
+    ``family()`` (and therefore ``adjudicate_family``) sees as the
+    multiple-testing family, inflating the survivors' apparent significance
+    -- exactly the selection bias Benjamini-Hochberg exists to control.
+    """
+
+    family_id: str
+    member_ids: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        if not _FAMILY_ID_PATTERN.match(str(self.family_id)):
+            raise RegistryError(
+                f"family_id must match FAM-<A-Z0-9-> , got {self.family_id!r}"
+            )
+        member_ids = tuple(str(member_id) for member_id in self.member_ids)
+        if not member_ids:
+            raise RegistryError(
+                f"family {self.family_id} manifest must record at least one member"
+            )
+        for member_id in member_ids:
+            if not _HYPOTHESIS_ID_PATTERN.match(member_id):
+                raise RegistryError(
+                    f"family manifest member id must match HYP-NNNN, got "
+                    f"{member_id!r}"
+                )
+        if len(set(member_ids)) != len(member_ids):
+            raise RegistryError(
+                f"family {self.family_id} manifest lists a member id more than once"
+            )
+        object.__setattr__(self, "member_ids", member_ids)
+
+    def sealed_payload(self) -> dict[str, Any]:
+        return {"family_id": self.family_id, "member_ids": list(self.member_ids)}
+
+    def seal_hash(self) -> str:
+        return hashlib.sha256(
+            _canonical_json(self.sealed_payload()).encode("utf-8")
+        ).hexdigest()
+
+    def extended(self, hypothesis_id: str) -> "FamilyManifest":
+        """Return a new manifest with ``hypothesis_id`` appended.
+
+        Registration order, never any other order: this is what lets the
+        manifest's own seal detect a later reordering of ``member_ids``.
+        """
+        if hypothesis_id in self.member_ids:
+            raise RegistryError(
+                f"{hypothesis_id} is already a member of family {self.family_id}"
+            )
+        return FamilyManifest(
+            family_id=self.family_id, member_ids=self.member_ids + (str(hypothesis_id),)
+        )
+
+    def as_dict(self) -> dict[str, Any]:
+        return {**self.sealed_payload(), "manifest_hash": self.seal_hash()}
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, Any]) -> "FamilyManifest":
+        try:
+            manifest = cls(
+                family_id=payload["family_id"],
+                member_ids=tuple(payload["member_ids"]),
+            )
+        except KeyError as exc:
+            raise RegistryError(f"family manifest missing field {exc}") from exc
+
+        stored_hash = str(payload.get("manifest_hash", ""))
+        recomputed_hash = manifest.seal_hash()
+        if stored_hash != recomputed_hash:
+            raise SealVerificationError(
+                f"family manifest seal mismatch for {manifest.family_id}: "
+                f"stored {stored_hash}, recomputed {recomputed_hash}"
+            )
+        return manifest
+
+
+@dataclass(frozen=True, slots=True)
 class HypothesisRecord:
     """A sealed pre-registration plus its mutable lifecycle state."""
 
@@ -966,6 +1152,49 @@ class HypothesisRecord:
     preregistration_hash: str
     state: HypothesisState
     evaluations: tuple[EvaluationRecord, ...] = ()
+    state_chain: tuple[StateTransition, ...] = ()
+    state_chain_hash: str = ""
+
+    @classmethod
+    def initial(
+        cls, *, preregistration: PreRegistration, preregistration_hash: str
+    ) -> "HypothesisRecord":
+        """Build the record ``register()`` creates: REGISTERED, with a
+        one-link state chain sealing that creation as its genesis event."""
+        genesis = (
+            StateTransition(from_state=None, to_state=HypothesisState.REGISTERED),
+        )
+        return cls(
+            preregistration=preregistration,
+            preregistration_hash=preregistration_hash,
+            state=HypothesisState.REGISTERED,
+            evaluations=(),
+            state_chain=genesis,
+            state_chain_hash=_fold_state_chain(
+                preregistration.hypothesis_id, genesis
+            ),
+        )
+
+    def transitioned_to(self, target_state: HypothesisState) -> "HypothesisRecord":
+        """Return a copy advanced to ``target_state`` with the state chain
+        extended and resealed to cover the new link.
+
+        This method only records a transition; it does not gate one. Every
+        caller (``advance``, ``record_evaluation``, ``adjudicate_family``)
+        validates the transition against ``research.lifecycle`` first, the
+        same as before this method existed -- this only adds the chain
+        bookkeeping around that already-validated state change.
+        """
+        target_state = HypothesisState(target_state)
+        chain = self.state_chain + (
+            StateTransition(from_state=self.state, to_state=target_state),
+        )
+        return replace(
+            self,
+            state=target_state,
+            state_chain=chain,
+            state_chain_hash=_fold_state_chain(self.hypothesis_id, chain),
+        )
 
     @property
     def hypothesis_id(self) -> str:
@@ -1109,12 +1338,74 @@ class HypothesisRecord:
                 f"stored {self.preregistration_hash}, recomputed {recomputed}"
             )
 
+    def verify_state_chain(self) -> None:
+        """Raise StateChainError if the state chain is invalid or disagrees
+        with the stored ``state``.
+
+        Checked, in order: the chain is non-empty; the recomputed fold hash
+        matches ``state_chain_hash``; the first link starts at genesis
+        (``from_state is None``) and lands on REGISTERED, the only state a
+        hypothesis enters without a transition; each later link continues
+        from where the previous one ended; each link beyond genesis is a
+        legal ``research.lifecycle`` transition; and the final link's
+        ``to_state`` equals the record's stored ``state``. That last check is
+        the one that catches a hand-edited ``state`` with no matching chain
+        link -- the exact gap this hardening item exists to close.
+        """
+        chain = self.state_chain
+        if not chain:
+            raise StateChainError(f"{self.hypothesis_id} has an empty state chain")
+
+        recomputed = _fold_state_chain(self.hypothesis_id, chain)
+        if recomputed != self.state_chain_hash:
+            raise StateChainError(
+                f"{self.hypothesis_id}: state chain hash mismatch (stored "
+                f"{self.state_chain_hash}, recomputed {recomputed})"
+            )
+
+        genesis = chain[0]
+        if genesis.from_state is not None:
+            raise StateChainError(
+                f"{self.hypothesis_id}: state chain does not start at genesis "
+                f"(first link has from_state={genesis.from_state.value})"
+            )
+        if genesis.to_state is not HypothesisState.REGISTERED:
+            raise StateChainError(
+                f"{self.hypothesis_id}: state chain genesis link must "
+                f"transition to REGISTERED, got {genesis.to_state.value}"
+            )
+
+        for index in range(1, len(chain)):
+            previous, current = chain[index - 1], chain[index]
+            if current.from_state != previous.to_state:
+                raise StateChainError(
+                    f"{self.hypothesis_id}: state chain link {index} starts "
+                    f"at {current.from_state}, but link {index - 1} ended at "
+                    f"{previous.to_state.value}"
+                )
+            try:
+                validate_transition(previous.to_state, current.to_state)
+            except IllegalTransitionError as exc:
+                raise StateChainError(
+                    f"{self.hypothesis_id}: state chain link {index} is "
+                    f"illegal: {exc}"
+                ) from exc
+
+        if chain[-1].to_state != self.state:
+            raise StateChainError(
+                f"{self.hypothesis_id}: stored state is {self.state.value}, "
+                f"but the state chain's last link ends at "
+                f"{chain[-1].to_state.value}"
+            )
+
     def as_dict(self) -> dict[str, Any]:
         return {
             "preregistration": self.preregistration.sealed_payload(),
             "preregistration_hash": self.preregistration_hash,
             "state": self.state.value,
             "evaluations": [e.as_dict() for e in self.evaluations],
+            "state_chain": [t.as_dict() for t in self.state_chain],
+            "state_chain_hash": self.state_chain_hash,
         }
 
     @classmethod
@@ -1130,11 +1421,20 @@ class HypothesisRecord:
                     EvaluationRecord.from_dict(e)
                     for e in payload.get("evaluations", ())
                 ),
+                # Required, with no default: a stored record with no state
+                # chain is a pre-version-3 payload or a hand-edit, and either
+                # way loading must fail rather than substitute an empty chain
+                # that would trivially "match" any state.
+                state_chain=tuple(
+                    StateTransition.from_dict(t) for t in payload["state_chain"]
+                ),
+                state_chain_hash=str(payload["state_chain_hash"]),
             )
         except KeyError as exc:
             raise RegistryError(f"hypothesis record missing field {exc}") from exc
         record.verify_seal()
         record.verify_recorded_checks()
+        record.verify_state_chain()
         return record
 
 
@@ -1150,6 +1450,7 @@ class HypothesisRegistry:
             raise RegistryError("registry_path is required")
         self.registry_path = Path(registry_path)
         self._records: dict[str, HypothesisRecord] = {}
+        self._family_manifests: dict[str, FamilyManifest] = {}
         self._load()
 
     # -- persistence -----------------------------------------------------
@@ -1164,6 +1465,16 @@ class HypothesisRegistry:
                 f"cannot read hypothesis registry at {self.registry_path}: {exc}"
             ) from exc
 
+        # A truncated or otherwise corrupted file can still be valid JSON --
+        # for example the top-level object with everything after "version"
+        # cut off. Without this, such a file loads as a silently empty
+        # registry rather than failing closed.
+        if not isinstance(payload, dict):
+            raise RegistryError(
+                f"hypothesis registry at {self.registry_path} is not a JSON "
+                f"object; the file may be truncated or corrupted"
+            )
+
         version = payload.get("version")
         if version != REGISTRY_FORMAT_VERSION:
             raise RegistryError(
@@ -1171,16 +1482,92 @@ class HypothesisRegistry:
                 f"expected {REGISTRY_FORMAT_VERSION}"
             )
 
-        for entry in payload.get("records", ()):
-            # from_dict verifies the seal, so a hand-edited file fails here.
+        if "records" not in payload:
+            raise RegistryError(
+                f"hypothesis registry at {self.registry_path} has no "
+                f"'records' key; the file may be truncated, refusing to "
+                f"load it as an empty registry"
+            )
+        records_payload = payload["records"]
+        if not isinstance(records_payload, list):
+            raise RegistryError(
+                f"hypothesis registry at {self.registry_path} has a "
+                f"non-list 'records' field; the file may be corrupted"
+            )
+
+        if "family_manifests" not in payload:
+            raise RegistryError(
+                f"hypothesis registry at {self.registry_path} has no "
+                f"'family_manifests' key; the file may be truncated, "
+                f"refusing to load it as a registry with no family history"
+            )
+        manifests_payload = payload["family_manifests"]
+        if not isinstance(manifests_payload, list):
+            raise RegistryError(
+                f"hypothesis registry at {self.registry_path} has a "
+                f"non-list 'family_manifests' field; the file may be "
+                f"corrupted"
+            )
+
+        for entry in records_payload:
+            # from_dict verifies the seal, checks and state chain, so a
+            # hand-edited file fails here.
             record = HypothesisRecord.from_dict(entry)
             self._records[record.hypothesis_id] = record
+
+        for entry in manifests_payload:
+            # from_dict verifies the manifest's own seal.
+            manifest = FamilyManifest.from_dict(entry)
+            if manifest.family_id in self._family_manifests:
+                raise FamilyMembershipTamperedError(
+                    f"family {manifest.family_id} has more than one stored "
+                    f"manifest"
+                )
+            self._family_manifests[manifest.family_id] = manifest
+
+        # Cross-check: what the manifests claim must equal what the records
+        # actually contain, in both directions. This is what stops a deleted
+        # (or added, or moved) record from silently changing a family's
+        # membership without the deletion itself being detectable.
+        actual_members: dict[str, set[str]] = {}
+        for record in self._records.values():
+            actual_members.setdefault(record.family_id, set()).add(
+                record.hypothesis_id
+            )
+
+        for family_id, member_ids in actual_members.items():
+            manifest = self._family_manifests.get(family_id)
+            if manifest is None:
+                raise FamilyMembershipTamperedError(
+                    f"family {family_id} has {len(member_ids)} recorded "
+                    f"hypothesis(es) but no sealed family manifest; the "
+                    f"registry may be truncated or hand-edited"
+                )
+            if set(manifest.member_ids) != member_ids:
+                raise FamilyMembershipTamperedError(
+                    f"family {family_id} manifest does not match its "
+                    f"recorded hypotheses (manifest="
+                    f"{sorted(manifest.member_ids)}, actual="
+                    f"{sorted(member_ids)}); a member may have been added or "
+                    f"deleted outside register()"
+                )
+
+        for family_id in self._family_manifests:
+            if family_id not in actual_members:
+                raise FamilyMembershipTamperedError(
+                    f"family {family_id} has a sealed manifest but no "
+                    f"recorded hypotheses; the registry may be corrupted"
+                )
 
     def _save(self) -> None:
         payload = {
             "version": REGISTRY_FORMAT_VERSION,
             "records": [
                 self._records[key].as_dict() for key in sorted(self._records)
+            ],
+            "family_manifests": [
+                self._family_manifests[key].as_dict()
+                for key in sorted(self._family_manifests)
             ],
         }
         self.registry_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1235,6 +1622,11 @@ class HypothesisRegistry:
             if record.family_id == str(family_id)
         )
 
+    def family_manifest(self, family_id: str) -> FamilyManifest | None:
+        """The sealed membership manifest for one family, or ``None`` if the
+        family has never had a hypothesis registered into it."""
+        return self._family_manifests.get(str(family_id))
+
     # -- writes ----------------------------------------------------------
 
     def register(self, preregistration: PreRegistration) -> HypothesisRecord:
@@ -1245,13 +1637,20 @@ class HypothesisRegistry:
                 f"{hypothesis_id} is already registered; a changed hypothesis "
                 f"needs a new id, not an amendment"
             )
-        record = HypothesisRecord(
+        record = HypothesisRecord.initial(
             preregistration=preregistration,
             preregistration_hash=preregistration.seal_hash(),
-            state=HypothesisState.REGISTERED,
-            evaluations=(),
         )
+        family_id = preregistration.family_id
+        existing_manifest = self._family_manifests.get(family_id)
+        manifest = (
+            FamilyManifest(family_id=family_id, member_ids=(hypothesis_id,))
+            if existing_manifest is None
+            else existing_manifest.extended(hypothesis_id)
+        )
+
         self._records[hypothesis_id] = record
+        self._family_manifests[family_id] = manifest
         self._save()
         return record
 
@@ -1287,7 +1686,7 @@ class HypothesisRegistry:
             )
 
         validate_transition(record.state, target_state)
-        updated = replace(record, state=target_state)
+        updated = record.transitioned_to(target_state)
         self._records[record.hypothesis_id] = updated
         self._save()
         return updated
@@ -1347,7 +1746,7 @@ class HypothesisRegistry:
         updated = replace(record, evaluations=record.evaluations + (evaluation,))
         if segment == "TEST":
             validate_transition(updated.state, HypothesisState.TESTED)
-            updated = replace(updated, state=HypothesisState.TESTED)
+            updated = updated.transitioned_to(HypothesisState.TESTED)
 
         self._records[record.hypothesis_id] = updated
         self._save()
@@ -1456,7 +1855,7 @@ class HypothesisRegistry:
                 else HypothesisState.REJECTED
             )
             validate_transition(record.state, target)
-            self._records[record.hypothesis_id] = replace(record, state=target)
+            self._records[record.hypothesis_id] = record.transitioned_to(target)
 
         self._save()
         return decision
@@ -1486,8 +1885,12 @@ __all__ = [
     "FamilyAdjudicationRequiredError",
     "FamilyNotReadyError",
     "FamilyAlreadyAdjudicatedError",
+    "FamilyMembershipTamperedError",
+    "StateChainError",
     "PreRegistration",
     "EvaluationRecord",
+    "StateTransition",
+    "FamilyManifest",
     "HypothesisRecord",
     "HypothesisRegistry",
 ]

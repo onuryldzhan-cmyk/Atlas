@@ -590,11 +590,11 @@ def test_a_structurally_broken_check_plan_is_refused_on_load(tmp_path, mutate):
         HypothesisRegistry(registry_path=path)
 
 
-def test_the_registry_writes_the_version_2_format(tmp_path):
+def test_the_registry_writes_the_current_format_version(tmp_path):
     path = tmp_path / "hypotheses.json"
     registry = HypothesisRegistry(registry_path=path)
     registry.register(full_preregistration())
-    assert _stored(path)["version"] == REGISTRY_FORMAT_VERSION == 2
+    assert _stored(path)["version"] == REGISTRY_FORMAT_VERSION == 3
 
 
 def test_checks_survive_a_reload(tmp_path):
