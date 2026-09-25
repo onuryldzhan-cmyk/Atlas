@@ -560,11 +560,12 @@ class AtlasApplication:
 
         self.capital = CapitalManager()
 
-        # The paper book is a durable execution side effect: open_trade()
-        # and close_trade() persist it, and an interrupted execution is
-        # classified against it. It therefore belongs under the same
-        # configured root as the other durable execution state, not beside
-        # whatever directory the process happened to start in.
+        # The paper book is a passive mirror of ExecutionPortfolioFoundation,
+        # not an execution side effect: ExecutionManager projects durable
+        # position truth onto it after each commit and once at startup, and
+        # no execution outcome is classified against it. It still lives
+        # under the same configured root as the durable execution state,
+        # not beside whatever directory the process happened to start in.
         self.paper_trader = PaperTrader(
             filename=str(
                 self.state_directory / PAPER_TRADE_BOOK_FILE
