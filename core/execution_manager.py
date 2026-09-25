@@ -612,6 +612,9 @@ class ExecutionManager:
             if readiness.ready and durable_ready:
                 self._release_orphan_reservations()
 
+            if durable_ready:
+                self._reproject_paper_book()
+
             instrument_rules_ready = True
             instrument_rules_reason = None
             if readiness.ready and durable_ready:
@@ -3614,6 +3617,40 @@ class ExecutionManager:
             self._set_paper_mirror_status(
                 result,
                 status,
+            )
+
+    def _reproject_paper_book(self) -> None:
+        """F-4: rebuild the passive paper book from durable truth at startup.
+
+        ``_mirror_paper_book`` only projects the symbol a commit touched, so
+        without this a book that was lost, torn, or left behind by a crash
+        would disagree with ExecutionPortfolioFoundation indefinitely for any
+        symbol that never trades again. Runs only once the foundation is
+        known ready, so it projects from a snapshot that is itself trusted.
+
+        Contained exactly like ``_mirror_paper_book``: the book holds no
+        authority, so a failure here is logged and never halts the runtime.
+        """
+        if self.paper_trader is None or self.portfolio_foundation is None:
+            return
+        reproject = getattr(self.paper_trader, "reproject_all", None)
+        if not callable(reproject):
+            return
+        try:
+            diverged = reproject(
+                self.portfolio_foundation.snapshot()["positions"]
+            )
+        except Exception:
+            logger.exception(
+                "Paper book startup re-projection failed; durable financial "
+                "state is unaffected"
+            )
+            return
+        if diverged:
+            logger.warning(
+                "Paper book mirror diverged from durable financial state and "
+                "was re-projected at startup symbols=%s",
+                diverged,
             )
 
     def _paper_mirror_history_entry(

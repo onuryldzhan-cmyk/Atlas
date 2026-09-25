@@ -95,6 +95,9 @@ class PaperTrader:
 
         self.history = []
 
+        # OK / MISSING / CORRUPT / UNREADABLE, set by load().
+        self.load_status = None
+
 
         self.load()
 
@@ -629,6 +632,55 @@ class PaperTrader:
 
 
 
+    def reproject_all(
+
+        self,
+
+        positions,
+
+    ):
+
+        """Replace every position with the durable authority's snapshot.
+
+        Called once at startup, after ExecutionPortfolioFoundation is known
+        ready, so a symbol that never trades again cannot keep a stale or
+        missing record indefinitely. ``positions`` is that authority's
+        ``snapshot()["positions"]`` mapping. History is left untouched: it
+        is a log of past projections, not a position source.
+
+        Returns the sorted symbols whose mirrored record differed from the
+        authority before re-projection - the divergence this call repaired.
+        """
+
+        projected = {
+
+            symbol: self._projected_record(
+                symbol=symbol,
+                position=position,
+            )
+
+            for symbol, position in positions.items()
+
+        }
+
+        diverged = sorted(
+
+            symbol
+
+            for symbol in set(projected) | set(self.positions)
+
+            if self.positions.get(symbol) != projected.get(symbol)
+
+        )
+
+        self.positions = projected
+
+        self.save()
+
+        return diverged
+
+
+
     # ==================================================
     # STORAGE
     # ==================================================
@@ -636,58 +688,132 @@ class PaperTrader:
 
     def load(self):
 
+        """Load the mirrored book, failing loud rather than silently empty.
+
+        The book is a passive mirror of ExecutionPortfolioFoundation and
+        nothing in the runtime reads it, so a bad file must not halt Atlas.
+        It must not pass for an empty book either: the outcome is recorded
+        in ``load_status`` (``UNREADABLE`` for an I/O failure, ``CORRUPT``
+        for content that does not parse or has the wrong shape), the bad
+        file is moved aside so the next save cannot erase its history, and
+        the book starts empty until the startup re-projection rebuilds its
+        positions from the durable authority.
+        """
 
         if not os.path.exists(
             self.filename
         ):
 
+            self.load_status = "MISSING"
+
             return
 
 
-
         try:
-
 
             with open(
 
                 self.filename,
 
-                "r"
+                "r",
+
+                encoding="utf-8",
 
             ) as f:
 
+                data = json.load(f)
 
-                data=json.load(f)
+        except OSError:
 
+            self._load_failed("UNREADABLE")
 
-                self.positions=data.get(
-                    "positions",
-                    {}
-                )
+            return
 
+        except ValueError:
 
-                self.history=data.get(
-                    "history",
-                    []
-                )
+            self._load_failed("CORRUPT")
 
+            return
 
 
-        except Exception:
+        positions = (
+            data.get("positions")
+            if isinstance(data, dict)
+            else None
+        )
+
+        history = (
+            data.get("history", [])
+            if isinstance(data, dict)
+            else None
+        )
+
+        if (
+            not isinstance(positions, dict)
+            or not isinstance(history, list)
+        ):
+
+            self._load_failed("CORRUPT")
+
+            return
 
 
-            logger.exception(
-                "Paper load failed"
+        self.positions = positions
+
+        self.history = history
+
+        self.load_status = "OK"
+
+
+
+    def _load_failed(self, status):
+
+        """Record a failed load and preserve the bad file for the operator."""
+
+        self.positions = {}
+
+        self.history = []
+
+        self.load_status = status
+
+        quarantine = "%s.%s.%s" % (
+            self.filename,
+            status.lower(),
+            datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ"),
+        )
+
+        try:
+
+            os.replace(
+                self.filename,
+                quarantine,
             )
 
+        except OSError:
 
+            quarantine = None
 
-
+        logger.error(
+            "PAPER BOOK MIRROR %s: %s could not be loaded; preserved_as=%s. "
+            "The book starts empty and is re-projected from durable "
+            "financial state at startup. Prior mirror history is not "
+            "carried forward. Durable financial state is unaffected.",
+            status,
+            self.filename,
+            quarantine,
+            exc_info=True,
+        )
 
 
 
     def save(self):
 
+        """Persist the book atomically: temp file, fsync, then replace.
+
+        Mirrors FinancialStateStore.save, so a crash mid-write leaves either
+        the previous complete file or the new complete file, never a torn
+        one.
+        """
 
         # The book location is chosen by the composition root, so its
         # directory is not guaranteed to exist yet. The other durable
@@ -704,11 +830,17 @@ class PaperTrader:
             )
 
 
+        temp = self.filename + ".tmp"
+
         with open(
 
-            self.filename,
+            temp,
 
-            "w"
+            "w",
+
+            encoding="utf-8",
+
+            newline="\n",
 
         ) as f:
 
@@ -732,6 +864,18 @@ class PaperTrader:
                 indent=4
 
             )
+
+            f.flush()
+
+            os.fsync(
+                f.fileno()
+            )
+
+
+        os.replace(
+            temp,
+            self.filename,
+        )
 
 
 
@@ -767,6 +911,10 @@ class PaperTrader:
             "trades":
             len(
                 self.history
-            )
+            ),
+
+
+            "load_status":
+            self.load_status
 
         }
