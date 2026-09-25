@@ -675,7 +675,11 @@ class PaperTrader:
 
         self.positions = projected
 
-        self.save()
+        # A book already equal to durable truth is not rewritten, so a
+        # consistent startup leaves the file (or its absence) untouched.
+        if diverged:
+
+            self.save()
 
         return diverged
 

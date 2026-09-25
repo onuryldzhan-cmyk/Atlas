@@ -106,6 +106,17 @@ def test_consistent_book_is_left_unchanged_and_not_reported(traded_state, caplog
     assert app.paper_trader.history == before["history"]
 
 
+def test_consistent_startup_does_not_create_a_book_file(tmp_path):
+    state_dir = tmp_path / "state"
+    seed_valid_state(state_dir)
+
+    app = start_app(state_dir)
+
+    assert_not_halted(app)
+    assert app.paper_trader.load_status == "MISSING"
+    assert not book_path(state_dir).exists()
+
+
 def test_failing_startup_reprojection_never_halts(tmp_path):
     state_dir = tmp_path / "state"
     seed_valid_state(state_dir)
