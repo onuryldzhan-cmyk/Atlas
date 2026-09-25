@@ -154,6 +154,31 @@ def _no_live_fear_greed_requests(monkeypatch: pytest.MonkeyPatch) -> None:
         _network_disabled,
     )
 
+
+# Treasury yield provider network guard (registry v4.79). Same reasoning and
+# same shape as the Fear & Greed guard above: core/application.py injects a
+# live TreasuryYieldProvider, so without this every composition-root test
+# would contact home.treasury.gov. The replacement raises the provider's own
+# network error, i.e. the fail-closed path. Tests that exercise the provider
+# inject their own transport and are unaffected.
+
+
+@pytest.fixture(autouse=True)
+def _no_live_treasury_yield_requests(monkeypatch: pytest.MonkeyPatch) -> None:
+    from atlas_finance.market_data import treasury_yield_provider
+
+    def _network_disabled(url: str, timeout: float) -> bytes:
+        raise treasury_yield_provider._TransportError(
+            treasury_yield_provider.REASON_NETWORK_ERROR,
+            "network access is disabled under pytest",
+        )
+
+    monkeypatch.setattr(
+        treasury_yield_provider,
+        "_urllib_transport",
+        _network_disabled,
+    )
+
 # Written by pytest's junitxml plugin, then promoted over the real artifact
 # only once the run is known to have been a complete full-suite run. Lives
 # beside the artifact (same directory, therefore same filesystem) so the

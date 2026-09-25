@@ -74,6 +74,11 @@ from core.market_loop import MarketLoop, TELEMETRY_LOGGER_NAME
 from exchange.market_feed import MarketFeed
 
 from atlas_finance.market_data.fear_greed_provider import FearGreedProvider
+from atlas_finance.market_data.treasury_yield_provider import (
+    TreasuryYieldProvider,
+)
+
+from core.market_risk_regime import MarketRiskRegimeProvider
 
 from core.execution_manager import ExecutionManager
 from core.audit_event_store import AuditEventStore
@@ -666,6 +671,15 @@ class AtlasApplication:
         # I/O; the provider fetches lazily, caches, and fails closed.
         self.sentiment_provider = FearGreedProvider()
 
+        # Macro and market-risk evidence (registry v4.79). The Treasury
+        # provider, like the sentiment provider, performs no I/O on
+        # construction and fetches lazily, caches, and fails closed. The
+        # market-risk provider performs no I/O at all: it reads the
+        # candles MarketLoop already fetched. It is a fusion-input vote
+        # only and is independent of the RiskEngine wired above.
+        self.macro_provider = TreasuryYieldProvider()
+        self.market_risk_provider = MarketRiskRegimeProvider()
+
         self.market_loop = MarketLoop(
             brain=self.brain,
             market_feed=self.market_feed,
@@ -675,6 +689,8 @@ class AtlasApplication:
             interval=self.market_interval,
             position_sizing_service=self.position_sizing_service,
             sentiment_provider=self.sentiment_provider,
+            macro_provider=self.macro_provider,
+            market_risk_provider=self.market_risk_provider,
         )
 
         # -----------------------------------------------------

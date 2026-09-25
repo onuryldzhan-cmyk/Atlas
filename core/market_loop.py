@@ -67,6 +67,9 @@ from analysis.world_analysis_engine import WorldAnalysisEngine
 from atlas_finance.market_data.fear_greed_provider import (
     classify_fear_greed_band,
 )
+from atlas_finance.market_data.treasury_yield_provider import (
+    classify_ten_year_move,
+)
 
 from core.candle_processor import (
     CandleContractError,
@@ -185,6 +188,8 @@ class MarketLoop:
         interval: float = 10.0,
         position_sizing_service: PositionSizingService | None = None,
         sentiment_provider: Any | None = None,
+        macro_provider: Any | None = None,
+        market_risk_provider: Any | None = None,
     ) -> None:
         self.brain = brain
         self.market_feed = market_feed
@@ -196,6 +201,14 @@ class MarketLoop:
         # composition root; None keeps sentiment UNAVAILABLE_NO_PROVIDER.
         # Only plain values derived from it ever reach WorldAnalysisEngine.
         self.sentiment_provider = sentiment_provider
+
+        # Treasury yield provider and realized-volatility regime provider
+        # (registry v4.79). Injected by the composition root exactly like
+        # the sentiment provider; None keeps the macro / market_risk slot
+        # UNAVAILABLE_NO_PROVIDER. The market-risk provider is a
+        # fusion-input vote only and has no connection to RiskEngine.
+        self.macro_provider = macro_provider
+        self.market_risk_provider = market_risk_provider
 
         self.symbols = self._normalize_symbols(
             symbols or self.DEFAULT_SYMBOLS
@@ -734,6 +747,10 @@ class MarketLoop:
                 analysis,
                 score,
                 sentiment_input=self._sentiment_input(),
+                macro_input=self._macro_input(),
+                market_risk_input=self._market_risk_input(
+                    closed_candles
+                ),
             )
 
             raw_decision = self.brain.analyze_and_decide(
@@ -1974,6 +1991,162 @@ class MarketLoop:
             ),
             "value": None,
             "band": None,
+            "reason": reason if isinstance(reason, str) else "UNSPECIFIED",
+        }
+
+    # =========================================================
+    # MACRO INPUT (registry v4.79)
+    # =========================================================
+
+    def _macro_input(self) -> dict[str, Any] | None:
+        """
+        Plain-value Treasury yield input for WorldAnalysisEngine.
+
+        Mirrors _sentiment_input(): the provider object never crosses into
+        L4, the provider caches so the network is not contacted every
+        cycle, and this never raises. Any provider failure, an unavailable
+        reading, or a value the move classifier rejects becomes
+        UNAVAILABLE_PROVIDER_ERROR with no values.
+        """
+
+        provider = self.macro_provider
+
+        if provider is None:
+            return None
+
+        try:
+            reading = provider.get_reading()
+            available = getattr(reading, "available", None)
+
+            if available is False:
+                return self._macro_unavailable(
+                    getattr(reading, "reason", None)
+                )
+
+            # Only the exact bool True counts; anything else is not a
+            # reading this loop can trust.
+            if available is not True:
+                return self._macro_unavailable(
+                    "MALFORMED_READING"
+                )
+
+            change_bp = reading.ten_year_change_bp
+            spread_bp = reading.curve_spread_bp
+            move = classify_ten_year_move(
+                change_bp
+            )
+
+            if type(spread_bp) is not int:
+                return self._macro_unavailable(
+                    "MALFORMED_READING"
+                )
+
+            observed_date = reading.observed_date.isoformat()
+        except Exception:
+            logger.exception(
+                "Macro provider failed; macro unavailable this cycle"
+            )
+            return self._macro_unavailable(
+                "PROVIDER_EXCEPTION"
+            )
+
+        return {
+            "provider_status": MarketDataEvidenceStatus.AVAILABLE.value,
+            "ten_year_change_bp": change_bp,
+            "curve_spread_bp": spread_bp,
+            "move": move,
+            "observed_date": observed_date,
+            "reason": "OK",
+        }
+
+    @staticmethod
+    def _macro_unavailable(reason: Any) -> dict[str, Any]:
+        return {
+            "provider_status": (
+                MarketDataEvidenceStatus.UNAVAILABLE_PROVIDER_ERROR.value
+            ),
+            "ten_year_change_bp": None,
+            "curve_spread_bp": None,
+            "move": None,
+            "observed_date": None,
+            "reason": reason if isinstance(reason, str) else "UNSPECIFIED",
+        }
+
+    # =========================================================
+    # MARKET RISK INPUT (registry v4.79)
+    # =========================================================
+
+    def _market_risk_input(
+        self,
+        closed_candles: Any,
+    ) -> dict[str, Any] | None:
+        """
+        Plain-value realized-volatility regime input for
+        WorldAnalysisEngine, computed from this cycle's already-fetched
+        closed candles. No data source is contacted.
+
+        A fusion-input vote only: nothing here reads or feeds RiskEngine,
+        risk_check, capital reservation, or execution. Never raises. An
+        unavailable assessment (for example too little candle history
+        right after a listing) becomes UNAVAILABLE_PROVIDER_ERROR with no
+        values.
+        """
+
+        provider = self.market_risk_provider
+
+        if provider is None:
+            return None
+
+        try:
+            reading = provider.assess(
+                closed_candles
+            )
+            available = getattr(reading, "available", None)
+
+            if available is False:
+                return self._market_risk_unavailable(
+                    getattr(reading, "reason", None)
+                )
+
+            if available is not True:
+                return self._market_risk_unavailable(
+                    "MALFORMED_READING"
+                )
+
+            regime = reading.regime
+            realized_volatility = reading.realized_volatility
+            p20 = reading.p20
+            p80 = reading.p80
+            reference_windows = reading.reference_windows
+        except Exception:
+            logger.exception(
+                "Market risk provider failed; market risk unavailable this cycle"
+            )
+            return self._market_risk_unavailable(
+                "PROVIDER_EXCEPTION"
+            )
+
+        return {
+            "provider_status": MarketDataEvidenceStatus.AVAILABLE.value,
+            "regime": regime,
+            "realized_volatility": realized_volatility,
+            "p20": p20,
+            "p80": p80,
+            "reference_windows": reference_windows,
+            "reason": "OK",
+        }
+
+    @staticmethod
+    def _market_risk_unavailable(reason: Any) -> dict[str, Any]:
+        return {
+            "provider_status": (
+                MarketDataEvidenceStatus.UNAVAILABLE_PROVIDER_ERROR.value
+            ),
+            "regime": None,
+            "realized_volatility": None,
+            "p20": None,
+            "p80": None,
+            "reference_windows": None,
             "reason": reason if isinstance(reason, str) else "UNSPECIFIED",
         }
 
