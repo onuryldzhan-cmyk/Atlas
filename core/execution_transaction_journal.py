@@ -297,7 +297,8 @@ class ExecutionTransactionJournal:
                         )
 
                     entry = sanitize_sensitive_data(
-                        raw_entry
+                        raw_entry,
+                        preserve_identifiers=True,
                     )
 
                     if not isinstance(
@@ -597,7 +598,8 @@ class ExecutionTransactionJournal:
             return False
 
         sanitized_payload = sanitize_sensitive_data(
-            request_payload
+            request_payload,
+            preserve_identifiers=True,
         )
 
         if not isinstance(
@@ -712,7 +714,8 @@ class ExecutionTransactionJournal:
             if result is not None:
                 entry["result"] = (
                     sanitize_sensitive_data(
-                        result
+                        result,
+                        preserve_identifiers=True,
                     )
                 )
 
@@ -807,7 +810,8 @@ class ExecutionTransactionJournal:
             if result is not None:
                 entry["result"] = (
                     sanitize_sensitive_data(
-                        result
+                        result,
+                        preserve_identifiers=True,
                     )
                 )
 

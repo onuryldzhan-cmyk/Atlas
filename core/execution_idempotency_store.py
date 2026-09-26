@@ -988,7 +988,8 @@ class ExecutionIdempotencyStore:
         value: Any,
     ) -> Any:
         return sanitize_sensitive_data(
-            value
+            value,
+            preserve_identifiers=True,
         )
 
     # =========================================================

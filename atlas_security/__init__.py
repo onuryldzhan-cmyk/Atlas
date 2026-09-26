@@ -1,6 +1,8 @@
 """Atlas application-wide security boundaries."""
 
 from atlas_security.sensitive_data_guard import (
+    FORBIDDEN_IDENTIFIER_CHARACTERS,
+    MAX_IDENTIFIER_LENGTH,
     REDACTED_VALUE,
     sanitize_sensitive_data,
     sanitize_sensitive_mapping,
@@ -8,6 +10,8 @@ from atlas_security.sensitive_data_guard import (
 )
 
 __all__ = [
+    "FORBIDDEN_IDENTIFIER_CHARACTERS",
+    "MAX_IDENTIFIER_LENGTH",
     "REDACTED_VALUE",
     "sanitize_sensitive_data",
     "sanitize_sensitive_mapping",

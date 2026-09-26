@@ -44,7 +44,11 @@ from decimal import Decimal, InvalidOperation
 from enum import Enum
 from typing import Any, Mapping, Protocol
 
-from atlas_security import sanitize_sensitive_text
+from atlas_security import (
+    FORBIDDEN_IDENTIFIER_CHARACTERS,
+    MAX_IDENTIFIER_LENGTH,
+    sanitize_sensitive_text,
+)
 
 from core.operational_contracts import (
     OperationContext,
@@ -102,14 +106,14 @@ class InvocationOutcome(str, Enum):
     INVALID_RESULT = "INVALID_RESULT"
 
 
-#: Shared bound for every identifier this module accepts, whichever of the
-#: two functions below validates it. Long enough for any realistic provider,
-#: model, or correlation id; short enough that an id cannot become a payload.
-MAX_IDENTIFIER_LENGTH = 200
-
-#: Characters that must never appear inside an identifier, because an id ends
-#: up in log lines and audit records where they would forge structure.
-FORBIDDEN_IDENTIFIER_CHARACTERS = "\r\n\t\x00"
+#: MAX_IDENTIFIER_LENGTH and FORBIDDEN_IDENTIFIER_CHARACTERS (imported above)
+#: bound every identifier this module accepts, whichever of the functions
+#: below validates it: long enough for any realistic provider, model, or
+#: correlation id, short enough that an id cannot become a payload, and free
+#: of characters that would forge structure in log lines and audit records.
+#: They live beside the sanitizer so the execution authorities' identifier
+#: preservation (`sanitize_sensitive_data(preserve_identifiers=True)`)
+#: applies exactly the same structural rules as `machine_identifier`.
 
 #: The one digest shape `machine_digest` accepts. Lowercase is the canonical
 #: stored form; an upper-case but otherwise valid digest is folded to it.
