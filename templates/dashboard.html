@@ -1,86 +1,183 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="tr" data-bs-theme="dark">
 <head>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Atlas AI Terminal</title>
+    {#
+      AdminLTE 4.9.1 (MIT), vendored under static/vendor/ and served by the
+      loopback-guarded /assets route. No CDN reference: the operator panel
+      renders with no external network dependency. Only the stylesheet is
+      used; no third-party JavaScript is loaded. Provenance and hashes:
+      static/vendor/VENDORED_ASSETS.json.
+    #}
+    <link rel="stylesheet" href="/assets/adminlte.min.css">
+    <style>
+        .agent-row { border-top: 1px solid var(--bs-border-color); padding: .3rem 0; }
+        .agent-row:first-child { border-top: 0; }
+        .agent-detail { font-size: .75rem; color: var(--bs-secondary-color); }
+        .panel-body { font-size: .875rem; }
+        .kv { display: flex; justify-content: space-between; gap: .75rem; padding: .15rem 0; }
+        .kv > span:first-child { color: var(--bs-secondary-color); flex-shrink: 0; }
+        .kv > span:last-child, .agent-detail, .callout { min-width: 0; overflow-wrap: anywhere; }
+        #trade-log { height: 9rem; overflow-y: auto; }
+        .info-box .info-box-icon { font-weight: 700; font-size: .95rem; }
+    </style>
 </head>
-<body class="bg-slate-950 text-white p-8">
-    <div class="max-w-6xl mx-auto">
-        <h1 class="text-3xl font-bold mb-2 italic text-blue-500">ATLAS AI <span class="text-white not-italic text-lg">TERMINAL v2.0</span></h1>
-        <p class="mb-6 text-xs text-slate-500">
-            Loopback-only operator panel &mdash; no authentication. Referans sembol: <span class="text-slate-300">{{ symbol }}</span> (binance_global)
-        </p>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800">
-                <h2 class="text-slate-500 text-xs uppercase font-bold">Güncel Fiyat ({{ symbol }})</h2>
-                {#
-                  The price is server-rendered from the dashboard route's own
-                  price provider, for the reference symbol only. /api/signals
-                  returns no price field, so the polling loop below must
-                  never claim to update this tile.
-                #}
-                <div id="price-display" class="text-3xl font-mono mt-2">
-                    {% if price_status == "AVAILABLE" %}
-                        {{ "%.2f"|format(price) }} <span class="text-base text-slate-500">USDT</span>
-                    {% else %}
-                        <span class="text-amber-500 text-xl">unavailable: {{ price_status }}</span>
-                    {% endif %}
+<body class="layout-fixed bg-body-tertiary">
+<div class="app-wrapper">
+    <nav class="app-header navbar navbar-expand bg-body">
+        <div class="container-fluid">
+            <span class="navbar-brand fw-bold text-primary">ATLAS AI <span class="fw-light text-body">Terminal</span></span>
+            <span class="ms-auto small text-body-secondary">
+                Loopback-only operator panel &mdash; no authentication &middot;
+                referans sembol <span class="text-body">{{ symbol }}</span> (binance_global)
+            </span>
+        </div>
+    </nav>
+
+    <main class="app-main">
+        <div class="app-content pt-3">
+            <div class="container-fluid">
+
+                <div class="row">
+                    <div class="col-12 col-sm-6 col-xl-3">
+                        <div class="info-box">
+                            <span class="info-box-icon text-bg-primary shadow-sm">USDT</span>
+                            <div class="info-box-content">
+                                <span class="info-box-text">Güncel Fiyat ({{ symbol }})</span>
+                                {#
+                                  The price is server-rendered from the dashboard route's own
+                                  price provider, for the reference symbol only. /api/signals
+                                  returns no price field, so the polling loop below must
+                                  never claim to update this tile.
+                                #}
+                                <span id="price-display" class="info-box-number font-monospace">
+                                    {% if price_status == "AVAILABLE" %}
+                                        {{ "%.2f"|format(price) }}
+                                    {% else %}
+                                        <span class="text-warning">unavailable: {{ price_status }}</span>
+                                    {% endif %}
+                                </span>
+                                <span class="small text-body-secondary">sayfa yüklendiğinde alındı</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-sm-6 col-xl-3">
+                        <div class="info-box">
+                            {#
+                              Two runtime health shapes reach this template. web_app's own
+                              fail-closed fallbacks use "state"; AtlasApplication.health()
+                              names the same value "runtime_state". Read both rather than
+                              silently rendering an empty status for one of them.
+                            #}
+                            {% set state_label = runtime_state.get("state") or runtime_state.get("runtime_state") or "UNKNOWN" %}
+                            {% if runtime_state.get("healthy") %}
+                                <span class="info-box-icon text-bg-success shadow-sm">OK</span>
+                            {% else %}
+                                <span class="info-box-icon text-bg-warning shadow-sm">!</span>
+                            {% endif %}
+                            <div class="info-box-content">
+                                <span class="info-box-text">Sistem Durumu</span>
+                                <span class="info-box-number {{ 'text-success' if runtime_state.get('healthy') else 'text-warning' }}">{{ state_label }}</span>
+                                {% if not runtime_state.get("healthy") and runtime_state.get("reason") %}
+                                    <span class="small text-body-secondary">{{ runtime_state.get("reason") }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-sm-6 col-xl-3">
+                        <div class="info-box">
+                            <span class="info-box-icon text-bg-secondary shadow-sm">GOV</span>
+                            <div class="info-box-content">
+                                <span class="info-box-text">Governance Registry</span>
+                                <span id="registry-version" class="info-box-number">Yükleniyor...</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-sm-6 col-xl-3">
+                        <div class="info-box">
+                            <span id="venue-rules-icon" class="info-box-icon text-bg-secondary shadow-sm">VR</span>
+                            <div class="info-box-content">
+                                <span class="info-box-text">Venue Kuralları</span>
+                                <span id="venue-rules-status" class="info-box-number">Yükleniyor...</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="text-xs text-slate-600 mt-1">sayfa yüklendiğinde alındı</div>
-            </div>
-            <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800">
-                <h2 class="text-slate-500 text-xs uppercase font-bold">Sistem Durumu</h2>
-                {#
-                  Two runtime health shapes reach this template. web_app's own
-                  fail-closed fallbacks use "state"; AtlasApplication.health()
-                  names the same value "runtime_state". Read both rather than
-                  silently rendering an empty status for one of them.
-                #}
-                {% set state_label = runtime_state.get("state") or runtime_state.get("runtime_state") or "UNKNOWN" %}
-                {% if runtime_state.get("healthy") %}
-                    <div class="text-emerald-400 mt-2">● {{ state_label }}</div>
-                {% else %}
-                    <div class="text-amber-500 mt-2">● {{ state_label }}</div>
-                    {% if runtime_state.get("reason") %}
-                        <div class="text-xs text-slate-500 mt-1">{{ runtime_state.get("reason") }}</div>
-                    {% endif %}
-                {% endif %}
-            </div>
-        </div>
 
-        <div class="mt-8">
-            <h2 class="text-xs uppercase text-slate-500 font-bold tracking-widest mb-3">Otonom Kararlar (5 Sembol)</h2>
-            <div id="signals-grid" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                <div class="col-span-full text-slate-500 text-sm">Analiz ediliyor...</div>
-            </div>
-        </div>
+                <div class="card card-outline card-primary mb-4">
+                    <div class="card-header"><h3 class="card-title">Otonom Kararlar (5 Sembol)</h3></div>
+                    <div class="card-body">
+                        <div id="signals-grid" class="row g-3">
+                            <div class="col-12 text-body-secondary small">Analiz ediliyor...</div>
+                        </div>
+                    </div>
+                </div>
 
-        <div class="mt-8 bg-slate-900 p-6 rounded-2xl border border-slate-800">
-            <h2 class="text-xs uppercase text-slate-500 font-bold tracking-widest">Otonom İşlem Geçmişi</h2>
-            <div id="trade-log" class="mt-4 font-mono text-sm text-slate-400 h-32 overflow-y-auto">&gt; Bot izleme modunda...</div>
-        </div>
+                <div class="row">
+                    <div class="col-12 col-lg-6">
+                        <div class="card card-outline card-info mb-4">
+                            <div class="card-header"><h3 class="card-title">Risk Accounting</h3></div>
+                            <div id="risk-accounting-panel" class="card-body panel-body">Yükleniyor...</div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-6">
+                        <div class="card card-outline card-warning mb-4">
+                            <div class="card-header"><h3 class="card-title">System Integrity</h3></div>
+                            <div id="system-integrity-panel" class="card-body panel-body">Yükleniyor...</div>
+                        </div>
+                    </div>
+                </div>
 
-        <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800">
-                <h2 class="text-slate-500 text-xs uppercase font-bold tracking-widest">Execution / Sağlık Durumu</h2>
-                <div id="execution-health-panel" class="mt-4 font-mono text-sm text-slate-400">Yükleniyor...</div>
-            </div>
-            <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800">
-                <h2 class="text-slate-500 text-xs uppercase font-bold tracking-widest">Performans (Win Rate)</h2>
-                <div id="trade-history-panel" class="mt-4 font-mono text-sm text-slate-400">Yükleniyor...</div>
-            </div>
-        </div>
+                <div class="row">
+                    <div class="col-12 col-lg-4">
+                        <div class="card mb-4">
+                            <div class="card-header"><h3 class="card-title">Execution / Sağlık Durumu</h3></div>
+                            <div id="execution-health-panel" class="card-body panel-body font-monospace">Yükleniyor...</div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-4">
+                        <div class="card mb-4">
+                            <div class="card-header"><h3 class="card-title">Performans (Win Rate)</h3></div>
+                            <div id="trade-history-panel" class="card-body panel-body">Yükleniyor...</div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-4">
+                        <div class="card mb-4">
+                            <div class="card-header"><h3 class="card-title">Telemetri (S-3 / M-2)</h3></div>
+                            <div id="telemetry-panel" class="card-body panel-body">Yükleniyor...</div>
+                        </div>
+                    </div>
+                </div>
 
-        <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800">
-                <h2 class="text-slate-500 text-xs uppercase font-bold tracking-widest">Test Sonuçları</h2>
-                <div id="test-results-panel" class="mt-4 font-mono text-sm text-slate-400">Yükleniyor...</div>
-            </div>
-            <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800">
-                <h2 class="text-slate-500 text-xs uppercase font-bold tracking-widest">Governance (GOV-DRIFT)</h2>
-                <div id="governance-panel" class="mt-4 font-mono text-sm text-slate-400">Yükleniyor...</div>
+                <div class="row">
+                    <div class="col-12 col-lg-4">
+                        <div class="card mb-4">
+                            <div class="card-header"><h3 class="card-title">Otonom İşlem Geçmişi</h3></div>
+                            <div class="card-body">
+                                <div id="trade-log" class="font-monospace small text-body-secondary">&gt; Bot izleme modunda...</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-4">
+                        <div class="card mb-4">
+                            <div class="card-header"><h3 class="card-title">Test Sonuçları</h3></div>
+                            <div id="test-results-panel" class="card-body panel-body">Yükleniyor...</div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-4">
+                        <div class="card mb-4">
+                            <div class="card-header"><h3 class="card-title">Governance (GOV-DRIFT)</h3></div>
+                            <div id="governance-panel" class="card-body panel-body">Yükleniyor...</div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
-    </div>
+    </main>
+</div>
     <script>
         function esc(value) {
             return String(value === undefined || value === null ? 'UNKNOWN' : value)
@@ -92,7 +189,22 @@
 
         function renderUnavailable(elementId, reason) {
             document.getElementById(elementId).innerHTML =
-                `<span class="text-amber-500">unavailable: ${esc(reason)}</span>`;
+                `<span class="text-warning">unavailable: ${esc(reason)}</span>`;
+        }
+
+        function kv(label, valueHtml) {
+            return `<div class="kv"><span>${label}</span><span class="text-end">${valueHtml}</span></div>`;
+        }
+
+        function badge(text, tone) {
+            return `<span class="badge text-bg-${tone}">${esc(text)}</span>`;
+        }
+
+        // Numbers from the APIs are rendered as given, or n/a when absent -
+        // never replaced with a made-up placeholder value.
+        function num(value, digits) {
+            if (typeof value !== 'number' || !isFinite(value)) return 'n/a';
+            return esc(digits === undefined ? value : Number(value.toPrecision(digits)));
         }
 
         // Maximum lines retained in the trade log. The 5s poll appends
@@ -115,32 +227,63 @@
             momentum: 'Momentum',
         };
 
-        function renderAgentRow(name, agent) {
-            const label = AGENT_LABELS[name] || esc(name);
-            if (!agent || agent.status !== 'EVALUATED') {
-                const reason = agent ? agent.reason : 'UNKNOWN';
-                return `<div class="text-slate-600 leading-tight py-0.5">` +
-                    `<div>${label} <span class="text-slate-700">excluded</span></div>` +
-                    `<div class="text-slate-700 truncate" title="${esc(reason)}">${esc(reason)}</div></div>`;
+        // Underlying data behind the macro and risk votes (/api/agent-evidence).
+        // null evidence means no provider evidence reached this cycle; it is
+        // shown as such, not filled in.
+        function renderEvidence(name, evidence) {
+            if (name !== 'macro' && name !== 'risk') return '';
+            if (!evidence) return `<div class="agent-detail">veri: yok</div>`;
+            if (evidence.vote === null || evidence.vote === undefined) {
+                return `<div class="agent-detail">veri yok: ${esc(evidence.reason)}</div>`;
             }
-            return `<div class="flex justify-between gap-2 py-0.5">` +
-                `<span class="text-slate-400">${label}</span>` +
-                `<span class="text-right">${esc(agent.action)} (${esc(agent.score)})</span></div>`;
+            if (name === 'macro') {
+                const move = typeof evidence.ten_year_change_bp === 'number'
+                    ? `${evidence.ten_year_change_bp > 0 ? '+' : ''}${esc(evidence.ten_year_change_bp)} bp` : 'n/a';
+                const curve = evidence.curve_inverted === true ? 'ters (inverted)'
+                    : evidence.curve_inverted === false ? 'normal' : 'n/a';
+                return `<div class="agent-detail">10Y 20g: ${move} (${esc(evidence.move)})</div>` +
+                    `<div class="agent-detail">eğri: ${curve}, 10Y-2Y ${num(evidence.curve_spread_bp)} bp</div>` +
+                    `<div class="agent-detail">gözlem: ${esc(evidence.observed_date)}</div>`;
+            }
+            return `<div class="agent-detail">rejim: ${esc(evidence.regime)} &middot; vol ${num(evidence.realized_volatility, 3)}</div>` +
+                `<div class="agent-detail">p20 ${num(evidence.p20, 3)} / p80 ${num(evidence.p80, 3)}</div>`;
         }
 
-        function renderSignalTile(signal) {
-            const action = esc(signal.action);
+        function renderAgentRow(name, agent, evidence) {
+            const label = AGENT_LABELS[name] || esc(name);
+            const detail = renderEvidence(name, evidence);
+            if (!agent || agent.status !== 'EVALUATED') {
+                const reason = agent ? agent.reason : 'UNKNOWN';
+                return `<div class="agent-row text-body-secondary">` +
+                    `<div>${label} <span class="badge text-bg-secondary">excluded</span></div>` +
+                    `<div class="agent-detail text-truncate" title="${esc(reason)}">${esc(reason)}</div>${detail}</div>`;
+            }
+            return `<div class="agent-row"><div class="d-flex justify-content-between gap-2">` +
+                `<span class="text-body-secondary">${label}</span>` +
+                `<span class="text-end">${esc(agent.action)} (${esc(agent.score)})</span></div>${detail}</div>`;
+        }
+
+        function actionTone(action) {
+            return action === 'BUY' ? 'success' : action === 'SELL' ? 'danger' : 'secondary';
+        }
+
+        function renderSignalTile(signal, evidence) {
             const confidence = signal.confidence === undefined || signal.confidence === null
                 ? 'UNKNOWN' : esc(signal.confidence);
             const agentRows = Object.keys(AGENT_LABELS)
-                .map((name) => renderAgentRow(name, signal.agents && signal.agents[name]))
+                .map((name) => renderAgentRow(
+                    name,
+                    signal.agents && signal.agents[name],
+                    evidence ? evidence[name] : null,
+                ))
                 .join('');
-            return `<div class="bg-slate-900 p-4 rounded-2xl border border-slate-800">` +
-                `<h3 class="text-blue-400 text-xs uppercase font-bold">${esc(signal.symbol)}</h3>` +
-                `<div class="text-xl font-bold mt-1">${action}</div>` +
-                `<div class="text-xs text-slate-400">confidence: ${confidence} / risk: ${esc(signal.risk_level)}</div>` +
-                `<div class="mt-3 text-xs space-y-0.5">${agentRows}</div>` +
-                `</div>`;
+            return `<div class="col-12 col-md-6 col-xl"><div class="card h-100 mb-0"><div class="card-body p-3">` +
+                `<div class="d-flex justify-content-between align-items-center">` +
+                `<span class="fw-bold text-info small">${esc(signal.symbol)}</span>` +
+                `${badge(signal.action, actionTone(signal.action))}</div>` +
+                `<div class="small text-body-secondary mt-1">confidence: ${confidence} / risk: ${esc(signal.risk_level)}</div>` +
+                `<div class="mt-2 small">${agentRows}</div>` +
+                `</div></div></div>`;
         }
 
         // Fallback placeholder list only - shown as "beklemede" tiles before
@@ -153,6 +296,18 @@
         // limits what live data gets shown.
         const DEFAULT_SYMBOL_PLACEHOLDERS = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT'];
 
+        // Evidence is optional: its failure never blanks the signal grid,
+        // and each tile then shows "veri: yok" for macro/risk detail.
+        async function fetchAgentEvidence() {
+            try {
+                const res = await fetch('/api/agent-evidence');
+                const payload = await res.json();
+                return payload && payload.status === 'SUCCESS' ? (payload.evidence || {}) : {};
+            } catch (error) {
+                return {};
+            }
+        }
+
         async function updateSignalsGrid() {
             const grid = document.getElementById('signals-grid');
             // The whole body - fetch, parse and render - is inside this
@@ -164,16 +319,17 @@
                     const res = await fetch('/api/signals');
                     payload = await res.json();
                 } catch (error) {
-                    grid.innerHTML = `<div class="col-span-full text-amber-500">unavailable: network error</div>`;
+                    grid.innerHTML = `<div class="col-12 text-warning">unavailable: network error</div>`;
                     return;
                 }
 
                 if (!payload || payload.status !== 'SUCCESS') {
                     const reason = (payload && (payload.reason || payload.status)) || 'UNKNOWN';
-                    grid.innerHTML = `<div class="col-span-full text-amber-500">unavailable: ${esc(reason)}</div>`;
+                    grid.innerHTML = `<div class="col-12 text-warning">unavailable: ${esc(reason)}</div>`;
                     return;
                 }
 
+                const evidence = await fetchAgentEvidence();
                 const signals = payload.signals || {};
                 const extraSymbols = Object.keys(signals)
                     .filter((symbol) => !DEFAULT_SYMBOL_PLACEHOLDERS.includes(symbol))
@@ -183,11 +339,11 @@
                 grid.innerHTML = displaySymbols.map((symbol) => {
                     const signal = signals[symbol];
                     if (!signal) {
-                        return `<div class="bg-slate-900 p-4 rounded-2xl border border-slate-800">` +
-                            `<h3 class="text-slate-500 text-xs uppercase font-bold">${esc(symbol)}</h3>` +
-                            `<div class="text-sm text-slate-600 mt-2">beklemede...</div></div>`;
+                        return `<div class="col-12 col-md-6 col-xl"><div class="card h-100 mb-0"><div class="card-body p-3">` +
+                            `<span class="fw-bold text-body-secondary small">${esc(symbol)}</span>` +
+                            `<div class="small text-body-secondary mt-2">beklemede...</div></div></div></div>`;
                     }
-                    return renderSignalTile(signal);
+                    return renderSignalTile(signal, evidence[symbol]);
                 }).join('');
 
                 {# symbol is DEFAULT_SYMBOL, a fixed server-side constant,
@@ -201,7 +357,7 @@
                     );
                 }
             } catch (error) {
-                grid.innerHTML = `<div class="col-span-full text-amber-500">unavailable: render error</div>`;
+                grid.innerHTML = `<div class="col-12 text-warning">unavailable: render error</div>`;
             }
         }
 
@@ -215,7 +371,11 @@
                 return;
             }
             if (payload && payload.available === true) {
-                onAvailable(payload);
+                try {
+                    onAvailable(payload);
+                } catch (error) {
+                    renderUnavailable(elementId, 'render error');
+                }
             } else {
                 const reason = (payload && (payload.reason || payload.status)) || 'UNKNOWN';
                 renderUnavailable(elementId, reason);
@@ -226,24 +386,21 @@
             fetchPanel('/api/observability/test-results', 'test-results-panel', (payload) => {
                 const totals = payload.totals || {};
                 const alignment = (payload.commit_alignment && payload.commit_alignment.state) || 'UNKNOWN';
-                const alignmentColor = alignment === 'MATCH' ? 'text-emerald-400'
-                    : alignment === 'STALE' ? 'text-amber-500'
-                    : 'text-slate-400';
+                const alignmentTone = alignment === 'MATCH' ? 'success'
+                    : alignment === 'STALE' ? 'warning' : 'secondary';
                 document.getElementById('test-results-panel').innerHTML =
-                    `<span class="text-emerald-400">${totals.passed}</span> passed / ` +
-                    `<span class="text-red-400">${totals.failed}</span> failed / ` +
-                    `<span class="text-slate-300">${totals.tests}</span> total` +
-                    `<br><span class="${alignmentColor}">commit: ${alignment}</span>`;
+                    kv('passed', `<span class="text-success">${esc(totals.passed)}</span>`) +
+                    kv('failed', `<span class="text-danger">${esc(totals.failed)}</span>`) +
+                    kv('total', esc(totals.tests)) +
+                    kv('commit', badge(alignment, alignmentTone));
             });
         }
 
         function updateGovernancePanel() {
             fetchPanel('/api/observability/governance', 'governance-panel', (payload) => {
-                const version = payload.schema_version || 'UNKNOWN';
-                const status = (payload.reconciliation && payload.reconciliation.status) || 'UNKNOWN';
                 document.getElementById('governance-panel').innerHTML =
-                    `head version: <span class="text-slate-300">${version}</span>` +
-                    `<br>reconciliation: <span class="text-slate-300">${status}</span>`;
+                    kv('head version', esc(payload.schema_version)) +
+                    kv('reconciliation', esc(payload.reconciliation && payload.reconciliation.status));
             });
         }
 
@@ -278,13 +435,13 @@
                 ['market_data_stale', payload.market_data_stale, true],
                 ['market_loop_thread_alive', payload.market_loop_thread_alive, false],
             ];
-            document.getElementById(elementId).innerHTML = rows.map(([label, value, badWhen]) => {
+            const html = rows.map(([label, value, badWhen]) => {
                 if (value === undefined) return '';
                 const flagged = badWhen !== null && value === badWhen;
-                const color = flagged ? 'text-amber-500' : 'text-slate-300';
-                return `<div class="flex justify-between"><span class="text-slate-500">${label}</span>` +
-                    `<span class="${color}">${esc(value)}</span></div>`;
+                return kv(label, `<span class="${flagged ? 'text-warning' : ''}">${esc(value)}</span>`);
             }).join('');
+            document.getElementById(elementId).innerHTML = html ||
+                `<span class="text-warning">unavailable: ${esc(payload.reason || payload.state)}</span>`;
         }
 
         function updateTradeHistoryPanel() {
@@ -292,25 +449,162 @@
                 const winRate = payload.win_rate === null || payload.win_rate === undefined
                     ? 'n/a' : `${esc(payload.win_rate)}%`;
                 document.getElementById('trade-history-panel').innerHTML =
-                    `<div>toplam işlem: <span class="text-slate-300">${esc(payload.total_trades)}</span></div>` +
-                    `<div>win rate: <span class="text-emerald-400">${winRate}</span> ` +
-                    `(${esc(payload.wins)}W / ${esc(payload.losses)}L)</div>` +
-                    `<div>toplam gross P&amp;L: <span class="text-slate-300">${esc(payload.total_gross_pnl)}</span></div>`;
+                    kv('toplam işlem', esc(payload.total_trades)) +
+                    kv('win rate', `<span class="text-success">${winRate}</span> (${esc(payload.wins)}W / ${esc(payload.losses)}L)`) +
+                    kv('toplam gross P&amp;L', esc(payload.total_gross_pnl));
             });
+        }
+
+        const DAY_STATE_TONES = { CURRENT: 'success', BEHIND_TODAY: 'warning' };
+
+        function updateRiskAccountingPanel() {
+            fetchPanel('/api/risk-accounting', 'risk-accounting-panel', (payload) => {
+                const day = payload.accounting_day || {};
+                let html = kv('bugün (UTC)', esc(payload.today_utc)) +
+                    kv('muhasebe günü', day.accounting_day_utc
+                        ? esc(day.accounting_day_utc) : '<span class="text-warning">n/a</span>') +
+                    kv('durum', badge(day.state, DAY_STATE_TONES[day.state] || 'danger'));
+
+                const rollover = payload.rollover || {};
+                let rolloverHtml;
+                if (rollover.available !== true) {
+                    rolloverHtml = `<span class="text-warning">unavailable: ${esc(rollover.reason)}</span>`;
+                } else if (!rollover.latest) {
+                    rolloverHtml = rollover.scan_truncated
+                        ? `audit log'un son ${esc(Math.round(rollover.scan_limit_bytes / 1048576))} MB'ında yok`
+                        : 'henüz yok';
+                } else {
+                    const latest = rollover.latest;
+                    rolloverHtml = `${esc(latest.from_accounting_day_utc)} &rarr; ${esc(latest.to_accounting_day_utc)} ` +
+                        badge(latest.outcome, latest.outcome === 'COMMITTED' ? 'success' : 'warning') +
+                        `<div class="agent-detail">prepared ${esc(latest.prepared_at)}` +
+                        (latest.committed_at ? ` &middot; committed ${esc(latest.committed_at)}` : '') + `</div>`;
+                }
+                html += kv('son rollover', rolloverHtml);
+
+                // Refusals are not audited (registry v4.81): say so rather
+                // than render an empty field that reads as "no refusal".
+                const refusal = payload.refusal_reason
+                    ? esc(payload.refusal_reason)
+                    : payload.refusal_reason_source === 'NOT_AUDITED_WARNING_LOG_ONLY'
+                        ? 'audit log\'a yazılmıyor &mdash; yalnızca WARNING log satırında'
+                        : 'n/a';
+                html += kv('reddetme sebebi', `<span class="text-body-secondary">${refusal}</span>`);
+                document.getElementById('risk-accounting-panel').innerHTML = html;
+            });
+        }
+
+        const VENUE_TONES = { FRESH: 'success', STALE: 'warning' };
+
+        function renderAge(seconds) {
+            if (typeof seconds !== 'number') return 'n/a';
+            return seconds >= 3600 ? `${esc((seconds / 3600).toFixed(1))} saat` : `${esc(seconds)} sn`;
+        }
+
+        function updateSystemIntegrityPanel() {
+            fetchPanel('/api/system-integrity', 'system-integrity-panel', (payload) => {
+                const venue = payload.venue_rules || {};
+                const registry = payload.registry || {};
+                const statusEl = document.getElementById('venue-rules-status');
+                const iconEl = document.getElementById('venue-rules-icon');
+                let html = '';
+
+                if (venue.available === true) {
+                    const tone = VENUE_TONES[venue.status] || 'danger';
+                    statusEl.innerHTML = `<span class="text-${tone}">${esc(venue.status)}</span>`;
+                    iconEl.className = `info-box-icon text-bg-${tone} shadow-sm`;
+                    html += kv('venue kuralları', badge(venue.status, tone)) +
+                        kv('son gözlem', esc(venue.observed_at)) +
+                        kv('yaş / limit', `${renderAge(venue.age_seconds)} / ${renderAge(venue.maximum_age_seconds)}`);
+                } else {
+                    statusEl.innerHTML = `<span class="text-warning">${esc(venue.reason)}</span>`;
+                    html += kv('venue kuralları', `<span class="text-warning">unavailable: ${esc(venue.reason)}</span>`);
+                }
+
+                const registryText = registry.available === true
+                    ? `v${esc(registry.version)}` : `unavailable: ${esc(registry.reason)}`;
+                document.getElementById('registry-version').innerHTML = registryText;
+                html += kv('governance registry', registryText);
+
+                const limitations = payload.known_limitations || [];
+                html += `<div class="mt-3 mb-1 fw-semibold">Bilinen kısıtlar (${esc(limitations.length)})</div>`;
+                html += limitations.map((item) =>
+                    `<div class="callout callout-warning py-2 px-3 mb-2">` +
+                    `<div class="small fw-semibold">${esc(item.id)} ${badge(item.status, 'warning')}</div>` +
+                    `<div class="small">${esc(item.summary)}</div>` +
+                    `<div class="agent-detail">registry: ${esc(item.registry_reference)}</div></div>`
+                ).join('');
+                document.getElementById('system-integrity-panel').innerHTML = html;
+            });
+        }
+
+        function renderDistribution(dist) {
+            if (!dist || !dist.count) return '<span class="text-body-secondary">veri yok</span>';
+            return `p50 ${num(dist.p50, 4)} &middot; p90 ${num(dist.p90, 4)} &middot; p95 ${num(dist.p95, 4)} ` +
+                `&middot; p99 ${num(dist.p99, 4)} &middot; max ${num(dist.max, 4)} <span class="text-body-secondary">(n=${esc(dist.count)})</span>`;
+        }
+
+        // Reads the operator-generated artifact of the extraction tool
+        // (/api/observability/telemetry-summary). No artifact, or a log with
+        // no records, is shown as "veri yok" with how to produce it - never
+        // as zeros.
+        async function updateTelemetryPanel() {
+            const el = document.getElementById('telemetry-panel');
+            let payload;
+            try {
+                const res = await fetch('/api/observability/telemetry-summary');
+                payload = await res.json();
+            } catch (error) {
+                renderUnavailable('telemetry-panel', 'network error');
+                return;
+            }
+            try {
+                const hint = payload && payload.generate_command
+                    ? `<div class="agent-detail mt-1">üretmek için: <code>${esc(payload.generate_command)}</code></div>` : '';
+                if (!payload || payload.available !== true) {
+                    const reason = (payload && (payload.reason || payload.status)) || 'UNKNOWN';
+                    const label = reason === 'ARTIFACT_MISSING' || reason === 'ARTIFACT_EMPTY' ? 'veri yok' : 'unavailable';
+                    el.innerHTML = `<span class="text-warning">${label}: ${esc(reason)}</span>${hint}`;
+                    return;
+                }
+                const written = `<div class="agent-detail mt-2">artifact yazıldı: ${esc(payload.artifact_written_at)}</div>`;
+                if (payload.has_data !== true) {
+                    el.innerHTML = `<span class="text-body-secondary">veri yok: ${esc(payload.reason)}</span>${written}${hint}`;
+                    return;
+                }
+                const statusCounts = Object.entries(payload.candle_age_status_counts || {})
+                    .map(([status, count]) => `${esc(status)}=${esc(count)}`).join(', ') || 'n/a';
+                el.innerHTML =
+                    `<div class="fw-semibold">candle age (sn, MEASURED)</div>` +
+                    `<div class="small mb-2">${renderDistribution(payload.candle_age_seconds)}</div>` +
+                    `<div class="fw-semibold">cycle duration (sn, tüm log)</div>` +
+                    `<div class="small mb-2">${renderDistribution(payload.cycle_duration_seconds)}</div>` +
+                    `<div class="fw-semibold">cycle duration (sn, son run)</div>` +
+                    `<div class="small mb-2">${renderDistribution(payload.cycle_duration_latest_run_seconds)}</div>` +
+                    kv('status', `<span class="small">${statusCounts}</span>`) +
+                    kv('kayıt / atlanan satır', `${esc(payload.parsed_records)} / ${esc(payload.skipped_lines)}`) +
+                    kv('run sayısı', esc(payload.run_count)) +
+                    (payload.unexpected_schema_version_present
+                        ? `<div class="text-warning small">beklenmeyen schema_version mevcut</div>` : '') +
+                    written;
+            } catch (error) {
+                renderUnavailable('telemetry-panel', 'render error');
+            }
         }
 
         setInterval(updateSignalsGrid, 5000);
         updateSignalsGrid();
-        setInterval(() => {
+        function updateSlowPanels() {
             updateTestResultsPanel();
             updateGovernancePanel();
             updateExecutionHealthPanel();
             updateTradeHistoryPanel();
-        }, 30000);
-        updateTestResultsPanel();
-        updateGovernancePanel();
-        updateExecutionHealthPanel();
-        updateTradeHistoryPanel();
+            updateRiskAccountingPanel();
+            updateSystemIntegrityPanel();
+            updateTelemetryPanel();
+        }
+        setInterval(updateSlowPanels, 30000);
+        updateSlowPanels();
     </script>
 </body>
 </html>

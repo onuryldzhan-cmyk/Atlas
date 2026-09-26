@@ -15,19 +15,24 @@ Design principles
 
 from __future__ import annotations
 
+import json
 import logging
+from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Callable
 
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import (
+    FileResponse,
     HTMLResponse,
     JSONResponse,
     RedirectResponse,
 )
 from fastapi.templating import Jinja2Templates
+from starlette.concurrency import run_in_threadpool
 
+from observability import panel_sources
 from observability.panel_router import (
     build_observability_router,
     is_loopback_request,
@@ -140,6 +145,66 @@ PUBLIC_TRADE_KEYS = (
 # positions. The archive is unbounded and append-only; a dashboard panel
 # has no use for the full lifetime history on every 30s poll.
 TRADE_HISTORY_LIMIT = 50
+
+# Fields of the per-cycle macro / market_risk evidence (MarketLoop
+# .last_agent_evidence, produced by WorldAnalysisEngine) that may be
+# published. The provider "source" label is left out, and so is anything
+# added later: same least-exposure allowlist as PUBLIC_AGENT_KEYS.
+PUBLIC_MACRO_EVIDENCE_KEYS = (
+    "observed_date",
+    "ten_year_change_bp",
+    "curve_spread_bp",
+    "curve_inverted",
+    "move",
+    "vote",
+    "reason",
+)
+
+PUBLIC_MARKET_RISK_EVIDENCE_KEYS = (
+    "regime",
+    "realized_volatility",
+    "p20",
+    "p80",
+    "reference_windows",
+    "vote",
+    "reason",
+)
+
+# Venue-rule freshness fields for the System Integrity panel. "source",
+# "source_version" and "schema_version" are config provenance detail the
+# at-a-glance panel does not need.
+PUBLIC_VENUE_RULES_KEYS = (
+    "status",
+    "venue",
+    "observed_at",
+    "age_seconds",
+    "maximum_age_seconds",
+    "evaluated_at",
+    "reason",
+)
+
+# Audit event types ExecutionManager writes for the automatic PAPER
+# risk-accounting day rollover (registry v4.81). Mirrored as literals rather
+# than imported: web_app is L5 and may not import core.execution_manager.
+RISK_DAY_ROLLOVER_PREPARED = "RISK_ACCOUNTING_DAY_ROLLOVER_PREPARED"
+RISK_DAY_ROLLOVER_COMMITTED = "RISK_ACCOUNTING_DAY_ROLLOVER_COMMITTED"
+RISK_ACCOUNTING_AGGREGATE = "risk_accounting_state"
+
+# Only the tail of the append-only audit log is scanned for rollover
+# events, so a 30s poll never reads an unbounded file. The audit store's
+# own lock is deliberately not taken: holding it would stall execution's
+# audit appends for the length of a dashboard read.
+AUDIT_SCAN_MAX_BYTES = 4 * 1024 * 1024
+
+# Vendored UI assets, served only through the loopback-guarded /assets
+# route below. A fixed allowlist: the route never maps a request path onto
+# the filesystem. Provenance is in static/vendor/VENDORED_ASSETS.json.
+VENDORED_ASSETS = {
+    "adminlte.min.css": (
+        BASE_DIR / "static" / "vendor" / "adminlte-4.9.1" / "adminlte.min.css",
+        "text/css",
+    ),
+}
 
 NON_LOOPBACK_RESPONSE = {
     "status": "FORBIDDEN",
@@ -428,6 +493,287 @@ def _public_trade(
         key: record[key]
         for key in PUBLIC_TRADE_KEYS
         if key in record
+    }
+
+
+def _public_scalars(
+    value: Any,
+    keys: tuple[str, ...],
+) -> dict[str, Any] | None:
+    """
+    Allowlist projection that also refuses non-scalar values, so a nested
+    structure added under an allowed key later cannot cross the boundary.
+    A value that is not a mapping is published as null.
+    """
+
+    if not isinstance(value, dict):
+        return None
+
+    return {
+        key: value[key]
+        for key in keys
+        if key in value
+        and (
+            value[key] is None
+            or isinstance(value[key], (str, int, float, bool))
+        )
+    }
+
+
+def _public_agent_evidence(
+    entry: Any,
+) -> dict[str, Any]:
+    """
+    One symbol's last_agent_evidence, keyed by the dashboard's agent names
+    (AgentFusion's "risk" agent reads the "market_risk" evidence).
+    """
+
+    if not isinstance(entry, dict):
+        entry = {}
+
+    return {
+        "macro": _public_scalars(
+            entry.get("macro"),
+            PUBLIC_MACRO_EVIDENCE_KEYS,
+        ),
+        "risk": _public_scalars(
+            entry.get("market_risk"),
+            PUBLIC_MARKET_RISK_EVIDENCE_KEYS,
+        ),
+    }
+
+
+def _read_audit_tail_lines(
+    path: Path,
+) -> tuple[list[str], bool]:
+    """
+    Return complete lines from the last AUDIT_SCAN_MAX_BYTES of the audit
+    log, and whether the scan was truncated. A missing file is no lines.
+    """
+
+    if not path.is_file():
+        return [], False
+
+    with path.open("rb") as handle:
+        handle.seek(0, 2)
+        size = handle.tell()
+        start = max(0, size - AUDIT_SCAN_MAX_BYTES)
+        handle.seek(start)
+        raw = handle.read(size - start)
+
+    lines = raw.decode("utf-8", errors="replace").splitlines()
+
+    if start > 0 and lines:
+        # The first line of a mid-file window is almost always partial.
+        lines = lines[1:]
+
+    return lines, start > 0
+
+
+def _latest_rollover(
+    lines: list[str],
+) -> dict[str, Any] | None:
+    """
+    The most recent rollover PREPARED record, and whether a COMMITTED
+    record points back at it. Only day labels and timestamps are
+    published; the equity figures in the payload stay out.
+    """
+
+    prepared: dict[str, Any] | None = None
+    committed_by_cause: dict[str, str] = {}
+
+    for line in lines:
+        line = line.strip()
+
+        if not line:
+            continue
+
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+
+        if (
+            not isinstance(event, dict)
+            or event.get("aggregate_type") != RISK_ACCOUNTING_AGGREGATE
+        ):
+            continue
+
+        event_type = event.get("event_type")
+
+        if event_type == RISK_DAY_ROLLOVER_PREPARED:
+            prepared = event
+        elif event_type == RISK_DAY_ROLLOVER_COMMITTED:
+            cause = event.get("causation_id")
+
+            if isinstance(cause, str):
+                timestamp = event.get("timestamp")
+                committed_by_cause[cause] = (
+                    timestamp if isinstance(timestamp, str) else ""
+                )
+
+    if prepared is None:
+        return None
+
+    payload = prepared.get("payload")
+
+    if not isinstance(payload, dict):
+        payload = {}
+
+    event_id = prepared.get("event_id")
+    committed_at = committed_by_cause.get(event_id) if isinstance(event_id, str) else None
+
+    def _text(value: Any) -> str | None:
+        return value if isinstance(value, str) else None
+
+    return {
+        "outcome": "COMMITTED" if committed_at is not None else "PREPARED_ONLY",
+        "from_accounting_day_utc": _text(payload.get("from_accounting_day_utc")),
+        "to_accounting_day_utc": _text(payload.get("to_accounting_day_utc")),
+        "prepared_at": _text(prepared.get("timestamp")),
+        "committed_at": committed_at or None,
+    }
+
+
+def _risk_accounting_payload(
+    runtime: Any | None,
+) -> tuple[int, dict[str, Any]]:
+    """Build the Risk Accounting panel body. Read-only throughout."""
+
+    if runtime is None:
+        return 503, {"available": False, "reason": "RUNTIME_NOT_ATTACHED"}
+
+    store = _resolve_attr(runtime, "risk_state_store")
+    policy = _resolve_attr(runtime, "risk_policy")
+    policy_version = getattr(policy, "version", None)
+
+    if not callable(getattr(store, "load", None)) or not isinstance(policy_version, str):
+        return 503, {"available": False, "reason": "RISK_STATE_STORE_UNAVAILABLE"}
+
+    today = datetime.now(UTC).date()
+    day: dict[str, Any]
+
+    # JsonRiskStateStore.load is a plain file read with validation; it
+    # never rolls or repairs anything.
+    try:
+        restored = store.load(
+            expected_policy_version=policy_version,
+            today_utc=today,
+        )
+        accounting_day = restored.accounting_day_utc
+        day = {
+            "state": "CURRENT" if accounting_day == today else "BEHIND_TODAY",
+            "accounting_day_utc": accounting_day.isoformat(),
+        }
+    except FileNotFoundError:
+        day = {"state": "RISK_STATE_MISSING", "accounting_day_utc": None}
+    except (OSError, UnicodeDecodeError) as exc:
+        logger.exception("Risk accounting state is unreadable")
+        day = {
+            "state": "RISK_STATE_UNREADABLE",
+            "accounting_day_utc": None,
+            "error_type": type(exc).__name__,
+        }
+    except Exception as exc:
+        # Schema, policy-version or future-day refusal: the text can carry
+        # internal detail, so only the class name is published.
+        logger.exception("Risk accounting state failed validation")
+        day = {
+            "state": "RISK_STATE_INVALID",
+            "accounting_day_utc": None,
+            "error_type": type(exc).__name__,
+        }
+
+    audit_store = _resolve_attr(runtime, "audit_store")
+    audit_path = getattr(audit_store, "file_path", None)
+    rollover: dict[str, Any]
+
+    if not isinstance(audit_path, Path):
+        rollover = {"available": False, "reason": "AUDIT_STORE_UNAVAILABLE"}
+    else:
+        try:
+            lines, truncated = _read_audit_tail_lines(audit_path)
+        except (OSError, UnicodeDecodeError) as exc:
+            logger.exception("Audit log is unreadable")
+            rollover = {
+                "available": False,
+                "reason": "AUDIT_LOG_UNREADABLE",
+                "error_type": type(exc).__name__,
+            }
+        else:
+            rollover = {
+                "available": True,
+                "latest": _latest_rollover(lines),
+                "scan_truncated": truncated,
+                "scan_limit_bytes": AUDIT_SCAN_MAX_BYTES,
+            }
+
+    return 200, {
+        "available": True,
+        "today_utc": today.isoformat(),
+        "accounting_day": day,
+        "rollover": rollover,
+        # A refused automatic rollover is logged as a WARNING by
+        # ExecutionManager but is not written to the audit log (registry
+        # v4.81), so its reason cannot be sourced from there. Stated
+        # explicitly instead of left blank.
+        "refusal_reason": None,
+        "refusal_reason_source": "NOT_AUDITED_WARNING_LOG_ONLY",
+    }
+
+
+def _system_integrity_payload(
+    runtime: Any | None,
+) -> dict[str, Any]:
+    """Venue-rule freshness, registry head, and known limitations."""
+
+    venue_rules: dict[str, Any]
+    execution = _resolve_attr(runtime, "execution")
+    assess = getattr(execution, "assess_venue_rule_freshness", None)
+
+    if runtime is None:
+        venue_rules = {"available": False, "reason": "RUNTIME_NOT_ATTACHED"}
+    elif not callable(assess):
+        venue_rules = {"available": False, "reason": "VENUE_RULES_UNAVAILABLE"}
+    else:
+        try:
+            report = assess()
+            projected = _public_scalars(
+                report.to_dict(),
+                PUBLIC_VENUE_RULES_KEYS,
+            )
+            venue_rules = (
+                {"available": True, **projected}
+                if projected is not None
+                else {"available": False, "reason": "VENUE_RULES_MALFORMED"}
+            )
+        except Exception as exc:
+            logger.exception("Venue rule freshness assessment failed")
+            venue_rules = {
+                "available": False,
+                "reason": "VENUE_RULES_ASSESSMENT_FAILED",
+                "error_type": type(exc).__name__,
+            }
+
+    resolved = panel_sources.resolve_current_registry()
+
+    if resolved.get("available") is True:
+        schema_version = resolved["payload"].get("schema_version")
+        registry = {
+            "available": True,
+            "version": schema_version if isinstance(schema_version, str) else None,
+            "file": resolved["head"],
+        }
+    else:
+        registry = {"available": False, "reason": resolved.get("reason")}
+
+    return {
+        "available": True,
+        "venue_rules": venue_rules,
+        "registry": registry,
+        "known_limitations": [
+            dict(item) for item in panel_sources.KNOWN_LIMITATIONS
+        ],
     }
 
 
@@ -946,6 +1292,163 @@ def create_app(
                 ],
             },
         )
+
+    @application.get(
+        "/api/agent-evidence",
+        response_class=JSONResponse,
+    )
+    async def api_agent_evidence(
+        request: Request,
+    ) -> JSONResponse:
+        # The data behind the macro and risk votes /api/signals reports:
+        # 10Y move and curve for macro, volatility regime and its p20/p80
+        # for risk. Kept off /api/signals so that endpoint's published
+        # shape does not change.
+        if not is_loopback_request(request):
+            return JSONResponse(
+                status_code=403,
+                content=NON_LOOPBACK_RESPONSE,
+            )
+
+        market_loop = _resolve_attr(
+            application.state.atlas_runtime,
+            "market_loop",
+        )
+
+        status_method = getattr(market_loop, "status", None)
+
+        if not callable(status_method):
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "status": "OFFLINE",
+                    "reason": "MARKET_LOOP_NOT_ATTACHED",
+                },
+            )
+
+        try:
+            loop_status = status_method()
+            evidence = (
+                loop_status.get("last_agent_evidence")
+                if isinstance(loop_status, dict)
+                else None
+            )
+
+            if not isinstance(evidence, dict):
+                evidence = {}
+
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "status": "SUCCESS",
+                    "evidence": {
+                        str(symbol): _public_agent_evidence(entry)
+                        for symbol, entry in evidence.items()
+                    },
+                },
+            )
+
+        except Exception as exc:
+            logger.exception("Web agent evidence request failed")
+
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "status": "ERROR",
+                    "reason": "AGENT_EVIDENCE_FAILED",
+                    "error_type": type(exc).__name__,
+                },
+            )
+
+    @application.get(
+        "/api/risk-accounting",
+        response_class=JSONResponse,
+    )
+    async def api_risk_accounting(
+        request: Request,
+    ) -> JSONResponse:
+        if not is_loopback_request(request):
+            return JSONResponse(
+                status_code=403,
+                content=NON_LOOPBACK_RESPONSE,
+            )
+
+        try:
+            status_code, payload = await run_in_threadpool(
+                _risk_accounting_payload,
+                application.state.atlas_runtime,
+            )
+        except Exception as exc:
+            logger.exception("Risk accounting panel read failed")
+
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "available": False,
+                    "reason": "PANEL_READ_FAILED",
+                    "error_type": type(exc).__name__,
+                },
+            )
+
+        return JSONResponse(status_code=status_code, content=payload)
+
+    @application.get(
+        "/api/system-integrity",
+        response_class=JSONResponse,
+    )
+    async def api_system_integrity(
+        request: Request,
+    ) -> JSONResponse:
+        if not is_loopback_request(request):
+            return JSONResponse(
+                status_code=403,
+                content=NON_LOOPBACK_RESPONSE,
+            )
+
+        try:
+            payload = await run_in_threadpool(
+                _system_integrity_payload,
+                application.state.atlas_runtime,
+            )
+        except Exception as exc:
+            logger.exception("System integrity panel read failed")
+
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "available": False,
+                    "reason": "PANEL_READ_FAILED",
+                    "error_type": type(exc).__name__,
+                },
+            )
+
+        return JSONResponse(status_code=200, content=payload)
+
+    @application.get(
+        "/assets/{asset_name}",
+    )
+    async def vendored_asset(
+        request: Request,
+        asset_name: str,
+    ) -> Response:
+        # Same guard as every other route: the page's own stylesheet is
+        # served locally, never from a CDN, and never to a non-loopback
+        # peer.
+        if not is_loopback_request(request):
+            return JSONResponse(
+                status_code=403,
+                content=NON_LOOPBACK_RESPONSE,
+            )
+
+        asset = VENDORED_ASSETS.get(asset_name)
+
+        if asset is None or not asset[0].is_file():
+            return JSONResponse(
+                status_code=404,
+                content={"status": "NOT_FOUND", "reason": "ASSET_NOT_VENDORED"},
+            )
+
+        return FileResponse(asset[0], media_type=asset[1])
 
     @application.post(
         "/login",

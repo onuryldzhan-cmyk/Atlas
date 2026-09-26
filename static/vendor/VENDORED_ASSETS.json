@@ -1,0 +1,49 @@
+{
+  "purpose": "Third-party UI assets vendored for the loopback-only operator dashboard (templates/dashboard.html). Served only through web_app.py's loopback-guarded /assets/{name} allowlist route; no CDN reference remains.",
+  "vetted_on": "2026-09-26",
+  "assets": [
+    {
+      "package": "admin-lte",
+      "version": "4.9.1",
+      "license": "MIT",
+      "upstream_repository": "https://github.com/ColorlibHQ/AdminLTE",
+      "upstream_release_tag": "v4.9.1",
+      "npm_publisher": "silkalns",
+      "tarball": "https://registry.npmjs.org/admin-lte/-/admin-lte-4.9.1.tgz",
+      "tarball_integrity": "sha512-NmVAH7INZjEE+OpVGATGtoRQllaetxzT9AaOMm8eMa9CxW+Okd/kWwCThYeJ7g/sR0/t9sbQoIfCk9Aht8hIqQ==",
+      "files": {
+        "adminlte-4.9.1/adminlte.min.css": {
+          "tarball_path": "package/dist/css/adminlte.min.css",
+          "sha256": "0934e1e6298dd4666440703dd613fdbb1a3c5f1554467923c29464ef4a5682ea",
+          "modified": false
+        },
+        "adminlte-4.9.1/LICENSE": {
+          "tarball_path": "package/LICENSE",
+          "sha256": "9e8b0d4e7ce8c13e67a2373d5094910c263fd95b1e49bdf45dc2a9813be5996b",
+          "modified": false
+        }
+      },
+      "notes": "adminlte.min.css compiles in Bootstrap 5.3 CSS, so Bootstrap's MIT license is carried alongside. Only the stylesheet is vendored: AdminLTE's JavaScript (sidebar/treeview/fullscreen behaviour, localStorage for sidebar state) and Bootstrap's JavaScript are not needed by this single-page panel and are deliberately not included. The file's trailing sourceMappingURL comment points at a local .map that is not vendored; browsers only request it with devtools open, and the request stays on loopback (404)."
+    },
+    {
+      "package": "bootstrap",
+      "version": "5.3.8",
+      "license": "MIT",
+      "upstream_repository": "https://github.com/twbs/bootstrap",
+      "tarball": "https://registry.npmjs.org/bootstrap/-/bootstrap-5.3.8.tgz",
+      "tarball_integrity": "sha512-HP1SZDqaLDPwsNiqRqi5NcP0SSXciX2s9E+RyqJIIqGo+vJeN5AJVM98CXmW/Wux0nQ5L7jeWUdplCEf0Ee+tg==",
+      "files": {
+        "adminlte-4.9.1/BOOTSTRAP_LICENSE": {
+          "tarball_path": "package/LICENSE",
+          "sha256": "4620c84ad5ce8602ff65640ed6b7c8b78ebb9e036584f0ebc1ccc88206a4bb51",
+          "modified": false
+        }
+      },
+      "notes": "License file only; Bootstrap's CSS reaches the page through adminlte.min.css."
+    }
+  ],
+  "security_review": {
+    "network_or_telemetry_code": "none found. adminlte.min.css contains no @import and no external url(); its only http(s) strings are license/website comments and the SVG XML namespace in inline data: URIs.",
+    "javascript_vendored": false
+  }
+}

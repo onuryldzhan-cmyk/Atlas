@@ -139,4 +139,25 @@ def build_observability_router(
 
         return _respond(payload)
 
+    @router.get("/telemetry-summary", response_class=JSONResponse)
+    async def telemetry_summary(request: Request) -> JSONResponse:
+        if not is_loopback_request(request):
+            return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+
+        try:
+            payload = panel_sources.read_telemetry_summary(repository_root)
+        except Exception as error:  # defensive: the panel must not 500 loudly
+            logger.exception("Telemetry summary panel read failed")
+
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "available": False,
+                    "reason": "PANEL_READ_FAILED",
+                    "error_type": type(error).__name__,
+                },
+            )
+
+        return _respond(payload)
+
     return router

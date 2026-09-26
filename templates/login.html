@@ -1,11 +1,12 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="tr" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/assets/adminlte.min.css">
     <title>Atlas AI</title>
 </head>
-<body class="bg-slate-950 text-white flex h-screen items-center justify-center">
+<body class="bg-body-tertiary d-flex min-vh-100 align-items-center justify-content-center p-3">
     {#
       There is deliberately no login form here. Authentication is not
       implemented, and a username field with no password and no CSRF token
@@ -13,10 +14,10 @@
       actually protects this panel today is the loopback guard plus the
       127.0.0.1 bind, so the page states exactly that instead.
     #}
-    <div class="bg-slate-900 p-8 rounded-xl border border-slate-800 w-96 text-center">
-        <h2 class="text-xl font-bold mb-2">Atlas AI</h2>
-        <p class="text-amber-500 text-sm font-bold mb-3">Kimlik doğrulama yok</p>
-        <p class="text-slate-400 text-sm mb-6">
+    <div class="card card-outline card-primary text-center" style="max-width: 24rem;"><div class="card-body p-4">
+        <h2 class="h4 fw-bold mb-2">Atlas AI</h2>
+        <p class="text-warning small fw-bold mb-3">Kimlik doğrulama yok</p>
+        <p class="text-body-secondary small mb-4">
             Bu panel yalnızca loopback (127.0.0.1) erişimine açık bir operatör
             panelidir. Oturum açma, kullanıcı hesabı veya yetkilendirme yoktur.
             Kimlik doğrulama uygulanana kadar bu panel bir ters vekil sunucu
@@ -24,14 +25,14 @@
             bağlanmamalıdır.
         </p>
         {% set state_label = runtime_state.get("state") or runtime_state.get("runtime_state") or "UNKNOWN" %}
-        <div class="text-xs text-slate-500 mb-4">
+        <div class="small text-body-secondary mb-4">
             Çalışma zamanı durumu:
-            <span class="text-slate-300">{{ state_label }}</span>
+            <span class="text-body">{{ state_label }}</span>
             {% if runtime_state.get("reason") %}
                 <br>{{ runtime_state.get("reason") }}
             {% endif %}
         </div>
-        <a href="/dashboard" class="block w-full bg-blue-600 p-2 rounded font-bold hover:bg-blue-700 transition">Panele Git</a>
-    </div>
+        <a href="/dashboard" class="btn btn-primary w-100 fw-bold">Panele Git</a>
+    </div></div>
 </body>
 </html>

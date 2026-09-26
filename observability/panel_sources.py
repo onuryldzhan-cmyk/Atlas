@@ -13,17 +13,24 @@ has already produced:
   ``governance/current/``, resolved through the ``supersedes`` chain rather
   than by sorting filenames, and reports its ``governance_reconciliation``
   record (GOV-DRIFT).
+* the S-3/M-2 telemetry summary reads
+  ``reports/observability/telemetry_summary.json``, the ``--json`` report of
+  ``tools/extract_candle_age_telemetry.py`` saved by the operator, and
+  projects it. The tool is neither run nor imported here; its statistics are
+  reused as produced, never reimplemented.
 
-Contract for both readers: on a missing, malformed, ambiguous or internally
+Contract for these readers: on a missing, malformed, ambiguous or internally
 inconsistent source they return ``{"available": False, "reason": ...}``.
 They never fabricate test counts and never infer a governance status.
 """
 
 from __future__ import annotations
 
+import codecs
 import json
 import xml.etree.ElementTree as ElementTree
 
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -515,6 +522,257 @@ def read_governance_panel(
         },
         **location,
     }
+
+
+# ---------------------------------------------------------------------------
+# Known, owner-accepted limitations (System Integrity panel)
+# ---------------------------------------------------------------------------
+
+# Static by design: each entry mirrors an owner-accepted or recorded-open
+# item in the governance registry, and the registry reference is published
+# with it so the operator can look it up. The package that closes one of
+# these must remove or update its entry here in the same change - nothing
+# infers closure automatically.
+KNOWN_LIMITATIONS: tuple[dict[str, str], ...] = (
+    {
+        "id": "EXEC-MGR-COMMIT-UNKNOWN-GAP-001",
+        "status": "OPEN_OWNER_ACCEPTED",
+        "registry_reference": "v4.74 owner_accepted_known_limitation",
+        "summary": (
+            "If a financial-state write is refused at the wrong moment, "
+            "execution halts as COMMIT_STATUS_UNKNOWN and needs manual "
+            "recovery; automatic recovery does not cover this case yet."
+        ),
+    },
+    {
+        "id": "DAILY-LOSS-LIMIT-WIRING",
+        "status": "OPEN_NOT_YET_WIRED",
+        "registry_reference": (
+            "v4.81 paper_risk_accounting_day_auto_rollover_result "
+            "informational_pre_existing"
+        ),
+        "summary": (
+            "Realized daily P&L is not accumulated anywhere yet, so the "
+            "daily-loss limit cannot trip; equity in the risk store only "
+            "refreshes at the daily rollover."
+        ),
+    },
+    {
+        "id": "RISK-ACCOUNTING-RECOVERY-REBOOK-GAP-001",
+        "status": "OPEN_OWNER_ACCEPTED",
+        "registry_reference": (
+            "v4.82 paper_realized_pnl_risk_accounting_and_halted_rollover_"
+            "refusal_result independent_audit.medium MEDIUM-1 "
+            "(residual of HIGH-1)"
+        ),
+        "summary": (
+            "Crash-recovery does not currently re-book a recovered trade's "
+            "realized P&L into risk accounting; if the operator resolves an "
+            "unresolved journal entry without separately reconciling the "
+            "risk store, the daily-loss/drawdown limits evaluate against an "
+            "understated loss. Operator reconciliation is required. A fix "
+            "is planned separately."
+        ),
+    },
+    {
+        "id": "RISK-EQUITY-UNREALIZED-DRAWDOWN-GAP-001",
+        "status": "OPEN_OWNER_ACCEPTED",
+        "registry_reference": (
+            "v4.82 paper_realized_pnl_risk_accounting_and_halted_rollover_"
+            "refusal_result independent_audit.informational"
+        ),
+        "summary": (
+            "Risk-store equity (current_equity/peak_equity) only refreshes "
+            "on a SELL commit or at day rollover, so an open position's "
+            "unrealized drawdown is not currently monitored by the "
+            "daily-loss/drawdown halts."
+        ),
+    },
+)
+
+
+# ---------------------------------------------------------------------------
+# S-3 / M-2 telemetry summary
+# ---------------------------------------------------------------------------
+
+# Produced on demand by the operator with the unchanged extraction tool:
+#
+#     python tools/extract_candle_age_telemetry.py --json > reports/observability/telemetry_summary.json
+#
+# The panel reads that artifact the same way it reads the test-results
+# artifact. It never runs the tool (no subprocess here) and never imports it
+# (the tool imports core.application, an edge this L5 package may not take),
+# so every statistic shown is one the tool itself computed.
+TELEMETRY_SUMMARY_ARTIFACT_RELPATH = "reports/observability/telemetry_summary.json"
+TELEMETRY_GENERATE_COMMAND = (
+    "python tools/extract_candle_age_telemetry.py --json > "
+    + TELEMETRY_SUMMARY_ARTIFACT_RELPATH
+)
+
+TELEMETRY_DISTRIBUTION_KEYS = ("count", "min", "max", "p50", "p90", "p95", "p99")
+
+
+def _public_distribution(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        return {"count": 0}
+
+    return {
+        key: value[key]
+        for key in TELEMETRY_DISTRIBUTION_KEYS
+        if key in value and isinstance(value[key], (int, float))
+        and not isinstance(value[key], bool)
+    }
+
+
+def summarize_telemetry_report(report: Any) -> dict[str, Any]:
+    """Project the tool's ``--json`` report onto the panel's fields.
+
+    No statistic is computed here - every number is one the tool already
+    produced. The log path is not published. An absent or empty log is
+    reported as ``has_data: False`` with a reason, never as zeros.
+    """
+
+    if not isinstance(report, dict):
+        return _unavailable("TELEMETRY_REPORT_MALFORMED")
+
+    parse = report.get("parse")
+    candle_age = report.get("candle_age_s3")
+    cycle_duration = report.get("cycle_duration_m2")
+
+    if not all(isinstance(part, dict) for part in (parse, candle_age, cycle_duration)):
+        return _unavailable("TELEMETRY_REPORT_MALFORMED")
+
+    if report.get("log_path") is None:
+        return {"available": True, "has_data": False, "reason": "LOG_DIRECTORY_NOT_CONFIGURED"}
+
+    if report.get("log_file_found") is not True:
+        return {"available": True, "has_data": False, "reason": "LOG_FILE_NOT_FOUND"}
+
+    parsed_records = parse.get("parsed_records")
+
+    if not isinstance(parsed_records, int) or parsed_records <= 0:
+        return {"available": True, "has_data": False, "reason": "NO_RECORDS"}
+
+    skipped = sum(
+        value
+        for key in (
+            "blank_lines",
+            "malformed_json_lines",
+            "non_object_lines",
+            "missing_required_field_lines",
+        )
+        if isinstance(value := parse.get(key), int)
+    )
+
+    per_run = cycle_duration.get("per_run")
+    latest_run = None
+
+    if isinstance(per_run, dict) and per_run:
+        latest_key = max(per_run, key=lambda key: int(key) if str(key).isdigit() else -1)
+        latest_run = _public_distribution(per_run[latest_key])
+
+    status_counts = candle_age.get("overall_status_counts")
+
+    return {
+        "available": True,
+        "has_data": True,
+        "parsed_records": parsed_records,
+        "skipped_lines": skipped,
+        "unexpected_schema_version_present": (
+            parse.get("unexpected_schema_version_present") is True
+        ),
+        "candle_age_seconds": _public_distribution(
+            candle_age.get("overall_measured_distribution")
+        ),
+        "candle_age_status_counts": {
+            str(key): value
+            for key, value in status_counts.items()
+            if isinstance(value, int)
+        } if isinstance(status_counts, dict) else {},
+        "cycle_duration_seconds": _public_distribution(cycle_duration.get("overall")),
+        "cycle_duration_latest_run_seconds": latest_run,
+        "run_count": (
+            cycle_duration.get("run_count")
+            if isinstance(cycle_duration.get("run_count"), int)
+            else None
+        ),
+    }
+
+
+def _decode_artifact_text(raw: bytes) -> str:
+    """UTF-8 (with or without BOM) or BOM-marked UTF-16.
+
+    Windows PowerShell 5.1's ``>`` redirection writes UTF-16LE with a BOM,
+    so the documented one-line generate command must be readable from it.
+    """
+
+    if raw.startswith((codecs.BOM_UTF16_LE, codecs.BOM_UTF16_BE)):
+        return raw.decode("utf-16")
+
+    return raw.decode("utf-8-sig")
+
+
+def read_telemetry_summary(
+    repository_root: Path | None = None,
+) -> dict[str, Any]:
+    """Read the S-3/M-2 telemetry artifact and summarise it.
+
+    A missing or empty artifact is ``available: False`` - the same contract
+    as the test-results reader - and carries the command that produces it;
+    it is never rendered as zeros. An oversized, undecodable or malformed artifact is
+    ``available: False``. A tool refusal captured into the artifact is
+    reported by its fixed error code only - its detail can name a path.
+    """
+
+    root = _resolve_root(repository_root)
+    artifact_path = root / TELEMETRY_SUMMARY_ARTIFACT_RELPATH
+    location = {
+        "artifact_path": TELEMETRY_SUMMARY_ARTIFACT_RELPATH,
+        "generate_command": TELEMETRY_GENERATE_COMMAND,
+    }
+
+    if not artifact_path.is_file():
+        return _unavailable("ARTIFACT_MISSING", **location)
+
+    try:
+        stat = artifact_path.stat()
+
+        if stat.st_size > MAX_ARTIFACT_BYTES:
+            return _unavailable("ARTIFACT_TOO_LARGE", **location)
+
+        text = _decode_artifact_text(artifact_path.read_bytes())
+    except OSError as error:
+        return _unavailable("ARTIFACT_UNREADABLE", detail=type(error).__name__, **location)
+    except UnicodeDecodeError:
+        return _unavailable("ARTIFACT_MALFORMED", **location)
+
+    if not text.strip():
+        return _unavailable("ARTIFACT_EMPTY", **location)
+
+    try:
+        report = json.loads(text)
+    except json.JSONDecodeError:
+        return _unavailable("ARTIFACT_MALFORMED", **location)
+
+    if isinstance(report, dict) and "error" in report:
+        code = report.get("error")
+
+        return _unavailable(
+            "TELEMETRY_TOOL_REFUSED",
+            tool_error=code if isinstance(code, str) and code.isidentifier() else "UNKNOWN",
+            **location,
+        )
+
+    summary = summarize_telemetry_report(report)
+
+    # The artifact's own modification time, so a stale summary is visible
+    # as stale rather than read as current.
+    summary["artifact_written_at"] = datetime.fromtimestamp(
+        stat.st_mtime, UTC
+    ).isoformat(timespec="seconds")
+    summary.update(location)
+
+    return summary
 
 
 def read_observability_panels(

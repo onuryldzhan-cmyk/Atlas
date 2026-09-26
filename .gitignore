@@ -206,6 +206,7 @@ credentials/
 
 reports/observability/test_results.junit.xml
 reports/observability/test_results.meta.json
+reports/observability/telemetry_summary.json
 
 data/market_archive/*.sqlite3
 data/market_archive/*.sqlite3-shm

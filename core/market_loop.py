@@ -246,6 +246,15 @@ class MarketLoop:
         self._telemetry_cycle = threading.local()
 
         self.last_signals: dict[str, dict[str, Any]] = {}
+
+        # Display-only copy of the macro / market_risk evidence
+        # WorldAnalysisEngine already attached to this cycle's market_data
+        # (registry v4.79), stored beside last_signals under the same lock.
+        # DecisionAdapter.normalize drops market_state, so without this the
+        # dashboard could show only the vote, never the 10Y move, curve or
+        # volatility regime behind it. Nothing in the decision, risk or
+        # execution path reads this attribute.
+        self.last_agent_evidence: dict[str, dict[str, Any]] = {}
         self.last_executions: dict[str, dict[str, Any]] = {}
 
         # Last successfully processed closed candle per symbol.
@@ -810,6 +819,12 @@ class MarketLoop:
                 self.last_signals[
                     symbol
                 ] = normalized_decision
+
+                self.last_agent_evidence[
+                    symbol
+                ] = self._agent_evidence_snapshot(
+                    market_data
+                )
 
             self._increment_metric(
                 "closed_candles_processed"
@@ -2150,6 +2165,35 @@ class MarketLoop:
             "reason": reason if isinstance(reason, str) else "UNSPECIFIED",
         }
 
+    @staticmethod
+    def _agent_evidence_snapshot(
+        market_data: Any,
+    ) -> dict[str, Any]:
+        """
+        Shallow copies of market_data's macro_evidence and
+        market_risk_evidence for last_agent_evidence. An absent or
+        non-dict entry (no provider configured) is recorded as None, never
+        filled in.
+        """
+
+        if not isinstance(market_data, dict):
+            market_data = {}
+
+        snapshot: dict[str, Any] = {}
+
+        for label, key in (
+            ("macro", "macro_evidence"),
+            ("market_risk", "market_risk_evidence"),
+        ):
+            evidence = market_data.get(key)
+            snapshot[label] = (
+                dict(evidence)
+                if isinstance(evidence, dict)
+                else None
+            )
+
+        return snapshot
+
     # =========================================================
     # EVENT BUS
     # =========================================================
@@ -2812,6 +2856,9 @@ class MarketLoop:
                 ),
                 "last_signals": dict(
                     self.last_signals
+                ),
+                "last_agent_evidence": dict(
+                    self.last_agent_evidence
                 ),
                 "last_executions": dict(
                     self.last_executions
