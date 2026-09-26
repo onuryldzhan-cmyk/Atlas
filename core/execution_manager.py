@@ -47,6 +47,7 @@ Atlas Brain / Decision Engine
 
 from __future__ import annotations
 
+from contextlib import nullcontext
 import logging
 from decimal import ROUND_DOWN, ROUND_HALF_EVEN, Decimal, InvalidOperation, localcontext
 import threading
@@ -102,6 +103,7 @@ from core.risk_engine import (
     RiskState,
 )
 from core.capital_reservation import CapitalReservationLedger, ReservationStatus
+from core.risk_state_store import RestoredRiskState
 
 from data_layer.runtime_safety import (
     FinancialRuntimeSafetyService,
@@ -746,7 +748,18 @@ class ExecutionManager:
         reservation. An open position is deliberately not a condition -
         holding overnight is normal. The equity source must also be able to
         answer, and the rollover must be auditable, or nothing is written.
+
+        A runtime halted for any reason never rolls: ``execute`` already
+        refuses on these flags before ``risk_check``, and this gate refuses
+        on them too rather than relying on that ordering.
         """
+        with self._lock:
+            execution_halted = bool(self.execution_halted)
+            recovery_required = bool(self.recovery_required)
+        if execution_halted:
+            return "EXECUTION_HALTED"
+        if recovery_required:
+            return "RECOVERY_REQUIRED"
         journal = self.transaction_journal
         if not bool(getattr(journal, "loaded", False)) or bool(getattr(journal, "load_failed", True)):
             return "JOURNAL_NOT_LOADED"
@@ -3744,17 +3757,39 @@ class ExecutionManager:
             if settled > approved:
                 raise PermissionError("SETTLEMENT_EXCEEDS_APPROVED_ALLOCATION")
 
-        expected_version = None
-        snapshot = foundation.snapshot()
-        current = snapshot["positions"].get(request.symbol)
-        if current is not None:
-            expected_version = int(current["version"])
-        finalized = foundation.apply_confirmed(
-            evidence,
-            risk_authorized=True,
-            reservation_confirmed=True,
-            expected_position_version=expected_version,
-        )
+        # The pre-commit snapshot, the durable apply and the risk-accounting
+        # read-modify-write run under this manager's lock and the journal's
+        # lock - the same pair the day rollover holds - so neither a rollover
+        # nor another finalization can land between the book's before/after
+        # views that this commit's realized P&L is derived from.
+        # Attributes are read defensively, as ``_reset_refusal_reason`` does,
+        # so a partially constructed test double finalizes exactly as before.
+        manager_lock = getattr(self, "_lock", None) or nullcontext()
+        journal_lock = getattr(getattr(self, "transaction_journal", None), "_lock", None)
+        if not (callable(getattr(journal_lock, "acquire", None))
+                and callable(getattr(journal_lock, "release", None))):
+            # The manager lock alone still excludes the rollover, which holds
+            # it too; refusing here would drop an already-realized result.
+            journal_lock = nullcontext()
+        with manager_lock, journal_lock:
+            expected_version = None
+            snapshot = foundation.snapshot()
+            current = snapshot["positions"].get(request.symbol)
+            if current is not None:
+                expected_version = int(current["version"])
+            finalized = foundation.apply_confirmed(
+                evidence,
+                risk_authorized=True,
+                reservation_confirmed=True,
+                expected_position_version=expected_version,
+            )
+            if evidence.action == "SELL" and not finalized["replayed"]:
+                self._record_realized_risk_accounting(
+                    request=request,
+                    evidence=evidence,
+                    before=snapshot,
+                    after=finalized,
+                )
         result["idempotency_key"] = evidence.idempotency_key
         result["provenance_ref"] = evidence.provenance_ref
         result["durable_financial_state"] = {
@@ -3762,6 +3797,198 @@ class ExecutionManager:
             "position_id": evidence.position_id,
         }
         return finalized
+
+    # =========================================================
+    # REALIZED P&L INTO RISK ACCOUNTING (PAPER)
+    # =========================================================
+
+    RISK_REALIZED_PNL_PREPARED = "RISK_ACCOUNTING_REALIZED_PNL_PREPARED"
+    RISK_REALIZED_PNL_COMMITTED = "RISK_ACCOUNTING_REALIZED_PNL_COMMITTED"
+    RISK_ACCOUNTING_UPDATE_FAILED = "RISK_ACCOUNTING_UPDATE_FAILED"
+
+    def _record_realized_risk_accounting(
+        self,
+        *,
+        request: ExecutionRequest,
+        evidence: ExecutionResult,
+        before: Mapping[str, Any],
+        after: Mapping[str, Any],
+    ) -> None:
+        """Fold one committed reduction's realized P&L into risk accounting.
+
+        Called with this manager's lock and the journal's lock held, right
+        after ``ExecutionPortfolioFoundation.apply_confirmed`` durably
+        committed a SELL (a full exit or a partial reduction - both realize
+        P&L). Every figure comes from the foundation's own snapshots taken
+        either side of that commit; nothing is computed from prices, fills or
+        any other source:
+
+        - realized P&L of the portion sold is the book's gross realized P&L
+          change, less the exit fee it charged, less the entry fees it
+          released with the sold cost basis. Over a complete round trip this
+          equals the change in the foundation's own ``realized_net_pnl``;
+        - ``current_equity`` is the post-commit ``equity``, and
+          ``peak_equity`` rises to it when it is a new high.
+
+        PAPER only. The accounting day must already be today: ``risk_check``
+        rolls it forward before admission, so a mismatch means UTC midnight
+        passed between admission and commit, and the realized result is not
+        silently booked to the wrong day.
+
+        The trade itself is already committed in the durable book. Any
+        failure to record its result - day mismatch, unreadable store,
+        invalid resulting state, PREPARED audit failure, write failure -
+        raises ``RISK_ACCOUNTING_UPDATE_FAILED`` so the request resolves
+        through the durable finalization-failure path (journal left
+        COMMIT_STATUS_UNKNOWN, runtime halted, every restart fail-closed):
+        RiskEngine's daily loss and drawdown limits would otherwise be
+        evaluated against accounting that no longer matches the book.
+        """
+        if self.mode != self.MODE_PAPER:
+            return
+        store = self.risk_state_store
+        if store is None or self.risk_engine is None:
+            return
+
+        today = datetime.now(UTC).date()
+        try:
+            restored = store.load(
+                expected_policy_version=self.risk_engine.policy.version,
+                today_utc=today,
+            )
+            if restored.accounting_day_utc != today:
+                raise ValueError("RISK_ACCOUNTING_DAY_NOT_CURRENT")
+
+            symbol = evidence.symbol
+            held_before = before["positions"].get(symbol)
+            held_after = after["positions"].get(symbol)
+            if held_before is None:
+                raise ValueError("REDUCED_POSITION_ABSENT_BEFORE_COMMIT")
+            with localcontext() as context:
+                context.prec = SETTLEMENT_CONTEXT_PRECISION
+                context.rounding = ROUND_HALF_EVEN
+                gross = (
+                    Decimal(str(after["realized_gross_pnl"]))
+                    - Decimal(str(before["realized_gross_pnl"]))
+                )
+                exit_fee = Decimal(str(after["fees"])) - Decimal(str(before["fees"]))
+                released_entry_fees = Decimal(str(held_before["entry_fees"])) - (
+                    Decimal(str(held_after["entry_fees"]))
+                    if held_after is not None
+                    else Decimal("0")
+                )
+                realized = gross - exit_fee - released_entry_fees
+                realized_daily_pnl = restored.realized_daily_pnl + realized
+            equity = Decimal(str(after["equity"]))
+            if not realized.is_finite() or not equity.is_finite() or equity <= 0:
+                raise ValueError("DURABLE_FIGURES_NOT_ACCOUNTABLE")
+            # Constructing the state validates it (finite, positive equity,
+            # peak >= current) before anything is written.
+            updated = RestoredRiskState(
+                today,
+                realized_daily_pnl,
+                max(restored.peak_equity, equity),
+                equity,
+                restored.policy_version,
+            )
+
+            prepared_id = None
+            if self.audit_enabled:
+                # Write-ahead, exactly as the day rollover: no audit record,
+                # no write.
+                prepared = self.audit_store.append(
+                    event_type=self.RISK_REALIZED_PNL_PREPARED,
+                    source=self.NAME,
+                    aggregate_type="risk_accounting_state",
+                    aggregate_id=today.isoformat(),
+                    payload={
+                        "mode": self.mode,
+                        "request_id": request.request_id,
+                        "execution_id": evidence.execution_id,
+                        "position_id": evidence.position_id,
+                        "symbol": symbol,
+                        "position_closed": held_after is None,
+                        "realized_pnl": str(realized),
+                        "components": {
+                            "gross_realized_pnl": str(gross),
+                            "exit_fee": str(exit_fee),
+                            "released_entry_fees": str(released_entry_fees),
+                        },
+                        "figures_source": "ExecutionPortfolioFoundation",
+                        "previous_state": restored.to_dict(),
+                        "new_state": updated.to_dict(),
+                    },
+                    correlation_id=str(request.request_id),
+                    metadata={"mode": self.mode, "manager_version": self.VERSION},
+                )
+                self.stats["audit_events_written"] += 1
+                prepared_id = prepared.event_id
+
+            store.save(updated)
+        except Exception as exc:
+            self._record_error(
+                phase="risk_accounting_realized_pnl", error=exc, request=request,
+            )
+            logger.error(
+                "Realized P&L could not be recorded in risk accounting; the "
+                "trade is committed in the durable book and the request is "
+                "resolved as a durable finalization failure for operator "
+                "reconciliation request_id=%s symbol=%s error=%s: %s",
+                request.request_id,
+                evidence.symbol,
+                type(exc).__name__,
+                exc,
+            )
+            # Raised to execute()'s post-apply finalization-failure path -
+            # the same one a failed reservation commit after apply takes: the
+            # journal entry is left COMMIT_STATUS_UNKNOWN on disk and the
+            # runtime halts. An in-memory halt alone would end at restart and
+            # resume with the loss unrecorded; an unresolved journal entry
+            # keeps every restart fail-closed until an operator reconciles.
+            raise RuntimeError(self.RISK_ACCOUNTING_UPDATE_FAILED) from exc
+
+        logger.info(
+            "Risk accounting realized P&L recorded request_id=%s symbol=%s "
+            "realized_pnl=%s realized_daily_pnl %s -> %s current_equity %s -> %s "
+            "peak_equity %s -> %s",
+            request.request_id,
+            evidence.symbol,
+            realized,
+            restored.realized_daily_pnl,
+            updated.realized_daily_pnl,
+            restored.current_equity,
+            updated.current_equity,
+            restored.peak_equity,
+            updated.peak_equity,
+        )
+
+        if prepared_id is None:
+            return
+        try:
+            self.audit_store.append(
+                event_type=self.RISK_REALIZED_PNL_COMMITTED,
+                source=self.NAME,
+                aggregate_type="risk_accounting_state",
+                aggregate_id=today.isoformat(),
+                payload={"mode": self.mode, "request_id": request.request_id,
+                         "new_state": updated.to_dict()},
+                correlation_id=str(request.request_id),
+                causation_id=prepared_id,
+                metadata={"mode": self.mode, "manager_version": self.VERSION},
+            )
+            self.stats["audit_events_written"] += 1
+        except Exception as exc:
+            # The update is already durable and PREPARED carries every input
+            # that determined it; the audit runtime degrades, as for the
+            # rollover's COMMITTED record.
+            self.stats["audit_write_failures"] += 1
+            self._record_audit_failure(
+                event_type=self.RISK_REALIZED_PNL_COMMITTED,
+                request=request,
+                error=exc,
+                stage="RISK_ACCOUNTING",
+            )
+            self._record_error(phase="risk_accounting_realized_pnl_audit", error=exc)
 
     # =========================================================
     # PASSIVE PAPER BOOK MIRROR
