@@ -672,39 +672,9 @@ class ExecutionManager:
         A release that cannot be persisted halts the runtime through
         ``_release_capital_reservation``'s own fail-closed path.
         """
-        ledger = self.reservation_ledger
-        journal = self.transaction_journal
-        if ledger is None or not ledger.ready or not callable(getattr(ledger, "reserved", None)):
+        orphans = self._orphan_reservation_ids()
+        if orphans is None:
             return
-        if not bool(getattr(journal, "loaded", False)) or bool(getattr(journal, "load_failed", True)):
-            return
-        entries = getattr(journal, "entries", None)
-        if not isinstance(entries, Mapping):
-            return
-
-        with self._lock:
-            in_flight = set(self.pending_request_ids) | set(self._risk_admissions)
-
-        try:
-            reserved = tuple(ledger.reserved())
-        except Exception as exc:
-            # Not being able to list reservations is not evidence of an
-            # orphan; nothing is released.
-            self._record_error(phase="orphan_reservation_sweep", error=exc)
-            return
-
-        # Only canonical ids are ever swept: the journal strips request_id,
-        # so a reservation under a non-canonical (whitespace-padded) id could
-        # have journal activity under its stripped key that a raw lookup
-        # would miss. Such a reservation is left for the operator.
-        orphans = [
-            reservation.request_id
-            for reservation in reserved
-            if reservation.request_id == reservation.reservation_id
-            and reservation.request_id == reservation.request_id.strip()
-            and reservation.request_id not in entries
-            and reservation.request_id not in in_flight
-        ]
         released = 0
         for request_id in orphans:
             if not self._release_capital_reservation(request_id):
@@ -718,6 +688,243 @@ class ExecutionManager:
                 released,
                 len(orphans),
             )
+
+    def _orphan_reservation_ids(self) -> list[str] | None:
+        """F-2's orphan detection: RESERVED capital with no journal activity.
+
+        Returns the orphaned request ids, or ``None`` when the question cannot
+        be answered from evidence (ledger or journal not loaded, reservations
+        unreadable). ``None`` is never "no orphans": the startup sweep releases
+        nothing on it, and the automatic risk-day rollover refuses on it.
+        """
+        ledger = self.reservation_ledger
+        journal = self.transaction_journal
+        if ledger is None or not ledger.ready or not callable(getattr(ledger, "reserved", None)):
+            return None
+        if not bool(getattr(journal, "loaded", False)) or bool(getattr(journal, "load_failed", True)):
+            return None
+        entries = getattr(journal, "entries", None)
+        if not isinstance(entries, Mapping):
+            return None
+
+        with self._lock:
+            in_flight = set(self.pending_request_ids) | set(self._risk_admissions)
+
+        try:
+            reserved = tuple(ledger.reserved())
+        except Exception as exc:
+            # Not being able to list reservations is not evidence of an
+            # orphan; nothing is released.
+            self._record_error(phase="orphan_reservation_sweep", error=exc)
+            return None
+
+        # Only canonical ids are ever swept: the journal strips request_id,
+        # so a reservation under a non-canonical (whitespace-padded) id could
+        # have journal activity under its stripped key that a raw lookup
+        # would miss. Such a reservation is left for the operator.
+        return [
+            reservation.request_id
+            for reservation in reserved
+            if reservation.request_id == reservation.reservation_id
+            and reservation.request_id == reservation.request_id.strip()
+            and reservation.request_id not in entries
+            and reservation.request_id not in in_flight
+        ]
+
+    # =========================================================
+    # AUTOMATIC PAPER RISK-ACCOUNTING DAY ROLLOVER
+    # =========================================================
+
+    RISK_DAY_ROLLOVER_PREPARED = "RISK_ACCOUNTING_DAY_ROLLOVER_PREPARED"
+    RISK_DAY_ROLLOVER_COMMITTED = "RISK_ACCOUNTING_DAY_ROLLOVER_COMMITTED"
+
+    def _risk_day_rollover_refusal(self) -> str | None:
+        """Why the durable state is not clean enough to roll the day over.
+
+        The gate is exactly: the transaction journal loaded and holds no
+        unresolved entry, and F-2's detection finds no orphaned RESERVED
+        reservation. An open position is deliberately not a condition -
+        holding overnight is normal. The equity source must also be able to
+        answer, and the rollover must be auditable, or nothing is written.
+        """
+        journal = self.transaction_journal
+        if not bool(getattr(journal, "loaded", False)) or bool(getattr(journal, "load_failed", True)):
+            return "JOURNAL_NOT_LOADED"
+        if journal.has_unresolved():
+            return "JOURNAL_UNRESOLVED"
+        orphans = self._orphan_reservation_ids()
+        if orphans is None:
+            return "RESERVATION_STATE_UNVERIFIABLE"
+        if orphans:
+            return "ORPHAN_RESERVATION_PRESENT"
+        foundation = self.portfolio_foundation
+        if foundation is None or not foundation.ready:
+            return "EQUITY_AUTHORITY_NOT_READY"
+        if not self.audit_enabled:
+            return "AUDIT_DISABLED"
+        return None
+
+    def _auto_rollover_risk_accounting_day(self) -> None:
+        """Roll the durable risk-accounting day forward in PAPER mode only.
+
+        Runs at the top of ``risk_check``, the single place a ``RiskState`` is
+        derived for evaluation, so both a restart on a later UTC day and an
+        uninterrupted run through UTC midnight are covered by the next request
+        after the date changes. Anything short of a clean, audited rollover
+        leaves the stored day untouched, and ``RiskEngine.evaluate`` then
+        rejects with RISK_ACCOUNTING_DAY_RECONCILIATION_REQUIRED exactly as it
+        did before this path existed.
+
+        Idempotent: once the stored day is today, every further call is a
+        no-op. The gate, the equity read and the durable write all happen
+        under this manager's lock and the journal's lock, so no request can
+        prepare between the gate check and the write.
+        """
+        if self.mode != self.MODE_PAPER:
+            # LIVE, or any value that is not exactly PAPER: there is no
+            # automatic path. The stale day stays fail-closed, as before.
+            return
+
+        store = self.risk_state_store
+        if store is None or self.risk_engine is None or not callable(getattr(store, "rollover", None)):
+            return
+
+        # The journal's own lock is what keeps a concurrent prepare() out of
+        # the window between the gate and the write. Without it there is no
+        # atomicity to offer, so nothing is rolled.
+        journal_lock = getattr(self.transaction_journal, "_lock", None)
+        if not (callable(getattr(journal_lock, "acquire", None))
+                and callable(getattr(journal_lock, "release", None))):
+            logger.warning(
+                "Automatic PAPER risk-accounting day rollover REFUSED "
+                "reason=JOURNAL_LOCK_UNAVAILABLE; execution stays fail-closed"
+            )
+            return
+
+        with self._lock, journal_lock:
+            today = datetime.now(UTC).date()
+            try:
+                restored = store.load(
+                    expected_policy_version=self.risk_engine.policy.version,
+                    today_utc=today,
+                )
+            except Exception:
+                # _derive_risk_state reloads and fails closed with its own
+                # reason; this path never masks that failure.
+                return
+
+            if restored.accounting_day_utc >= today:
+                return
+
+            refusal = self._risk_day_rollover_refusal()
+            if refusal is not None:
+                logger.warning(
+                    "Automatic PAPER risk-accounting day rollover REFUSED "
+                    "reason=%s stored_day=%s today=%s; execution stays "
+                    "fail-closed until the state is reconciled",
+                    refusal,
+                    restored.accounting_day_utc.isoformat(),
+                    today.isoformat(),
+                )
+                return
+
+            try:
+                equity = Decimal(str(self.portfolio_foundation.snapshot()["equity"]))
+                if not equity.is_finite() or equity <= 0:
+                    raise ValueError("durable equity is not positive")
+                payload = {
+                    "mode": self.mode,
+                    "from_accounting_day_utc": restored.accounting_day_utc.isoformat(),
+                    "to_accounting_day_utc": today.isoformat(),
+                    "previous_state": restored.to_dict(),
+                    "current_equity_source": "ExecutionPortfolioFoundation",
+                    "current_equity": str(equity),
+                    "gate": {
+                        "journal_unresolved": False,
+                        "orphan_reservations": 0,
+                    },
+                }
+                # Write-ahead: no audit record, no rollover.
+                prepared = self.audit_store.append(
+                    event_type=self.RISK_DAY_ROLLOVER_PREPARED,
+                    source=self.NAME,
+                    aggregate_type="risk_accounting_state",
+                    aggregate_id=today.isoformat(),
+                    payload=payload,
+                    correlation_id=today.isoformat(),
+                    metadata={"mode": self.mode, "manager_version": self.VERSION},
+                )
+                self.stats["audit_events_written"] += 1
+            except Exception as exc:
+                self._record_error(phase="risk_day_rollover", error=exc)
+                logger.error(
+                    "Automatic PAPER risk-accounting day rollover aborted "
+                    "before any write stored_day=%s today=%s error=%s",
+                    restored.accounting_day_utc.isoformat(),
+                    today.isoformat(),
+                    type(exc).__name__,
+                )
+                return
+
+            try:
+                rolled = store.rollover(restored, today_utc=today, current_equity=equity)
+            except Exception as exc:
+                # save() replaces the file atomically; a failure leaves the
+                # previous day on disk and the next request retries.
+                self._record_error(phase="risk_day_rollover", error=exc)
+                logger.error(
+                    "Automatic PAPER risk-accounting day rollover write failed "
+                    "stored_day=%s today=%s error=%s",
+                    restored.accounting_day_utc.isoformat(),
+                    today.isoformat(),
+                    type(exc).__name__,
+                )
+                return
+
+            logger.warning(
+                "Automatic PAPER risk-accounting day rollover %s -> %s "
+                "realized_daily_pnl %s -> %s peak_equity %s -> %s "
+                "current_equity %s -> %s",
+                restored.accounting_day_utc.isoformat(),
+                rolled.accounting_day_utc.isoformat(),
+                restored.realized_daily_pnl,
+                rolled.realized_daily_pnl,
+                restored.peak_equity,
+                rolled.peak_equity,
+                restored.current_equity,
+                rolled.current_equity,
+            )
+
+            try:
+                self.audit_store.append(
+                    event_type=self.RISK_DAY_ROLLOVER_COMMITTED,
+                    source=self.NAME,
+                    aggregate_type="risk_accounting_state",
+                    aggregate_id=today.isoformat(),
+                    payload={"mode": self.mode, "new_state": rolled.to_dict()},
+                    correlation_id=today.isoformat(),
+                    causation_id=prepared.event_id,
+                    metadata={"mode": self.mode, "manager_version": self.VERSION},
+                )
+                self.stats["audit_events_written"] += 1
+            except Exception as exc:
+                # The rollover is already durable and its PREPARED record
+                # carries every input that determined it. The audit runtime
+                # is marked degraded exactly as any other audit failure.
+                self.stats["audit_write_failures"] += 1
+                self._record_audit_failure(
+                    event_type=self.RISK_DAY_ROLLOVER_COMMITTED,
+                    request=None,
+                    error=exc,
+                    stage="RISK_ACCOUNTING",
+                )
+                self._record_error(phase="risk_day_rollover_audit", error=exc)
+                logger.error(
+                    "Automatic PAPER risk-accounting day rollover COMMITTED "
+                    "audit record failed day=%s error=%s",
+                    today.isoformat(),
+                    type(exc).__name__,
+                )
 
     def stop(self) -> bool:
         """
@@ -2815,6 +3022,12 @@ class ExecutionManager:
         if self.risk_state_store is None:
             return {"approved": False, "reason": "RISK_ACCOUNTING_STATE_STORE_REQUIRED",
                     "status": "BLOCK_RECOVERY_REQUIRED"}
+        try:
+            # PAPER only, gated; a stale day that cannot be rolled cleanly is
+            # left exactly as stored and rejected by RiskEngine below.
+            self._auto_rollover_risk_accounting_day()
+        except Exception as exc:
+            self._record_error(phase="risk_day_rollover", error=exc, request=request)
         if self.risk_engine is not None:
             try:
                 risk_state = self._derive_risk_state(market_state)
@@ -6398,7 +6611,7 @@ class ExecutionManager:
         self,
         *,
         event_type: str,
-        request: ExecutionRequest,
+        request: ExecutionRequest | None,
         error: Exception,
         stage: str | None = None,
     ) -> None:
