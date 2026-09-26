@@ -559,19 +559,22 @@ KNOWN_LIMITATIONS: tuple[dict[str, str], ...] = (
     },
     {
         "id": "RISK-ACCOUNTING-RECOVERY-REBOOK-GAP-001",
-        "status": "OPEN_OWNER_ACCEPTED",
+        "status": "OPEN_NARROWED_FAIL_CLOSED",
         "registry_reference": (
             "v4.82 paper_realized_pnl_risk_accounting_and_halted_rollover_"
             "refusal_result independent_audit.medium MEDIUM-1 "
-            "(residual of HIGH-1)"
+            "(residual of HIGH-1); narrowed by v4.84 "
+            "paper_recovery_risk_accounting_booking_result"
         ),
         "summary": (
-            "Crash-recovery does not currently re-book a recovered trade's "
-            "realized P&L into risk accounting; if the operator resolves an "
-            "unresolved journal entry without separately reconciling the "
-            "risk store, the daily-loss/drawdown limits evaluate against an "
-            "understated loss. Operator reconciliation is required. A fix "
-            "is planned separately."
+            "PAPER crash-recovery now books a recovered SELL's realized P&L "
+            "into risk accounting exactly once, through the same hook normal "
+            "execution uses. It refuses, writing nothing, when it cannot: "
+            "the stored accounting day is not today, or the process died "
+            "after the trade was applied but before the hook's write-ahead "
+            "audit record. A journal entry left COMMIT_STATUS_UNKNOWN by a "
+            "failed booking is still outside the recovery tool. In those "
+            "cases the operator must reconcile the risk store by hand."
         ),
     },
     {

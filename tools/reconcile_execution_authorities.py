@@ -81,6 +81,41 @@ is resolved from durable evidence, ground truth first:
   written. The interrupted application is then completed and the entry
   resolved COMMITTED.
 
+Risk accounting (MEDIUM-1, registry v4.84). A recovered COMMITTED SELL's
+realized P&L and equity are booked into ``risk_accounting_state.json`` exactly
+once, through the runtime's own hook -
+``ExecutionManager._record_realized_risk_accounting``, the one normal
+execution calls right after ``apply_confirmed`` - never through a calculation
+of this tool's. A BUY books nothing, exactly as in normal execution. Whether
+the hook already ran is established from its own write-ahead record, the
+``RISK_ACCOUNTING_REALIZED_PNL_PREPARED`` audit event, against the stored
+state:
+
+- the latest PREPARED's ``new_state`` is the stored state: the runtime booked
+  it before the crash (every kill after ``_finalize_durable_financial_state``
+  returned - K3..K6 - is this case) and nothing is written again;
+- the latest PREPARED's ``previous_state`` is the stored state: the write
+  never landed. The hook is re-run on the current book, with the pre-commit
+  view restored from that record's components, and must reproduce the
+  record's ``new_state`` exactly;
+- no PREPARED: a re-derivation (K2) books through the hook with the genuine
+  pre-transition and completed views; an applied-evidence recovery has no
+  durable figures to book from and is refused
+  (``RISK_ACCOUNTING_EVIDENCE_UNAVAILABLE``) rather than resolved without
+  them.
+
+Anything a booking needs that is not true now - the stored accounting day is
+not today (``RISK_ACCOUNTING_DAY_NOT_CURRENT``), the store or audit log does
+not load, or the stored state matches neither side of the record - refuses
+before anything is written. A recovery never resolves a SELL COMMITTED while
+its realized result is unbooked.
+
+One accepted window (v4.84 independent audit MEDIUM-A): if this tool itself
+is killed after it completed a re-derived SELL's book but before the hook's
+PREPARED record landed, the rerun sees an applied-evidence SELL with no
+PREPARED and refuses ``RISK_ACCOUNTING_EVIDENCE_UNAVAILABLE`` on every run -
+fail-closed, nothing misbooked, but only operator reconciliation resolves it.
+
 Anything else - a LIVE mode, no mode stated, more than one unresolved entry,
 COMMIT_STATUS_UNKNOWN, a prepared request that is not provably PAPER, or
 evidence matching none of the three classes - is refused exactly as before.
@@ -101,11 +136,15 @@ What it will never do
 - Repair or recover anything when any other disagreement class is present
   anywhere in the book. The tool refuses wholesale, so an operator resolves
   the conflict before any write happens.
-- Write the journal, the sidecars, the financial state file, or the
-  reservation ledger outside a PAPER recovery, or the audit log ever. A
-  repair writes only the idempotency store.
+- Write the journal, the sidecars, the financial state file, the
+  reservation ledger, the risk-accounting state or the audit log outside a
+  PAPER recovery; the audit log only ever receives the risk-accounting hook's
+  own PREPARED/COMMITTED pair. A repair writes only the idempotency store.
 - Delete, prune, or reset anything. A failed repair or recovery restores
-  every file it touched to its exact pre-run bytes.
+  every file it touched to its exact pre-run bytes - except the append-only,
+  hash-chained audit log, which is never rewritten. A PREPARED left behind by
+  a rolled-back booking is harmless: the restored state equals its
+  ``previous_state``, so a rerun books again.
 
 Output safety (ADR-0005)
 ------------------------
@@ -129,11 +168,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import sys
 import tempfile
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import ROUND_HALF_EVEN, Decimal, localcontext
 from enum import Enum
 from pathlib import Path
@@ -170,6 +210,8 @@ from core.execution_portfolio_foundation import (  # noqa: E402
     inspect_interrupted_transition,
 )
 from core.instrument_rules import InstrumentRuleset  # noqa: E402
+from core.risk_engine import RiskEngine, RiskPolicy  # noqa: E402
+from core.risk_state_store import JsonRiskStateStore, RestoredRiskState  # noqa: E402
 from core.execution_transaction_journal import (  # noqa: E402
     PREPARED_STATE,
     CommitOutcome,
@@ -192,6 +234,7 @@ DEFAULT_CLOSED_FILE = "execution_closed_positions.jsonl"
 DEFAULT_RESERVATION_FILE = "capital_reservations.json"
 DEFAULT_RESERVATION_ARCHIVE_FILE = "capital_reservations_archive.jsonl"
 DEFAULT_AUDIT_FILE = "audit/atlas_audit_events.jsonl"
+DEFAULT_RISK_STATE_FILE = "risk_accounting_state.json"
 
 # The runtime's own success authority, imported rather than restated so this
 # tool cannot drift from what ExecutionManager treats as an executed order.
@@ -231,6 +274,14 @@ class RecoveryClass(str, Enum):
     COMMIT_PAPER_REDERIVATION = "COMMIT_PAPER_REDERIVATION"
 
 
+class RiskAccounting(str, Enum):
+    """What a recovery does with the recovered request's realized result."""
+
+    NOT_APPLICABLE = "NOT_APPLICABLE"  # a BUY or an abort: nothing is realized
+    ALREADY_RECORDED = "ALREADY_RECORDED"  # the runtime's hook booked it pre-crash
+    RECORD = "RECORD"  # this recovery books it through the runtime's hook
+
+
 _REFUSED_OUTCOMES = frozenset((
     ReconciliationOutcome.RECONCILIATION_REQUIRED,
     ReconciliationOutcome.STATE_INVALID,
@@ -245,6 +296,8 @@ _REFUSAL_PRIORITY = (
     "RECOVERY_AUTHORITY_UNREADABLE",
     "RECOVERY_EVIDENCE_AMBIGUOUS",
     "RECOVERY_DERIVATION_UNAVAILABLE",
+    "RISK_ACCOUNTING_EVIDENCE_UNAVAILABLE",
+    "RISK_ACCOUNTING_DAY_NOT_CURRENT",
     "JOURNAL_ENTRY_MALFORMED",
     "AUTHORITY_RESULT_CONFLICT",
     "JOURNAL_ENTRY_ABSENT",
@@ -270,6 +323,7 @@ class ReconciliationResult:
     recoverable: int = 0
     recovered: int = 0
     recovery_class: str | None = None
+    risk_accounting: str | None = None
 
 
 def _journal_result(entry: Mapping[str, Any]) -> Mapping[str, Any] | None:
@@ -328,6 +382,7 @@ def reconcile(
     reservation_file: str = DEFAULT_RESERVATION_FILE,
     reservation_archive_file: str = DEFAULT_RESERVATION_ARCHIVE_FILE,
     audit_file: str = DEFAULT_AUDIT_FILE,
+    risk_state_file: str = DEFAULT_RISK_STATE_FILE,
     execution_mode: str | None = None,
     instrument_rules: InstrumentRuleset | None = None,
 ) -> ReconciliationResult:
@@ -402,6 +457,7 @@ def reconcile(
         outcome: ReconciliationOutcome, reason: str, *,
         repairable: int = 0, repaired: int = 0, refused: int = 0,
         recoverable: int = 0, recovered: int = 0, recovery_class: str | None = None,
+        risk_accounting: str | None = None,
     ) -> ReconciliationResult:
         return ReconciliationResult(
             outcome, reason, rendered_directory,
@@ -409,6 +465,7 @@ def reconcile(
             idempotency_records=counts["idempotency_records"],
             repairable=repairable, repaired=repaired, refused=refused,
             recoverable=recoverable, recovered=recovered, recovery_class=recovery_class,
+            risk_accounting=risk_accounting,
         )
 
     # -- Classification. Sorted so the outcome never depends on file order. --
@@ -480,7 +537,7 @@ def reconcile(
                 financial_state_file=financial_state_file, applied_file=applied_file,
                 closed_file=closed_file, reservation_file=reservation_file,
                 reservation_archive_file=reservation_archive_file, audit_file=audit_file,
-                instrument_rules=instrument_rules,
+                risk_state_file=risk_state_file, instrument_rules=instrument_rules,
             )
             if isinstance(planned, _RecoveryPlan):
                 recovery_plan = planned
@@ -545,10 +602,12 @@ def reconcile(
         # reported and left for the next run, which will see a resolved
         # journal and classify them against the recovered book.
         recovery_class = recovery_plan.recovery_class.value
+        risk_accounting = recovery_plan.risk_accounting.value
         if not apply:
             return _result(
                 ReconciliationOutcome.WOULD_RECOVER, "DRY_RUN",
                 repairable=len(candidates), recoverable=1, recovery_class=recovery_class,
+                risk_accounting=risk_accounting,
             )
         failure = _execute_recovery(
             recovery_plan, journal=journal, directory=directory,
@@ -556,16 +615,18 @@ def reconcile(
             financial_state_file=financial_state_file, applied_file=applied_file,
             closed_file=closed_file, reservation_file=reservation_file,
             reservation_archive_file=reservation_archive_file,
+            audit_file=audit_file, risk_state_file=risk_state_file,
         )
         if failure is not None:
             return _result(
                 ReconciliationOutcome.FAILED, failure,
                 repairable=len(candidates), recoverable=1, recovery_class=recovery_class,
+                risk_accounting=risk_accounting,
             )
         return _result(
             ReconciliationOutcome.RECOVERED, "RECOVERY_COMPLETE",
             repairable=len(candidates), recoverable=1, recovered=1,
-            recovery_class=recovery_class,
+            recovery_class=recovery_class, risk_accounting=risk_accounting,
         )
 
     if not candidates:
@@ -732,6 +793,14 @@ class _RecoveryPlan:
     evidence: ExecutionResult | None = None  # completes an interrupted apply
     result: Mapping[str, Any] | None = None  # the COMMITTED terminal result
     record_idempotency: bool = False
+    risk_accounting: RiskAccounting = RiskAccounting.NOT_APPLICABLE
+    request: Mapping[str, Any] | None = None  # the prepared request payload
+    # RECORD by re-derivation: the pre-transition book view that is the
+    # hook's ``before``, exactly as ``apply_confirmed`` saw it.
+    accounting_before: Mapping[str, Any] | None = None
+    # RECORD by redo: the payload of the hook's own PREPARED record whose
+    # write never landed; the hook must reproduce its ``new_state``.
+    accounting_redo: Mapping[str, Any] | None = None
 
 
 class _PreTransitionBook:
@@ -814,6 +883,7 @@ def _classify_paper_recovery(
     reservation_file: str,
     reservation_archive_file: str,
     audit_file: str,
+    risk_state_file: str,
     instrument_rules: InstrumentRuleset | None,
 ) -> _RecoveryPlan:
     # The runtime halts on the first unresolved entry, so a crash leaves one.
@@ -909,9 +979,16 @@ def _classify_paper_recovery(
                 or str(result.get("action", "")).strip().upper() != action
             ):
                 raise _RecoveryRefused("RECOVERY_EVIDENCE_AMBIGUOUS")
+            accounting, redo = _plan_risk_accounting(
+                directory=directory, audit_file=audit_file, risk_state_file=risk_state_file,
+                request_id=request_id, action=action, symbol=symbol,
+                execution_id=applied.execution_id, rederivation=False,
+            )
+            _require_redo_book(foundation, applied_store, request_id, redo)
             return _RecoveryPlan(
                 RecoveryClass.COMMIT_APPLIED_EVIDENCE, request_id,
                 reservation_action=reservation_action, result=result,
+                risk_accounting=accounting, request=request, accounting_redo=redo,
             )
         # No terminal result survived. The result states only what the
         # authorities prove, and says how it was established; fill figures
@@ -934,9 +1011,16 @@ def _classify_paper_recovery(
                 "applied_at": applied.applied_at,
             },
         }
+        accounting, redo = _plan_risk_accounting(
+            directory=directory, audit_file=audit_file, risk_state_file=risk_state_file,
+            request_id=request_id, action=action, symbol=symbol,
+            execution_id=applied.execution_id, rederivation=False,
+        )
+        _require_redo_book(foundation, applied_store, request_id, redo)
         return _RecoveryPlan(
             RecoveryClass.COMMIT_APPLIED_EVIDENCE, request_id,
             reservation_action=reservation_action, result=result, record_idempotency=True,
+            risk_accounting=accounting, request=request, accounting_redo=redo,
         )
 
     # The book holds a transition marker. It must be this request's, and a
@@ -989,11 +1073,25 @@ def _classify_paper_recovery(
         )
     except InterruptedTransitionError as exc:
         raise _RecoveryRefused("RECOVERY_DERIVATION_UNAVAILABLE") from exc
+    accounting, _ = _plan_risk_accounting(
+        directory=directory, audit_file=audit_file, risk_state_file=risk_state_file,
+        request_id=request_id, action=action, symbol=symbol,
+        execution_id=transition.execution_id, rederivation=True,
+    )
+    accounting_before = None
+    if accounting is RiskAccounting.RECORD:
+        try:
+            accounting_before = ExecutionPortfolioFoundation._pre_transition_view(
+                transition
+            ).snapshot()
+        except Exception as exc:
+            raise _RecoveryRefused("RECOVERY_DERIVATION_UNAVAILABLE") from exc
     return _RecoveryPlan(
         RecoveryClass.COMMIT_PAPER_REDERIVATION, request_id,
         reservation_action="COMMIT" if reservation_required else None,
         settled_amount=settled_amount, evidence=evidence, result=result,
-        record_idempotency=True,
+        record_idempotency=True, risk_accounting=accounting, request=request,
+        accounting_before=accounting_before,
     )
 
 
@@ -1132,24 +1230,256 @@ def _derive_paper_result(
     return evidence, result
 
 
+# ---------------------------------------------------------------------------
+# MEDIUM-1 - booking a recovered SELL's realized result into risk accounting
+# ---------------------------------------------------------------------------
+
+
+class _AccountingFailed(Exception):
+    """The runtime's risk-accounting hook did not durably book the result."""
+
+
+def _accounting_risk_engine() -> RiskEngine:
+    # The hook reads exactly one thing from the engine: ``policy.version``,
+    # the version the durable accounting state must carry. The composition
+    # root configures only ``total_capital`` on its RiskPolicy, so the default
+    # version is the one the runtime checks against. No threshold or capital
+    # figure of this engine is ever consulted; ``total_capital`` is a
+    # placeholder the dataclass requires.
+    return RiskEngine(RiskPolicy(total_capital=Decimal("1")))
+
+
+def _risk_state_key(value: Mapping[str, Any]) -> tuple[Any, ...]:
+    """A stored or audited accounting state, compared numerically."""
+    state = RestoredRiskState(
+        datetime.fromisoformat(str(value["accounting_day_utc"])).date(),
+        Decimal(str(value["realized_daily_pnl"])), Decimal(str(value["peak_equity"])),
+        Decimal(str(value["current_equity"])), str(value["policy_version"]),
+    )
+    return (state.accounting_day_utc, state.realized_daily_pnl, state.peak_equity,
+            state.current_equity, state.policy_version)
+
+
+def _latest_accounting_prepared(audit: AuditEventStore, request_id: str) -> Any | None:
+    prepared = [
+        event for event in audit.query(correlation_id=request_id)
+        if event.event_type == ExecutionManager.RISK_REALIZED_PNL_PREPARED
+    ]
+    return prepared[-1] if prepared else None
+
+
+def _plan_risk_accounting(
+    *,
+    directory: Path,
+    audit_file: str,
+    risk_state_file: str,
+    request_id: str,
+    action: str,
+    symbol: str,
+    execution_id: str,
+    rederivation: bool,
+) -> tuple[RiskAccounting, Mapping[str, Any] | None]:
+    """Whether a recovered COMMITTED request's realized result is booked.
+
+    Returns the accounting action and, for a redo of a PREPARED write that
+    never landed, that record's payload. Normal execution books a SELL only,
+    right after ``apply_confirmed`` and before anything else durable, so a
+    BUY needs nothing and a SELL is established from the hook's own
+    write-ahead record against the stored state (see the module docstring).
+    Refuses rather than guessing, and before anything is written.
+    """
+    if action != "SELL":
+        return RiskAccounting.NOT_APPLICABLE, None
+
+    audit_path = directory / audit_file
+    if not audit_path.is_file():
+        raise _RecoveryRefused("RISK_ACCOUNTING_EVIDENCE_UNAVAILABLE")
+    today = datetime.now(UTC).date()
+    try:
+        audit = AuditEventStore(audit_path, verify_on_load=True)
+        if not audit.loaded:
+            raise ValueError("audit log not loaded")
+        latest = _latest_accounting_prepared(audit, request_id)
+        stored = JsonRiskStateStore(directory / risk_state_file).load(
+            expected_policy_version=RiskPolicy.version, today_utc=today,
+        )
+    except Exception as exc:
+        raise _RecoveryRefused("RECOVERY_AUTHORITY_UNREADABLE") from exc
+    current = _risk_state_key(stored.to_dict())
+
+    redo: Mapping[str, Any] | None = None
+    if latest is not None:
+        payload = latest.payload or {}
+        try:
+            previous_state = _risk_state_key(payload["previous_state"])
+            new_state = _risk_state_key(payload["new_state"])
+            components = payload["components"]
+            for name in ("gross_realized_pnl", "exit_fee", "released_entry_fees"):
+                Decimal(str(components[name]))
+        except Exception as exc:
+            raise _RecoveryRefused("RECOVERY_EVIDENCE_AMBIGUOUS") from exc
+        if (
+            str(payload.get("request_id", "")) != request_id
+            or str(payload.get("execution_id", "")) != execution_id
+            or str(payload.get("symbol", "")).strip().upper() != symbol
+            or str(payload.get("mode", "")).strip().upper() != ExecutionMode.PAPER.value
+        ):
+            raise _RecoveryRefused("RECOVERY_EVIDENCE_AMBIGUOUS")
+        if current == new_state and new_state != previous_state:
+            # The runtime's write landed. A re-derivation completes an apply
+            # that never finished, whose result can never have been booked.
+            if rederivation:
+                raise _RecoveryRefused("RECOVERY_EVIDENCE_AMBIGUOUS")
+            return RiskAccounting.ALREADY_RECORDED, None
+        if current != previous_state:
+            raise _RecoveryRefused("RECOVERY_EVIDENCE_AMBIGUOUS")
+        redo = None if rederivation else payload
+    elif not rederivation:
+        # Applied, never booked, and no durable record of the figures: the
+        # book already moved, so its pre-commit view cannot be recovered.
+        raise _RecoveryRefused("RISK_ACCOUNTING_EVIDENCE_UNAVAILABLE")
+
+    # The hook books only onto today's accounting day, and a recovery never
+    # rolls the day itself.
+    if stored.accounting_day_utc != today:
+        raise _RecoveryRefused("RISK_ACCOUNTING_DAY_NOT_CURRENT")
+    return RiskAccounting.RECORD, redo
+
+
+def _require_redo_book(
+    foundation: ExecutionPortfolioFoundation,
+    applied_store: AppliedExecutionArchiveStore,
+    request_id: str,
+    redo: Mapping[str, Any] | None,
+) -> None:
+    """A redo books against the current book as the hook's ``after``.
+
+    That is the commit's own post-apply view only while nothing was applied
+    after it and the book still holds the equity the PREPARED record saw.
+    """
+    if redo is None:
+        return
+    try:
+        tail = applied_store.load_index().tail
+        equity = foundation.snapshot()["equity"]
+        recorded_equity = Decimal(str(redo["new_state"]["current_equity"]))
+    except Exception as exc:
+        raise _RecoveryRefused("RECOVERY_AUTHORITY_UNREADABLE") from exc
+    if tail is None or tail.idempotency_key != request_id or equity != recorded_equity:
+        raise _RecoveryRefused("RECOVERY_EVIDENCE_AMBIGUOUS")
+
+
+def _redo_before(
+    after: Mapping[str, Any], redo: Mapping[str, Any], symbol: str,
+) -> dict[str, Any]:
+    """The pre-commit view the hook's PREPARED record was derived from.
+
+    Exactly the three figures the hook reads from ``before``, restored from
+    the current book and that record's own components - the inverse of the
+    hook's subtraction, so re-running the hook reproduces the recorded
+    realized P&L, which ``_book_risk_accounting`` then requires.
+    """
+    components = redo["components"]
+    held_after = after["positions"].get(symbol)
+    if bool(redo.get("position_closed")) != (held_after is None):
+        raise ValueError("REDO_POSITION_STATE_MISMATCH")
+    with localcontext() as context:
+        context.prec = SETTLEMENT_CONTEXT_PRECISION
+        context.rounding = ROUND_HALF_EVEN
+        entry_after = (
+            Decimal(str(held_after["entry_fees"])) if held_after is not None else Decimal("0")
+        )
+        return {
+            "realized_gross_pnl": (
+                Decimal(str(after["realized_gross_pnl"]))
+                - Decimal(str(components["gross_realized_pnl"]))
+            ),
+            "fees": Decimal(str(after["fees"])) - Decimal(str(components["exit_fee"])),
+            "positions": {symbol: {"entry_fees": format(
+                entry_after + Decimal(str(components["released_entry_fees"])), "f",
+            )}},
+        }
+
+
+def _book_risk_accounting(
+    plan: _RecoveryPlan, *, journal: ExecutionTransactionJournal, directory: Path,
+    audit_file: str, risk_state_file: str, after: Mapping[str, Any],
+) -> None:
+    """Book the recovered SELL through ``_record_realized_risk_accounting``.
+
+    The runtime's own hook, on a PAPER manager wired to this directory's real
+    risk-accounting store and audit log, under that manager's lock and the
+    journal's lock - the pair ``_finalize_durable_financial_state`` holds.
+    Its idempotency and journal stores are scratch and discarded: the hook
+    never touches them. Any failure raises ``_AccountingFailed``.
+    """
+    try:
+        request = ExecutionRequest.from_dict(dict(plan.request or {}))
+        redo = plan.accounting_redo
+        if plan.evidence is not None:
+            evidence = plan.evidence
+            before = plan.accounting_before
+        elif redo is not None:
+            evidence = ExecutionResult(
+                success=True, status="PAPER_EXECUTED",
+                execution_id=str(redo["execution_id"]),
+                position_id=str(redo["position_id"]),
+                symbol=request.symbol, action="SELL",
+            )
+            before = _redo_before(after, redo, request.symbol)
+        else:
+            raise ValueError("NO_ACCOUNTING_INPUTS")
+        if before is None:
+            raise ValueError("NO_ACCOUNTING_INPUTS")
+        store = JsonRiskStateStore(directory / risk_state_file)
+        with tempfile.TemporaryDirectory(prefix="atlas-recovery-accounting-") as scratch:
+            scratch_path = Path(scratch)
+            manager = ExecutionManager(
+                mode=ExecutionManager.MODE_PAPER,
+                idempotency_store=ExecutionIdempotencyStore(scratch_path / "idempotency.jsonl"),
+                transaction_journal=ExecutionTransactionJournal(scratch_path / "journal.jsonl"),
+                audit_store=AuditEventStore(directory / audit_file, verify_on_load=True),
+                audit_enabled=True,
+                risk_engine=_accounting_risk_engine(),
+                risk_state_store=store,
+            )
+            with manager._lock, journal._lock:
+                manager._record_realized_risk_accounting(
+                    request=request, evidence=evidence, before=before, after=after,
+                )
+        if redo is not None:
+            booked = store.load(
+                expected_policy_version=RiskPolicy.version,
+                today_utc=datetime.now(UTC).date(),
+            )
+            if _risk_state_key(booked.to_dict()) != _risk_state_key(redo["new_state"]):
+                raise ValueError("REDO_DID_NOT_REPRODUCE_THE_PREPARED_STATE")
+    except Exception as exc:
+        raise _AccountingFailed() from exc
+
+
 def _execute_recovery(
     plan: _RecoveryPlan, *, journal: ExecutionTransactionJournal, directory: Path,
     journal_file: str, idempotency_file: str, financial_state_file: str,
     applied_file: str, closed_file: str, reservation_file: str,
-    reservation_archive_file: str,
+    reservation_archive_file: str, audit_file: str, risk_state_file: str,
 ) -> str | None:
     """Apply one recovery plan in the runtime's own commit order, then verify.
 
-    Order: the financial book first, then the reservation, then the terminal
-    result, and the journal resolution last - so an interruption of this tool
-    itself leaves the entry still PREPARED and a rerun classifies it again
-    from what did land. Every touched file is held and restored to its exact
-    pre-run bytes on any failure.
+    Order: the financial book first, then its risk accounting (as
+    ``_finalize_durable_financial_state`` books it right after
+    ``apply_confirmed``), then the reservation, then the terminal result, and
+    the journal resolution last - so an interruption of this tool itself
+    leaves the entry still PREPARED and a rerun classifies it again from what
+    did land. The one exception is a SELL re-derivation killed between its
+    book completion and the hook's PREPARED record, which the rerun refuses
+    (see the module docstring). Every touched file except the append-only audit log is held and
+    restored to its exact pre-run bytes on any failure.
     """
     paths = [
         directory / name for name in (
             journal_file, idempotency_file, financial_state_file, applied_file,
-            closed_file, reservation_file,
+            closed_file, reservation_file, risk_state_file,
         )
     ]
     originals = {path: (path.read_bytes() if path.exists() else None) for path in paths}
@@ -1168,10 +1498,19 @@ def _execute_recovery(
                 store, applied_archive=applied_store, closed_archive=closed_store,
                 idempotency_key=request_id,
             )
+        completed = None
         if plan.evidence is not None:
-            complete_interrupted_transition(
+            completed = complete_interrupted_transition(
                 store, applied_archive=applied_store, closed_archive=closed_store,
                 evidence=plan.evidence,
+            )
+        if plan.risk_accounting is RiskAccounting.RECORD:
+            after = completed if completed is not None else ExecutionPortfolioFoundation(
+                store, applied_archive=applied_store, closed_archive=closed_store,
+            ).snapshot()
+            _book_risk_accounting(
+                plan, journal=journal, directory=directory, audit_file=audit_file,
+                risk_state_file=risk_state_file, after=after,
             )
         if plan.reservation_action is not None:
             ledger = _reservation_ledger(directory, reservation_file, reservation_archive_file)
@@ -1195,6 +1534,9 @@ def _execute_recovery(
             resolved = journal.mark_committed(request_id, dict(plan.result or {}))
         if not resolved:
             raise RuntimeError("journal resolution failed")
+    except _AccountingFailed:
+        _rollback()
+        return "RISK_ACCOUNTING_UPDATE_FAILED"
     except Exception:
         _rollback()
         return "RECOVERY_WRITE_FAILED"
@@ -1204,6 +1546,7 @@ def _execute_recovery(
         idempotency_file=idempotency_file, financial_state_file=financial_state_file,
         applied_file=applied_file, closed_file=closed_file,
         reservation_file=reservation_file, reservation_archive_file=reservation_archive_file,
+        audit_file=audit_file, risk_state_file=risk_state_file,
     )
     if failure is not None:
         _rollback()
@@ -1214,6 +1557,7 @@ def _verify_recovery(
     plan: _RecoveryPlan, *, directory: Path, journal_file: str, idempotency_file: str,
     financial_state_file: str, applied_file: str, closed_file: str,
     reservation_file: str, reservation_archive_file: str,
+    audit_file: str, risk_state_file: str,
 ) -> str | None:
     """Reload every authority from disk and require the planned end state."""
     failed = "POST_RECOVERY_VERIFICATION_FAILED"
@@ -1262,6 +1606,20 @@ def _verify_recovery(
                 return failed
             if reservation is not None and reservation.status is not ReservationStatus.COMMITTED:
                 return failed
+            if plan.risk_accounting is not RiskAccounting.NOT_APPLICABLE:
+                # A COMMITTED SELL: the stored state is the one the hook's
+                # latest write-ahead record for it says was written.
+                latest = _latest_accounting_prepared(
+                    AuditEventStore(directory / audit_file, verify_on_load=True), request_id,
+                )
+                stored = JsonRiskStateStore(directory / risk_state_file).load(
+                    expected_policy_version=RiskPolicy.version,
+                    today_utc=datetime.now(UTC).date(),
+                )
+                if latest is None or _risk_state_key(stored.to_dict()) != _risk_state_key(
+                    (latest.payload or {})["new_state"]
+                ):
+                    return failed
     except Exception:
         return failed
 
@@ -1349,6 +1707,7 @@ def _render_human(result: ReconciliationResult, exit_code: int) -> str:
         f"refused: {result.refused} | recoverable: {result.recoverable} | "
         f"recovered: {result.recovered} | "
         f"recovery_class: {result.recovery_class or 'NONE'} | "
+        f"risk_accounting: {result.risk_accounting or 'NONE'} | "
         f"verdict: {verdict} (exit {exit_code})"
     )
 
@@ -1368,12 +1727,19 @@ def _render_json(result: ReconciliationResult, exit_code: int) -> str:
             "recoverable": result.recoverable,
             "recovered": result.recovered,
             "recovery_class": result.recovery_class,
+            "risk_accounting": result.risk_accounting,
         },
         indent=2, sort_keys=True,
     )
 
 
 def main(argv: list[str] | None = None) -> int:
+    # The runtime components this tool reuses log identifiers and raw
+    # exception text (the risk-accounting hook's failure line included). With
+    # no handler configured, Python's last-resort handler would print them to
+    # stderr, so the CLI discards them: its only output is the fixed-token
+    # result below (ADR-0005).
+    logging.getLogger("AtlasAI").addHandler(logging.NullHandler())
     parser = build_parser()
     arguments = parser.parse_args(argv)
 
