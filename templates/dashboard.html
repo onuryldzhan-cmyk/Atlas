@@ -1,33 +1,109 @@
 <!DOCTYPE html>
-<html lang="tr" data-bs-theme="dark">
+{#
+  data-lte-color-mode="off" disables AdminLTE's ColorMode module, so the
+  page stays dark as declared here and the module never reads or writes a
+  stored theme in localStorage.
+#}
+<html lang="tr" data-bs-theme="dark" data-lte-color-mode="off">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Atlas AI Terminal</title>
     {#
-      AdminLTE 4.9.1 (MIT), vendored under static/vendor/ and served by the
-      loopback-guarded /assets route. No CDN reference: the operator panel
-      renders with no external network dependency. Only the stylesheet is
-      used; no third-party JavaScript is loaded. Provenance and hashes:
-      static/vendor/VENDORED_ASSETS.json.
+      AdminLTE 4.9.1 (MIT) and Chart.js 4.5.1 (MIT), vendored under
+      static/vendor/ and served only by the loopback-guarded /assets route.
+      No CDN reference: the operator panel renders with no external network
+      dependency. Provenance, hashes and the security review of both
+      scripts: static/vendor/VENDORED_ASSETS.json.
     #}
     <link rel="stylesheet" href="/assets/adminlte.min.css">
     <style>
-        .agent-row { border-top: 1px solid var(--bs-border-color); padding: .3rem 0; }
-        .agent-row:first-child { border-top: 0; }
-        .agent-detail { font-size: .75rem; color: var(--bs-secondary-color); }
+        /*
+          The one status palette of this page. Every status colour - KPI
+          boxes, decision cards, agent badges, limitations, health rows and
+          chart series that carry a status - goes through these four
+          tokens (and the STATUS_TONE map in the script below, which names
+          the same Bootstrap variants). Do not add a second scheme.
+            ok      = healthy / OK / fresh / BUY
+            error   = halted / error / SELL
+            warn    = warning / stale / accepted limitation
+            neutral = HOLD / neutral / excluded / not yet known
+        */
+        :root {
+            --atlas-ok: var(--bs-success);
+            --atlas-error: var(--bs-danger);
+            --atlas-warn: var(--bs-warning);
+            --atlas-neutral: var(--bs-secondary);
+            --atlas-series-1: var(--bs-info);
+            --atlas-series-2: var(--bs-primary);
+            --atlas-terminal-bg: #0b0f14;
+        }
         .panel-body { font-size: .875rem; }
-        .kv { display: flex; justify-content: space-between; gap: .75rem; padding: .15rem 0; }
+        .kv { display: flex; justify-content: space-between; align-items: center; gap: .75rem; padding: .3rem 0; border-top: 1px solid var(--bs-border-color-translucent); }
+        .kv:first-child { border-top: 0; }
         .kv > span:first-child { color: var(--bs-secondary-color); flex-shrink: 0; }
         .kv > span:last-child, .agent-detail, .callout { min-width: 0; overflow-wrap: anywhere; }
-        #trade-log { height: 9rem; overflow-y: auto; }
-        .info-box .info-box-icon { font-weight: 700; font-size: .95rem; }
+        .agent-detail { font-size: .75rem; color: var(--bs-secondary-color); }
+        .agent-row { border-top: 1px solid var(--bs-border-color-translucent); padding: .4rem 0; }
+        .agent-row:first-child { border-top: 0; }
+        .badge-excluded { border: 1px solid var(--atlas-neutral); color: var(--bs-secondary-color); background: transparent; }
+        .card-title { font-size: 1rem; }
+        .btn-tool svg { width: 14px; height: 14px; }
+        .collapsed-card .card-header [data-lte-icon="collapse"],
+        .card:not(.collapsed-card) .card-header [data-lte-icon="expand"] { display: none; }
+
+        /* KPI row */
+        @media (min-width: 576px) { .small-box > .inner { min-height: 7.5rem; } }
+        .small-box h3 { font-size: 1.5rem; white-space: normal; overflow-wrap: anywhere; }
+        .small-box .kpi-note { font-size: .75rem; opacity: .85; }
+        .small-box .small-box-icon { width: 56px; height: 56px; top: 14px; right: 14px; }
+        .small-box .small-box-icon svg { width: 100%; height: 100%; fill: currentColor; opacity: .2; }
+        .sparkline-box { position: relative; height: 34px; margin-top: .25rem; }
+
+        /* Confidence bar and risk-regime gauge */
+        .progress-sm, .progress-sm > .progress { height: .5rem; }
+        .min-w-0 { min-width: 0; }
+        .regime-gauge { position: relative; height: .6rem; margin: .45rem 0 .15rem; border-radius: .3rem; background: var(--bs-tertiary-bg); }
+        .regime-band { position: absolute; top: 0; bottom: 0; border-radius: .3rem; background: rgba(var(--bs-secondary-rgb), .45); }
+        .regime-marker { position: absolute; top: -.2rem; width: .35rem; height: 1rem; margin-left: -.175rem; border-radius: .15rem; }
+        .regime-scale { position: relative; height: .9rem; font-size: .65rem; color: var(--bs-secondary-color); }
+        .regime-scale > span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+
+        /* Telemetry */
+        .chart-box { position: relative; height: 150px; }
+        .dist-table { font-size: .75rem; }
+        .dist-table th, .dist-table td { padding: .2rem .35rem; text-align: right; white-space: nowrap; }
+        .dist-table th:first-child, .dist-table td:first-child { text-align: left; }
+
+        /* Known limitations */
+        .limitation-callout { height: 100%; display: flex; gap: .75rem; padding: 1rem; }
+        .limitation-callout svg { flex-shrink: 0; width: 22px; height: 22px; fill: currentColor; margin-top: .1rem; }
+
+        /* Trade log: terminal aesthetic, kept on purpose */
+        #trade-log { height: 13rem; overflow-y: auto; padding: .75rem 1rem; background: var(--atlas-terminal-bg); border-radius: .375rem; line-height: 1.6; color: #c9d1d9; }
+        #trade-log .log-line { white-space: pre-wrap; overflow-wrap: anywhere; }
+        #trade-log .log-prompt { color: var(--atlas-ok); }
+        #trade-log .log-time { color: #6e7681; }
+        #trade-log .log-muted { color: #8b949e; }
     </style>
 </head>
 <body class="layout-fixed bg-body-tertiary">
+{#
+  Inline SVG icons: no icon font or external sprite is loaded.
+#}
+<svg xmlns="http://www.w3.org/2000/svg" class="d-none">
+    <symbol id="icon-warning" viewBox="0 0 16 16"><path d="M8.98 1.56a1.13 1.13 0 0 0-1.96 0L.15 13.26A1.13 1.13 0 0 0 1.13 15h13.74a1.13 1.13 0 0 0 .98-1.74zM8 5c.54 0 .96.46.9 1l-.35 3.5a.55.55 0 0 1-1.1 0L7.1 6A.9.9 0 0 1 8 5m0 6.5a1 1 0 1 1 0 2 1 1 0 0 1 0-2"/></symbol>
+    <symbol id="icon-error" viewBox="0 0 16 16"><path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0M5.35 4.65 8 7.29l2.65-2.64a.5.5 0 0 1 .7.7L8.71 8l2.64 2.65a.5.5 0 0 1-.7.7L8 8.71l-2.65 2.64a.5.5 0 0 1-.7-.7L7.29 8 4.65 5.35a.5.5 0 1 1 .7-.7"/></symbol>
+    <symbol id="icon-chart" viewBox="0 0 16 16"><path d="M0 14h16v2H0zM2 9h3v4H2zm4.5-4h3v8h-3zM11 2h3v11h-3z"/></symbol>
+    <symbol id="icon-pulse" viewBox="0 0 16 16"><path d="M5.5 1a.5.5 0 0 1 .47.33L9.5 11.2l1.54-4.02A.5.5 0 0 1 11.5 7h4a.5.5 0 0 1 0 1h-3.66l-1.87 4.85a.5.5 0 0 1-.94-.02L5.5 3.02 3.97 7.66A.5.5 0 0 1 3.5 8h-3a.5.5 0 0 1 0-1h2.64l1.89-5.66A.5.5 0 0 1 5.5 1"/></symbol>
+    <symbol id="icon-book" viewBox="0 0 16 16"><path d="M1 2.8C2.6 1.9 5 1.7 7.5 2.9v11.3C5 13 2.6 13.2 1 14.1zm14 0C13.4 1.9 11 1.7 8.5 2.9v11.3c2.5-1.2 4.9-1 6.5-.1z"/></symbol>
+    <symbol id="icon-shield" viewBox="0 0 16 16"><path d="M8 0 1.5 2.5v5c0 4 2.8 7.3 6.5 8.5 3.7-1.2 6.5-4.5 6.5-8.5v-5zm3.35 5.85-4 4a.5.5 0 0 1-.7 0l-2-2a.5.5 0 1 1 .7-.7L7 8.79l3.65-3.64a.5.5 0 0 1 .7.7"/></symbol>
+    <symbol id="icon-minus" viewBox="0 0 16 16"><path d="M2 7.5h12v1H2z"/></symbol>
+    <symbol id="icon-plus" viewBox="0 0 16 16"><path d="M7.5 2h1v5.5H14v1H8.5V14h-1V8.5H2v-1h5.5z"/></symbol>
+</svg>
 <div class="app-wrapper">
     <nav class="app-header navbar navbar-expand bg-body">
-        <div class="container-fluid">
+        <div class="container-fluid flex-wrap gap-1">
             <span class="navbar-brand fw-bold text-primary">ATLAS AI <span class="fw-light text-body">Terminal</span></span>
             <span class="ms-auto small text-body-secondary">
                 Loopback-only operator panel &mdash; no authentication &middot;
@@ -42,72 +118,88 @@
 
                 <div class="row">
                     <div class="col-12 col-sm-6 col-xl-3">
-                        <div class="info-box">
-                            <span class="info-box-icon text-bg-primary shadow-sm">USDT</span>
-                            <div class="info-box-content">
-                                <span class="info-box-text">Güncel Fiyat ({{ symbol }})</span>
-                                {#
-                                  The price is server-rendered from the dashboard route's own
-                                  price provider, for the reference symbol only. /api/signals
-                                  returns no price field, so the polling loop below must
-                                  never claim to update this tile.
-                                #}
-                                <span id="price-display" class="info-box-number font-monospace">
+                        {#
+                          The price is server-rendered from the dashboard route's own
+                          price provider, for the reference symbol only. /api/signals
+                          returns no price field, so the polling loop below must
+                          never claim to update this tile. The sparkline plots only
+                          these server-rendered observations, collected across page
+                          loads in this browser tab.
+                        #}
+                        <div class="small-box {{ 'text-bg-success' if price_status == 'AVAILABLE' else 'text-bg-warning' }}">
+                            <div class="inner">
+                                <h3 id="price-display" class="font-monospace"
+                                    {% if price_status == "AVAILABLE" %}data-price="{{ price }}"{% endif %}>
                                     {% if price_status == "AVAILABLE" %}
                                         {{ "%.2f"|format(price) }}
                                     {% else %}
-                                        <span class="text-warning">unavailable: {{ price_status }}</span>
+                                        unavailable: {{ price_status }}
                                     {% endif %}
-                                </span>
-                                <span class="small text-body-secondary">sayfa yüklendiğinde alındı</span>
+                                </h3>
+                                <p class="mb-0">Güncel Fiyat ({{ symbol }})</p>
+                                <div class="sparkline-box"><canvas id="price-sparkline" aria-label="fiyat gözlemleri"></canvas></div>
+                                <div id="price-sparkline-note" class="kpi-note">sayfa yüklendiğinde alındı</div>
                             </div>
+                            <span class="small-box-icon"><svg><use href="#icon-chart"/></svg></span>
                         </div>
                     </div>
                     <div class="col-12 col-sm-6 col-xl-3">
-                        <div class="info-box">
-                            {#
-                              Two runtime health shapes reach this template. web_app's own
-                              fail-closed fallbacks use "state"; AtlasApplication.health()
-                              names the same value "runtime_state". Read both rather than
-                              silently rendering an empty status for one of them.
-                            #}
-                            {% set state_label = runtime_state.get("state") or runtime_state.get("runtime_state") or "UNKNOWN" %}
-                            {% if runtime_state.get("healthy") %}
-                                <span class="info-box-icon text-bg-success shadow-sm">OK</span>
-                            {% else %}
-                                <span class="info-box-icon text-bg-warning shadow-sm">!</span>
-                            {% endif %}
-                            <div class="info-box-content">
-                                <span class="info-box-text">Sistem Durumu</span>
-                                <span class="info-box-number {{ 'text-success' if runtime_state.get('healthy') else 'text-warning' }}">{{ state_label }}</span>
+                        {#
+                          Two runtime health shapes reach this template. web_app's own
+                          fail-closed fallbacks use "state"; AtlasApplication.health()
+                          names the same value "runtime_state". Read both rather than
+                          silently rendering an empty status for one of them.
+                        #}
+                        {% set state_label = runtime_state.get("state") or runtime_state.get("runtime_state") or "UNKNOWN" %}
+                        {% set state_upper = state_label|string|upper %}
+                        {% if runtime_state.get("healthy") %}
+                            {% set state_tone = "success" %}
+                        {% elif "HALT" in state_upper or "ERROR" in state_upper or "FAIL" in state_upper %}
+                            {% set state_tone = "danger" %}
+                        {% else %}
+                            {% set state_tone = "warning" %}
+                        {% endif %}
+                        <div class="small-box text-bg-{{ state_tone }}">
+                            <div class="inner">
+                                <h3>{{ state_label }}</h3>
+                                <p class="mb-0">Sistem Durumu</p>
                                 {% if not runtime_state.get("healthy") and runtime_state.get("reason") %}
-                                    <span class="small text-body-secondary">{{ runtime_state.get("reason") }}</span>
+                                    <div class="kpi-note">{{ runtime_state.get("reason") }}</div>
                                 {% endif %}
                             </div>
+                            <span class="small-box-icon"><svg><use href="#icon-pulse"/></svg></span>
                         </div>
                     </div>
                     <div class="col-12 col-sm-6 col-xl-3">
-                        <div class="info-box">
-                            <span class="info-box-icon text-bg-secondary shadow-sm">GOV</span>
-                            <div class="info-box-content">
-                                <span class="info-box-text">Governance Registry</span>
-                                <span id="registry-version" class="info-box-number">Yükleniyor...</span>
+                        <div id="kpi-governance" class="small-box text-bg-secondary">
+                            <div class="inner">
+                                <h3 id="registry-version">Yükleniyor...</h3>
+                                <p class="mb-0">Governance Registry</p>
                             </div>
+                            <span class="small-box-icon"><svg><use href="#icon-book"/></svg></span>
                         </div>
                     </div>
                     <div class="col-12 col-sm-6 col-xl-3">
-                        <div class="info-box">
-                            <span id="venue-rules-icon" class="info-box-icon text-bg-secondary shadow-sm">VR</span>
-                            <div class="info-box-content">
-                                <span class="info-box-text">Venue Kuralları</span>
-                                <span id="venue-rules-status" class="info-box-number">Yükleniyor...</span>
+                        <div id="kpi-venue" class="small-box text-bg-secondary">
+                            <div class="inner">
+                                <h3 id="venue-rules-status">Yükleniyor...</h3>
+                                <p class="mb-0">Venue Kuralları</p>
+                                <div id="venue-rules-note" class="kpi-note"></div>
                             </div>
+                            <span class="small-box-icon"><svg><use href="#icon-shield"/></svg></span>
                         </div>
                     </div>
                 </div>
 
-                <div class="card card-outline card-primary mb-4">
-                    <div class="card-header"><h3 class="card-title">Otonom Kararlar (5 Sembol)</h3></div>
+                <div class="card card-primary card-outline mb-4">
+                    <div class="card-header">
+                        <h3 class="card-title">Otonom Kararlar (5 Sembol)</h3>
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" title="Daralt">
+                                <svg data-lte-icon="collapse"><use href="#icon-minus"/></svg><svg data-lte-icon="expand"><use href="#icon-plus"/></svg>
+                            </button>
+                        </div>
+                    </div>
                     <div class="card-body">
                         <div id="signals-grid" class="row g-3">
                             <div class="col-12 text-body-secondary small">Analiz ediliyor...</div>
@@ -117,33 +209,49 @@
 
                 <div class="row">
                     <div class="col-12 col-lg-6">
-                        <div class="card card-outline card-info mb-4">
+                        <div class="card card-info card-outline mb-4">
                             <div class="card-header"><h3 class="card-title">Risk Accounting</h3></div>
                             <div id="risk-accounting-panel" class="card-body panel-body">Yükleniyor...</div>
                         </div>
                     </div>
                     <div class="col-12 col-lg-6">
-                        <div class="card card-outline card-warning mb-4">
+                        <div class="card card-info card-outline mb-4">
                             <div class="card-header"><h3 class="card-title">System Integrity</h3></div>
                             <div id="system-integrity-panel" class="card-body panel-body">Yükleniyor...</div>
                         </div>
                     </div>
                 </div>
 
-                <div class="row">
-                    <div class="col-12 col-lg-4">
-                        <div class="card mb-4">
-                            <div class="card-header"><h3 class="card-title">Execution / Sağlık Durumu</h3></div>
-                            <div id="execution-health-panel" class="card-body panel-body font-monospace">Yükleniyor...</div>
+                <div class="card card-warning card-outline mb-4">
+                    <div class="card-header">
+                        <h3 class="card-title">Bilinen Kısıtlar <span id="known-limitations-count" class="badge text-bg-warning ms-1"></span></h3>
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" title="Daralt">
+                                <svg data-lte-icon="collapse"><use href="#icon-minus"/></svg><svg data-lte-icon="expand"><use href="#icon-plus"/></svg>
+                            </button>
                         </div>
                     </div>
-                    <div class="col-12 col-lg-4">
+                    <div class="card-body">
+                        <div id="known-limitations-panel" class="row g-3 panel-body">
+                            <div class="col-12 text-body-secondary">Yükleniyor...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <div class="card mb-4">
+                            <div class="card-header"><h3 class="card-title">Execution / Sağlık Durumu</h3></div>
+                            <div id="execution-health-panel" class="card-body panel-body">Yükleniyor...</div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 col-xl-3">
                         <div class="card mb-4">
                             <div class="card-header"><h3 class="card-title">Performans (Win Rate)</h3></div>
                             <div id="trade-history-panel" class="card-body panel-body">Yükleniyor...</div>
                         </div>
                     </div>
-                    <div class="col-12 col-lg-4">
+                    <div class="col-12 col-xl-6">
                         <div class="card mb-4">
                             <div class="card-header"><h3 class="card-title">Telemetri (S-3 / M-2)</h3></div>
                             <div id="telemetry-panel" class="card-body panel-body">Yükleniyor...</div>
@@ -152,21 +260,21 @@
                 </div>
 
                 <div class="row">
-                    <div class="col-12 col-lg-4">
+                    <div class="col-12 col-xl-6">
                         <div class="card mb-4">
                             <div class="card-header"><h3 class="card-title">Otonom İşlem Geçmişi</h3></div>
                             <div class="card-body">
-                                <div id="trade-log" class="font-monospace small text-body-secondary">&gt; Bot izleme modunda...</div>
+                                <div id="trade-log" class="font-monospace small"><div class="log-line"><span class="log-prompt">&gt;</span> <span class="log-muted">Bot izleme modunda...</span></div></div>
                             </div>
                         </div>
                     </div>
-                    <div class="col-12 col-lg-4">
+                    <div class="col-12 col-md-6 col-xl-3">
                         <div class="card mb-4">
                             <div class="card-header"><h3 class="card-title">Test Sonuçları</h3></div>
                             <div id="test-results-panel" class="card-body panel-body">Yükleniyor...</div>
                         </div>
                     </div>
-                    <div class="col-12 col-lg-4">
+                    <div class="col-12 col-md-6 col-xl-3">
                         <div class="card mb-4">
                             <div class="card-header"><h3 class="card-title">Governance (GOV-DRIFT)</h3></div>
                             <div id="governance-panel" class="card-body panel-body">Yükleniyor...</div>
@@ -178,7 +286,23 @@
         </div>
     </main>
 </div>
+    <script src="/assets/adminlte.min.js"></script>
+    <script src="/assets/chart.umd.min.js"></script>
     <script>
+        // ---------------------------------------------------------------
+        // Shared design language
+        // ---------------------------------------------------------------
+
+        // The single status -> Bootstrap variant map (mirrors the
+        // --atlas-* tokens in the stylesheet). Every status colour on the
+        // page is chosen through it.
+        const STATUS_TONE = { ok: 'success', error: 'danger', warn: 'warning', neutral: 'secondary' };
+        const ACTION_STATUS = { BUY: 'ok', SELL: 'error', HOLD: 'neutral' };
+
+        function actionTone(action) {
+            return STATUS_TONE[ACTION_STATUS[action] || 'neutral'];
+        }
+
         function esc(value) {
             return String(value === undefined || value === null ? 'UNKNOWN' : value)
                 .replace(/&/g, '&amp;')
@@ -189,7 +313,8 @@
 
         function renderUnavailable(elementId, reason) {
             document.getElementById(elementId).innerHTML =
-                `<span class="text-warning">unavailable: ${esc(reason)}</span>`;
+                `<span class="badge text-bg-${STATUS_TONE.warn}">unavailable</span> ` +
+                `<span class="text-body-secondary">${esc(reason)}</span>`;
         }
 
         function kv(label, valueHtml) {
@@ -200,12 +325,125 @@
             return `<span class="badge text-bg-${tone}">${esc(text)}</span>`;
         }
 
+        function isNumber(value) {
+            return typeof value === 'number' && isFinite(value);
+        }
+
         // Numbers from the APIs are rendered as given, or n/a when absent -
         // never replaced with a made-up placeholder value.
         function num(value, digits) {
-            if (typeof value !== 'number' || !isFinite(value)) return 'n/a';
+            if (!isNumber(value)) return 'n/a';
             return esc(digits === undefined ? value : Number(value.toPrecision(digits)));
         }
+
+        function collapseButton() {
+            return `<div class="card-tools"><button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" title="Daralt">` +
+                `<svg data-lte-icon="collapse"><use href="#icon-minus"/></svg><svg data-lte-icon="expand"><use href="#icon-plus"/></svg>` +
+                `</button></div>`;
+        }
+
+        function cssVar(name) {
+            return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        }
+
+        // Chart.js is optional: if the vendored script failed to load, the
+        // exact numbers are still rendered and the chart area says why it
+        // is empty.
+        const CHARTS_AVAILABLE = typeof window.Chart === 'function';
+        const chartInstances = {};
+
+        if (CHARTS_AVAILABLE) {
+            Chart.defaults.animation = false;
+            Chart.defaults.color = cssVar('--bs-secondary-color');
+            Chart.defaults.borderColor = cssVar('--bs-border-color-translucent');
+            Chart.defaults.font.size = 10;
+        }
+
+        function drawChart(canvasId, config) {
+            if (chartInstances[canvasId]) {
+                chartInstances[canvasId].destroy();
+                delete chartInstances[canvasId];
+            }
+            const canvas = document.getElementById(canvasId);
+            if (!CHARTS_AVAILABLE || !canvas) return false;
+            chartInstances[canvasId] = new Chart(canvas, config);
+            return true;
+        }
+
+        // ---------------------------------------------------------------
+        // Price sparkline
+        // ---------------------------------------------------------------
+
+        // /api/signals carries no price, so the only real price points are
+        // the server-rendered ones. Each page load's observation is kept in
+        // this tab's sessionStorage (a per-viewer convenience; losing it
+        // only loses the sparkline). With fewer than two observations no
+        // line is drawn - one point is never stretched into a trend.
+        {# symbol is DEFAULT_SYMBOL, a fixed server-side constant, never
+           user input - a plain quoted interpolation is safe here. #}
+        const PRICE_HISTORY_KEY = 'atlas.dashboard.priceObservations.{{ symbol }}';
+        const PRICE_HISTORY_MAX = 60;
+
+        function loadPriceObservations() {
+            try {
+                const parsed = JSON.parse(sessionStorage.getItem(PRICE_HISTORY_KEY) || '[]');
+                return Array.isArray(parsed)
+                    ? parsed.filter((row) => Array.isArray(row) && typeof row[0] === 'string' && isNumber(row[1]))
+                    : [];
+            } catch (error) {
+                return [];
+            }
+        }
+
+        function renderPriceSparkline() {
+            const priceEl = document.getElementById('price-display');
+            const note = document.getElementById('price-sparkline-note');
+            const current = priceEl.dataset.price === undefined ? NaN : Number(priceEl.dataset.price);
+            let observations = loadPriceObservations();
+
+            if (isNumber(current)) {
+                observations.push([new Date().toISOString(), current]);
+                observations = observations.slice(-PRICE_HISTORY_MAX);
+                try {
+                    sessionStorage.setItem(PRICE_HISTORY_KEY, JSON.stringify(observations));
+                } catch (error) {
+                    // Storage unavailable: the sparkline simply has no history.
+                }
+            }
+
+            if (observations.length < 2) {
+                note.textContent = 'sayfa yüklendiğinde alındı · geçmiş yok (tek gözlem)';
+                return;
+            }
+            const lineColor = getComputedStyle(priceEl).color;
+            const drawn = drawChart('price-sparkline', {
+                type: 'line',
+                data: {
+                    labels: observations.map((row) => new Date(row[0]).toLocaleTimeString()),
+                    datasets: [{
+                        data: observations.map((row) => row[1]),
+                        borderColor: lineColor,
+                        borderWidth: 1.5,
+                        pointRadius: observations.map((_, i) => (i === observations.length - 1 ? 2.5 : 0)),
+                        pointBackgroundColor: lineColor,
+                        tension: 0.25,
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { x: { display: false }, y: { display: false } },
+                },
+            });
+            note.textContent = drawn
+                ? `sayfa yüklemelerinden ${observations.length} gözlem (bu sekme)`
+                : 'sayfa yüklendiğinde alındı · grafik kütüphanesi yüklenemedi';
+        }
+
+        // ---------------------------------------------------------------
+        // Trade log (terminal style)
+        // ---------------------------------------------------------------
 
         // Maximum lines retained in the trade log. The 5s poll appends
         // forever otherwise, so an unattended panel grows without bound.
@@ -213,11 +451,19 @@
 
         function appendTradeLog(html) {
             const logBox = document.getElementById('trade-log');
-            const lines = logBox.innerHTML.split('<br>');
-            lines.push(html);
-            logBox.innerHTML = lines.slice(-TRADE_LOG_MAX_LINES).join('<br>');
+            const line = document.createElement('div');
+            line.className = 'log-line';
+            line.innerHTML = html;
+            logBox.appendChild(line);
+            while (logBox.childElementCount > TRADE_LOG_MAX_LINES) {
+                logBox.removeChild(logBox.firstElementChild);
+            }
             logBox.scrollTop = logBox.scrollHeight;
         }
+
+        // ---------------------------------------------------------------
+        // Decisions grid
+        // ---------------------------------------------------------------
 
         const AGENT_LABELS = {
             technical: 'Teknik',
@@ -226,6 +472,31 @@
             risk: 'Risk',
             momentum: 'Momentum',
         };
+
+        // Where the current volatility sits against the p20/p80 band. The
+        // marker colour follows the regime the risk provider reported
+        // (never recomputed here): HIGH = warn, NEUTRAL = ok, LOW = neutral.
+        const REGIME_STATUS = { HIGH: 'warn', NEUTRAL: 'ok', LOW: 'neutral' };
+
+        function renderRegimeGauge(evidence) {
+            const vol = evidence.realized_volatility;
+            const p20 = evidence.p20;
+            const p80 = evidence.p80;
+            if (!isNumber(vol) || !isNumber(p20) || !isNumber(p80) || p20 > p80) return '';
+            let low = Math.min(p20, vol);
+            let high = Math.max(p80, vol);
+            let span = high - low;
+            if (span <= 0) span = Math.abs(high) || 1;
+            low -= span * 0.15;
+            high += span * 0.15;
+            const pos = (value) => Math.max(0, Math.min(100, ((value - low) / (high - low)) * 100));
+            const tone = STATUS_TONE[REGIME_STATUS[evidence.regime] || 'neutral'];
+            return `<div class="regime-gauge" title="vol ${num(vol, 3)} · p20 ${num(p20, 3)} · p80 ${num(p80, 3)}">` +
+                `<div class="regime-band" style="left:${pos(p20).toFixed(1)}%;width:${(pos(p80) - pos(p20)).toFixed(1)}%"></div>` +
+                `<div class="regime-marker bg-${tone}" style="left:${pos(vol).toFixed(1)}%"></div></div>` +
+                `<div class="regime-scale"><span style="left:${pos(p20).toFixed(1)}%">p20</span>` +
+                `<span style="left:${pos(p80).toFixed(1)}%">p80</span></div>`;
+        }
 
         // Underlying data behind the macro and risk votes (/api/agent-evidence).
         // null evidence means no provider evidence reached this cycle; it is
@@ -246,6 +517,7 @@
                     `<div class="agent-detail">gözlem: ${esc(evidence.observed_date)}</div>`;
             }
             return `<div class="agent-detail">rejim: ${esc(evidence.regime)} &middot; vol ${num(evidence.realized_volatility, 3)}</div>` +
+                renderRegimeGauge(evidence) +
                 `<div class="agent-detail">p20 ${num(evidence.p20, 3)} / p80 ${num(evidence.p80, 3)}</div>`;
         }
 
@@ -254,22 +526,33 @@
             const detail = renderEvidence(name, evidence);
             if (!agent || agent.status !== 'EVALUATED') {
                 const reason = agent ? agent.reason : 'UNKNOWN';
-                return `<div class="agent-row text-body-secondary">` +
-                    `<div>${label} <span class="badge text-bg-secondary">excluded</span></div>` +
+                return `<div class="agent-row"><div class="d-flex justify-content-between align-items-center gap-2">` +
+                    `<span class="text-body-secondary">${label}</span>` +
+                    `<span class="badge badge-excluded">EXCLUDED</span></div>` +
                     `<div class="agent-detail text-truncate" title="${esc(reason)}">${esc(reason)}</div>${detail}</div>`;
             }
-            return `<div class="agent-row"><div class="d-flex justify-content-between gap-2">` +
+            return `<div class="agent-row"><div class="d-flex justify-content-between align-items-center gap-2">` +
                 `<span class="text-body-secondary">${label}</span>` +
-                `<span class="text-end">${esc(agent.action)} (${esc(agent.score)})</span></div>${detail}</div>`;
+                `<span class="text-end">${badge(agent.action, actionTone(agent.action))} ` +
+                `<span class="font-monospace small">${esc(agent.score)}</span></span></div>${detail}</div>`;
         }
 
-        function actionTone(action) {
-            return action === 'BUY' ? 'success' : action === 'SELL' ? 'danger' : 'secondary';
+        // Confidence is on the 0-100 execution scale (MarketLoop normalises
+        // it). The bar is clamped to that range; the label is the value as
+        // published.
+        function renderConfidence(signal, tone) {
+            const value = signal.confidence;
+            const known = isNumber(value);
+            const width = known ? Math.max(0, Math.min(100, value)) : 0;
+            return `<div class="d-flex justify-content-between small mb-1">` +
+                `<span class="text-body-secondary">confidence</span>` +
+                `<span class="font-monospace">${known ? `${esc(value)} / 100` : 'UNKNOWN'}</span></div>` +
+                `<div class="progress progress-sm" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${width}">` +
+                `<div class="progress-bar bg-${tone}" style="width:${width}%"></div></div>`;
         }
 
-        function renderSignalTile(signal, evidence) {
-            const confidence = signal.confidence === undefined || signal.confidence === null
-                ? 'UNKNOWN' : esc(signal.confidence);
+        function renderSignalCard(signal, evidence, collapsed) {
+            const tone = actionTone(signal.action);
             const agentRows = Object.keys(AGENT_LABELS)
                 .map((name) => renderAgentRow(
                     name,
@@ -277,13 +560,21 @@
                     evidence ? evidence[name] : null,
                 ))
                 .join('');
-            return `<div class="col-12 col-md-6 col-xl"><div class="card h-100 mb-0"><div class="card-body p-3">` +
-                `<div class="d-flex justify-content-between align-items-center">` +
-                `<span class="fw-bold text-info small">${esc(signal.symbol)}</span>` +
-                `${badge(signal.action, actionTone(signal.action))}</div>` +
-                `<div class="small text-body-secondary mt-1">confidence: ${confidence} / risk: ${esc(signal.risk_level)}</div>` +
+            return `<div class="col-12 col-md-6 col-xxl"><div class="card card-${tone} h-100 mb-0${collapsed ? ' collapsed-card' : ''}" data-symbol="${esc(signal.symbol)}">` +
+                `<div class="card-header"><h3 class="card-title fw-bold">${esc(signal.symbol)} ` +
+                `<span class="ms-1 fw-normal">${esc(signal.action)}</span></h3>${collapseButton()}</div>` +
+                `<div class="card-body p-3">` +
+                renderConfidence(signal, tone) +
+                `<div class="d-flex justify-content-between small mt-2"><span class="text-body-secondary">risk</span>` +
+                `<span class="badge badge-excluded">${esc(signal.risk_level)}</span></div>` +
                 `<div class="mt-2 small">${agentRows}</div>` +
                 `</div></div></div>`;
+        }
+
+        function renderPendingCard(symbol) {
+            return `<div class="col-12 col-md-6 col-xxl"><div class="card card-secondary card-outline h-100 mb-0">` +
+                `<div class="card-header"><h3 class="card-title fw-bold text-body-secondary">${esc(symbol)}</h3></div>` +
+                `<div class="card-body p-3 small text-body-secondary">beklemede...</div></div></div>`;
         }
 
         // Fallback placeholder list only - shown as "beklemede" tiles before
@@ -308,6 +599,10 @@
             }
         }
 
+        function gridMessage(tone, text) {
+            return `<div class="col-12">${badge('unavailable', tone)} <span class="text-body-secondary">${esc(text)}</span></div>`;
+        }
+
         async function updateSignalsGrid() {
             const grid = document.getElementById('signals-grid');
             // The whole body - fetch, parse and render - is inside this
@@ -319,13 +614,13 @@
                     const res = await fetch('/api/signals');
                     payload = await res.json();
                 } catch (error) {
-                    grid.innerHTML = `<div class="col-12 text-warning">unavailable: network error</div>`;
+                    grid.innerHTML = gridMessage(STATUS_TONE.warn, 'network error');
                     return;
                 }
 
                 if (!payload || payload.status !== 'SUCCESS') {
                     const reason = (payload && (payload.reason || payload.status)) || 'UNKNOWN';
-                    grid.innerHTML = `<div class="col-12 text-warning">unavailable: ${esc(reason)}</div>`;
+                    grid.innerHTML = gridMessage(STATUS_TONE.warn, reason);
                     return;
                 }
 
@@ -336,30 +631,36 @@
                     .sort();
                 const displaySymbols = DEFAULT_SYMBOL_PLACEHOLDERS.concat(extraSymbols);
 
-                grid.innerHTML = displaySymbols.map((symbol) => {
-                    const signal = signals[symbol];
-                    if (!signal) {
-                        return `<div class="col-12 col-md-6 col-xl"><div class="card h-100 mb-0"><div class="card-body p-3">` +
-                            `<span class="fw-bold text-body-secondary small">${esc(symbol)}</span>` +
-                            `<div class="small text-body-secondary mt-2">beklemede...</div></div></div></div>`;
-                    }
-                    return renderSignalTile(signal, evidence[symbol]);
-                }).join('');
+                // The grid is rebuilt every poll; keep each card's collapsed
+                // state (AdminLTE CardWidget) across the rebuild.
+                const collapsed = new Set(
+                    Array.from(grid.querySelectorAll('.card.collapsed-card[data-symbol], .card.collapsing-card[data-symbol]'))
+                        .map((card) => card.getAttribute('data-symbol'))
+                );
 
-                {# symbol is DEFAULT_SYMBOL, a fixed server-side constant,
-                   never user input - a plain quoted interpolation is safe
-                   here. #}
+                const html = displaySymbols.map((symbol) => {
+                    const signal = signals[symbol];
+                    if (!signal) return renderPendingCard(symbol);
+                    return renderSignalCard(signal, evidence[symbol], collapsed.has(String(signal.symbol)));
+                }).join('');
+                grid.innerHTML = html;
+
                 const reference = signals['{{ symbol }}'];
                 if (reference && reference.action && reference.action !== 'HOLD') {
                     appendTradeLog(
-                        `&gt; ${esc(new Date().toLocaleTimeString())}` +
-                        ` - ${esc(reference.symbol)}: ${esc(reference.action)} (confidence: ${esc(reference.confidence)})`
+                        `<span class="log-prompt">&gt;</span> <span class="log-time">${esc(new Date().toLocaleTimeString())}</span>` +
+                        ` ${esc(reference.symbol)} <span class="text-${actionTone(reference.action)} fw-bold">${esc(reference.action)}</span>` +
+                        ` <span class="log-muted">confidence ${esc(reference.confidence)}</span>`
                     );
                 }
             } catch (error) {
-                grid.innerHTML = `<div class="col-12 text-warning">unavailable: render error</div>`;
+                grid.innerHTML = gridMessage(STATUS_TONE.warn, 'render error');
             }
         }
+
+        // ---------------------------------------------------------------
+        // Slow panels
+        // ---------------------------------------------------------------
 
         async function fetchPanel(url, elementId, onAvailable) {
             let payload;
@@ -386,12 +687,21 @@
             fetchPanel('/api/observability/test-results', 'test-results-panel', (payload) => {
                 const totals = payload.totals || {};
                 const alignment = (payload.commit_alignment && payload.commit_alignment.state) || 'UNKNOWN';
-                const alignmentTone = alignment === 'MATCH' ? 'success'
-                    : alignment === 'STALE' ? 'warning' : 'secondary';
+                const alignmentTone = alignment === 'MATCH' ? STATUS_TONE.ok
+                    : alignment === 'STALE' ? STATUS_TONE.warn : STATUS_TONE.neutral;
+                let bar = '';
+                if (isNumber(totals.passed) && isNumber(totals.failed) && isNumber(totals.tests) && totals.tests > 0) {
+                    const passed = (totals.passed / totals.tests) * 100;
+                    const failed = (totals.failed / totals.tests) * 100;
+                    bar = `<div class="progress-stacked progress-sm mb-2">` +
+                        `<div class="progress" role="progressbar" style="width:${passed.toFixed(2)}%"><div class="progress-bar bg-${STATUS_TONE.ok}"></div></div>` +
+                        `<div class="progress" role="progressbar" style="width:${failed.toFixed(2)}%"><div class="progress-bar bg-${STATUS_TONE.error}"></div></div></div>`;
+                }
                 document.getElementById('test-results-panel').innerHTML =
-                    kv('passed', `<span class="text-success">${esc(totals.passed)}</span>`) +
-                    kv('failed', `<span class="text-danger">${esc(totals.failed)}</span>`) +
-                    kv('total', esc(totals.tests)) +
+                    bar +
+                    kv('passed', badge(totals.passed, STATUS_TONE.ok)) +
+                    kv('failed', badge(totals.failed, totals.failed === 0 ? STATUS_TONE.neutral : STATUS_TONE.error)) +
+                    kv('total', `<span class="font-monospace">${esc(totals.tests)}</span>`) +
                     kv('commit', badge(alignment, alignmentTone));
             });
         }
@@ -399,7 +709,7 @@
         function updateGovernancePanel() {
             fetchPanel('/api/observability/governance', 'governance-panel', (payload) => {
                 document.getElementById('governance-panel').innerHTML =
-                    kv('head version', esc(payload.schema_version)) +
+                    kv('head version', `<span class="font-monospace">${esc(payload.schema_version)}</span>`) +
                     kv('reconciliation', esc(payload.reconciliation && payload.reconciliation.status));
             });
         }
@@ -421,62 +731,73 @@
                 renderUnavailable(elementId, 'UNKNOWN');
                 return;
             }
-            // badWhen: true means this field is a warning sign when it is
-            // true (halted/recovery_required/stale); false means it is a
-            // warning sign when it is false (supervised/thread_alive).
-            // Fields with no boolean polarity (the two counters) are never
-            // colored.
+            // badWhen: the boolean value that is a warning sign; badStatus:
+            // how serious it is (halted / recovery are errors, the rest are
+            // warnings). Fields with no boolean polarity (the two counters)
+            // are never coloured.
             const rows = [
-                ['halted', payload.execution_halted, true],
-                ['recovery_required', payload.execution_recovery_required, true],
-                ['supervised', payload.supervised, false],
-                ['supervisor_epoch', payload.supervisor_epoch, null],
-                ['supervisor_restart_count', payload.supervisor_restart_count, null],
-                ['market_data_stale', payload.market_data_stale, true],
-                ['market_loop_thread_alive', payload.market_loop_thread_alive, false],
+                ['halted', payload.execution_halted, true, 'error'],
+                ['recovery_required', payload.execution_recovery_required, true, 'error'],
+                ['supervised', payload.supervised, false, 'warn'],
+                ['supervisor_epoch', payload.supervisor_epoch, null, null],
+                ['supervisor_restart_count', payload.supervisor_restart_count, null, null],
+                ['market_data_stale', payload.market_data_stale, true, 'warn'],
+                ['market_loop_thread_alive', payload.market_loop_thread_alive, false, 'warn'],
             ];
-            const html = rows.map(([label, value, badWhen]) => {
+            const html = rows.map(([label, value, badWhen, badStatus]) => {
                 if (value === undefined) return '';
-                const flagged = badWhen !== null && value === badWhen;
-                return kv(label, `<span class="${flagged ? 'text-warning' : ''}">${esc(value)}</span>`);
+                if (badWhen === null || typeof value !== 'boolean') {
+                    return kv(label, `<span class="font-monospace">${esc(value)}</span>`);
+                }
+                const tone = STATUS_TONE[value === badWhen ? badStatus : 'ok'];
+                return kv(label, badge(value, tone));
             }).join('');
             document.getElementById(elementId).innerHTML = html ||
-                `<span class="text-warning">unavailable: ${esc(payload.reason || payload.state)}</span>`;
+                `${badge('unavailable', STATUS_TONE.warn)} <span class="text-body-secondary">${esc(payload.reason || payload.state)}</span>`;
         }
 
         function updateTradeHistoryPanel() {
             fetchPanel('/api/trades', 'trade-history-panel', (payload) => {
+                const winRateKnown = isNumber(payload.win_rate);
                 const winRate = payload.win_rate === null || payload.win_rate === undefined
                     ? 'n/a' : `${esc(payload.win_rate)}%`;
+                const bar = winRateKnown
+                    ? `<div class="progress progress-sm mb-2" role="progressbar" aria-valuenow="${esc(payload.win_rate)}">` +
+                      `<div class="progress-bar bg-${STATUS_TONE.ok}" style="width:${Math.max(0, Math.min(100, payload.win_rate))}%"></div></div>`
+                    : '';
+                const pnl = payload.total_gross_pnl;
+                const pnlTone = isNumber(pnl) && pnl > 0 ? 'text-success' : isNumber(pnl) && pnl < 0 ? 'text-danger' : '';
                 document.getElementById('trade-history-panel').innerHTML =
-                    kv('toplam işlem', esc(payload.total_trades)) +
-                    kv('win rate', `<span class="text-success">${winRate}</span> (${esc(payload.wins)}W / ${esc(payload.losses)}L)`) +
-                    kv('toplam gross P&amp;L', esc(payload.total_gross_pnl));
+                    `<div class="d-flex align-items-baseline gap-2 mb-1"><span class="fs-4 fw-bold">${winRate}</span>` +
+                    `<span class="small text-body-secondary">win rate (${esc(payload.wins)}W / ${esc(payload.losses)}L)</span></div>` +
+                    bar +
+                    kv('toplam işlem', `<span class="font-monospace">${esc(payload.total_trades)}</span>`) +
+                    kv('toplam gross P&amp;L', `<span class="font-monospace ${pnlTone}">${esc(pnl)}</span>`);
             });
         }
 
-        const DAY_STATE_TONES = { CURRENT: 'success', BEHIND_TODAY: 'warning' };
+        const DAY_STATE_STATUS = { CURRENT: 'ok', BEHIND_TODAY: 'warn' };
 
         function updateRiskAccountingPanel() {
             fetchPanel('/api/risk-accounting', 'risk-accounting-panel', (payload) => {
                 const day = payload.accounting_day || {};
-                let html = kv('bugün (UTC)', esc(payload.today_utc)) +
+                let html = kv('bugün (UTC)', `<span class="font-monospace">${esc(payload.today_utc)}</span>`) +
                     kv('muhasebe günü', day.accounting_day_utc
-                        ? esc(day.accounting_day_utc) : '<span class="text-warning">n/a</span>') +
-                    kv('durum', badge(day.state, DAY_STATE_TONES[day.state] || 'danger'));
+                        ? `<span class="font-monospace">${esc(day.accounting_day_utc)}</span>` : badge('n/a', STATUS_TONE.warn)) +
+                    kv('durum', badge(day.state, STATUS_TONE[DAY_STATE_STATUS[day.state] || 'error']));
 
                 const rollover = payload.rollover || {};
                 let rolloverHtml;
                 if (rollover.available !== true) {
-                    rolloverHtml = `<span class="text-warning">unavailable: ${esc(rollover.reason)}</span>`;
+                    rolloverHtml = `${badge('unavailable', STATUS_TONE.warn)} ${esc(rollover.reason)}`;
                 } else if (!rollover.latest) {
                     rolloverHtml = rollover.scan_truncated
                         ? `audit log'un son ${esc(Math.round(rollover.scan_limit_bytes / 1048576))} MB'ında yok`
                         : 'henüz yok';
                 } else {
                     const latest = rollover.latest;
-                    rolloverHtml = `${esc(latest.from_accounting_day_utc)} &rarr; ${esc(latest.to_accounting_day_utc)} ` +
-                        badge(latest.outcome, latest.outcome === 'COMMITTED' ? 'success' : 'warning') +
+                    rolloverHtml = `<span class="font-monospace">${esc(latest.from_accounting_day_utc)} &rarr; ${esc(latest.to_accounting_day_utc)}</span> ` +
+                        badge(latest.outcome, latest.outcome === 'COMMITTED' ? STATUS_TONE.ok : STATUS_TONE.warn) +
                         `<div class="agent-detail">prepared ${esc(latest.prepared_at)}` +
                         (latest.committed_at ? ` &middot; committed ${esc(latest.committed_at)}` : '') + `</div>`;
                 }
@@ -494,54 +815,134 @@
             });
         }
 
-        const VENUE_TONES = { FRESH: 'success', STALE: 'warning' };
+        const VENUE_STATUS = { FRESH: 'ok', STALE: 'warn' };
+
+        // Every known-limitation status is an open, accepted item, shown in
+        // the warn colour. A status this page does not recognise is shown
+        // as an error rather than assumed benign.
+        const LIMITATION_STATUS = {
+            OPEN_OWNER_ACCEPTED: { status: 'warn', label: 'Owner tarafından kabul edildi' },
+            OPEN_NOT_YET_WIRED: { status: 'warn', label: 'Henüz bağlanmadı' },
+            OPEN_NARROWED_FAIL_CLOSED: { status: 'warn', label: 'Daraltıldı · fail-closed' },
+        };
 
         function renderAge(seconds) {
             if (typeof seconds !== 'number') return 'n/a';
             return seconds >= 3600 ? `${esc((seconds / 3600).toFixed(1))} saat` : `${esc(seconds)} sn`;
         }
 
+        function setKpi(boxId, tone) {
+            const box = document.getElementById(boxId);
+            box.className = `small-box text-bg-${tone}`;
+        }
+
+        function renderLimitation(item) {
+            const known = LIMITATION_STATUS[item.status];
+            const status = known ? known.status : 'error';
+            const tone = STATUS_TONE[status];
+            const icon = status === 'error' ? 'icon-error' : 'icon-warning';
+            return `<div class="col-12 col-lg-6 col-xxl-4"><div class="callout callout-${tone} limitation-callout mb-0">` +
+                `<svg class="text-${tone}"><use href="#${icon}"/></svg><div class="min-w-0">` +
+                `<div class="d-flex flex-wrap align-items-center gap-2 mb-1">` +
+                `<span class="fw-semibold font-monospace small">${esc(item.id)}</span>` +
+                `${badge(item.status, tone)}</div>` +
+                (known ? `<div class="small fw-semibold mb-1">${esc(known.label)}</div>` : '') +
+                `<p class="small mb-2">${esc(item.summary)}</p>` +
+                `<div class="agent-detail">registry: ${esc(item.registry_reference)}</div></div></div></div>`;
+        }
+
         function updateSystemIntegrityPanel() {
+            const limitationsEl = document.getElementById('known-limitations-panel');
+            const countEl = document.getElementById('known-limitations-count');
             fetchPanel('/api/system-integrity', 'system-integrity-panel', (payload) => {
                 const venue = payload.venue_rules || {};
                 const registry = payload.registry || {};
                 const statusEl = document.getElementById('venue-rules-status');
-                const iconEl = document.getElementById('venue-rules-icon');
+                const noteEl = document.getElementById('venue-rules-note');
                 let html = '';
 
                 if (venue.available === true) {
-                    const tone = VENUE_TONES[venue.status] || 'danger';
-                    statusEl.innerHTML = `<span class="text-${tone}">${esc(venue.status)}</span>`;
-                    iconEl.className = `info-box-icon text-bg-${tone} shadow-sm`;
+                    const tone = STATUS_TONE[VENUE_STATUS[venue.status] || 'error'];
+                    statusEl.textContent = venue.status === undefined || venue.status === null ? 'UNKNOWN' : String(venue.status);
+                    noteEl.textContent = `yaş ${renderAge(venue.age_seconds)} / limit ${renderAge(venue.maximum_age_seconds)}`;
+                    setKpi('kpi-venue', tone);
                     html += kv('venue kuralları', badge(venue.status, tone)) +
-                        kv('son gözlem', esc(venue.observed_at)) +
+                        kv('son gözlem', `<span class="font-monospace">${esc(venue.observed_at)}</span>`) +
                         kv('yaş / limit', `${renderAge(venue.age_seconds)} / ${renderAge(venue.maximum_age_seconds)}`);
                 } else {
-                    statusEl.innerHTML = `<span class="text-warning">${esc(venue.reason)}</span>`;
-                    html += kv('venue kuralları', `<span class="text-warning">unavailable: ${esc(venue.reason)}</span>`);
+                    statusEl.textContent = venue.reason === undefined || venue.reason === null ? 'UNKNOWN' : String(venue.reason);
+                    noteEl.textContent = 'unavailable';
+                    setKpi('kpi-venue', STATUS_TONE.warn);
+                    html += kv('venue kuralları', `${badge('unavailable', STATUS_TONE.warn)} ${esc(venue.reason)}`);
                 }
 
                 const registryText = registry.available === true
                     ? `v${esc(registry.version)}` : `unavailable: ${esc(registry.reason)}`;
                 document.getElementById('registry-version').innerHTML = registryText;
+                setKpi('kpi-governance', registry.available === true ? STATUS_TONE.ok : STATUS_TONE.warn);
                 html += kv('governance registry', registryText);
+                document.getElementById('system-integrity-panel').innerHTML = html;
 
                 const limitations = payload.known_limitations || [];
-                html += `<div class="mt-3 mb-1 fw-semibold">Bilinen kısıtlar (${esc(limitations.length)})</div>`;
-                html += limitations.map((item) =>
-                    `<div class="callout callout-warning py-2 px-3 mb-2">` +
-                    `<div class="small fw-semibold">${esc(item.id)} ${badge(item.status, 'warning')}</div>` +
-                    `<div class="small">${esc(item.summary)}</div>` +
-                    `<div class="agent-detail">registry: ${esc(item.registry_reference)}</div></div>`
-                ).join('');
-                document.getElementById('system-integrity-panel').innerHTML = html;
+                countEl.textContent = String(limitations.length);
+                limitationsEl.innerHTML = limitations.length
+                    ? limitations.map(renderLimitation).join('')
+                    : `<div class="col-12 text-body-secondary">kayıtlı kısıt yok</div>`;
+            }).then(() => {
+                // fetchPanel rendered "unavailable" into the integrity
+                // panel; mirror it here instead of leaving stale cards.
+                const panel = document.getElementById('system-integrity-panel');
+                if (panel.querySelector('.kv') === null) {
+                    countEl.textContent = '';
+                    limitationsEl.innerHTML = `<div class="col-12">${panel.innerHTML}</div>`;
+                }
             });
         }
 
-        function renderDistribution(dist) {
-            if (!dist || !dist.count) return '<span class="text-body-secondary">veri yok</span>';
-            return `p50 ${num(dist.p50, 4)} &middot; p90 ${num(dist.p90, 4)} &middot; p95 ${num(dist.p95, 4)} ` +
-                `&middot; p99 ${num(dist.p99, 4)} &middot; max ${num(dist.max, 4)} <span class="text-body-secondary">(n=${esc(dist.count)})</span>`;
+        // ---------------------------------------------------------------
+        // Telemetry (S-3 / M-2)
+        // ---------------------------------------------------------------
+
+        const PERCENTILES = ['p50', 'p90', 'p95', 'p99', 'max'];
+
+        function hasDistribution(dist) {
+            return Boolean(dist && dist.count);
+        }
+
+        function distributionRow(label, dist) {
+            if (!hasDistribution(dist)) {
+                return `<tr><td>${label}</td><td colspan="6" class="text-body-secondary">veri yok</td></tr>`;
+            }
+            return `<tr><td>${label}</td>` +
+                PERCENTILES.map((key) => `<td class="font-monospace">${num(dist[key], 4)}</td>`).join('') +
+                `<td class="font-monospace text-body-secondary">${esc(dist.count)}</td></tr>`;
+        }
+
+        // Absent percentile values stay null, which Chart.js leaves as a
+        // gap - never a zero bar.
+        function percentileValues(dist) {
+            return PERCENTILES.map((key) => (isNumber(dist[key]) ? dist[key] : null));
+        }
+
+        function barChart(datasets) {
+            return {
+                type: 'bar',
+                data: { labels: PERCENTILES, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: datasets.length > 1, labels: { boxWidth: 10 } } },
+                    scales: { y: { beginAtZero: true, title: { display: true, text: 'sn' } } },
+                },
+            };
+        }
+
+        function chartSlot(canvasId, title, available) {
+            return `<div class="col-12 col-md-6"><div class="small fw-semibold mb-1">${title}</div>` +
+                (available
+                    ? `<div class="chart-box"><canvas id="${canvasId}"></canvas></div>`
+                    : `<div class="chart-box d-flex align-items-center justify-content-center text-body-secondary small border rounded">veri yok</div>`) +
+                `</div>`;
         }
 
         // Reads the operator-generated artifact of the extraction tool
@@ -564,34 +965,56 @@
                 if (!payload || payload.available !== true) {
                     const reason = (payload && (payload.reason || payload.status)) || 'UNKNOWN';
                     const label = reason === 'ARTIFACT_MISSING' || reason === 'ARTIFACT_EMPTY' ? 'veri yok' : 'unavailable';
-                    el.innerHTML = `<span class="text-warning">${label}: ${esc(reason)}</span>${hint}`;
+                    el.innerHTML = `${badge(label, STATUS_TONE.warn)} <span class="text-body-secondary">${esc(reason)}</span>${hint}`;
                     return;
                 }
                 const written = `<div class="agent-detail mt-2">artifact yazıldı: ${esc(payload.artifact_written_at)}</div>`;
                 if (payload.has_data !== true) {
-                    el.innerHTML = `<span class="text-body-secondary">veri yok: ${esc(payload.reason)}</span>${written}${hint}`;
+                    el.innerHTML = `${badge('veri yok', STATUS_TONE.neutral)} <span class="text-body-secondary">${esc(payload.reason)}</span>${written}${hint}`;
                     return;
                 }
+                const candle = payload.candle_age_seconds;
+                const cycle = payload.cycle_duration_seconds;
+                const cycleLatest = payload.cycle_duration_latest_run_seconds;
                 const statusCounts = Object.entries(payload.candle_age_status_counts || {})
                     .map(([status, count]) => `${esc(status)}=${esc(count)}`).join(', ') || 'n/a';
+
                 el.innerHTML =
-                    `<div class="fw-semibold">candle age (sn, MEASURED)</div>` +
-                    `<div class="small mb-2">${renderDistribution(payload.candle_age_seconds)}</div>` +
-                    `<div class="fw-semibold">cycle duration (sn, tüm log)</div>` +
-                    `<div class="small mb-2">${renderDistribution(payload.cycle_duration_seconds)}</div>` +
-                    `<div class="fw-semibold">cycle duration (sn, son run)</div>` +
-                    `<div class="small mb-2">${renderDistribution(payload.cycle_duration_latest_run_seconds)}</div>` +
+                    `<div class="row g-3 mb-2">` +
+                    chartSlot('telemetry-candle-chart', 'candle age (sn, MEASURED)', hasDistribution(candle)) +
+                    chartSlot('telemetry-cycle-chart', 'cycle duration (sn)', hasDistribution(cycle) || hasDistribution(cycleLatest)) +
+                    `</div>` +
+                    `<div class="table-responsive"><table class="table table-sm dist-table mb-2"><thead><tr><th></th>` +
+                    PERCENTILES.map((key) => `<th>${key}</th>`).join('') + `<th>n</th></tr></thead><tbody>` +
+                    distributionRow('candle age (MEASURED)', candle) +
+                    distributionRow('cycle duration (tüm log)', cycle) +
+                    distributionRow('cycle duration (son run)', cycleLatest) +
+                    `</tbody></table></div>` +
                     kv('status', `<span class="small">${statusCounts}</span>`) +
                     kv('kayıt / atlanan satır', `${esc(payload.parsed_records)} / ${esc(payload.skipped_lines)}`) +
                     kv('run sayısı', esc(payload.run_count)) +
                     (payload.unexpected_schema_version_present
-                        ? `<div class="text-warning small">beklenmeyen schema_version mevcut</div>` : '') +
+                        ? `<div class="mt-1">${badge('beklenmeyen schema_version mevcut', STATUS_TONE.warn)}</div>` : '') +
+                    (CHARTS_AVAILABLE ? '' : `<div class="agent-detail mt-1">grafik kütüphanesi yüklenemedi; sayılar tabloda</div>`) +
                     written;
+
+                const series1 = cssVar('--atlas-series-1');
+                const series2 = cssVar('--atlas-series-2');
+                if (hasDistribution(candle)) {
+                    drawChart('telemetry-candle-chart', barChart([
+                        { label: 'candle age', data: percentileValues(candle), backgroundColor: series1 },
+                    ]));
+                }
+                const cycleSets = [];
+                if (hasDistribution(cycle)) cycleSets.push({ label: 'tüm log', data: percentileValues(cycle), backgroundColor: series1 });
+                if (hasDistribution(cycleLatest)) cycleSets.push({ label: 'son run', data: percentileValues(cycleLatest), backgroundColor: series2 });
+                if (cycleSets.length) drawChart('telemetry-cycle-chart', barChart(cycleSets));
             } catch (error) {
                 renderUnavailable('telemetry-panel', 'render error');
             }
         }
 
+        renderPriceSparkline();
         setInterval(updateSignalsGrid, 5000);
         updateSignalsGrid();
         function updateSlowPanels() {

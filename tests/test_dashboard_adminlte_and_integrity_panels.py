@@ -54,6 +54,8 @@ NEW_ROUTES = (
     ("/api/risk-accounting", "ATLAS_WEB_PANEL_IS_LOCALHOST_ONLY"),
     ("/api/system-integrity", "ATLAS_WEB_PANEL_IS_LOCALHOST_ONLY"),
     ("/assets/adminlte.min.css", "ATLAS_WEB_PANEL_IS_LOCALHOST_ONLY"),
+    ("/assets/adminlte.min.js", "ATLAS_WEB_PANEL_IS_LOCALHOST_ONLY"),
+    ("/assets/chart.umd.min.js", "ATLAS_WEB_PANEL_IS_LOCALHOST_ONLY"),
     ("/api/observability/telemetry-summary", "OBSERVABILITY_PANEL_IS_LOCALHOST_ONLY"),
 )
 
@@ -89,10 +91,37 @@ def test_operator_pages_reference_no_external_resource(path: str) -> None:
     assert 'data-bs-theme="dark"' in body
 
 
-def test_dashboard_loads_no_third_party_javascript() -> None:
+# Owner-approved successor (2026-09-27, AdminLTE widget redesign) of the
+# original stylesheet-only invariant "no third-party JavaScript": the page
+# now loads exactly two vendored scripts, each through the loopback-guarded
+# /assets allowlist, each hash-pinned in VENDORED_ASSETS.json.
+VENDORED_SCRIPTS = {
+    "/assets/adminlte.min.js": "adminlte-4.9.1/adminlte.min.js",
+    "/assets/chart.umd.min.js": "chartjs-4.5.1/chart.umd.min.js",
+}
+
+
+def test_dashboard_loads_only_the_vendored_allowlisted_javascript() -> None:
     body = _client().get("/dashboard").text
 
-    assert re.search(r"<script\b[^>]*\bsrc\s*=", body, re.IGNORECASE) is None
+    sources = re.findall(r"""<script\b[^>]*\bsrc\s*=\s*["']([^"']*)["']""", body, re.IGNORECASE)
+    assert sorted(sources) == sorted(VENDORED_SCRIPTS)
+
+    manifest = json.loads((VENDOR_DIR / "VENDORED_ASSETS.json").read_text(encoding="utf-8"))
+    recorded = {path for asset in manifest["assets"] for path in asset["files"]}
+
+    for source, relative in VENDORED_SCRIPTS.items():
+        name = source.removeprefix("/assets/")
+        assert web_app.VENDORED_ASSETS[name][0] == VENDOR_DIR / relative
+        assert relative in recorded
+
+
+def test_dashboard_pins_the_dark_theme_against_adminlte_color_mode() -> None:
+    # AdminLTE's ColorMode would otherwise let a stored theme override the
+    # declared dark theme; "off" disables it and its localStorage access.
+    body = _client().get("/dashboard").text
+
+    assert re.search(r'<html\b[^>]*\bdata-lte-color-mode="off"', body) is not None
 
 
 def test_vendored_files_match_recorded_provenance() -> None:
@@ -109,7 +138,7 @@ def test_vendored_files_match_recorded_provenance() -> None:
             assert record["modified"] is False
             checked += 1
 
-    assert checked == 3
+    assert checked == 7
     assert "MIT License" in (VENDOR_DIR / "adminlte-4.9.1" / "LICENSE").read_text(encoding="utf-8")
 
 
@@ -118,6 +147,55 @@ def test_vendored_stylesheet_makes_no_network_request() -> None:
 
     assert "@import" not in css
     assert re.search(r"url\(\s*['\"]?\s*(?:https?:)?//", css) is None
+
+
+@pytest.mark.parametrize("relative", sorted(VENDORED_SCRIPTS.values()))
+def test_vendored_scripts_make_no_network_request_and_run_no_dynamic_code(relative: str) -> None:
+    script = (VENDOR_DIR / relative).read_text(encoding="utf-8")
+
+    for forbidden in (
+        "fetch(",
+        "XMLHttpRequest",
+        "WebSocket",
+        "sendBeacon",
+        "EventSource",
+        "importScripts",
+        "Worker(",
+        "import(",
+        "eval(",
+        "new Function",
+        "document.cookie",
+        "window.open",
+        'createElement("script")',
+        "createElement('script')",
+    ):
+        assert forbidden not in script, forbidden
+
+    urls = set(re.findall(r"""https?://[^\s"'<>)]+""", script))
+    assert urls <= {
+        "https://adminlte.io",
+        "https://colorlib.com",
+        "https://github.com/ColorlibHQ/AdminLTE/blob/master/LICENSE",
+        "https://www.chartjs.org",
+        "https://github.com/kurkle/color#readme",
+    }
+
+
+def test_vendored_files_are_exempt_from_end_of_line_conversion() -> None:
+    # core.autocrlf would rewrite the vendored files as CRLF on a fresh
+    # checkout and break their pinned hashes.
+    attributes = (REPOSITORY_ROOT / ".gitattributes").read_text(encoding="utf-8").splitlines()
+
+    assert "static/vendor/** -text" in attributes
+
+
+@pytest.mark.parametrize(("source", "relative"), sorted(VENDORED_SCRIPTS.items()))
+def test_asset_route_serves_the_vendored_scripts_byte_exact(source: str, relative: str) -> None:
+    response = _client().get(source)
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/javascript")
+    assert response.content == (VENDOR_DIR / relative).read_bytes()
 
 
 def test_asset_route_serves_the_vendored_stylesheet_byte_exact() -> None:
@@ -130,7 +208,17 @@ def test_asset_route_serves_the_vendored_stylesheet_byte_exact() -> None:
 
 @pytest.mark.parametrize(
     "name",
-    ["adminlte.css", "LICENSE", "..%2Fweb_app.py", "VENDORED_ASSETS.json", "web_app.py"],
+    [
+        "adminlte.css",
+        "LICENSE",
+        "..%2Fweb_app.py",
+        "VENDORED_ASSETS.json",
+        "web_app.py",
+        "adminlte.js",
+        "chart.js",
+        "chart.umd.js",
+        "KURKLE_COLOR_LICENSE.md",
+    ],
 )
 def test_asset_route_serves_only_the_allowlist(name: str) -> None:
     response = _client().get(f"/assets/{name}")
@@ -161,10 +249,22 @@ def test_existing_dashboard_contract_survives_the_redesign() -> None:
         "risk-accounting-panel",
         "system-integrity-panel",
         "telemetry-panel",
+        "known-limitations-panel",
+        "price-sparkline",
     ):
         assert f'id="{element_id}"' in body
 
     assert "<form" not in body
+
+
+def test_price_sparkline_is_fed_only_by_a_real_server_rendered_price() -> None:
+    # The sparkline's only data source is the data-price attribute; it is
+    # present exactly when the price provider returned a price.
+    available = TestClient(create_app(price_provider=lambda symbol: 63500.5)).get("/dashboard").text
+    unavailable = _client().get("/dashboard").text
+
+    assert 'data-price="63500.5"' in available
+    assert "data-price=" not in unavailable
 
 
 # =====================================================================

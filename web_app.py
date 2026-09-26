@@ -204,6 +204,14 @@ VENDORED_ASSETS = {
         BASE_DIR / "static" / "vendor" / "adminlte-4.9.1" / "adminlte.min.css",
         "text/css",
     ),
+    "adminlte.min.js": (
+        BASE_DIR / "static" / "vendor" / "adminlte-4.9.1" / "adminlte.min.js",
+        "text/javascript",
+    ),
+    "chart.umd.min.js": (
+        BASE_DIR / "static" / "vendor" / "chartjs-4.5.1" / "chart.umd.min.js",
+        "text/javascript",
+    ),
 }
 
 NON_LOOPBACK_RESPONSE = {
@@ -1431,8 +1439,8 @@ def create_app(
         request: Request,
         asset_name: str,
     ) -> Response:
-        # Same guard as every other route: the page's own stylesheet is
-        # served locally, never from a CDN, and never to a non-loopback
+        # Same guard as every other route: the page's own stylesheet and
+        # scripts are served locally, never from a CDN, and never to a non-loopback
         # peer.
         if not is_loopback_request(request):
             return JSONResponse(

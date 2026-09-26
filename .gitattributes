@@ -1,0 +1,5 @@
+# Vendored third-party assets must stay byte-identical to their upstream
+# tarballs: their sha256 is pinned in static/vendor/VENDORED_ASSETS.json and
+# checked by tests. Never apply end-of-line conversion to them (core.autocrlf
+# would otherwise rewrite them as CRLF on every fresh checkout).
+static/vendor/** -text
