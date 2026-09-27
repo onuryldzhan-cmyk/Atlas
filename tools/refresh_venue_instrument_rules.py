@@ -28,8 +28,21 @@ What this tool does
    unchanged - the same validate / write-temp-fsync / reload-through-the-
    canonical-loader / ``os.replace`` sequence Block 6C already carries, with
    the same fail-closed guarantee: a rejected payload never touches the
-   destination, not even partially.
-3. Prints a unified diff between the previous and new file content, plus the
+   destination, not even partially. That bounded publication goes to a
+   throwaway staging directory, never to the destination.
+3. Writes the destination **with every venue upper bound withheld** (owner
+   decision 2026-09-27, Block 6B disposition reaffirmed): a copy of the
+   staged, validated ruleset with ``max_quantity`` / ``max_notional`` /
+   ``market_max_quantity`` removed from every rule, through its own
+   write-temp / fsync / re-load / ``os.replace`` sequence. Running this tool
+   is not the deliberate, high-friction operator verification Block 6B
+   requires before the shipped config may model venue maxima, so it never
+   supplies them and the live fail-closed gate
+   (``VENUE_UPPER_BOUNDS_UNAVAILABLE``) keeps holding. The fetched maxima are
+   still required and validated - a payload missing one is refused exactly
+   as before - and are printed for operator visibility; they are just never
+   written.
+4. Prints a unified diff between the previous and new file content, plus the
    adapter's own publication report, and stops. It never runs ``git``.
 
 What this tool does NOT do
@@ -58,7 +71,10 @@ import argparse
 import difflib
 import hashlib
 import json
+import os
 import sys
+import tempfile
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -70,7 +86,15 @@ _REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPOSITORY_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPOSITORY_ROOT))
 
-from core.instrument_rules import InstrumentRulesConfigError  # noqa: E402
+from core.instrument_rules import (  # noqa: E402
+    InstrumentRulesConfigError,
+    InstrumentRuleset,
+    load_instrument_ruleset,
+)
+from core.venue_rule_freshness import (  # noqa: E402
+    VenueRuleFreshnessService,
+    VenueRuleFreshnessStatus,
+)
 from tools.venue_metadata_adapter import (  # noqa: E402
     REFERENCE_CONFIG_PATH,
     ExchangeInfoSnapshot,
@@ -90,6 +114,13 @@ EXCHANGE_INFO_ENDPOINT = "/api/v3/exchangeInfo"
 # verification statuses name themselves "UNVERIFIED".
 TRANSPORT_HTTP = "BINANCE_PUBLIC_HTTP"
 VERIFICATION_HTTP_UNVERIFIED_TRANSPORT = "LIVE_HTTP_FETCH_UNVERIFIED_TRANSPORT"
+
+# The Block 6B venue maxima. Never written by this tool, under any code path:
+# their absence from the shipped config is the premise the live fail-closed
+# gate depends on (tests/test_block6b_venue_upper_bounds.py), and a refresh is
+# not the verification that premise is waiting for.
+WITHHELD_UPPER_BOUND_FIELDS = ("max_quantity", "max_notional", "market_max_quantity")
+UPPER_BOUNDS_POLICY_WITHHELD = "WITHHELD_FROM_SHIPPED_CONFIG"
 
 
 def fetch_exchange_info_snapshot(
@@ -171,6 +202,104 @@ def _print_diff(*, before: bytes, after: bytes, destination: Path) -> None:
         print(f"(no change to {destination})")
 
 
+def _withhold_upper_bounds(ruleset: InstrumentRuleset) -> InstrumentRuleset:
+    """The same rules with every venue maximum removed (``None`` = unmodelled).
+
+    ``replace`` re-runs ``InstrumentRules`` construction, so each rule is
+    re-validated and re-sealed: its digest is the unbounded rule's digest, not
+    the bounded one's.
+    """
+    return InstrumentRuleset(
+        {
+            symbol: replace(
+                ruleset.rules[symbol],
+                **{name: None for name in WITHHELD_UPPER_BOUND_FIELDS},
+            )
+            for symbol in ruleset.symbols
+        },
+        schema_version=ruleset.schema_version,
+    )
+
+
+def _write_withheld_document(
+    document: dict[str, Any],
+    *,
+    target: Path,
+    expected: InstrumentRuleset,
+) -> None:
+    """Atomically replace ``target`` with ``document``, or leave it untouched.
+
+    Same order of operations as ``publish_venue_rules``: write a temporary
+    file beside the target and fsync it, re-load it through the runtime's own
+    loader, check what was actually written - symbols, rule identity, the
+    absence of every withheld field in the raw JSON *and* in the loaded rules,
+    and freshness - and only then ``os.replace`` it. Any failure removes the
+    temporary file and leaves the previous ``target`` byte-identical.
+    """
+    temporary = target.with_suffix(target.suffix + ".tmp")
+
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with temporary.open("w", encoding="utf-8", newline="\n") as stream:
+            stream.write(json.dumps(document, indent=2, sort_keys=False) + "\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+
+        try:
+            reloaded = load_instrument_ruleset(temporary)
+        except InstrumentRulesConfigError as exc:
+            raise VenueMetadataError(
+                f"withheld document failed to re-load through the canonical loader: {exc}"
+            ) from exc
+
+        if set(reloaded.symbols) != set(expected.symbols):
+            raise VenueMetadataError(
+                "withheld document does not cover exactly the requested symbols"
+            )
+
+        written = json.loads(temporary.read_text(encoding="utf-8"))
+        for entry in written["rules"]:
+            leaked = sorted(set(entry) & set(WITHHELD_UPPER_BOUND_FIELDS))
+            if leaked:
+                raise VenueMetadataError(
+                    f"{entry.get('symbol')}: refusing to write venue upper bounds: "
+                    f"{', '.join(leaked)}"
+                )
+
+        for symbol in reloaded.symbols:
+            entry = reloaded.rules[symbol]
+            if any(getattr(entry, name) is not None for name in WITHHELD_UPPER_BOUND_FIELDS):
+                raise VenueMetadataError(f"{symbol}: withheld rule still models an upper bound")
+            if entry.digest != expected.rules[symbol].digest:
+                raise VenueMetadataError(
+                    f"{symbol}: withheld rule identity changed in serialization"
+                )
+
+        freshness = VenueRuleFreshnessService().assess(reloaded)
+        if freshness.status is not VenueRuleFreshnessStatus.FRESH:
+            raise VenueMetadataError(
+                f"withheld ruleset is not FRESH ({freshness.status.value}); refusing to write it"
+            )
+
+        os.replace(temporary, target)
+
+    except BaseException:
+        # No partial update: the target was never opened, and the temporary
+        # file does not survive a failed write.
+        temporary.unlink(missing_ok=True)
+        raise
+
+
+def _print_withheld_bounds(ruleset: InstrumentRuleset) -> None:
+    print("Venue maxima fetched and validated, but WITHHELD from the written file (Block 6B):")
+    for symbol in ruleset.symbols:
+        entry = ruleset.rules[symbol]
+        values = ", ".join(
+            f"{name}={format(getattr(entry, name), 'f')}" for name in WITHHELD_UPPER_BOUND_FIELDS
+        )
+        print(f"  {symbol}: {values}")
+
+
 def refresh_venue_instrument_rules(
     *,
     venue: str = "BINANCE",
@@ -180,12 +309,14 @@ def refresh_venue_instrument_rules(
     timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
     session: Session | None = None,
 ) -> PublicationReport:
-    """Fetch, validate and atomically write ``destination``.
+    """Fetch, validate and atomically write ``destination`` without maxima.
 
-    Delegates every validation and write step to
-    ``tools.venue_metadata_adapter.publish_venue_rules`` - this function adds
-    only the network fetch and the before/after diff, never a separate write
-    path.
+    Every validation of the fetched payload is delegated unchanged to
+    ``tools.venue_metadata_adapter.publish_venue_rules``, which publishes the
+    complete, bounded ruleset into a throwaway staging directory. What reaches
+    ``destination`` is that validated ruleset with every
+    ``WITHHELD_UPPER_BOUND_FIELDS`` entry removed, written by
+    ``_write_withheld_document``. No path writes a bound to ``destination``.
     """
     target = Path(destination)
     wanted = list(symbols) if symbols is not None else list(reference_symbols(target))
@@ -198,19 +329,40 @@ def refresh_venue_instrument_rules(
     )
 
     before = _read_bytes_if_present(target)
+    replaced_existing = target.exists()
 
-    report = publish_venue_rules(
-        snapshot=snapshot,
-        destination=target,
-        venue=venue,
-        symbols=wanted,
-        source=f"{base_url.rstrip('/')}{EXCHANGE_INFO_ENDPOINT}",
-    )
+    with tempfile.TemporaryDirectory(
+        prefix="atlas-venue-rules-", ignore_cleanup_errors=True
+    ) as staging:
+        staged_path = Path(staging) / target.name
+        report = publish_venue_rules(
+            snapshot=snapshot,
+            destination=staged_path,
+            venue=venue,
+            symbols=wanted,
+            source=f"{base_url.rstrip('/')}{EXCHANGE_INFO_ENDPOINT}",
+        )
+        staged_provenance = json.loads(staged_path.read_text(encoding="utf-8"))["provenance"]
+        bounded = load_instrument_ruleset(staged_path)
+
+    withheld = _withhold_upper_bounds(bounded)
+    document = {
+        "schema_version": withheld.schema_version,
+        "provenance": {
+            **staged_provenance,
+            "venue_upper_bounds_modelled": False,
+            "venue_upper_bounds_policy": UPPER_BOUNDS_POLICY_WITHHELD,
+        },
+        "rules": [withheld.rules[symbol].to_dict() for symbol in withheld.symbols],
+    }
+
+    _write_withheld_document(document, target=target, expected=withheld)
 
     after = _read_bytes_if_present(target)
     _print_diff(before=before, after=after, destination=target)
+    _print_withheld_bounds(bounded)
 
-    return report
+    return replace(report, destination=str(target), replaced_existing=replaced_existing)
 
 
 def _build_parser() -> argparse.ArgumentParser:

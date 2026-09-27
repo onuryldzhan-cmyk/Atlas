@@ -61,7 +61,14 @@ from tests.test_block5d_instrument_precision_contract import (
 # service frozen near it evaluates FRESH and the freshness gate can never be
 # what a bounds test is actually observing.
 OBSERVED_AT = datetime(2026, 1, 1, tzinfo=UTC)
-SHIPPED_OBSERVED_AT = datetime(2026, 8, 19, 18, 0, tzinfo=UTC)
+
+# Frozen just after the shipped config's own newest ``retrieved_at``, derived
+# from the file rather than hardcoded, so a legitimate refresh of the shipped
+# config cannot turn the freshness gate into what a bounds test observes.
+SHIPPED_OBSERVED_AT = max(
+    datetime.strptime(entry.retrieved_at, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+    for entry in load_instrument_ruleset(DEFAULT_INSTRUMENT_RULES_PATH).rules.values()
+) + timedelta(minutes=12)
 
 
 def rule(**overrides: Any) -> InstrumentRules:

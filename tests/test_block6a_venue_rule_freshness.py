@@ -102,6 +102,26 @@ def service(
     )
 
 
+def shipped_retrieved_at(shipped: InstrumentRuleset) -> list[datetime]:
+    """Every ``retrieved_at`` in the shipped config, parsed as UTC."""
+    return [
+        datetime.strptime(shipped.rules[symbol].retrieved_at, "%Y-%m-%dT%H:%M:%SZ").replace(
+            tzinfo=UTC
+        )
+        for symbol in shipped.symbols
+    ]
+
+
+def shortly_after_shipped_retrieval(shipped: InstrumentRuleset) -> datetime:
+    """A clock frozen just after the shipped config's newest retrieval.
+
+    Derived from the file rather than hardcoded, so a legitimate refresh of
+    the shipped config does not break the tests that assess it. The offset
+    matches the original pinned clock (retrieved 17:47:48, assessed 18:00).
+    """
+    return max(shipped_retrieved_at(shipped)) + timedelta(minutes=12)
+
+
 # ===========================================================================
 # A/B/E/F - the four states, the boundary, and the injected clock
 # ===========================================================================
@@ -553,11 +573,20 @@ def test_the_shipped_config_still_loads_and_now_reports_its_schema() -> None:
         == DEFAULT_MAXIMUM_RULE_AGE_SECONDS
     )
 
-    report = service(at=datetime(2026, 8, 19, 18, 0, tzinfo=UTC)).assess(shipped)
+    at = shortly_after_shipped_retrieval(shipped)
+    report = service(at=at).assess(shipped)
 
     assert report.status is STATUS.FRESH
     assert report.venue == "BINANCE"
     assert report.symbol_count == len(shipped.symbols)
+
+    # The same shipped rules, one second past the threshold measured from
+    # their own oldest stamp, are detected as stale.
+    oldest = min(shipped_retrieved_at(shipped))
+    late = service(at=oldest + timedelta(seconds=THRESHOLD_SECONDS + 1)).assess(shipped)
+
+    assert late.status is STATUS.STALE
+    assert late.reason == REASON_STALE
 
 
 def test_ordinary_rule_validation_and_freshness_touch_no_network(monkeypatch) -> None:
@@ -572,7 +601,7 @@ def test_ordinary_rule_validation_and_freshness_touch_no_network(monkeypatch) ->
     monkeypatch.setattr(socket, "create_connection", refuse)
 
     shipped = load_instrument_ruleset(DEFAULT_INSTRUMENT_RULES_PATH)
-    frozen = service(at=datetime(2026, 8, 19, 18, 0, tzinfo=UTC))
+    frozen = service(at=shortly_after_shipped_retrieval(shipped))
 
     assert frozen.assess(shipped).status is STATUS.FRESH
     assert frozen.evaluate_gate(shipped, live_authorized=True).allowed is True
