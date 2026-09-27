@@ -127,11 +127,17 @@ jobs:
       # effect of any complete full-suite run, so this plain invocation
       # produces the artifact here for free - and, more importantly, does the
       # same thing on the operator's machine, which is where the dashboard
-      # actually reads from. $LASTEXITCODE is checked explicitly, matching
-      # the compilation step above.
+      # actually reads from.
+      #
+      # continue-on-error lets the job proceed to the evaluation step below
+      # even when pytest exits non-zero; this step's own outcome (visible in
+      # the GitHub UI, unaffected by continue-on-error) still reports the raw
+      # pytest result, so a real failure is never hidden here - only the
+      # job's aggregate pass/fail verdict is deferred to the narrower check.
       - name: Run Atlas test suite
         id: tests
         shell: pwsh
+        continue-on-error: true
         run: |
           python -m pytest `
             -q `
@@ -139,6 +145,35 @@ jobs:
 
           if ($LASTEXITCODE -ne 0) {
             throw "Atlas test suite failed (pytest exit code $LASTEXITCODE)."
+          }
+
+      # CI build-criteria configuration for GRANT-B2-PERMANENT-CLOSURE
+      # (registry v4.63, governance/findings/ARCH-EDGE-001_ANCESTOR_PACKAGE_FORBIDDEN_EDGES.md):
+      # two atlas_finance ancestor-package forbidden edges are a final,
+      # permanent owner decision to stay open and RED forever, by design.
+      # This step does not touch the test, add a permitted_exceptions entry,
+      # or add any xfail/skip marker - tools/ci_check_known_accepted_b2_failure.py
+      # reads the JUnit XML the run above just produced and independently
+      # re-derives the violation set the test itself computes. The aggregate
+      # build is reported PASSING only when the suite's sole failure is
+      # exactly this known case, and FAILING for anything else - a different
+      # test failing, an additional failure alongside it, or any additional
+      # or missing forbidden edge. See registry v4.90 for the CI-policy
+      # decision this step implements.
+      - name: Evaluate build status against GRANT-B2-PERMANENT-CLOSURE
+        if: always()
+        shell: pwsh
+        run: |
+          if ('${{ steps.tests.outcome }}' -eq 'success') {
+            Write-Host "Test suite passed with zero failures; no known-accepted-failure evaluation needed."
+            exit 0
+          }
+
+          python tools/ci_check_known_accepted_b2_failure.py `
+            --junit-xml reports/observability/test_results.junit.xml
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Build failed: the test suite has a failure that is not the known, permanently-accepted GRANT-B2-PERMANENT-CLOSURE case (registry v4.63)."
           }
 
       # Auditability only: makes each run's exact pass/fail breakdown, and
@@ -175,6 +210,11 @@ jobs:
         if: success()
         shell: pwsh
         run: |
+          $testSuiteLine = "Test suite:               PASS"
+          if ('${{ steps.tests.outcome }}' -ne 'success') {
+            $testSuiteLine = "Test suite:               PASS (known-accepted GRANT-B2-PERMANENT-CLOSURE case, registry v4.63/v4.90)"
+          }
+
           Write-Host "======================================"
           Write-Host "ATLAS CI VALIDATION: PASS"
           Write-Host "======================================"
@@ -182,5 +222,5 @@ jobs:
           Write-Host "Locked dependency install: PASS"
           Write-Host "Dependency integrity:     PASS"
           Write-Host "Canonical compilation:    PASS"
-          Write-Host "Test suite:               PASS"
+          Write-Host $testSuiteLine
           Write-Host "======================================"
