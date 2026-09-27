@@ -716,6 +716,10 @@
                     blocked = true;
                     const culprit = confidence < required ? 'risk bucket eşiğinin' : 'execution gate eşiğinin';
                     line = `${requirement}, şu an <span class="font-monospace">${num(confidence)}</span> &mdash; ${culprit} altında, execute edilmez`;
+                } else if (execMin === null) {
+                    // Only the bucket floor is known to be cleared; the
+                    // execution gate is unreadable, so no pass is claimed.
+                    line = `${requirement}, şu an <span class="font-monospace">${num(confidence)}</span> &mdash; risk bucket eşiği geçildi, execution gate eşiği bilinmiyor`;
                 } else {
                     cls = 'gate-pass';
                     line = `${requirement}, şu an <span class="font-monospace">${num(confidence)}</span> &mdash; confidence eşikleri geçildi (diğer risk/capital kontrolleri ayrıca uygulanır)`;

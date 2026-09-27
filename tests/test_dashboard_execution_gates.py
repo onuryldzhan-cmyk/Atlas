@@ -366,3 +366,22 @@ def test_dashboard_reads_the_gates_from_the_api_not_from_literals() -> None:
     assert "volatilite rejimi:" in body
     assert ">rejim: " not in body
     assert "risk bucket" in body
+
+
+def test_a_buy_is_never_shown_as_passing_while_the_execution_gate_is_unknown() -> None:
+    # A BUY that clears only the bucket floor, with ExecutionManager's
+    # minimum_confidence unreadable, must not be worded as having passed the
+    # confidence gates: only one of the two is known to be cleared.
+    body = _dashboard()
+    match = re.search(r"function assessRiskGate\(signal\) \{.*?\n        \}\n", body, re.DOTALL)
+
+    assert match is not None
+    gate = match.group(0)
+    unknown_branch = gate.find("} else if (execMin === null) {")
+    pass_branch = gate.find("cls = 'gate-pass';")
+
+    assert unknown_branch != -1
+    assert pass_branch != -1
+    assert unknown_branch < pass_branch
+    assert "execution gate eşiği bilinmiyor" in gate[unknown_branch:pass_branch]
+    assert "gate-pass" not in gate[unknown_branch:pass_branch]
