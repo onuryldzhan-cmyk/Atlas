@@ -658,7 +658,11 @@
         // The latest risk-stage outcome ExecutionManager recorded in the
         // audit trail for this symbol. It belongs to the decision it names
         // (action, confidence, time), which may be an earlier cycle than
-        // the one shown on the card.
+        // the one shown on the card. executionGates itself is only
+        // refreshed on the 30s slow-panel cadence (setInterval(
+        // updateSlowPanels, 30000) below), so this line can lag the 5s
+        // signal grid by up to that long; a failed refresh replaces it
+        // with "unavailable" rather than keeping a stale value.
         function renderLatestRiskDecision(symbol) {
             const decisions = executionGates && executionGates.available === true
                 ? executionGates.latest_risk_decisions : null;
@@ -681,34 +685,57 @@
                 explain;
         }
 
-        // Returns { html, blocked, markers }. blocked is true only for a
-        // BUY whose confidence is below a known floor it must clear: that
-        // BUY is not executed at this confidence.
+        // Returns { html, blocked, markers }. blocked is true for a BUY or
+        // SELL whose confidence is below a known floor it must clear: that
+        // action is not executed at this confidence. HOLD/WAIT/etc. never
+        // reach ExecutionManager's confidence gate at all
+        // (core/execution_manager.py NON_EXECUTION_ACTIONS, checked before
+        // the minimum_confidence gate), so they are never marked blocked.
         function assessRiskGate(signal) {
             const level = signal.risk_level;
             const confidence = signal.confidence;
             const execMin = executionMinimum();
             const gate = bucketGate(level);
             const isBuy = signal.action === 'BUY';
+            const isSell = signal.action === 'SELL';
             const markers = [{ value: execMin, label: 'execution gate', cls: '' }];
             let cls = 'gate-unknown';
             let line;
             let blocked = false;
 
+            // ExecutionManager's flat minimum_confidence (the execution
+            // gate) applies to BUY and SELL alike, independent of whether
+            // the BUY-only risk-bucket gate is known. When it's known and
+            // confidence is known and below it, that action is not
+            // executed regardless of the risk-bucket gate's state.
+            const execGateFails = (isBuy || isSell) && execMin !== null
+                && isNumber(confidence) && confidence < execMin;
+            const execGateNote = `execution gate: confidence <span class="font-monospace">${num(confidence)}</span>` +
+                ` &mdash; gereken &ge; ${num(execMin)}, execute edilmez`;
+
             if (!gate.known) {
-                line = `bucket eşiği bilinmiyor: ${esc(gate.reason)}`;
+                if (execGateFails) {
+                    cls = 'gate-fail';
+                    blocked = true;
+                    line = `${execGateNote} (risk bucket eşiği ayrıca bilinmiyor: ${esc(gate.reason)})`;
+                } else {
+                    line = `bucket eşiği bilinmiyor: ${esc(gate.reason)}`;
+                }
             } else if (!gate.bucket) {
-                cls = isBuy ? 'gate-fail' : 'gate-unknown';
-                blocked = isBuy;
-                line = `RiskEngine politikasında bu seviye için bucket yok &mdash; yeni risk (BUY) execute edilmez`;
+                cls = isBuy || execGateFails ? 'gate-fail' : 'gate-unknown';
+                blocked = isBuy || execGateFails;
+                line = `RiskEngine politikasında bu seviye için bucket yok &mdash; yeni risk (BUY) execute edilmez` +
+                    (!isBuy && execGateFails ? ` &mdash; ${execGateNote}` : '');
             } else {
                 const required = gate.bucket.required_confidence_pct;
                 const floor = execMin === null ? required : Math.max(required, execMin);
                 markers.push({ value: required, label: `risk bucket ${level}`, cls: 'gate-bucket' });
                 const requirement = `BUY execute için confidence <span class="font-monospace">&ge; ${num(required)}</span> gerekli`;
                 if (!isBuy) {
-                    cls = 'gate-unknown';
-                    line = `${requirement} &mdash; bu eşik yalnız BUY (yeni risk) için uygulanır; bu karar ${esc(signal.action)}`;
+                    cls = execGateFails ? 'gate-fail' : 'gate-unknown';
+                    blocked = execGateFails;
+                    line = `${requirement} &mdash; bu eşik yalnız BUY (yeni risk) için uygulanır; bu karar ${esc(signal.action)}` +
+                        (execGateFails ? ` &mdash; ${execGateNote}` : '');
                 } else if (!isNumber(confidence)) {
                     line = `${requirement}, mevcut confidence bilinmiyor`;
                 } else if (confidence < floor) {
