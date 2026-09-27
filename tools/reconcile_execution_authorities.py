@@ -139,12 +139,16 @@ What it will never do
 - Write the journal, the sidecars, the financial state file, the
   reservation ledger, the risk-accounting state or the audit log outside a
   PAPER recovery; the audit log only ever receives the risk-accounting hook's
-  own PREPARED/COMMITTED pair. A repair writes only the idempotency store.
+  own PREPARED/COMMITTED pair, stamped with ``metadata.origin`` =
+  ``tools.reconcile_execution_authorities`` (the runtime never sets it), and
+  after a rolled-back booking one ``RISK_ACCOUNTING_RECOVERY_BOOKING_ROLLED_BACK``
+  event naming those events. A repair writes only the idempotency store.
 - Delete, prune, or reset anything. A failed repair or recovery restores
   every file it touched to its exact pre-run bytes - except the append-only,
   hash-chained audit log, which is never rewritten. A PREPARED left behind by
   a rolled-back booking is harmless: the restored state equals its
-  ``previous_state``, so a rerun books again.
+  ``previous_state``, so a rerun books again; the marker event says it was
+  rolled back.
 
 Output safety (ADR-0005)
 ------------------------
@@ -308,6 +312,14 @@ _REFUSAL_PRIORITY = (
 # which a recovered COMMITTED result states how it was established.
 RECOVERED_NOT_APPLIED_REASON = "RECOVERED_NOT_APPLIED"
 RECOVERY_RESULT_FIELD = "recovery"
+
+# Every audit event this tool causes carries this metadata marker; the
+# runtime's own events never do. A booking this tool then rolls back is
+# followed by one RECOVERY_BOOKING_ROLLED_BACK event naming the events it
+# leaves behind in the append-only log.
+AUDIT_ORIGIN_FIELD = "origin"
+AUDIT_ORIGIN = "tools.reconcile_execution_authorities"
+RECOVERY_BOOKING_ROLLED_BACK = "RISK_ACCOUNTING_RECOVERY_BOOKING_ROLLED_BACK"
 
 
 @dataclass(frozen=True, slots=True)
@@ -1401,9 +1413,67 @@ def _redo_before(
         }
 
 
+class _ToolOriginAuditStore(AuditEventStore):
+    """The real audit log, with this tool's origin stamped on every append.
+
+    The hook's own event types, payloads and order are untouched; only its
+    metadata gains ``AUDIT_ORIGIN_FIELD``. Each appended event is also
+    collected into ``written`` so a later rollback can name it.
+    """
+
+    def __init__(self, file_path: Path, *, written: list[Any], **kwargs: Any) -> None:
+        super().__init__(file_path, **kwargs)
+        self._written = written
+
+    def append(self, *, metadata: Mapping[str, Any] | None = None, **kwargs: Any) -> Any:
+        event = super().append(
+            metadata={**dict(metadata or {}), AUDIT_ORIGIN_FIELD: AUDIT_ORIGIN}, **kwargs,
+        )
+        self._written.append(event)
+        return event
+
+
+def _record_booking_rolled_back(
+    *, directory: Path, audit_file: str, risk_state_file: str, request_id: str,
+    written: list[Any], original_risk_state: bytes | None, reason: str,
+) -> None:
+    """Append one marker naming the audit events a rolled-back booking left.
+
+    The log is append-only and hash-chained, so those events stay; this
+    event is what distinguishes them afterwards. Whether the risk-accounting
+    state is back at its pre-run bytes is observed from disk, not assumed.
+    Best effort: a failure here changes neither the rollback nor the result.
+    """
+    if not written:
+        return
+    try:
+        path = directory / risk_state_file
+        current = path.read_bytes() if path.exists() else None
+        AuditEventStore(directory / audit_file, verify_on_load=True).append(
+            event_type=RECOVERY_BOOKING_ROLLED_BACK,
+            source=AUDIT_ORIGIN,
+            aggregate_type=str(written[0].aggregate_type),
+            aggregate_id=str(written[0].aggregate_id),
+            payload={
+                "mode": ExecutionMode.PAPER.value,
+                "request_id": request_id,
+                "reason": reason,
+                "rolled_back_event_ids": [str(event.event_id) for event in written],
+                "rolled_back_event_types": [str(event.event_type) for event in written],
+                "risk_accounting_state_restored": current == original_risk_state,
+            },
+            correlation_id=request_id,
+            causation_id=str(written[-1].event_id),
+            metadata={"mode": ExecutionMode.PAPER.value, AUDIT_ORIGIN_FIELD: AUDIT_ORIGIN},
+        )
+    except Exception:
+        pass
+
+
 def _book_risk_accounting(
     plan: _RecoveryPlan, *, journal: ExecutionTransactionJournal, directory: Path,
     audit_file: str, risk_state_file: str, after: Mapping[str, Any],
+    written: list[Any] | None = None,
 ) -> None:
     """Book the recovered SELL through ``_record_realized_risk_accounting``.
 
@@ -1411,8 +1481,11 @@ def _book_risk_accounting(
     risk-accounting store and audit log, under that manager's lock and the
     journal's lock - the pair ``_finalize_durable_financial_state`` holds.
     Its idempotency and journal stores are scratch and discarded: the hook
-    never touches them. Any failure raises ``_AccountingFailed``.
+    never touches them. Every audit event it writes is marked as this tool's
+    and collected into ``written``. Any failure raises ``_AccountingFailed``.
     """
+    if written is None:
+        written = []
     try:
         request = ExecutionRequest.from_dict(dict(plan.request or {}))
         redo = plan.accounting_redo
@@ -1438,7 +1511,9 @@ def _book_risk_accounting(
                 mode=ExecutionManager.MODE_PAPER,
                 idempotency_store=ExecutionIdempotencyStore(scratch_path / "idempotency.jsonl"),
                 transaction_journal=ExecutionTransactionJournal(scratch_path / "journal.jsonl"),
-                audit_store=AuditEventStore(directory / audit_file, verify_on_load=True),
+                audit_store=_ToolOriginAuditStore(
+                    directory / audit_file, written=written, verify_on_load=True,
+                ),
                 audit_enabled=True,
                 risk_engine=_accounting_risk_engine(),
                 risk_state_store=store,
@@ -1484,9 +1559,16 @@ def _execute_recovery(
     ]
     originals = {path: (path.read_bytes() if path.exists() else None) for path in paths}
 
-    def _rollback() -> None:
+    written: list[Any] = []
+
+    def _rollback(reason: str) -> None:
         for path, original in originals.items():
             _restore(path, original)
+        _record_booking_rolled_back(
+            directory=directory, audit_file=audit_file, risk_state_file=risk_state_file,
+            request_id=request_id, written=written,
+            original_risk_state=originals[directory / risk_state_file], reason=reason,
+        )
 
     request_id = plan.request_id
     try:
@@ -1510,7 +1592,7 @@ def _execute_recovery(
             ).snapshot()
             _book_risk_accounting(
                 plan, journal=journal, directory=directory, audit_file=audit_file,
-                risk_state_file=risk_state_file, after=after,
+                risk_state_file=risk_state_file, after=after, written=written,
             )
         if plan.reservation_action is not None:
             ledger = _reservation_ledger(directory, reservation_file, reservation_archive_file)
@@ -1535,10 +1617,10 @@ def _execute_recovery(
         if not resolved:
             raise RuntimeError("journal resolution failed")
     except _AccountingFailed:
-        _rollback()
+        _rollback("RISK_ACCOUNTING_UPDATE_FAILED")
         return "RISK_ACCOUNTING_UPDATE_FAILED"
     except Exception:
-        _rollback()
+        _rollback("RECOVERY_WRITE_FAILED")
         return "RECOVERY_WRITE_FAILED"
 
     failure = _verify_recovery(
@@ -1549,7 +1631,7 @@ def _execute_recovery(
         audit_file=audit_file, risk_state_file=risk_state_file,
     )
     if failure is not None:
-        _rollback()
+        _rollback(failure)
     return failure
 
 

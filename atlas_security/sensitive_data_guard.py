@@ -88,6 +88,14 @@ DIGEST_KEYS = frozenset({"instrument_rules_digest"})
 
 _SHA256_HEX_PATTERN = re.compile(r"[0-9a-f]{64}")
 
+#: Field names whose value is a journal provenance reference, preserved under
+#: the same switch but only in the one shape the execution authorities write:
+#: ``transaction-journal:<request_id>``, where ``<request_id>`` itself passes
+#: every rule an `OPAQUE_IDENTIFIER_KEYS` value must pass. The prefix is not
+#: counted against `MAX_IDENTIFIER_LENGTH`; the embedded identifier is.
+PROVENANCE_REF_KEYS = frozenset({"provenance_ref"})
+PROVENANCE_REF_PREFIX = "transaction-journal:"
+
 #: The preservation privilege (never validity) is further limited to the
 #: characters Atlas's own identifiers use: uuid4, candle ids
 #: (``SYMBOL|open:<ms>|SIDE``) and venue order/trade ids. A value outside it -
@@ -125,18 +133,29 @@ def is_opaque_machine_identifier(value: Any) -> bool:
     )
 
 
+def _is_preservable_identifier(value: Any) -> bool:
+    return bool(
+        is_opaque_machine_identifier(value)
+        and _PRESERVABLE_IDENTIFIER_PATTERN.fullmatch(value)
+    )
+
+
 def _preserved_identifier(key: str | None, value: Any) -> str | None:
     """The byte-exact value to keep for an identity field, else None."""
     if key in OPAQUE_IDENTIFIER_KEYS:
         if isinstance(value, UUID):
             return str(value)
-        if (
-            is_opaque_machine_identifier(value)
-            and _PRESERVABLE_IDENTIFIER_PATTERN.fullmatch(value)
-        ):
+        if _is_preservable_identifier(value):
             return value
     elif key in DIGEST_KEYS:
         if isinstance(value, str) and _SHA256_HEX_PATTERN.fullmatch(value):
+            return value
+    elif key in PROVENANCE_REF_KEYS:
+        if (
+            isinstance(value, str)
+            and value.startswith(PROVENANCE_REF_PREFIX)
+            and _is_preservable_identifier(value[len(PROVENANCE_REF_PREFIX):])
+        ):
             return value
     return None
 
@@ -194,7 +213,8 @@ def sanitize_sensitive_data(
     """Recursively redact sensitive content from `value`.
 
     With ``preserve_identifiers=True`` a value held under one of
-    `OPAQUE_IDENTIFIER_KEYS` or `DIGEST_KEYS` is returned byte-exact when it
+    `OPAQUE_IDENTIFIER_KEYS`, `DIGEST_KEYS` or `PROVENANCE_REF_KEYS` is
+    returned byte-exact when it
     is structurally valid for its class, and redacted exactly as before when
     it is not. Only the execution authorities opt in; every other caller
     and every other field keeps the full redaction behavior. A sensitive

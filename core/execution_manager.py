@@ -54,7 +54,7 @@ import threading
 import time
 import uuid
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from enum import Enum
 from typing import Any, Mapping
 
@@ -321,6 +321,11 @@ class ExecutionManager:
         self.running = False
 
         self._lock = threading.RLock()
+
+        # (reason, stored_day, today) of the last rollover refusal written to
+        # the audit log, so a refusal that persists across many requests is
+        # recorded once rather than once per risk_check.
+        self._last_audited_rollover_refusal: tuple[str, str, str] | None = None
 
         self.history: list[dict[str, Any]] = []
         self.rejections: list[dict[str, Any]] = []
@@ -739,6 +744,51 @@ class ExecutionManager:
 
     RISK_DAY_ROLLOVER_PREPARED = "RISK_ACCOUNTING_DAY_ROLLOVER_PREPARED"
     RISK_DAY_ROLLOVER_COMMITTED = "RISK_ACCOUNTING_DAY_ROLLOVER_COMMITTED"
+    RISK_DAY_ROLLOVER_REFUSED = "RISK_ACCOUNTING_DAY_ROLLOVER_REFUSED"
+
+    def _audit_risk_day_rollover_refusal(
+        self, reason: str, *, stored_day: date, today: date,
+    ) -> None:
+        """Record why a due rollover did not happen, alongside the WARNING log.
+
+        Observational only: it never raises and never changes the outcome -
+        the stored day stays untouched either way. A refusal is written once
+        per distinct (reason, stored day, today); the same refusal on every
+        following request is not re-appended. Nothing is written when audit
+        is disabled (the trail the reason names does not exist), and a failed
+        write is handled as any other audit failure.
+        """
+        if not self.audit_enabled:
+            return
+        key = (reason, stored_day.isoformat(), today.isoformat())
+        if key == getattr(self, "_last_audited_rollover_refusal", None):
+            return
+        try:
+            self.audit_store.append(
+                event_type=self.RISK_DAY_ROLLOVER_REFUSED,
+                source=self.NAME,
+                aggregate_type="risk_accounting_state",
+                aggregate_id=today.isoformat(),
+                payload={
+                    "mode": self.mode,
+                    "reason": reason,
+                    "from_accounting_day_utc": stored_day.isoformat(),
+                    "to_accounting_day_utc": today.isoformat(),
+                },
+                correlation_id=today.isoformat(),
+                metadata={"mode": self.mode, "manager_version": self.VERSION},
+            )
+            self.stats["audit_events_written"] += 1
+            self._last_audited_rollover_refusal = key
+        except Exception as exc:
+            self.stats["audit_write_failures"] += 1
+            self._record_audit_failure(
+                event_type=self.RISK_DAY_ROLLOVER_REFUSED,
+                request=None,
+                error=exc,
+                stage="RISK_ACCOUNTING",
+            )
+            self._record_error(phase="risk_day_rollover_refusal_audit", error=exc)
 
     def _risk_day_rollover_refusal(self) -> str | None:
         """Why the durable state is not clean enough to roll the day over.
@@ -786,7 +836,11 @@ class ExecutionManager:
         after the date changes. Anything short of a clean, audited rollover
         leaves the stored day untouched, and ``RiskEngine.evaluate`` then
         rejects with RISK_ACCOUNTING_DAY_RECONCILIATION_REQUIRED exactly as it
-        did before this path existed.
+        did before this path existed. A refused or equity-aborted rollover is
+        also recorded as a ``RISK_ACCOUNTING_DAY_ROLLOVER_REFUSED`` audit event
+        (see ``_audit_risk_day_rollover_refusal``). A missing journal lock and
+        an unreadable stored state are not: neither establishes that a
+        rollover is due, and the latter fails closed in ``_derive_risk_state``.
 
         Idempotent: once the stored day is today, every further call is a
         no-op. The gate, the equity read and the durable write all happen
@@ -839,12 +893,22 @@ class ExecutionManager:
                     restored.accounting_day_utc.isoformat(),
                     today.isoformat(),
                 )
+                self._audit_risk_day_rollover_refusal(
+                    refusal, stored_day=restored.accounting_day_utc, today=today,
+                )
                 return
 
+            # Set once the durable equity is known to be positive, so the
+            # abort below can tell an equity refusal from an audit failure.
+            equity_refusal: str | None = "EQUITY_UNREADABLE"
             try:
                 equity = Decimal(str(self.portfolio_foundation.snapshot()["equity"]))
                 if not equity.is_finite() or equity <= 0:
+                    equity_refusal = (
+                        "EQUITY_NOT_FINITE" if not equity.is_finite() else "EQUITY_NOT_POSITIVE"
+                    )
                     raise ValueError("durable equity is not positive")
+                equity_refusal = None
                 payload = {
                     "mode": self.mode,
                     "from_accounting_day_utc": restored.accounting_day_utc.isoformat(),
@@ -877,6 +941,10 @@ class ExecutionManager:
                     today.isoformat(),
                     type(exc).__name__,
                 )
+                if equity_refusal is not None:
+                    self._audit_risk_day_rollover_refusal(
+                        equity_refusal, stored_day=restored.accounting_day_utc, today=today,
+                    )
                 return
 
             try:
