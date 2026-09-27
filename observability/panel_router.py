@@ -5,7 +5,8 @@ Security posture
 This router is LOCALHOST-ONLY until real authentication exists. ``web_app``'s
 ``/login`` is still a stub redirect, so there is no authenticated identity to
 authorise against. Every route here therefore refuses any request whose peer
-address is not a loopback address, and ``web_app`` binds ``127.0.0.1``. Do
+address is not a loopback address or whose Host header does not name a
+loopback host (DNS-rebinding defence), and ``web_app`` binds ``127.0.0.1``. Do
 not expose these routes through a reverse proxy or bind a non-loopback
 interface before authentication is implemented: the peer address seen here
 would then be the proxy's, and the guard would no longer mean anything.
@@ -52,15 +53,86 @@ NON_LOOPBACK_RESPONSE = {
     ),
 }
 
+# Host header names the operator surface answers to. A loopback peer address
+# alone does not prove a loopback client: under DNS rebinding a hostile web
+# page resolves its own name to 127.0.0.1, so the victim's browser connects
+# from a loopback address while sending ``Host: attacker.example``. The Host
+# header is what still carries the page's origin, so it is checked too.
+# Hostnames are compared case-insensitively; IPv6 must be bracketed, as the
+# Host header grammar requires. Any port is accepted, because the hostname is
+# what defeats rebinding and a local port-forward legitimately changes the port.
+LOOPBACK_HOST_HEADER_NAMES = frozenset(
+    {
+        "127.0.0.1",
+        "localhost",
+        "[::1]",
+    }
+)
+
+# starlette's TestClient sends ``Host: testserver`` from the in-process
+# ``testclient`` peer. That pair is accepted only together, and only as the
+# exact single header value ``testserver`` (no port): "testserver" is
+# never a loopback Host name for a network peer, and "testclient" can only
+# come from the in-process ASGI transport, never from a socket.
+IN_PROCESS_TEST_PEER = "testclient"
+IN_PROCESS_TEST_HOST_HEADER = "testserver"
+
+
+def _host_header_name(request: Request) -> str | None:
+    """Return the lower-cased hostname of the single Host header, or None.
+
+    None - and therefore a refusal - covers a missing Host header, repeated
+    Host headers, an empty or malformed value, and any port that is not a
+    plain decimal number in 1..65535. A client that sends no Host header at
+    all (HTTP/1.0, a raw socket) is refused: fail closed.
+    """
+
+    values = request.headers.getlist("host")
+
+    if len(values) != 1:
+        return None
+
+    raw = values[0].lower()
+
+    if raw.startswith("["):
+        end = raw.find("]")
+
+        if end == -1:
+            return None
+
+        name, rest = raw[: end + 1], raw[end + 1 :]
+    else:
+        name, separator, port = raw.partition(":")
+        rest = separator + port
+
+    if rest:
+        port = rest[1:]
+
+        if not (
+            rest.startswith(":")
+            and port.isascii()
+            and port.isdigit()
+            and len(port) <= 5
+            and 1 <= int(port) <= 65535
+        ):
+            return None
+
+    return name or None
+
 
 def is_loopback_request(request: Request) -> bool:
-    """Return True when the request's peer address is a loopback address.
+    """Return True for a loopback peer that addressed a loopback Host name.
 
     This is the single loopback predicate for the whole web surface:
-    ``web_app`` imports it to guard its own runtime endpoints
-    (``/api/health``, ``/api/analysis``) so that both the panel routes and
-    the runtime routes refuse the same set of peers, rather than drifting
-    apart behind two separate implementations.
+    ``web_app`` imports it to guard its own runtime endpoints, the HTML
+    pages and the vendored ``/assets`` route, so that every route refuses
+    the same set of requests rather than drifting apart behind separate
+    implementations.
+
+    Both conditions are required. The peer address must be loopback, and
+    the Host header must name ``127.0.0.1``, ``localhost`` or ``[::1]``
+    (optionally with a port); the latter is what refuses a DNS-rebinding
+    request, which arrives from a loopback peer under a foreign Host name.
     """
 
     client = request.client
@@ -68,12 +140,19 @@ def is_loopback_request(request: Request) -> bool:
     if client is None:
         return False
 
-    host = (client.host or "").strip().lower()
+    peer = (client.host or "").strip().lower()
 
-    if host.startswith("127."):
+    if not (peer.startswith("127.") or peer in LOOPBACK_HOSTS):
+        return False
+
+    host_name = _host_header_name(request)
+
+    if host_name in LOOPBACK_HOST_HEADER_NAMES:
         return True
 
-    return host in LOOPBACK_HOSTS
+    return peer == IN_PROCESS_TEST_PEER and request.headers.getlist(
+        "host"
+    ) == [IN_PROCESS_TEST_HOST_HEADER]
 
 
 def _respond(payload: dict[str, Any]) -> JSONResponse:
