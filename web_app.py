@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from fastapi import FastAPI, Request, Response
+from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import (
     FileResponse,
     HTMLResponse,
@@ -36,6 +37,7 @@ from observability import panel_sources
 from observability.panel_router import (
     build_observability_router,
     is_loopback_request,
+    is_same_origin_request,
 )
 
 
@@ -214,6 +216,31 @@ VENDORED_ASSETS = {
         BASE_DIR / "static" / "vendor" / "chartjs-4.5.1" / "chart.umd.min.js",
         "text/javascript",
     ),
+}
+
+# Defense-in-depth response headers applied to every response this
+# application serves (registry v4.86/v4.87 backlog item A2). script-src and
+# style-src keep 'unsafe-inline' because templates/dashboard.html renders
+# inline <script> blocks and inline style="" attributes with no nonce
+# infrastructure yet; tightening that is a separate, larger change. Every
+# other directive is as strict as the current templates and vendored
+# /assets allow: no third-party origins, no framing, no plugins.
+SECURITY_HEADERS: dict[str, str] = {
+    "Content-Security-Policy": (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; "
+        "font-src 'self'; "
+        "connect-src 'self'; "
+        "object-src 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'; "
+        "frame-ancestors 'none'"
+    ),
+    "X-Frame-Options": "DENY",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
 }
 
 NON_LOOPBACK_RESPONSE = {
@@ -888,6 +915,12 @@ def create_app(
             "Lifecycle-safe Atlas monitoring and control interface"
         ),
         version="2.0",
+        # The auto-mounted /docs, /redoc and /openapi.json below reuse
+        # is_loopback_request instead of FastAPI's unguarded defaults, so
+        # those defaults are switched off here.
+        docs_url=None,
+        redoc_url=None,
+        openapi_url=None,
     )
 
     templates = Jinja2Templates(
@@ -896,6 +929,53 @@ def create_app(
 
     application.state.atlas_runtime = runtime
     application.state.price_provider = price_provider
+
+    @application.middleware("http")
+    async def _apply_security_headers(
+        request: Request,
+        call_next: Callable[[Request], Any],
+    ) -> Response:
+        response = await call_next(request)
+
+        for name, value in SECURITY_HEADERS.items():
+            response.headers[name] = value
+
+        return response
+
+    @application.get("/openapi.json", include_in_schema=False)
+    async def openapi_schema(request: Request) -> Response:
+        if not is_loopback_request(request):
+            return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+
+        return JSONResponse(application.openapi())
+
+    @application.get(
+        "/docs",
+        response_class=HTMLResponse,
+        include_in_schema=False,
+    )
+    async def swagger_docs(request: Request) -> Response:
+        if not is_loopback_request(request):
+            return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+
+        return get_swagger_ui_html(
+            openapi_url="/openapi.json",
+            title=f"{application.title} - Swagger UI",
+        )
+
+    @application.get(
+        "/redoc",
+        response_class=HTMLResponse,
+        include_in_schema=False,
+    )
+    async def redoc_docs(request: Request) -> Response:
+        if not is_loopback_request(request):
+            return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+
+        return get_redoc_html(
+            openapi_url="/openapi.json",
+            title=f"{application.title} - ReDoc",
+        )
 
     # Read-only observability panels (test results artifact, GOV-DRIFT
     # status). Mounting only registers routes: no file is read here, so
@@ -1547,12 +1627,22 @@ def create_app(
         "/login",
         response_class=RedirectResponse,
     )
-    async def login() -> RedirectResponse:
+    async def login(request: Request) -> Response:
         """
         Temporary dashboard redirect.
 
-        Authentication must be implemented before external exposure.
+        Authentication must be implemented before external exposure. Guarded
+        like every other route here, plus an Origin check: POST is the one
+        state-changing method this application exposes, so it is the one
+        route where a mismatched Origin - not just a mismatched Host - must
+        be refused.
         """
+
+        if not is_loopback_request(request):
+            return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+
+        if not is_same_origin_request(request):
+            return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
 
         return RedirectResponse(
             url="/dashboard",

@@ -91,11 +91,17 @@ WEB_APP_GUARDED_ROUTES = [
     "/api/observability/test-results",
     "/api/observability/governance",
     "/api/observability/telemetry-summary",
+    "/docs",
+    "/redoc",
+    "/openapi.json",
 ]
 
-# FastAPI's own schema/documentation routes are not operator routes and are
-# not behind the guard (pre-existing; recorded as a deferred finding).
-FRAMEWORK_ROUTES = {"/docs", "/docs/oauth2-redirect", "/openapi.json", "/redoc"}
+# FastAPI's own schema/documentation routes are switched off via
+# docs_url=None/redoc_url=None/openapi_url=None in create_app(); this
+# application defines its own guarded /docs, /redoc and /openapi.json
+# instead (registry v4.86/v4.87 A2 backlog closure), so no auto-created
+# oauth2-redirect route exists to exempt here.
+FRAMEWORK_ROUTES: set[str] = set()
 
 
 def _request(
