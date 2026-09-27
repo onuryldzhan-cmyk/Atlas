@@ -933,6 +933,11 @@ def _risk_policy_gates(
     so it is the floor that bucket actually enforces.
     """
 
+    # Reads runtime.risk_policy, not runtime.risk_engine.policy. They are
+    # the same instance today (core/application.py:768-778 constructs one
+    # RiskPolicy and passes it into RiskEngine) but that identity isn't
+    # enforced here, so a future divergence between the two attributes
+    # would go unnoticed by this read.
     policy = _resolve_attr(runtime, "risk_policy")
     version = getattr(policy, "version", None)
     global_pct = _confidence_pct(
