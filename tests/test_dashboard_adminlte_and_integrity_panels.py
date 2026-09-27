@@ -496,11 +496,63 @@ def test_risk_accounting_reports_current_day_and_committed_rollover(tmp_path: Pa
     assert EQUITY_LEAK not in response.text
 
 
-def test_risk_accounting_states_refusals_are_not_audited(tmp_path: Path) -> None:
+def _append_rollover_refusal(
+    audit: AuditEventStore, reason: str, from_day: date, to_day: date,
+) -> None:
+    audit.append(
+        event_type=web_app.RISK_DAY_ROLLOVER_REFUSED,
+        source="ExecutionManager",
+        aggregate_type="risk_accounting_state",
+        aggregate_id=to_day.isoformat(),
+        payload={
+            "mode": "PAPER",
+            "reason": reason,
+            "from_accounting_day_utc": from_day.isoformat(),
+            "to_accounting_day_utc": to_day.isoformat(),
+        },
+        correlation_id=to_day.isoformat(),
+    )
+
+
+def test_risk_accounting_reports_no_refusal_when_none_recorded(tmp_path: Path) -> None:
     payload = _client(_risk_runtime(tmp_path, day=_today())).get("/api/risk-accounting").json()
 
     assert payload["refusal_reason"] is None
-    assert payload["refusal_reason_source"] == "NOT_AUDITED_WARNING_LOG_ONLY"
+    assert payload["refusal_reason_source"] == "NO_REFUSAL_RECORDED"
+
+
+def test_risk_accounting_surfaces_the_real_refusal_reason_from_the_audit_trail(
+    tmp_path: Path,
+) -> None:
+    today = _today()
+    stale = today - timedelta(days=1)
+    runtime = _risk_runtime(tmp_path, day=stale)
+    _append_rollover_refusal(runtime.audit_store, "UNRESOLVED_JOURNAL_ENTRY", stale, today)
+
+    payload = _client(runtime).get("/api/risk-accounting").json()
+
+    assert payload["refusal_reason"] == "UNRESOLVED_JOURNAL_ENTRY"
+    assert payload["refusal_reason_source"] == "AUDIT_TRAIL"
+
+
+def test_risk_accounting_ignores_a_refusal_for_an_already_resolved_transition(
+    tmp_path: Path,
+) -> None:
+    today = _today()
+    # The state has since rolled forward to today, so a refusal logged for
+    # an earlier transition must not be shown as if it still applies.
+    runtime = _risk_runtime(tmp_path, day=today)
+    _append_rollover_refusal(
+        runtime.audit_store,
+        "UNRESOLVED_JOURNAL_ENTRY",
+        today - timedelta(days=2),
+        today - timedelta(days=1),
+    )
+
+    payload = _client(runtime).get("/api/risk-accounting").json()
+
+    assert payload["refusal_reason"] is None
+    assert payload["refusal_reason_source"] == "NO_REFUSAL_RECORDED"
 
 
 def test_risk_accounting_reports_a_stale_day_and_no_rollover_yet(tmp_path: Path) -> None:

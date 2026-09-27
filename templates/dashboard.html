@@ -803,13 +803,19 @@
                 }
                 html += kv('son rollover', rolloverHtml);
 
-                // Refusals are not audited (registry v4.81): say so rather
-                // than render an empty field that reads as "no refusal".
+                // v4.88 wired the refusal audit event: the real reason is
+                // shown when the audit trail has one for the currently
+                // stored day, and an honest "no refusal recorded" state
+                // otherwise, rather than a fabricated or stale value.
                 const refusal = payload.refusal_reason
                     ? esc(payload.refusal_reason)
-                    : payload.refusal_reason_source === 'NOT_AUDITED_WARNING_LOG_ONLY'
-                        ? 'audit log\'a yazılmıyor &mdash; yalnızca WARNING log satırında'
-                        : 'n/a';
+                    : payload.refusal_reason_source === 'NO_REFUSAL_RECORDED'
+                        ? 'reddetme kaydı yok'
+                        : payload.refusal_reason_source === 'AUDIT_STORE_UNAVAILABLE'
+                            ? 'audit store kullanılamıyor'
+                            : payload.refusal_reason_source === 'AUDIT_LOG_UNREADABLE'
+                                ? 'audit log okunamıyor'
+                                : 'n/a';
                 html += kv('reddetme sebebi', `<span class="text-body-secondary">${refusal}</span>`);
                 document.getElementById('risk-accounting-panel').innerHTML = html;
             });
