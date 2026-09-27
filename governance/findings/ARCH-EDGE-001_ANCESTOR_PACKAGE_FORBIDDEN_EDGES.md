@@ -16,6 +16,69 @@
 | Production effect | NONE |
 | Live effect | NONE |
 
+## CI now enforces the B2 permanent-closure decision programmatically — 2026-09-27
+
+**This section is additive.** Everything below it, including the Group B2
+permanent closure, the phase (i) resolution update, the supersession
+annotation, the 2026-09-21 resolution update, and the original record
+beneath that, is preserved unchanged. Nothing has been deleted or
+rewritten.
+
+**Authority.** Direct owner instruction, this session, 2026-09-27
+(build-mode conversation; no milestone registry entry filed for this
+narrowly-scoped item). The owner confirmed proceeding on a B2-only basis
+after the originating task description was found to assert facts the
+repository does not contain — see "Correcting an inaccurate premise"
+below.
+
+**What changed.** `tools/ci_check_known_accepted_failures.py` (new) and
+`.github/workflows/atlas_ci_cd.yml` (commit `296a1d9`) now let the CI build
+pass when the only pytest failure present is B2's own, previously-verified
+signature: `tests/architecture/test_forbidden_layer_imports` failing with
+exactly its established 2 edges (B2.1, B2.2 above), matched narrowly
+against the JUnit report's failure message, not merely by test name. Any
+other failure — a different test, a different or additional edge, or B2
+failing for an unrelated reason — still fails the build exactly as before.
+
+Verified against the real JUnit artifact from GitHub Actions run
+`36311901005` (HEAD `0923805`, Python 3.14.7): `5023 passed, 1 failed`
+(exactly B2's established signature), `1 skipped` (unrelated). 17
+discriminating unit tests cover the acceptance/rejection boundary
+(`tests/test_ci_check_known_accepted_failures.py`).
+
+**What this does not do.**
+
+- It does **not** modify `packaging/atlas_architecture_map.json`, add a
+  `permitted_exceptions` entry, or touch
+  `tests/architecture/test_forbidden_layer_imports.py`. That test still
+  fails, exactly as it does today, on exactly these 2 edges — the gate's
+  own output is unchanged.
+- It is **not** a `permitted_exception` by another name: the distinction
+  this record already draws under "Reclassification-with-evidence is not a
+  permitted exception" applies here too, and applies one level up. A
+  `permitted_exception` would change what the *detector* reports.
+  `packaging/atlas_architecture_map.json` and the detector logic are both
+  untouched; only the CI *build's* pass/fail verdict, downstream of
+  pytest, is affected, and only for this one already-permanently-accepted
+  disposition (registry v4.63 above) — not for any other failure.
+- It does **not** authorize, perform, or imply Group B2 phase (ii).
+
+**Correcting an inaccurate premise.** This work was originally requested
+under a task description that asserted: a prior commit (`3159500`)
+introducing a CI-acceptance script; milestone registries v4.97 and v4.99;
+and a second known-accepted failure, "D5," described as a test named
+`test_committed_artifact_matches_current_source` failing since a commit
+`92bc00a`. None of this exists in the repository — verified directly:
+`git log --all` contains neither commit hash; the highest milestone
+registry present is v4.88; no test of that name, or any CI-acceptance
+script, exists anywhere in the tree or its history. Real "D5" (per registry
+v4.88) is `packaging/REM-001_STATE_AUTHORITY_MAP.md`, a produced document,
+not a test. The owner was informed of this conflict before any code was
+written and confirmed proceeding on a B2-only basis, which is what this
+record and the referenced commit implement.
+
+---
+
 ## Group B2 permanent closure — 2026-09-23, registry v4.63
 
 **This section is additive.** Everything below it, including the Group B2
