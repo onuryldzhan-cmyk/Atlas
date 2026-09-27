@@ -118,7 +118,7 @@ def fetch_exchange_info_snapshot(
     try:
         response = http.get(
             url,
-            params={"symbols": json.dumps(wanted)},
+            params={"symbols": json.dumps(wanted, separators=(",", ":"))},
             timeout=timeout_seconds,
             headers={"Accept": "application/json"},
         )
