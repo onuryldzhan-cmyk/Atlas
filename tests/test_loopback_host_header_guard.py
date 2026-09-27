@@ -87,6 +87,7 @@ WEB_APP_GUARDED_ROUTES = [
     "/api/agent-evidence",
     "/api/risk-accounting",
     "/api/system-integrity",
+    "/api/execution-gates",
     "/assets/chart.umd.min.js",
     "/api/observability/test-results",
     "/api/observability/governance",

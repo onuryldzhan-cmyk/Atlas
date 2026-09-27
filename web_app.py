@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -193,6 +194,18 @@ RISK_DAY_ROLLOVER_PREPARED = "RISK_ACCOUNTING_DAY_ROLLOVER_PREPARED"
 RISK_DAY_ROLLOVER_COMMITTED = "RISK_ACCOUNTING_DAY_ROLLOVER_COMMITTED"
 RISK_DAY_ROLLOVER_REFUSED = "RISK_ACCOUNTING_DAY_ROLLOVER_REFUSED"
 RISK_ACCOUNTING_AGGREGATE = "risk_accounting_state"
+
+# Audit event types ExecutionManager writes per execution request, used by
+# the execution-gates panel to show each symbol's latest risk-stage outcome.
+# RISK_REJECTED / RISK_APPROVED carry no symbol or confidence of their own;
+# both are chained (causation_id) to the request's EXECUTION_REQUEST_VALIDATED
+# event, which does. Literals for the same L5 reason as above.
+EXECUTION_REQUEST_AGGREGATE = "execution_request"
+EXECUTION_REQUEST_VALIDATED = "EXECUTION_REQUEST_VALIDATED"
+RISK_STAGE_OUTCOMES = {
+    "RISK_REJECTED": "REJECTED",
+    "RISK_APPROVED": "APPROVED",
+}
 
 # Only the tail of the append-only audit log is scanned for rollover
 # events, so a 30s poll never reads an unbounded file. The audit store's
@@ -897,6 +910,213 @@ def _system_integrity_payload(
     }
 
 
+def _confidence_pct(value: Any) -> float | None:
+    """A RiskPolicy 0-1 Decimal as a 0-100 display number, or None."""
+
+    if not isinstance(value, Decimal) or not value.is_finite():
+        return None
+
+    return float(value * 100)
+
+
+def _risk_policy_gates(
+    runtime: Any | None,
+) -> dict[str, Any]:
+    """
+    The per-bucket confidence floors of the RiskPolicy instance the running
+    RiskEngine evaluates against (AtlasApplication shares one instance
+    between RiskEngine and PositionSizingService). Read, never copied from
+    a default: a policy built with different buckets is shown as built.
+
+    ``required_confidence_pct`` mirrors core/risk_engine.py's BUY check,
+    ``confidence < max(global_minimum_confidence, bucket.minimum_confidence)``,
+    so it is the floor that bucket actually enforces.
+    """
+
+    policy = _resolve_attr(runtime, "risk_policy")
+    version = getattr(policy, "version", None)
+    global_pct = _confidence_pct(
+        getattr(policy, "global_minimum_confidence", None)
+    )
+    buckets = getattr(policy, "buckets", None)
+
+    if (
+        not isinstance(version, str)
+        or global_pct is None
+        or not isinstance(buckets, dict)
+        or not buckets
+    ):
+        return {"available": False, "reason": "RISK_POLICY_UNAVAILABLE"}
+
+    published: dict[str, Any] = {}
+
+    for key, bucket_policy in buckets.items():
+        name = getattr(key, "value", key)
+        bucket_pct = _confidence_pct(
+            getattr(bucket_policy, "minimum_confidence", None)
+        )
+
+        if not isinstance(name, str) or bucket_pct is None:
+            return {"available": False, "reason": "RISK_POLICY_MALFORMED"}
+
+        published[name] = {
+            "minimum_confidence_pct": bucket_pct,
+            "required_confidence_pct": max(global_pct, bucket_pct),
+        }
+
+    return {
+        "available": True,
+        "version": version,
+        "global_minimum_confidence_pct": global_pct,
+        "buckets": published,
+    }
+
+
+def _latest_risk_decisions(
+    lines: list[str],
+) -> dict[str, dict[str, Any]]:
+    """
+    Each symbol's most recent risk-stage outcome in the scanned audit tail.
+
+    A RISK_REJECTED / RISK_APPROVED event is attributed to a symbol only
+    through its causation link to an EXECUTION_REQUEST_VALIDATED event in
+    the same window; an outcome whose validation event is outside the
+    window (or malformed) is skipped rather than attributed by parsing its
+    request id. Only codes, the action, the confidence and the timestamp
+    are published; the allocation and equity figures in the details stay
+    out.
+    """
+
+    validated: dict[str, dict[str, Any]] = {}
+    latest: dict[str, dict[str, Any]] = {}
+
+    for line in lines:
+        line = line.strip()
+
+        if not line:
+            continue
+
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+
+        if (
+            not isinstance(event, dict)
+            or event.get("aggregate_type") != EXECUTION_REQUEST_AGGREGATE
+        ):
+            continue
+
+        event_type = event.get("event_type")
+        payload = event.get("payload")
+
+        if not isinstance(payload, dict):
+            continue
+
+        if event_type == EXECUTION_REQUEST_VALIDATED:
+            event_id = event.get("event_id")
+            symbol = payload.get("symbol")
+            action = payload.get("action")
+            confidence = payload.get("confidence")
+
+            if (
+                isinstance(event_id, str)
+                and isinstance(symbol, str)
+                and isinstance(action, str)
+                and isinstance(confidence, (int, float))
+                and not isinstance(confidence, bool)
+                and math.isfinite(confidence)
+            ):
+                validated[event_id] = {
+                    "symbol": symbol,
+                    "action": action,
+                    "confidence": confidence,
+                }
+
+            continue
+
+        outcome = RISK_STAGE_OUTCOMES.get(event_type)
+
+        if outcome is None:
+            continue
+
+        cause = event.get("causation_id")
+        origin = validated.get(cause) if isinstance(cause, str) else None
+
+        if origin is None:
+            continue
+
+        reason = payload.get("reason") if outcome == "REJECTED" else event_type
+        timestamp = event.get("timestamp")
+
+        latest[origin["symbol"]] = {
+            "outcome": outcome,
+            "reason": reason if isinstance(reason, str) else None,
+            "action": origin["action"],
+            "confidence": origin["confidence"],
+            "decided_at": timestamp if isinstance(timestamp, str) else None,
+        }
+
+    return latest
+
+
+def _execution_gates_payload(
+    runtime: Any | None,
+) -> tuple[int, dict[str, Any]]:
+    """
+    The two confidence gates a BUY passes on its way to execution, and each
+    symbol's latest risk-stage outcome. Read-only throughout.
+
+    ExecutionManager checks its flat ``minimum_confidence`` (0-100) first;
+    RiskEngine then applies the per-bucket floor (0-1, converted here to
+    0-100). They are published separately so the page never presents one
+    as the other.
+    """
+
+    if runtime is None:
+        return 503, {"available": False, "reason": "RUNTIME_NOT_ATTACHED"}
+
+    execution = _resolve_attr(runtime, "execution")
+    execution_minimum = getattr(execution, "minimum_confidence", None)
+
+    if (
+        not isinstance(execution_minimum, (int, float))
+        or isinstance(execution_minimum, bool)
+        or not math.isfinite(execution_minimum)
+    ):
+        execution_minimum = None
+
+    audit_store = _resolve_attr(runtime, "audit_store")
+    audit_path = getattr(audit_store, "file_path", None)
+    decisions: dict[str, Any]
+
+    if not isinstance(audit_path, Path):
+        decisions = {"available": False, "reason": "AUDIT_STORE_UNAVAILABLE"}
+    else:
+        try:
+            lines, truncated = _read_audit_tail_lines(audit_path)
+        except (OSError, UnicodeDecodeError) as exc:
+            logger.exception("Audit log is unreadable")
+            decisions = {
+                "available": False,
+                "reason": "AUDIT_LOG_UNREADABLE",
+                "error_type": type(exc).__name__,
+            }
+        else:
+            decisions = {
+                "available": True,
+                "by_symbol": _latest_risk_decisions(lines),
+                "scan_truncated": truncated,
+            }
+
+    return 200, {
+        "available": True,
+        "execution_minimum_confidence": execution_minimum,
+        "risk_policy": _risk_policy_gates(runtime),
+        "latest_risk_decisions": decisions,
+    }
+
+
 def create_app(
     *,
     runtime: Any | None = None,
@@ -1596,6 +1816,38 @@ def create_app(
             )
 
         return JSONResponse(status_code=200, content=payload)
+
+    @application.get(
+        "/api/execution-gates",
+        response_class=JSONResponse,
+    )
+    async def api_execution_gates(
+        request: Request,
+    ) -> JSONResponse:
+        if not is_loopback_request(request):
+            return JSONResponse(
+                status_code=403,
+                content=NON_LOOPBACK_RESPONSE,
+            )
+
+        try:
+            status_code, payload = await run_in_threadpool(
+                _execution_gates_payload,
+                application.state.atlas_runtime,
+            )
+        except Exception as exc:
+            logger.exception("Execution gates panel read failed")
+
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "available": False,
+                    "reason": "PANEL_READ_FAILED",
+                    "error_type": type(exc).__name__,
+                },
+            )
+
+        return JSONResponse(status_code=status_code, content=payload)
 
     @application.get(
         "/assets/{asset_name}",

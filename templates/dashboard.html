@@ -75,6 +75,26 @@
         .dist-table th, .dist-table td { padding: .2rem .35rem; text-align: right; white-space: nowrap; }
         .dist-table th:first-child, .dist-table td:first-child { text-align: left; }
 
+        /* Section structure: sub-panels and nested collapsible sub-sections */
+        .subpanel { height: 100%; padding: .75rem; border: 1px solid var(--bs-border-color-translucent); border-radius: .375rem; background: var(--bs-body-bg); }
+        .subpanel-title { font-size: .7rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--bs-secondary-color); margin-bottom: .5rem; }
+        details.atlas-sub { border: 1px solid var(--bs-border-color-translucent); border-radius: .375rem; }
+        details.atlas-sub > summary { cursor: pointer; padding: .45rem .75rem; font-size: .8rem; font-weight: 600; user-select: none; }
+        details.atlas-sub[open] > summary { border-bottom: 1px solid var(--bs-border-color-translucent); }
+        details.atlas-sub > .atlas-sub-body { padding: .75rem; }
+        details.atlas-sub.atlas-sub-tight > summary { padding: .3rem .5rem; font-size: .75rem; }
+        details.atlas-sub.atlas-sub-tight > .atlas-sub-body { padding: .25rem .5rem .5rem; }
+
+        /* Execution gates: the two confidence floors a BUY must clear */
+        .gate-legend { padding: .6rem .75rem; border-radius: .375rem; background: var(--bs-tertiary-bg); line-height: 1.7; }
+        .gate-bar { position: relative; }
+        .gate-marker { position: absolute; top: -.2rem; width: 2px; height: .9rem; margin-left: -1px; background: var(--bs-body-color); opacity: .75; }
+        .gate-marker.gate-bucket { background: var(--atlas-warn); opacity: 1; }
+        .gate-block { margin-top: .5rem; padding: .45rem .55rem; border-radius: .3rem; border-left: 3px solid var(--atlas-neutral); background: var(--bs-tertiary-bg); font-size: .75rem; }
+        .gate-block.gate-pass { border-left-color: var(--atlas-ok); }
+        .gate-block.gate-fail { border-left-color: var(--atlas-error); }
+        .gate-block.gate-unknown { border-left-color: var(--atlas-warn); }
+
         /* Known limitations */
         .limitation-callout { height: 100%; display: flex; gap: .75rem; padding: 1rem; }
         .limitation-callout svg { flex-shrink: 0; width: 22px; height: 22px; fill: currentColor; margin-top: .1rem; }
@@ -191,9 +211,16 @@
                     </div>
                 </div>
 
-                <div class="card card-primary card-outline mb-4">
+                {#
+                  Page structure: four top-level sections, each an AdminLTE
+                  card that collapses as a whole. Sub-panels inside a section
+                  are .subpanel blocks; sub-content that is secondary to its
+                  parent (agent breakdown, decision log, known limitations)
+                  is a nested <details> that collapses on its own.
+                #}
+                <section class="card card-primary card-outline mb-4" aria-labelledby="section-decisions-title">
                     <div class="card-header">
-                        <h3 class="card-title">Otonom Kararlar (5 Sembol)</h3>
+                        <h3 id="section-decisions-title" class="card-title">Otonom Kararlar &amp; Execution Eşikleri</h3>
                         <div class="card-tools">
                             <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" title="Daralt">
                                 <svg data-lte-icon="collapse"><use href="#icon-minus"/></svg><svg data-lte-icon="expand"><use href="#icon-plus"/></svg>
@@ -201,30 +228,22 @@
                         </div>
                     </div>
                     <div class="card-body">
+                        <div id="execution-gates-legend" class="gate-legend small mb-3">Eşikler yükleniyor...</div>
                         <div id="signals-grid" class="row g-3">
                             <div class="col-12 text-body-secondary small">Analiz ediliyor...</div>
                         </div>
+                        <details class="atlas-sub mt-3">
+                            <summary>Karar günlüğü <span class="text-body-secondary fw-normal">({{ symbol }}, bu sekme)</span></summary>
+                            <div class="atlas-sub-body">
+                                <div id="trade-log" class="font-monospace small"><div class="log-line"><span class="log-prompt">&gt;</span> <span class="log-muted">Bot izleme modunda...</span></div></div>
+                            </div>
+                        </details>
                     </div>
-                </div>
+                </section>
 
-                <div class="row">
-                    <div class="col-12 col-lg-6">
-                        <div class="card card-info card-outline mb-4">
-                            <div class="card-header"><h3 class="card-title">Risk Accounting</h3></div>
-                            <div id="risk-accounting-panel" class="card-body panel-body">Yükleniyor...</div>
-                        </div>
-                    </div>
-                    <div class="col-12 col-lg-6">
-                        <div class="card card-info card-outline mb-4">
-                            <div class="card-header"><h3 class="card-title">System Integrity</h3></div>
-                            <div id="system-integrity-panel" class="card-body panel-body">Yükleniyor...</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card card-warning card-outline mb-4">
+                <section class="card card-info card-outline mb-4" aria-labelledby="section-execution-title">
                     <div class="card-header">
-                        <h3 class="card-title">Bilinen Kısıtlar <span id="known-limitations-count" class="badge text-bg-warning ms-1"></span></h3>
+                        <h3 id="section-execution-title" class="card-title">Execution &amp; Risk</h3>
                         <div class="card-tools">
                             <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" title="Daralt">
                                 <svg data-lte-icon="collapse"><use href="#icon-minus"/></svg><svg data-lte-icon="expand"><use href="#icon-plus"/></svg>
@@ -232,55 +251,81 @@
                         </div>
                     </div>
                     <div class="card-body">
-                        <div id="known-limitations-panel" class="row g-3 panel-body">
-                            <div class="col-12 text-body-secondary">Yükleniyor...</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-12 col-md-6 col-xl-3">
-                        <div class="card mb-4">
-                            <div class="card-header"><h3 class="card-title">Execution / Sağlık Durumu</h3></div>
-                            <div id="execution-health-panel" class="card-body panel-body">Yükleniyor...</div>
-                        </div>
-                    </div>
-                    <div class="col-12 col-md-6 col-xl-3">
-                        <div class="card mb-4">
-                            <div class="card-header"><h3 class="card-title">Performans (Win Rate)</h3></div>
-                            <div id="trade-history-panel" class="card-body panel-body">Yükleniyor...</div>
-                        </div>
-                    </div>
-                    <div class="col-12 col-xl-6">
-                        <div class="card mb-4">
-                            <div class="card-header"><h3 class="card-title">Telemetri (S-3 / M-2)</h3></div>
-                            <div id="telemetry-panel" class="card-body panel-body">Yükleniyor...</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-12 col-xl-6">
-                        <div class="card mb-4">
-                            <div class="card-header"><h3 class="card-title">Otonom İşlem Geçmişi</h3></div>
-                            <div class="card-body">
-                                <div id="trade-log" class="font-monospace small"><div class="log-line"><span class="log-prompt">&gt;</span> <span class="log-muted">Bot izleme modunda...</span></div></div>
+                        <div class="row g-3">
+                            <div class="col-12 col-md-6 col-xl-4">
+                                <div class="subpanel">
+                                    <h4 class="subpanel-title">Execution / Sağlık Durumu</h4>
+                                    <div id="execution-health-panel" class="panel-body">Yükleniyor...</div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6 col-xl-4">
+                                <div class="subpanel">
+                                    <h4 class="subpanel-title">Risk Accounting</h4>
+                                    <div id="risk-accounting-panel" class="panel-body">Yükleniyor...</div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6 col-xl-4">
+                                <div class="subpanel">
+                                    <h4 class="subpanel-title">Performans (Win Rate)</h4>
+                                    <div id="trade-history-panel" class="panel-body">Yükleniyor...</div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <div class="col-12 col-md-6 col-xl-3">
-                        <div class="card mb-4">
-                            <div class="card-header"><h3 class="card-title">Test Sonuçları</h3></div>
-                            <div id="test-results-panel" class="card-body panel-body">Yükleniyor...</div>
+                </section>
+
+                <section class="card card-warning card-outline mb-4" aria-labelledby="section-integrity-title">
+                    <div class="card-header">
+                        <h3 id="section-integrity-title" class="card-title">System Integrity</h3>
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" title="Daralt">
+                                <svg data-lte-icon="collapse"><use href="#icon-minus"/></svg><svg data-lte-icon="expand"><use href="#icon-plus"/></svg>
+                            </button>
                         </div>
                     </div>
-                    <div class="col-12 col-md-6 col-xl-3">
-                        <div class="card mb-4">
-                            <div class="card-header"><h3 class="card-title">Governance (GOV-DRIFT)</h3></div>
-                            <div id="governance-panel" class="card-body panel-body">Yükleniyor...</div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-12 col-md-6 col-xl-4">
+                                <div class="subpanel">
+                                    <h4 class="subpanel-title">Venue Kuralları &amp; Registry</h4>
+                                    <div id="system-integrity-panel" class="panel-body">Yükleniyor...</div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6 col-xl-4">
+                                <div class="subpanel">
+                                    <h4 class="subpanel-title">Governance (GOV-DRIFT)</h4>
+                                    <div id="governance-panel" class="panel-body">Yükleniyor...</div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6 col-xl-4">
+                                <div class="subpanel">
+                                    <h4 class="subpanel-title">Test Sonuçları</h4>
+                                    <div id="test-results-panel" class="panel-body">Yükleniyor...</div>
+                                </div>
+                            </div>
+                        </div>
+                        <details class="atlas-sub mt-3">
+                            <summary>Bilinen Kısıtlar <span id="known-limitations-count" class="badge text-bg-warning ms-1"></span></summary>
+                            <div class="atlas-sub-body">
+                                <div id="known-limitations-panel" class="row g-3 panel-body">
+                                    <div class="col-12 text-body-secondary">Yükleniyor...</div>
+                                </div>
+                            </div>
+                        </details>
+                    </div>
+                </section>
+
+                <section class="card card-secondary card-outline mb-4" aria-labelledby="section-telemetry-title">
+                    <div class="card-header">
+                        <h3 id="section-telemetry-title" class="card-title">Telemetri (S-3 / M-2)</h3>
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" title="Daralt">
+                                <svg data-lte-icon="collapse"><use href="#icon-minus"/></svg><svg data-lte-icon="expand"><use href="#icon-plus"/></svg>
+                            </button>
                         </div>
                     </div>
-                </div>
+                    <div id="telemetry-panel" class="card-body panel-body">Yükleniyor...</div>
+                </section>
 
             </div>
         </div>
@@ -469,7 +514,9 @@
             technical: 'Teknik',
             macro: 'Makro',
             sentiment: 'Sentiment',
-            risk: 'Risk',
+            // The Risk agent votes on the volatility regime. It is not the
+            // RiskEngine risk bucket shown on each card; the label says so.
+            risk: 'Risk (volatilite)',
             momentum: 'Momentum',
         };
 
@@ -516,7 +563,7 @@
                     `<div class="agent-detail">eğri: ${curve}, 10Y-2Y ${num(evidence.curve_spread_bp)} bp</div>` +
                     `<div class="agent-detail">gözlem: ${esc(evidence.observed_date)}</div>`;
             }
-            return `<div class="agent-detail">rejim: ${esc(evidence.regime)} &middot; vol ${num(evidence.realized_volatility, 3)}</div>` +
+            return `<div class="agent-detail">volatilite rejimi: ${esc(evidence.regime)} &middot; vol ${num(evidence.realized_volatility, 3)}</div>` +
                 renderRegimeGauge(evidence) +
                 `<div class="agent-detail">p20 ${num(evidence.p20, 3)} / p80 ${num(evidence.p80, 3)}</div>`;
         }
@@ -540,19 +587,154 @@
         // Confidence is on the 0-100 execution scale (MarketLoop normalises
         // it). The bar is clamped to that range; the label is the value as
         // published.
-        function renderConfidence(signal, tone) {
+        // Each marker is a gate threshold on the same 0-100 scale: the
+        // execution gate (neutral) and the card's risk-bucket gate (warn).
+        function renderConfidence(signal, tone, markers) {
             const value = signal.confidence;
             const known = isNumber(value);
             const width = known ? Math.max(0, Math.min(100, value)) : 0;
+            const ticks = (markers || [])
+                .filter((marker) => isNumber(marker.value))
+                .map((marker) => `<div class="gate-marker ${marker.cls}" style="left:${Math.max(0, Math.min(100, marker.value))}%" ` +
+                    `title="${esc(marker.label)} ≥ ${num(marker.value)}"></div>`)
+                .join('');
             return `<div class="d-flex justify-content-between small mb-1">` +
                 `<span class="text-body-secondary">confidence</span>` +
                 `<span class="font-monospace">${known ? `${esc(value)} / 100` : 'UNKNOWN'}</span></div>` +
-                `<div class="progress progress-sm" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${width}">` +
-                `<div class="progress-bar bg-${tone}" style="width:${width}%"></div></div>`;
+                `<div class="gate-bar"><div class="progress progress-sm" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${width}">` +
+                `<div class="progress-bar bg-${tone}" style="width:${width}%"></div></div>${ticks}</div>`;
         }
 
-        function renderSignalCard(signal, evidence, collapsed) {
+        // ---------------------------------------------------------------
+        // Execution gates (/api/execution-gates)
+        // ---------------------------------------------------------------
+
+        // A BUY clears two confidence floors on its way to execution:
+        // ExecutionManager's flat minimum_confidence, then RiskEngine's
+        // per-bucket floor for the decision's risk bucket. Both come from
+        // the running instances; nothing here is a hardcoded threshold.
+        // null until the first read.
+        let executionGates = null;
+
+        function executionMinimum() {
+            const value = executionGates && executionGates.execution_minimum_confidence;
+            return isNumber(value) ? value : null;
+        }
+
+        // { known: false, reason } when the policy is not readable;
+        // { known: true, bucket: null } when the policy has no bucket for
+        // this level (RiskEngine rejects new risk there);
+        // { known: true, bucket } otherwise.
+        function bucketGate(level) {
+            if (!executionGates) return { known: false, reason: 'yükleniyor' };
+            if (executionGates.available !== true) return { known: false, reason: executionGates.reason };
+            const policy = executionGates.risk_policy || {};
+            if (policy.available !== true) return { known: false, reason: policy.reason };
+            const bucket = policy.buckets && typeof level === 'string' ? policy.buckets[level] : undefined;
+            return { known: true, bucket: bucket && isNumber(bucket.required_confidence_pct) ? bucket : null };
+        }
+
+        function renderGateLegend() {
+            const el = document.getElementById('execution-gates-legend');
+            if (!executionGates) return;
+            if (executionGates.available !== true) {
+                el.innerHTML = `${badge('unavailable', STATUS_TONE.warn)} <span class="text-body-secondary">${esc(executionGates.reason)}</span>`;
+                return;
+            }
+            const execMin = executionMinimum();
+            const policy = executionGates.risk_policy || {};
+            const bucketsHtml = policy.available === true
+                ? Object.keys(policy.buckets || {})
+                    .map((name) => `<span class="font-monospace">${esc(name)} &ge; ${num(policy.buckets[name].required_confidence_pct)}</span>`)
+                    .join(' &middot; ') + ` <span class="text-body-secondary">(policy ${esc(policy.version)})</span>`
+                : `${badge('unavailable', STATUS_TONE.warn)} ${esc(policy.reason)}`;
+            el.innerHTML =
+                `<div class="fw-semibold">BUY'ın execute edilmesi için iki ayrı confidence eşiği geçilmeli:</div>` +
+                `<div>&#9312; execution gate (ExecutionManager): <span class="font-monospace">${execMin === null ? 'n/a' : `&ge; ${num(execMin)}`}</span> &mdash; her bucket için aynı</div>` +
+                `<div>&#9313; risk bucket gate (RiskEngine): ${bucketsHtml}</div>` +
+                `<div class="text-body-secondary">Kartlardaki &ldquo;risk bucket&rdquo; &#9313; eşiğini seçer. Risk ajanının &ldquo;volatilite rejimi&rdquo; bir ajan oyudur; risk bucket değildir.</div>`;
+        }
+
+        // The latest risk-stage outcome ExecutionManager recorded in the
+        // audit trail for this symbol. It belongs to the decision it names
+        // (action, confidence, time), which may be an earlier cycle than
+        // the one shown on the card.
+        function renderLatestRiskDecision(symbol) {
+            const decisions = executionGates && executionGates.available === true
+                ? executionGates.latest_risk_decisions : null;
+            if (!decisions) return '';
+            if (decisions.available !== true) {
+                return `<div class="agent-detail mt-1">son risk kararı: unavailable (${esc(decisions.reason)})</div>`;
+            }
+            const decision = decisions.by_symbol ? decisions.by_symbol[symbol] : undefined;
+            if (!decision) {
+                return `<div class="agent-detail mt-1">son risk kararı: audit kaydında yok` +
+                    `${decisions.scan_truncated ? ' (taranan son bölümde)' : ''}</div>`;
+            }
+            const tone = decision.outcome === 'APPROVED' ? STATUS_TONE.ok : STATUS_TONE.error;
+            const explain = decision.reason === 'CONFIDENCE_BELOW_POLICY'
+                ? `<div class="agent-detail">execution gate geçildi, ancak confidence risk bucket eşiğinin altında kaldığı için RiskEngine reddetti</div>`
+                : '';
+            return `<div class="mt-1"><span class="text-body-secondary">son risk kararı (audit):</span> ` +
+                `${badge(decision.outcome, tone)} <span class="font-monospace">${esc(decision.reason)}</span></div>` +
+                `<div class="agent-detail">${esc(decision.action)} @ confidence ${num(decision.confidence)} &middot; ${esc(decision.decided_at)}</div>` +
+                explain;
+        }
+
+        // Returns { html, blocked, markers }. blocked is true only for a
+        // BUY whose confidence is below a known floor it must clear: that
+        // BUY is not executed at this confidence.
+        function assessRiskGate(signal) {
+            const level = signal.risk_level;
+            const confidence = signal.confidence;
+            const execMin = executionMinimum();
+            const gate = bucketGate(level);
+            const isBuy = signal.action === 'BUY';
+            const markers = [{ value: execMin, label: 'execution gate', cls: '' }];
+            let cls = 'gate-unknown';
+            let line;
+            let blocked = false;
+
+            if (!gate.known) {
+                line = `bucket eşiği bilinmiyor: ${esc(gate.reason)}`;
+            } else if (!gate.bucket) {
+                cls = isBuy ? 'gate-fail' : 'gate-unknown';
+                blocked = isBuy;
+                line = `RiskEngine politikasında bu seviye için bucket yok &mdash; yeni risk (BUY) execute edilmez`;
+            } else {
+                const required = gate.bucket.required_confidence_pct;
+                const floor = execMin === null ? required : Math.max(required, execMin);
+                markers.push({ value: required, label: `risk bucket ${level}`, cls: 'gate-bucket' });
+                const requirement = `BUY execute için confidence <span class="font-monospace">&ge; ${num(required)}</span> gerekli`;
+                if (!isBuy) {
+                    cls = 'gate-unknown';
+                    line = `${requirement} &mdash; bu eşik yalnız BUY (yeni risk) için uygulanır; bu karar ${esc(signal.action)}`;
+                } else if (!isNumber(confidence)) {
+                    line = `${requirement}, mevcut confidence bilinmiyor`;
+                } else if (confidence < floor) {
+                    cls = 'gate-fail';
+                    blocked = true;
+                    const culprit = confidence < required ? 'risk bucket eşiğinin' : 'execution gate eşiğinin';
+                    line = `${requirement}, şu an <span class="font-monospace">${num(confidence)}</span> &mdash; ${culprit} altında, execute edilmez`;
+                } else {
+                    cls = 'gate-pass';
+                    line = `${requirement}, şu an <span class="font-monospace">${num(confidence)}</span> &mdash; confidence eşikleri geçildi (diğer risk/capital kontrolleri ayrıca uygulanır)`;
+                }
+            }
+
+            const html = `<div class="gate-block ${cls}">` +
+                `<div class="d-flex justify-content-between align-items-center gap-2 mb-1">` +
+                `<span class="fw-semibold">risk bucket <span class="fw-normal text-body-secondary">(RiskEngine)</span></span>` +
+                `<span class="badge text-bg-${STATUS_TONE.neutral}">${esc(level)}</span></div>` +
+                `<div>${line}</div>` +
+                renderLatestRiskDecision(signal.symbol) +
+                `</div>`;
+            return { html, blocked, markers };
+        }
+
+        function renderSignalCard(signal, evidence, collapsed, agentsOpen) {
             const tone = actionTone(signal.action);
+            const gate = assessRiskGate(signal);
             const agentRows = Object.keys(AGENT_LABELS)
                 .map((name) => renderAgentRow(
                     name,
@@ -560,14 +742,18 @@
                     evidence ? evidence[name] : null,
                 ))
                 .join('');
+            const blockedBadge = gate.blocked
+                ? ` <span class="badge text-bg-${STATUS_TONE.error} ms-1 fw-normal" title="confidence bu karar için gereken eşiğin altında">execute edilmez</span>`
+                : '';
             return `<div class="col-12 col-md-6 col-xxl"><div class="card card-${tone} h-100 mb-0${collapsed ? ' collapsed-card' : ''}" data-symbol="${esc(signal.symbol)}">` +
                 `<div class="card-header"><h3 class="card-title fw-bold">${esc(signal.symbol)} ` +
-                `<span class="ms-1 fw-normal">${esc(signal.action)}</span></h3>${collapseButton()}</div>` +
+                `<span class="ms-1 fw-normal">${esc(signal.action)}</span>${blockedBadge}</h3>${collapseButton()}</div>` +
                 `<div class="card-body p-3">` +
-                renderConfidence(signal, tone) +
-                `<div class="d-flex justify-content-between small mt-2"><span class="text-body-secondary">risk</span>` +
-                `<span class="badge badge-excluded">${esc(signal.risk_level)}</span></div>` +
-                `<div class="mt-2 small">${agentRows}</div>` +
+                renderConfidence(signal, tone, gate.markers) +
+                gate.html +
+                `<details class="atlas-sub atlas-sub-tight mt-2" data-agents-for="${esc(signal.symbol)}"${agentsOpen ? ' open' : ''}>` +
+                `<summary>Ajan oyları &amp; kanıt</summary>` +
+                `<div class="atlas-sub-body small">${agentRows}</div></details>` +
                 `</div></div></div>`;
         }
 
@@ -637,11 +823,22 @@
                     Array.from(grid.querySelectorAll('.card.collapsed-card[data-symbol], .card.collapsing-card[data-symbol]'))
                         .map((card) => card.getAttribute('data-symbol'))
                 );
+                // Same for each card's nested agent breakdown, which is
+                // open unless the operator closed it.
+                const agentsClosed = new Set(
+                    Array.from(grid.querySelectorAll('details[data-agents-for]:not([open])'))
+                        .map((details) => details.getAttribute('data-agents-for'))
+                );
 
                 const html = displaySymbols.map((symbol) => {
                     const signal = signals[symbol];
                     if (!signal) return renderPendingCard(symbol);
-                    return renderSignalCard(signal, evidence[symbol], collapsed.has(String(signal.symbol)));
+                    return renderSignalCard(
+                        signal,
+                        evidence[symbol],
+                        collapsed.has(String(signal.symbol)),
+                        !agentsClosed.has(String(signal.symbol)),
+                    );
                 }).join('');
                 grid.innerHTML = html;
 
@@ -1020,6 +1217,25 @@
             }
         }
 
+        // The gates change only when the policy, the execution config or
+        // the audit trail does, so they are read on the slow cadence and
+        // the 5s signal grid renders from the last read.
+        async function updateExecutionGates() {
+            try {
+                const res = await fetch('/api/execution-gates');
+                const payload = await res.json();
+                executionGates = payload && typeof payload === 'object'
+                    ? payload : { available: false, reason: 'UNKNOWN' };
+            } catch (error) {
+                executionGates = { available: false, reason: 'network error' };
+            }
+            try {
+                renderGateLegend();
+            } catch (error) {
+                renderUnavailable('execution-gates-legend', 'render error');
+            }
+        }
+
         renderPriceSparkline();
         setInterval(updateSignalsGrid, 5000);
         updateSignalsGrid();
@@ -1031,9 +1247,12 @@
             updateRiskAccountingPanel();
             updateSystemIntegrityPanel();
             updateTelemetryPanel();
+            return updateExecutionGates();
         }
         setInterval(updateSlowPanels, 30000);
-        updateSlowPanels();
+        // Re-render the grid once the first gates read lands, instead of
+        // waiting up to 5s with "yükleniyor" thresholds on every card.
+        updateSlowPanels().then(updateSignalsGrid);
     </script>
 </body>
 </html>
