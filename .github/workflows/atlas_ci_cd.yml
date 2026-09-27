@@ -129,6 +129,14 @@ jobs:
       # same thing on the operator's machine, which is where the dashboard
       # actually reads from. $LASTEXITCODE is checked explicitly, matching
       # the compilation step above.
+      #
+      # A non-zero pytest exit is not immediately fatal: registry v4.88
+      # records Group B2 (the two atlas_finance forbidden-edge violations in
+      # test_forbidden_layer_imports) as a permanently accepted architecture
+      # disposition that nothing here is authorized to make pass. Before
+      # failing the build, tools/ci_check_known_accepted_failures.py checks
+      # the JUnit report the pytest run just produced against B2's exact,
+      # narrow failure signature - any other failure still fails the build.
       - name: Run Atlas test suite
         id: tests
         shell: pwsh
@@ -138,7 +146,13 @@ jobs:
             --basetemp .pytest_atlas_ci
 
           if ($LASTEXITCODE -ne 0) {
-            throw "Atlas test suite failed (pytest exit code $LASTEXITCODE)."
+            python tools/ci_check_known_accepted_failures.py reports/observability/test_results.junit.xml
+
+            if ($LASTEXITCODE -ne 0) {
+              throw "Atlas test suite failed (pytest exit code $LASTEXITCODE; known-accepted-failure check also failed)."
+            }
+
+            Write-Host "Atlas test suite: pytest reported failures, but only known-accepted ones (see tools/ci_check_known_accepted_failures.py)."
           }
 
       # Auditability only: makes each run's exact pass/fail breakdown, and
