@@ -27,10 +27,12 @@
 
 In every case the runtime either resumes exactly or refuses new risk. It never silently continues.
 
-**Today: PARTIAL.**
+**Today: MET for new risk; one open question.**
 - Restart, idempotent replay and crash recovery have existing tests (the Block 5B/5C/5D and F1–F6 suites).
-- The 2026-09-28 corruption probe showed that a corrupt idempotency log, journal, financial state, reservation store or risk state leaves Atlas running but fail-closed (registry v5.09). For risk state, BUY refusal is pinned by `tests/test_corrupt_risk_state_fails_closed.py` (v5.11).
-- **Missing:** equivalent pinned tests for the idempotency, journal, financial and reservation corruption cases. Those were probed once but are not yet tests.
+- Corrupting any durable store leaves Atlas running but refusing new risk. Two test files pin this:
+  - `tests/test_corrupt_risk_state_fails_closed.py` (v5.11);
+  - `tests/test_corrupt_execution_state_fails_closed.py`, which covers the idempotency log, the journal and the financial state (execution halts with `RECOVERY_REQUIRED`) and the reservation store (`CAPITAL_RESERVATION_STATE_NOT_READY`).
+- **Open question (UNKNOWN):** can a *held* position still be exited while execution is halted by a corrupt store? A halt blocking exits is conservative, but it can also trap risk. Owner decision needed on the intended behaviour.
 
 ### 2. Reconnect
 **Criterion.**
