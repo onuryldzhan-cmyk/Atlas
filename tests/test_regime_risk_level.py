@@ -307,3 +307,19 @@ def test_real_candles_relatively_calm_but_absolutely_volatile_is_not_low():
     assert evidence["regime"] == "LOW"
     assert evidence["realized_volatility"] > LOW_VOLATILITY_CEILINGS["BTCUSDT"]
     assert regime_risk_result(data, "BTCUSDT").level is RiskCategory.MEDIUM
+
+
+@pytest.mark.parametrize("regime,vote,expected", [
+    ("LOW", "HOLD", "LOW"), ("LOW", "SELL", "MEDIUM"), ("HIGH", "HOLD", "HIGH"),
+])
+def test_normalized_execution_decision_carries_the_regime_bucket(brain, regime, vote, expected):
+    """Resolves the v5.22 audit UNKNOWN: the bucket MarketLoop hands to
+    sizing and risk (decision 'risk', falling back to 'risk_level') is the
+    regime-derived one, not the advisory score."""
+    market = _market(regime, 0.0001, vote)
+    raw = brain.analyze_and_decide("BTCUSDT", market)
+    loop = MarketLoop(brain=None, market_feed=None)
+    normalized = loop.normalize_decision(raw_decision=raw, symbol="BTCUSDT", price=65_000.0,
+                                         market_data=market)
+    from core.execution_models import normalize_risk
+    assert normalize_risk(normalized.get("risk", normalized.get("risk_level"))) == expected
