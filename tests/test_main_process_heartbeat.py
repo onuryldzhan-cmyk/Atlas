@@ -10,11 +10,14 @@ side of the same feature.
 from __future__ import annotations
 
 import json
+import logging
 import threading
 from pathlib import Path
 from typing import Any
 
 import pytest
+
+import main
 
 from main import AtlasProcess, HEARTBEAT_FILE_ENV
 
@@ -139,3 +142,112 @@ def test_run_forever_writes_at_least_one_heartbeat_per_tick(
     payload = json.loads(target.read_text(encoding="utf-8"))
 
     assert isinstance(payload["written_at"], (int, float))
+
+
+# =====================================================================
+# Write-failure logging (MEDIUM-4): once in, once out, rate limited
+# =====================================================================
+
+
+def _heartbeat_messages(
+    caplog: pytest.LogCaptureFixture,
+    level: int,
+) -> list[str]:
+    return [
+        record.getMessage()
+        for record in caplog.records
+        if record.name == main.LOGGER_NAME and record.levelno == level
+    ]
+
+
+def test_a_write_failure_is_logged_once_and_its_recovery_once(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A directory at the target path makes every write fail until removed."""
+
+    caplog.set_level(logging.INFO, logger=main.LOGGER_NAME)
+
+    target = tmp_path / "supervisor_heartbeat.json"
+    target.mkdir()
+    monkeypatch.setenv(HEARTBEAT_FILE_ENV, str(target))
+
+    process = AtlasProcess()
+
+    for _ in range(5):
+        process._write_heartbeat()
+
+    warnings = _heartbeat_messages(caplog, logging.WARNING)
+    assert len(warnings) == 1
+    assert "Supervisor heartbeat write failed" in warnings[0]
+    assert str(target) in warnings[0]
+
+    target.rmdir()
+
+    for _ in range(5):
+        process._write_heartbeat()
+
+    assert target.is_file()
+    assert len(_heartbeat_messages(caplog, logging.WARNING)) == 1
+    assert [
+        message
+        for message in _heartbeat_messages(caplog, logging.INFO)
+        if "heartbeat write recovered" in message
+    ] == [f"Supervisor heartbeat write recovered for {target}"]
+
+
+def test_a_flapping_target_does_not_re_announce_inside_the_interval(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A second failure episode right after the first is not announced,
+    and so neither is its recovery - the log never gets an unpaired line."""
+
+    caplog.set_level(logging.INFO, logger=main.LOGGER_NAME)
+
+    target = tmp_path / "supervisor_heartbeat.json"
+    monkeypatch.setenv(HEARTBEAT_FILE_ENV, str(target))
+
+    process = AtlasProcess()
+
+    for _ in range(2):
+        target.unlink(missing_ok=True)
+        target.mkdir()
+        process._write_heartbeat()
+        target.rmdir()
+        process._write_heartbeat()
+
+    assert len(_heartbeat_messages(caplog, logging.WARNING)) == 1
+    assert sum(
+        "heartbeat write recovered" in message
+        for message in _heartbeat_messages(caplog, logging.INFO)
+    ) == 1
+
+
+def test_a_new_failure_episode_is_announced_once_the_interval_passes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    caplog.set_level(logging.INFO, logger=main.LOGGER_NAME)
+    monkeypatch.setattr(main, "HEARTBEAT_FAILURE_LOG_INTERVAL_SECONDS", 0.0)
+
+    target = tmp_path / "supervisor_heartbeat.json"
+    monkeypatch.setenv(HEARTBEAT_FILE_ENV, str(target))
+
+    process = AtlasProcess()
+
+    for _ in range(2):
+        target.unlink(missing_ok=True)
+        target.mkdir()
+        process._write_heartbeat()
+        target.rmdir()
+        process._write_heartbeat()
+
+    assert len(_heartbeat_messages(caplog, logging.WARNING)) == 2
+    assert sum(
+        "heartbeat write recovered" in message
+        for message in _heartbeat_messages(caplog, logging.INFO)
+    ) == 2

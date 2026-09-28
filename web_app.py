@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+import re
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -394,22 +395,388 @@ def _safe_runtime_health(
     }
 
 
+# =====================================================================
+# /api/status ALLOWLIST
+# =====================================================================
+#
+# AtlasApplication.status() is the console's view and carries operator-
+# only detail: str(error) and a full traceback in errors.latest (file
+# paths, exchange error text), the raw execution halt_reason (which can
+# embed an execution_id, idempotency_key or position_id), audit-failure
+# records, and per-symbol signal/execution snapshots. /api/status is an
+# HTTP body, so it is rebuilt here from an explicit allowlist instead of
+# being returned verbatim; status() itself is left unchanged for the
+# console.
+#
+# Fail closed throughout: a key not named below is dropped, a value of the
+# wrong type or shape is published as null, and strings are only published
+# when they match a narrow pattern that cannot carry a path, a URL, a
+# sentence or a traceback. Error records reduce to a category and an
+# exception type name. The halt reason is published only as health()'s
+# already-classified execution_halt_reason - the same allowlist code
+# /api/health publishes - and never from execution.operational_state.
+
+_STATUS_CODE_PATTERN = re.compile(r"[A-Z][A-Z0-9_]{0,63}")
+_STATUS_IDENTIFIER_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.\-]{0,63}")
+_STATUS_TIMESTAMP_PATTERN = re.compile(
+    r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?(Z|[+\-]\d{2}:\d{2})?"
+)
+
+
+def _status_bool(value: Any) -> bool | None:
+    return value if isinstance(value, bool) else None
+
+
+def _status_number(value: Any) -> int | float | str | None:
+    """Finite int/float as-is; a finite Decimal as its exact string form."""
+
+    if isinstance(value, bool):
+        return None
+
+    if isinstance(value, int):
+        return value
+
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+
+    if isinstance(value, Decimal):
+        return format(value, "f") if value.is_finite() else None
+
+    return None
+
+
+def _status_pattern(pattern: re.Pattern[str]) -> Callable[[Any], str | None]:
+    def sanitize(value: Any) -> str | None:
+        if isinstance(value, str) and pattern.fullmatch(value):
+            return value
+
+        return None
+
+    return sanitize
+
+
+_status_code = _status_pattern(_STATUS_CODE_PATTERN)
+_status_identifier = _status_pattern(_STATUS_IDENTIFIER_PATTERN)
+
+
+def _status_timestamp(value: Any) -> str | None:
+    if isinstance(value, datetime):
+        value = value.isoformat()
+
+    if isinstance(value, str) and _STATUS_TIMESTAMP_PATTERN.fullmatch(value):
+        return value
+
+    return None
+
+
+def _status_identifier_list(value: Any) -> list[str | None] | None:
+    if not isinstance(value, (list, tuple)):
+        return None
+
+    return [_status_identifier(item) for item in value[:256]]
+
+
+def _status_error_record(value: Any) -> dict[str, Any] | None:
+    """Reduce an error record to its category and exception type name.
+
+    Never the message, the traceback, a request id or anything else the
+    record carries. The field names differ between services (phase/stage,
+    type/error_type, time/timestamp), so each is read from either.
+    """
+
+    if not isinstance(value, dict):
+        return None
+
+    return {
+        "category": _status_identifier(
+            value.get("phase", value.get("stage")),
+        ),
+        "type": _status_identifier(
+            value.get("type", value.get("error_type")),
+        ),
+        "time": _status_timestamp(
+            value.get("time", value.get("timestamp")),
+        ),
+    }
+
+
+def _status_mapping(
+    key_sanitizer: Callable[[Any], str | None],
+    value_spec: Any,
+) -> Callable[[Any], dict[str, Any] | None]:
+    """A dict with data-dependent keys (symbols, journal states)."""
+
+    def sanitize(value: Any) -> dict[str, Any] | None:
+        if not isinstance(value, dict):
+            return None
+
+        result: dict[str, Any] = {}
+
+        for key, item in list(value.items())[:256]:
+            safe_key = key_sanitizer(key)
+
+            if safe_key is not None:
+                result[safe_key] = _apply_status_spec(value_spec, item)
+
+        return result
+
+    return sanitize
+
+
+def _apply_status_spec(spec: Any, value: Any) -> Any:
+    """Apply a nested allowlist: a dict of key -> spec, or a leaf callable."""
+
+    if callable(spec):
+        return spec(value)
+
+    if not isinstance(value, dict):
+        return None
+
+    return {
+        key: _apply_status_spec(child_spec, value.get(key))
+        for key, child_spec in spec.items()
+        if key in value
+    }
+
+
+_STATUS_ERRORS_SPEC = {
+    "count": _status_number,
+    "latest": _status_error_record,
+}
+
+_STATUS_BRAIN_SPEC = {
+    "name": _status_identifier,
+    "version": _status_identifier,
+    "initialized": _status_bool,
+    "running": _status_bool,
+    "intelligence_loaded": _status_bool,
+    "cycles": _status_number,
+    "errors": _status_number,
+    "rejections": _status_number,
+    "created_at": _status_timestamp,
+    "started_at": _status_timestamp,
+    "stopped_at": _status_timestamp,
+    "last_error": _status_error_record,
+}
+
+_STATUS_EXECUTION_SPEC = {
+    "name": _status_identifier,
+    "version": _status_identifier,
+    "mode": _status_code,
+    "running": _status_bool,
+    "minimum_confidence": _status_number,
+    "live_execution_enabled": _status_bool,
+    # halt_reason and last_audit_failure deliberately absent - see above.
+    "operational_state": {
+        "audit_runtime_state": _status_code,
+        "execution_halted": _status_bool,
+        "recovery_required": _status_bool,
+        "audit_incident_count": _status_number,
+    },
+    # source (a URL) deliberately absent.
+    "venue_rules": {
+        "status": _status_code,
+        "venue": _status_code,
+        "schema_version": _status_identifier,
+        "symbol_count": _status_number,
+        "source_version": _status_identifier,
+        "observed_at": _status_timestamp,
+        "age_seconds": _status_number,
+        "maximum_age_seconds": _status_number,
+        "evaluated_at": _status_timestamp,
+        "reason": _status_code,
+    },
+    "transaction_journal": {
+        "name": _status_identifier,
+        "version": _status_identifier,
+        "loaded": _status_bool,
+        "load_failed": _status_bool,
+        "migration_required": _status_bool,
+        "entries": _status_number,
+        "unresolved_entries": _status_number,
+        "state_counts": _status_mapping(_status_code, _status_number),
+        "last_loaded_at": _status_timestamp,
+        "last_saved_at": _status_timestamp,
+        "statistics": _status_mapping(_status_identifier, _status_number),
+    },
+    "durable_financial_state": {
+        "ready": _status_bool,
+        "recovery_required": _status_bool,
+        "reason": _status_code,
+    },
+    "history": _status_number,
+    "rejections": _status_number,
+    "errors": _STATUS_ERRORS_SPEC,
+    "statistics": _status_mapping(_status_identifier, _status_number),
+    "dependencies": _status_mapping(_status_identifier, _status_bool),
+}
+
+# last_signals / last_agent_evidence / last_executions /
+# last_processed_candles deliberately absent: per-symbol snapshots with
+# free-form content (execution ids among them). /api/signals and
+# /api/trades are the operator surfaces for that detail.
+_STATUS_MARKET_LOOP_SPEC = {
+    "name": _status_identifier,
+    "version": _status_identifier,
+    "running": _status_bool,
+    "thread_alive": _status_bool,
+    "started_at": _status_timestamp,
+    "stopped_at": _status_timestamp,
+    "symbols": _status_identifier_list,
+    "symbol_count": _status_number,
+    "interval": _status_number,
+    "last_cycle": _status_timestamp,
+    "last_cycle_duration": _status_number,
+    "metrics": _status_mapping(_status_identifier, _status_number),
+    "market_data_staleness": _status_mapping(
+        _status_identifier,
+        {
+            "seconds_since_last_success": _status_number,
+            "stale": _status_bool,
+        },
+    ),
+    "errors": _STATUS_ERRORS_SPEC,
+    "dependencies": _status_mapping(_status_identifier, _status_bool),
+}
+
+# Keys every AtlasApplication._safe_status fallback can produce in place of
+# a service's own status(). status_error (str(exc)) deliberately absent.
+_STATUS_SERVICE_FALLBACK_SPEC = {
+    "available": _status_bool,
+    "status_supported": _status_bool,
+    "healthy": _status_bool,
+}
+
+
+def _status_service(spec: dict[str, Any]) -> dict[str, Any]:
+    return {**_STATUS_SERVICE_FALLBACK_SPEC, **spec}
+
+
+_STATUS_RESPONSE_SPEC = {
+    "application": {
+        "name": _status_identifier,
+        "version": _status_identifier,
+        "initialized": _status_bool,
+        "running": _status_bool,
+        "created_at": _status_timestamp,
+        "started_at": _status_timestamp,
+        "stopped_at": _status_timestamp,
+        "execution_mode": _status_code,
+        "exchange": _status_identifier,
+    },
+    "runtime": _status_service(
+        {
+            "state": _status_code,
+            "healthy": _status_bool,
+            "started_at": _status_timestamp,
+            "last_transition": _status_timestamp,
+            "reason": _status_code,
+            "version": _status_identifier,
+            "emergency_mode": _status_bool,
+        }
+    ),
+    "brain": _status_service(_STATUS_BRAIN_SPEC),
+    "execution": _status_service(_STATUS_EXECUTION_SPEC),
+    "market_feed": _status_service({}),
+    "market_loop": _status_service(_STATUS_MARKET_LOOP_SPEC),
+    "controller": _status_service(
+        {
+            "name": _status_identifier,
+            "version": _status_identifier,
+            "state": _status_code,
+            "running": _status_bool,
+            "created_at": _status_timestamp,
+            "started_at": _status_timestamp,
+            "stopped_at": _status_timestamp,
+            "timestamp": _status_timestamp,
+            "start_count": _status_number,
+            "stop_count": _status_number,
+            "errors": _status_number,
+            "last_error": _status_error_record,
+            "brain": _status_service(_STATUS_BRAIN_SPEC),
+            "market_loop": _status_service(_STATUS_MARKET_LOOP_SPEC),
+            "execution": _status_service(_STATUS_EXECUTION_SPEC),
+        }
+    ),
+    "capital": _status_service(
+        {
+            "version": _status_identifier,
+            "capital": _status_number,
+            "portfolio_value": _status_number,
+            "available": {
+                "total": _status_number,
+                "used": _status_number,
+                "available": _status_number,
+                "positions": _status_number,
+            },
+            "positions": _status_number,
+            "risk_usage": _status_mapping(_status_identifier, _status_number),
+        }
+    ),
+    "position_controller": _status_service(
+        {
+            "name": _status_identifier,
+            "version": _status_identifier,
+            "active": _status_number,
+            "closed": _status_number,
+            "symbols": _status_identifier_list,
+            "total_exposure": _status_number,
+            "unrealized_pnl": _status_number,
+            "realized_pnl": _status_number,
+            "open_count": _status_number,
+            "close_count": _status_number,
+            "update_count": _status_number,
+            "rejected_count": _status_number,
+            "error_count": _status_number,
+            "last_error": _status_error_record,
+        }
+    ),
+    "services": {
+        "registered": _status_identifier_list,
+        "started": _status_identifier_list,
+    },
+    # health() is already the /api/health contract; it is still passed
+    # through its own allowlist here rather than trusted wholesale.
+    "health": {
+        "healthy": _status_bool,
+        "running": _status_bool,
+        "execution_halted": _status_bool,
+        "execution_recovery_required": _status_bool,
+        "execution_halt_reason": _status_code,
+        "supervised": _status_bool,
+        "supervisor_epoch": _status_identifier,
+        "supervisor_restart_count": _status_number,
+        "runtime_state": _status_code,
+        "error_count": _status_number,
+        "market_data_stale": _status_bool,
+        "market_data_stale_reason": _status_code,
+        "market_loop_thread_alive": _status_bool,
+    },
+    "errors": _STATUS_ERRORS_SPEC,
+}
+
+
+def _public_runtime_status(status: dict[str, Any]) -> dict[str, Any]:
+    """Rebuild status() for /api/status from the allowlist above."""
+
+    return _apply_status_spec(_STATUS_RESPONSE_SPEC, status)
+
+
 def _safe_runtime_status(
     runtime: Any | None,
 ) -> dict[str, Any]:
     """
-    Return AtlasApplication.status() without allowing a raising runtime to
-    break the route. Same shape and exception-handling contract as
-    _safe_runtime_health above - only the exception's class name is
-    published, never str(exc).
+    Return AtlasApplication.status(), rebuilt from the /api/status
+    allowlist above, without allowing a raising runtime to break the
+    route. Same exception-handling contract as _safe_runtime_health - only
+    the exception's class name is published, never str(exc).
 
-    Unlike _safe_runtime_health, this is not filtered for public
-    consumption: AtlasApplication.status() already carries operator-only
-    detail (including the raw execution halt_reason) that health()
-    deliberately withholds, and this route sits behind the same
-    loopback-only guard as every other one - the same trust boundary
-    display_startup_status already assumes when it prints status()
-    straight to a local console at startup.
+    The loopback guard is not treated as a reason to publish status()
+    verbatim: an HTTP body is copied, cached and pasted in ways a console
+    line is not, so this route publishes no more than the allowlist names.
+    A result that still cannot be encoded as strict JSON is reported with
+    the same RUNTIME_STATUS_FAILED shape as a raising status() rather than
+    becoming a 500.
     """
 
     if runtime is None:
@@ -448,14 +815,31 @@ def _safe_runtime_status(
             "error_type": type(exc).__name__,
         }
 
-    if isinstance(result, dict):
-        return result
+    if not isinstance(result, dict):
+        return {
+            "available": True,
+            "reason": "INVALID_RUNTIME_STATUS_RESULT",
+            "result_type": type(result).__name__,
+        }
 
-    return {
-        "available": True,
-        "reason": "INVALID_RUNTIME_STATUS_RESULT",
-        "result_type": type(result).__name__,
-    }
+    try:
+        public = _public_runtime_status(result)
+
+        # The same strict encoding JSONResponse applies, run here so a
+        # value it would reject is caught inside this function.
+        json.dumps(public, allow_nan=False)
+    except Exception as exc:
+        logger.exception(
+            "Runtime status could not be made publishable",
+        )
+
+        return {
+            "available": True,
+            "reason": "RUNTIME_STATUS_FAILED",
+            "error_type": type(exc).__name__,
+        }
+
+    return public
 
 
 def _resolve_brain(
