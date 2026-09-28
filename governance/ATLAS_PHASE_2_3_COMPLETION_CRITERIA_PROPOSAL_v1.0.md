@@ -186,7 +186,7 @@ The audit found no BLOCKING issue. Findings and their disposition:
 | 4 Supervisor | MET | exit 75/76 are never restarted; hang restart is budgeted |
 | 5 Frontend separation | MET | the panel is decoupled from trading (v5.15); a hung shutdown is bounded (v5.17) |
 | 6 Recovery | MET | `docs/operations/RECOVERY_RUNBOOK.md` |
-| 7 Testing | MET on a47b933 (Windows CI green, only B2+D5). Head 735a912: see the registry that records the final CI result | `tools/ci_check_known_accepted_failures.py` |
+| 7 Testing | MET: Windows CI green on 735a912 (runs 36430387559, 36430394787), only B2+D5 fail; merged as 2b29d0b | `tools/ci_check_known_accepted_failures.py` |
 | 8 Independent Review | MET, no BLOCKING or HIGH open | Journal HIGH fixed (v5.13). The carried-over items were inspected in v5.16. The EXP-001 cap MEDIUM was closed by the durable ledger (v5.17). |
 
 Open LOWs carried forward. None of them blocks the close:
