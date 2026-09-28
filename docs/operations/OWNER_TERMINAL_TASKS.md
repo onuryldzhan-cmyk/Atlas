@@ -45,6 +45,16 @@ Shows EXP-001 trades vs policy-floor trades: win rate (with a 95% range),
 gross P&L, fees, holding time, and whether the sample is big enough to
 conclude anything (needs >= 30 closed trades). Paste the output.
 
+## 4. Performance baseline + panel telemetry card (read-only, safe while Atlas runs)
+
+```powershell
+python tools/extract_candle_age_telemetry.py
+python tools/extract_candle_age_telemetry.py --json > reports/observability/telemetry_summary.json
+```
+
+The first prints cycle-duration and candle-age statistics (paste the output;
+it becomes the PERF-001 baseline). The second fills the panel's Telemetri card.
+
 ## Done (kept for reference)
 
 - Audit-fork quarantine applied 2026-09-28 (registry v5.06).
