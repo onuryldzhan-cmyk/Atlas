@@ -20,6 +20,8 @@ Under this mandate:
 | 5 | 2026-09-28 | v5.22 audit gap: no real-candle end-to-end test | **Added 2 tests** | Real candles → provider → WorldAnalysisEngine → rule: a calm market gives LOW; a market that is relatively calm but absolutely volatile gives MEDIUM, proving the p30 ceiling works. Test-only. | next commit |
 | 6 | 2026-09-28 | v5.22 audit UNKNOWN: can the decision's `risk` key override the regime level? | **Verified with a test, no code change** | The brain decision normalized by MarketLoop carries the regime bucket (LOW / MEDIUM-capped / HIGH). The mutation that switches the brain back to the advisory scorer fails the test. UNKNOWN resolved to FACT. | next commit |
 | 7 | 2026-09-28 | Owner request: research on agent team, organization and dashboard | **Agent team and organization: DEFER to Phase 6/9 (recorded). Dashboard step 1: ACCEPT (read-only)** | Rules 1 and 10: Phases 3–5 are still open. The dashboard only reads existing data. GPL FreqUI code is rejected (ideas only). | `docs/research/AGENT_TEAM_ORG_AND_DASHBOARD_RESEARCH_2026-09-28.md` |
+| 8 | 2026-09-28 | Dashboard step 1 (net P&L) and step 2 (open-position prices) | **Not done: queued (Q4)** | `/api/trades` deliberately withholds cost, fees and prices (`test_trades_endpoint_does_not_leak_internal_position_fields`). Widening data exposure is a security-posture change, not a recommended-option pick. Steps 3–4 (EXP-001 progress, per-coin risk bucket) already exist on the panel. | — |
+| 9 | 2026-09-28 | Continue with the remaining roadmap steps | **Stopped at the dependency wall** | Registry prerequisites chain every next item through ARCH-001 (OBS→TEST→PERF→REL→SEC→DATA→GOV). ARCH-001 needs the owner's scope decision (Q1). | — |
 | 4 | 2026-09-28 | Next roadmap item | **Do not start ARCH-001 autonomously** | Its specification is lost (GOV-DRIFT-005). Starting it would mean inventing an architecture spec, a CLAUDE.md STOP condition. | queued below |
 
 ## Queued for the owner (not decided under the mandate)
@@ -28,4 +30,5 @@ Under this mandate:
 |---|---|---|
 | Q1 | ARCH-001 scope (prerequisite of CODE-001, OBS, TEST and others) | The original spec is lost. The owner must pick a scope: for example, adopt the existing `packaging/atlas_architecture_map.json` layer rules plus forbidden edges as ARCH-001's canonical baseline, or write a new spec. |
 | Q2 | EXP-001 keep or stop (2026-10-12) | Owner decision, based on `tools/exp001_report`. |
+| Q4 | Show fees, net P&L and entry/exit prices on the panel | This widens what the loopback web API exposes. An existing test forbids it on purpose; loosening it is the owner's security call. |
 | Q3 | Paper fee rate versus the real account tier | Only the owner knows the Binance tier. |
