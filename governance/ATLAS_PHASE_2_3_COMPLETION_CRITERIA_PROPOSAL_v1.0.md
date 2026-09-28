@@ -35,12 +35,23 @@ In every case the runtime either resumes exactly or refuses new risk. It never s
 - **Open question (UNKNOWN):** can a *held* position still be exited while execution is halted by a corrupt store? A halt blocking exits is conservative, but it can also trap risk. Owner decision needed on the intended behaviour.
 
 ### 2. Reconnect
-**Criterion.**
+**Criterion (as first drafted).**
 - Losing market data marks the runtime `market_data_stale` and blocks new risk.
 - Recovering the data clears that flag without a restart.
 - No decision is taken on stale candles.
 
-**Today: UNKNOWN.** The flag is shown on the panel (`market_data_stale=false` in the owner's 2026-09-28 run). No reconnect test was inspected this session.
+**CONFLICT with an existing design decision.**
+- *Expected (this draft):* staleness blocks new risk.
+- *Actual:* `core/market_loop.py` (`STALENESS_THRESHOLD_SECONDS`, and candle age per registry v4.71) states that staleness and candle age are **observability only and never gate trading or decisions**.
+- *Evidence:*
+  - `core/market_loop.py:155-166`;
+  - `tests/test_application_health_market_signals.py::test_stale_market_data_does_not_flip_healthy`.
+- *Impact:* with the current design, a stale feed does not by itself block a BUY. What prevents decisions on a dead feed is the `DUPLICATE_CLOSED_CANDLE` skip: with no new closed candle, the loop processes nothing new (`core/market_loop.py:681-705`). A feed that returns old but not-yet-seen candles, such as after a backfill, is only *detected and logged* (`test_backfill_gap_exceeding_window_is_detected_and_logged`). It is not blocked.
+- *Decision required from the owner:*
+  - **(a)** keep observability-only and amend the criterion to "a dead feed produces no new decision (duplicate-candle guard), recovery is automatic, staleness is visible". This is **MET today**, per `tests/test_market_loop_reconnect.py` (9 tests) and the duplicate-candle guard.
+  - **(b)** make staleness or candle age a gate on new risk. This is a behaviour change that needs its own grant, tests and audit.
+
+**Today:** MET under (a). NOT MET under (b).
 
 ### 3. Status API
 **Criterion.**
