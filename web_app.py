@@ -188,7 +188,13 @@ PUBLIC_VENUE_RULES_KEYS = (
 # than imported: web_app is L5 and may not import core.execution_manager.
 RISK_DAY_ROLLOVER_PREPARED = "RISK_ACCOUNTING_DAY_ROLLOVER_PREPARED"
 RISK_DAY_ROLLOVER_COMMITTED = "RISK_ACCOUNTING_DAY_ROLLOVER_COMMITTED"
+RISK_DAY_ROLLOVER_REFUSED = "RISK_ACCOUNTING_DAY_ROLLOVER_REFUSED"
 RISK_ACCOUNTING_AGGREGATE = "risk_accounting_state"
+
+# A refusal reason is a fixed upper-case code (registry v4.88 C3). Anything
+# else read from the log is published as this placeholder, never verbatim.
+REFUSAL_REASON_UNRECOGNIZED = "UNRECOGNIZED_REASON"
+REFUSAL_REASON_MAX_LENGTH = 64
 
 # Only the tail of the append-only audit log is scanned for rollover
 # events, so a 30s poll never reads an unbounded file. The audit store's
@@ -578,17 +584,33 @@ def _read_audit_tail_lines(
     return lines, start > 0
 
 
-def _latest_rollover(
+def _refusal_reason_code(value: Any) -> str:
+    if (
+        isinstance(value, str)
+        and 0 < len(value) <= REFUSAL_REASON_MAX_LENGTH
+        and value.isascii()
+        and all(char.isupper() or char.isdigit() or char == "_" for char in value)
+    ):
+        return value
+
+    return REFUSAL_REASON_UNRECOGNIZED
+
+
+def _scan_rollover_events(
     lines: list[str],
-) -> dict[str, Any] | None:
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
     """
     The most recent rollover PREPARED record, and whether a COMMITTED
-    record points back at it. Only day labels and timestamps are
-    published; the equity figures in the payload stay out.
+    record points back at it; and the most recent REFUSED record, and
+    whether a PREPARED record follows it in the log. Only day labels,
+    timestamps and the refusal code are published; the equity figures in
+    the payload stay out.
     """
 
     prepared: dict[str, Any] | None = None
     committed_by_cause: dict[str, str] = {}
+    refused: dict[str, Any] | None = None
+    refusal_superseded = False
 
     for line in lines:
         line = line.strip()
@@ -611,6 +633,10 @@ def _latest_rollover(
 
         if event_type == RISK_DAY_ROLLOVER_PREPARED:
             prepared = event
+            refusal_superseded = refused is not None
+        elif event_type == RISK_DAY_ROLLOVER_REFUSED:
+            refused = event
+            refusal_superseded = False
         elif event_type == RISK_DAY_ROLLOVER_COMMITTED:
             cause = event.get("causation_id")
 
@@ -620,27 +646,40 @@ def _latest_rollover(
                     timestamp if isinstance(timestamp, str) else ""
                 )
 
-    if prepared is None:
-        return None
-
-    payload = prepared.get("payload")
-
-    if not isinstance(payload, dict):
-        payload = {}
-
-    event_id = prepared.get("event_id")
-    committed_at = committed_by_cause.get(event_id) if isinstance(event_id, str) else None
-
     def _text(value: Any) -> str | None:
         return value if isinstance(value, str) else None
 
-    return {
-        "outcome": "COMMITTED" if committed_at is not None else "PREPARED_ONLY",
-        "from_accounting_day_utc": _text(payload.get("from_accounting_day_utc")),
-        "to_accounting_day_utc": _text(payload.get("to_accounting_day_utc")),
-        "prepared_at": _text(prepared.get("timestamp")),
-        "committed_at": committed_at or None,
-    }
+    def _payload(event: dict[str, Any]) -> dict[str, Any]:
+        payload = event.get("payload")
+        return payload if isinstance(payload, dict) else {}
+
+    latest_rollover: dict[str, Any] | None = None
+
+    if prepared is not None:
+        payload = _payload(prepared)
+        event_id = prepared.get("event_id")
+        committed_at = committed_by_cause.get(event_id) if isinstance(event_id, str) else None
+        latest_rollover = {
+            "outcome": "COMMITTED" if committed_at is not None else "PREPARED_ONLY",
+            "from_accounting_day_utc": _text(payload.get("from_accounting_day_utc")),
+            "to_accounting_day_utc": _text(payload.get("to_accounting_day_utc")),
+            "prepared_at": _text(prepared.get("timestamp")),
+            "committed_at": committed_at or None,
+        }
+
+    latest_refusal: dict[str, Any] | None = None
+
+    if refused is not None:
+        payload = _payload(refused)
+        latest_refusal = {
+            "reason": _refusal_reason_code(payload.get("reason")),
+            "from_accounting_day_utc": _text(payload.get("from_accounting_day_utc")),
+            "to_accounting_day_utc": _text(payload.get("to_accounting_day_utc")),
+            "refused_at": _text(refused.get("timestamp")),
+            "superseded_by_later_rollover": refusal_superseded,
+        }
+
+    return latest_rollover, latest_refusal
 
 
 def _risk_accounting_payload(
@@ -695,6 +734,7 @@ def _risk_accounting_payload(
     audit_store = _resolve_attr(runtime, "audit_store")
     audit_path = getattr(audit_store, "file_path", None)
     rollover: dict[str, Any]
+    latest_refusal: dict[str, Any] | None = None
 
     if not isinstance(audit_path, Path):
         rollover = {"available": False, "reason": "AUDIT_STORE_UNAVAILABLE"}
@@ -709,24 +749,48 @@ def _risk_accounting_payload(
                 "error_type": type(exc).__name__,
             }
         else:
+            latest, latest_refusal = _scan_rollover_events(lines)
             rollover = {
                 "available": True,
-                "latest": _latest_rollover(lines),
+                "latest": latest,
+                "latest_refusal": latest_refusal,
                 "scan_truncated": truncated,
                 "scan_limit_bytes": AUDIT_SCAN_MAX_BYTES,
             }
+
+    # Since registry v4.88 (C3) ExecutionManager writes a refused automatic
+    # rollover to the audit log, so the reason is sourced from there. It is
+    # reported as the current reason only while it still applies: the day
+    # is behind, the refusal was for today, and no rollover followed it.
+    # Refusals ExecutionManager does not audit (audit disabled, journal lock
+    # unavailable, unreadable stored state) remain in the WARNING log only.
+    execution = _resolve_attr(runtime, "execution")
+
+    if getattr(execution, "audit_enabled", None) is False:
+        refusal_reason_source = "AUDIT_DISABLED_NOT_RECORDED"
+    elif rollover.get("available") is not True:
+        refusal_reason_source = "AUDIT_LOG_UNAVAILABLE"
+    else:
+        refusal_reason_source = "AUDIT_LOG"
+
+    refusal_reason = None
+
+    if (
+        refusal_reason_source == "AUDIT_LOG"
+        and latest_refusal is not None
+        and not latest_refusal["superseded_by_later_rollover"]
+        and latest_refusal["to_accounting_day_utc"] == today.isoformat()
+        and day["state"] == "BEHIND_TODAY"
+    ):
+        refusal_reason = latest_refusal["reason"]
 
     return 200, {
         "available": True,
         "today_utc": today.isoformat(),
         "accounting_day": day,
         "rollover": rollover,
-        # A refused automatic rollover is logged as a WARNING by
-        # ExecutionManager but is not written to the audit log (registry
-        # v4.81), so its reason cannot be sourced from there. Stated
-        # explicitly instead of left blank.
-        "refusal_reason": None,
-        "refusal_reason_source": "NOT_AUDITED_WARNING_LOG_ONLY",
+        "refusal_reason": refusal_reason,
+        "refusal_reason_source": refusal_reason_source,
     }
 
 

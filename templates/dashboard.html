@@ -803,13 +803,30 @@
                 }
                 html += kv('son rollover', rolloverHtml);
 
-                // Refusals are not audited (registry v4.81): say so rather
-                // than render an empty field that reads as "no refusal".
-                const refusal = payload.refusal_reason
-                    ? esc(payload.refusal_reason)
-                    : payload.refusal_reason_source === 'NOT_AUDITED_WARNING_LOG_ONLY'
-                        ? 'audit log\'a yazılmıyor &mdash; yalnızca WARNING log satırında'
-                        : 'n/a';
+                // Refusals are audited since registry v4.88 (C3). The current
+                // reason is shown only while it still applies; otherwise the
+                // latest audited refusal is shown as history. A source this
+                // page cannot read from is stated, not rendered as "none".
+                const lastRefusal = rollover.available === true ? rollover.latest_refusal : null;
+                let refusal;
+                if (payload.refusal_reason) {
+                    refusal = badge(payload.refusal_reason, STATUS_TONE.warn) +
+                        (lastRefusal ? `<div class="agent-detail">refused ${esc(lastRefusal.refused_at)}</div>` : '');
+                } else if (payload.refusal_reason_source === 'AUDIT_DISABLED_NOT_RECORDED') {
+                    refusal = 'audit kapalı &mdash; yalnızca WARNING log satırında';
+                } else if (payload.refusal_reason_source !== 'AUDIT_LOG') {
+                    refusal = 'audit log okunamıyor';
+                } else if (lastRefusal) {
+                    refusal = 'şu an yok' +
+                        `<div class="agent-detail">son kayıtlı: ${esc(lastRefusal.reason)} &middot; ` +
+                        `<span class="font-monospace">${esc(lastRefusal.from_accounting_day_utc)} &rarr; ${esc(lastRefusal.to_accounting_day_utc)}</span> &middot; ` +
+                        `${esc(lastRefusal.refused_at)}` +
+                        (lastRefusal.superseded_by_later_rollover ? ' &middot; sonrasında rollover yapıldı' : '') + `</div>`;
+                } else {
+                    refusal = rollover.scan_truncated
+                        ? `audit log'un son ${esc(Math.round(rollover.scan_limit_bytes / 1048576))} MB'ında yok`
+                        : 'audit log\'da kayıtlı red yok';
+                }
                 html += kv('reddetme sebebi', `<span class="text-body-secondary">${refusal}</span>`);
                 document.getElementById('risk-accounting-panel').innerHTML = html;
             });
