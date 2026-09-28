@@ -49,6 +49,18 @@ logger = logging.getLogger(LOGGER_NAME)
 # SUPERVISOR_EPOCH_ENV already follows for ENV_EPOCH.
 HEARTBEAT_FILE_ENV = "ATLAS_SUPERVISOR_HEARTBEAT_FILE"
 
+# Minimum spacing between two "heartbeat write failed" announcements, so a
+# target that flaps between failing and working cannot flood the log.
+HEARTBEAT_FAILURE_LOG_INTERVAL_SECONDS = 300.0
+
+# While AtlasApplication.stop() flushes financial state the main loop no
+# longer ticks, so a stop slower than the supervisor's staleness window would
+# read as a hang and get the process killed mid-flush. A background writer
+# keeps the heartbeat fresh during stop(), but only for this long: a stop()
+# that is itself hung must still become visible to the supervisor.
+SHUTDOWN_HEARTBEAT_MAX_SECONDS = 120.0
+SHUTDOWN_HEARTBEAT_INTERVAL_SECONDS = 1.0
+
 
 # ============================================================
 # LOGGING
@@ -336,6 +348,12 @@ class AtlasProcess:
         # unsupervised or directly-run process has always done.
         self._heartbeat_file = self._resolve_heartbeat_file()
 
+        # Write-failure logging state for _write_heartbeat: logged on the
+        # transition into failure and back out, never per tick.
+        self._heartbeat_failing = False
+        self._heartbeat_failure_announced = False
+        self._heartbeat_failure_logged_at: float | None = None
+
     @staticmethod
     def _resolve_heartbeat_file() -> Path | None:
         raw = os.environ.get(HEARTBEAT_FILE_ENV)
@@ -462,11 +480,18 @@ class AtlasProcess:
     def _write_heartbeat(self) -> None:
         """Prove the main loop is still ticking, for atlas_supervisor.py.
 
-        Best-effort and silent by design: a failure to write this file must
-        never slow down or interrupt the shutdown-detection loop below,
-        which is what actually keeps Atlas supervised correctly. Overwritten
-        every tick, so its mtime alone - which is all the supervisor reads -
-        is the whole signal; the content carries nothing.
+        Best-effort by design: a failure to write this file must never slow
+        down or interrupt the shutdown-detection loop below, which is what
+        actually keeps Atlas supervised correctly. Overwritten every tick,
+        so its mtime alone - which is all the supervisor reads - is the
+        whole signal; the content carries nothing.
+
+        Not silent, though: a failure is logged once when it starts and once
+        when writing recovers, never per tick, and a new failure is not
+        announced again within HEARTBEAT_FAILURE_LOG_INTERVAL_SECONDS of the
+        previous announcement, so a flapping target cannot flood the log.
+        Each announcement is a single in-memory log call, never a retry or
+        a wait.
         """
 
         if self._heartbeat_file is None:
@@ -477,8 +502,42 @@ class AtlasProcess:
                 json.dumps({"written_at": time.time()}),
                 encoding="utf-8",
             )
-        except OSError:
-            pass
+        except OSError as exc:
+            if self._heartbeat_failing:
+                return
+
+            self._heartbeat_failing = True
+
+            now = time.monotonic()
+            last = self._heartbeat_failure_logged_at
+
+            if (
+                last is None
+                or now - last >= HEARTBEAT_FAILURE_LOG_INTERVAL_SECONDS
+            ):
+                self._heartbeat_failure_logged_at = now
+                self._heartbeat_failure_announced = True
+
+                logger.warning(
+                    "Supervisor heartbeat write failed (%s) for %s; the "
+                    "supervisor may treat Atlas as hung if this persists. "
+                    "Further failures are not logged until writing recovers",
+                    type(exc).__name__,
+                    self._heartbeat_file,
+                )
+
+            return
+
+        if self._heartbeat_failing:
+            self._heartbeat_failing = False
+
+            if self._heartbeat_failure_announced:
+                self._heartbeat_failure_announced = False
+
+                logger.info(
+                    "Supervisor heartbeat write recovered for %s",
+                    self._heartbeat_file,
+                )
 
     def run_forever(self) -> None:
         """
@@ -633,7 +692,16 @@ class AtlasProcess:
             "Stopping AtlasApplication"
         )
 
-        stopped = self.application.stop()
+        finished = threading.Event()
+        keeper = self._start_shutdown_heartbeat(finished)
+
+        try:
+            stopped = self.application.stop()
+        finally:
+            finished.set()
+
+            if keeper is not None:
+                keeper.join(timeout=SHUTDOWN_HEARTBEAT_INTERVAL_SECONDS * 2)
 
         if not stopped:
             self.exit_code = max(
@@ -646,6 +714,44 @@ class AtlasProcess:
             )
 
         return stopped
+
+    def _start_shutdown_heartbeat(
+        self,
+        finished: threading.Event,
+    ) -> threading.Thread | None:
+        """Keep the supervisor heartbeat fresh while stop() runs, bounded.
+
+        Writes every SHUTDOWN_HEARTBEAT_INTERVAL_SECONDS until ``finished``
+        is set or SHUTDOWN_HEARTBEAT_MAX_SECONDS have passed, whichever is
+        first. The bound is deliberate: a hung stop() must still go stale.
+        """
+
+        if self._heartbeat_file is None:
+            return None
+
+        def keep_alive() -> None:
+            deadline = time.monotonic() + SHUTDOWN_HEARTBEAT_MAX_SECONDS
+
+            while time.monotonic() < deadline:
+                self._write_heartbeat()
+
+                if finished.wait(timeout=SHUTDOWN_HEARTBEAT_INTERVAL_SECONDS):
+                    return
+
+            logger.warning(
+                "Shutdown still running after %.0fs; supervisor heartbeat "
+                "no longer refreshed",
+                SHUTDOWN_HEARTBEAT_MAX_SECONDS,
+            )
+
+        keeper = threading.Thread(
+            target=keep_alive,
+            name="atlas-shutdown-heartbeat",
+            daemon=True,
+        )
+        keeper.start()
+
+        return keeper
 
     # --------------------------------------------------------
     # COMPOSITION HOOKS

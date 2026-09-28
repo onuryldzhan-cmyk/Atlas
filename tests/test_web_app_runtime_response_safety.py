@@ -323,28 +323,36 @@ def test_runtime_endpoints_refuse_non_loopback_clients() -> None:
 
 
 class RealShapeRuntimeWithStatus(RealShapeRuntime):
-    """RealShapeRuntime plus a status() carrying operator-only detail.
+    """RealShapeRuntime plus a status() in AtlasApplication.status()'s shape.
 
-    Deliberately includes a raw halt_reason, mirroring
-    core.execution_manager.ExecutionManager.status()'s real shape: /api/
-    status is loopback-only, the same trust boundary display_startup_status
-    already assumes for a local console, so it is not filtered the way
-    health() is.
+    Carries the operator-only detail the real status() carries - a raw
+    halt_reason in execution.operational_state, and health()'s classified
+    execution_halt_reason - so the route's allowlist is exercised against
+    the shape it is written for.
     """
 
     def status(self) -> dict[str, object]:
         return {
-            "application": {"name": "AtlasApplication"},
+            "application": {"name": "AtlasApplication", "version": "13.0"},
             "execution": {
+                "name": "ExecutionManager",
                 "operational_state": {
                     "execution_halted": True,
+                    "recovery_required": True,
                     "halt_reason": "SOURCE_DISAGREEMENT",
                 },
+            },
+            "health": {
+                "healthy": False,
+                "execution_halted": True,
+                "execution_halt_reason": "SOURCE_DISAGREEMENT",
             },
         }
 
 
-def test_status_endpoint_returns_the_runtime_status_verbatim() -> None:
+def test_status_endpoint_publishes_the_allowlisted_status() -> None:
+    """The halt reason appears only as health()'s classified code."""
+
     response = TestClient(
         create_app(runtime=RealShapeRuntimeWithStatus()),
     ).get("/api/status")
@@ -353,11 +361,215 @@ def test_status_endpoint_returns_the_runtime_status_verbatim() -> None:
 
     payload = response.json()
 
-    assert payload["application"]["name"] == "AtlasApplication"
-    assert (
-        payload["execution"]["operational_state"]["halt_reason"]
-        == "SOURCE_DISAGREEMENT"
+    assert payload["application"] == {
+        "name": "AtlasApplication",
+        "version": "13.0",
+    }
+    assert payload["health"]["execution_halt_reason"] == "SOURCE_DISAGREEMENT"
+    assert payload["execution"]["operational_state"] == {
+        "execution_halted": True,
+        "recovery_required": True,
+    }
+
+
+# Planted in every free-form field AtlasApplication.status() can carry. Any
+# of them in the /api/status body is a leak.
+STATUS_SECRET_MARKERS = (
+    "EXEC-SECRET-0001",
+    "C:\\secret\\path",
+    "secret",
+    "Traceback",
+    "hunter2",
+)
+
+
+def test_status_endpoint_never_publishes_a_planted_secret(
+    tmp_path: Path,
+) -> None:
+    """The /api/status counterpart of test_health_never_publishes_the_halt_reason.
+
+    Built on a real AtlasApplication (isolated state directory), so the
+    body under test is the real status() shape: a raw halt_reason
+    embedding an execution id in the execution service's status, and a
+    real error record - str(error) carrying a file path, and the traceback
+    captured while it was being handled.
+    """
+
+    from core.application import AtlasApplication
+
+    class _HaltedExecution:
+        def status(self) -> dict[str, object]:
+            return {
+                "name": "ExecutionManager",
+                "running": True,
+                "operational_state": {
+                    "execution_halted": True,
+                    "recovery_required": True,
+                    "halt_reason": (
+                        "FINANCIAL_APPLIED_AUTHORITY_CORRUPT: "
+                        "execution_id=EXEC-SECRET-0001 line=42"
+                    ),
+                    "last_audit_failure": {
+                        "stage": "PRE_EXECUTION",
+                        "request_id": "EXEC-SECRET-0001",
+                        "error_type": "OSError",
+                        "error": "C:\\secret\\path is locked",
+                    },
+                },
+                "errors": {
+                    "count": 1,
+                    "latest": {
+                        "phase": "execute",
+                        "type": "RuntimeError",
+                        "error": "exchange said: password=hunter2",
+                        "traceback": "Traceback (most recent call last): ...",
+                    },
+                },
+            }
+
+    application = AtlasApplication(state_directory=tmp_path / "state")
+    application.execution = _HaltedExecution()
+
+    try:
+        raise OSError("cannot open C:\\secret\\path\\ledger.json")
+    except OSError as error:
+        application._record_error(phase="startup", error=error)
+
+    # The console's status() still carries all of it, unchanged.
+    raw = repr(application.status())
+    assert "EXEC-SECRET-0001" in raw
+    assert "Traceback" in raw
+
+    response = TestClient(
+        create_app(runtime=application),
+    ).get("/api/status")
+
+    assert response.status_code == 200
+
+    for marker in STATUS_SECRET_MARKERS:
+        assert marker not in response.text, marker
+
+    payload = response.json()
+
+    assert payload["health"]["execution_halt_reason"] == (
+        "EXECUTION_HALT_REASON_UNCLASSIFIED"
     )
+    assert payload["errors"] == {
+        "count": 1,
+        "latest": {
+            "category": "startup",
+            "type": "OSError",
+            "time": payload["errors"]["latest"]["time"],
+        },
+    }
+    assert payload["execution"]["errors"]["latest"] == {
+        "category": "execute",
+        "type": "RuntimeError",
+        "time": None,
+    }
+    assert "halt_reason" not in payload["execution"]["operational_state"]
+    assert "last_audit_failure" not in payload["execution"]["operational_state"]
+
+
+def test_status_endpoint_drops_unknown_keys_and_unsafe_strings() -> None:
+    """Fail closed: nothing outside the allowlist, no free text inside it."""
+
+    class _PlantedEverywhere:
+        def status(self) -> dict[str, object]:
+            return {
+                "application": {
+                    "name": "EXEC-SECRET-0001 C:\\secret\\path",
+                    "exchange": "https://secret.example/api",
+                    "created_at": "Traceback (most recent call last)",
+                    "unknown_field": "hunter2",
+                },
+                "execution": {
+                    "operational_state": {
+                        "halt_reason": "EXEC-SECRET-0001",
+                        "audit_runtime_state": "C:\\secret\\path",
+                    },
+                    "venue_rules": {"source": "C:\\secret\\path"},
+                },
+                "health": {"execution_halt_reason": "EXEC-SECRET-0001"},
+                "market_loop": {
+                    "last_executions": {"BTCUSDT": "EXEC-SECRET-0001"},
+                    "symbols": ["BTCUSDT", "C:\\secret\\path"],
+                },
+                "debug_dump": {"traceback": "Traceback ... hunter2"},
+            }
+
+    response = TestClient(
+        create_app(runtime=_PlantedEverywhere()),
+    ).get("/api/status")
+
+    assert response.status_code == 200
+
+    for marker in STATUS_SECRET_MARKERS:
+        assert marker not in response.text, marker
+
+    payload = response.json()
+
+    assert "debug_dump" not in payload
+    assert payload["application"] == {
+        "name": None,
+        "exchange": None,
+        "created_at": None,
+    }
+    assert payload["health"] == {"execution_halt_reason": None}
+    assert payload["market_loop"] == {"symbols": ["BTCUSDT", None]}
+
+
+def test_status_endpoint_publishes_non_json_values_safely() -> None:
+    """LOW-6: a Decimal or datetime in status() must not become a 500."""
+
+    from decimal import Decimal
+
+    moment = datetime(2026, 9, 28, 12, 0, tzinfo=UTC)
+
+    class _NonJsonValues:
+        def status(self) -> dict[str, object]:
+            return {
+                "application": {"started_at": moment},
+                "capital": {
+                    "capital": Decimal("10000.10"),
+                    "portfolio_value": float("nan"),
+                },
+            }
+
+    response = TestClient(
+        create_app(runtime=_NonJsonValues()),
+    ).get("/api/status")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "application": {"started_at": "2026-09-28T12:00:00+00:00"},
+        "capital": {"capital": "10000.10", "portfolio_value": None},
+    }
+
+
+def test_status_endpoint_reports_an_unpublishable_status_as_failed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """LOW-6: if the result still cannot be encoded, the route answers
+    with the existing "unavailable + reason" shape, never a 500."""
+
+    import web_app
+
+    def refuse(status: dict[str, object]) -> dict[str, object]:
+        raise TypeError("Object of type Widget is not JSON serializable")
+
+    monkeypatch.setattr(web_app, "_public_runtime_status", refuse)
+
+    response = TestClient(
+        create_app(runtime=RealShapeRuntimeWithStatus()),
+    ).get("/api/status")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "available": True,
+        "reason": "RUNTIME_STATUS_FAILED",
+        "error_type": "TypeError",
+    }
 
 
 def test_status_endpoint_fails_closed_with_no_runtime_attached() -> None:

@@ -30,10 +30,13 @@ a test may not start.
 
 from __future__ import annotations
 
+import logging
+import os
 import subprocess
 import sys
 import threading
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -420,8 +423,66 @@ def test_child_environment_carries_the_heartbeat_file_only_when_configured() -> 
 
 
 # =====================================================================
-# HUNG-CHILD DETECTION: scripted clock, live fake child
+# HUNG-CHILD DETECTION: simulated monotonic clock, live fake child
 # =====================================================================
+
+
+# Well past every scenario below (the longest ends at 6 x 300s of startup
+# hangs), well short of a run that would hang the suite.
+_SIMULATION_CEILING_SECONDS = 5_000.0
+
+
+class _SimulatedTime:
+    """A monotonic clock that only moves when the supervisor waits.
+
+    Installed as both the supervisor's monotonic clock and (through
+    _SimulatedStopEvent) the thing every poll/backoff wait advances, so a
+    run of several simulated minutes executes instantly and every age the
+    supervisor computes is exact.
+    """
+
+    def __init__(self) -> None:
+        self.now = 0.0
+
+    def monotonic(self) -> float:
+        return self.now
+
+
+class _SimulatedStopEvent(threading.Event):
+    """Advances _SimulatedTime by each wait; sets itself at ``stop_at``.
+
+    ``stop_at`` stands in for an operator stop, which is how a scenario
+    with a child that never exits on its own is brought to an end.
+
+    Past ``_SIMULATION_CEILING_SECONDS`` of simulated time it raises
+    instead, so a regression that stops ever reaching a verdict fails
+    the test rather than hanging the suite.
+    """
+
+    def __init__(
+        self,
+        clock: _SimulatedTime,
+        stop_at: float | None = None,
+    ) -> None:
+        super().__init__()
+        self.clock = clock
+        self.stop_at = stop_at
+        self.waits: list[float | None] = []
+
+    def wait(self, timeout: float | None = None) -> bool:
+        self.waits.append(timeout)
+        self.clock.now += timeout or 0.0
+
+        if self.clock.now > _SIMULATION_CEILING_SECONDS:
+            raise AssertionError(
+                f"simulated run exceeded {_SIMULATION_CEILING_SECONDS}s "
+                "without the expected verdict"
+            )
+
+        if self.stop_at is not None and self.clock.now >= self.stop_at:
+            self.set()
+
+        return self.is_set()
 
 
 class _HangingChild:
@@ -429,13 +490,20 @@ class _HangingChild:
 
     poll() keeps returning None (the real signature of a hung process)
     until send_signal/terminate/kill marks it stopped, mirroring what a
-    real stop_child() escalation would eventually observe.
+    real stop_child() escalation would eventually observe. Records the
+    simulated time each graceful signal arrived.
     """
 
-    def __init__(self, exit_code: int = 0) -> None:
+    def __init__(
+        self,
+        exit_code: int = 0,
+        clock: _SimulatedTime | None = None,
+    ) -> None:
         self._alive = True
         self._exit_code = exit_code
+        self._clock = clock
         self.signals: list[int] = []
+        self.signalled_at: list[float] = []
         self.terminate_calls = 0
         self.kill_calls = 0
 
@@ -449,6 +517,10 @@ class _HangingChild:
 
     def send_signal(self, number: int) -> None:
         self.signals.append(number)
+
+        if self._clock is not None:
+            self.signalled_at.append(self._clock.now)
+
         self._alive = False
 
     def terminate(self) -> None:
@@ -460,101 +532,219 @@ class _HangingChild:
         self._alive = False
 
 
-_FAST_HEARTBEAT_POLICY = HeartbeatPolicy(
+# Production defaults, stated explicitly so a scenario's timings read
+# directly off them: grace 120s, first-heartbeat deadline 300s, stale
+# after 30s, checked every 5s.
+_HEARTBEAT_POLICY = HeartbeatPolicy(
     stale_after_seconds=30.0,
     startup_grace_seconds=120.0,
+    first_heartbeat_deadline_seconds=300.0,
     check_interval_seconds=5.0,
 )
 
+_QUICK_RESTARTS = RestartPolicy(
+    max_attempts=5,
+    backoff_seconds=(0.001, 0.002, 0.003, 0.004, 0.005),
+    healthy_run_seconds=600.0,
+)
 
-def test_a_hung_child_is_stopped_and_restarted_like_an_abnormal_exit() -> None:
-    """No heartbeat progress past staleness -> forced down, then restarted."""
+# A wall-clock-looking mtime stamp, in the integer nanoseconds the real
+# reader returns. The supervisor must treat these as opaque.
+_WALL_NS = 1_790_000_000 * 1_000_000_000
 
-    hanging_child = _HangingChild()
-    clean_child = _FakeChild(0)
+# What a heartbeat file left behind by an earlier run reports, unchanging.
+_LEFTOVER_MTIME = _WALL_NS - 3_600 * 1_000_000_000
 
-    children = [hanging_child, clean_child]
+
+def _child_writes(
+    clock: _SimulatedTime,
+    *,
+    before: Any,
+    from_second: float,
+    until_second: float = float("inf"),
+    stamp: Callable[[float], int] | None = None,
+) -> Callable[[Path], Any]:
+    """An mtime reader for a child that writes once per second.
+
+    Before ``from_second`` (and after ``until_second``) the file reports
+    ``before`` / its last written stamp; in between, a new stamp per whole
+    simulated second - which is what main.AtlasProcess's 1s tick produces.
+    """
+
+    stamp = stamp or (lambda second: _WALL_NS + int(second) * 1_000_000_000)
+
+    def read(path: Path) -> Any:
+        del path
+
+        if clock.now < from_second:
+            return before
+
+        return stamp(min(clock.now, until_second))
+
+    return read
+
+
+def _heartbeat_supervisor(
+    clock: _SimulatedTime,
+    children: list[Any],
+    *,
+    heartbeat_mtime: Callable[[Path], Any],
+    stop_at: float | None = None,
+    heartbeat_discard: Callable[[Path], None] | None = None,
+    policy: RestartPolicy = _QUICK_RESTARTS,
+) -> tuple[ProcessSupervisor, _SimulatedStopEvent, list[dict[str, str]]]:
+    environments: list[dict[str, str]] = []
 
     def launch(environment: dict[str, str]) -> Any:
+        environments.append(dict(environment))
         return children.pop(0)
 
-    # started_at_wall, then one in-loop check that is already well past both
-    # the startup grace and the check interval, with a heartbeat mtime that
-    # is already well past staleness.
-    wall_ticks = [1_000.0, 2_000.0, 0.0, 0.0]
-
     supervisor = ProcessSupervisor(
-        policy=RestartPolicy(
-            max_attempts=5,
-            backoff_seconds=(0.001,) * 5,
-            healthy_run_seconds=600.0,
-        ),
+        policy=policy,
         launch=launch,
-        monotonic=lambda: 0.0,
-        heartbeat_file=Path("dummy_heartbeat.json"),
-        heartbeat_policy=_FAST_HEARTBEAT_POLICY,
-        heartbeat_mtime=lambda path: 500.0,
-        wall_clock=lambda: wall_ticks.pop(0),
+        monotonic=clock.monotonic,
+        epoch="e" * 32,
+        heartbeat_file=Path("simulated_heartbeat.json"),
+        heartbeat_policy=_HEARTBEAT_POLICY,
+        heartbeat_mtime=heartbeat_mtime,
+        heartbeat_discard=(
+            heartbeat_discard
+            if heartbeat_discard is not None
+            else (lambda path: None)
+        ),
     )
 
-    recording = _RecordingEvent()
-    supervisor._stop_event = recording
+    event = _SimulatedStopEvent(clock, stop_at=stop_at)
+    supervisor._stop_event = event
+
+    return supervisor, event, environments
+
+
+def _refuse_delete(path: Path) -> None:
+    raise PermissionError(13, "file in use", str(path))
+
+
+def _messages(caplog: pytest.LogCaptureFixture, level: int) -> list[str]:
+    return [
+        record.getMessage()
+        for record in caplog.records
+        if record.name == atlas_supervisor.LOGGER_NAME
+        and record.levelno == level
+    ]
+
+
+# ---------------------------------------------------------------------
+# Policy: the startup phases
+# ---------------------------------------------------------------------
+
+
+def test_heartbeat_startup_phase_boundaries_are_exact() -> None:
+    policy = _HEARTBEAT_POLICY
+
+    assert policy.startup_phase(since_launch=0.0) == "STARTING"
+    assert policy.startup_phase(since_launch=119.999) == "STARTING"
+    assert policy.startup_phase(since_launch=120.0) == "NO_HEARTBEAT_YET"
+    assert policy.startup_phase(since_launch=299.999) == "NO_HEARTBEAT_YET"
+    assert policy.startup_phase(since_launch=300.0) == "HUNG_AT_STARTUP"
+
+
+def test_heartbeat_default_first_heartbeat_deadline_is_300s() -> None:
+    policy = HeartbeatPolicy()
+
+    assert policy.first_heartbeat_deadline_seconds == 300.0
+    assert policy.first_heartbeat_deadline_seconds > policy.startup_grace_seconds
+
+
+def test_first_heartbeat_deadline_must_exceed_the_grace() -> None:
+    with pytest.raises(ValueError, match="first_heartbeat_deadline_seconds"):
+        HeartbeatPolicy(
+            startup_grace_seconds=120.0,
+            first_heartbeat_deadline_seconds=120.0,
+        )
+
+
+# ---------------------------------------------------------------------
+# Scenarios
+# ---------------------------------------------------------------------
+
+
+def test_a_hung_child_is_stopped_and_restarted_like_an_abnormal_exit(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """RUNNING, then no heartbeat change for 30s -> forced down, restarted.
+
+    The child writes every second until t=200 and then freezes. The last
+    change is observed at the t=200 check, so the verdict lands at the
+    t=230 check - and the log reports that 30s heartbeat age, not the 230s
+    the child had been running (LOW-7).
+    """
+
+    caplog.set_level(logging.INFO, logger=atlas_supervisor.LOGGER_NAME)
+
+    clock = _SimulatedTime()
+    hanging_child = _HangingChild(clock=clock)
+    children: list[Any] = [hanging_child, _FakeChild(0)]
+
+    supervisor, event, environments = _heartbeat_supervisor(
+        clock,
+        children,
+        heartbeat_mtime=_child_writes(
+            clock,
+            before=None,
+            from_second=10.0,
+            until_second=200.0,
+        ),
+    )
 
     assert supervisor.run() == 0
 
     assert children == []
-    # The hang was resolved through the graceful path, exactly like a real
-    # stop - never straight to terminate/kill.
+    assert len(environments) == 2
+    # Resolved through the graceful path, exactly like a real stop - never
+    # straight to terminate/kill - and at exactly the 30s staleness bound.
     assert hanging_child.signals == [atlas_supervisor.STOP_SIGNAL]
     assert hanging_child.terminate_calls == 0
+    assert hanging_child.signalled_at == [230.0]
+
+    critical = _messages(caplog, logging.CRITICAL)
+    assert len(critical) == 1
+    assert "no heartbeat for 30s" in critical[0]
+    assert "after 230.0s of runtime" in critical[0]
+
+    # The same restart bookkeeping as a crash: first backoff, then a
+    # relaunch told it is restart number 1.
+    assert 0.001 in event.waits
+    assert environments[1][ENV_RESTART_COUNT] == "1"
 
 
-def test_no_hang_check_runs_before_the_startup_grace_elapses() -> None:
-    """A hanging child within its grace window must never be forced down.
+def test_no_hang_check_runs_before_the_startup_grace_elapses(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """STARTING: no heartbeat at all inside the grace -> nothing happens.
 
-    wall_clock() is pinned at a constant well inside the 120s default grace
-    window (started_at_wall and every in-loop "now" are the same value), and
-    the heartbeat mtime is pinned to a value that would read as stale the
-    instant a check were ever made. If the grace window were not honoured,
-    this child would be declared hung and a second one would be launched;
-    proving it is never restarted proves the check never ran.
+    The operator stops the supervisor at t=119.75, a quarter-second before
+    the grace ends. No warning, no kill, one launch.
     """
 
-    launched = {"count": 0}
+    caplog.set_level(logging.INFO, logger=atlas_supervisor.LOGGER_NAME)
 
-    def launch(environment: dict[str, str]) -> Any:
-        launched["count"] += 1
-        return _HangingChild()
+    clock = _SimulatedTime()
+    child = _HangingChild(clock=clock)
 
-    supervisor = ProcessSupervisor(
-        launch=launch,
-        monotonic=lambda: 0.0,
-        heartbeat_file=Path("dummy_heartbeat.json"),
-        heartbeat_policy=_FAST_HEARTBEAT_POLICY,
-        heartbeat_mtime=lambda path: 0.0,
-        wall_clock=lambda: 10.0,
+    supervisor, _, environments = _heartbeat_supervisor(
+        clock,
+        [child],
+        heartbeat_mtime=lambda path: None,
+        stop_at=119.75,
     )
 
-    class _StopAfterFewPolls(threading.Event):
-        """Ends the loop deterministically without any real sleeping."""
-
-        def __init__(self) -> None:
-            super().__init__()
-            self.calls = 0
-
-        def wait(self, timeout: float | None = None) -> bool:
-            del timeout
-            self.calls += 1
-
-            if self.calls >= 3:
-                self.set()
-
-            return self.is_set()
-
-    supervisor._stop_event = _StopAfterFewPolls()
-
     assert supervisor.run() == 0
-    assert launched["count"] == 1
+
+    assert len(environments) == 1
+    # The only signal is the operator stop's, at the stop time.
+    assert child.signalled_at == [119.75]
+    assert _messages(caplog, logging.WARNING) == []
+    assert _messages(caplog, logging.CRITICAL) == []
 
 
 def test_hung_detection_is_inactive_when_no_heartbeat_file_is_configured() -> (
@@ -573,14 +763,473 @@ def test_hung_detection_is_inactive_when_no_heartbeat_file_is_configured() -> (
         launch=launch,
         monotonic=lambda: 0.0,
         heartbeat_file=None,
-        # If staleness were ever consulted despite no file being configured,
-        # this would report every check as stale.
-        heartbeat_mtime=lambda path: 0.0,
-        wall_clock=lambda: 10_000.0,
+        # If the heartbeat were ever consulted despite no file being
+        # configured, these would fail the run.
+        heartbeat_mtime=lambda path: pytest.fail("heartbeat read"),
+        heartbeat_discard=lambda path: pytest.fail("heartbeat discard"),
     )
 
     assert supervisor.run() == 0
     assert launched["count"] == 1
+
+
+def test_a_stale_leftover_file_does_not_count_as_a_heartbeat(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """HIGH-1: the delete fails and a previous run's file stays behind.
+
+    Its mtime never changes. The new child is slow: it first writes at
+    t=200, past the grace but inside the first-heartbeat deadline, then
+    keeps writing. The leftover must not be mistaken for a heartbeat - if
+    it were, the child would look RUNNING from t=0 and be killed as stale
+    at t=30, long before its first real heartbeat.
+    """
+
+    caplog.set_level(logging.INFO, logger=atlas_supervisor.LOGGER_NAME)
+
+    clock = _SimulatedTime()
+    child = _HangingChild(clock=clock)
+
+    supervisor, _, environments = _heartbeat_supervisor(
+        clock,
+        [child],
+        heartbeat_mtime=_child_writes(
+            clock,
+            before=_LEFTOVER_MTIME,
+            from_second=200.0,
+        ),
+        heartbeat_discard=_refuse_delete,
+        stop_at=600.0,
+    )
+
+    assert supervisor.run() == 0
+
+    assert len(environments) == 1
+    assert child.signalled_at == [600.0]
+    assert _messages(caplog, logging.CRITICAL) == []
+
+    warnings = _messages(caplog, logging.WARNING)
+    assert any("Could not delete the previous heartbeat file" in m for m in warnings)
+    assert sum("No heartbeat from Atlas yet" in m for m in warnings) == 1
+
+
+def test_a_leftover_file_cannot_keep_a_never_started_child_alive(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """HIGH-1, other direction: the delete fails, the child never writes.
+
+    The leftover file is present and readable the whole time. Only a
+    *change* counts, so the child is stopped as hung at startup at the
+    first check at or after the 300s deadline.
+    """
+
+    caplog.set_level(logging.INFO, logger=atlas_supervisor.LOGGER_NAME)
+
+    clock = _SimulatedTime()
+    hung = _HangingChild(clock=clock)
+    children: list[Any] = [hung, _FakeChild(0)]
+
+    supervisor, _, environments = _heartbeat_supervisor(
+        clock,
+        children,
+        heartbeat_mtime=lambda path: _LEFTOVER_MTIME,
+        heartbeat_discard=_refuse_delete,
+    )
+
+    assert supervisor.run() == 0
+
+    assert len(environments) == 2
+    assert hung.signalled_at == [300.0]
+
+    critical = _messages(caplog, logging.CRITICAL)
+    assert len(critical) == 1
+    assert "hung at startup" in critical[0]
+
+
+def test_a_missing_file_with_a_never_started_child_is_hung_at_startup(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """HIGH-1: no file at all used to mean "unknown" forever.
+
+    Before the redesign a child hung during startup, with no heartbeat
+    file, was never caught. Now: one warning past the grace, then a stop
+    at the deadline, then the ordinary restart.
+    """
+
+    caplog.set_level(logging.INFO, logger=atlas_supervisor.LOGGER_NAME)
+
+    clock = _SimulatedTime()
+    hung = _HangingChild(clock=clock)
+    children: list[Any] = [hung, _FakeChild(0)]
+
+    supervisor, event, environments = _heartbeat_supervisor(
+        clock,
+        children,
+        heartbeat_mtime=lambda path: None,
+    )
+
+    assert supervisor.run() == 0
+
+    assert len(environments) == 2
+    assert hung.signalled_at == [300.0]
+    assert hung.terminate_calls == 0
+
+    warnings = _messages(caplog, logging.WARNING)
+    assert sum("No heartbeat from Atlas yet" in m for m in warnings) == 1
+    assert any("after 120s" in m for m in warnings)
+
+    assert "hung at startup" in _messages(caplog, logging.CRITICAL)[0]
+    assert event.waits.count(0.001) == 1
+
+
+def test_a_slow_start_inside_the_deadline_is_warned_about_not_killed(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """NO_HEARTBEAT_YET: first heartbeat at t=250 -> one warning, no kill."""
+
+    caplog.set_level(logging.INFO, logger=atlas_supervisor.LOGGER_NAME)
+
+    clock = _SimulatedTime()
+    child = _HangingChild(clock=clock)
+
+    supervisor, _, environments = _heartbeat_supervisor(
+        clock,
+        [child],
+        heartbeat_mtime=_child_writes(clock, before=None, from_second=250.0),
+        stop_at=900.0,
+    )
+
+    assert supervisor.run() == 0
+
+    assert len(environments) == 1
+    assert child.signalled_at == [900.0]
+    assert _messages(caplog, logging.CRITICAL) == []
+
+    warnings = _messages(caplog, logging.WARNING)
+    assert sum("No heartbeat from Atlas yet" in m for m in warnings) == 1
+
+    assert any(
+        "First heartbeat from Atlas after 250.0s" in m
+        for m in _messages(caplog, logging.INFO)
+    )
+
+
+@pytest.mark.parametrize(
+    "jump_seconds",
+    [-100_000_000, +100_000_000],
+    ids=["backward", "forward"],
+)
+def test_a_wall_clock_jump_never_causes_a_kill(
+    jump_seconds: int,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """MEDIUM-2: the child's wall clock jumps ~3 years mid-run.
+
+    Its heartbeat stamps jump with it, but they keep changing every
+    second, so the child is alive. The supervisor's own wall clock is made
+    to jump too, so any lingering dependence on time.time() in the verdict
+    would surface here.
+    """
+
+    caplog.set_level(logging.INFO, logger=atlas_supervisor.LOGGER_NAME)
+
+    clock = _SimulatedTime()
+    child = _HangingChild(clock=clock)
+
+    def stamp(second: float) -> int:
+        shifted = second + (jump_seconds if second >= 300.0 else 0)
+        return _WALL_NS + int(shifted) * 1_000_000_000
+
+    real_time = atlas_supervisor.time.time
+
+    def jumping_wall_clock() -> float:
+        return real_time() + (jump_seconds if clock.now >= 300.0 else 0)
+
+    monkeypatch.setattr(atlas_supervisor.time, "time", jumping_wall_clock)
+
+    supervisor, _, environments = _heartbeat_supervisor(
+        clock,
+        [child],
+        heartbeat_mtime=_child_writes(
+            clock,
+            before=None,
+            from_second=5.0,
+            stamp=stamp,
+        ),
+        stop_at=900.0,
+    )
+
+    assert supervisor.run() == 0
+
+    assert len(environments) == 1
+    assert child.signalled_at == [900.0]
+    assert _messages(caplog, logging.CRITICAL) == []
+
+
+def test_an_unreadable_heartbeat_while_running_is_not_a_hang(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """RUNNING, then the file cannot be read for 200s, then can again.
+
+    Unknown is not evidence of a hang: detection pauses (one warning) and
+    resumes when the file is readable - here with a fresh stamp.
+    """
+
+    caplog.set_level(logging.INFO, logger=atlas_supervisor.LOGGER_NAME)
+
+    clock = _SimulatedTime()
+    child = _HangingChild(clock=clock)
+    writes = _child_writes(clock, before=None, from_second=5.0)
+
+    def read(path: Path) -> Any:
+        if 100.0 <= clock.now < 300.0:
+            return None
+
+        return writes(path)
+
+    supervisor, _, _ = _heartbeat_supervisor(
+        clock,
+        [child],
+        heartbeat_mtime=read,
+        stop_at=600.0,
+    )
+
+    assert supervisor.run() == 0
+
+    assert child.signalled_at == [600.0]
+    assert _messages(caplog, logging.CRITICAL) == []
+    assert (
+        sum("unreadable" in m for m in _messages(caplog, logging.WARNING)) == 1
+    )
+
+
+def test_a_long_unreadable_heartbeat_is_warned_about_again(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Unreadable from 100s to 1000s: re-warned every 300s, never a hang."""
+
+    caplog.set_level(logging.INFO, logger=atlas_supervisor.LOGGER_NAME)
+
+    clock = _SimulatedTime()
+    child = _HangingChild(clock=clock)
+    writes = _child_writes(clock, before=None, from_second=5.0)
+
+    def read(path: Path) -> Any:
+        if 100.0 <= clock.now < 1000.0:
+            return None
+
+        return writes(path)
+
+    supervisor, _, _ = _heartbeat_supervisor(
+        clock,
+        [child],
+        heartbeat_mtime=read,
+        stop_at=1200.0,
+    )
+
+    assert supervisor.run() == 0
+    assert _messages(caplog, logging.CRITICAL) == []
+    assert (
+        sum("unreadable" in m for m in _messages(caplog, logging.WARNING)) == 3
+    )
+
+
+def test_repeated_startup_hangs_exhaust_the_restart_budget() -> None:
+    """Restart bookkeeping is intact: a hang is counted like a crash.
+
+    Every child hangs at startup. Six launches (the original plus five
+    restarts), each stopped once at its own 300s deadline and never
+    escalated, then the policy gives up with exit code 1. 300s of uptime
+    is under the 600s healthy-run window, so nothing is forgiven.
+    """
+
+    clock = _SimulatedTime()
+    children: list[Any] = [_HangingChild(clock=clock) for _ in range(6)]
+    launched = list(children)
+
+    supervisor, event, environments = _heartbeat_supervisor(
+        clock,
+        children,
+        heartbeat_mtime=lambda path: None,
+    )
+
+    assert supervisor.run() == 1
+
+    assert len(environments) == 6
+    assert [env[ENV_RESTART_COUNT] for env in environments] == [
+        "0", "1", "2", "3", "4", "5",
+    ]
+    assert all(child.signals == [atlas_supervisor.STOP_SIGNAL] for child in launched)
+    assert all(child.terminate_calls == 0 for child in launched)
+
+    backoffs = [wait for wait in event.waits if wait != atlas_supervisor.POLL_INTERVAL_SECONDS]
+    assert backoffs == [0.001, 0.002, 0.003, 0.004, 0.005]
+
+
+def test_late_hangs_never_reset_the_restart_budget() -> None:
+    """A child that runs healthily past the reset window, then hangs.
+
+    Each child heartbeats for 610s (> the 600s healthy-run window) and then
+    goes silent. If a hang could count as a healthy run, the counter would
+    reset every cycle and this would restart forever; instead the budget
+    is exhausted after the original launch plus five restarts.
+    """
+
+    clock = _SimulatedTime()
+    launched_at: list[float] = []
+
+    class _Launches(list):
+        def pop(self, index: int = -1) -> Any:
+            launched_at.append(clock.now)
+            return super().pop(index)
+
+    children: list[Any] = _Launches(_HangingChild(clock=clock) for _ in range(6))
+
+    def read(path: Path) -> Any:
+        del path
+        if not launched_at:
+            return None
+        alive_for = min(clock.now - launched_at[-1], 610.0)
+        return _WALL_NS + int(launched_at[-1] + alive_for) * 1_000_000_000
+
+    supervisor, event, environments = _heartbeat_supervisor(
+        clock,
+        children,
+        heartbeat_mtime=read,
+    )
+
+    assert supervisor.run() == 1
+    assert len(environments) == 6
+
+
+# ---------------------------------------------------------------------
+# The pre-launch delete, against a real file
+# ---------------------------------------------------------------------
+
+
+def test_a_leftover_heartbeat_file_is_deleted_before_each_launch(
+    tmp_path: Path,
+) -> None:
+    heartbeat = tmp_path / atlas_supervisor.HEARTBEAT_FILE_NAME
+    heartbeat.write_text("{}", encoding="utf-8")
+
+    present_at_launch: list[bool] = []
+
+    def launch(environment: dict[str, str]) -> Any:
+        present_at_launch.append(heartbeat.exists())
+        # The child writes one, as a real one would, before exiting.
+        heartbeat.write_text("{}", encoding="utf-8")
+        return _FakeChild(1 if len(present_at_launch) == 1 else 0)
+
+    supervisor = ProcessSupervisor(
+        policy=_QUICK_RESTARTS,
+        launch=launch,
+        monotonic=lambda: 0.0,
+        heartbeat_file=heartbeat,
+        heartbeat_policy=_HEARTBEAT_POLICY,
+    )
+    supervisor._stop_event = _RecordingEvent()
+
+    assert supervisor.run() == 0
+    assert present_at_launch == [False, False]
+
+
+def test_a_failed_pre_launch_delete_is_logged_and_the_launch_proceeds(
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    caplog.set_level(logging.INFO, logger=atlas_supervisor.LOGGER_NAME)
+
+    launched: list[int] = []
+
+    supervisor = ProcessSupervisor(
+        launch=lambda environment: launched.append(1) or _FakeChild(0),
+        monotonic=lambda: 0.0,
+        heartbeat_file=tmp_path / atlas_supervisor.HEARTBEAT_FILE_NAME,
+        heartbeat_policy=_HEARTBEAT_POLICY,
+        heartbeat_discard=_refuse_delete,
+    )
+
+    assert supervisor.run() == 0
+    assert launched == [1]
+    assert any(
+        "Could not delete the previous heartbeat file" in m
+        and "PermissionError" in m
+        for m in _messages(caplog, logging.WARNING)
+    )
+
+
+def test_the_real_mtime_reader_reports_change_exactly(tmp_path: Path) -> None:
+    """The default reader: None when absent, integer ns, new on rewrite."""
+
+    heartbeat = tmp_path / atlas_supervisor.HEARTBEAT_FILE_NAME
+
+    assert atlas_supervisor._read_heartbeat_mtime(heartbeat) is None
+
+    heartbeat.write_text("{}", encoding="utf-8")
+    first = atlas_supervisor._read_heartbeat_mtime(heartbeat)
+
+    assert isinstance(first, int)
+
+    os.utime(heartbeat, ns=(first + 1_000_000_000, first + 1_000_000_000))
+
+    assert atlas_supervisor._read_heartbeat_mtime(heartbeat) != first
+
+
+# ---------------------------------------------------------------------
+# MEDIUM-3: a disabled detector says why
+# ---------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("configure", "reason"),
+    [
+        ("unset", "UNSET"),
+        ("relative", "RELATIVE"),
+        ("missing", "NOT_A_DIRECTORY"),
+        ("file", "NOT_A_DIRECTORY"),
+    ],
+)
+def test_disabled_detection_warns_with_its_case_and_path(
+    configure: str,
+    reason: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    caplog.set_level(logging.INFO, logger=atlas_supervisor.LOGGER_NAME)
+
+    if configure == "unset":
+        monkeypatch.delenv(LOG_DIRECTORY_ENV, raising=False)
+        expected_path = None
+    elif configure == "relative":
+        monkeypatch.setenv(LOG_DIRECTORY_ENV, "relative_logs")
+        expected_path = Path("relative_logs").absolute()
+    elif configure == "missing":
+        expected_path = tmp_path / "does_not_exist"
+        monkeypatch.setenv(LOG_DIRECTORY_ENV, str(expected_path))
+    else:
+        expected_path = tmp_path / "a_file"
+        expected_path.write_text("", encoding="utf-8")
+        monkeypatch.setenv(LOG_DIRECTORY_ENV, str(expected_path))
+
+    supervisor = ProcessSupervisor(
+        launch=lambda environment: _FakeChild(0),
+        monotonic=lambda: 0.0,
+    )
+
+    assert supervisor.heartbeat_file is None
+    assert supervisor.heartbeat_resolution.disabled_reason == reason
+    assert supervisor.heartbeat_resolution.rejected_directory == expected_path
+
+    assert supervisor.run() == 0
+
+    warnings = _messages(caplog, logging.WARNING)
+    assert len(warnings) == 1
+    assert "Hung-child detection is OFF" in warnings[0]
+    assert f"reason={reason}" in warnings[0]
+    assert f"{LOG_DIRECTORY_ENV}={expected_path}" in warnings[0]
 
 
 # =====================================================================
@@ -903,6 +1552,103 @@ def test_an_operator_stop_stops_the_real_child_rather_than_orphaning_it(
 
     # The child shut down through its handler, not by being orphaned or
     # killed: the flush ran.
+    assert marker.read_text(encoding="utf-8") == "flushed"
+
+
+# Heartbeats for its first 1.5s, then keeps ticking (so it can still take a
+# signal) but stops writing - a live child whose heartbeat has gone stale.
+# The relaunch, told restart_count=1, exits cleanly at once.
+_CHILD_HEARTBEAT_THEN_FREEZE = '''
+import os
+import signal
+import sys
+import threading
+import time
+
+if int(os.environ["ATLAS_SUPERVISOR_RESTART_COUNT"]) >= 1:
+    raise SystemExit(0)
+
+heartbeat = os.environ["ATLAS_SUPERVISOR_HEARTBEAT_FILE"]
+marker = sys.argv[1]
+stop = threading.Event()
+signal.signal(signal.SIGBREAK, lambda number, frame: stop.set())
+
+started = time.monotonic()
+while not stop.is_set() and time.monotonic() - started < 60:
+    if time.monotonic() - started < 1.5:
+        with open(heartbeat, "w", encoding="utf-8") as handle_out:
+            handle_out.write("{}")
+    stop.wait(0.1)
+
+with open(marker, "w", encoding="utf-8") as handle_out:
+    handle_out.write("flushed")
+
+raise SystemExit(0)
+'''
+
+
+@WINDOWS_ONLY
+def test_a_real_child_with_a_stale_heartbeat_is_stopped_and_restarted(
+    tmp_path: Path,
+) -> None:
+    """Hung-child detection end to end, on the real clock and filesystem.
+
+    A heartbeat file from an "earlier run" is present beforehand and must be
+    deleted before launch; the real child then heartbeats, freezes, is
+    stopped with one real CTRL_BREAK (and flushes), and is relaunched.
+    """
+
+    script = _write_child(
+        tmp_path,
+        _CHILD_HEARTBEAT_THEN_FREEZE,
+        "atlas_child_heartbeat_then_freeze.py",
+    )
+    marker = tmp_path / "flushed.txt"
+    heartbeat = tmp_path / atlas_supervisor.HEARTBEAT_FILE_NAME
+    heartbeat.write_text("{}", encoding="utf-8")
+
+    leftover_present_at_launch: list[bool] = []
+    processes: list[subprocess.Popen] = []
+
+    def launch(environment: dict[str, str]) -> subprocess.Popen:
+        leftover_present_at_launch.append(heartbeat.exists())
+        process = subprocess.Popen(
+            [sys.executable, str(script), str(marker)],
+            env=environment,
+            creationflags=atlas_supervisor.CREATION_FLAGS,
+        )
+        processes.append(process)
+        return process
+
+    supervisor = ProcessSupervisor(
+        policy=RestartPolicy(
+            max_attempts=5,
+            backoff_seconds=(0.01,) * 5,
+            healthy_run_seconds=600.0,
+        ),
+        launch=launch,
+        heartbeat_file=heartbeat,
+        heartbeat_policy=HeartbeatPolicy(
+            stale_after_seconds=1.0,
+            startup_grace_seconds=5.0,
+            first_heartbeat_deadline_seconds=20.0,
+            check_interval_seconds=0.2,
+        ),
+    )
+
+    try:
+        assert supervisor.run() == 0
+    finally:
+        for process in processes:
+            if process.poll() is None:
+                process.kill()
+                process.wait(timeout=30)
+
+    assert leftover_present_at_launch[0] is False
+    assert len(processes) == 2
+    # Stopped through its handler (the flush ran), then relaunched and
+    # exited cleanly.
+    assert [process.returncode for process in processes] == [0, 0]
     assert marker.read_text(encoding="utf-8") == "flushed"
 
 
