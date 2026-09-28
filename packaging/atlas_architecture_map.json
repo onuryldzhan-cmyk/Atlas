@@ -498,6 +498,7 @@
     "core/execution_portfolio_foundation.py": "L1",
     "core/execution_transaction_journal.py": "L2",
     "core/fee_accounting.py": "L1",
+    "core/instance_lock.py": "L3",
     "core/instrument_rules.py": "L1",
     "core/lifecycle.py": "L2",
     "core/local_capability_adapter.py": "L2",

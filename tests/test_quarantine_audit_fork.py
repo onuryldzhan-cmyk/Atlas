@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 import main
+from core import instance_lock
 from core.audit_event_store import AuditChainIntegrityError, AuditEventStore
 from main import AtlasProcess
 from tools import quarantine_audit_fork as tool
@@ -18,7 +19,7 @@ KW = dict(source="t", aggregate_type="x", payload={})
 @pytest.fixture(autouse=True)
 def state_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setenv("ATLAS_STATE_DIRECTORY", str(tmp_path))
-    monkeypatch.setattr(main, "INSTANCE_LOCK_RETRY_SECONDS", 0.0)
+    monkeypatch.setattr(instance_lock, "RETRY_SECONDS", 0.0)
     return tmp_path
 
 
@@ -122,15 +123,28 @@ def test_a_tampered_event_is_refused(tmp_path, capsys):
 
 
 def test_refused_while_an_atlas_instance_holds_the_lock(tmp_path, capsys):
+    import subprocess
+    import sys
+
     path = forked_log(tmp_path)
     before = path.read_bytes()
 
-    running = AtlasProcess()
-    assert running._acquire_instance_lock() is True
+    holder = subprocess.Popen(
+        [sys.executable, "-c",
+         "import sys; from pathlib import Path; from core import instance_lock;"
+         "instance_lock.acquire(Path(sys.argv[1])); print('HELD', flush=True);"
+         "sys.stdin.readline()",
+         str(tmp_path)],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True,
+        cwd=str(Path(__file__).resolve().parents[1]),
+    )
     try:
+        assert holder.stdout.readline().strip() == "HELD"
         assert tool.main([str(path), "--lines", "4-5", "--apply"]) == 2
     finally:
-        running._release_instance_lock()
+        holder.stdin.write("\n")
+        holder.stdin.flush()
+        holder.wait(timeout=10)
 
     assert path.read_bytes() == before
     assert "Another Atlas instance" in capsys.readouterr().out

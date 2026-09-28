@@ -9,6 +9,8 @@ restart cannot fix either condition.
 
 from __future__ import annotations
 
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -16,14 +18,44 @@ import pytest
 import atlas_supervisor
 import main
 from atlas_supervisor import ProcessSupervisor
+from core import instance_lock
+from core.application import AtlasApplication
 from core.audit_event_store import AuditChainIntegrityError, AuditEventStore
+from core.instance_lock import InstanceLockHeldError
 from main import AtlasProcess
 from tests.test_process_supervisor import _drive
 
 
 @pytest.fixture(autouse=True)
 def no_lock_retry(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(main, "INSTANCE_LOCK_RETRY_SECONDS", 0.0)
+    monkeypatch.setattr(instance_lock, "RETRY_SECONDS", 0.0)
+
+
+HOLDER = """
+import sys, time
+from pathlib import Path
+from core import instance_lock
+instance_lock.acquire(Path(sys.argv[1]))
+print("HELD", flush=True)
+sys.stdin.readline()
+"""
+
+
+@pytest.fixture
+def other_process(state_root: Path):
+    """A second OS process holding the state-root lock, like the second
+    Atlas of the 2026-09-28 incident."""
+
+    proc = subprocess.Popen(
+        [sys.executable, "-c", HOLDER, str(state_root)],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True,
+        cwd=str(Path(__file__).resolve().parents[1]),
+    )
+    assert proc.stdout.readline().strip() == "HELD"
+    yield proc
+    proc.stdin.write("\n")
+    proc.stdin.flush()
+    proc.wait(timeout=10)
 
 
 @pytest.fixture
@@ -40,26 +72,51 @@ def test_exit_codes_match_between_main_and_supervisor() -> None:
     assert not atlas_supervisor.NO_RESTART_EXIT_CODES & {0, 1, 2, 3}
 
 
-def test_second_instance_on_the_same_state_root_is_refused(state_root: Path) -> None:
-    first = AtlasProcess()
-    second = AtlasProcess()
+def test_second_process_on_the_same_state_root_is_refused(
+    state_root: Path, other_process,
+) -> None:
+    process = AtlasProcess()
 
-    assert first._acquire_instance_lock() is True
-    try:
-        assert second._acquire_instance_lock() is False
-        assert second.exit_code == main.ALREADY_RUNNING_EXIT_CODE
-    finally:
-        first._release_instance_lock()
+    assert process._acquire_instance_lock() is False
+    assert process.exit_code == main.ALREADY_RUNNING_EXIT_CODE
 
 
-def test_released_lock_can_be_taken_again(state_root: Path) -> None:
-    first = AtlasProcess()
-    assert first._acquire_instance_lock() is True
-    first._release_instance_lock()
+def test_application_built_directly_is_refused_while_another_process_holds_it(
+    state_root: Path, other_process,
+) -> None:
+    """The gap the audit found: tools constructing AtlasApplication
+    directly used to bypass the lock taken in AtlasProcess."""
 
-    second = AtlasProcess()
-    assert second._acquire_instance_lock() is True
-    second._release_instance_lock()
+    with pytest.raises(InstanceLockHeldError):
+        AtlasApplication(state_directory=state_root)
+
+
+def test_lock_is_shared_and_released_with_the_last_holder(state_root: Path) -> None:
+    process = AtlasProcess()
+    assert process._acquire_instance_lock() is True
+    app = AtlasApplication(state_directory=state_root)
+    assert instance_lock.held(state_root)
+
+    process._release_instance_lock()
+    assert instance_lock.held(state_root)  # the application still holds it
+
+    app.stop()
+    assert not instance_lock.held(state_root)
+
+
+def test_released_lock_can_be_taken_by_another_process(state_root: Path) -> None:
+    process = AtlasProcess()
+    assert process._acquire_instance_lock() is True
+    process._release_instance_lock()
+
+    probe = subprocess.run(
+        [sys.executable, "-c",
+         "import sys; from pathlib import Path; from core import instance_lock;"
+         "instance_lock.RETRY_SECONDS = 0; instance_lock.acquire(Path(sys.argv[1])); print('OK')",
+         str(state_root)],
+        capture_output=True, text=True, cwd=str(Path(__file__).resolve().parents[1]),
+    )
+    assert probe.stdout.strip() == "OK", probe.stderr
 
 
 def test_unusable_state_root_is_a_normal_failure_not_run_unlocked(
@@ -75,20 +132,28 @@ def test_unusable_state_root_is_a_normal_failure_not_run_unlocked(
 
 
 def test_start_refuses_before_constructing_the_application(
-    state_root: Path, monkeypatch: pytest.MonkeyPatch,
+    state_root: Path, monkeypatch: pytest.MonkeyPatch, other_process,
 ) -> None:
     constructed = []
     monkeypatch.setattr(main, "AtlasApplication", lambda **kw: constructed.append(kw))
 
-    holder = AtlasProcess()
-    assert holder._acquire_instance_lock() is True
-    try:
-        process = AtlasProcess()
-        monkeypatch.setattr(process, "install_signal_handlers", lambda: None)
-        assert process.execute() == main.ALREADY_RUNNING_EXIT_CODE
-        assert constructed == []
-    finally:
-        holder._release_instance_lock()
+    process = AtlasProcess()
+    monkeypatch.setattr(process, "install_signal_handlers", lambda: None)
+    assert process.execute() == main.ALREADY_RUNNING_EXIT_CODE
+    assert constructed == []
+
+
+def test_lock_refusal_raised_during_construction_exits_already_running(
+    state_root: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def refused(**kwargs):
+        raise InstanceLockHeldError("held elsewhere")
+
+    monkeypatch.setattr(main, "AtlasApplication", refused)
+    process = AtlasProcess()
+    monkeypatch.setattr(process, "install_signal_handlers", lambda: None)
+
+    assert process.execute() == main.ALREADY_RUNNING_EXIT_CODE
 
 
 def test_audit_integrity_failure_exits_with_the_integrity_code(
@@ -160,8 +225,8 @@ def test_lock_retries_until_a_briefly_held_lock_is_released(
 ) -> None:
     """A crashed predecessor whose lock the OS has not released yet."""
 
-    monkeypatch.setattr(main, "INSTANCE_LOCK_RETRY_SECONDS", 5.0)
-    monkeypatch.setattr(main, "INSTANCE_LOCK_RETRY_INTERVAL_SECONDS", 0.0)
+    monkeypatch.setattr(instance_lock, "RETRY_SECONDS", 5.0)
+    monkeypatch.setattr(instance_lock, "RETRY_INTERVAL_SECONDS", 0.0)
 
     attempts = []
 
@@ -169,16 +234,14 @@ def test_lock_retries_until_a_briefly_held_lock_is_released(
         attempts.append(1)
         return len(attempts) >= 3
 
-    monkeypatch.setattr(AtlasProcess, "_try_lock", staticmethod(flaky))
+    monkeypatch.setattr(instance_lock, "_try_lock", flaky)
 
-    process = AtlasProcess()
-    assert process._acquire_instance_lock() is True
+    instance_lock.acquire(state_root)
     assert len(attempts) == 3
-    process._release_instance_lock()
+    instance_lock.release(state_root)
 
 
 def _windows_try_lock(monkeypatch, locking, tmp_path):
-    import sys
     import types
 
     monkeypatch.setitem(
@@ -187,9 +250,9 @@ def _windows_try_lock(monkeypatch, locking, tmp_path):
     with open(tmp_path / "lock", "a+b") as handle:
         # Only the branch choice is patched, after the file is open, so
         # pathlib never sees a foreign os.name.
-        monkeypatch.setattr(main.os, "name", "nt")
+        monkeypatch.setattr(instance_lock.os, "name", "nt")
         try:
-            return AtlasProcess._try_lock(handle)
+            return instance_lock._try_lock(handle)
         finally:
             monkeypatch.undo()
 
@@ -214,3 +277,28 @@ def test_windows_branch_contention_is_not_taken(
         raise PermissionError(13, "Permission denied")
 
     assert _windows_try_lock(monkeypatch, refuse, tmp_path) is False
+
+
+def test_failed_construction_gives_the_lock_back(state_root: Path) -> None:
+    """Construction that fails after taking the lock must not keep it."""
+
+    audit = state_root / "audit" / "atlas_audit_events.jsonl"
+    kw = dict(source="t", aggregate_type="x", payload={})
+    first = AuditEventStore(audit)
+    first.append(event_type="E", aggregate_id="a0", **kw)
+    second = AuditEventStore(audit)
+    first.append(event_type="E", aggregate_id="a1", **kw)
+    second.append(event_type="E", aggregate_id="b0", **kw)
+
+    with pytest.raises(AuditChainIntegrityError):
+        AtlasApplication(state_directory=state_root)
+
+    assert not instance_lock.held(state_root)
+
+
+def test_the_constructor_signature_is_unchanged_by_the_wrapper() -> None:
+    import inspect
+
+    params = inspect.signature(AtlasApplication).parameters
+    assert "state_directory" in params
+    assert "paper_confidence_experiment" in params

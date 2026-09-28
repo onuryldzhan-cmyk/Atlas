@@ -51,6 +51,7 @@ AtlasApplication
 
 from __future__ import annotations
 
+import functools
 import logging
 import os
 import re
@@ -62,6 +63,7 @@ from pathlib import Path
 from collections.abc import Mapping
 from typing import Any
 
+from core import instance_lock
 from core.logger import AtlasLogger
 from core.runtime import AtlasRuntime
 from core.event_bus import EventBus
@@ -493,6 +495,28 @@ def _classify_execution_halt_reason(raw: Any) -> str:
     return UNCLASSIFIED_EXECUTION_HALT_REASON
 
 
+def _release_instance_lock_on_failed_init(init):
+    """Give back the state-root lock when construction fails after taking it.
+
+    A failed __init__ never reaches stop(), so without this a long-lived
+    process (a tool, a test, a rebuild after a failure) would keep the
+    reference - and the OS lock - for good.
+    """
+
+    @functools.wraps(init)
+    def wrapper(self, *args, **kwargs):
+        try:
+            init(self, *args, **kwargs)
+        except BaseException:
+            root = getattr(self, "_instance_lock_root", None)
+            self._instance_lock_root = None
+            if root is not None:
+                instance_lock.release(root)
+            raise
+
+    return wrapper
+
+
 class AtlasApplication:
     """
     Central Atlas composition root.
@@ -506,6 +530,7 @@ class AtlasApplication:
     VERSION = "13.0"
     NAME = "AtlasApplication"
 
+    @_release_instance_lock_on_failed_init
     def __init__(
         self,
         *,
@@ -542,6 +567,13 @@ class AtlasApplication:
             if state_directory is None
             else Path(state_directory)
         )
+
+        # One process per state root (core/instance_lock.py, registry
+        # v5.08): taken before any durable store is opened, so a tool or a
+        # second launch that builds an AtlasApplication directly is refused
+        # here, not only the main entry point. Shared within a process.
+        instance_lock.acquire(self.state_directory)
+        self._instance_lock_root: Path | None = self.state_directory
 
         # Resolved for provenance and for the startup log only: nothing in
         # AtlasApplication opens the market archive. Resolving it here anyway
@@ -1458,6 +1490,16 @@ class AtlasApplication:
         """
         Stop Atlas services in reverse dependency order.
         """
+
+        try:
+            return self._stop_services()
+        finally:
+            root = getattr(self, "_instance_lock_root", None)
+            self._instance_lock_root = None
+            if root is not None:
+                instance_lock.release(root)
+
+    def _stop_services(self) -> bool:
 
         logger.info(
             "=================================================="
