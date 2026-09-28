@@ -19,6 +19,7 @@ Under this mandate:
 | 3 | 2026-09-28 | v5.23 LOW: partial-sell fee test | **Added the test** | It closes an audit gap with no production change. | this commit |
 | 5 | 2026-09-28 | v5.22 audit gap: no real-candle end-to-end test | **Added 2 tests** | Real candles → provider → WorldAnalysisEngine → rule: a calm market gives LOW; a market that is relatively calm but absolutely volatile gives MEDIUM, proving the p30 ceiling works. Test-only. | next commit |
 | 6 | 2026-09-28 | v5.22 audit UNKNOWN: can the decision's `risk` key override the regime level? | **Verified with a test, no code change** | The brain decision normalized by MarketLoop carries the regime bucket (LOW / MEDIUM-capped / HIGH). The mutation that switches the brain back to the advisory scorer fails the test. UNKNOWN resolved to FACT. | next commit |
+| 7 | 2026-09-28 | Owner request: research on agent team, organization and dashboard | **Agent team and organization: DEFER to Phase 6/9 (recorded). Dashboard step 1: ACCEPT (read-only)** | Rules 1 and 10: Phases 3–5 are still open. The dashboard only reads existing data. GPL FreqUI code is rejected (ideas only). | `docs/research/AGENT_TEAM_ORG_AND_DASHBOARD_RESEARCH_2026-09-28.md` |
 | 4 | 2026-09-28 | Next roadmap item | **Do not start ARCH-001 autonomously** | Its specification is lost (GOV-DRIFT-005). Starting it would mean inventing an architecture spec, a CLAUDE.md STOP condition. | queued below |
 
 ## Queued for the owner (not decided under the mandate)

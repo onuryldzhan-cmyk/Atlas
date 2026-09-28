@@ -274,6 +274,36 @@
                     </div>
                 </section>
 
+                <section class="card card-success card-outline mb-4" aria-labelledby="section-performance-title">
+                    <div class="card-header">
+                        <h3 id="section-performance-title" class="card-title">Portföy Performansı (kapanan işlemler)</h3>
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" title="Daralt">
+                                <svg data-lte-icon="collapse"><use href="#icon-minus"/></svg><svg data-lte-icon="expand"><use href="#icon-plus"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="performance-kpis" class="row g-2 mb-3">Yükleniyor...</div>
+                        <div class="row g-3">
+                            <div class="col-12 col-xl-6">
+                                <div class="subpanel">
+                                    <h4 class="subpanel-title">Kümülatif brüt P&amp;L</h4>
+                                    <div style="position:relative;height:220px"><canvas id="performance-equity-chart" aria-label="Kümülatif brüt kâr/zarar grafiği" role="img"></canvas></div>
+                                    <div id="performance-chart-note" class="small text-body-secondary"></div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-xl-6">
+                                <div class="subpanel">
+                                    <h4 class="subpanel-title">Son kapanan işlemler</h4>
+                                    <div id="performance-trades" class="table-responsive" style="max-height:260px">Yükleniyor...</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="small text-body-secondary mt-2">Rakamlar brüttür (fiyat farkı). Ücret sonrası net sonuç için: <span class="font-monospace">python -m tools.exp001_report</span>. Bu panel yalnız okur.</div>
+                    </div>
+                </section>
+
                 <section class="card card-warning card-outline mb-4" aria-labelledby="section-integrity-title">
                     <div class="card-header">
                         <h3 id="section-integrity-title" class="card-title">System Integrity</h3>
@@ -1015,8 +1045,95 @@
                 `${badge('unavailable', STATUS_TONE.warn)} <span class="text-body-secondary">${esc(payload.reason || payload.state)}</span>`;
         }
 
+        // ---------------------------------------------------------------
+        // Portfolio performance (read-only, from /api/trades)
+        // ---------------------------------------------------------------
+        function toNum(value) {
+            const n = Number(value);
+            return value !== null && value !== undefined && value !== '' && isFinite(n) ? n : null;
+        }
+
+        function hoursBetween(a, b) {
+            const ms = Date.parse(b) - Date.parse(a);
+            return isFinite(ms) ? ms / 3600000 : null;
+        }
+
+        function pnlSpan(value, digits) {
+            const n = toNum(value);
+            if (n === null) return '<span class="text-body-secondary">n/a</span>';
+            const tone = n > 0 ? 'text-success' : n < 0 ? 'text-danger' : '';
+            return `<span class="font-monospace ${tone}">${n > 0 ? '+' : ''}${n.toFixed(digits)}</span>`;
+        }
+
+        function kpi(label, valueHtml) {
+            return `<div class="col-6 col-md-4 col-xl-2"><div class="subpanel text-center py-2">` +
+                `<div class="small text-body-secondary">${label}</div><div class="fs-5 fw-bold">${valueHtml}</div></div></div>`;
+        }
+
+        function renderPerformance(payload) {
+            const trades = (Array.isArray(payload.recent_trades) ? payload.recent_trades : [])
+                .filter((t) => toNum(t.gross_pnl) !== null)
+                .sort((a, b) => String(a.closed_at).localeCompare(String(b.closed_at)));
+            const pnls = trades.map((t) => toNum(t.gross_pnl));
+            const durations = trades.map((t) => hoursBetween(t.opened_at, t.closed_at)).filter((h) => h !== null);
+            const avg = pnls.length ? pnls.reduce((x, y) => x + y, 0) / pnls.length : null;
+            const avgHours = durations.length ? durations.reduce((x, y) => x + y, 0) / durations.length : null;
+            const winRate = isNumber(payload.win_rate) ? `${esc(payload.win_rate)}%` : 'n/a';
+
+            document.getElementById('performance-kpis').innerHTML =
+                kpi('işlem', `<span class="font-monospace">${esc(payload.total_trades)}</span>`) +
+                kpi('win rate', winRate) +
+                kpi('toplam brüt P&amp;L', pnlSpan(payload.total_gross_pnl, 2)) +
+                kpi('ort. işlem', pnlSpan(avg, 2)) +
+                kpi('en iyi / en kötü', pnls.length
+                    ? `${pnlSpan(Math.max(...pnls), 2)} / ${pnlSpan(Math.min(...pnls), 2)}` : 'n/a') +
+                kpi('ort. süre', avgHours === null ? 'n/a' : `<span class="font-monospace">${avgHours.toFixed(1)} sa</span>`);
+
+            let running = 0;
+            const cumulative = pnls.map((p) => (running += p));
+            const note = document.getElementById('performance-chart-note');
+            if (!trades.length) {
+                drawChart('performance-equity-chart', { type: 'line', data: { labels: [], datasets: [] } });
+                note.textContent = 'Henüz kapanan işlem yok.';
+            } else {
+                const drawn = drawChart('performance-equity-chart', {
+                    type: 'line',
+                    data: {
+                        labels: trades.map((t) => String(t.closed_at).slice(5, 16).replace('T', ' ')),
+                        datasets: [{
+                            label: 'kümülatif brüt P&L',
+                            data: cumulative,
+                            borderColor: cssVar('--bs-success'),
+                            backgroundColor: 'transparent',
+                            pointRadius: 3,
+                            tension: 0.15,
+                        }],
+                    },
+                    options: { maintainAspectRatio: false, plugins: { legend: { display: false } } },
+                });
+                note.textContent = drawn
+                    ? `Son ${trades.length} kapanan işlem (API en fazla 50 döndürür).`
+                    : 'Grafik kütüphanesi yüklenemedi; rakamlar tabloda.';
+            }
+
+            const rows = trades.slice().reverse().map((t) => {
+                const h = hoursBetween(t.opened_at, t.closed_at);
+                return `<tr><td class="fw-bold">${esc(t.symbol)}</td>` +
+                    `<td class="font-monospace small">${esc(String(t.opened_at).slice(0, 16).replace('T', ' '))}</td>` +
+                    `<td class="font-monospace small">${esc(String(t.closed_at).slice(0, 16).replace('T', ' '))}</td>` +
+                    `<td class="font-monospace small text-end">${h === null ? 'n/a' : h.toFixed(1) + ' sa'}</td>` +
+                    `<td class="text-end">${pnlSpan(t.gross_pnl, 2)}</td></tr>`;
+            }).join('');
+            document.getElementById('performance-trades').innerHTML = trades.length
+                ? `<table class="table table-sm table-striped mb-0"><thead><tr><th>sembol</th><th>açılış (UTC)</th>` +
+                  `<th>kapanış (UTC)</th><th class="text-end">süre</th><th class="text-end">brüt P&amp;L</th></tr></thead>` +
+                  `<tbody>${rows}</tbody></table>`
+                : '<span class="text-body-secondary">Henüz kapanan işlem yok.</span>';
+        }
+
         function updateTradeHistoryPanel() {
             fetchPanel('/api/trades', 'trade-history-panel', (payload) => {
+                renderPerformance(payload);
                 const winRateKnown = isNumber(payload.win_rate);
                 const winRate = payload.win_rate === null || payload.win_rate === undefined
                     ? 'n/a' : `${esc(payload.win_rate)}%`;
@@ -1025,7 +1142,9 @@
                       `<div class="progress-bar bg-${STATUS_TONE.ok}" style="width:${Math.max(0, Math.min(100, payload.win_rate))}%"></div></div>`
                     : '';
                 const pnl = payload.total_gross_pnl;
-                const pnlTone = isNumber(pnl) && pnl > 0 ? 'text-success' : isNumber(pnl) && pnl < 0 ? 'text-danger' : '';
+                // total_gross_pnl is a decimal string; parse it for the tone only.
+                const pnlValue = toNum(pnl);
+                const pnlTone = pnlValue !== null && pnlValue > 0 ? 'text-success' : pnlValue !== null && pnlValue < 0 ? 'text-danger' : '';
                 document.getElementById('trade-history-panel').innerHTML =
                     `<div class="d-flex align-items-baseline gap-2 mb-1"><span class="fs-4 fw-bold">${winRate}</span>` +
                     `<span class="small text-body-secondary">win rate (${esc(payload.wins)}W / ${esc(payload.losses)}L)</span></div>` +
