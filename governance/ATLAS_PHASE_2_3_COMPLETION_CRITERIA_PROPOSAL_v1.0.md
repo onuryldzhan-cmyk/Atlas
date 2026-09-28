@@ -50,7 +50,9 @@ In every case the runtime either resumes exactly or refuses new risk. It never s
   - **(a)** keep observability-only and amend the criterion to "a dead feed produces no new decision (duplicate-candle guard), recovery is automatic, staleness is visible". This is **MET today**, per `tests/test_market_loop_reconnect.py`: its 9 recovery and staleness tests, plus `test_a_dead_feed_repeating_the_same_closed_candle_makes_no_new_decision`, which was added after audit HIGH-1 and proves no second analysis or order happens on a repeated candle.
   - **(b)** make staleness or candle age a gate on new risk. This is a behaviour change that needs its own grant, tests and audit.
 
-**Today:** MET under (a). NOT MET under (b).
+**DECIDED: (b)** by the owner ("İkisini de değiştir"). Implemented in registry v5.14: a BUY needs a newest closed candle measured at 180s old or younger, while SELL is never gated. Evidence: `tests/test_buy_stale_data_gate.py` and the dead-feed test.
+
+**Today: MET.**
 
 ### 3. Status API
 **Criterion.**
