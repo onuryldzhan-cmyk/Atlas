@@ -85,6 +85,11 @@
   },
   "layer_rules": [
     {
+      "pattern": "atlas_org/*",
+      "layer": "L1",
+      "reason": "governance contracts (registry v5.34): permission grants, proposal lifecycle and Atlas Memory provenance as pure replay rules over already-read events; stdlib only (hashlib/json/enum/dataclasses), no I/O, no clock. The JSONL store writer is tools/atlas_org_cli.py (outside the runtime) and the read-only readers are observability/governance_records.py (L5)."
+    },
+    {
       "pattern": "atlas_security/*",
       "layer": "L0",
       "reason": "explicit: L0 cross-cutting sanitization package"
@@ -449,6 +454,10 @@
     "atlas_finance/market_data/models.py": "L1",
     "atlas_finance/market_data/temporal.py": "L1",
     "atlas_finance/market_data/treasury_yield_provider.py": "L2",
+    "atlas_org/__init__.py": "L1",
+    "atlas_org/memory_records.py": "L1",
+    "atlas_org/permissions.py": "L1",
+    "atlas_org/proposals.py": "L1",
     "atlas_os/__init__.py": "L2",
     "atlas_os/audit/__init__.py": "L2",
     "atlas_os/audit/audit_log.py": "L2",
@@ -533,6 +542,7 @@
     "exchange/market_feed.py": "L2",
     "main.py": "L3",
     "observability/__init__.py": "L5",
+    "observability/governance_records.py": "L5",
     "observability/organization.py": "L5",
     "observability/panel_router.py": "L5",
     "observability/panel_sources.py": "L5",

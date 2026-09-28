@@ -308,6 +308,19 @@
                     </div>
                 </section>
 
+                <section class="card card-danger card-outline mb-4" aria-labelledby="section-proposals-title">
+                    <div class="card-header">
+                        <h3 id="section-proposals-title" class="card-title">Öneriler &amp; Kararınızı Bekleyenler</h3>
+                    </div>
+                    <div class="card-body">
+                        <div id="proposals-summary" class="mb-2">Yükleniyor...</div>
+                        <div id="proposals-list" class="row g-2"></div>
+                        <h4 class="h6 mt-3">Atlas Hafızası (son kayıtlar)</h4>
+                        <div id="memory-list">Yükleniyor...</div>
+                        <div class="small text-body-secondary mt-2">Kaynak: <span class="font-monospace">governance/records/*.jsonl</span> (her okumada hash zinciri doğrulanır; bozuk kayıt gösterilmez). Bir ajanın <b>tavsiyesi</b> onay değildir: yalnız siz onaylarsınız (<span class="font-monospace">python -m tools.atlas_org_cli proposal-event ... --actor owner --owner-confirm ID</span>). Bu panel yalnız okur.</div>
+                    </div>
+                </section>
+
                 <section class="card card-primary card-outline mb-4" aria-labelledby="section-org-title">
                     <div class="card-header">
                         <h3 id="section-org-title" class="card-title">Atlas Organizasyonu (kurumsal yapı &amp; ajanlar)</h3>
@@ -1163,6 +1176,66 @@
         }
 
         // ---------------------------------------------------------------
+        // Proposals and Atlas Memory (read-only, registry v5.34)
+        // ---------------------------------------------------------------
+        const PROPOSAL_TONE = {
+            DRAFT: 'secondary', UNDER_REVIEW: 'info', REVISION_REQUIRED: 'warning',
+            READY_FOR_OWNER: 'danger', APPROVED: 'success', REJECTED: 'dark',
+            APPLIED: 'primary', ROLLED_BACK: 'warning', SUPERSEDED: 'secondary',
+        };
+        const PROPOSAL_LABEL = {
+            DRAFT: 'Taslak', UNDER_REVIEW: 'İncelemede', REVISION_REQUIRED: 'Düzeltme gerekli',
+            READY_FOR_OWNER: 'ONAYINIZI BEKLİYOR', APPROVED: 'Sahip onayladı', REJECTED: 'Sahip reddetti',
+            APPLIED: 'Uygulandı', ROLLED_BACK: 'Geri alındı', SUPERSEDED: 'Yerine yenisi geldi',
+        };
+
+        function renderProposal(p) {
+            const reviews = Array.isArray(p.reviews) ? p.reviews.filter((r) => r.revision === p.revision) : [];
+            const check = (kind) => {
+                const r = reviews.filter((x) => x.kind === kind).pop();
+                return r ? `${badge(r.verdict, r.verdict === 'PASS' ? 'success' : 'danger')} <span class="text-body-secondary">(tavsiye: ${esc(r.reviewer)})</span>` : badge('yok', 'secondary');
+            };
+            const tests = p.tests && p.tests.revision === p.revision
+                ? badge(`${p.tests.passed} geçti / ${p.tests.failed} kaldı`, p.tests.failed === 0 ? 'success' : 'danger')
+                : badge('yok', 'secondary');
+            const decision = p.owner_decision
+                ? `<div class="fw-bold mt-1">Sahip kararı: ${esc(p.owner_decision.decision)} (${esc(p.owner_decision.at)})</div>` : '';
+            const files = (Array.isArray(p.affected_files) ? p.affected_files : []).map((f) => `<span class="font-monospace">${esc(f)}</span>`).join(', ');
+            const history = (Array.isArray(p.history) ? p.history : []).map((h) =>
+                `<li>#${esc(h.seq)} ${esc(h.event)} — ${esc(h.actor)} → ${esc(h.status)} <span class="text-body-secondary">${esc(h.at)}</span></li>`).join('');
+            return `<div class="col-12 col-xl-6"><div class="subpanel h-100">` +
+                `<div class="d-flex justify-content-between gap-2"><span class="fw-bold">${esc(p.id)} — ${esc(p.title)}</span>` +
+                `${badge(PROPOSAL_LABEL[p.status] || p.status, PROPOSAL_TONE[p.status] || 'secondary')}</div>` +
+                `<div class="small">Öneren: ${esc(p.author)} · Risk: ${esc(p.risk_level)} · Revizyon ${esc(p.revision)}</div>` +
+                `<div class="small mt-1">Kod incelemesi: ${check('CODE')}<br>Güvenlik incelemesi: ${check('SECURITY')}<br>Testler: ${tests}</div>` +
+                decision +
+                `<details class="small mt-1"><summary>ayrıntılar</summary>` +
+                `<div><b>Problem:</b> ${esc(p.problem)}</div><div><b>Gerekçe:</b> ${esc(p.motivation)}</div>` +
+                `<div><b>Değişiklik:</b> ${esc(p.proposed_changes)}</div><div><b>Dosyalar:</b> ${files || '-'}</div>` +
+                `<div><b>Geri alma planı:</b> ${esc(p.rollback_plan)}</div><ol class="mb-0">${history}</ol></details>` +
+                `</div></div>`;
+        }
+
+        function updateProposals() {
+            fetchPanel('/api/proposals', 'proposals-summary', (payload) => {
+                const items = Array.isArray(payload.proposals) ? payload.proposals : [];
+                const waiting = Array.isArray(payload.awaiting_owner) ? payload.awaiting_owner.length : 0;
+                document.getElementById('proposals-summary').innerHTML = items.length
+                    ? `${badge(`${waiting} öneri kararınızı bekliyor`, waiting ? 'danger' : 'success')} &nbsp; toplam ${items.length}`
+                    : '<span class="text-body-secondary">Henüz kayıtlı öneri yok.</span>';
+                document.getElementById('proposals-list').innerHTML = items.map(renderProposal).join('');
+            });
+            fetchPanel('/api/memory', 'memory-list', (payload) => {
+                const records = (Array.isArray(payload.records) ? payload.records : []).slice(0, 10);
+                document.getElementById('memory-list').innerHTML = records.length
+                    ? '<ul class="small mb-0">' + records.map((r) =>
+                        `<li>${badge(r.authority, r.authority === 'AUTHORITATIVE' ? 'primary' : 'secondary')} ${badge(r.type, 'light')} ` +
+                        `<b>${esc(r.title)}</b> — ${esc(r.author)}, ${esc(r.created_at)} <span class="text-body-secondary">(kaynak: ${esc(r.source)}${r.status === 'HISTORICAL' ? ', eski sürüm' : ''})</span></li>`).join('') + '</ul>'
+                    : '<span class="text-body-secondary">Henüz hafıza kaydı yok.</span>';
+            });
+        }
+
+        // ---------------------------------------------------------------
         // Organization roster (read-only, /api/organization)
         // ---------------------------------------------------------------
         const ORG_STATUS = {
@@ -1529,6 +1602,7 @@
             updateRiskAccountingPanel();
             updateSystemIntegrityPanel();
             updateTelemetryPanel();
+            updateProposals();
             return updateExecutionGates();
         }
         setInterval(updateSlowPanels, 30000);

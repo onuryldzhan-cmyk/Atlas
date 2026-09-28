@@ -36,7 +36,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 
 from observability.organization import organization_public
-from observability import panel_sources
+from observability import governance_records, panel_sources
 from observability.panel_router import (
     build_observability_router,
     is_loopback_request,
@@ -2302,6 +2302,22 @@ def create_app(
             status_code=200,
             content=organization_public(),
         )
+
+    # Registry v5.34 (owner: "Önce yönetişim temeli"): proposals, Atlas
+    # Memory and agent permissions. Read-only replays of the hash-chained
+    # logs in governance/records/; a corrupted log reads as unavailable.
+    for path, reader in (
+        ("/api/proposals", governance_records.read_proposals),
+        ("/api/memory", governance_records.read_memory),
+        ("/api/permissions", governance_records.read_permissions),
+    ):
+        async def _governance_route(request: Request, _reader=reader) -> JSONResponse:
+            if not is_loopback_request(request):
+                return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+            return JSONResponse(status_code=200, content=await run_in_threadpool(_reader))
+
+        application.add_api_route(path, _governance_route, methods=["GET"],
+                                  response_class=JSONResponse)
 
     @application.get(
         "/api/agent-evidence",
