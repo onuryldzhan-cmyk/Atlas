@@ -20,10 +20,10 @@ Command: `python -m tools.build_rem001_gate1_maps construction --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `f8d5761626c6151c3f3b49d5268d6c5638d24dac` |
-| generated_from_tree | `9a658b27bafd423bc923a7c1f26189ba2ef7bbc7` |
+| generated_from_commit | `8585d120f277597df8d14c1e0274c2a5398f82a4` |
+| generated_from_tree | `262231313a406f48216813438aacb7f18970c3d0` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['atlas_supervisor.py', 'claude/agents/atlas-obsidian-writer.md', 'core/application.py', 'main.py', 'tests/test_application_health_market_signals.py', 'tests/test_loopback_host_header_guard.py', 'tests/test_process_supervisor.py', 'tests/test_web_app_runtime_response_safety.py', 'web_app.py'] |
+| modified_tracked_paths_at_generation | ['main.py', 'tests/test_main_process_heartbeat.py', 'tests/test_process_supervisor.py', 'tlas_supervisor.py'] |
 
 ## Analysis
 
@@ -58,7 +58,7 @@ below: it counted pattern hits, these count resolved call sites.
 | entry_points | `main.py`, `web_app.py`, `atlas_service.py`, `atlas_supervisor.py` |
 | composition_root_canonical | `core/application.py` (ADR-0001) |
 | modules_in_runtime_closure | 108 |
-| classes_defined_in_closure | 385 |
+| classes_defined_in_closure | 387 |
 | construction_sites | 286 |
 | modules_constructing | 33 |
 | classes_constructed | 121 |
@@ -378,7 +378,7 @@ classes and their observed constructors:
 | `exchange/market_feed.py` | `BinancePublicDataProvider` | `atlas_finance/market_data/binance_public_provider.py` | 117 | `MarketFeed::__init__` |
 | `exchange/market_feed.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 369 | `MarketFeed::_require_metadata` |
 | `exchange/market_feed.py` | `MarketFeedService` | `atlas_finance/market_data/market_feed_service.py` | 120 | `MarketFeed::__init__` |
-| `main.py` | `AtlasApplication` | `core/application.py` | 430 | `AtlasProcess::start` |
+| `main.py` | `AtlasApplication` | `core/application.py` | 448 | `AtlasProcess::start` |
 
 ## Classification fields deliberately absent
 

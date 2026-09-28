@@ -1019,7 +1019,11 @@ class ProcessSupervisor:
                     ran_for,
                 )
 
-            if self.policy.resets_counter(ran_for):
+            # A hang is never a healthy run, however long the child lived
+            # before hanging: letting it reset the counter would restart a
+            # process that keeps hanging late forever. Only a run that ended
+            # on its own may forgive earlier attempts.
+            if not was_hung and self.policy.resets_counter(ran_for):
                 if attempt:
                     logger.info(
                         "Atlas had run %.1fs (>= %.0fs); "

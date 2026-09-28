@@ -251,3 +251,80 @@ def test_a_new_failure_episode_is_announced_once_the_interval_passes(
         "heartbeat write recovered" in message
         for message in _heartbeat_messages(caplog, logging.INFO)
     ) == 2
+
+
+class _SlowStopApplication:
+    """stop() blocks until released, like a slow financial-state flush."""
+
+    def __init__(self) -> None:
+        self.running = True
+        self.release = threading.Event()
+        self.entered = threading.Event()
+
+    def stop(self) -> bool:
+        self.entered.set()
+        self.release.wait(timeout=5)
+        return True
+
+
+def test_stop_keeps_the_heartbeat_fresh_while_the_application_stops(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    target = tmp_path / "supervisor_heartbeat.json"
+    monkeypatch.setenv(HEARTBEAT_FILE_ENV, str(target))
+    monkeypatch.setattr(main, "SHUTDOWN_HEARTBEAT_INTERVAL_SECONDS", 0.01)
+
+    process = AtlasProcess()
+    application = _SlowStopApplication()
+    process.application = application
+
+    stopper = threading.Thread(target=process.stop)
+    stopper.start()
+    assert application.entered.wait(timeout=5)
+
+    writes = []
+    for _ in range(3):
+        target.unlink(missing_ok=True)
+        for _ in range(500):
+            if target.exists():
+                break
+            threading.Event().wait(0.005)
+        writes.append(target.exists())
+
+    application.release.set()
+    stopper.join(timeout=5)
+
+    assert writes == [True, True, True]
+    assert not any(
+        thread.name == "atlas-shutdown-heartbeat" and thread.is_alive()
+        for thread in threading.enumerate()
+    )
+
+
+def test_shutdown_heartbeat_is_bounded(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A hung stop() must still go stale for the supervisor."""
+
+    target = tmp_path / "supervisor_heartbeat.json"
+    monkeypatch.setenv(HEARTBEAT_FILE_ENV, str(target))
+    monkeypatch.setattr(main, "SHUTDOWN_HEARTBEAT_INTERVAL_SECONDS", 0.01)
+    monkeypatch.setattr(main, "SHUTDOWN_HEARTBEAT_MAX_SECONDS", 0.05)
+
+    process = AtlasProcess()
+    never = threading.Event()
+    keeper = process._start_shutdown_heartbeat(never)
+
+    assert keeper is not None
+    keeper.join(timeout=5)
+    assert not keeper.is_alive()
+
+
+def test_no_shutdown_heartbeat_without_a_heartbeat_file(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv(HEARTBEAT_FILE_ENV, raising=False)
+
+    assert AtlasProcess()._start_shutdown_heartbeat(threading.Event()) is None

@@ -412,9 +412,12 @@ def test_child_environment_carries_the_heartbeat_file_only_when_configured() -> 
         heartbeat_file=None,
     )
 
+    # str(Path(...)) is the platform's own spelling of the path: backslashes
+    # on Windows, forward slashes elsewhere. Comparing against it keeps the
+    # contract (the configured file is carried verbatim) portable to CI.
     assert (
         with_heartbeat._child_environment()[ENV_HEARTBEAT_FILE]
-        == "C:\\atlas\\heartbeat.json"
+        == str(Path("C:/atlas/heartbeat.json"))
     )
     assert ENV_HEARTBEAT_FILE not in without_heartbeat._child_environment()
 
@@ -1031,6 +1034,42 @@ def test_repeated_startup_hangs_exhaust_the_restart_budget() -> None:
 
     backoffs = [wait for wait in event.waits if wait != atlas_supervisor.POLL_INTERVAL_SECONDS]
     assert backoffs == [0.001, 0.002, 0.003, 0.004, 0.005]
+
+
+def test_late_hangs_never_reset_the_restart_budget() -> None:
+    """A child that runs healthily past the reset window, then hangs.
+
+    Each child heartbeats for 610s (> the 600s healthy-run window) and then
+    goes silent. If a hang could count as a healthy run, the counter would
+    reset every cycle and this would restart forever; instead the budget
+    is exhausted after the original launch plus five restarts.
+    """
+
+    clock = _SimulatedTime()
+    launched_at: list[float] = []
+
+    class _Launches(list):
+        def pop(self, index: int = -1) -> Any:
+            launched_at.append(clock.now)
+            return super().pop(index)
+
+    children: list[Any] = _Launches(_HangingChild(clock=clock) for _ in range(6))
+
+    def read(path: Path) -> Any:
+        del path
+        if not launched_at:
+            return None
+        alive_for = min(clock.now - launched_at[-1], 610.0)
+        return _WALL_NS + int(launched_at[-1] + alive_for) * 1_000_000_000
+
+    supervisor, event, environments = _heartbeat_supervisor(
+        clock,
+        children,
+        heartbeat_mtime=read,
+    )
+
+    assert supervisor.run() == 1
+    assert len(environments) == 6
 
 
 # ---------------------------------------------------------------------

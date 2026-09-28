@@ -53,6 +53,14 @@ HEARTBEAT_FILE_ENV = "ATLAS_SUPERVISOR_HEARTBEAT_FILE"
 # target that flaps between failing and working cannot flood the log.
 HEARTBEAT_FAILURE_LOG_INTERVAL_SECONDS = 300.0
 
+# While AtlasApplication.stop() flushes financial state the main loop no
+# longer ticks, so a stop slower than the supervisor's staleness window would
+# read as a hang and get the process killed mid-flush. A background writer
+# keeps the heartbeat fresh during stop(), but only for this long: a stop()
+# that is itself hung must still become visible to the supervisor.
+SHUTDOWN_HEARTBEAT_MAX_SECONDS = 120.0
+SHUTDOWN_HEARTBEAT_INTERVAL_SECONDS = 1.0
+
 
 # ============================================================
 # LOGGING
@@ -683,7 +691,16 @@ class AtlasProcess:
             "Stopping AtlasApplication"
         )
 
-        stopped = self.application.stop()
+        finished = threading.Event()
+        keeper = self._start_shutdown_heartbeat(finished)
+
+        try:
+            stopped = self.application.stop()
+        finally:
+            finished.set()
+
+            if keeper is not None:
+                keeper.join(timeout=SHUTDOWN_HEARTBEAT_INTERVAL_SECONDS * 2)
 
         if not stopped:
             self.exit_code = max(
@@ -696,6 +713,44 @@ class AtlasProcess:
             )
 
         return stopped
+
+    def _start_shutdown_heartbeat(
+        self,
+        finished: threading.Event,
+    ) -> threading.Thread | None:
+        """Keep the supervisor heartbeat fresh while stop() runs, bounded.
+
+        Writes every SHUTDOWN_HEARTBEAT_INTERVAL_SECONDS until ``finished``
+        is set or SHUTDOWN_HEARTBEAT_MAX_SECONDS have passed, whichever is
+        first. The bound is deliberate: a hung stop() must still go stale.
+        """
+
+        if self._heartbeat_file is None:
+            return None
+
+        def keep_alive() -> None:
+            deadline = time.monotonic() + SHUTDOWN_HEARTBEAT_MAX_SECONDS
+
+            while time.monotonic() < deadline:
+                self._write_heartbeat()
+
+                if finished.wait(timeout=SHUTDOWN_HEARTBEAT_INTERVAL_SECONDS):
+                    return
+
+            logger.warning(
+                "Shutdown still running after %.0fs; supervisor heartbeat "
+                "no longer refreshed",
+                SHUTDOWN_HEARTBEAT_MAX_SECONDS,
+            )
+
+        keeper = threading.Thread(
+            target=keep_alive,
+            name="atlas-shutdown-heartbeat",
+            daemon=True,
+        )
+        keeper.start()
+
+        return keeper
 
     # --------------------------------------------------------
     # COMPOSITION HOOKS
