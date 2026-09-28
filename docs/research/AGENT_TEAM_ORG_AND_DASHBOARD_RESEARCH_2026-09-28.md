@@ -84,3 +84,12 @@
 8. Phase 10: Shadow, then small live capital (locked).
 
 Nothing here changes an authority: live DENIED, production NONE, autonomous deployment DENIED.
+
+## 4. Follow-up research (agents page, 2026-09-28)
+
+| Source | Idea taken | Decision |
+|---|---|---|
+| [TradingAgents UIs](https://github.com/Kevoyuan/tradingagents-ui), [TradingAgents-WebUI](https://github.com/dttxorg/TradingAgents-WebUI) | A live agent monitor: per-agent status, reports and progress | **Adopted.** The new `/agents` page shows each running agent's per-coin vote and its agreement with the final decision. |
+| [Tabler](https://github.com/tabler/tabler) (MIT, Bootstrap) | A clean admin layout | **Not vendored.** AdminLTE 4 (the same Bootstrap 5 family) is already vetted and pinned; a second UI kit would add weight without a new capability. |
+| [Apache ECharts](https://github.com/apache/echarts) (Apache-2.0) | Tree / organization charts | **Rejected for now.** The 2D organization chart is dependency-free inline SVG (no new third-party code to vet). Reconsider in Phase 8 if charts grow. |
+| [OctoBot](https://github.com/drakkar-software/octobot), [MyCryptoBot](https://github.com/diogomatoschaves/MyCryptoBot), [Freqtrade](https://github.com/freqtrade/freqtrade) | A unified portfolio dashboard, open positions and statistics | Positions with live P&L need the per-position exposure decision (see registry v5.24 Q4); queued for Phase 8. |

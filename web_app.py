@@ -1779,6 +1779,28 @@ def create_app(
         )
 
     @application.get(
+        "/agents",
+        response_class=HTMLResponse,
+    )
+    async def agents_page(
+        request: Request,
+    ) -> Response:
+        # Registry v5.29: the organization / agents page. Static shell; all
+        # data comes from the read-only /api/organization, /api/signals and
+        # /api/agent-evidence endpoints it polls. Guarded like every page.
+        if not is_loopback_request(request):
+            return JSONResponse(
+                status_code=403,
+                content=NON_LOOPBACK_RESPONSE,
+            )
+
+        return templates.TemplateResponse(
+            request=request,
+            name="agents.html",
+            context={},
+        )
+
+    @application.get(
         "/dashboard",
         response_class=HTMLResponse,
     )

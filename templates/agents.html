@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+{#
+  Atlas Agents page (registry v5.29). Loopback-only, read-only.
+  Data: /api/organization (roster), /api/signals (live worker-agent votes),
+  /api/agent-evidence (macro / volatility evidence). No new dependency: the
+  2D organization chart is inline SVG; styles come from the vendored AdminLTE.
+#}
+<html lang="tr" data-bs-theme="dark" data-lte-color-mode="off">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Atlas AI — Ajanlar</title>
+    <link rel="stylesheet" href="/assets/adminlte.min.css">
+    <style>
+        :root { --org-active: var(--bs-success); --org-partial: var(--bs-warning); --org-planned: var(--bs-secondary); }
+        body { background: var(--bs-body-bg); }
+        .atlas-nav a { color: var(--bs-secondary-color); text-decoration: none; padding: .35rem .75rem; border-radius: .4rem; }
+        .atlas-nav a.active, .atlas-nav a:hover { color: var(--bs-body-color); background: var(--bs-tertiary-bg); }
+        .org-svg { width: 100%; height: auto; display: block; }
+        .org-node rect { rx: 8; ry: 8; stroke-width: 1.5; cursor: pointer; }
+        .org-node text { font-size: 11px; fill: var(--bs-body-color); pointer-events: none; }
+        .org-node .sub { font-size: 9px; fill: var(--bs-secondary-color); }
+        .org-node.ACTIVE rect { fill: rgba(25,135,84,.18); stroke: var(--org-active); }
+        .org-node.PARTIAL rect { fill: rgba(255,193,7,.12); stroke: var(--org-partial); }
+        .org-node.PLANNED rect { fill: rgba(108,117,125,.10); stroke: var(--org-planned); stroke-dasharray: 4 3; }
+        .org-node.selected rect { stroke-width: 3; }
+        .org-link { stroke: var(--bs-border-color); stroke-width: 1.2; fill: none; }
+        .tier-label { font-size: 10px; fill: var(--bs-secondary-color); text-transform: uppercase; letter-spacing: .05em; }
+        .agent-tile { border: 1px solid var(--bs-border-color-translucent); border-radius: .5rem; padding: .75rem; height: 100%; }
+        .vote { font-family: var(--bs-font-monospace); font-size: .8rem; }
+        .rule { border-left: 3px solid var(--bs-primary); padding-left: .6rem; margin-bottom: .4rem; font-size: .875rem; }
+    </style>
+</head>
+<body class="layout-fixed">
+<div class="app-wrapper">
+    <nav class="app-header navbar navbar-expand bg-body border-bottom">
+        <div class="container-fluid">
+            <span class="navbar-brand fw-bold"><span class="text-primary">ATLAS AI</span> Terminal</span>
+            <div class="atlas-nav d-flex gap-1">
+                <a href="/dashboard">Panel</a>
+                <a href="/agents" class="active" aria-current="page">Ajanlar &amp; Organizasyon</a>
+            </div>
+            <span class="small text-body-secondary d-none d-md-inline">loopback-only · yalnız okur</span>
+        </div>
+    </nav>
+    <main class="app-main">
+        <div class="app-content py-3">
+            <div class="container-fluid">
+
+                <div id="org-kpis" class="row g-2 mb-3">Yükleniyor...</div>
+
+                <section class="card card-primary card-outline mb-3" aria-labelledby="chart-title">
+                    <div class="card-header"><h3 id="chart-title" class="card-title">Organizasyon şeması (2B)</h3></div>
+                    <div class="card-body">
+                        <div class="d-flex flex-wrap gap-3 small mb-2">
+                            <span><span class="badge text-bg-success">Aktif</span> çalışan kodla destekli</span>
+                            <span><span class="badge text-bg-warning">Kısmi</span> bir parçası var</span>
+                            <span><span class="badge text-bg-secondary">Planlı</span> yol haritasındaki fazda</span>
+                            <span class="text-body-secondary">Bir kutuya tıklayın → ayrıntı</span>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-12 col-xxl-9"><div id="org-chart" style="overflow-x:auto"></div></div>
+                            <div class="col-12 col-xxl-3"><div id="org-detail" class="agent-tile">Bir birim seçin.</div></div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="card card-success card-outline mb-3" aria-labelledby="live-title">
+                    <div class="card-header"><h3 id="live-title" class="card-title">Canlı ajan monitörü (çalışan ajanlar)</h3></div>
+                    <div class="card-body">
+                        <div id="live-agents" class="row g-2">Yükleniyor...</div>
+                        <div class="small text-body-secondary mt-2">Her ajan her coin için bir oy verir (kanıt). Oyların birleşimi karardır;
+                            kararı <b>ajanlar değil</b> deterministik risk zinciri onaylar. "karara uyum" = ajanın oyu, son kararla aynı olan coin sayısı.</div>
+                    </div>
+                </section>
+
+                <section class="card card-secondary card-outline mb-3" aria-labelledby="rules-title">
+                    <div class="card-header"><h3 id="rules-title" class="card-title">Ajan çalışma kuralları (vizyon belgelerinden)</h3></div>
+                    <div class="card-body">
+                        <div class="rule">Yetenek yetki değildir: araştırma ajanı araştırır ama sermaye harcayamaz; kod ajanı kod yazar ama tek başına yayına alamaz; risk ajanı işlemi reddedebilir ama stratejiyi tek başına değiştiremez.</div>
+                        <div class="rule">Araştırma ajanı yalnızca rapor hazırlar; kod ajanı yalnızca taslak oluşturur; test ajanı yalnızca sandbox'ta çalışır.</div>
+                        <div class="rule">Hiçbir ajan hem değişikliği hazırlayan, hem test eden, hem de canlıya alan taraf olamaz.</div>
+                        <div class="rule">Her ajan doğru kabul edilmez: kararı hangi ajanın verdiği izlenir; ajanlar kendi başarısını abartamaz.</div>
+                        <div class="rule">Yapay zekâ kararı asla doğrudan execution'a gitmez: Karar → Risk → Sermaye → Execution Manager.</div>
+                        <div class="rule">Bir yapay zekâ "yönetici" yetki dağıtamaz: yetki yönlendirmesi deterministik politikadır. Canlı para KAPALI.</div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+</div>
+<script>
+    function esc(value) {
+        return String(value === undefined || value === null ? 'UNKNOWN' : value)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    const STATUS_LABEL = { ACTIVE: ['Aktif', 'success'], PARTIAL: ['Kısmi', 'warning'], PLANNED: ['Planlı', 'secondary'] };
+    const TIER_LABEL = {
+        OWNER: 'Owner', CEO_AI: 'CEO AI', DIRECTOR_AI: 'Director AI', EXECUTIVE_ASSISTANT: 'Executive Assistant',
+        DEPARTMENT: 'Departmanlar', WORKER_AGENT: 'Worker Agents', SPECIALIZED_UNIT: 'Specialized AI Units', MICRO_AGENT: 'Micro Agents',
+    };
+    // org unit id -> fusion agent key used by /api/signals
+    const WORKER_KEYS = { agent_technical: 'technical', agent_macro: 'macro', agent_sentiment: 'sentiment',
+                          agent_risk: 'risk', agent_momentum: 'momentum' };
+    let orgUnits = [];
+
+    function statusBadge(status) {
+        const meta = STATUS_LABEL[status] || [status, 'secondary'];
+        return `<span class="badge text-bg-${meta[1]}">${esc(meta[0])}</span>`;
+    }
+
+    function truncate(text, max) {
+        const s = String(text);
+        return s.length > max ? s.slice(0, max - 1) + '…' : s;
+    }
+
+    // Layout: one row per tier (departments wrap into several rows), nodes
+    // evenly spaced, each non-owner row linked to the row above.
+    function layoutOrg(units, tiers, perRow) {
+        const nodeW = 150, nodeH = 40, gapX = 12, rowGap = 34, labelW = 110;
+        const rows = [];
+        tiers.forEach((tier) => {
+            const members = units.filter((u) => u.tier === tier);
+            for (let i = 0; i < members.length; i += perRow) {
+                rows.push({ tier, first: i === 0, members: members.slice(i, i + perRow) });
+            }
+        });
+        const widest = Math.max(1, ...rows.map((r) => r.members.length));
+        const width = labelW + widest * (nodeW + gapX);
+        const nodes = [];
+        rows.forEach((row, r) => {
+            const rowWidth = row.members.length * (nodeW + gapX) - gapX;
+            const x0 = labelW + (width - labelW - rowWidth) / 2;
+            row.members.forEach((unit, i) => {
+                nodes.push({ unit, row: r, x: x0 + i * (nodeW + gapX), y: 10 + r * (nodeH + rowGap), w: nodeW, h: nodeH });
+            });
+        });
+        return { rows, nodes, width, height: 20 + rows.length * (nodeH + rowGap), labelW, nodeH, rowGap };
+    }
+
+    function renderOrgChart(units, tiers) {
+        const L = layoutOrg(units, tiers, 6);
+        const links = [];
+        L.rows.forEach((row, r) => {
+            if (r === 0) return;
+            const parents = L.nodes.filter((n) => n.row === r - 1);
+            const children = L.nodes.filter((n) => n.row === r);
+            if (!parents.length) return;
+            const px = parents.reduce((a, n) => a + n.x + n.w / 2, 0) / parents.length;
+            const py = parents[0].y + L.nodeH;
+            children.forEach((c) => {
+                const cx = c.x + c.w / 2, cy = c.y, my = (py + cy) / 2;
+                links.push(`<path class="org-link" d="M${px},${py} C${px},${my} ${cx},${my} ${cx},${cy}"/>`);
+            });
+        });
+        const labels = L.rows.filter((row) => row.first).map((row) => {
+            const r = L.rows.indexOf(row);
+            return `<text class="tier-label" x="4" y="${10 + r * (L.nodeH + L.rowGap) + L.nodeH / 2 + 3}">${esc(TIER_LABEL[row.tier] || row.tier)}</text>`;
+        });
+        const nodes = L.nodes.map((n) =>
+            `<g class="org-node ${esc(n.unit.status)}" data-unit="${esc(n.unit.id)}" tabindex="0" role="button" aria-label="${esc(n.unit.name)}">` +
+            `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}"/>` +
+            `<text x="${n.x + 8}" y="${n.y + 17}">${esc(truncate(n.unit.name, 24))}</text>` +
+            `<text class="sub" x="${n.x + 8}" y="${n.y + 31}">${esc((STATUS_LABEL[n.unit.status] || [n.unit.status])[0])}` +
+            `${n.unit.phase === null || n.unit.phase === undefined ? '' : ' · Faz ' + esc(n.unit.phase)}</text></g>`);
+        document.getElementById('org-chart').innerHTML =
+            `<svg class="org-svg" viewBox="0 0 ${L.width} ${L.height}" style="min-width:${Math.min(L.width, 900)}px" role="img" aria-label="Atlas organizasyon şeması">` +
+            links.join('') + labels.join('') + nodes.join('') + '</svg>';
+        return L;
+    }
+
+    function renderDetail(unit) {
+        const list = (items) => (items || []).map((x) => `<li>${esc(x)}</li>`).join('');
+        const code = (unit.implemented_by || []).length
+            ? `<div class="small mt-2 text-body-secondary">kod:</div><ul class="small font-monospace">${list(unit.implemented_by)}</ul>` : '';
+        document.getElementById('org-detail').innerHTML =
+            `<div class="d-flex justify-content-between gap-2"><span class="fw-bold">${esc(unit.name)}</span>${statusBadge(unit.status)}</div>` +
+            `<div class="small text-body-secondary">${esc(TIER_LABEL[unit.tier] || unit.tier)}` +
+            `${unit.phase === null || unit.phase === undefined ? '' : ' · Faz ' + esc(unit.phase)}` +
+            `${unit.can_execute ? ' · <span class="text-warning">onay yetkisi (deterministik, PAPER)</span>' : ''}</div>` +
+            `<p class="small mt-2">${esc(unit.mission)}</p>` +
+            `<div class="small text-success">yapabilir</div><ul class="small">${list(unit.can)}</ul>` +
+            `<div class="small text-danger">yapamaz</div><ul class="small">${list(unit.cannot)}</ul>` + code;
+        document.querySelectorAll('.org-node').forEach((g) => g.classList.toggle('selected', g.getAttribute('data-unit') === unit.id));
+    }
+
+    function renderKpis(payload) {
+        const c = payload.counts || {};
+        const kpi = (label, value, tone) => `<div class="col-6 col-md-3"><div class="agent-tile text-center">` +
+            `<div class="small text-body-secondary">${label}</div><div class="fs-4 fw-bold text-${tone}">${esc(value)}</div></div></div>`;
+        document.getElementById('org-kpis').innerHTML =
+            kpi('toplam birim', (payload.units || []).length, 'body') + kpi('aktif', c.ACTIVE ?? 0, 'success') +
+            kpi('kısmi', c.PARTIAL ?? 0, 'warning') + kpi('planlı', c.PLANNED ?? 0, 'secondary');
+    }
+
+    // Live monitor: per worker agent, its vote per symbol and how often it
+    // agrees with the final decision (a descriptive count, not a score).
+    function renderLiveAgents(signalsPayload) {
+        const signals = (signalsPayload && signalsPayload.signals) || {};
+        const symbols = Object.keys(signals).sort();
+        const workers = orgUnits.filter((u) => u.tier === 'WORKER_AGENT');
+        if (!workers.length) return;
+        document.getElementById('live-agents').innerHTML = workers.map((unit) => {
+            const key = WORKER_KEYS[unit.id];
+            let agree = 0, voted = 0;
+            const rows = symbols.map((symbol) => {
+                const signal = signals[symbol] || {};
+                const agent = (signal.agents || {})[key] || {};
+                if (agent.status === 'EVALUATED') {
+                    voted += 1;
+                    if (agent.action === signal.action) agree += 1;
+                    const tone = agent.action === 'BUY' ? 'success' : agent.action === 'SELL' ? 'danger' : 'secondary';
+                    return `<div class="d-flex justify-content-between vote"><span>${esc(symbol)}</span>` +
+                        `<span class="text-${tone}">${esc(agent.action)} ${esc(agent.score)}</span></div>`;
+                }
+                return `<div class="d-flex justify-content-between vote text-body-secondary"><span>${esc(symbol)}</span>` +
+                    `<span title="${esc(agent.reason || agent.status || '')}">${agent.status ? 'hariç' : 'veri yok'}</span></div>`;
+            }).join('') || '<div class="small text-body-secondary">Henüz sinyal yok.</div>';
+            return `<div class="col-12 col-md-6 col-xl"><div class="agent-tile">` +
+                `<div class="d-flex justify-content-between"><span class="fw-bold">${esc(unit.name)}</span>${statusBadge(unit.status)}</div>` +
+                `<div class="small text-body-secondary mb-1">${esc(unit.mission)}</div>${rows}` +
+                `<div class="small mt-1 text-body-secondary">karara uyum: ${voted ? agree + '/' + voted : 'n/a'}</div></div></div>`;
+        }).join('');
+    }
+
+    async function getJson(url) {
+        try {
+            const res = await fetch(url);
+            return await res.json();
+        } catch (error) {
+            return null;
+        }
+    }
+
+    async function refreshLive() {
+        renderLiveAgents(await getJson('/api/signals'));
+    }
+
+    async function init() {
+        const org = await getJson('/api/organization');
+        if (!org || org.available !== true) {
+            document.getElementById('org-kpis').innerHTML = '<span class="badge text-bg-warning">unavailable</span>';
+            return;
+        }
+        orgUnits = org.units || [];
+        renderKpis(org);
+        renderOrgChart(orgUnits, org.tiers || []);
+        document.getElementById('org-chart').addEventListener('click', (event) => {
+            const g = event.target.closest('[data-unit]');
+            const unit = g && orgUnits.find((u) => u.id === g.getAttribute('data-unit'));
+            if (unit) renderDetail(unit);
+        });
+        const owner = orgUnits.find((u) => u.id === 'owner');
+        if (owner) renderDetail(owner);
+        refreshLive();
+        setInterval(refreshLive, 10000);
+    }
+
+    if (typeof window !== 'undefined' && typeof document !== 'undefined' && document.addEventListener && !window.__ATLAS_TEST__) {
+        document.addEventListener('DOMContentLoaded', init);
+    }
+</script>
+</body>
+</html>
