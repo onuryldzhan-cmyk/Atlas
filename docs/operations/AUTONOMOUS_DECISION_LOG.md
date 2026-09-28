@@ -43,5 +43,5 @@ Status as of registry v5.31. Resolved items are kept for the record.
 | Q3 | Paper fee rate versus the real account tier | **RESOLVED for now** (v5.24): 0.1% per side until the owner's tier is known |
 | Q4 | Net P&L and fees on the panel | **RESOLVED** (v5.24): account-level totals only; per-trade details stay withheld |
 | Q5 | Phase 4 backtest method | **RESOLVED** (v5.30/v5.31): macro-neutral replay of the real chain, labelled |
-| Q7 | Staged entry/exit parameters (tranches, take-profit ladder, −3% confirmed stop) | **OPEN**: approve or adjust the table in `governance/ATLAS_STAGED_ENTRY_EXIT_PROPOSAL_v1.0.md`; then backtest first, runtime second |
+| Q7 | Staged entry/exit parameters | **APPROVED** (v5.32): recommended numbers, with the owner's 50/35/15 capital sleeves. Implemented in the backtest; the runtime package waits for the owner's backtest results |
 | Q6 | Phase 6 AI agents (AI-001) | **OPEN**: specification PART_1 is missing; the owner decides the scope before any LLM agent is built |

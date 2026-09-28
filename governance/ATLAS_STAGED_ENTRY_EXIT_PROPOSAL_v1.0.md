@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | `PROPOSED`. Design only; implementation **awaits the owner's approval of the parameters below**. |
+| Status | **APPROVED by the owner 2026-09-28** (registry v5.32): recommended parameters. Part D replaced by the owner's capital sleeves: LOW 50% / MEDIUM 35% / HIGH 15% of capital across all symbols. Implemented in `tools/backtest_replay.py`; the runtime waits for the backtest results. |
 | Tier | CRITICAL: it changes how positions are opened, grown and closed (execution + risk). |
 | Why it is not auto-decided | The delegation covers recommended options, but trading-behaviour changes need owner approval (CLAUDE.md "ask when production behavior changes significantly"; decision-log mandate). |
 | Authority | PAPER only. `live_authority=DENIED` unchanged. |

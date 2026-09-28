@@ -114,3 +114,92 @@ def test_round_trip_trades_are_booked_with_fees_and_net():
         assert trade.exit_price > trade.entry_price                                          # rising series
     assert summary["net_pnl"] == sum((t.net for t in result.trades), Decimal("0"))
     assert summary["fees"] > 0
+
+
+# ---------------- staged entries/exits and sleeves (registry v5.32, owner-approved)
+
+def _path(scenario, warmup=205, base=100.0):
+    """Warm-up candles oscillating +-0.01% around `base`, then the scenario closes."""
+    import math
+    closes = [base * (1 + 0.0001 * math.sin(i)) for i in range(warmup)] + list(scenario)
+    rows = []
+    for i, c in enumerate(closes):
+        open_ms = 1_700_000_000_000 + i * 60_000
+        rows.append([open_ms, f"{c:.4f}", f"{c:.4f}", f"{c:.4f}", f"{c:.4f}", "10", open_ms + 59_999, "0", 0, "4", "400", "0"])
+    return rows
+
+
+class BuyOnce:
+    def __init__(self, risk_level="LOW"):
+        self.done = False
+        self.risk_level = risk_level
+
+    def analyze_and_decide(self, symbol, market_data):
+        action = "HOLD" if self.done else "BUY"
+        self.done = True
+        return {"symbol": symbol, "action": action, "confidence": 95.0, "risk_level": self.risk_level}
+
+
+def test_single_wick_does_not_stop_but_two_closes_below_minus_3pct_sell_everything():
+    scenario = [96.5, 100.0, 100.0] + [96.5, 96.4] + [96.3] * 3
+    result = bt.replay({"BTCUSDT": _path(scenario)}, step=1, staged=True, brain_factory=BuyOnce)
+    assert [t.exit_reason for t in result.trades] == ["HARD_STOP"]
+    trade = result.trades[0]
+    assert trade.exit_price.quantize(Decimal("0.0001")) == Decimal("96.4000")  # 2nd confirming close, not the wick
+    assert trade.net < 0 and result.open_trades == []
+
+
+def test_take_profit_ladder_then_trailing_stop():
+    scenario = [100.5, 101.6, 102.0, 103.1, 104.0, 102.4, 102.0]
+    result = bt.replay({"BTCUSDT": _path(scenario)}, step=1, staged=True, brain_factory=BuyOnce)
+    assert result.partial_sells == 2                       # +1.5% and +3% steps sold part
+    assert [t.exit_reason for t in result.trades] == ["TRAILING_STOP"]
+    trade = result.trades[0]
+    assert trade.net > 0 and trade.exit_fee > 0
+    # average exit is between the first take-profit and the trailing exit
+    assert Decimal("101.5") < trade.exit_price < Decimal("104")
+
+
+def test_three_tranches_on_confirmation_never_exceed_the_target():
+    class AlwaysBuy:
+        def analyze_and_decide(self, symbol, market_data):
+            return {"symbol": symbol, "action": "BUY", "confidence": 95.0, "risk_level": "LOW"}
+
+    scenario = [100.0 * (1 + 0.0001 * i) for i in range(1, 60)]   # slow rise, below +1.5%
+    result = bt.replay({"BTCUSDT": _path(scenario)}, step=1, staged=True, brain_factory=AlwaysBuy)
+    assert result.tranche_adds == 2                         # 3 tranches in total
+    held = result.open_trades[0]
+    target = bt.CAPITAL * Decimal("0.40")                   # LOW per-position cap
+    assert held.cost + held.entry_fee <= target + Decimal("0.01")
+    assert held.cost + held.entry_fee > target * Decimal("0.99")
+
+
+def test_no_tranche_added_below_average_entry():
+    class AlwaysBuy:
+        def analyze_and_decide(self, symbol, market_data):
+            return {"symbol": symbol, "action": "BUY", "confidence": 95.0, "risk_level": "LOW"}
+
+    scenario = [99.5] * 40                                  # below entry, above the -3% stop
+    result = bt.replay({"BTCUSDT": _path(scenario)}, step=1, staged=True, brain_factory=AlwaysBuy)
+    assert result.tranche_adds == 0
+
+
+def test_sleeves_cap_each_bucket_across_all_symbols():
+    class AlwaysBuyHigh:
+        def analyze_and_decide(self, symbol, market_data):
+            return {"symbol": symbol, "action": "BUY", "confidence": 95.0, "risk_level": "HIGH"}
+
+    symbols = ("BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT")
+    data = {s: _path([100.0] * 5) for s in symbols}
+    capped = bt.replay(data, step=1, sleeves=True, brain_factory=AlwaysBuyHigh)
+    uncapped = bt.replay(data, step=1, sleeves=False, brain_factory=AlwaysBuyHigh)
+    total = lambda r: sum((t.cost + t.entry_fee for t in r.open_trades), Decimal("0"))
+    assert total(capped) <= bt.CAPITAL * Decimal("0.15") + Decimal("0.01")   # "1.5 of 10"
+    assert total(uncapped) > total(capped)
+    assert capped.buy_rejections.get("SLEEVE_FULL", 0) > 0
+
+
+def test_baseline_mode_is_unchanged_by_staged_code():
+    scenario = [96.5, 96.4, 96.3]
+    result = bt.replay({"BTCUSDT": _path(scenario)}, step=1, staged=False, brain_factory=BuyOnce)
+    assert result.trades == [] and len(result.open_trades) == 1   # no stop in baseline mode
