@@ -189,3 +189,30 @@ def test_fee_that_would_push_a_fill_below_min_notional_is_refused_at_admission(t
     assert app.execution.execution_halted is False
     assert app.execution.recovery_required is False
     assert "BTCUSDT" not in snapshot(app)["positions"]
+
+
+def test_partial_sell_charges_exit_fee_and_apportions_entry_fees(tmp_path):
+    """Audit LOW (v5.23): a partial exit pays its own exit fee and releases
+    entry fees pro rata; the rest stays on the remaining position."""
+    app = app_with(tmp_path, RATE)
+    assert app.execution.execute(buy_decision(app), risk_state())["status"] == "PAPER_EXECUTED"
+    held = snapshot(app)["positions"]["BTCUSDT"]
+    base, entry_fee = D(str(held["base_quantity"])), D(str(held["entry_fees"]))
+    step = app.execution.instrument_rules.get("BTCUSDT").quantity_step
+    sold = (base / 2 // step) * step
+    fees_before = D(str(snapshot(app)["fees"]))
+
+    exposure = PositionExposure("BTCUSDT", base, D("10"), base * D("10"))
+    sell = ExecutionRequest("BTCUSDT", "SELL", 10, format(sold * D("10"), "f"), confidence=90,
+                            risk="HIGH", request_id="p1", reduce_only=True).to_dict()
+    result = app.execution.execute(sell, risk_state_with(exposure))
+    assert result["success"] is True, result
+
+    s = snapshot(app)
+    remaining = s["positions"]["BTCUSDT"]
+    assert D(str(remaining["base_quantity"])) == base - sold
+    exit_fee = (sold * D("10") * RATE).quantize(Q, rounding=ROUND_UP)
+    assert D(str(s["fees"])) == fees_before + exit_fee
+    # remaining entry fees are the unsold share (within rounding of one quantum)
+    expected_remaining = entry_fee * (base - sold) / base
+    assert abs(D(str(remaining["entry_fees"])) - expected_remaining) <= D("0.00000002")
