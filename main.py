@@ -35,7 +35,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from core.application import AtlasApplication
+from core.application import AtlasApplication, resolve_state_directory
+from core.audit_event_store import AuditChainIntegrityError
 
 
 LOGGER_NAME = "AtlasAI.Main"
@@ -60,6 +61,24 @@ HEARTBEAT_FAILURE_LOG_INTERVAL_SECONDS = 300.0
 # that is itself hung must still become visible to the supervisor.
 SHUTDOWN_HEARTBEAT_MAX_SECONDS = 120.0
 SHUTDOWN_HEARTBEAT_INTERVAL_SECONDS = 1.0
+
+# Exit codes atlas_supervisor.py must NOT restart on (it keeps its own copy,
+# checked equal by tests). A restart cannot fix either condition: corrupted
+# durable state fails the same check again, and a second instance on the
+# same state root is exactly what corrupts it. Chosen outside what Windows
+# and the C runtime produce on their own (abort() exits 3 on Windows).
+INTEGRITY_HALT_EXIT_CODE = 75
+ALREADY_RUNNING_EXIT_CODE = 76
+
+# One Atlas per state root. The OS drops the lock when the process dies, so
+# a crash never leaves a stale lock behind.
+INSTANCE_LOCK_FILE_NAME = "atlas.instance.lock"
+
+# Windows releases a dead process's lock "eventually", not instantly, so a
+# supervisor restart right after a crash retries briefly before concluding
+# that another instance really is running.
+INSTANCE_LOCK_RETRY_SECONDS = 5.0
+INSTANCE_LOCK_RETRY_INTERVAL_SECONDS = 0.25
 
 
 # ============================================================
@@ -347,6 +366,7 @@ class AtlasProcess:
         # all), and no heartbeat is written - matching exactly what an
         # unsupervised or directly-run process has always done.
         self._heartbeat_file = self._resolve_heartbeat_file()
+        self._instance_lock: Any = None
 
         # Write-failure logging state for _write_heartbeat: logged on the
         # transition into failure and back out, never per tick.
@@ -440,6 +460,9 @@ class AtlasProcess:
         """
         Construct and start Atlas.
         """
+
+        if not self._acquire_instance_lock():
+            return False
 
         logger.info(
             "Constructing AtlasApplication"
@@ -715,6 +738,87 @@ class AtlasProcess:
 
         return stopped
 
+    def _acquire_instance_lock(self) -> bool:
+        """Hold an exclusive OS lock on the state root for this process.
+
+        Two Atlas processes on one state root interleave their writes and
+        fork the audit chain. A held lock means another instance is
+        running: exit with ALREADY_RUNNING_EXIT_CODE, which the supervisor
+        does not restart on. Any other failure to take the lock is a normal
+        startup failure (exit 1) - never "run anyway without a lock".
+        """
+
+        try:
+            path = resolve_state_directory() / INSTANCE_LOCK_FILE_NAME
+            handle = open(path, "a+b")
+        except Exception as exc:
+            self.exit_code = 1
+            self.shutdown_reason = f"Instance lock unavailable: {exc}"
+            logger.critical(self.shutdown_reason)
+            return False
+
+        if not self._lock_with_retry(handle):
+            handle.close()
+            self.exit_code = ALREADY_RUNNING_EXIT_CODE
+            self.shutdown_reason = (
+                f"Another Atlas instance holds {path}; refusing to start a "
+                "second one on the same state"
+            )
+            logger.critical(self.shutdown_reason)
+            return False
+
+        self._instance_lock = handle
+
+        return True
+
+    @staticmethod
+    def _try_lock(handle: Any) -> bool:
+        """One non-blocking attempt at the exclusive lock."""
+
+        try:
+            if os.name == "nt":
+                import msvcrt
+
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            return False
+
+        return True
+
+    def _lock_with_retry(self, handle: Any) -> bool:
+        """Try the lock until it is taken or the bounded retry runs out."""
+
+        deadline = time.monotonic() + INSTANCE_LOCK_RETRY_SECONDS
+
+        while True:
+            if self._try_lock(handle):
+                return True
+
+            if time.monotonic() >= deadline:
+                return False
+
+            time.sleep(INSTANCE_LOCK_RETRY_INTERVAL_SECONDS)
+
+    def _release_instance_lock(self) -> None:
+        """Release the state-root lock; closing the handle drops it."""
+
+        handle = self._instance_lock
+
+        if handle is None:
+            return
+
+        self._instance_lock = None
+
+        try:
+            handle.close()
+        except OSError:
+            pass
+
     def _start_shutdown_heartbeat(
         self,
         finished: threading.Event,
@@ -838,7 +942,11 @@ class AtlasProcess:
             )
 
         except Exception as exc:
-            self.exit_code = 1
+            self.exit_code = (
+                INTEGRITY_HALT_EXIT_CODE
+                if isinstance(exc, AuditChainIntegrityError)
+                else 1
+            )
 
             self.shutdown_reason = (
                 f"Fatal error: {exc}"
@@ -865,6 +973,8 @@ class AtlasProcess:
                 logger.exception(
                     "Fatal error during Atlas shutdown"
                 )
+
+            self._release_instance_lock()
 
             logger.info(
                 "Atlas process finished | "

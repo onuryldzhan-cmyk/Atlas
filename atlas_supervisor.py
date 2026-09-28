@@ -138,6 +138,15 @@ CHILD_SCRIPT = REPOSITORY_ROOT / "atlas_service.py"
 # operator-requested shutdown into an infinite loop.
 CLEAN_EXIT_CODE = 0
 
+# Exit codes main.py uses for conditions a restart cannot fix: corrupted
+# durable state (INTEGRITY_HALT) and another instance already running on
+# the same state root (ALREADY_RUNNING). Mirrors main.py; tests pin both.
+INTEGRITY_HALT_EXIT_CODE = 75
+ALREADY_RUNNING_EXIT_CODE = 76
+NO_RESTART_EXIT_CODES = frozenset(
+    {INTEGRITY_HALT_EXIT_CODE, ALREADY_RUNNING_EXIT_CODE}
+)
+
 # Provenance handed to the child. Read back by AtlasApplication.health(), so
 # an operator can see that Atlas is supervised and how many times this
 # supervisor has already restarted it.
@@ -1023,6 +1032,18 @@ class ProcessSupervisor:
                 )
 
                 return 0
+
+            if returncode in NO_RESTART_EXIT_CODES:
+                logger.critical(
+                    "Atlas exited with exit_code=%s (%s); not restarting. "
+                    "A restart cannot fix this - it needs an operator.",
+                    returncode,
+                    "state integrity halt"
+                    if returncode == INTEGRITY_HALT_EXIT_CODE
+                    else "another Atlas instance is running",
+                )
+
+                return int(returncode)
 
             if not was_hung:
                 logger.error(

@@ -20,10 +20,10 @@ Command: `python -m tools.build_rem001_gate1_maps construction --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `e5f690585a66e5ce985b3e9df48861d3ce15655c` |
-| generated_from_tree | `eca8f74140c50a4dbb0ca3dc6447e63573345825` |
+| generated_from_commit | `0d31c0dbfe583c55286503f1780022383d1cac6d` |
+| generated_from_tree | `2c4a34959d3eda15a2b5eb4a4ffa6cda4fc619f8` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['atlas_supervisor.py', 'main.py', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'tests/test_main_process_heartbeat.py', 'tests/test_process_supervisor.py', 'tests/test_web_app_runtime_response_safety.py', 'web_app.py'] |
+| modified_tracked_paths_at_generation | ['atlas_supervisor.py', 'core/audit_event_store.py', 'governance/current/ATLAS_MILESTONE_REGISTRY_v5.05.json', 'main.py', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'tests/test_single_instance_and_integrity_exit.py'] |
 
 ## Analysis
 
@@ -58,7 +58,7 @@ below: it counted pattern hits, these count resolved call sites.
 | entry_points | `main.py`, `web_app.py`, `atlas_service.py`, `atlas_supervisor.py` |
 | composition_root_canonical | `core/application.py` (ADR-0001) |
 | modules_in_runtime_closure | 108 |
-| classes_defined_in_closure | 388 |
+| classes_defined_in_closure | 389 |
 | construction_sites | 286 |
 | modules_constructing | 33 |
 | classes_constructed | 121 |
@@ -378,7 +378,7 @@ classes and their observed constructors:
 | `exchange/market_feed.py` | `BinancePublicDataProvider` | `atlas_finance/market_data/binance_public_provider.py` | 117 | `MarketFeed::__init__` |
 | `exchange/market_feed.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 369 | `MarketFeed::_require_metadata` |
 | `exchange/market_feed.py` | `MarketFeedService` | `atlas_finance/market_data/market_feed_service.py` | 120 | `MarketFeed::__init__` |
-| `main.py` | `AtlasApplication` | `core/application.py` | 448 | `AtlasProcess::start` |
+| `main.py` | `AtlasApplication` | `core/application.py` | 471 | `AtlasProcess::start` |
 
 ## Classification fields deliberately absent
 

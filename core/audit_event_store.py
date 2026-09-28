@@ -63,6 +63,15 @@ logger = logging.getLogger(
 )
 
 
+class AuditChainIntegrityError(RuntimeError):
+    """The audit chain failed verification on load.
+
+    A RuntimeError subclass so every existing handler keeps working; the
+    distinct type lets main.py exit with a code the supervisor will not
+    restart on, because a restart would only fail the same check again.
+    """
+
+
 class AuditEventStore:
     """
     Thread-safe append-only cryptographic audit store.
@@ -171,7 +180,7 @@ class AuditEventStore:
                 ]:
                     self.loaded = False
 
-                    raise RuntimeError(
+                    raise AuditChainIntegrityError(
                         "Audit event chain verification failed: "
                         f"{verification.get('error')}"
                     )
