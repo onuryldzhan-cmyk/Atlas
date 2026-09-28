@@ -1004,6 +1004,37 @@ def test_an_unreadable_heartbeat_while_running_is_not_a_hang(
     )
 
 
+def test_a_long_unreadable_heartbeat_is_warned_about_again(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Unreadable from 100s to 1000s: re-warned every 300s, never a hang."""
+
+    caplog.set_level(logging.INFO, logger=atlas_supervisor.LOGGER_NAME)
+
+    clock = _SimulatedTime()
+    child = _HangingChild(clock=clock)
+    writes = _child_writes(clock, before=None, from_second=5.0)
+
+    def read(path: Path) -> Any:
+        if 100.0 <= clock.now < 1000.0:
+            return None
+
+        return writes(path)
+
+    supervisor, _, _ = _heartbeat_supervisor(
+        clock,
+        [child],
+        heartbeat_mtime=read,
+        stop_at=1200.0,
+    )
+
+    assert supervisor.run() == 0
+    assert _messages(caplog, logging.CRITICAL) == []
+    assert (
+        sum("unreadable" in m for m in _messages(caplog, logging.WARNING)) == 3
+    )
+
+
 def test_repeated_startup_hangs_exhaust_the_restart_budget() -> None:
     """Restart bookkeeping is intact: a hang is counted like a crash.
 

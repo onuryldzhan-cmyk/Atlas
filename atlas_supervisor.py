@@ -474,6 +474,9 @@ class _Hung:
 # inspecting the code can tell the two apart.
 _HUNG_EXIT_CODE = -1
 
+# How often a still-unreadable heartbeat file is warned about again.
+UNREADABLE_REWARN_SECONDS = 300.0
+
 
 # ============================================================
 # SUPERVISOR
@@ -689,6 +692,7 @@ class ProcessSupervisor:
         last_check_at: float | None = None
         warned_no_heartbeat = False
         warned_unreadable = False
+        unreadable_warned_at: float | None = None
 
         while True:
             if self._stop_event.is_set():
@@ -727,6 +731,7 @@ class ProcessSupervisor:
                         last_mtime = mtime
                         last_change_at = now
                         warned_unreadable = False
+                        unreadable_warned_at = None
 
                     if last_change_at is None:
                         phase = policy.startup_phase(
@@ -760,8 +765,15 @@ class ProcessSupervisor:
                         # RUNNING, but the file cannot be read right now.
                         # Unknown is not evidence of a hang: no verdict
                         # until it can be read again.
-                        if not warned_unreadable:
+                        # Re-announced every UNREADABLE_REWARN_SECONDS so
+                        # detection cannot stay paused behind one old line.
+                        if (
+                            unreadable_warned_at is None
+                            or now - unreadable_warned_at
+                            >= UNREADABLE_REWARN_SECONDS
+                        ):
                             warned_unreadable = True
+                            unreadable_warned_at = now
 
                             logger.warning(
                                 "Heartbeat file %s unreadable; hung-child "
