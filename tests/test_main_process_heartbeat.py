@@ -279,23 +279,28 @@ def test_stop_keeps_the_heartbeat_fresh_while_the_application_stops(
     application = _SlowStopApplication()
     process.application = application
 
+    calls = []
+    three_writes = threading.Event()
+
+    def counting_write() -> None:
+        calls.append(1)
+        if len(calls) >= 3:
+            three_writes.set()
+
+    # Count writes instead of racing the writer for the file: on Windows a
+    # delete during a write is a sharing violation, not a test signal.
+    monkeypatch.setattr(process, "_write_heartbeat", counting_write)
+
     stopper = threading.Thread(target=process.stop)
     stopper.start()
     assert application.entered.wait(timeout=5)
 
-    writes = []
-    for _ in range(3):
-        target.unlink(missing_ok=True)
-        for _ in range(500):
-            if target.exists():
-                break
-            threading.Event().wait(0.005)
-        writes.append(target.exists())
+    wrote_during_stop = three_writes.wait(timeout=5)
 
     application.release.set()
     stopper.join(timeout=5)
 
-    assert writes == [True, True, True]
+    assert wrote_during_stop
     assert not any(
         thread.name == "atlas-shutdown-heartbeat" and thread.is_alive()
         for thread in threading.enumerate()
