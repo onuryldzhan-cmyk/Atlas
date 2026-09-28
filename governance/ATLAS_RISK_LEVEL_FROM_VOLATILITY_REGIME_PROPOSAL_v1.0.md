@@ -136,6 +136,43 @@ raises the permitted position size at the same time.
    0.40/0.25/0.10 bucket percentages. This touches `core/position_sizing.py` and the RiskEngine
    bucket policy and needs its own proposal, grant and final gate.
 
+## Implementation map (read-only survey, 2026-09-28 — nothing implemented)
+
+Prepared so that, once authorized, the change is small and its blast radius is known in advance.
+
+**Code touch points (Phase A):**
+
+| # | File:line | Change |
+| --- | --- | --- |
+| 1 | `ai/core/intelligence/risk_engine.py` | Add one pure function next to `AdvisoryRiskScorer`, e.g. `regime_risk_result(market_data, volatility_ceiling) -> RiskResult`: A1 regime → level, A2 ceiling guard, Macro cap, every failure path → HIGH. Stdlib only; returns the existing `RiskResult`/`RiskCategory` types so `Decision`'s type contract (NBF-5/NBF-7) holds unchanged. |
+| 2 | `ai/core/atlas_brain.py:447-458` | Keep the existing `self.risk.calculate(...)` call (advisory). Pass the new regime `RiskResult` to `builder.create` as `risk`. `market_data` is already in scope there. |
+| 3 | `ai/core/atlas_brain.py:487-499` (metadata update) | Add the advisory result as `metadata["advisory_risk"]` so the legacy classification stays auditable. `metadata["risk"]` then holds the regime result (written by `decision_builder.py:161-163`). |
+| 4 | Ceiling constant | A named constant pinned in code and in the grant record; value **UNKNOWN until measured** (see open question 4). No config file, no environment variable — changing it must require a governed change. |
+
+**Not touched:** `core/risk_engine.py` (policy, gate), `ai/core/intelligence/decision_builder.py`,
+`ai/core/intelligence/agent_fusion.py`, `ai/core/intelligence/confidence/confidence_engine.py`,
+`analysis/world_analysis_engine.py`, `core/market_loop.py`, `core/position_sizing.py`.
+
+**Dashboard (owner decision: new level only):** no change needed. `web_app.py:78-128` publishes
+the decision's `risk_level`, and `templates/dashboard.html:569` renders it; the new level flows
+through automatically. The advisory level stays out of the panel by design.
+
+**Existing tests — expected impact:**
+- Call `AdvisoryRiskScorer` directly and assert its behaviour; unaffected because the scorer is
+  kept unchanged: `test_nb4_nb5_confidence_availability_correction.py`,
+  `test_block3_package4_confidence_semantics.py`, `test_nbf5_decision_risk_level_type_contract.py`,
+  `test_nb2_fusion_audit_metadata.py`, `test_block2c_deferred_backlog_guards.py`,
+  `test_phase2_market_data_evidence_semantics.py` (item 19 asserts the scorer never reads market
+  data — still true, the new function is separate), `test_decision_confidence_normalization.py`.
+- Type-contract tests `test_nbf5_*`, `test_nbf6_*`, `test_nbf7_*`: must keep passing unmodified;
+  they are the guard that the new producer emits a canonical type.
+- End-to-end brain tests (e.g. `test_atlas_brain_phase5_shadow.py`, `test_merged_process_composition.py`):
+  UNKNOWN — requires verification whether any asserts a specific `risk_level` for a given input.
+  If one does, it encodes the old behaviour and is reported to the owner, never silently edited.
+
+**New tests:** the Test plan above, plus a golden check that `decision.confidence`, `action` and
+`metadata["fusion"]` are identical before and after for a fixed input grid.
+
 ## Authorization required
 
 Implementation needs an explicit owner grant recorded in a new milestone-registry successor record.
