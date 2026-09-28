@@ -87,7 +87,7 @@ In every case the runtime either resumes exactly or refuses new risk. It never s
 - The runtime runs identically with the web surface disabled.
 - A web failure cannot stop trading, and a trading halt cannot hide the panel.
 
-**Today: MET for the first two points. CONFLICT on the third.**
+**Today: MET (all three points; the third was changed by owner decision in v5.15).**
 - *Imports and calls:* `tests/architecture/test_web_layer_is_read_only.py` (AST-based) proves the following for `web_app.py` and `observability/*`:
   - no core, ai, risk, execution or storage module is imported;
   - no state-changing method is called directly;
@@ -100,9 +100,12 @@ In every case the runtime either resumes exactly or refuses new risk. It never s
   - *Expected:* a web failure cannot stop trading.
   - *Actual:* by design it does. A web surface that fails to start stops Atlas with exit 1 (`test_failing_start_hook_still_stops_the_application`). A web thread that dies at runtime stops Atlas too (`main.AtlasProcess._subordinate_alive`: "Subordinate component stopped unexpectedly").
   - *Impact:* a panel crash takes trading down, and the supervisor restarts it. That is conservative, because the operator is never left blind, but it couples availability to the panel.
-  - *Decision required:*
-    - **(a)** keep the coupling and amend the criterion;
-    - **(b)** decouple, so that the runtime keeps running and the panel restarts on its own. That is a behaviour change needing a grant.
+  - **DECIDED: (b) decouple** (owner: "İkisini de değiştir"). Implemented in registry v5.15 with `tests/test_panel_decoupling.py`:
+    - a failed or dead panel no longer stops trading;
+    - the panel is retried every 30s on a worker thread, so the heartbeat never starves;
+    - a runtime stop still ends the process.
+  - Open LOW items: the panel-down state appears only in logs; a hung uvicorn shutdown can orphan a thread; no real-server restart test exists yet.
+
 - *A trading halt never hides the panel:* health keeps reporting through a halt (`tests/test_application_health_market_signals.py::test_halted_execution_is_not_healthy`, which reports rather than hides).
 
 ### 6. Recovery

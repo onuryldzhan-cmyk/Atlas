@@ -52,4 +52,4 @@ Anything that happened after the backup is not in the restored state. Record the
 
 - **No repair tools exist for the idempotency log, the journal, the financial state, the reservation store or the risk state.** Recovery for these needs an owner-approved procedure first.
 - **Exits while halted: DECIDED 2026-09-28 (owner, "gerçek trader ne yaparsa o").** While a corrupt or missing store has halted execution, nothing trades, and that includes exits of held positions. The books are not trustworthy. A trader reconciles before acting, so the operator closes positions only after the state is repaired.
-- **Panel coupling.** A panel (web) failure stops Atlas by design. See the Phase 2–3 proposal, item 5.
+- **Panel down (since v5.15).** Trading continues. The log shows `Operator panel stopped unexpectedly` or `failed to start`, and a restart is attempted every 30s. If the panel stays down, check for another program using port 8000.

@@ -20,10 +20,10 @@ Command: `python -m tools.build_rem001_gate1_maps construction --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `fef9600cf4b2a87c6f9081427a8803c71451f1fe` |
-| generated_from_tree | `85641431d9b5f850cffbc40ad5db6190a391adb6` |
+| generated_from_commit | `b558f3f92fad8ba91409bb4e93f38783c38a2579` |
+| generated_from_tree | `b09aef0cde6e41a5baa165608427318d08784cbd` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['ore/market_loop.py', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'tests/test_block5a_risk_state_plumbing.py', 'tests/test_block5b_single_sizing_authority.py', 'tests/test_block5c_upstream_sizing_authority.py'] |
+| modified_tracked_paths_at_generation | ['docs/operations/RECOVERY_RUNBOOK.md', 'governance/ATLAS_PHASE_2_3_COMPLETION_CRITERIA_PROPOSAL_v1.0.md', 'main.py', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'tests/test_merged_process_composition.py', 'tlas_service.py'] |
 
 ## Analysis
 
@@ -204,7 +204,7 @@ classes and their observed constructors:
 | `atlas_os/services/dependency_manager.py` | `DuplicateServiceError` | `atlas_os/services/registry.py` | 300 | `DependencyServiceManager::register` |
 | `atlas_os/services/dependency_manager.py` | `ServiceNotFoundError` | `atlas_os/services/registry.py` | 1225 | `DependencyServiceManager::_require_registered_key` |
 | `atlas_os/services/dependency_manager.py` | `ServiceRegistry` | `atlas_os/services/registry.py` | 217 | `DependencyServiceManager::__init__` |
-| `atlas_service.py` | `AtlasProcess` | `main.py` | 398 | `build_process` |
+| `atlas_service.py` | `AtlasProcess` | `main.py` | 415 | `build_process` |
 | `core/application.py` | `AppliedExecutionArchiveStore` | `core/execution_portfolio_foundation.py` | 923 | `AtlasApplication::_build_financial_services` |
 | `core/application.py` | `AtlasBrain` | `UNKNOWN` | 715 | `AtlasApplication::_build_services` |
 | `core/application.py` | `AtlasController` | `core/controller/atlas_controller.py` | 817 | `AtlasApplication::_build_services` |
@@ -378,7 +378,7 @@ classes and their observed constructors:
 | `exchange/market_feed.py` | `BinancePublicDataProvider` | `atlas_finance/market_data/binance_public_provider.py` | 117 | `MarketFeed::__init__` |
 | `exchange/market_feed.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 369 | `MarketFeed::_require_metadata` |
 | `exchange/market_feed.py` | `MarketFeedService` | `atlas_finance/market_data/market_feed_service.py` | 120 | `MarketFeed::__init__` |
-| `main.py` | `AtlasApplication` | `core/application.py` | 464 | `AtlasProcess::start` |
+| `main.py` | `AtlasApplication` | `core/application.py` | 477 | `AtlasProcess::start` |
 
 ## Classification fields deliberately absent
 

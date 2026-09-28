@@ -395,10 +395,28 @@ def build_process(
         else AtlasWebServer()
     )
 
+    # The started application, kept so the panel can be restarted against
+    # the same runtime (registry v5.15: panel and trading decoupled).
+    started: dict[str, AtlasApplication] = {}
+
+    def start(application: AtlasApplication) -> None:
+        started["application"] = application
+        web_server.start(application)
+
+    def restart() -> None:
+        application = started.get("application")
+
+        if application is None:
+            raise RuntimeError("no started application to attach the panel to")
+
+        web_server.stop()
+        web_server.start(application)
+
     return AtlasProcess(
-        on_started=web_server.start,
+        on_started=start,
         on_stopping=web_server.stop,
         is_subordinate_alive=web_server.is_alive,
+        restart_subordinate=restart,
     )
 
 

@@ -64,6 +64,11 @@ HEARTBEAT_FAILURE_LOG_INTERVAL_SECONDS = 300.0
 SHUTDOWN_HEARTBEAT_MAX_SECONDS = 120.0
 SHUTDOWN_HEARTBEAT_INTERVAL_SECONDS = 1.0
 
+# Registry v5.15 (owner: panel and trading decoupled). With a restart hook,
+# a failed or dead operator panel never stops trading; it is retried at
+# this interval until it serves again.
+SUBORDINATE_RESTART_INTERVAL_SECONDS = 30.0
+
 # Exit codes atlas_supervisor.py must NOT restart on (it keeps its own copy,
 # checked equal by tests). A restart cannot fix either condition: corrupted
 # durable state fails the same check again, and a second instance on the
@@ -331,12 +336,20 @@ class AtlasProcess:
         on_started: Callable[[AtlasApplication], None] | None = None,
         on_stopping: Callable[[], None] | None = None,
         is_subordinate_alive: Callable[[], bool] | None = None,
+        restart_subordinate: Callable[[], None] | None = None,
     ) -> None:
         self.application: AtlasApplication | None = None
 
         self.on_started = on_started
         self.on_stopping = on_stopping
         self.is_subordinate_alive = is_subordinate_alive
+        # When set, the subordinate (the operator panel) is decoupled from
+        # trading: a start failure or a death is logged and retried instead
+        # of ending the process. When None, the original contract holds.
+        self.restart_subordinate = restart_subordinate
+        self._subordinate_down = False
+        self._subordinate_next_retry_at = 0.0
+        self._subordinate_restart_thread: threading.Thread | None = None
 
         # Latches once so a permanently failing liveness probe cannot fill
         # the runtime log with one traceback per second.
@@ -595,7 +608,11 @@ class AtlasProcess:
 
                 break
 
-            if not self._subordinate_alive():
+            if self._subordinate_down or not self._subordinate_alive():
+                if self.restart_subordinate is not None:
+                    self._handle_subordinate_down()
+                    continue
+
                 self.exit_code = 1
                 self.shutdown_reason = (
                     "Subordinate component stopped unexpectedly"
@@ -606,6 +623,66 @@ class AtlasProcess:
                 )
 
                 break
+
+    def _handle_subordinate_down(self) -> None:
+        """Keep trading while the panel is down; retry it on an interval.
+
+        Never raises, never stops the process, and never blocks the main
+        loop: the restart runs on a worker thread, so the supervisor
+        heartbeat and signal handling keep their one-second tick even while
+        a restart waits out its start/stop timeouts (registry v5.15).
+        """
+
+        now = time.monotonic()
+
+        if not self._subordinate_down:
+            self._subordinate_down = True
+            self._subordinate_next_retry_at = (
+                now + SUBORDINATE_RESTART_INTERVAL_SECONDS
+            )
+            logger.critical(
+                "Operator panel stopped unexpectedly; trading continues and "
+                "the panel is retried every %.0fs",
+                SUBORDINATE_RESTART_INTERVAL_SECONDS,
+            )
+            return
+
+        worker = self._subordinate_restart_thread
+
+        if worker is not None and worker.is_alive():
+            return
+
+        if now < self._subordinate_next_retry_at:
+            return
+
+        self._subordinate_next_retry_at = (
+            now + SUBORDINATE_RESTART_INTERVAL_SECONDS
+        )
+
+        worker = threading.Thread(
+            target=self._restart_subordinate_once,
+            name="atlas-panel-restart",
+            daemon=True,
+        )
+        self._subordinate_restart_thread = worker
+        worker.start()
+
+    def _restart_subordinate_once(self) -> None:
+        """One restart attempt, on the worker thread. Never raises."""
+
+        try:
+            self.restart_subordinate()
+        except Exception as exc:
+            logger.warning(
+                "Operator panel restart failed (%s: %s); retrying in %.0fs",
+                type(exc).__name__,
+                exc,
+                SUBORDINATE_RESTART_INTERVAL_SECONDS,
+            )
+            return
+
+        self._subordinate_down = False
+        logger.info("Operator panel restarted and serving again")
 
     def _subordinate_alive(self) -> bool:
         """
@@ -879,7 +956,22 @@ class AtlasProcess:
             if not self.start():
                 return self.exit_code
 
-            self._notify_started()
+            try:
+                self._notify_started()
+            except Exception:
+                if self.restart_subordinate is None:
+                    raise
+
+                logger.critical(
+                    "Operator panel failed to start; trading continues "
+                    "without it and the panel is retried every %.0fs",
+                    SUBORDINATE_RESTART_INTERVAL_SECONDS,
+                    exc_info=True,
+                )
+                self._subordinate_down = True
+                self._subordinate_next_retry_at = (
+                    time.monotonic() + SUBORDINATE_RESTART_INTERVAL_SECONDS
+                )
 
             self.run_forever()
 
