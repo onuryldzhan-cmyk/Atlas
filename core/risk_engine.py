@@ -143,6 +143,13 @@ class BucketPolicy:
             object.__setattr__(self, name, value)
 
 
+# Registry v5.22 (owner decision): while a confidence-floor experiment admits
+# a BUY that the default floor would reject, the position is sized with this
+# bucket's allocation/exposure limits (10% / 20%), whatever the decision's
+# bucket - so moving decisions from HIGH to MEDIUM cannot enlarge them.
+EXPERIMENT_SIZING_BUCKET = RiskBucket.HIGH
+
+
 def _default_buckets() -> dict[RiskBucket, BucketPolicy]:
     return {
         RiskBucket.LOW: BucketPolicy(Decimal("0.40"), Decimal("0.60"), Decimal("0.60")),
@@ -500,6 +507,25 @@ class RiskEngine:
             return None
         return max(self.policy.global_minimum_confidence, experiment.minimum_confidence)
 
+    def sizing_bucket(self, bucket: Any, confidence: Any) -> RiskBucket:
+        """Bucket whose size limits apply to a BUY at ``confidence`` (registry v5.22).
+
+        An admission that only the experiment floor would grant is sized with
+        EXPERIMENT_SIZING_BUCKET's limits (owner: "Deney bitene kadar %10
+        kalsın"), so the regime-derived bucket cannot enlarge experiment
+        positions. PositionSizingService (via MarketLoop) and evaluate() both
+        use this, so the proposal and the approval cannot disagree. Only ever
+        returns an equal-or-stricter bucket.
+        """
+        bucket = RiskBucket(bucket)
+        bucket_policy = self.policy.buckets[bucket]
+        default_floor = max(self.policy.global_minimum_confidence, bucket_policy.minimum_confidence)
+        if decimal_value(confidence, "confidence") >= default_floor:
+            return bucket
+        if self._experiment_floor(bucket) is None:
+            return bucket
+        return EXPERIMENT_SIZING_BUCKET
+
     def experiment_status(self) -> dict[str, Any] | None:
         experiment = self.experiment
         if experiment is None:
@@ -638,8 +664,13 @@ class RiskEngine:
         if len(state.positions) >= self.policy.max_positions:
             return reject("MAX_POSITIONS_REACHED")
 
+        # Experiment admissions are sized with EXPERIMENT_SIZING_BUCKET's limits
+        # (registry v5.22); sizing_bucket() gives the sizer the same answer.
+        capacity_policy = (
+            self.policy.buckets[EXPERIMENT_SIZING_BUCKET] if experiment_id else bucket_policy
+        )
         capacity = derive_buy_capacity_limits(
-            self.policy, bucket_policy,
+            self.policy, capacity_policy,
             symbol_exposure=symbol_exposure, committed_quote=state.committed_quote,
         )
         approved = min((allocation, *capacity.as_tuple()))

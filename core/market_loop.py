@@ -1738,6 +1738,35 @@ class MarketLoop:
     # POSITION SIZING (Block 5C)
     # =========================================================
 
+    def _sizing_risk_bucket(
+        self,
+        risk_bucket: str,
+        decision: Any,
+    ) -> str:
+        """Bucket whose limits size this BUY (registry v5.22).
+
+        Asks the canonical RiskEngine (RiskEngine.sizing_bucket) so the
+        proposal matches what evaluate() will approve: an experiment-only
+        admission is sized as EXPERIMENT_SIZING_BUCKET. Non-executable or
+        unsupported levels pass through unchanged (the sizer refuses them).
+        Any failure sizes as HIGH - the strictest executable bucket.
+        """
+
+        if risk_bucket not in ("LOW", "MEDIUM", "HIGH"):
+            return risk_bucket
+
+        engine = getattr(self.execution, "risk_engine", None)
+        sizing_bucket = getattr(engine, "sizing_bucket", None)
+
+        if not callable(sizing_bucket):
+            return risk_bucket
+
+        try:
+            confidence = Decimal(str(decision.get("confidence"))) / Decimal("100")
+            return sizing_bucket(risk_bucket, confidence).value
+        except Exception:
+            return "HIGH"
+
     def _apply_position_sizing(
         self,
         action: str,
@@ -1826,11 +1855,14 @@ class MarketLoop:
             inputs = SizingInputs(
                 request_id=request_id,
                 symbol=symbol,
-                risk_bucket=normalize_risk(
-                    decision.get(
-                        "risk",
-                        decision.get("risk_level"),
-                    )
+                risk_bucket=self._sizing_risk_bucket(
+                    normalize_risk(
+                        decision.get(
+                            "risk",
+                            decision.get("risk_level"),
+                        )
+                    ),
+                    decision,
                 ),
                 durable_free_quote_capital=free_capital,
                 symbol_exposure=symbol_exposure,

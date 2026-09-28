@@ -20,10 +20,10 @@ Command: `python -m tools.build_rem001_gate1_maps construction --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `9c7eaabe36e6724db9f2cbe69925f8f6a8def1a6` |
-| generated_from_tree | `968b42b2c523a5a05b8e2af58b7f97aabcedee3a` |
+| generated_from_commit | `06f0865f038424782d35445903abfcfc49879bd6` |
+| generated_from_tree | `86d72b1ee1690d9cbe46d6dea04e27857c42cc1f` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['ai/core/intelligence/risk_engine.py', 'i/core/atlas_brain.py', 'tests/test_regime_risk_level.py'] |
+| modified_tracked_paths_at_generation | ['core/risk_engine.py', 'ore/market_loop.py', 'tests/test_regime_risk_level.py'] |
 
 ## Analysis
 
@@ -279,7 +279,7 @@ classes and their observed constructors:
 | `core/local_capability_adapter.py` | `ToolInvocationResult` | `core/tool_gateway_contracts.py` | 175 | `LocalCapabilityProbeAdapter::invoke` |
 | `core/market_loop.py` | `CandleProcessor` | `core/candle_processor.py` | 230 | `MarketLoop::__init__` |
 | `core/market_loop.py` | `DecisionAdapter` | `core/decision_adapter.py` | 233 | `MarketLoop::__init__` |
-| `core/market_loop.py` | `SizingInputs` | `core/position_sizing.py` | 1826 | `MarketLoop::_apply_position_sizing` |
+| `core/market_loop.py` | `SizingInputs` | `core/position_sizing.py` | 1855 | `MarketLoop::_apply_position_sizing` |
 | `core/market_loop.py` | `TechnicalAnalyzer` | `core/technical_analyzer.py` | 231 | `MarketLoop::__init__` |
 | `core/market_loop.py` | `WorldAnalysisEngine` | `analysis/world_analysis_engine.py` | 232 | `MarketLoop::__init__` |
 | `core/model_provider_contracts.py` | `OperationResult` | `core/operational_contracts.py` | 483 | `ModelInvocationResult::to_operation_result` |
