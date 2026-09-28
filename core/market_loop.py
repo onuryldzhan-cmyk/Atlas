@@ -153,9 +153,17 @@ class MarketLoop:
     HEALTH_ERROR_RECOVERY_SECONDS: float = 300.0
 
     # A symbol is reported stale in status()/health() when no market-data
-    # fetch has succeeded for it within this many seconds. Observability
-    # only: this never gates or blocks trading/decisions.
+    # fetch has succeeded for it within this many seconds. That fetch-
+    # liveness flag is observability only and never gates trading. The same
+    # 180s value is, separately, the BUY candle-age limit below (v5.14).
     STALENESS_THRESHOLD_SECONDS: float = 180.0
+
+    # Registry v5.14 (owner: "ikisini de değiştir"): new risk needs fresh
+    # data. A BUY is routed only when the newest closed candle's measured
+    # age is within this bound; an unmeasurable age refuses too. SELL is
+    # never gated here - reducing risk must not wait for a fresh feed.
+    # Same bound as the fetch staleness above, so the two agree.
+    BUY_MAX_CANDLE_AGE_SECONDS: float = STALENESS_THRESHOLD_SECONDS
 
     # Candle age (registry v4.71): time from the newest closed candle's
     # own exchange close_time to the cycle's processing cutoff. This is
@@ -300,6 +308,8 @@ class MarketLoop:
             "decisions_normalized": 0,
             "decisions_rejected": 0,
             "hold_decisions": 0,
+            "sell_without_position_skipped": 0,
+            "buy_stale_data_skipped": 0,
             "duplicate_decisions_skipped": 0,
             "duplicate_executions_skipped": 0,
             "execution_requests": 0,
@@ -910,6 +920,80 @@ class MarketLoop:
                     "symbol": symbol,
                     "action": action,
                 }
+
+            if action == "SELL" and self._sell_symbol_known_flat(symbol):
+                # Registry v5.04: Atlas is LONG-only, so a SELL of a symbol the
+                # durable book shows as not held has nothing to act on. It is
+                # treated as HOLD instead of being routed into a rejection.
+                self._increment_metric(
+                    "sell_without_position_skipped"
+                )
+
+                logger.info(
+                    "%s decision SELL with no held position | treated as HOLD, "
+                    "execution skipped",
+                    symbol,
+                )
+
+                result = {
+                    "status": "SKIPPED",
+                    "reason": "NO_POSITION_TO_SELL",
+                    "symbol": symbol,
+                    "action": action,
+                    "timestamp": datetime.now(
+                        UTC
+                    ).isoformat(),
+                }
+
+                with self.lock:
+                    self.last_executions[
+                        symbol
+                    ] = result
+
+                return result
+
+            if action == "BUY":
+                age, age_status = self._candle_age(
+                    closed_candles[-1] if closed_candles else None,
+                    processing_cutoff,
+                )
+
+                if (
+                    age_status != self.CANDLE_AGE_MEASURED
+                    or age is None
+                    or age > self.BUY_MAX_CANDLE_AGE_SECONDS
+                ):
+                    self._increment_metric(
+                        "buy_stale_data_skipped"
+                    )
+
+                    logger.warning(
+                        "%s BUY not routed: market data not fresh "
+                        "(candle_age=%s status=%s limit=%ss)",
+                        symbol,
+                        age,
+                        age_status,
+                        self.BUY_MAX_CANDLE_AGE_SECONDS,
+                    )
+
+                    result = {
+                        "status": "SKIPPED",
+                        "reason": "STALE_MARKET_DATA",
+                        "symbol": symbol,
+                        "action": action,
+                        "candle_age_seconds": age,
+                        "candle_age_status": age_status,
+                        "timestamp": datetime.now(
+                            UTC
+                        ).isoformat(),
+                    }
+
+                    with self.lock:
+                        self.last_executions[
+                            symbol
+                        ] = result
+
+                    return result
 
             market_state = self.world.build_market_state(
                 market_data
@@ -2264,6 +2348,44 @@ class MarketLoop:
     # METRICS
     # =========================================================
 
+    def _sell_symbol_known_flat(
+        self,
+        symbol: str,
+    ) -> bool:
+        """
+        True only when the durable book positively shows ``symbol`` not held.
+
+        Any doubt - no manager, no foundation, a foundation not ready, an
+        unreadable or malformed snapshot - returns False, so the SELL is
+        routed to ExecutionManager, which refuses it fail-closed itself.
+        """
+
+        foundation = getattr(
+            self.execution,
+            "portfolio_foundation",
+            None,
+        )
+
+        if foundation is None or getattr(foundation, "ready", False) is not True:
+            return False
+
+        try:
+            positions = foundation.snapshot()["positions"]
+        except Exception:
+            logger.exception(
+                "%s position lookup failed; SELL routed to execution",
+                symbol,
+            )
+            return False
+
+        if not isinstance(positions, dict):
+            return False
+
+        # Compare on normalized keys: a position stored under a differently
+        # cased key must still count as held, so an exit is never skipped.
+        wanted = str(symbol).strip().upper()
+        return all(str(key).strip().upper() != wanted for key in positions)
+
     def _increment_metric(
         self,
         name: str,
@@ -2427,8 +2549,10 @@ class MarketLoop:
         a lifetime-cumulative counter for other consumers and is
         reported unchanged below.
 
-        market_data_stale is reported only - it never affects healthy
-        and never gates or blocks trading/decisions.
+        market_data_stale (fetch liveness) is reported only - it never
+        affects healthy and is not itself a trading gate. New risk is gated
+        separately on the newest closed candle's age in process_symbol
+        (BUY_MAX_CANDLE_AGE_SECONDS, registry v5.14).
         """
 
         with self.lock:

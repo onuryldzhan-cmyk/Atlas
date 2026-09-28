@@ -61,6 +61,8 @@ from typing import Any
 
 import pytest
 
+from tests._market_clock import pin_clock_to_feed
+
 import core.position_sizing as position_sizing_module
 from core.application import (
     CAPITAL_RESERVATION_STATE_FILE,
@@ -721,6 +723,7 @@ def execution_enabled_loop(app: AtlasApplication, action: str, *, risk: str = "M
     loop.market_feed = OfflineMarketFeed(epoch)
     loop.symbols = ["BTCUSDT"]
     assert loop.execution is app.execution
+    pin_clock_to_feed(loop)
     return loop
 
 

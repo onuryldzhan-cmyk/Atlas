@@ -35,7 +35,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from core.application import AtlasApplication
+from core.application import AtlasApplication, resolve_state_directory
+from core.audit_event_store import AuditChainIntegrityError
+from core import instance_lock
+from core.instance_lock import INSTANCE_LOCK_FILE_NAME, InstanceLockHeldError
 
 
 LOGGER_NAME = "AtlasAI.Main"
@@ -48,6 +51,32 @@ logger = logging.getLogger(LOGGER_NAME)
 # this is the same cross-process-literal precedent core.application's
 # SUPERVISOR_EPOCH_ENV already follows for ENV_EPOCH.
 HEARTBEAT_FILE_ENV = "ATLAS_SUPERVISOR_HEARTBEAT_FILE"
+
+# Minimum spacing between two "heartbeat write failed" announcements, so a
+# target that flaps between failing and working cannot flood the log.
+HEARTBEAT_FAILURE_LOG_INTERVAL_SECONDS = 300.0
+
+# While AtlasApplication.stop() flushes financial state the main loop no
+# longer ticks, so a stop slower than the supervisor's staleness window would
+# read as a hang and get the process killed mid-flush. A background writer
+# keeps the heartbeat fresh during stop(), but only for this long: a stop()
+# that is itself hung must still become visible to the supervisor.
+SHUTDOWN_HEARTBEAT_MAX_SECONDS = 120.0
+SHUTDOWN_HEARTBEAT_INTERVAL_SECONDS = 1.0
+
+# Registry v5.15 (owner: panel and trading decoupled). With a restart hook,
+# a failed or dead operator panel never stops trading; it is retried at
+# this interval until it serves again.
+SUBORDINATE_RESTART_INTERVAL_SECONDS = 30.0
+
+# Exit codes atlas_supervisor.py must NOT restart on (it keeps its own copy,
+# checked equal by tests). A restart cannot fix either condition: corrupted
+# durable state fails the same check again, and a second instance on the
+# same state root is exactly what corrupts it. Chosen outside what Windows
+# and the C runtime produce on their own (abort() exits 3 on Windows).
+INTEGRITY_HALT_EXIT_CODE = 75
+ALREADY_RUNNING_EXIT_CODE = 76
+
 
 
 # ============================================================
@@ -307,12 +336,20 @@ class AtlasProcess:
         on_started: Callable[[AtlasApplication], None] | None = None,
         on_stopping: Callable[[], None] | None = None,
         is_subordinate_alive: Callable[[], bool] | None = None,
+        restart_subordinate: Callable[[], None] | None = None,
     ) -> None:
         self.application: AtlasApplication | None = None
 
         self.on_started = on_started
         self.on_stopping = on_stopping
         self.is_subordinate_alive = is_subordinate_alive
+        # When set, the subordinate (the operator panel) is decoupled from
+        # trading: a start failure or a death is logged and retried instead
+        # of ending the process. When None, the original contract holds.
+        self.restart_subordinate = restart_subordinate
+        self._subordinate_down = False
+        self._subordinate_next_retry_at = 0.0
+        self._subordinate_restart_thread: threading.Thread | None = None
 
         # Latches once so a permanently failing liveness probe cannot fill
         # the runtime log with one traceback per second.
@@ -335,6 +372,13 @@ class AtlasProcess:
         # all), and no heartbeat is written - matching exactly what an
         # unsupervised or directly-run process has always done.
         self._heartbeat_file = self._resolve_heartbeat_file()
+        self._instance_lock: Any = None
+
+        # Write-failure logging state for _write_heartbeat: logged on the
+        # transition into failure and back out, never per tick.
+        self._heartbeat_failing = False
+        self._heartbeat_failure_announced = False
+        self._heartbeat_failure_logged_at: float | None = None
 
     @staticmethod
     def _resolve_heartbeat_file() -> Path | None:
@@ -423,12 +467,16 @@ class AtlasProcess:
         Construct and start Atlas.
         """
 
+        if not self._acquire_instance_lock():
+            return False
+
         logger.info(
             "Constructing AtlasApplication"
         )
 
         self.application = AtlasApplication(
             execution_mode="PAPER",
+            paper_confidence_experiment=True,
         )
 
         logger.info(
@@ -461,11 +509,18 @@ class AtlasProcess:
     def _write_heartbeat(self) -> None:
         """Prove the main loop is still ticking, for atlas_supervisor.py.
 
-        Best-effort and silent by design: a failure to write this file must
-        never slow down or interrupt the shutdown-detection loop below,
-        which is what actually keeps Atlas supervised correctly. Overwritten
-        every tick, so its mtime alone - which is all the supervisor reads -
-        is the whole signal; the content carries nothing.
+        Best-effort by design: a failure to write this file must never slow
+        down or interrupt the shutdown-detection loop below, which is what
+        actually keeps Atlas supervised correctly. Overwritten every tick,
+        so its mtime alone - which is all the supervisor reads - is the
+        whole signal; the content carries nothing.
+
+        Not silent, though: a failure is logged once when it starts and once
+        when writing recovers, never per tick, and a new failure is not
+        announced again within HEARTBEAT_FAILURE_LOG_INTERVAL_SECONDS of the
+        previous announcement, so a flapping target cannot flood the log.
+        Each announcement is a single in-memory log call, never a retry or
+        a wait.
         """
 
         if self._heartbeat_file is None:
@@ -476,8 +531,42 @@ class AtlasProcess:
                 json.dumps({"written_at": time.time()}),
                 encoding="utf-8",
             )
-        except OSError:
-            pass
+        except OSError as exc:
+            if self._heartbeat_failing:
+                return
+
+            self._heartbeat_failing = True
+
+            now = time.monotonic()
+            last = self._heartbeat_failure_logged_at
+
+            if (
+                last is None
+                or now - last >= HEARTBEAT_FAILURE_LOG_INTERVAL_SECONDS
+            ):
+                self._heartbeat_failure_logged_at = now
+                self._heartbeat_failure_announced = True
+
+                logger.warning(
+                    "Supervisor heartbeat write failed (%s) for %s; the "
+                    "supervisor may treat Atlas as hung if this persists. "
+                    "Further failures are not logged until writing recovers",
+                    type(exc).__name__,
+                    self._heartbeat_file,
+                )
+
+            return
+
+        if self._heartbeat_failing:
+            self._heartbeat_failing = False
+
+            if self._heartbeat_failure_announced:
+                self._heartbeat_failure_announced = False
+
+                logger.info(
+                    "Supervisor heartbeat write recovered for %s",
+                    self._heartbeat_file,
+                )
 
     def run_forever(self) -> None:
         """
@@ -519,7 +608,11 @@ class AtlasProcess:
 
                 break
 
-            if not self._subordinate_alive():
+            if self._subordinate_down or not self._subordinate_alive():
+                if self.restart_subordinate is not None:
+                    self._handle_subordinate_down()
+                    continue
+
                 self.exit_code = 1
                 self.shutdown_reason = (
                     "Subordinate component stopped unexpectedly"
@@ -530,6 +623,66 @@ class AtlasProcess:
                 )
 
                 break
+
+    def _handle_subordinate_down(self) -> None:
+        """Keep trading while the panel is down; retry it on an interval.
+
+        Never raises, never stops the process, and never blocks the main
+        loop: the restart runs on a worker thread, so the supervisor
+        heartbeat and signal handling keep their one-second tick even while
+        a restart waits out its start/stop timeouts (registry v5.15).
+        """
+
+        now = time.monotonic()
+
+        if not self._subordinate_down:
+            self._subordinate_down = True
+            self._subordinate_next_retry_at = (
+                now + SUBORDINATE_RESTART_INTERVAL_SECONDS
+            )
+            logger.critical(
+                "Operator panel stopped unexpectedly; trading continues and "
+                "the panel is retried every %.0fs",
+                SUBORDINATE_RESTART_INTERVAL_SECONDS,
+            )
+            return
+
+        worker = self._subordinate_restart_thread
+
+        if worker is not None and worker.is_alive():
+            return
+
+        if now < self._subordinate_next_retry_at:
+            return
+
+        self._subordinate_next_retry_at = (
+            now + SUBORDINATE_RESTART_INTERVAL_SECONDS
+        )
+
+        worker = threading.Thread(
+            target=self._restart_subordinate_once,
+            name="atlas-panel-restart",
+            daemon=True,
+        )
+        self._subordinate_restart_thread = worker
+        worker.start()
+
+    def _restart_subordinate_once(self) -> None:
+        """One restart attempt, on the worker thread. Never raises."""
+
+        try:
+            self.restart_subordinate()
+        except Exception as exc:
+            logger.warning(
+                "Operator panel restart failed (%s: %s); retrying in %.0fs",
+                type(exc).__name__,
+                exc,
+                SUBORDINATE_RESTART_INTERVAL_SECONDS,
+            )
+            return
+
+        self._subordinate_down = False
+        logger.info("Operator panel restarted and serving again")
 
     def _subordinate_alive(self) -> bool:
         """
@@ -632,7 +785,16 @@ class AtlasProcess:
             "Stopping AtlasApplication"
         )
 
-        stopped = self.application.stop()
+        finished = threading.Event()
+        keeper = self._start_shutdown_heartbeat(finished)
+
+        try:
+            stopped = self.application.stop()
+        finally:
+            finished.set()
+
+            if keeper is not None:
+                keeper.join(timeout=SHUTDOWN_HEARTBEAT_INTERVAL_SECONDS * 2)
 
         if not stopped:
             self.exit_code = max(
@@ -645,6 +807,83 @@ class AtlasProcess:
             )
 
         return stopped
+
+    def _acquire_instance_lock(self) -> bool:
+        """Hold the state-root lock (core/instance_lock.py) for this process.
+
+        Held elsewhere -> ALREADY_RUNNING_EXIT_CODE, which the supervisor
+        does not restart on. Any other failure to take it is a normal
+        startup failure (exit 1) - never "run anyway without a lock".
+        AtlasApplication takes the same lock again (shared within this
+        process), so paths that bypass this method are refused too.
+        """
+
+        try:
+            root = resolve_state_directory()
+            instance_lock.acquire(root)
+        except InstanceLockHeldError as exc:
+            self.exit_code = ALREADY_RUNNING_EXIT_CODE
+            self.shutdown_reason = str(exc)
+            logger.critical(self.shutdown_reason)
+            return False
+        except Exception as exc:
+            self.exit_code = 1
+            self.shutdown_reason = f"Instance lock unavailable: {exc}"
+            logger.critical(self.shutdown_reason)
+            return False
+
+        self._instance_lock = root
+
+        return True
+
+    def _release_instance_lock(self) -> None:
+        """Drop this process's reference to the state-root lock."""
+
+        root = self._instance_lock
+
+        if root is None:
+            return
+
+        self._instance_lock = None
+        instance_lock.release(root)
+
+    def _start_shutdown_heartbeat(
+        self,
+        finished: threading.Event,
+    ) -> threading.Thread | None:
+        """Keep the supervisor heartbeat fresh while stop() runs, bounded.
+
+        Writes every SHUTDOWN_HEARTBEAT_INTERVAL_SECONDS until ``finished``
+        is set or SHUTDOWN_HEARTBEAT_MAX_SECONDS have passed, whichever is
+        first. The bound is deliberate: a hung stop() must still go stale.
+        """
+
+        if self._heartbeat_file is None:
+            return None
+
+        def keep_alive() -> None:
+            deadline = time.monotonic() + SHUTDOWN_HEARTBEAT_MAX_SECONDS
+
+            while time.monotonic() < deadline:
+                self._write_heartbeat()
+
+                if finished.wait(timeout=SHUTDOWN_HEARTBEAT_INTERVAL_SECONDS):
+                    return
+
+            logger.warning(
+                "Shutdown still running after %.0fs; supervisor heartbeat "
+                "no longer refreshed",
+                SHUTDOWN_HEARTBEAT_MAX_SECONDS,
+            )
+
+        keeper = threading.Thread(
+            target=keep_alive,
+            name="atlas-shutdown-heartbeat",
+            daemon=True,
+        )
+        keeper.start()
+
+        return keeper
 
     # --------------------------------------------------------
     # COMPOSITION HOOKS
@@ -717,7 +956,22 @@ class AtlasProcess:
             if not self.start():
                 return self.exit_code
 
-            self._notify_started()
+            try:
+                self._notify_started()
+            except Exception:
+                if self.restart_subordinate is None:
+                    raise
+
+                logger.critical(
+                    "Operator panel failed to start; trading continues "
+                    "without it and the panel is retried every %.0fs",
+                    SUBORDINATE_RESTART_INTERVAL_SECONDS,
+                    exc_info=True,
+                )
+                self._subordinate_down = True
+                self._subordinate_next_retry_at = (
+                    time.monotonic() + SUBORDINATE_RESTART_INTERVAL_SECONDS
+                )
 
             self.run_forever()
 
@@ -731,7 +985,12 @@ class AtlasProcess:
             )
 
         except Exception as exc:
-            self.exit_code = 1
+            if isinstance(exc, AuditChainIntegrityError):
+                self.exit_code = INTEGRITY_HALT_EXIT_CODE
+            elif isinstance(exc, InstanceLockHeldError):
+                self.exit_code = ALREADY_RUNNING_EXIT_CODE
+            else:
+                self.exit_code = 1
 
             self.shutdown_reason = (
                 f"Fatal error: {exc}"
@@ -758,6 +1017,8 @@ class AtlasProcess:
                 logger.exception(
                     "Fatal error during Atlas shutdown"
                 )
+
+            self._release_instance_lock()
 
             logger.info(
                 "Atlas process finished | "

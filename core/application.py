@@ -51,6 +51,7 @@ AtlasApplication
 
 from __future__ import annotations
 
+import functools
 import logging
 import os
 import re
@@ -59,8 +60,11 @@ import traceback
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
+from collections.abc import Mapping
 from typing import Any
 
+from core import instance_lock
+from core.experiment_ledger import EXPERIMENT_LEDGER_FILE, ExperimentAdmissionLedger
 from core.logger import AtlasLogger
 from core.runtime import AtlasRuntime
 from core.event_bus import EventBus
@@ -92,7 +96,11 @@ from portfolio.capital_manager import CapitalManager
 from core.position_controller import PositionController
 from core.paper_trader import PaperTrader
 
-from core.risk_engine import RiskEngine, RiskPolicy
+from core.risk_engine import (
+    EXP001_PAPER_CONFIDENCE_EXPERIMENT,
+    RiskEngine,
+    RiskPolicy,
+)
 from core.position_sizing import PositionSizingService
 from core.capital_reservation import (
     CapitalReservationLedger,
@@ -369,6 +377,23 @@ EXECUTION_AUDIT_EVENT_FILE = "audit/atlas_audit_events.jsonl"
 PAPER_TRADE_BOOK_FILE = "paper_trades.json"
 
 
+def count_experiment_admissions(audit_store: AuditEventStore, experiment_id: str) -> int:
+    """Count RISK_APPROVED audit events tagged with ``experiment_id``.
+
+    Raises if the log cannot be read, so the caller can fail closed.
+    """
+
+    count = 0
+
+    for event in audit_store.query(event_type="RISK_APPROVED"):
+        details = event.payload.get("details")
+
+        if isinstance(details, Mapping) and details.get("experiment_id") == experiment_id:
+            count += 1
+
+    return count
+
+
 # =============================================================
 # SUPERVISOR PROVENANCE
 # =============================================================
@@ -471,6 +496,28 @@ def _classify_execution_halt_reason(raw: Any) -> str:
     return UNCLASSIFIED_EXECUTION_HALT_REASON
 
 
+def _release_instance_lock_on_failed_init(init):
+    """Give back the state-root lock when construction fails after taking it.
+
+    A failed __init__ never reaches stop(), so without this a long-lived
+    process (a tool, a test, a rebuild after a failure) would keep the
+    reference - and the OS lock - for good.
+    """
+
+    @functools.wraps(init)
+    def wrapper(self, *args, **kwargs):
+        try:
+            init(self, *args, **kwargs)
+        except BaseException:
+            root = getattr(self, "_instance_lock_root", None)
+            self._instance_lock_root = None
+            if root is not None:
+                instance_lock.release(root)
+            raise
+
+    return wrapper
+
+
 class AtlasApplication:
     """
     Central Atlas composition root.
@@ -484,6 +531,7 @@ class AtlasApplication:
     VERSION = "13.0"
     NAME = "AtlasApplication"
 
+    @_release_instance_lock_on_failed_init
     def __init__(
         self,
         *,
@@ -495,6 +543,7 @@ class AtlasApplication:
         evidence_directory: str | Path | None = None,
         venue_rule_freshness_policy: VenueRuleFreshnessPolicy | None = None,
         log_directory: str | Path | None = None,
+        paper_confidence_experiment: bool = False,
     ) -> None:
         logger.info(
             "Initializing %s v%s",
@@ -504,6 +553,10 @@ class AtlasApplication:
 
         self.exchange_name = str(exchange_name)
         self.execution_mode = str(execution_mode).upper()
+        # registry v5.01 EXP-001. Off unless the production entry point asks
+        # for it, so a bare or test-built application keeps default floors
+        # regardless of the calendar date. Honoured in PAPER only.
+        self.paper_confidence_experiment = paper_confidence_experiment is True
         self.symbols = list(symbols) if symbols else None
         self.market_interval = float(market_interval)
         # None means "resolve from the environment now", which is the
@@ -515,6 +568,13 @@ class AtlasApplication:
             if state_directory is None
             else Path(state_directory)
         )
+
+        # One process per state root (core/instance_lock.py, registry
+        # v5.08): taken before any durable store is opened, so a tool or a
+        # second launch that builds an AtlasApplication directly is refused
+        # here, not only the main entry point. Shared within a process.
+        instance_lock.acquire(self.state_directory)
+        self._instance_lock_root: Path | None = self.state_directory
 
         # Resolved for provenance and for the startup log only: nothing in
         # AtlasApplication opens the market archive. Resolving it here anyway
@@ -678,6 +738,12 @@ class AtlasApplication:
         # -----------------------------------------------------
 
         self._build_execution_durability()
+
+        # -----------------------------------------------------
+        # EXP-001 paper confidence experiment (registry v5.01)
+        # -----------------------------------------------------
+
+        self._attach_paper_confidence_experiment()
 
         # -----------------------------------------------------
         # Venue instrument precision (Block 5D)
@@ -917,6 +983,67 @@ class AtlasApplication:
             self._root_source(EVIDENCE_DIRECTORY_ENV),
             self.idempotency_store.loaded,
             self.transaction_journal.has_unresolved(),
+        )
+
+    def _attach_paper_confidence_experiment(self) -> None:
+        """Attach EXP-001 to the RiskEngine when opted in, and in PAPER mode only.
+
+        The sample cap must survive restarts, so prior tagged admissions are
+        counted from the durable audit log. If that log cannot be read the
+        experiment stays unattached: the default floors are the fail-closed
+        state.
+        """
+
+        if not self.paper_confidence_experiment or self.execution_mode != "PAPER":
+            return
+
+        experiment = EXP001_PAPER_CONFIDENCE_EXPERIMENT
+
+        try:
+            audited = count_experiment_admissions(
+                self.audit_store,
+                experiment.experiment_id,
+            )
+        except Exception:
+            logger.exception(
+                "%s not attached: audit log unreadable, default confidence floors remain",
+                experiment.experiment_id,
+            )
+            return
+
+        # registry v5.17: a second, independent durable count. The larger of
+        # the two wins, so losing audit lines can never re-open admissions;
+        # an unreadable ledger keeps the experiment off (fail-closed).
+        ledger = ExperimentAdmissionLedger(
+            self.state_directory / EXPERIMENT_LEDGER_FILE,
+        )
+
+        try:
+            recorded = ledger.count(experiment.experiment_id)
+        except Exception:
+            logger.exception(
+                "%s not attached: admission ledger unreadable, default confidence floors remain",
+                experiment.experiment_id,
+            )
+            return
+
+        prior = max(audited, recorded)
+
+        self.risk_engine.attach_experiment(
+            experiment,
+            prior_admissions=prior,
+            admission_recorder=ledger.record,
+        )
+
+        logger.info(
+            "%s attached (PAPER): floor=%s buckets=%s window=%s..%s admissions=%s/%s",
+            experiment.experiment_id,
+            experiment.minimum_confidence,
+            sorted(b.value for b in experiment.buckets),
+            experiment.starts_at.isoformat(),
+            experiment.ends_at.isoformat(),
+            prior,
+            experiment.max_admissions,
         )
 
     @staticmethod
@@ -1383,6 +1510,16 @@ class AtlasApplication:
         """
         Stop Atlas services in reverse dependency order.
         """
+
+        try:
+            return self._stop_services()
+        finally:
+            root = getattr(self, "_instance_lock_root", None)
+            self._instance_lock_root = None
+            if root is not None:
+                instance_lock.release(root)
+
+    def _stop_services(self) -> bool:
 
         logger.info(
             "=================================================="

@@ -385,3 +385,110 @@ def test_a_buy_is_never_shown_as_passing_while_the_execution_gate_is_unknown() -
     assert unknown_branch < pass_branch
     assert "execution gate eşiği bilinmiyor" in gate[unknown_branch:pass_branch]
     assert "gate-pass" not in gate[unknown_branch:pass_branch]
+
+
+# =====================================================================
+# EXP-001: the experiment floor the engine actually enforces
+# =====================================================================
+
+
+from core.risk_engine import EXP001_PAPER_CONFIDENCE_EXPERIMENT  # noqa: E402
+
+
+def _engine_with_experiment(policy: RiskPolicy, *, admissions: int = 0) -> RiskEngine:
+    engine = RiskEngine(policy)
+    engine.attach_experiment(
+        EXP001_PAPER_CONFIDENCE_EXPERIMENT,
+        prior_admissions=admissions,
+        clock=lambda: datetime(2026, 9, 30, tzinfo=UTC),
+    )
+    return engine
+
+
+def test_active_experiment_publishes_the_floor_it_enforces() -> None:
+    policy = RiskPolicy(total_capital=Decimal("10000"))
+    engine = _engine_with_experiment(policy, admissions=4)
+
+    exp = _gates(_Runtime(risk_policy=policy, risk_engine=engine))["experiment"]
+
+    assert exp["available"] is True and exp["attached"] is True
+    assert exp["active"] is True
+    assert exp["experiment_id"] == "EXP-001"
+    assert sorted(exp["buckets"]) == ["HIGH", "MEDIUM"]
+    assert exp["admissions"] == 4 and exp["max_admissions"] == 50
+    assert exp["required_confidence_pct"] == float(
+        engine._experiment_floor(RiskBucket.HIGH) * 100
+    )
+
+
+@pytest.mark.parametrize("bucket", ["MEDIUM", "HIGH"])
+def test_published_experiment_floor_is_the_real_engine_boundary(bucket: str) -> None:
+    policy = RiskPolicy(total_capital=Decimal("10000"))
+    engine = _engine_with_experiment(policy)
+    floor = Decimal(str(
+        _gates(_Runtime(risk_policy=policy, risk_engine=engine))["experiment"]["required_confidence_pct"]
+    ))
+    state = RiskState(
+        peak_equity=Decimal("10000"), current_equity=Decimal("10000"), state_ready=True,
+        accounting_day_utc=datetime.now(UTC).date().isoformat(), policy_version=policy.version,
+    )
+
+    def reason(pct: Decimal) -> str:
+        return engine.evaluate(RiskRequest(
+            symbol="BTCUSDT", action="BUY", confidence=pct / Decimal("100"),
+            requested_quote_allocation=Decimal("10"), execution_price=Decimal("100"),
+            risk_bucket=bucket,
+        ), state).reason_code
+
+    assert reason(floor - Decimal("0.01")) == "CONFIDENCE_BELOW_POLICY"
+    assert reason(floor) != "CONFIDENCE_BELOW_POLICY"
+
+
+def test_exhausted_or_closed_experiment_is_published_inactive() -> None:
+    policy = RiskPolicy(total_capital=Decimal("10000"))
+    exhausted = _engine_with_experiment(policy, admissions=50)
+    closed = _engine_with_experiment(policy)
+    closed.close_experiment("AUDIT_WRITE_FAILED")
+
+    assert _gates(_Runtime(risk_policy=policy, risk_engine=exhausted))["experiment"]["active"] is False
+    payload = _gates(_Runtime(risk_policy=policy, risk_engine=closed))["experiment"]
+    assert payload["active"] is False
+    assert payload["closed_reason"] == "AUDIT_WRITE_FAILED"
+
+
+def test_no_experiment_attached_is_said_plainly() -> None:
+    policy = RiskPolicy(total_capital=Decimal("10000"))
+
+    assert _gates(_Runtime(risk_policy=policy, risk_engine=RiskEngine(policy)))["experiment"] == {
+        "available": True, "attached": False,
+    }
+
+
+def test_unreadable_experiment_is_unavailable_not_absent() -> None:
+    policy = RiskPolicy(total_capital=Decimal("10000"))
+
+    class _Broken:
+        def experiment_status(self):
+            raise RuntimeError("boom")
+
+    class _Malformed:
+        def experiment_status(self):
+            return {"active": "yes", "minimum_confidence": "x", "buckets": "HIGH"}
+
+    assert _gates(_Runtime(risk_policy=policy))["experiment"]["available"] is False
+    assert _gates(_Runtime(risk_policy=policy, risk_engine=_Broken()))["experiment"] == {
+        "available": False, "reason": "EXPERIMENT_STATUS_UNREADABLE",
+    }
+    assert _gates(_Runtime(risk_policy=policy, risk_engine=_Malformed()))["experiment"] == {
+        "available": False, "reason": "EXPERIMENT_STATUS_MALFORMED",
+    }
+
+
+def test_dashboard_uses_the_published_experiment_floor() -> None:
+    body = _dashboard()
+
+    assert "executionGates.experiment" in body
+    assert "experimentFloor(level)" in body
+    assert "exp.required_confidence_pct" in body
+    # The policy floor is still shown next to the experiment floor.
+    assert "politika &ge;" in body

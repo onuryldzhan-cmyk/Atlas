@@ -599,12 +599,58 @@ def test_process_without_hooks_is_unchanged(
 
 
 def test_build_process_wires_the_web_server_to_both_hooks() -> None:
-    server = AtlasWebServer()
+    """on_started starts the server with the live application; on_stopping
+    stops it. (Since registry v5.15 on_started is a small wrapper that also
+    keeps the application for panel restarts, so this checks behaviour
+    rather than identity.)"""
 
-    process = build_process(server=server)
+    class _Server:
+        def __init__(self) -> None:
+            self.started_with: list[Any] = []
+            self.stopped = 0
 
-    assert process.on_started == server.start
-    assert process.on_stopping == server.stop
+        def start(self, application: Any) -> None:
+            self.started_with.append(application)
+
+        def stop(self) -> None:
+            self.stopped += 1
+
+        def is_alive(self) -> bool:
+            return True
+
+    server = _Server()
+    application = object()
+
+    process = build_process(server=server)  # type: ignore[arg-type]
+    process.on_started(application)  # type: ignore[arg-type]
+    process.on_stopping()
+
+    assert server.started_with == [application]
+    assert server.stopped == 1
+
+
+def test_build_process_restart_reattaches_the_same_application() -> None:
+    """The panel restart hook stops the dead server and starts it again
+    against the application the process started (registry v5.15)."""
+
+    events: list[tuple[str, Any]] = []
+
+    class _Server:
+        def start(self, application: Any) -> None:
+            events.append(("start", application))
+
+        def stop(self) -> None:
+            events.append(("stop", None))
+
+        def is_alive(self) -> bool:
+            return True
+
+    application = object()
+    process = build_process(server=_Server())  # type: ignore[arg-type]
+    process.on_started(application)  # type: ignore[arg-type]
+    process.restart_subordinate()
+
+    assert events == [("start", application), ("stop", None), ("start", application)]
 
 
 # =====================================================================

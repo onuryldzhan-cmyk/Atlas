@@ -1,0 +1,57 @@
+# Atlas recovery runbook (Phase 2–3 item 6)
+
+What to do when Atlas refuses to start or stops trading because of its own
+durable state. Every row below was verified on 2026-09-28. The evidence is
+named in each row. A row saying **"no repair tool"** means exactly that:
+stop and ask. Do not hand-edit state files.
+
+## Before anything
+
+1. **Stop Atlas.** Only one Atlas may run per state root. A second one exits with code 76.
+2. **Back up the whole state root before touching anything:**
+   ```powershell
+   Copy-Item C:\AtlasState "C:\AtlasState_backup_$(Get-Date -Format yyyyMMdd_HHmmss)" -Recurse
+   ```
+3. **Never delete or edit a line in any `*.jsonl` or `*.json` state file by hand.**
+
+## Before starting a new build on an existing state
+
+```powershell
+python -m tools.check_execution_authority_agreement
+```
+
+This is read-only. It runs the same agreement check Atlas runs at startup (in both directions since registry v5.13). Start Atlas only if it prints `ready=True`.
+
+## Restoring from a backup (when a row below says "stop and report")
+
+Do this only with the owner's go-ahead:
+1. Stop Atlas.
+2. Rename the damaged state root. Keep it, do not delete it.
+3. Copy the latest backup folder back to `C:\AtlasState`.
+4. Run the pre-flight above.
+
+Anything that happened after the backup is not in the restored state. Record the restore in a successor registry.
+
+## Symptoms → outcome → action
+
+| Symptom (log / exit code) | Cause | What Atlas does | Action | Evidence |
+|---|---|---|---|---|
+| `Audit event chain verification failed: Previous hash mismatch at line N`, exit **75** | Audit log forked, e.g. two Atlas processes wrote to it | Refuses to start. The supervisor does not restart it. | 1. `python -m tools.diagnose_audit_chain_fork <audit.jsonl>` (read-only). 2. If exactly one break chains from an earlier line: `python -m tools.quarantine_audit_fork <audit.jsonl> --lines A-B` (dry run), check it, then add `--apply`. 3. Record the repair in a successor registry. | registry v5.05, v5.06; `tests/test_quarantine_audit_fork.py` |
+| `Audit ... Event hash mismatch`, or more than one break | Tampering, or corruption the fork tool does not cover | Refuses to start (exit 75) | **No repair tool.** Stop, keep the backup, report. | fork tool refuses anything but a single clean fork |
+| `Another Atlas instance holds ...atlas.instance.lock`, exit **76** | A second Atlas on the same state root | The second process exits at once. The first keeps running. | Close the extra window. `Get-Process python` shows what is running. | registry v5.05, v5.08; `tests/test_single_instance_and_integrity_exit.py` |
+| `Instance lock unavailable: ...`, exit **1** | State root missing or not writable | Refuses to start | Check `ATLAS_STATE_DIRECTORY`. The folder must exist and be writable. | `test_unusable_state_root_is_a_normal_failure_not_run_unlocked` |
+| `Execution idempotency state load failed` / `DurableAppendLogCorruptError: execution_idempotency` | Malformed, truncated, empty or deleted `execution_idempotency.jsonl` | Starts, but execution is **halted** (BUY → `RECOVERY_REQUIRED`) | **No repair tool.** Stop, keep the backup, report. | registry v5.09; `tests/test_corrupt_execution_state_fails_closed.py` |
+| `Execution transaction journal load failed` | Malformed or truncated line in `execution_transaction_journal.jsonl` | Starts, execution **halted** | **No repair tool.** Stop and report. | same |
+| Execution halted, readiness `SOURCE_DISAGREEMENT` / `RECONCILIATION_REQUIRED` | `execution_transaction_journal.jsonl` **emptied or deleted**, while the idempotency log still records COMMITTED executions | Starts with execution **halted**. Since registry v5.13 this is detected; before it, trading silently continued. | **No repair tool** for this direction: the journal evidence is gone. `tools/reconcile_execution_authorities.py` repairs only the opposite direction. Stop, keep the backup, report. | registry v5.13; `tests/test_corrupt_execution_state_fails_closed.py`; `tests/test_block5j_execution_authority_recovery.py::test_erasing_only_the_journal_manufactures_disagreement` |
+| `portfolio_state_ready=False`, or `FINANCIAL_STATE_RECOVERY_REQUIRED` at startup | `execution_financial_state.json` garbled, truncated, empty or deleted | Starts with execution **halted**, or refuses to start (exit 1, which the supervisor restarts within its budget) | **No repair tool.** Stop and report. | same |
+| `reservation_state_ready=False` | `capital_reservations.json` unreadable | Starts. BUY refused with `CAPITAL_RESERVATION_STATE_NOT_READY`. | **No repair tool.** Stop and report. | same |
+| BUY rejected `RISK_STATE_RESTORATION_FAILED` | `risk_accounting_state.json` truncated, empty or missing | Starts, every BUY refused | **No repair tool.** Stop and report. | registry v5.11; `tests/test_corrupt_risk_state_fails_closed.py` |
+| Supervisor log `Atlas child unresponsive` | Main loop hung | The child is stopped and restarted within the budget. After repeated hangs the supervisor gives up (exit 1). | Paste the log. Do not restart in a loop by hand. | `tests/test_process_supervisor.py` |
+
+## Known gaps (UNKNOWN / not yet decided)
+
+- **No repair tools exist for the idempotency log, the journal, the financial state, the reservation store or the risk state.** Recovery for these needs an owner-approved procedure first.
+- **Exits while halted: DECIDED 2026-09-28 (owner, "gerçek trader ne yaparsa o").** While a corrupt or missing store has halted execution, nothing trades, and that includes exits of held positions. The books are not trustworthy. A trader reconciles before acting, so the operator closes positions only after the state is repaired.
+- **EXP-001 admission ledger (since v5.17).** `experiment_admissions.json` keeps the experiment's admission count, independently of the audit log. At startup the larger of the two counts wins. If the ledger is unreadable, EXP-001 is not attached and the default floors apply. If a write fails while Atlas is running, EXP-001 closes (`ADMISSION_LEDGER_WRITE_FAILED`). Both cases only tighten the rules. **No repair tool.** Do not edit or delete this file. A deleted ledger is not detected: the audit count still acts as a floor, but if audit lines were also lost, the cap could re-open. That is an accepted residual risk (LOW-1, registry v5.17).
+- **Panel shutdown hangs (since v5.17).** A graceful stop that does not finish is escalated to a forced exit and bounded. If the log still says `even after a forced exit`, the port may stay busy until Atlas restarts.
+- **Panel down (since v5.15).** Trading continues. The log shows `Operator panel stopped unexpectedly` or `failed to start`, and a restart is attempted every 30s. If the panel stays down, check for another program using port 8000.

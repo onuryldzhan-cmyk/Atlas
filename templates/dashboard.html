@@ -634,6 +634,33 @@
             return { known: true, bucket: bucket && isNumber(bucket.required_confidence_pct) ? bucket : null };
         }
 
+        // The paper confidence-floor experiment (EXP-001) replaces the policy
+        // floor for its buckets while it is active; /api/execution-gates
+        // publishes the floor it actually enforces. null = not applicable.
+        function experimentFloor(level) {
+            const exp = executionGates && executionGates.experiment;
+            if (!exp || exp.available !== true || exp.attached !== true || exp.active !== true) return null;
+            if (!Array.isArray(exp.buckets) || !exp.buckets.includes(level)) return null;
+            return isNumber(exp.required_confidence_pct) ? exp : null;
+        }
+
+        function renderExperimentLegend() {
+            const exp = executionGates && executionGates.experiment;
+            if (!exp) return '';
+            if (exp.available !== true) {
+                return `<div>${badge('unavailable', STATUS_TONE.warn)} deney durumu okunamadı: ${esc(exp.reason)} &mdash; aşağıdaki bucket eşikleri gerçek eşik olmayabilir</div>`;
+            }
+            if (exp.attached !== true) return '';
+            const state = exp.active === true
+                ? badge('AKTİF', STATUS_TONE.warn)
+                : badge('KAPALI', STATUS_TONE.neutral);
+            return `<div>${state} <span class="fw-semibold">${esc(exp.experiment_id)}</span> (PAPER): ` +
+                `${esc((exp.buckets || []).join(', '))} bucket'larında eşik <span class="font-monospace">&ge; ${num(exp.required_confidence_pct)}</span>` +
+                ` &middot; kullanılan <span class="font-monospace">${esc(exp.admissions)}/${esc(exp.max_admissions)}</span>` +
+                ` &middot; bitiş <span class="font-monospace">${esc(exp.ends_at)}</span>` +
+                (exp.closed_reason ? ` &middot; kapanma: ${esc(exp.closed_reason)}` : '') + `</div>`;
+        }
+
         function renderGateLegend() {
             const el = document.getElementById('execution-gates-legend');
             if (!executionGates) return;
@@ -652,6 +679,7 @@
                 `<div class="fw-semibold">BUY'ın execute edilmesi için iki ayrı confidence eşiği geçilmeli:</div>` +
                 `<div>&#9312; execution gate (ExecutionManager): <span class="font-monospace">${execMin === null ? 'n/a' : `&ge; ${num(execMin)}`}</span> &mdash; her bucket için aynı</div>` +
                 `<div>&#9313; risk bucket gate (RiskEngine): ${bucketsHtml}</div>` +
+                renderExperimentLegend() +
                 `<div class="text-body-secondary">Kartlardaki &ldquo;risk bucket&rdquo; &#9313; eşiğini seçer. Risk ajanının &ldquo;volatilite rejimi&rdquo; bir ajan oyudur; risk bucket değildir.</div>`;
         }
 
@@ -727,10 +755,13 @@
                 line = `RiskEngine politikasında bu seviye için bucket yok &mdash; yeni risk (BUY) execute edilmez` +
                     (!isBuy && execGateFails ? ` &mdash; ${execGateNote}` : '');
             } else {
-                const required = gate.bucket.required_confidence_pct;
+                const policyRequired = gate.bucket.required_confidence_pct;
+                const exp = experimentFloor(level);
+                const required = exp ? exp.required_confidence_pct : policyRequired;
                 const floor = execMin === null ? required : Math.max(required, execMin);
-                markers.push({ value: required, label: `risk bucket ${level}`, cls: 'gate-bucket' });
-                const requirement = `BUY execute için confidence <span class="font-monospace">&ge; ${num(required)}</span> gerekli`;
+                markers.push({ value: required, label: exp ? `${exp.experiment_id} ${level}` : `risk bucket ${level}`, cls: 'gate-bucket' });
+                const requirement = `BUY execute için confidence <span class="font-monospace">&ge; ${num(required)}</span> gerekli` +
+                    (exp ? ` <span class="text-body-secondary">(${esc(exp.experiment_id)} deneyi, PAPER; politika &ge; ${num(policyRequired)})</span>` : '');
                 if (!isBuy) {
                     cls = execGateFails ? 'gate-fail' : 'gate-unknown';
                     blocked = execGateFails;

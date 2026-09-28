@@ -26,6 +26,8 @@ from typing import Any
 
 import pytest
 
+from tests._market_clock import pin_clock_to_feed
+
 from core.application import (
     CAPITAL_RESERVATION_STATE_FILE,
     EXECUTION_FINANCIAL_STATE_FILE,
@@ -555,6 +557,7 @@ def execution_enabled_loop(app: AtlasApplication, brain: DecidingBrain) -> Marke
     loop.market_feed = OfflineMarketFeed()
     loop.symbols = ["BTCUSDT"]
     assert loop.execution is app.execution
+    pin_clock_to_feed(loop)
     return loop
 
 

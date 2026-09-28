@@ -918,3 +918,46 @@ def test_o_a_healthy_book_reports_agreement_and_writes_nothing(tmp_path):
     assert outcome.reason_code == "AUTHORITIES_ALREADY_AGREE"
     assert (outcome.journal_entries, outcome.idempotency_records) == (2, 2)
     assert _snapshot(directory) == before
+
+
+# ===========================================================================
+# Registry v5.13 - erasing only the journal is a disagreement too
+# ===========================================================================
+
+
+def test_erasing_only_the_journal_manufactures_disagreement(tmp_path):
+    """The mirror of test_a. An emptied or deleted journal beside a
+    populated idempotency authority used to read as a clean new journal
+    and let trading continue (Phase 2-3 audit HIGH)."""
+
+    directory = tmp_path / "state"
+    _build_book(directory, ["req-j"])
+
+    idempotency = ExecutionIdempotencyStore(directory / IDEMPOTENCY_FILE)
+    assert str(idempotency.completed_requests["req-j"].get("commit_outcome")).upper() == "COMMITTED"
+
+    (directory / JOURNAL_FILE).unlink()
+    journal = ExecutionTransactionJournal(directory / JOURNAL_FILE)
+    assert journal.entries == {}
+
+    readiness = FinancialRuntimeSafetyService(
+        transaction_journal=journal, idempotency_store=idempotency,
+    ).assess()
+    assert readiness.ready is False
+    assert readiness.decision.reason == "SOURCE_DISAGREEMENT"
+
+
+def test_rejected_requests_need_no_journal_entry(tmp_path):
+    """A refusal never reaches the journal, so it must not be counted."""
+
+    directory = tmp_path / "state"
+    _build_book(directory, [])
+    idempotency = ExecutionIdempotencyStore(directory / IDEMPOTENCY_FILE)
+    journal = ExecutionTransactionJournal(directory / JOURNAL_FILE)
+    idempotency.completed_requests["req-rejected"] = {
+        "success": False, "status": "REJECTED", "reason": "LOW_CONFIDENCE",
+    }
+
+    assert FinancialRuntimeSafetyService(
+        transaction_journal=journal, idempotency_store=idempotency,
+    ).assess().ready is True

@@ -52,6 +52,8 @@ from typing import Any
 
 import pytest
 
+from tests._market_clock import pin_clock_to_feed
+
 from core.application import (
     CAPITAL_RESERVATION_STATE_FILE,
     DEFAULT_INSTRUMENT_RULES_PATH,
@@ -369,15 +371,21 @@ def test_risk_engine_exposes_no_public_sizing_query(flat_app):
     assert not hasattr(flat_app.execution.risk_engine, "maximum_new_risk_allocation")
 
 
-def test_unsized_sell_with_nothing_held_is_malformed_not_unsized(tmp_path):
-    """Selling what is not held is not a reduction, and is not sized either."""
+def test_unsized_sell_with_nothing_held_is_refused_as_no_position(tmp_path):
+    """Selling what is not held is not a reduction, and is not sized either.
+
+    Registry v5.04 (owner decision 2026-09-28) replaces the earlier pinned
+    INVALID_FINANCIAL_INPUT reason with NO_POSITION_TO_SELL; it stays a
+    refusal, before the engine and before any reservation.
+    """
     app = application(tmp_path)
     app.execution.start()
 
     result = app.execution.risk_check(sell())
 
     assert result["approved"] is False
-    assert result["reason"] == "INVALID_FINANCIAL_INPUT"
+    assert result["reason"] == "NO_POSITION_TO_SELL"
+    assert app.execution._risk_admissions == {}
 
 
 # ==========================================================================
@@ -1751,6 +1759,7 @@ def execution_enabled_loop(app: AtlasApplication, action: str,
     loop.market_feed = OfflineMarketFeed(epoch)
     loop.symbols = ["BTCUSDT"]
     assert loop.execution is app.execution
+    pin_clock_to_feed(loop)
     return loop
 
 
