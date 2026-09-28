@@ -81,12 +81,22 @@ In every case the runtime either resumes exactly or refuses new risk. It never s
 - Gap: the Windows lock behaviour is covered by mocks plus Windows CI only. No owner run has exercised exit 76 on a real second launch.
 
 ### 5. Frontend separation
-**Criterion.**
+**Criterion (as first drafted).**
 - The web surface imports nothing that can mutate financial state.
 - The runtime runs identically with the web surface disabled.
 - A web failure cannot stop trading, and a trading halt cannot hide the panel.
 
-**Today: UNKNOWN.** The composition hooks (`atlas_service.py`) and `test_merged_process_composition.py` cover start and stop ordering. The import-direction check was not run this session.
+**Today: MET for the first two points. CONFLICT on the third.**
+- *Imports and calls:* `tests/architecture/test_web_layer_is_read_only.py` (AST-based) proves that `web_app.py` and `observability/*` import no core, ai, risk, execution or storage module and call no state-changing method. A mutant with a forbidden import and a `.stop()` call fails it.
+- *Web disabled:* `python main.py` runs the full runtime with no web surface. Evidence: the owner's 2026-09-28 13:44 run, and `tests/test_merged_process_composition.py::test_process_without_hooks_is_unchanged`.
+- **CONFLICT:**
+  - *Expected:* a web failure cannot stop trading.
+  - *Actual:* by design it does. A web surface that fails to start stops Atlas with exit 1 (`test_failing_start_hook_still_stops_the_application`). A web thread that dies at runtime stops Atlas too (`main.AtlasProcess._subordinate_alive`: "Subordinate component stopped unexpectedly").
+  - *Impact:* a panel crash takes trading down, and the supervisor restarts it. That is conservative, because the operator is never left blind, but it couples availability to the panel.
+  - *Decision required:*
+    - **(a)** keep the coupling and amend the criterion;
+    - **(b)** decouple, so that the runtime keeps running and the panel restarts on its own. That is a behaviour change needing a grant.
+- *A trading halt never hides the panel:* health keeps reporting through a halt (`tests/test_application_health_market_signals.py::test_halted_execution_is_not_healthy`, which reports rather than hides).
 
 ### 6. Recovery
 **Criterion.** Every durable-state failure has one of two documented outcomes:
