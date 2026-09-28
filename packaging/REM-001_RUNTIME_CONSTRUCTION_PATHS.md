@@ -20,8 +20,8 @@ Command: `python -m tools.build_rem001_gate1_maps construction --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `9881043368bdc36fa8037c2f93e2bd99830c9261` |
-| generated_from_tree | `253012185d919fd739bbc5fb1531b613cfd2fdf3` |
+| generated_from_commit | `7975b238cf464241765540ad335f06db7691dcb8` |
+| generated_from_tree | `3b44301dff533a195c6a359becc03f52697709a4` |
 | tracked_working_tree_clean | True |
 | modified_tracked_paths_at_generation | none |
 
@@ -57,13 +57,13 @@ below: it counted pattern hits, these count resolved call sites.
 | --- | --- |
 | entry_points | `main.py`, `web_app.py`, `atlas_service.py`, `atlas_supervisor.py` |
 | composition_root_canonical | `core/application.py` (ADR-0001) |
-| modules_in_runtime_closure | 112 |
-| classes_defined_in_closure | 396 |
-| construction_sites | 287 |
-| modules_constructing | 33 |
-| classes_constructed | 122 |
-| construction_edges | 92 |
-| ambiguous_class_names | 3 |
+| modules_in_runtime_closure | 117 |
+| classes_defined_in_closure | 407 |
+| construction_sites | 290 |
+| modules_constructing | 34 |
+| classes_constructed | 123 |
+| construction_edges | 93 |
+| ambiguous_class_names | 4 |
 | parse_failures | 0 |
 
 ### Ambiguous class names
@@ -74,6 +74,7 @@ contribute no construction edge.
 
 - `AtlasBrain` — `ai/core/atlas_brain.py`, `core/brain.py`
 - `Decision` — `ai/core/atlas_reasoning_engine.py`, `core/decision.py`
+- `RiskLevel` — `atlas_org/permissions.py`, `core/decision.py`
 - `_TransportError` — `atlas_finance/market_data/fear_greed_provider.py`, `atlas_finance/market_data/treasury_yield_provider.py`
 
 ## Canonical construction chain (ADR-0001)
@@ -380,6 +381,9 @@ classes and their observed constructors:
 | `exchange/market_feed.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 369 | `MarketFeed::_require_metadata` |
 | `exchange/market_feed.py` | `MarketFeedService` | `atlas_finance/market_data/market_feed_service.py` | 120 | `MarketFeed::__init__` |
 | `main.py` | `AtlasApplication` | `core/application.py` | 487 | `AtlasProcess::start` |
+| `observability/governance_records.py` | `ProposalLogError` | `atlas_org/proposals.py` | 27 | `_load` |
+| `observability/governance_records.py` | `ProposalLogError` | `atlas_org/proposals.py` | 30 | `_load` |
+| `observability/governance_records.py` | `ProposalLogError` | `atlas_org/proposals.py` | 34 | `_load` |
 
 ## Classification fields deliberately absent
 
