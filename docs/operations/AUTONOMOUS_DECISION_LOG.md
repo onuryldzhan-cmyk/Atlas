@@ -17,6 +17,7 @@ Under this mandate:
 | 1 | 2026-09-28 | Memory module reports `trades=0` | **Leave unchanged** | It is decision metadata only (it never reaches confidence or action). Feeding it 5 trades would push its historical "effect" toward raising confidence without evidence (rule 3). | this commit |
 | 2 | 2026-09-28 | v5.16 LOW "panel down only in logs" | **Close as not applicable** | A panel cannot display its own outage. The supervisor console log is the correct surface, and the runbook documents it. | this commit |
 | 3 | 2026-09-28 | v5.23 LOW: partial-sell fee test | **Added the test** | It closes an audit gap with no production change. | this commit |
+| 5 | 2026-09-28 | v5.22 audit gap: no real-candle end-to-end test | **Added 2 tests** | Real candles → provider → WorldAnalysisEngine → rule: a calm market gives LOW; a market that is relatively calm but absolutely volatile gives MEDIUM, proving the p30 ceiling works. Test-only. | next commit |
 | 4 | 2026-09-28 | Next roadmap item | **Do not start ARCH-001 autonomously** | Its specification is lost (GOV-DRIFT-005). Starting it would mean inventing an architecture spec, a CLAUDE.md STOP condition. | queued below |
 
 ## Queued for the owner (not decided under the mandate)

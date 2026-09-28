@@ -248,3 +248,62 @@ def test_market_loop_sizing_failure_is_strictest(decision):
 
 def test_market_loop_without_engine_keeps_bucket():
     assert _loop_with(None)._sizing_risk_bucket("MEDIUM", {"confidence": 63.0}) == "MEDIUM"
+
+
+# ------------------ end to end from real candles (v5.22 audit test gap)
+
+import contextlib
+import io
+import math as _math
+
+from core.market_loop import MarketLoop
+from core.market_risk_regime import MarketRiskRegimeProvider
+from tests.test_backlog001_macro_risk_wiring_and_fusion import FusingBrain, StubMacro, treasury
+
+
+def _series(step_fraction, count=200, start=100.0):
+    """Closes shrinking steps: newest window calmest (regime LOW), with the
+    absolute size of the moves set by step_fraction."""
+    rows, close = [], start
+    for i in range(count):
+        close *= 1 + step_fraction * (count - i) / count
+        open_ms = 1_700_000_000_000 + i * 60_000
+        rows.append([open_ms, f"{close:.6f}", f"{close:.6f}", f"{close:.6f}",
+                     f"{close:.6f}", "10", open_ms + 59_999, "0", 0, "4", "400", "0"])
+    return rows
+
+
+class _Feed:
+    def __init__(self, rows):
+        self.rows = rows
+
+    def candles(self, symbol, interval="1m", limit=500):
+        return self.rows[-limit:]
+
+
+def _pipeline(rows):
+    brain = FusingBrain()
+    loop = MarketLoop(brain=brain, market_feed=_Feed(rows), execution=None, symbols=["BTCUSDT"],
+                      macro_provider=StubMacro(treasury(0)),  # FLAT -> Macro HOLD
+                      market_risk_provider=MarketRiskRegimeProvider())
+    with contextlib.redirect_stdout(io.StringIO()):
+        loop.process_symbol("BTCUSDT")
+    return brain.market_data[0]
+
+
+def test_real_candles_calm_market_below_ceiling_is_low():
+    data = _pipeline(_series(0.00005))
+    evidence = data["market_risk_evidence"]
+    assert evidence["regime"] == "LOW"
+    assert evidence["realized_volatility"] < LOW_VOLATILITY_CEILINGS["BTCUSDT"]
+    assert regime_risk_result(data, "BTCUSDT").level is RiskCategory.LOW
+
+
+def test_real_candles_relatively_calm_but_absolutely_volatile_is_not_low():
+    """The proposal's open question 4: a relative 3h LOW after a wild period
+    must not open the permissive bucket - the absolute ceiling blocks it."""
+    data = _pipeline(_series(0.005))
+    evidence = data["market_risk_evidence"]
+    assert evidence["regime"] == "LOW"
+    assert evidence["realized_volatility"] > LOW_VOLATILITY_CEILINGS["BTCUSDT"]
+    assert regime_risk_result(data, "BTCUSDT").level is RiskCategory.MEDIUM
