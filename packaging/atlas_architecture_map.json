@@ -480,6 +480,7 @@
     "atlas_supervisor.py": "L3",
     "core/__init__.py": "L1",
     "core/application.py": "L3",
+    "core/atlas_config.py": "L3",
     "core/audit_event.py": "L1",
     "core/audit_event_store.py": "L2",
     "core/brain.py": "L3",

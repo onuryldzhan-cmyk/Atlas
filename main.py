@@ -36,6 +36,7 @@ from pathlib import Path
 from typing import Any
 
 from core.application import AtlasApplication, resolve_state_directory
+from core.atlas_config import AtlasConfigError, load_config
 from core.audit_event_store import AuditChainIntegrityError
 from core import instance_lock
 from core.instance_lock import INSTANCE_LOCK_FILE_NAME, InstanceLockHeldError
@@ -51,6 +52,11 @@ logger = logging.getLogger(LOGGER_NAME)
 # this is the same cross-process-literal precedent core.application's
 # SUPERVISOR_EPOCH_ENV already follows for ENV_EPOCH.
 HEARTBEAT_FILE_ENV = "ATLAS_SUPERVISOR_HEARTBEAT_FILE"
+
+# Fixed, not configurable (CFG-001): core/atlas_config.load_config refuses
+# any mode but PAPER while live authority is DENIED.
+EXECUTION_MODE = "PAPER"
+PAPER_CONFIDENCE_EXPERIMENT = True
 
 # Minimum spacing between two "heartbeat write failed" announcements, so a
 # target that flaps between failing and working cannot flood the log.
@@ -467,6 +473,9 @@ class AtlasProcess:
         Construct and start Atlas.
         """
 
+        if not self._validate_configuration():
+            return False
+
         if not self._acquire_instance_lock():
             return False
 
@@ -475,8 +484,8 @@ class AtlasProcess:
         )
 
         self.application = AtlasApplication(
-            execution_mode="PAPER",
-            paper_confidence_experiment=True,
+            execution_mode=EXECUTION_MODE,
+            paper_confidence_experiment=PAPER_CONFIDENCE_EXPERIMENT,
         )
 
         logger.info(
@@ -807,6 +816,34 @@ class AtlasProcess:
             )
 
         return stopped
+
+    def _validate_configuration(self) -> bool:
+        """CFG-001: validate every setting at once, before any state is touched.
+
+        Invalid -> exit 1 (owner decision, registry v5.20), with every
+        problem logged, so one run shows the operator everything to fix.
+        """
+
+        try:
+            config = load_config(
+                os.environ,
+                execution_mode=EXECUTION_MODE,
+                paper_confidence_experiment=PAPER_CONFIDENCE_EXPERIMENT,
+            )
+        except AtlasConfigError as exc:
+            self.exit_code = 1
+            self.shutdown_reason = f"Invalid configuration ({len(exc.errors)} problem(s))"
+            logger.critical(self.shutdown_reason)
+            for problem in exc.errors:
+                logger.critical("  config: %s", problem)
+            return False
+
+        logger.info(
+            "Configuration valid | %s",
+            " ".join(f"{k}={v}" for k, v in config.describe().items()),
+        )
+
+        return True
 
     def _acquire_instance_lock(self) -> bool:
         """Hold the state-root lock (core/instance_lock.py) for this process.

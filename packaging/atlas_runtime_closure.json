@@ -61,6 +61,7 @@
     "atlas_supervisor.py",
     "core/__init__.py",
     "core/application.py",
+    "core/atlas_config.py",
     "core/audit_event.py",
     "core/audit_event_store.py",
     "core/brain.py",
