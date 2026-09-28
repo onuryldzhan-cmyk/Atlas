@@ -20,10 +20,10 @@ Command: `python -m tools.build_rem001_gate1_maps construction --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `0d31c0dbfe583c55286503f1780022383d1cac6d` |
-| generated_from_tree | `2c4a34959d3eda15a2b5eb4a4ffa6cda4fc619f8` |
+| generated_from_commit | `3e9d28f58e6d5b4b22cee91cf53d4d92e0c08fd0` |
+| generated_from_tree | `f7042d1713d3f9e361420372fb7043e7328f017f` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['atlas_supervisor.py', 'core/audit_event_store.py', 'governance/current/ATLAS_MILESTONE_REGISTRY_v5.05.json', 'main.py', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'tests/test_single_instance_and_integrity_exit.py'] |
+| modified_tracked_paths_at_generation | ['emplates/dashboard.html', 'tests/test_dashboard_execution_gates.py', 'web_app.py'] |
 
 ## Analysis
 

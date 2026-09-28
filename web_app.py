@@ -20,7 +20,7 @@ import logging
 import math
 import re
 from datetime import UTC, datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Callable
 
@@ -1425,6 +1425,76 @@ def _risk_policy_gates(
     }
 
 
+def _experiment_gate(
+    runtime: Any | None,
+    risk_policy: dict[str, Any],
+) -> dict[str, Any]:
+    """
+    The paper confidence-floor experiment attached to the running
+    RiskEngine (EXP-001, registry v5.01), read from
+    ``RiskEngine.experiment_status()``. While it is active it replaces the
+    policy floor for its buckets with
+    ``max(global_minimum_confidence, experiment.minimum_confidence)`` -
+    the same expression as ``RiskEngine._experiment_floor`` - so the page
+    must not show the policy floor as the one being enforced.
+
+    Anything unreadable is reported as unavailable, never as "no
+    experiment": the page then keeps saying the floor is unknown.
+    """
+
+    engine = _resolve_attr(runtime, "risk_engine")
+    status_reader = getattr(engine, "experiment_status", None)
+
+    if not callable(status_reader):
+        return {"available": False, "reason": "RISK_ENGINE_UNAVAILABLE"}
+
+    try:
+        status = status_reader()
+    except Exception:
+        logger.exception("Experiment status is unreadable")
+        return {"available": False, "reason": "EXPERIMENT_STATUS_UNREADABLE"}
+
+    if status is None:
+        return {"available": True, "attached": False}
+
+    if not isinstance(status, dict):
+        return {"available": False, "reason": "EXPERIMENT_STATUS_MALFORMED"}
+
+    if risk_policy.get("available") is not True:
+        return {"available": False, "reason": "RISK_POLICY_UNAVAILABLE"}
+
+    try:
+        minimum_pct = _confidence_pct(Decimal(str(status.get("minimum_confidence"))))
+    except (InvalidOperation, ValueError):
+        minimum_pct = None
+
+    global_pct = risk_policy.get("global_minimum_confidence_pct")
+    buckets = status.get("buckets")
+
+    if (
+        minimum_pct is None
+        or not isinstance(global_pct, (int, float))
+        or not isinstance(buckets, list)
+        or not all(isinstance(name, str) for name in buckets)
+        or not isinstance(status.get("active"), bool)
+    ):
+        return {"available": False, "reason": "EXPERIMENT_STATUS_MALFORMED"}
+
+    return {
+        "available": True,
+        "attached": True,
+        "experiment_id": str(status.get("experiment_id")),
+        "active": status["active"],
+        "closed_reason": status.get("closed_reason"),
+        "buckets": buckets,
+        "required_confidence_pct": max(global_pct, minimum_pct),
+        "admissions": status.get("admissions"),
+        "max_admissions": status.get("max_admissions"),
+        "starts_at": status.get("starts_at"),
+        "ends_at": status.get("ends_at"),
+    }
+
+
 def _latest_risk_decisions(
     lines: list[str],
 ) -> dict[str, dict[str, Any]]:
@@ -1562,10 +1632,13 @@ def _execution_gates_payload(
                 "scan_truncated": truncated,
             }
 
+    risk_policy = _risk_policy_gates(runtime)
+
     return 200, {
         "available": True,
         "execution_minimum_confidence": execution_minimum,
-        "risk_policy": _risk_policy_gates(runtime),
+        "risk_policy": risk_policy,
+        "experiment": _experiment_gate(runtime, risk_policy),
         "latest_risk_decisions": decisions,
     }
 
