@@ -37,6 +37,7 @@ from typing import Any
 
 from core.application import AtlasApplication, resolve_state_directory
 from core.atlas_config import AtlasConfigError, load_config
+from core.execution_manager import PAPER_FEE_RATE_PER_SIDE
 from core.audit_event_store import AuditChainIntegrityError
 from core import instance_lock
 from core.instance_lock import INSTANCE_LOCK_FILE_NAME, InstanceLockHeldError
@@ -488,6 +489,7 @@ class AtlasProcess:
             # the EXP-001 opt-in stays a literal here: it is pinned to this
             # one call site by test_only_main_entry_point_opts_in
             paper_confidence_experiment=True,
+            paper_fee_rate=PAPER_FEE_RATE_PER_SIDE,
         )
 
         logger.info(

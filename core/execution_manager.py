@@ -49,7 +49,7 @@ from __future__ import annotations
 
 from contextlib import nullcontext
 import logging
-from decimal import ROUND_DOWN, ROUND_HALF_EVEN, Decimal, InvalidOperation, localcontext
+from decimal import ROUND_DOWN, ROUND_HALF_EVEN, ROUND_UP, Decimal, InvalidOperation, localcontext
 import threading
 import time
 import uuid
@@ -109,6 +109,12 @@ from data_layer.runtime_safety import (
     FinancialRuntimeSafetyService,
 )
 
+
+# Registry v5.23 (owner decision: 0.1% per side, the public Binance spot base
+# rate; the owner's account tier is UNKNOWN). Pinned here, not configurable:
+# changing it is a governed change. Applies to paper fills only.
+PAPER_FEE_RATE_PER_SIDE = Decimal("0.001")
+PAPER_FEE_QUANTUM = Decimal("0.00000001")
 
 logger = logging.getLogger(
     "AtlasAI.ExecutionManager"
@@ -246,7 +252,15 @@ class ExecutionManager:
         instrument_rules: InstrumentRuleset | None = None,
         instrument_rule_freshness: VenueRuleFreshnessService | None = None,
         configured_symbols: list[str] | tuple[str, ...] | None = None,
+        paper_fee_rate: Decimal = Decimal("0"),
     ) -> None:
+        # Registry v5.23: per-side paper fee rate. Default 0 keeps the
+        # historical fee-free behaviour for any directly built manager; the
+        # composition root passes PAPER_FEE_RATE_PER_SIDE.
+        paper_fee_rate = Decimal(str(paper_fee_rate))
+        if not paper_fee_rate.is_finite() or paper_fee_rate < 0 or paper_fee_rate >= 1:
+            raise ValueError("paper_fee_rate must be in [0, 1)")
+        self.paper_fee_rate = paper_fee_rate
         # Retained for status/compatibility reporting only. No execution path
         # reads it: it is never asked to size an allocation and never asked to
         # approve a request. Removing the parameter outright would break every
@@ -4619,12 +4633,21 @@ class ExecutionManager:
             )
             return
 
+        # Registry v5.23: with no component-reported fee, paper charges the
+        # governed PAPER_FEE_RATE_PER_SIDE. The fee is sized from the
+        # allocation as rate*A/(1+rate), which equals rate*(A-fee) and so is
+        # never below the fee on the (step-rounded, smaller) actual notional.
+        ExecutionManager._apply_paper_fee_if_unreported(
+            result=result,
+            fee_amount=approved * self.paper_fee_rate / (1 + self.paper_fee_rate),
+            quote_asset=instrument_rules.quote_asset,
+        )
+
         # Block 5E: only a fee this venue's quote asset can settle exactly is
         # ever allowed to reach durable settlement. A base-asset fee, a
         # third-asset fee, or an undeclared nonzero fee is refused here -
         # before `_finalize_durable_financial_state` - never inferred and
-        # never converted, because there is no FX or fee-rate policy
-        # anywhere in this repository.
+        # never converted. The only fee-rate policy is the paper rate above.
         try:
             normalized_fee = FeeNormalizer.normalize(
                 fee_amount=result.fee_amount,
@@ -5323,6 +5346,13 @@ class ExecutionManager:
                 )
                 return
 
+            # Registry v5.23: paper exit fee on the exact exit notional.
+            ExecutionManager._apply_paper_fee_if_unreported(
+                result=result,
+                fee_amount=result.filled_quote_notional * self.paper_fee_rate,
+                quote_asset=instrument_rules.quote_asset,
+            )
+
             try:
                 normalized_fee = FeeNormalizer.normalize(
                     fee_amount=result.fee_amount,
@@ -5798,6 +5828,24 @@ class ExecutionManager:
                 result,
                 self.MAX_HISTORY,
             )
+
+    @staticmethod
+    def _apply_paper_fee_if_unreported(*, result: Any, fee_amount: Decimal, quote_asset: str) -> None:
+        """Charge the paper fee unless an executing component reported one.
+
+        Rounded up to 8 decimals so the paper fee never under-charges. Only
+        the paper paths call this; the fee is in the venue quote asset, the
+        one currency FeeNormalizer settles.
+        """
+
+        reported = result.fee_amount
+        if reported is not None and Decimal(str(reported)) != 0:
+            return
+        if fee_amount == 0:
+            return
+        result.fee_amount = Decimal(fee_amount).quantize(PAPER_FEE_QUANTUM, rounding=ROUND_UP)
+        result.fee = float(result.fee_amount)
+        result.fee_currency = quote_asset
 
     @staticmethod
     def _hydrate_result_from_component(

@@ -544,6 +544,7 @@ class AtlasApplication:
         venue_rule_freshness_policy: VenueRuleFreshnessPolicy | None = None,
         log_directory: str | Path | None = None,
         paper_confidence_experiment: bool = False,
+        paper_fee_rate: Decimal | str = "0",
     ) -> None:
         logger.info(
             "Initializing %s v%s",
@@ -553,6 +554,10 @@ class AtlasApplication:
 
         self.exchange_name = str(exchange_name)
         self.execution_mode = str(execution_mode).upper()
+        # Registry v5.23: 0 by default (historical fee-free paper, kept for
+        # every test and tool that builds the application); main.py passes
+        # PAPER_FEE_RATE_PER_SIDE for the real runtime.
+        self.paper_fee_rate = Decimal(str(paper_fee_rate))
         # registry v5.01 EXP-001. Off unless the production entry point asks
         # for it, so a bare or test-built application keeps default floors
         # regardless of the calendar date. Honoured in PAPER only.
@@ -764,6 +769,8 @@ class AtlasApplication:
         )
 
         self.execution = ExecutionManager(
+            # registry v5.23: per-side paper fee, opted in by main.py only
+            paper_fee_rate=self.paper_fee_rate,
             capital_manager=self.capital,
             position_controller=self.position_controller,
             paper_trader=self.paper_trader,
