@@ -41,6 +41,18 @@ from tools.paper_position_report import approvals_by_symbol, entry_approval
 # Below this many closed trades per group no conclusion is drawn.
 MIN_TRADES_FOR_A_VERDICT = 30
 
+# ASSUMPTION, not a measured venue fee: paper execution currently books
+# zero fees, so the report also shows an estimate at a typical spot rate
+# per side (entry and exit). The verdict uses the estimated net figure,
+# the more conservative of the two.
+ASSUMED_FEE_RATE_PER_SIDE = Decimal("0.001")
+
+
+def estimated_fees(record: dict) -> Decimal:
+    entry = Decimal(str(record.get("cost_quote", "0")))
+    exit_value = entry + Decimal(str(record["gross_pnl"]))
+    return ASSUMED_FEE_RATE_PER_SIDE * (entry + max(exit_value, Decimal("0")))
+
 
 def wilson_interval(wins: int, n: int, z: float = 1.96) -> tuple[float, float]:
     if n == 0:
@@ -79,13 +91,19 @@ def summarize(records: list[dict]) -> dict:
     fees = sum((Decimal(str(r.get("entry_fees", "0"))) for r in records), Decimal("0"))
     wins = sum(1 for g in gross if g > 0)
     hours = [h for h in (holding_hours(r) for r in records) if h is not None]
-    low, high = wilson_interval(wins, n)
+    est_fees = sum((estimated_fees(r) for r in records), Decimal("0"))
+    est_net = [Decimal(str(r["gross_pnl"])) - estimated_fees(r) for r in records]
+    est_wins = sum(1 for v in est_net if v > 0)
+    low, high = wilson_interval(est_wins, n)
     return {
         "trades": n,
         "wins": wins,
         "losses": n - wins,
         "win_rate": wins / n if n else None,
         "win_rate_95": (low, high),
+        "est_fees": est_fees,
+        "est_net_pnl": sum(est_net, Decimal("0")),
+        "est_wins": est_wins,
         "gross_pnl": sum(gross, Decimal("0")),
         "entry_fees": fees,
         "avg_gross_per_trade": (sum(gross, Decimal("0")) / n) if n else None,
@@ -111,8 +129,8 @@ def verdict(summary: dict) -> str:
     if n < MIN_TRADES_FOR_A_VERDICT:
         return f"INSUFFICIENT SAMPLE ({n} < {MIN_TRADES_FOR_A_VERDICT} trades) - no conclusion"
     low, _ = summary["win_rate_95"]
-    if summary["gross_pnl"] <= 0:
-        return "NOT PROFITABLE (gross) - evidence against keeping the lower floor"
+    if summary["est_net_pnl"] <= 0:
+        return "NOT PROFITABLE after estimated fees - evidence against keeping the lower floor"
     if low > 0.5:
         return "PROFITABLE, win rate above 50% at 95% - evidence for the lower floor"
     return "PROFITABLE but win rate not distinguishable from 50% - inconclusive"
@@ -125,9 +143,12 @@ def print_group(name: str, summary: dict) -> None:
         return
     low, high = summary["win_rate_95"]
     print(f"  trades: {summary['trades']}  wins: {summary['wins']}  losses: {summary['losses']}")
-    print(f"  win rate: {summary['win_rate']:.0%}  (95% range {low:.0%} - {high:.0%})")
+    print(f"  win rate (gross): {summary['win_rate']:.0%}; after est. fees: "
+          f"{summary['est_wins']}/{summary['trades']} (95% range {low:.0%} - {high:.0%})")
     print(f"  gross P&L: {summary['gross_pnl']:.2f}  entry fees: {summary['entry_fees']:.2f}  "
           f"avg gross/trade: {summary['avg_gross_per_trade']:.2f}")
+    print(f"  est. fees @ {ASSUMED_FEE_RATE_PER_SIDE:.1%}/side (ASSUMPTION): {summary['est_fees']:.2f}  "
+          f"est. net P&L: {summary['est_net_pnl']:.2f}")
     if summary["avg_holding_hours"] is not None:
         print(f"  avg holding time: {summary['avg_holding_hours']:.1f} h")
     print(f"  verdict: {verdict(summary)}")

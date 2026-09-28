@@ -88,3 +88,22 @@ def test_main_with_empty_state(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("ATLAS_STATE_DIRECTORY", str(tmp_path))
     assert report.main([]) == 0
     assert "no closed trades" in capsys.readouterr().out
+
+
+def test_estimated_fees_both_sides():
+    r = {"cost_quote": "800", "gross_pnl": "3"}
+    assert report.estimated_fees(r) == Decimal("1.603")
+
+
+def test_small_gross_win_becomes_loss_after_estimated_fees():
+    r = closed("B", "1", "2026-09-28T10:00:00+00:00", "2026-09-28T11:00:00+00:00")
+    r["cost_quote"] = "800"
+    s = report.summarize([r])
+    assert s["wins"] == 1 and s["est_wins"] == 0
+    assert s["est_net_pnl"] == Decimal("1") - Decimal("1.601")
+
+
+def test_verdict_uses_net_after_estimated_fees():
+    r = closed("B", "1", "2026-09-28T10:00:00+00:00", "2026-09-28T11:00:00+00:00")
+    r["cost_quote"] = "800"
+    assert report.verdict(report.summarize([r] * 30)).startswith("NOT PROFITABLE after estimated fees")
