@@ -409,9 +409,12 @@ def test_child_environment_carries_the_heartbeat_file_only_when_configured() -> 
         heartbeat_file=None,
     )
 
+    # str(Path(...)) is the platform's own spelling of the path: backslashes
+    # on Windows, forward slashes elsewhere. Comparing against it keeps the
+    # contract (the configured file is carried verbatim) portable to CI.
     assert (
         with_heartbeat._child_environment()[ENV_HEARTBEAT_FILE]
-        == "C:\\atlas\\heartbeat.json"
+        == str(Path("C:/atlas/heartbeat.json"))
     )
     assert ENV_HEARTBEAT_FILE not in without_heartbeat._child_environment()
 
