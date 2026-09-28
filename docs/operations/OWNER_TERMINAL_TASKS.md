@@ -15,16 +15,7 @@ Rules: only one Atlas at a time (a second one now exits with code 76).
 Do not press Ctrl+C in the Atlas window unless you mean to stop it; copy
 with Ctrl+Shift+C.
 
-## 1. Volatility ceiling measurement (read-only, safe while Atlas runs)
-
-```powershell
-python -m tools.measure_volatility_ceiling
-```
-
-Takes a few minutes (downloads 30 days of 1-minute prices). Paste the
-output; the LOW ceiling for the risk_level proposal is chosen from it.
-
-## 2. Before every new build: pre-flight (read-only)
+## 1. Before every new build: pre-flight (read-only)
 
 ```powershell
 python -m tools.check_execution_authority_agreement
@@ -38,3 +29,4 @@ Start Atlas only if it prints `ready=True`.
 - 2026-09-28 evening run of 8b54758 (registry v5.19): pre-flight ready=True;
   position report OK (5 EXP-001 positions); Windows single-instance lock
   proven (exit 76); SELL fix proven live (BNB/SOL/XRP closed, 3W/0L).
+- Volatility ceiling measured (30 days); owner chose p30 (registry v5.20).
