@@ -64,6 +64,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from core import instance_lock
+from core.experiment_ledger import EXPERIMENT_LEDGER_FILE, ExperimentAdmissionLedger
 from core.logger import AtlasLogger
 from core.runtime import AtlasRuntime
 from core.event_bus import EventBus
@@ -999,7 +1000,7 @@ class AtlasApplication:
         experiment = EXP001_PAPER_CONFIDENCE_EXPERIMENT
 
         try:
-            prior = count_experiment_admissions(
+            audited = count_experiment_admissions(
                 self.audit_store,
                 experiment.experiment_id,
             )
@@ -1010,9 +1011,28 @@ class AtlasApplication:
             )
             return
 
+        # registry v5.17: a second, independent durable count. The larger of
+        # the two wins, so losing audit lines can never re-open admissions;
+        # an unreadable ledger keeps the experiment off (fail-closed).
+        ledger = ExperimentAdmissionLedger(
+            self.state_directory / EXPERIMENT_LEDGER_FILE,
+        )
+
+        try:
+            recorded = ledger.count(experiment.experiment_id)
+        except Exception:
+            logger.exception(
+                "%s not attached: admission ledger unreadable, default confidence floors remain",
+                experiment.experiment_id,
+            )
+            return
+
+        prior = max(audited, recorded)
+
         self.risk_engine.attach_experiment(
             experiment,
             prior_admissions=prior,
+            admission_recorder=ledger.record,
         )
 
         logger.info(

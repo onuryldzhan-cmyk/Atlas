@@ -338,10 +338,22 @@ class AtlasWebServer:
         )
 
         if thread.is_alive():
+            # Graceful shutdown hung (e.g. a connection that never closes).
+            # force_exit is what uvicorn's second signal sets: stop waiting
+            # for connections and background tasks. Bounded by one more
+            # timeout, so a hung server cannot keep holding the port and
+            # starve every later panel restart (registry v5.17).
+            server.force_exit = True
+
+            thread.join(
+                timeout=self.shutdown_timeout,
+            )
+
+        if thread.is_alive():
             logger.warning(
-                "Atlas web surface did not stop within %s seconds; "
-                "continuing with runtime shutdown",
-                self.shutdown_timeout,
+                "Atlas web surface did not stop within %s seconds even "
+                "after a forced exit; continuing with runtime shutdown",
+                2 * self.shutdown_timeout,
             )
 
             return

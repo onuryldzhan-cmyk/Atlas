@@ -78,6 +78,7 @@
     "core/execution_models.py",
     "core/execution_portfolio_foundation.py",
     "core/execution_transaction_journal.py",
+    "core/experiment_ledger.py",
     "core/fee_accounting.py",
     "core/instance_lock.py",
     "core/instrument_rules.py",

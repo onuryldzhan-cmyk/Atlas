@@ -470,7 +470,7 @@ class RiskEngine:
         self._experiment_lock = threading.Lock()
 
     def attach_experiment(self, experiment: ConfidenceFloorExperiment, *, prior_admissions: int,
-                          clock: Any = None) -> None:
+                          clock: Any = None, admission_recorder: Any = None) -> None:
         """Attach a confidence-floor experiment; the caller restricts this to PAPER."""
         if not isinstance(experiment, ConfidenceFloorExperiment):
             raise ValueError("experiment must be a ConfidenceFloorExperiment")
@@ -478,6 +478,10 @@ class RiskEngine:
             raise ValueError("prior_admissions must be a non-negative integer")
         self.experiment = experiment
         self.experiment_admissions = prior_admissions
+        # registry v5.17: called with the new count *before* an admission is
+        # granted; if it raises, the admission is refused and the experiment
+        # closes, so the durable count can never trail the granted count.
+        self._experiment_recorder = admission_recorder
         if clock is not None:
             self._experiment_clock = clock
 
@@ -649,6 +653,13 @@ class RiskEngine:
             with self._experiment_lock:
                 if self._experiment_floor(bucket) is None:
                     return reject("CONFIDENCE_BELOW_POLICY")
+                recorder = getattr(self, "_experiment_recorder", None)
+                if recorder is not None:
+                    try:
+                        recorder(experiment_id, self.experiment_admissions + 1)
+                    except Exception:
+                        self.close_experiment("ADMISSION_LEDGER_WRITE_FAILED")
+                        return reject("CONFIDENCE_BELOW_POLICY")
                 self.experiment_admissions += 1
         self.approved_count += 1
         return self._decision(RiskDecisionStatus.APPROVE, "RISK_APPROVED", state, allocation=approved,

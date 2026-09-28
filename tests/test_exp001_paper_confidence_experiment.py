@@ -8,12 +8,20 @@ behaviour must stay exactly as it is without it.
 
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal as D
+import json
+from pathlib import Path
+import tempfile
 import threading
 from types import SimpleNamespace
 
 import pytest
 
 from core.application import AtlasApplication, count_experiment_admissions
+from core.experiment_ledger import (
+    EXPERIMENT_LEDGER_FILE,
+    ExperimentAdmissionLedger,
+    ExperimentLedgerError,
+)
 from core.capital_reservation import CapitalReservationLedger
 from core.execution_manager import ExecutionManager
 from core.execution_models import ExecutionRequest
@@ -244,8 +252,13 @@ def event(event_type, details):
     return SimpleNamespace(event_type=event_type, payload={"details": details})
 
 
-def app(mode="PAPER", opted_in=True, audit=None):
+def app(mode="PAPER", opted_in=True, audit=None, state_directory=None):
     application = AtlasApplication.__new__(AtlasApplication)
+    # AtlasApplication.__init__ always sets this; the durable admission
+    # ledger (registry v5.17) lives under it.
+    application.state_directory = (
+        Path(tempfile.mkdtemp()) if state_directory is None else Path(state_directory)
+    )
     application.execution_mode = mode
     application.paper_confidence_experiment = opted_in
     application.audit_store = audit if audit is not None else FakeAudit()
@@ -427,3 +440,121 @@ def test_manager_without_experiment_rejects_as_before():
     result = manager(engine(attach=False)).risk_check(request(63), state())
     assert result["approved"] is False
     assert result["reason"] == "CONFIDENCE_BELOW_POLICY"
+
+
+# =====================================================================
+# Durable admission ledger (registry v5.17)
+# =====================================================================
+
+def _admit_events(n):
+    return [event("RISK_APPROVED", {"experiment_id": "EXP-001"}) for _ in range(n)]
+
+
+def test_ledger_absent_counts_zero_and_record_is_monotonic(tmp_path):
+    ledger = ExperimentAdmissionLedger(tmp_path / EXPERIMENT_LEDGER_FILE)
+    assert ledger.count("EXP-001") == 0
+    ledger.record("EXP-001", 3)
+    ledger.record("EXP-001", 1)
+    assert ledger.count("EXP-001") == 3
+    assert not (tmp_path / (EXPERIMENT_LEDGER_FILE + ".tmp")).exists()
+
+
+@pytest.mark.parametrize("content", ["{not json", "[]", '{"EXP-001": {"admissions": -1}}',
+                                     '{"EXP-001": {"admissions": true}}', '{"EXP-001": 5}'])
+def test_malformed_ledger_raises(tmp_path, content):
+    path = tmp_path / EXPERIMENT_LEDGER_FILE
+    path.write_text(content, encoding="utf-8")
+    with pytest.raises(ExperimentLedgerError):
+        ExperimentAdmissionLedger(path).count("EXP-001")
+
+
+def test_restart_takes_larger_of_audit_and_ledger(tmp_path):
+    ExperimentAdmissionLedger(tmp_path / EXPERIMENT_LEDGER_FILE).record("EXP-001", 7)
+    application = app(audit=FakeAudit(_admit_events(2)), state_directory=tmp_path)
+    application._attach_paper_confidence_experiment()
+    assert application.risk_engine.experiment_admissions == 7
+
+    application = app(audit=FakeAudit(_admit_events(9)), state_directory=tmp_path)
+    application._attach_paper_confidence_experiment()
+    assert application.risk_engine.experiment_admissions == 9
+
+
+def test_lost_audit_lines_cannot_reopen_a_full_experiment(tmp_path):
+    ExperimentAdmissionLedger(tmp_path / EXPERIMENT_LEDGER_FILE).record("EXP-001", 50)
+    application = app(audit=FakeAudit([]), state_directory=tmp_path)
+    application._attach_paper_confidence_experiment()
+    decision = application.risk_engine.evaluate(buy(confidence="0.63"), state())
+    assert decision.reason_code == "CONFIDENCE_BELOW_POLICY"
+    assert decision.experiment_id == ""
+
+
+def test_unreadable_ledger_leaves_experiment_unattached(tmp_path):
+    (tmp_path / EXPERIMENT_LEDGER_FILE).write_text("{garbage", encoding="utf-8")
+    application = app(state_directory=tmp_path)
+    application._attach_paper_confidence_experiment()
+    assert application.risk_engine.experiment is None
+
+
+def test_admission_is_recorded_before_it_is_granted(tmp_path):
+    application = app(state_directory=tmp_path)
+    application._attach_paper_confidence_experiment()
+    risk = application.risk_engine
+    risk._experiment_clock = lambda: INSIDE
+    decision = risk.evaluate(buy(confidence="0.63"), state())
+    assert decision.experiment_id == "EXP-001"
+    stored = json.loads((tmp_path / EXPERIMENT_LEDGER_FILE).read_text(encoding="utf-8"))
+    assert stored["EXP-001"]["admissions"] == risk.experiment_admissions == 1
+
+
+def test_recorder_failure_refuses_admission_and_closes_experiment():
+    calls = []
+
+    def failing(experiment_id, admissions):
+        calls.append((experiment_id, admissions))
+        raise OSError("disk full")
+
+    risk = RiskEngine(policy())
+    risk.attach_experiment(EXP, prior_admissions=0, clock=lambda: INSIDE, admission_recorder=failing)
+    decision = risk.evaluate(buy(confidence="0.63"), state())
+    assert calls == [("EXP-001", 1)]
+    assert decision.reason_code == "CONFIDENCE_BELOW_POLICY"
+    assert risk.experiment_admissions == 0
+    assert risk.experiment_closed_reason == "ADMISSION_LEDGER_WRITE_FAILED"
+    # still closed afterwards; default-floor admissions are unaffected
+    assert risk.evaluate(buy(confidence="0.63"), state()).reason_code == "CONFIDENCE_BELOW_POLICY"
+    assert risk.evaluate(buy(confidence="0.85"), state()).approved
+    assert len(calls) == 1
+
+
+def test_real_ledger_corrupted_while_running_closes_experiment(tmp_path):
+    path = tmp_path / EXPERIMENT_LEDGER_FILE
+    ledger = ExperimentAdmissionLedger(path)
+    risk = RiskEngine(policy())
+    risk.attach_experiment(EXP, prior_admissions=0, clock=lambda: INSIDE, admission_recorder=ledger.record)
+    assert risk.evaluate(buy(confidence="0.63"), state()).experiment_id == "EXP-001"
+    path.write_text("{corrupt", encoding="utf-8")
+    decision = risk.evaluate(buy(confidence="0.63"), state())
+    assert decision.reason_code == "CONFIDENCE_BELOW_POLICY"
+    assert risk.experiment_admissions == 1
+    assert risk.experiment_closed_reason == "ADMISSION_LEDGER_WRITE_FAILED"
+
+
+def test_concurrent_admissions_never_overshoot_cap_or_ledger(tmp_path):
+    ledger = ExperimentAdmissionLedger(tmp_path / EXPERIMENT_LEDGER_FILE)
+    ledger.record("EXP-001", 45)
+    risk = RiskEngine(policy())
+    risk.attach_experiment(EXP, prior_admissions=45, clock=lambda: INSIDE, admission_recorder=ledger.record)
+    results, start = [], threading.Barrier(20)
+
+    def worker():
+        start.wait()
+        results.append(risk.evaluate(buy(confidence="0.63", amount="1"), state()))
+
+    threads = [threading.Thread(target=worker) for _ in range(20)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(10)
+    assert sum(1 for d in results if d.experiment_id == "EXP-001") == 5
+    assert risk.experiment_admissions == 50
+    assert ledger.count("EXP-001") == 50

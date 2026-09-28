@@ -497,6 +497,7 @@
     "core/execution_models.py": "L1",
     "core/execution_portfolio_foundation.py": "L1",
     "core/execution_transaction_journal.py": "L2",
+    "core/experiment_ledger.py": "L3",
     "core/fee_accounting.py": "L1",
     "core/instance_lock.py": "L3",
     "core/instrument_rules.py": "L1",

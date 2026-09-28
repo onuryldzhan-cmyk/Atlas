@@ -163,3 +163,65 @@ def test_a_real_web_server_restarts_after_dying_and_serves_again():
         assert get_health() == 200
     finally:
         web_server.stop()
+
+
+# ---------------------------------------------------------------------------
+# Hung panel shutdown is bounded (registry v5.17)
+# ---------------------------------------------------------------------------
+
+class _HungServer:
+    """Ignores should_exit; only a forced exit ends it (uvicorn's 2nd signal)."""
+
+    def __init__(self, obey_force: bool) -> None:
+        self.should_exit = False
+        self.force_exit = False
+        self.obey_force = obey_force
+        self.release = threading.Event()
+
+    def run(self) -> None:
+        while not (self.obey_force and self.force_exit) and not self.release.is_set():
+            self.release.wait(0.01)
+
+
+def _hung_web(obey_force: bool):
+    from atlas_service import AtlasWebServer
+
+    web = AtlasWebServer(shutdown_timeout=0.2)
+    server = _HungServer(obey_force)
+    thread = threading.Thread(target=server.run, daemon=True)
+    web.server, web.thread = server, thread
+    thread.start()
+    return web, server, thread
+
+
+def test_hung_graceful_shutdown_escalates_to_force_exit():
+    web, server, thread = _hung_web(obey_force=True)
+    web.stop()
+    assert server.should_exit is True
+    assert server.force_exit is True
+    assert not thread.is_alive()
+    assert web.server is None and web.thread is None
+
+
+def test_server_ignoring_force_exit_still_returns_bounded(caplog):
+    import time
+
+    web, server, thread = _hung_web(obey_force=False)
+    started = time.monotonic()
+    try:
+        with caplog.at_level("WARNING"):
+            web.stop()
+        assert time.monotonic() - started < 2.0
+        assert thread.is_alive()
+        assert "even after a forced exit" in caplog.text
+    finally:
+        server.release.set()
+        thread.join(1)
+
+
+def test_graceful_stop_does_not_force():
+    web, server, thread = _hung_web(obey_force=True)
+    server.release.set()
+    thread.join(1)
+    web.stop()
+    assert server.force_exit is False
