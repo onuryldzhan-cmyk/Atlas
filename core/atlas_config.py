@@ -132,6 +132,8 @@ def load_config(
             resolved[key] = resolver()
         except ConfiguredDirectoryError as exc:
             errors.append(str(exc))
+        except Exception as exc:  # any other resolver failure is still a config problem
+            errors.append(f"{key}: {type(exc).__name__}: {exc}")
 
     if errors:
         raise AtlasConfigError(errors)

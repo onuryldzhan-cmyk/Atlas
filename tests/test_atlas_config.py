@@ -97,8 +97,41 @@ def test_runtime_variable_list_covers_every_name_the_runtime_reads():
     assert atlas_config.HEARTBEAT_FILE_ENV == main.HEARTBEAT_FILE_ENV
 
 
-def test_main_mode_is_paper_and_passes_its_own_validation():
+def test_main_mode_is_paper_and_passes_its_own_validation(roots):
     assert main.EXECUTION_MODE == "PAPER"
+    assert main.PAPER_CONFIDENCE_EXPERIMENT is True  # must match the literal at the call site
+    config = load_config({}, execution_mode=main.EXECUTION_MODE,
+                         paper_confidence_experiment=main.PAPER_CONFIDENCE_EXPERIMENT)
+    assert config.execution_mode == "PAPER"
+
+
+def test_every_allowlisted_variable_at_once_is_accepted(roots, tmp_path):
+    environ = {name: "x" for name in RUNTIME_ATLAS_VARIABLES}
+    config = load_config(environ, execution_mode="PAPER", paper_confidence_experiment=True)
+    assert config.execution_mode == "PAPER"
+
+
+def test_no_runtime_module_reads_an_atlas_variable_missing_from_the_allowlist():
+    """Drift guard: scans every runtime-closure module for ATLAS_* names used
+    as environment variables, so a new one cannot be refused at start."""
+    import json
+    import re
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    modules = json.loads((root / "packaging" / "atlas_runtime_closure.json").read_text(encoding="utf-8"))["modules"]
+    env_constant = re.compile(r'[A-Z_]*ENV[A-Z_]*\s*=\s*"(ATLAS_[A-Z0-9_]+)"')
+    env_read = re.compile(r'(?:environ(?:\.get)?\s*[\[(]|getenv\s*\(|environment_variable\s*=)\s*"(ATLAS_[A-Z0-9_]+)"')
+    found = set()
+    for module in modules + ["main.py", "atlas_supervisor.py", "atlas_service.py"]:
+        text = (root / module).read_text(encoding="utf-8-sig")
+        found |= set(env_constant.findall(text)) | set(env_read.findall(text))
+    assert found, "scan found nothing - the pattern is broken"
+    assert found <= RUNTIME_ATLAS_VARIABLES, sorted(found - RUNTIME_ATLAS_VARIABLES)
+
+
+def test_windows_style_uppercase_environment_is_matched(roots):
+    with pytest.raises(AtlasConfigError):
+        load_config({"ATLAS_STATE_DIRECTRY": "x"}, execution_mode="PAPER", paper_confidence_experiment=True)
 
 
 def test_invalid_config_stops_before_lock_with_exit_1(roots, monkeypatch):

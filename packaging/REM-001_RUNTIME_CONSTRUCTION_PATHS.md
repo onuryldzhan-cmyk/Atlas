@@ -20,10 +20,10 @@ Command: `python -m tools.build_rem001_gate1_maps construction --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `df5a1ced38048def8f82637f2a92af5a7b9a66bd` |
-| generated_from_tree | `bcd5d32b0ba872a73c33a1aa67b6cc1f187917b9` |
+| generated_from_commit | `93e789ff38cea25d0c66d18e1078308fed7c2998` |
+| generated_from_tree | `154633be9aa853ccabebb039190542af4430f3e7` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['core/atlas_config.py', 'main.py', 'tests/test_atlas_config.py', 'tools/show_config.py'] |
+| modified_tracked_paths_at_generation | ['docs/operations/OWNER_TERMINAL_TASKS.md', 'main.py', 'ore/atlas_config.py', 'tests/test_atlas_config.py'] |
 
 ## Analysis
 

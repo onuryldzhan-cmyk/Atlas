@@ -485,7 +485,9 @@ class AtlasProcess:
 
         self.application = AtlasApplication(
             execution_mode=EXECUTION_MODE,
-            paper_confidence_experiment=PAPER_CONFIDENCE_EXPERIMENT,
+            # the EXP-001 opt-in stays a literal here: it is pinned to this
+            # one call site by test_only_main_entry_point_opts_in
+            paper_confidence_experiment=True,
         )
 
         logger.info(

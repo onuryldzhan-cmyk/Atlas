@@ -15,7 +15,19 @@ Rules: only one Atlas at a time (a second one now exits with code 76).
 Do not press Ctrl+C in the Atlas window unless you mean to stop it; copy
 with Ctrl+Shift+C.
 
-## 1. Before every new build: pre-flight (read-only)
+## 1. FIRST on the new build: configuration check (read-only)
+
+```powershell
+python -m tools.show_config
+```
+
+Since CFG-001 (registry v5.21) Atlas refuses to start when an unknown
+`ATLAS_*` environment variable is set (owner decision). This prints the
+effective settings, or every problem found. Continue only if it prints
+`OK - configuration valid.` If it lists an unknown variable, paste the
+output; do not start Atlas.
+
+## 2. Before every new build: pre-flight (read-only)
 
 ```powershell
 python -m tools.check_execution_authority_agreement
