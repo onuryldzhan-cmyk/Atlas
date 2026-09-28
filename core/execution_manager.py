@@ -1673,26 +1673,33 @@ class ExecutionManager:
             if not self._has_risk_admission(request):
                 return self.reject(reason="CANONICAL_RISK_ADMISSION_MISSING", request=request)
 
-            last_audit_event_id = (
-                self._write_audit_event(
-                    event_type="RISK_APPROVED",
-                    request=request,
-                    payload={
-                        "approved": True,
-                        "risk": request.risk,
-                        "confidence": (
-                            request.confidence
-                        ),
-                        "details": (
-                            risk_validation.get(
-                                "details"
-                            )
-                        ),
-                    },
-                    causation_id=(
-                        last_audit_event_id
+            risk_approved_event_id = self._write_audit_event(
+                event_type="RISK_APPROVED",
+                request=request,
+                payload={
+                    "approved": True,
+                    "risk": request.risk,
+                    "confidence": (
+                        request.confidence
                     ),
-                )
+                    "details": (
+                        risk_validation.get(
+                            "details"
+                        )
+                    ),
+                },
+                causation_id=(
+                    last_audit_event_id
+                ),
+            )
+
+            self._close_experiment_if_unrecorded(
+                risk_approved_event_id,
+                risk_validation.get("details"),
+            )
+
+            last_audit_event_id = (
+                risk_approved_event_id
                 or last_audit_event_id
             )
 
@@ -3463,6 +3470,9 @@ class ExecutionManager:
             "details": {
                 "instrument_rules_digest": instrument_rules.digest,
                 "instrument_rules_source_version": instrument_rules.source_version,
+                # Registry v4.94 EXP-001: present only when the admission needed
+                # the experiment's lowered floor; counted at startup for the cap.
+                **({"experiment_id": canonical.experiment_id} if canonical.experiment_id else {}),
             },
         }
 
@@ -6977,6 +6987,23 @@ class ExecutionManager:
             self.last_audit_failure = dict(
                 failure
             )
+
+    def _close_experiment_if_unrecorded(
+        self,
+        event_id: str | None,
+        approval_details: Any,
+    ) -> None:
+        """Registry v4.94 EXP-001: the sample cap is restored from RISK_APPROVED
+        events at startup, so an experiment admission whose event could not be
+        recorded closes the experiment for this process (fail-closed)."""
+
+        if (
+            event_id is None
+            and isinstance(approval_details, Mapping)
+            and approval_details.get("experiment_id")
+            and self.risk_engine is not None
+        ):
+            self.risk_engine.close_experiment("AUDIT_WRITE_FAILED")
 
     def _write_audit_event(
         self,
