@@ -43,7 +43,10 @@ import atlas_supervisor
 
 from atlas_supervisor import (
     ENV_EPOCH,
+    ENV_HEARTBEAT_FILE,
     ENV_RESTART_COUNT,
+    HeartbeatPolicy,
+    LOG_DIRECTORY_ENV,
     ProcessSupervisor,
     RestartPolicy,
 )
@@ -318,6 +321,263 @@ def test_a_stop_during_backoff_ends_the_supervisor_cleanly() -> None:
     assert supervisor.run() == 0
     # The second child was never launched.
     assert codes == [0]
+
+
+# =====================================================================
+# HEARTBEAT POLICY
+# =====================================================================
+
+
+def test_heartbeat_default_thresholds_are_internally_consistent() -> None:
+    policy = HeartbeatPolicy()
+
+    assert policy.check_interval_seconds < policy.stale_after_seconds
+    assert policy.startup_grace_seconds > 0
+
+
+def test_heartbeat_check_interval_must_be_smaller_than_staleness() -> None:
+    with pytest.raises(ValueError, match="check_interval_seconds"):
+        HeartbeatPolicy(
+            stale_after_seconds=5.0,
+            check_interval_seconds=5.0,
+        )
+
+
+def test_heartbeat_thresholds_must_be_positive() -> None:
+    with pytest.raises(ValueError, match="must be positive"):
+        HeartbeatPolicy(stale_after_seconds=0.0)
+
+
+def test_heartbeat_is_stale_boundary_is_exact() -> None:
+    policy = HeartbeatPolicy(stale_after_seconds=30.0)
+
+    assert policy.is_stale(now=1029.999, heartbeat_at=1000.0) is False
+    assert policy.is_stale(now=1030.0, heartbeat_at=1000.0) is True
+
+
+# =====================================================================
+# HEARTBEAT FILE RESOLUTION
+# =====================================================================
+
+
+def test_heartbeat_file_resolves_from_log_directory_env(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(LOG_DIRECTORY_ENV, str(tmp_path))
+
+    supervisor = ProcessSupervisor(launch=lambda environment: None)
+
+    assert supervisor.heartbeat_file == (
+        tmp_path / atlas_supervisor.HEARTBEAT_FILE_NAME
+    )
+
+
+def test_heartbeat_disabled_when_log_directory_env_is_unset(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv(LOG_DIRECTORY_ENV, raising=False)
+
+    supervisor = ProcessSupervisor(launch=lambda environment: None)
+
+    assert supervisor.heartbeat_file is None
+
+
+def test_heartbeat_disabled_when_log_directory_does_not_exist(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(
+        LOG_DIRECTORY_ENV,
+        str(tmp_path / "does_not_exist"),
+    )
+
+    supervisor = ProcessSupervisor(launch=lambda environment: None)
+
+    assert supervisor.heartbeat_file is None
+
+
+def test_child_environment_carries_the_heartbeat_file_only_when_configured() -> (
+    None
+):
+    with_heartbeat = ProcessSupervisor(
+        launch=lambda environment: None,
+        heartbeat_file=Path("C:/atlas/heartbeat.json"),
+    )
+    without_heartbeat = ProcessSupervisor(
+        launch=lambda environment: None,
+        heartbeat_file=None,
+    )
+
+    assert (
+        with_heartbeat._child_environment()[ENV_HEARTBEAT_FILE]
+        == "C:\\atlas\\heartbeat.json"
+    )
+    assert ENV_HEARTBEAT_FILE not in without_heartbeat._child_environment()
+
+
+# =====================================================================
+# HUNG-CHILD DETECTION: scripted clock, live fake child
+# =====================================================================
+
+
+class _HangingChild:
+    """A child that never exits on its own - alive until stopped.
+
+    poll() keeps returning None (the real signature of a hung process)
+    until send_signal/terminate/kill marks it stopped, mirroring what a
+    real stop_child() escalation would eventually observe.
+    """
+
+    def __init__(self, exit_code: int = 0) -> None:
+        self._alive = True
+        self._exit_code = exit_code
+        self.signals: list[int] = []
+        self.terminate_calls = 0
+        self.kill_calls = 0
+
+    def poll(self) -> int | None:
+        return None if self._alive else self._exit_code
+
+    def wait(self, timeout: float | None = None) -> int:
+        del timeout
+        self._alive = False
+        return self._exit_code
+
+    def send_signal(self, number: int) -> None:
+        self.signals.append(number)
+        self._alive = False
+
+    def terminate(self) -> None:
+        self.terminate_calls += 1
+        self._alive = False
+
+    def kill(self) -> None:
+        self.kill_calls += 1
+        self._alive = False
+
+
+_FAST_HEARTBEAT_POLICY = HeartbeatPolicy(
+    stale_after_seconds=30.0,
+    startup_grace_seconds=120.0,
+    check_interval_seconds=5.0,
+)
+
+
+def test_a_hung_child_is_stopped_and_restarted_like_an_abnormal_exit() -> None:
+    """No heartbeat progress past staleness -> forced down, then restarted."""
+
+    hanging_child = _HangingChild()
+    clean_child = _FakeChild(0)
+
+    children = [hanging_child, clean_child]
+
+    def launch(environment: dict[str, str]) -> Any:
+        return children.pop(0)
+
+    # started_at_wall, then one in-loop check that is already well past both
+    # the startup grace and the check interval, with a heartbeat mtime that
+    # is already well past staleness.
+    wall_ticks = [1_000.0, 2_000.0, 0.0, 0.0]
+
+    supervisor = ProcessSupervisor(
+        policy=RestartPolicy(
+            max_attempts=5,
+            backoff_seconds=(0.001,) * 5,
+            healthy_run_seconds=600.0,
+        ),
+        launch=launch,
+        monotonic=lambda: 0.0,
+        heartbeat_file=Path("dummy_heartbeat.json"),
+        heartbeat_policy=_FAST_HEARTBEAT_POLICY,
+        heartbeat_mtime=lambda path: 500.0,
+        wall_clock=lambda: wall_ticks.pop(0),
+    )
+
+    recording = _RecordingEvent()
+    supervisor._stop_event = recording
+
+    assert supervisor.run() == 0
+
+    assert children == []
+    # The hang was resolved through the graceful path, exactly like a real
+    # stop - never straight to terminate/kill.
+    assert hanging_child.signals == [atlas_supervisor.STOP_SIGNAL]
+    assert hanging_child.terminate_calls == 0
+
+
+def test_no_hang_check_runs_before_the_startup_grace_elapses() -> None:
+    """A hanging child within its grace window must never be forced down.
+
+    wall_clock() is pinned at a constant well inside the 120s default grace
+    window (started_at_wall and every in-loop "now" are the same value), and
+    the heartbeat mtime is pinned to a value that would read as stale the
+    instant a check were ever made. If the grace window were not honoured,
+    this child would be declared hung and a second one would be launched;
+    proving it is never restarted proves the check never ran.
+    """
+
+    launched = {"count": 0}
+
+    def launch(environment: dict[str, str]) -> Any:
+        launched["count"] += 1
+        return _HangingChild()
+
+    supervisor = ProcessSupervisor(
+        launch=launch,
+        monotonic=lambda: 0.0,
+        heartbeat_file=Path("dummy_heartbeat.json"),
+        heartbeat_policy=_FAST_HEARTBEAT_POLICY,
+        heartbeat_mtime=lambda path: 0.0,
+        wall_clock=lambda: 10.0,
+    )
+
+    class _StopAfterFewPolls(threading.Event):
+        """Ends the loop deterministically without any real sleeping."""
+
+        def __init__(self) -> None:
+            super().__init__()
+            self.calls = 0
+
+        def wait(self, timeout: float | None = None) -> bool:
+            del timeout
+            self.calls += 1
+
+            if self.calls >= 3:
+                self.set()
+
+            return self.is_set()
+
+    supervisor._stop_event = _StopAfterFewPolls()
+
+    assert supervisor.run() == 0
+    assert launched["count"] == 1
+
+
+def test_hung_detection_is_inactive_when_no_heartbeat_file_is_configured() -> (
+    None
+):
+    """Without a configured heartbeat file, a live child is never hung."""
+
+    child = _FakeChild(0)
+    launched = {"count": 0}
+
+    def launch(environment: dict[str, str]) -> Any:
+        launched["count"] += 1
+        return child
+
+    supervisor = ProcessSupervisor(
+        launch=launch,
+        monotonic=lambda: 0.0,
+        heartbeat_file=None,
+        # If staleness were ever consulted despite no file being configured,
+        # this would report every check as stale.
+        heartbeat_mtime=lambda path: 0.0,
+        wall_clock=lambda: 10_000.0,
+    )
+
+    assert supervisor.run() == 0
+    assert launched["count"] == 1
 
 
 # =====================================================================

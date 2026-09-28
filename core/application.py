@@ -419,6 +419,58 @@ def _read_supervisor_restart_count() -> int | None:
     return count if count >= 0 else None
 
 
+# =============================================================
+# EXECUTION HALT-REASON CLASSIFICATION
+# =============================================================
+#
+# ExecutionManager.halt_reason (read via execution.status()'s
+# operational_state) is sometimes a fixed module-level constant and
+# sometimes a portfolio-foundation diagnostic that embeds a raw
+# execution_id, idempotency_key, position_id, or archive line number - see
+# health()'s docstring and test_health_never_publishes_the_halt_reason.
+# health() must never publish that diagnostic text verbatim.
+#
+# This allowlist is the fail-closed alternative: only these exact,
+# already-public constant codes are ever published on health()'s "reason"
+# field. Anything else - including the diagnostic text, and including any
+# genuinely-safe constant this list has not yet caught up with - is
+# reported as the generic unclassified code instead. A false negative here
+# (a safe constant reported as unclassified) only costs a less specific
+# reason; a false positive would leak a secret, so the list is deliberately
+# an allowlist rather than a denylist.
+_SAFE_EXECUTION_HALT_REASON_CODES = frozenset(
+    {
+        "UNRESOLVED_TRANSACTION",
+        "EXECUTION_INTERRUPTED_AFTER_SIDE_EFFECT",
+        "DURABLE_FINANCIAL_FINALIZATION_FAILED",
+        "CAPITAL_RESERVATION_COMMIT_FAILED",
+        "CAPITAL_RESERVATION_RELEASE_FAILED",
+        "SOURCE_DISAGREEMENT",
+        "INSTRUMENT_RULES_UNAVAILABLE",
+        "INSTRUMENT_RULES_POSITION_MISALIGNED",
+        "VENUE_UPPER_BOUNDS_UNAVAILABLE",
+        "VENUE_RULES_STALE",
+        "FINANCIAL_STATE_RECOVERY_REQUIRED",
+    }
+)
+
+UNCLASSIFIED_EXECUTION_HALT_REASON = "EXECUTION_HALT_REASON_UNCLASSIFIED"
+
+
+def _classify_execution_halt_reason(raw: Any) -> str:
+    """Map a raw execution halt_reason onto a safe-to-publish code.
+
+    Only an exact match against the allowlist above is ever returned
+    verbatim; everything else - a non-string, an unrecognised constant, or
+    free-form diagnostic text - collapses to the generic unclassified code.
+    """
+
+    if isinstance(raw, str) and raw in _SAFE_EXECUTION_HALT_REASON_CODES:
+        return raw
+
+    return UNCLASSIFIED_EXECUTION_HALT_REASON
+
+
 class AtlasApplication:
     """
     Central Atlas composition root.
@@ -1674,12 +1726,22 @@ class AtlasApplication:
         recovery state at all - unknown, not evidence of a halt - exactly as
         an absent thread_alive is treated above.
 
-        The halt *reason* is deliberately not published here. health() is
+        The raw halt *reason* is still never published here. health() is
         returned verbatim to /api/health (see web_app._safe_runtime_health),
         and ExecutionManager.halt_reason can carry a portfolio-foundation
         diagnostic that embeds a raw execution_id, idempotency_key,
-        position_id, or archive line number. The booleans say that an
-        operator is needed; the logs and status() say why.
+        position_id, or archive line number.
+
+        What is published, when execution_halted or execution_recovery_
+        required is True, is execution_halt_reason: the raw reason passed
+        through _classify_execution_halt_reason's allowlist, which only
+        ever returns one of a fixed set of known-safe constant codes or the
+        generic UNCLASSIFIED_EXECUTION_HALT_REASON. See
+        test_health_never_publishes_the_halt_reason, which still asserts
+        the raw diagnostic text never reaches this payload. The full,
+        unclassified reason remains available to an operator through the
+        logs and status() (and, per the same loopback trust boundary, the
+        /api/status route).
 
         Supervisor provenance
         ---------------------
@@ -1723,6 +1785,14 @@ class AtlasApplication:
             "recovery_required",
         )
 
+        execution_halt_reason = (
+            _classify_execution_halt_reason(
+                execution_operational_state.get("halt_reason"),
+            )
+            if execution_halted is True or execution_recovery_required is True
+            else None
+        )
+
         healthy = bool(
             runtime_status.get("healthy", True)
             and execution_status.get("running", True)
@@ -1738,6 +1808,7 @@ class AtlasApplication:
             "running": self.running,
             "execution_halted": execution_halted,
             "execution_recovery_required": execution_recovery_required,
+            "execution_halt_reason": execution_halt_reason,
             "supervised": self.supervisor_epoch is not None,
             "supervisor_epoch": self.supervisor_epoch,
             "supervisor_restart_count": self.supervisor_restart_count,

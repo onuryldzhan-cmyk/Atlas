@@ -308,13 +308,97 @@ def test_runtime_endpoints_refuse_non_loopback_clients() -> None:
         client=("203.0.113.7", 44321),
     )
 
-    for route in ("/api/health", "/api/analysis"):
+    for route in ("/api/health", "/api/status", "/api/analysis"):
         response = client.get(route)
 
         assert response.status_code == 403, route
         assert (
             response.json()["reason"] == "ATLAS_WEB_PANEL_IS_LOCALHOST_ONLY"
         ), route
+
+
+# =====================================================================
+# /api/status
+# =====================================================================
+
+
+class RealShapeRuntimeWithStatus(RealShapeRuntime):
+    """RealShapeRuntime plus a status() carrying operator-only detail.
+
+    Deliberately includes a raw halt_reason, mirroring
+    core.execution_manager.ExecutionManager.status()'s real shape: /api/
+    status is loopback-only, the same trust boundary display_startup_status
+    already assumes for a local console, so it is not filtered the way
+    health() is.
+    """
+
+    def status(self) -> dict[str, object]:
+        return {
+            "application": {"name": "AtlasApplication"},
+            "execution": {
+                "operational_state": {
+                    "execution_halted": True,
+                    "halt_reason": "SOURCE_DISAGREEMENT",
+                },
+            },
+        }
+
+
+def test_status_endpoint_returns_the_runtime_status_verbatim() -> None:
+    response = TestClient(
+        create_app(runtime=RealShapeRuntimeWithStatus()),
+    ).get("/api/status")
+
+    assert response.status_code == 200
+
+    payload = response.json()
+
+    assert payload["application"]["name"] == "AtlasApplication"
+    assert (
+        payload["execution"]["operational_state"]["halt_reason"]
+        == "SOURCE_DISAGREEMENT"
+    )
+
+
+def test_status_endpoint_fails_closed_with_no_runtime_attached() -> None:
+    response = TestClient(create_app()).get("/api/status")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "available": False,
+        "reason": "RUNTIME_NOT_ATTACHED",
+    }
+
+
+def test_status_endpoint_survives_a_runtime_with_no_status_method() -> None:
+    """RealShapeRuntime exposes health() but not status()."""
+
+    response = TestClient(
+        create_app(runtime=RealShapeRuntime()),
+    ).get("/api/status")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "available": True,
+        "reason": "RUNTIME_STATUS_UNAVAILABLE",
+    }
+
+
+def test_status_endpoint_survives_a_raising_status_method() -> None:
+    class RaisingStatusRuntime:
+        def status(self) -> dict[str, object]:
+            raise RuntimeError("db connection lost: password=hunter2")
+
+    response = TestClient(
+        create_app(runtime=RaisingStatusRuntime()),
+    ).get("/api/status")
+
+    assert response.status_code == 200
+
+    payload = response.json()
+
+    assert payload["error_type"] == "RuntimeError"
+    assert "hunter2" not in response.text
 
 
 # =====================================================================

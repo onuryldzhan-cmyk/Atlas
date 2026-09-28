@@ -21,7 +21,9 @@ Responsibilities
 
 from __future__ import annotations
 
+import json
 import logging
+import os
 import signal
 import sys
 import threading
@@ -30,6 +32,7 @@ import traceback
 
 from collections.abc import Callable
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from core.application import AtlasApplication
@@ -38,6 +41,13 @@ from core.application import AtlasApplication
 LOGGER_NAME = "AtlasAI.Main"
 
 logger = logging.getLogger(LOGGER_NAME)
+
+# Same string as atlas_supervisor.ENV_HEARTBEAT_FILE, defined independently
+# here rather than imported - atlas_supervisor.py must import nothing from
+# Atlas (see its docstring), so a shared constant module is not an option;
+# this is the same cross-process-literal precedent core.application's
+# SUPERVISOR_EPOCH_ENV already follows for ENV_EPOCH.
+HEARTBEAT_FILE_ENV = "ATLAS_SUPERVISOR_HEARTBEAT_FILE"
 
 
 # ============================================================
@@ -318,6 +328,20 @@ class AtlasProcess:
 
         self.exit_code = 0
 
+        # Read once at construction, like the supervisor provenance
+        # variables in core.application: the value cannot change during a
+        # process lifetime. Absent means atlas_supervisor.py has hung-child
+        # detection disabled (or this process was not launched by it at
+        # all), and no heartbeat is written - matching exactly what an
+        # unsupervised or directly-run process has always done.
+        self._heartbeat_file = self._resolve_heartbeat_file()
+
+    @staticmethod
+    def _resolve_heartbeat_file() -> Path | None:
+        raw = os.environ.get(HEARTBEAT_FILE_ENV)
+
+        return Path(raw) if raw else None
+
     # --------------------------------------------------------
     # SIGNALS
     # --------------------------------------------------------
@@ -434,6 +458,27 @@ class AtlasProcess:
     # MAIN LOOP
     # --------------------------------------------------------
 
+    def _write_heartbeat(self) -> None:
+        """Prove the main loop is still ticking, for atlas_supervisor.py.
+
+        Best-effort and silent by design: a failure to write this file must
+        never slow down or interrupt the shutdown-detection loop below,
+        which is what actually keeps Atlas supervised correctly. Overwritten
+        every tick, so its mtime alone - which is all the supervisor reads -
+        is the whole signal; the content carries nothing.
+        """
+
+        if self._heartbeat_file is None:
+            return
+
+        try:
+            self._heartbeat_file.write_text(
+                json.dumps({"written_at": time.time()}),
+                encoding="utf-8",
+            )
+        except OSError:
+            pass
+
     def run_forever(self) -> None:
         """
         Keep the primary process alive until shutdown is requested.
@@ -453,6 +498,8 @@ class AtlasProcess:
         while not self.shutdown_event.wait(
             timeout=1.0
         ):
+            self._write_heartbeat()
+
             if self.application is None:
                 self.exit_code = 1
                 self.shutdown_reason = (

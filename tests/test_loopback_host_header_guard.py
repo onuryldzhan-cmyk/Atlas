@@ -81,6 +81,7 @@ WEB_APP_GUARDED_ROUTES = [
     "/",
     "/dashboard",
     "/api/health",
+    "/api/status",
     "/api/analysis",
     "/api/signals",
     "/api/trades",

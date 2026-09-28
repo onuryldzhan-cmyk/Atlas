@@ -394,6 +394,70 @@ def _safe_runtime_health(
     }
 
 
+def _safe_runtime_status(
+    runtime: Any | None,
+) -> dict[str, Any]:
+    """
+    Return AtlasApplication.status() without allowing a raising runtime to
+    break the route. Same shape and exception-handling contract as
+    _safe_runtime_health above - only the exception's class name is
+    published, never str(exc).
+
+    Unlike _safe_runtime_health, this is not filtered for public
+    consumption: AtlasApplication.status() already carries operator-only
+    detail (including the raw execution halt_reason) that health()
+    deliberately withholds, and this route sits behind the same
+    loopback-only guard as every other one - the same trust boundary
+    display_startup_status already assumes when it prints status()
+    straight to a local console at startup.
+    """
+
+    if runtime is None:
+        return {
+            "available": False,
+            "reason": "RUNTIME_NOT_ATTACHED",
+        }
+
+    status_method = getattr(
+        runtime,
+        "status",
+        None,
+    )
+
+    if not callable(status_method):
+        return {
+            "available": True,
+            "reason": "RUNTIME_STATUS_UNAVAILABLE",
+        }
+
+    try:
+        result = status_method()
+    except Exception as exc:
+        logger.exception(
+            "Runtime status call failed",
+        )
+
+        logger.debug(
+            "Runtime status error: %s",
+            exc,
+        )
+
+        return {
+            "available": True,
+            "reason": "RUNTIME_STATUS_FAILED",
+            "error_type": type(exc).__name__,
+        }
+
+    if isinstance(result, dict):
+        return result
+
+    return {
+        "available": True,
+        "reason": "INVALID_RUNTIME_STATUS_RESULT",
+        "result_type": type(result).__name__,
+    }
+
+
 def _resolve_brain(
     runtime: Any | None,
 ) -> Any | None:
@@ -1317,6 +1381,28 @@ def create_app(
         return JSONResponse(
             status_code=status_code,
             content=health,
+        )
+
+    @application.get(
+        "/api/status",
+        response_class=JSONResponse,
+    )
+    async def api_status(
+        request: Request,
+    ) -> JSONResponse:
+        if not is_loopback_request(request):
+            return JSONResponse(
+                status_code=403,
+                content=NON_LOOPBACK_RESPONSE,
+            )
+
+        status = _safe_runtime_status(
+            application.state.atlas_runtime
+        )
+
+        return JSONResponse(
+            status_code=200,
+            content=status,
         )
 
     @application.get(
