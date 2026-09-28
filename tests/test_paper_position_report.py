@@ -10,8 +10,11 @@ from tools import paper_position_report as tool
 
 
 def _digest(root: Path) -> str:
+    # The instance lock file is skipped: Windows refuses to read a byte
+    # range another handle has locked, and it carries no state anyway.
     return hashlib.sha256(b"".join(
-        p.read_bytes() for p in sorted(root.rglob("*")) if p.is_file()
+        p.read_bytes() for p in sorted(root.rglob("*"))
+        if p.is_file() and p.name != "atlas.instance.lock"
     )).hexdigest()
 
 
@@ -21,6 +24,7 @@ def test_reports_the_open_position_and_its_admission_without_writing(
     app = application(tmp_path)
     app.execution.start()
     assert execution_enabled_loop(app, "BUY").process_symbol("BTCUSDT")["status"] == "PAPER_EXECUTED"
+    app.stop()
     root = tmp_path / "state"
     monkeypatch.setenv("ATLAS_STATE_DIRECTORY", str(root))
     before = _digest(root)
