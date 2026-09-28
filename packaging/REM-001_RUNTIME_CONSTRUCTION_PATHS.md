@@ -20,10 +20,10 @@ Command: `python -m tools.build_rem001_gate1_maps construction --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `e35547787748cd5ada76b66204e86eca02b250db` |
-| generated_from_tree | `2272f8f0bf0db398b6bbb59be04a5306477dbb5e` |
-| tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['observability/organization.py', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/atlas_architecture_map.json', 'packaging/atlas_runtime_closure.json', 'templates/dashboard.html', 'tests/test_organization_roster.py', 'web_app.py'] |
+| generated_from_commit | `9881043368bdc36fa8037c2f93e2bd99830c9261` |
+| generated_from_tree | `253012185d919fd739bbc5fb1531b613cfd2fdf3` |
+| tracked_working_tree_clean | True |
+| modified_tracked_paths_at_generation | none |
 
 ## Analysis
 
