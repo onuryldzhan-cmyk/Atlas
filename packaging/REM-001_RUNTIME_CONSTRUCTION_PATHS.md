@@ -20,10 +20,10 @@ Command: `python -m tools.build_rem001_gate1_maps construction --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `1a62c553d7f5f4805d014e5ce2c7fa7e14da8265` |
-| generated_from_tree | `67ce455f178eafb111d1e58ad7541084087756ca` |
+| generated_from_commit | `3fccd7f13d75f2de3dc16b490623508712ef5161` |
+| generated_from_tree | `63d5bcfe08d3d4e9da3baa45980e13dc7095f481` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['core/application.py', 'core/execution_manager.py', 'core/risk_engine.py', 'governance/ATLAS_PAPER_CONFIDENCE_EXPERIMENT_EXP001_PROPOSAL_v1.0.md', 'main.py', 'tests/test_exp001_paper_confidence_experiment.py'] |
+| modified_tracked_paths_at_generation | ['core/execution_manager.py', 'core/market_loop.py', 'governance/current/ATLAS_MILESTONE_REGISTRY_v5.04.json', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'tests/test_block5b_single_sizing_authority.py', 'tests/test_sell_without_position_routing.py'] |
 
 ## Analysis
 
@@ -251,17 +251,17 @@ classes and their observed constructors:
 | `core/execution_manager.py` | `AuditEventStore` | `core/audit_event_store.py` | 394 | `ExecutionManager::__init__` |
 | `core/execution_manager.py` | `ExecutionIdempotencyStore` | `core/execution_idempotency_store.py` | 351 | `ExecutionManager::__init__` |
 | `core/execution_manager.py` | `ExecutionRequest` | `core/execution_models.py` | 2543 | `ExecutionManager::build_request` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 4295 | `ExecutionManager::paper_execute` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5536 | `ExecutionManager::_block_live_dispatch` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5596 | `ExecutionManager::live_execute` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5687 | `ExecutionManager::live_execute` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5915 | `ExecutionManager::_failure_result` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 4340 | `ExecutionManager::paper_execute` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5581 | `ExecutionManager::_block_live_dispatch` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5641 | `ExecutionManager::live_execute` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5732 | `ExecutionManager::live_execute` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5960 | `ExecutionManager::_failure_result` |
 | `core/execution_manager.py` | `ExecutionTransactionJournal` | `core/execution_transaction_journal.py` | 370 | `ExecutionManager::__init__` |
 | `core/execution_manager.py` | `FinancialRuntimeSafetyService` | `data_layer/runtime_safety.py` | 381 | `ExecutionManager::__init__` |
 | `core/execution_manager.py` | `FinancialRuntimeSafetyService` | `data_layer/runtime_safety.py` | 457 | `ExecutionManager::_assess_financial_readiness` |
 | `core/execution_manager.py` | `PositionExposure` | `core/risk_engine.py` | 2833 | `ExecutionManager::_derived_position_exposures` |
-| `core/execution_manager.py` | `RestoredRiskState` | `core/risk_state_store.py` | 3965 | `ExecutionManager::_record_realized_risk_accounting` |
-| `core/execution_manager.py` | `RiskRequest` | `core/risk_engine.py` | 3181 | `ExecutionManager::risk_check` |
+| `core/execution_manager.py` | `RestoredRiskState` | `core/risk_state_store.py` | 4010 | `ExecutionManager::_record_realized_risk_accounting` |
+| `core/execution_manager.py` | `RiskRequest` | `core/risk_engine.py` | 3226 | `ExecutionManager::risk_check` |
 | `core/execution_manager.py` | `RiskState` | `core/risk_engine.py` | 2909 | `ExecutionManager::_derive_risk_state` |
 | `core/execution_manager.py` | `VenueRuleFreshnessService` | `core/venue_rule_freshness.py` | 280 | `ExecutionManager::__init__` |
 | `core/execution_transaction_journal.py` | `DurableAppendLog` | `core/durable_append_log.py` | 174 | `ExecutionTransactionJournal::__init__` |
@@ -278,7 +278,7 @@ classes and their observed constructors:
 | `core/local_capability_adapter.py` | `ToolInvocationResult` | `core/tool_gateway_contracts.py` | 175 | `LocalCapabilityProbeAdapter::invoke` |
 | `core/market_loop.py` | `CandleProcessor` | `core/candle_processor.py` | 222 | `MarketLoop::__init__` |
 | `core/market_loop.py` | `DecisionAdapter` | `core/decision_adapter.py` | 225 | `MarketLoop::__init__` |
-| `core/market_loop.py` | `SizingInputs` | `core/position_sizing.py` | 1742 | `MarketLoop::_apply_position_sizing` |
+| `core/market_loop.py` | `SizingInputs` | `core/position_sizing.py` | 1774 | `MarketLoop::_apply_position_sizing` |
 | `core/market_loop.py` | `TechnicalAnalyzer` | `core/technical_analyzer.py` | 223 | `MarketLoop::__init__` |
 | `core/market_loop.py` | `WorldAnalysisEngine` | `analysis/world_analysis_engine.py` | 224 | `MarketLoop::__init__` |
 | `core/model_provider_contracts.py` | `OperationResult` | `core/operational_contracts.py` | 483 | `ModelInvocationResult::to_operation_result` |

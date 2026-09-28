@@ -300,6 +300,7 @@ class MarketLoop:
             "decisions_normalized": 0,
             "decisions_rejected": 0,
             "hold_decisions": 0,
+            "sell_without_position_skipped": 0,
             "duplicate_decisions_skipped": 0,
             "duplicate_executions_skipped": 0,
             "execution_requests": 0,
@@ -910,6 +911,37 @@ class MarketLoop:
                     "symbol": symbol,
                     "action": action,
                 }
+
+            if action == "SELL" and self._sell_symbol_known_flat(symbol):
+                # Registry v5.04: Atlas is LONG-only, so a SELL of a symbol the
+                # durable book shows as not held has nothing to act on. It is
+                # treated as HOLD instead of being routed into a rejection.
+                self._increment_metric(
+                    "sell_without_position_skipped"
+                )
+
+                logger.info(
+                    "%s decision SELL with no held position | treated as HOLD, "
+                    "execution skipped",
+                    symbol,
+                )
+
+                result = {
+                    "status": "SKIPPED",
+                    "reason": "NO_POSITION_TO_SELL",
+                    "symbol": symbol,
+                    "action": action,
+                    "timestamp": datetime.now(
+                        UTC
+                    ).isoformat(),
+                }
+
+                with self.lock:
+                    self.last_executions[
+                        symbol
+                    ] = result
+
+                return result
 
             market_state = self.world.build_market_state(
                 market_data
@@ -2263,6 +2295,44 @@ class MarketLoop:
     # =========================================================
     # METRICS
     # =========================================================
+
+    def _sell_symbol_known_flat(
+        self,
+        symbol: str,
+    ) -> bool:
+        """
+        True only when the durable book positively shows ``symbol`` not held.
+
+        Any doubt - no manager, no foundation, a foundation not ready, an
+        unreadable or malformed snapshot - returns False, so the SELL is
+        routed to ExecutionManager, which refuses it fail-closed itself.
+        """
+
+        foundation = getattr(
+            self.execution,
+            "portfolio_foundation",
+            None,
+        )
+
+        if foundation is None or getattr(foundation, "ready", False) is not True:
+            return False
+
+        try:
+            positions = foundation.snapshot()["positions"]
+        except Exception:
+            logger.exception(
+                "%s position lookup failed; SELL routed to execution",
+                symbol,
+            )
+            return False
+
+        if not isinstance(positions, dict):
+            return False
+
+        # Compare on normalized keys: a position stored under a differently
+        # cased key must still count as held, so an exit is never skipped.
+        wanted = str(symbol).strip().upper()
+        return all(str(key).strip().upper() != wanted for key in positions)
 
     def _increment_metric(
         self,

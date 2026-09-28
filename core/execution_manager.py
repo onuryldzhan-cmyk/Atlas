@@ -2932,8 +2932,9 @@ class ExecutionManager:
         ``RiskEngine`` as reduce-only, and the engine keeps sole authority over
         whether the requested size is a *valid* reduction: an over-sized one
         still fails closed as ``INVALID_RISK_REDUCTION``. A SELL against a
-        symbol that is not held is not a reduction at all and stays
-        ``NON_RISK_REDUCING_SELL``.
+        symbol that is not held is not a reduction at all: a sized one is
+        refused by the engine as ``NON_RISK_REDUCING_SELL``, an unsized one by
+        ``risk_check`` as ``NO_POSITION_TO_SELL``.
 
         A BUY can never reduce exposure, so it derives False unconditionally.
         That also stops a caller-supplied flag from waiving the capital
@@ -2994,6 +2995,25 @@ class ExecutionManager:
             exclude=exclude
         )
 
+    @staticmethod
+    def _is_unsized_sell_of_unheld_symbol(request: ExecutionRequest) -> bool:
+        """A SELL that names no size, for a symbol ``_derive_reduce_only``
+        found not held. A malformed ``amount`` (non-numeric, NaN, negative) is
+        deliberately not "unsized", so its pre-existing refusal is unchanged."""
+
+        if str(request.action).strip().upper() != "SELL" or request.reduce_only:
+            return False
+
+        if request.proposed_quote_allocation is not None:
+            return False
+
+        try:
+            amount = Decimal(str(request.amount))
+        except (InvalidOperation, TypeError, ValueError):
+            return False
+
+        return amount.is_finite() and amount == 0
+
     def _requested_quote_allocation(
         self,
         request: ExecutionRequest,
@@ -3037,9 +3057,13 @@ class ExecutionManager:
             refuses it as ``UNSIZED_REQUEST_REJECTED``.
 
         Unsized non-reducing SELL
-            Resolves to zero, which ``RiskEngine`` refuses as
-            ``INVALID_FINANCIAL_INPUT`` exactly as before: selling a symbol
-            that is not held is malformed, not merely unsized.
+            Resolves to zero. ``risk_check`` refuses a genuinely unsized one
+            (no proposal, ``amount`` exactly zero) as ``NO_POSITION_TO_SELL``
+            before the engine runs (registry v5.04). A non-positive or
+            malformed ``amount`` is not "unsized", so its pre-existing
+            refusal is unchanged (``INVALID_FINANCIAL_INPUT`` for a negative
+            or infinite amount, ``RISK_STATE_RESTORATION_FAILED`` for a
+            non-numeric one).
 
         The result is exact ``Decimal`` and deterministic for identical
         durable state.
@@ -3161,6 +3185,27 @@ class ExecutionManager:
                 return {
                     "approved": False,
                     "reason": "UNSIZED_REQUEST_REJECTED",
+                    "details": {
+                        "symbol": request.symbol,
+                        "action": request.action,
+                    },
+                }
+
+            if self._is_unsized_sell_of_unheld_symbol(request):
+                # Registry v5.04: nothing is held, so there is nothing to sell.
+                # Refused before the engine and before any reservation, with its
+                # own reason, so it is no longer indistinguishable from
+                # genuinely malformed financial input.
+                logger.info(
+                    "Unsized SELL of an unheld symbol refused symbol=%s "
+                    "request_id=%s",
+                    request.symbol,
+                    request.request_id,
+                )
+                return {
+                    "approved": False,
+                    "reason": "NO_POSITION_TO_SELL",
+                    "status": "REJECT",
                     "details": {
                         "symbol": request.symbol,
                         "action": request.action,
