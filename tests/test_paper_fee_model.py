@@ -124,3 +124,68 @@ def test_fee_survives_restart(tmp_path):
     app.stop() if hasattr(app, "stop") else None
     reopened = AtlasApplication(state_directory=tmp_path / "state", paper_fee_rate=RATE)
     assert D(str(reopened.portfolio_foundation.snapshot()["fees"])) == fees
+
+
+# --------------------------------------------- recovery re-derives the fee
+
+def test_crash_recovery_rederives_the_fee_the_execution_charged(tmp_path, monkeypatch):
+    """Audit MEDIUM-1 (v5.23): a fee-charged BUY killed in the inconclusive
+    window is re-derived with the rate its approval recorded, so the
+    recovered book equals an uninterrupted fee-charging run."""
+    import tests.test_execution_crash_recovery_f1_f6 as k
+
+    def fee_app(state_dir):
+        app = AtlasApplication(state_directory=state_dir,
+                               evidence_directory=state_dir.parent / "evidence",
+                               paper_fee_rate=RATE)
+        app.execution.start()
+        return app
+
+    base_dir = tmp_path / "baseline" / "state"
+    seed_valid_state(base_dir)
+    baseline_app = fee_app(base_dir)
+    assert k._buy(baseline_app)["status"] == "PAPER_EXECUTED"
+    baseline = baseline_app.portfolio_foundation.snapshot()
+    assert D(baseline["positions"]["BTCUSDT"]["entry_fees"]) > 0
+
+    state_dir = k._fresh_state(tmp_path)
+    app = fee_app(state_dir)
+    k._crash_on(monkeypatch, app.portfolio_foundation.applied_archive, "append", after=True)
+    k._run_until_crash(app, k._buy)
+
+    outcome = k._recover(state_dir)
+    assert outcome.recovery_class == k.RecoveryClass.COMMIT_PAPER_REDERIVATION.value
+
+    recovered = AtlasApplication(state_directory=state_dir,
+                                 evidence_directory=state_dir.parent / "evidence",
+                                 paper_fee_rate=RATE).portfolio_foundation.snapshot()
+    for field in ("base_quantity", "cost_quote", "entry_fees"):
+        assert recovered["positions"]["BTCUSDT"][field] == baseline["positions"]["BTCUSDT"][field]
+    assert recovered["cash"] == baseline["cash"]
+    assert recovered["fees"] == baseline["fees"]
+
+
+def test_approval_records_the_rate_only_when_charged(tmp_path):
+    fee = app_with(tmp_path / "a", RATE)
+    free = app_with(tmp_path / "b", "0")
+    check = lambda app: app.execution.risk_check(ExecutionRequest.from_dict(buy_decision(app)))
+    assert check(fee)["details"]["paper_fee_rate"] == "0.001"
+    assert "paper_fee_rate" not in check(free)["details"]
+
+
+def test_fee_that_would_push_a_fill_below_min_notional_is_refused_at_admission(tmp_path):
+    """Audit LOW-2 (v5.23): admission sizes with the fee, so a fill the fee
+    would push below the venue minimum is refused cleanly - never admitted
+    and then halted after the side-effect boundary."""
+    app = app_with(tmp_path, RATE)
+    # 5.004 at price 10: fee-free notional 5.004 >= 5, after the fee < 5
+    decision = ExecutionRequest("BTCUSDT", "BUY", 10, "5.004", confidence=90, risk="HIGH",
+                                request_id="tiny").to_dict()
+    result = app.execution.execute(decision, risk_state())
+    assert result["success"] is False
+    # refused before any side effect, not failed after the fill
+    assert result["status"] == "REJECTED"
+    assert result["reason"] == "NOTIONAL_BELOW_VENUE_MINIMUM"
+    assert app.execution.execution_halted is False
+    assert app.execution.recovery_required is False
+    assert "BTCUSDT" not in snapshot(app)["positions"]

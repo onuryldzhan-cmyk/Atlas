@@ -214,6 +214,11 @@ class ExecutionManager:
         "ERROR",
     }
 
+
+    # Registry v5.23: class default so instances built without __init__
+    # (e.g. test doubles via __new__) keep the historical fee-free paper path.
+    paper_fee_rate: Decimal = Decimal("0")
+
     def __init__(
         self,
         capital_manager: Any | None = None,
@@ -3350,10 +3355,14 @@ class ExecutionManager:
             # (Block 5D owner decision: never raise allocation to satisfy a
             # minimum), and a request below the bound is refused rather than
             # rounded up to it.
+            # Registry v5.23: the paper fee the fill will charge is known here
+            # (a pure function of the allocation), so the bound uses it - a
+            # fee must never push a fill below a venue minimum after the
+            # side-effect boundary, which would halt the runtime.
             admission_fill = self._resolve_base_fill(
                 allocation=canonical.approved_allocation,
                 price=request_price,
-                fee=Decimal("0"),
+                fee=self._paper_buy_fee(canonical.approved_allocation),
                 quantity_step=instrument_rules.quantity_step,
             )
 
@@ -3532,6 +3541,10 @@ class ExecutionManager:
                 # registry v5.01 EXP-001: present only when the admission needed
                 # the experiment's lowered floor; counted at startup for the cap.
                 **({"experiment_id": canonical.experiment_id} if canonical.experiment_id else {}),
+                # registry v5.23: the paper fee rate this execution charges,
+                # so recovery re-derives the fill exactly (absent -> 0, the
+                # historical fee-free contract). Recorded only when nonzero.
+                **({"paper_fee_rate": format(self.paper_fee_rate, "f")} if self.paper_fee_rate else {}),
             },
         }
 
@@ -4639,7 +4652,7 @@ class ExecutionManager:
         # never below the fee on the (step-rounded, smaller) actual notional.
         ExecutionManager._apply_paper_fee_if_unreported(
             result=result,
-            fee_amount=approved * self.paper_fee_rate / (1 + self.paper_fee_rate),
+            fee_amount=self._paper_buy_fee(approved),
             quote_asset=instrument_rules.quote_asset,
         )
 
@@ -5828,6 +5841,14 @@ class ExecutionManager:
                 result,
                 self.MAX_HISTORY,
             )
+
+    def _paper_buy_fee(self, allocation: Decimal) -> Decimal:
+        """The paper BUY fee for an allocation: ceil8(A*r/(1+r)) (registry v5.23)."""
+
+        rate = self.paper_fee_rate
+        if rate == 0:
+            return Decimal("0")
+        return (Decimal(allocation) * rate / (1 + rate)).quantize(PAPER_FEE_QUANTUM, rounding=ROUND_UP)
 
     @staticmethod
     def _apply_paper_fee_if_unreported(*, result: Any, fee_amount: Decimal, quote_asset: str) -> None:

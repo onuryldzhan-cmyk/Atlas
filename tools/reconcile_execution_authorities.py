@@ -1187,6 +1187,16 @@ def _derive_paper_result(
     ):
         raise unavailable
 
+    # Registry v5.23: re-derive with the paper fee rate the original
+    # execution recorded on its approval; absent means the historical
+    # fee-free contract. A malformed rate makes derivation unavailable.
+    try:
+        paper_fee_rate = Decimal(str(details.get("paper_fee_rate", "0")))
+    except Exception as exc:
+        raise unavailable from exc
+    if not paper_fee_rate.is_finite() or not Decimal("0") <= paper_fee_rate < Decimal("1"):
+        raise unavailable
+
     try:
         request = ExecutionRequest.from_dict(dict(request_payload))
     except Exception as exc:
@@ -1199,6 +1209,7 @@ def _derive_paper_result(
             scratch_path = Path(scratch)
             manager = ExecutionManager(
                 mode=ExecutionManager.MODE_PAPER,
+                paper_fee_rate=paper_fee_rate,
                 idempotency_store=ExecutionIdempotencyStore(scratch_path / "idempotency.jsonl"),
                 transaction_journal=ExecutionTransactionJournal(scratch_path / "journal.jsonl"),
                 audit_store=AuditEventStore(scratch_path / "audit.jsonl"),
