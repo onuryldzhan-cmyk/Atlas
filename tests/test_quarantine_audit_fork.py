@@ -157,3 +157,25 @@ def test_second_apply_is_refused_because_nothing_is_broken(tmp_path):
 
     assert tool.main([str(path), "--lines", "4-5", "--apply"]) == 2
     assert path.read_bytes() == repaired
+
+
+def test_a_branch_holding_an_experiment_admission_is_refused(tmp_path, capsys):
+    """Moving an EXP-001 RISK_APPROVED event out would lower the restored
+    admission count and silently re-open the experiment."""
+
+    path = tmp_path / "audit.jsonl"
+    a = AuditEventStore(path)
+    for i in range(3):
+        a.append(event_type="E", aggregate_id=f"a{i}", **KW)
+    b = AuditEventStore(path)
+    b.append(event_type="RISK_APPROVED", source="t", aggregate_type="x", aggregate_id="b0",
+             payload={"approved": True, "details": {"experiment_id": "EXP-001"}})
+    b.append(event_type="DUPLICATE", aggregate_id="b0", **KW)
+    for i in range(3, 5):
+        a.append(event_type="E", aggregate_id=f"a{i}", **KW)
+    before = path.read_bytes()
+
+    assert tool.main([str(path), "--lines", "4-5", "--apply"]) == 2
+
+    assert path.read_bytes() == before
+    assert "experiment admission" in capsys.readouterr().out

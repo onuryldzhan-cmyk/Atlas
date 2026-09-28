@@ -5,7 +5,9 @@ fork its hash chain (2026-09-28 incident, registry v5.05). This tool moves
 the named fork-branch lines, byte for byte, out of the live log into a
 quarantine file - it never edits, rehashes or deletes an event.
 
-It refuses unless ALL of these hold:
+It refuses unless ALL of these hold (and it never moves an experiment
+admission - a RISK_APPROVED event carrying an experiment_id - because the
+experiment cap is restored by counting those):
 - no Atlas instance holds the state-root lock (main.AtlasProcess lock);
 - the live chain is currently broken at exactly one point;
 - the named lines are contiguous, the first chains from the line before
@@ -32,6 +34,7 @@ import os
 import shutil
 import sys
 from datetime import UTC, datetime
+from collections.abc import Mapping
 from pathlib import Path
 
 from core.audit_event_store import GENESIS_HASH, AuditEvent, AuditEventStore
@@ -84,6 +87,21 @@ def plan(path: Path, start: int, end: int) -> dict:
     branch = events[start - 1:end]
     if any(event is None for event in branch):
         raise QuarantineRefused("range contains blank lines")
+    for number, event in zip(range(start, end + 1), branch):
+        payload = event.payload if isinstance(event.payload, Mapping) else {}
+        details = payload.get("details")
+        if (
+            event.event_type == "RISK_APPROVED"
+            and isinstance(details, Mapping)
+            and details.get("experiment_id")
+        ):
+            # The experiment cap (EXP-001) is restored by counting these
+            # events; moving one out would silently re-open admissions.
+            raise QuarantineRefused(
+                f"line {number} is an experiment admission "
+                f"({details['experiment_id']}); quarantining it would lower "
+                "the experiment's admission count - owner decision required"
+            )
     if not all(event.verify_hash() for event in branch):
         raise QuarantineRefused("an event in the range has an invalid own hash")
 
