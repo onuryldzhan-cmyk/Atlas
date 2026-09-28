@@ -27,11 +27,11 @@
 
 In every case the runtime either resumes exactly or refuses new risk. It never silently continues.
 
-**Today: NOT MET. One HIGH finding is open.**
+**Today: MET.**
 - Restart, idempotent replay and crash recovery have existing tests (the Block 5B/5C/5D and F1–F6 suites).
-- Five stores were each damaged in four ways (garbled, truncated, empty, deleted), then a BUY was attempted on a symbol with no open position (`tests/test_corrupt_execution_state_fails_closed.py`, 20 cases). In 18 cases new risk is refused: the idempotency log, the financial state and a malformed journal halt execution; the reservation and risk stores refuse admission.
-- **HIGH (audit follow-up, 2026-09-28): an *empty or deleted* `execution_transaction_journal.jsonl` is not detected.** Atlas treats it as a fresh journal and keeps trading, and a new ETH BUY executed. This breaks CLAUDE.md's rule that corrupted state is detected and halted, never silently continued through. It is pinned as a strict xfail. The fix changes journal/execution startup behaviour (CRITICAL) and **needs an owner grant**. The likely direction is to refuse a missing or empty journal while other durable state shows prior executions.
-- **Open question (UNKNOWN):** can a *held* position still be exited while execution is halted by a corrupt store? A halt that blocks exits is conservative, but it can also trap risk. Owner decision needed on the intended behaviour.
+- Five stores were each damaged in four ways (garbled, truncated, empty, deleted), then a BUY was attempted on a symbol with no open position (`tests/test_corrupt_execution_state_fails_closed.py`, 20 cases). **All 20 refuse new risk.**
+- The audit HIGH (an empty or deleted journal was accepted as fresh and trading continued) is **FIXED** in registry v5.13 under an owner grant ("mantıklı olan"). `FinancialRuntimeSafetyService._authorities_agree` now also checks the reverse direction: every COMMITTED idempotency result must keep its COMMITTED journal entry, otherwise `SOURCE_DISAGREEMENT` and execution halts. Rejected requests never reach the journal and are exempt. The evidence is `test_erasing_only_the_journal_manufactures_disagreement` and `test_rejected_requests_need_no_journal_entry`. Reverting the fix fails three tests.
+- **Exits while halted: DECIDED** (owner, "gerçek trader ne yaparsa o"). Nothing trades while a corrupt store has halted execution, including exits. This is the current behaviour. The operator reconciles first.
 
 ### 2. Reconnect
 **Criterion (as first drafted).**

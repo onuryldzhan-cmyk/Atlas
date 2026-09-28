@@ -4,9 +4,10 @@ Phase 2-3 item 1; audit MEDIUM-1/2 widened the corruption modes. Probed
 2026-09-28: Atlas starts with a damaged store (no restart loop) and refuses
 new risk - except the one known gap below.
 
-KNOWN GAP (HIGH, owner decision pending): an *empty or deleted*
-transaction journal is accepted as a fresh journal and trading continues.
-Pinned as a strict xfail so the day it is fixed this test says so.
+An *empty or deleted* transaction journal used to be accepted as a fresh
+journal while trading continued (HIGH, Phase 2-3 audit). Since registry
+v5.13 the safety service also requires every COMMITTED idempotency result
+to keep its COMMITTED journal entry, so that case halts too.
 """
 
 from __future__ import annotations
@@ -38,20 +39,10 @@ STORES = [
     RISK_ACCOUNTING_STATE_FILE,
 ]
 
-JOURNAL_GAP = pytest.mark.xfail(
-    strict=True,
-    reason="HIGH: an empty/deleted transaction journal is accepted as fresh "
-           "(Phase 2-3 proposal item 1, owner decision pending)",
-)
-
-
 def _cases():
     for store in STORES:
         for mode in MODES:
-            marks = [JOURNAL_GAP] if (
-                store == EXECUTION_TRANSACTION_JOURNAL_FILE and mode in {"empty", "deleted"}
-            ) else []
-            yield pytest.param(store, mode, marks=marks, id=f"{store}-{mode}")
+            yield pytest.param(store, mode, id=f"{store}-{mode}")
 
 
 @pytest.mark.parametrize("store, mode", list(_cases()))

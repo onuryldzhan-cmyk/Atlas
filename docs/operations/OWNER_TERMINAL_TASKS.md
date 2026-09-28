@@ -15,6 +15,14 @@ Rules: only one Atlas at a time (a second one now exits with code 76).
 Do not press Ctrl+C in the Atlas window unless you mean to stop it; copy
 with Ctrl+Shift+C.
 
+## 0. FIRST: pre-flight before starting the new build (read-only)
+
+```powershell
+python -m tools.check_execution_authority_agreement
+```
+
+Registry v5.13 tightened the startup agreement check between the idempotency log and the transaction journal. Start Atlas only if this prints `ready=True`. Otherwise paste the output and do not start Atlas.
+
 ## 1. Volatility ceiling measurement (read-only, safe while Atlas runs)
 
 ```powershell

@@ -20,10 +20,10 @@ Command: `python -m tools.build_rem001_gate1_maps construction --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `e79a7ef74074f6bf7da20a9e7c02bf7ff0416ab4` |
-| generated_from_tree | `cd32f6f812fe2543b22ef9951db9f9867f10d74a` |
+| generated_from_commit | `5e416ea442e950578d72deb30824297be386d358` |
+| generated_from_tree | `619ade2090b3aa4fc492d77a314a99822c8a3b16` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['core/application.py', 'core/instance_lock.py', 'main.py', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/atlas_architecture_map.json', 'packaging/atlas_runtime_closure.json', 'tests/test_quarantine_audit_fork.py', 'tests/test_single_instance_and_integrity_exit.py'] |
+| modified_tracked_paths_at_generation | ['ata_layer/runtime_safety.py', 'docs/operations/RECOVERY_RUNBOOK.md', 'governance/ATLAS_PHASE_2_3_COMPLETION_CRITERIA_PROPOSAL_v1.0.md', 'tests/test_block5j_execution_authority_recovery.py', 'tests/test_corrupt_execution_state_fails_closed.py'] |
 
 ## Analysis
 
@@ -372,9 +372,9 @@ classes and their observed constructors:
 | `data_layer/projection_replay.py` | `PositionRecord` | `data_layer/models.py` | 59 | `_position_projection` |
 | `data_layer/runtime_safety.py` | `CanonicalExecutionEvidenceAdapter` | `data_layer/canonical_evidence.py` | 50 | `FinancialRuntimeSafetyService::__init__` |
 | `data_layer/runtime_safety.py` | `RecoveryDecision` | `data_layer/recovery.py` | 58 | `FinancialRuntimeSafetyService::__init__` |
-| `data_layer/runtime_safety.py` | `RecoveryDecision` | `data_layer/recovery.py` | 157 | `FinancialRuntimeSafetyService::assess` |
-| `data_layer/runtime_safety.py` | `RecoveryDecision` | `data_layer/recovery.py` | 174 | `FinancialRuntimeSafetyService::assess` |
-| `data_layer/runtime_safety.py` | `RecoveryEvidence` | `data_layer/recovery.py` | 130 | `FinancialRuntimeSafetyService::_base_evidence` |
+| `data_layer/runtime_safety.py` | `RecoveryDecision` | `data_layer/recovery.py` | 171 | `FinancialRuntimeSafetyService::assess` |
+| `data_layer/runtime_safety.py` | `RecoveryDecision` | `data_layer/recovery.py` | 188 | `FinancialRuntimeSafetyService::assess` |
+| `data_layer/runtime_safety.py` | `RecoveryEvidence` | `data_layer/recovery.py` | 144 | `FinancialRuntimeSafetyService::_base_evidence` |
 | `exchange/market_feed.py` | `BinancePublicDataProvider` | `atlas_finance/market_data/binance_public_provider.py` | 117 | `MarketFeed::__init__` |
 | `exchange/market_feed.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 369 | `MarketFeed::_require_metadata` |
 | `exchange/market_feed.py` | `MarketFeedService` | `atlas_finance/market_data/market_feed_service.py` | 120 | `MarketFeed::__init__` |

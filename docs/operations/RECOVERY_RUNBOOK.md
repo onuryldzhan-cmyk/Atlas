@@ -14,6 +14,24 @@ stop and ask. Do not hand-edit state files.
    ```
 3. **Never delete or edit a line in any `*.jsonl` or `*.json` state file by hand.**
 
+## Before starting a new build on an existing state
+
+```powershell
+python -m tools.check_execution_authority_agreement
+```
+
+This is read-only. It runs the same agreement check Atlas runs at startup (in both directions since registry v5.13). Start Atlas only if it prints `ready=True`.
+
+## Restoring from a backup (when a row below says "stop and report")
+
+Do this only with the owner's go-ahead:
+1. Stop Atlas.
+2. Rename the damaged state root. Keep it, do not delete it.
+3. Copy the latest backup folder back to `C:\AtlasState`.
+4. Run the pre-flight above.
+
+Anything that happened after the backup is not in the restored state. Record the restore in a successor registry.
+
 ## Symptoms → outcome → action
 
 | Symptom (log / exit code) | Cause | What Atlas does | Action | Evidence |
@@ -24,7 +42,7 @@ stop and ask. Do not hand-edit state files.
 | `Instance lock unavailable: ...`, exit **1** | State root missing or not writable | Refuses to start | Check `ATLAS_STATE_DIRECTORY`. The folder must exist and be writable. | `test_unusable_state_root_is_a_normal_failure_not_run_unlocked` |
 | `Execution idempotency state load failed` / `DurableAppendLogCorruptError: execution_idempotency` | Malformed, truncated, empty or deleted `execution_idempotency.jsonl` | Starts, but execution is **halted** (BUY → `RECOVERY_REQUIRED`) | **No repair tool.** Stop, keep the backup, report. | registry v5.09; `tests/test_corrupt_execution_state_fails_closed.py` |
 | `Execution transaction journal load failed` | Malformed or truncated line in `execution_transaction_journal.jsonl` | Starts, execution **halted** | **No repair tool.** Stop and report. | same |
-| *(nothing logged)* | `execution_transaction_journal.jsonl` **emptied or deleted** | **Not detected.** Atlas treats it as a fresh journal and keeps trading. **KNOWN GAP (HIGH)**, owner decision pending. | Never delete or empty this file. If it happened, stop Atlas and report. | `tests/test_corrupt_execution_state_fails_closed.py` (strict xfail) |
+| Execution halted, readiness `SOURCE_DISAGREEMENT` / `RECONCILIATION_REQUIRED` | `execution_transaction_journal.jsonl` **emptied or deleted**, while the idempotency log still records COMMITTED executions | Starts with execution **halted**. Since registry v5.13 this is detected; before it, trading silently continued. | **No repair tool** for this direction: the journal evidence is gone. `tools/reconcile_execution_authorities.py` repairs only the opposite direction. Stop, keep the backup, report. | registry v5.13; `tests/test_corrupt_execution_state_fails_closed.py`; `tests/test_block5j_execution_authority_recovery.py::test_erasing_only_the_journal_manufactures_disagreement` |
 | `portfolio_state_ready=False`, or `FINANCIAL_STATE_RECOVERY_REQUIRED` at startup | `execution_financial_state.json` garbled, truncated, empty or deleted | Starts with execution **halted**, or refuses to start (exit 1, which the supervisor restarts within its budget) | **No repair tool.** Stop and report. | same |
 | `reservation_state_ready=False` | `capital_reservations.json` unreadable | Starts. BUY refused with `CAPITAL_RESERVATION_STATE_NOT_READY`. | **No repair tool.** Stop and report. | same |
 | BUY rejected `RISK_STATE_RESTORATION_FAILED` | `risk_accounting_state.json` truncated, empty or missing | Starts, every BUY refused | **No repair tool.** Stop and report. | registry v5.11; `tests/test_corrupt_risk_state_fails_closed.py` |
@@ -33,5 +51,5 @@ stop and ask. Do not hand-edit state files.
 ## Known gaps (UNKNOWN / not yet decided)
 
 - **No repair tools exist for the idempotency log, the journal, the financial state, the reservation store or the risk state.** Recovery for these needs an owner-approved procedure first.
-- **Exits while halted.** Whether a *held* position can still be exited while a corrupt store has halted execution has not been decided. See the Phase 2–3 proposal, item 1.
+- **Exits while halted: DECIDED 2026-09-28 (owner, "gerçek trader ne yaparsa o").** While a corrupt or missing store has halted execution, nothing trades, and that includes exits of held positions. The books are not trustworthy. A trader reconciles before acting, so the operator closes positions only after the state is repaired.
 - **Panel coupling.** A panel (web) failure stops Atlas by design. See the Phase 2–3 proposal, item 5.
