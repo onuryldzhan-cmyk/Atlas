@@ -175,3 +175,24 @@ The audit found no BLOCKING issue. Findings and their disposition:
 - **Not inspected:** EXP-001 cap durability and the paper/live boundary. These go into the next audit pass.
 
 **Item 8 status: NOT MET while the journal HIGH is open** (the close condition requires no open HIGH).
+
+## Closure record draft for owner approval, 2026-09-28 (appended; the text above is unchanged)
+
+| Item | Status | Evidence |
+|---|---|---|
+| 1 Financial State | MET | 5 stores × 4 corruption modes all refuse new risk (`test_corrupt_execution_state_fails_closed.py`, `test_corrupt_risk_state_fails_closed.py`); a deleted journal is detected (v5.13) |
+| 2 Reconnect | MET | dead-feed and restart-replay tests; BUY freshness gate at 180s (v5.14) |
+| 3 Status API | MET | route inventory plus a read-only proof, mutation-checked |
+| 4 Supervisor | MET | exit 75/76 are never restarted; hang restart is budgeted |
+| 5 Frontend separation | MET | the panel is decoupled from trading (v5.15); a hung shutdown is bounded (v5.17) |
+| 6 Recovery | MET | `docs/operations/RECOVERY_RUNBOOK.md` |
+| 7 Testing | MET on a47b933 (Windows CI green, only B2+D5). Head 735a912: see the registry that records the final CI result | `tools/ci_check_known_accepted_failures.py` |
+| 8 Independent Review | MET, no BLOCKING or HIGH open | Journal HIGH fixed (v5.13). The carried-over items were inspected in v5.16. The EXP-001 cap MEDIUM was closed by the durable ledger (v5.17). |
+
+Open LOWs carried forward. None of them blocks the close:
+- the Windows lock has not been proven by an owner run (owner task 3);
+- a panel outage shows only in the logs;
+- a deleted EXP-001 ledger is an accepted residual risk;
+- whether a settings key can override PAPER is UNKNOWN (moot while no live adapter exists).
+
+**Owner decision required:** confirm the close of `PHASE_2_3_INVESTMENT_ENGINE_AND_RELIABILITY`. It is recorded only as a successor registry after you confirm. Authorities are unchanged: live DENIED, production NONE, autonomous deployment DENIED.
