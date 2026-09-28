@@ -444,3 +444,41 @@ def test_a_dead_feed_repeating_the_same_closed_candle_makes_no_new_decision(tmp_
         assert len(calls) == 1
     finally:
         app.stop()
+
+
+def test_restart_replaying_the_last_candle_never_executes_twice(tmp_path) -> None:
+    """Audit LOW-1: the duplicate-candle memory is in-process only, so after
+    a restart the last candle is decided again. The durable idempotency
+    authority must turn that replay into a completed duplicate (observed on
+    the owner machine 2026-09-28 14:20:45: '[DUPLICATE REQUEST] completed')."""
+
+    from core.application import AtlasApplication
+    from tests.test_block5c_upstream_sizing_authority import (
+        execution_enabled_loop,
+        seed_state,
+    )
+
+    root = seed_state(tmp_path / "state")
+
+    first = AtlasApplication(state_directory=root)
+    first.execution.start()
+    original = execution_enabled_loop(first, "BUY").process_symbol("BTCUSDT")
+    assert original["status"] == "PAPER_EXECUTED"
+    positions_before = first.portfolio_foundation.snapshot()["positions"]
+    cash_before = first.portfolio_foundation.snapshot()["cash"]
+    first.stop()
+
+    second = AtlasApplication(state_directory=root)
+    second.execution.start()
+    try:
+        replay = execution_enabled_loop(second, "BUY").process_symbol("BTCUSDT")
+
+        # The cached original result comes back, marked as a duplicate: no
+        # second fill, no second execution id, no change to the book.
+        assert replay["idempotency"]["duplicate"] is True
+        assert replay["duplicate_reason"] == "DUPLICATE_REQUEST_COMPLETED"
+        assert replay["execution_id"] == original["execution_id"]
+        assert second.portfolio_foundation.snapshot()["positions"] == positions_before
+        assert second.portfolio_foundation.snapshot()["cash"] == cash_before
+    finally:
+        second.stop()

@@ -167,7 +167,7 @@ The audit found no BLOCKING issue. Findings and their disposition:
 - **MEDIUM-1:** the runbook was wrong about deleted or empty financial state. **Fixed:** the row is corrected, and the cases are now tested.
 - **MEDIUM-2:** corruption coverage was too narrow. **Fixed:** 5 stores × 4 modes are now tested. This surfaced the journal HIGH gap above.
 - **MEDIUM-3:** the web read-only test was too narrow. **Fixed:** the test was strengthened and mutation-checked.
-- **LOW-1:** the duplicate-candle memory is in-process only, so after a restart the last candle can be decided again. Execution idempotency is expected to make that replay harmless. That is UNKNOWN, still open.
+- **LOW-1:** the duplicate-candle memory is in-process only, so after a restart the last candle can be decided again. **CLOSED:** the durable idempotency authority returns the cached original result, marked as a duplicate, with no second fill and no change to the book. Evidence: `test_restart_replaying_the_last_candle_never_executes_twice` and the owner's live run at 14:20:45 (`[DUPLICATE REQUEST] completed`).
 - **LOW-2:** the Windows lock behaviour has not been proven by an owner run. Still open.
 - **Not inspected:** EXP-001 cap durability and the paper/live boundary. These go into the next audit pass.
 
