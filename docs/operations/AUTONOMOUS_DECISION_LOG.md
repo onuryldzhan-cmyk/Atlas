@@ -28,14 +28,18 @@ Under this mandate:
 | 13 | 2026-09-28 | Phase 4 (strategy research / backtest) | **Stopped; needs owner scoping** | A faithful backtest must replay the real decision chain, and the macro agent's historical inputs are not available offline. A simplified backtest would misrepresent Atlas. The research design is a material choice. | queued Q5 |
 | 14 | 2026-09-28 | Owner: separate agents page with a 2D view; agents work as described | **`/agents` page: 2D SVG organization chart, live worker-agent monitor, vision operating rules. No new UI dependency.** | Dependency-free SVG avoids vetting new third-party code. The rules already hold in code and tests (no AI unit can execute). The planned AI tiers stay Phase 6. | registry v5.29 |
 | 15 | 2026-09-28 | Q5: Phase 4 backtest method | **Macro-neutral replay of the real chain, labelled** (`tools/backtest_replay.py`) | It uses the real components (MarketLoop / AtlasBrain / RiskEngine), not a re-implementation. The one missing input (macro) is handled the way the runtime handles a provider outage, and that is conservative. Stated in every report. | registry v5.30 |
+| 16 | 2026-09-28 | Self-review of the v5.30 backtest tool | **Fixed 3 defects: every BUY refused (BLOCKING), symbols not on one clock, empty risk state** | The tool would have reported zero trades. Found before any real run. Tests now cover it, and restoring the bug fails 2 tests. | registry v5.31 |
 | 4 | 2026-09-28 | Next roadmap item | **Do not start ARCH-001 autonomously** | Its specification is lost (GOV-DRIFT-005). Starting it would mean inventing an architecture spec, a CLAUDE.md STOP condition. | queued below |
 
-## Queued for the owner (not decided under the mandate)
+## Queued for the owner
 
-| # | Topic | Why it waits |
+Status as of registry v5.31. Resolved items are kept for the record.
+
+| # | Topic | Status |
 |---|---|---|
-| Q1 | ARCH-001 scope (prerequisite of CODE-001, OBS, TEST and others) | The original spec is lost. The owner must pick a scope: for example, adopt the existing `packaging/atlas_architecture_map.json` layer rules plus forbidden edges as ARCH-001's canonical baseline, or write a new spec. |
-| Q2 | EXP-001 keep or stop (2026-10-12) | Owner decision, based on `tools/exp001_report`. |
-| Q4 | Show fees, net P&L and entry/exit prices on the panel | This widens what the loopback web API exposes. An existing test forbids it on purpose; loosening it is the owner's security call. |
-| Q5 | Phase 4 research design: how to backtest faithfully (historical macro data source, or a macro-neutral replay clearly labelled as such) | This is a material methodology choice. Wrong evidence is worse than none (rule 3). |
-| Q3 | Paper fee rate versus the real account tier | Only the owner knows the Binance tier. |
+| Q1 | ARCH-001 scope | **RESOLVED** (v5.24): the existing, test-enforced architecture was adopted as the baseline |
+| Q2 | EXP-001 keep or stop | **OPEN**, due 2026-10-12 or at 50 admissions; decide from `tools/exp001_report` |
+| Q3 | Paper fee rate versus the real account tier | **RESOLVED for now** (v5.24): 0.1% per side until the owner's tier is known |
+| Q4 | Net P&L and fees on the panel | **RESOLVED** (v5.24): account-level totals only; per-trade details stay withheld |
+| Q5 | Phase 4 backtest method | **RESOLVED** (v5.30/v5.31): macro-neutral replay of the real chain, labelled |
+| Q6 | Phase 6 AI agents (AI-001) | **OPEN**: specification PART_1 is missing; the owner decides the scope before any LLM agent is built |

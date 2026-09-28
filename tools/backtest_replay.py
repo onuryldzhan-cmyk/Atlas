@@ -31,7 +31,7 @@ import sys
 import tempfile
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from decimal import Decimal
+from decimal import ROUND_DOWN, Decimal
 from typing import Callable
 
 from core.execution_manager import PAPER_FEE_RATE_PER_SIDE
@@ -40,6 +40,7 @@ from core.market_loop import MarketLoop
 from core.market_risk_regime import MarketRiskRegimeProvider
 from core.risk_engine import (
     EXP001_PAPER_CONFIDENCE_EXPERIMENT,
+    PositionExposure,
     RiskEngine,
     RiskPolicy,
     RiskRequest,
@@ -100,10 +101,30 @@ class Result:
     buy_rejections: dict[str, int] = field(default_factory=dict)
 
 
-def _state(positions=()) -> RiskState:
-    return RiskState(tuple(positions), sum((p.quote_exposure for p in positions), Decimal("0")),
-                     Decimal("0"), CAPITAL, CAPITAL, True, datetime.now(UTC).date().isoformat(),
+def _state(holdings: dict, realized_today: Decimal, equity: Decimal, peak: Decimal, day: str) -> RiskState:
+    """The durable-state view the runtime would hand RiskEngine (registry v5.31):
+    every open position across symbols, today's realized net P&L and equity
+    (realized-only: open positions are carried at cost, stated in the report)."""
+
+    positions = tuple(
+        PositionExposure(t.symbol, t.quantity, t.entry_price, t.quantity * t.entry_price)
+        for t in holdings.values()
+    )
+    committed = sum((p.quote_exposure for p in positions), Decimal("0"))
+    return RiskState(positions, committed, realized_today, peak, equity, True, day,
                      RiskPolicy(total_capital=CAPITAL).version)
+
+
+def _align(candles_by_symbol: dict[str, list[list]]) -> dict[str, list[list]]:
+    """Keep only minutes every symbol has, so all symbols step through the
+    same clock (the runtime processes all symbols each cycle)."""
+
+    common = None
+    for rows in candles_by_symbol.values():
+        opens = {int(r[0]) for r in rows}
+        common = opens if common is None else common & opens
+    common = common or set()
+    return {s: [r for r in rows if int(r[0]) in common] for s, rows in candles_by_symbol.items()}
 
 
 def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: bool = False,
@@ -119,22 +140,28 @@ def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: 
         # pinned to its start); its 50-admission cap still applies
         risk.attach_experiment(EXP001_PAPER_CONFIDENCE_EXPERIMENT, prior_admissions=0,
                                clock=lambda: EXP001_PAPER_CONFIDENCE_EXPERIMENT.starts_at)
-    cash = CAPITAL
+    data = _align(candles_by_symbol)
+    length = min((len(rows) for rows in data.values()), default=0)
+    cash, equity, peak = CAPITAL, CAPITAL, CAPITAL
+    realized_by_day: dict[str, Decimal] = {}
+    holdings: dict[str, Trade] = {}
 
     with tempfile.TemporaryDirectory() as scratch, contextlib.redirect_stdout(io.StringIO()):
         cwd = os.getcwd()
         os.chdir(scratch)  # AtlasBrain bootstraps CWD-relative memory files
         try:
             brain = _CapturingBrain(brain_factory())
-            for symbol, rows in candles_by_symbol.items():
+            loops = {}
+            for symbol in data:
                 feed = _WindowFeed()
-                loop = MarketLoop(brain=brain, market_feed=feed, execution=None, symbols=[symbol],
-                                  market_risk_provider=MarketRiskRegimeProvider())
-                holding: Trade | None = None
-                for end in range(WINDOW, len(rows), step):
-                    feed.rows = rows[end - WINDOW:end]
+                loops[symbol] = (feed, MarketLoop(brain=brain, market_feed=feed, execution=None, symbols=[symbol],
+                                                  market_risk_provider=MarketRiskRegimeProvider()))
+            for end in range(WINDOW, length, step):
+                for symbol, (feed, loop) in loops.items():
+                    feed.rows = data[symbol][end - WINDOW:end]
                     close_ms = int(feed.rows[-1][6])
                     cutoff = datetime.fromtimestamp((close_ms + 1000) / 1000, UTC)
+                    day = cutoff.date().isoformat()
                     brain.last = None
                     loop.process_symbol(symbol, processing_cutoff=cutoff)
                     if brain.last is None:
@@ -149,13 +176,17 @@ def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: 
                     bucket = normalize_risk(decision.get("risk", decision.get("risk_level")))
                     price = Decimal(str(feed.rows[-1][4]))
                     when = cutoff.isoformat()
+                    holding = holdings.get(symbol)
 
                     if action == "SELL" and holding is not None and confidence >= EXECUTION_GATE:
                         holding.exit_time, holding.exit_price = when, price
                         holding.exit_fee = holding.quantity * price * fee_rate
                         cash += holding.quantity * price - holding.exit_fee
+                        realized_by_day[day] = realized_by_day.get(day, Decimal("0")) + holding.net
+                        equity += holding.net
+                        peak = max(peak, equity)
                         result.trades.append(holding)
-                        holding = None
+                        del holdings[symbol]
                     elif action == "BUY" and holding is None:
                         result.buy_signals += 1
                         if confidence < EXECUTION_GATE:
@@ -167,20 +198,33 @@ def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: 
                             result.buy_rejections[f"BUCKET_{bucket}"] = result.buy_rejections.get(f"BUCKET_{bucket}", 0) + 1
                             continue
                         allocation = min(cash, CAPITAL * risk.policy.buckets[sizing].max_allocation_pct)
+                        if allocation <= 0:
+                            result.buy_rejections["NO_CASH"] = result.buy_rejections.get("NO_CASH", 0) + 1
+                            continue
+                        # quantity x price must equal the requested allocation exactly
+                        base = (allocation / price).quantize(Decimal("0.00000001"), rounding=ROUND_DOWN)
+                        allocation = base * price
+                        if base <= 0:
+                            result.buy_rejections["NO_CASH"] = result.buy_rejections.get("NO_CASH", 0) + 1
+                            continue
                         request = RiskRequest(symbol=symbol, action="BUY", confidence=confidence / 100,
                                               requested_quote_allocation=allocation, execution_price=price,
-                                              risk_bucket=bucket, base_quantity=allocation / price)
-                        verdict = risk.evaluate(request, _state())
+                                              risk_bucket=bucket, base_quantity=base)
+                        # RiskEngine checks the accounting day against the real UTC
+                        # date; the daily realized P&L it limits is the replayed
+                        # (historical) day's.
+                        state = _state(holdings, realized_by_day.get(day, Decimal("0")), equity, peak,
+                                       datetime.now(UTC).date().isoformat())
+                        verdict = risk.evaluate(request, state)
                         if not verdict.approved:
                             result.buy_rejections[verdict.reason_code] = result.buy_rejections.get(verdict.reason_code, 0) + 1
                             continue
                         fee = allocation * fee_rate / (1 + fee_rate)
                         cost = allocation - fee
-                        holding = Trade(symbol, when, price, cost / price, cost, fee, bucket,
-                                        bool(verdict.experiment_id))
+                        holdings[symbol] = Trade(symbol, when, price, cost / price, cost, fee, bucket,
+                                                 bool(verdict.experiment_id))
                         cash -= allocation
-                if holding is not None:
-                    result.open_trades.append(holding)
+            result.open_trades.extend(holdings.values())
         finally:
             os.chdir(cwd)
     return result
@@ -227,7 +271,8 @@ def main(argv: list[str] | None = None, fetch: Fetcher | None = None) -> int:
     s = summarize(replay(data, step=args.step, exp001=args.exp001))
 
     print("MACRO-NEUTRAL REPLAY - macro and sentiment EXCLUDED; fills at candle close; "
-          f"fee {PAPER_FEE_RATE_PER_SIDE:.1%}/side; no slippage")
+          f"fee {PAPER_FEE_RATE_PER_SIDE:.1%}/side; no slippage; symbols stepped on one clock with shared cash, "
+          "open positions and daily realized P&L fed to RiskEngine (equity realized-only)")
     print(f"days={args.days} step={args.step}m symbols={','.join(data)} exp001={args.exp001}")
     print(f"decisions: {s['decisions']}  BUY signals: {s['buy_signals']}  rejected: {s['buy_rejections']}")
     print(f"closed trades: {s['closed_trades']} (open at end: {s['open_at_end']}, under EXP-001: {s['experiment_trades']})")

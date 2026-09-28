@@ -68,3 +68,49 @@ def test_main_prints_labelled_report_with_injected_history(capsys):
         time.time = original
     out = capsys.readouterr().out
     assert "MACRO-NEUTRAL REPLAY" in out and "Nothing was changed" in out
+
+
+def test_portfolio_limits_apply_across_symbols_on_one_clock():
+    """Registry v5.31 fidelity fix: every symbol steps on one clock and the
+    RiskEngine sees all open positions, so portfolio caps really bind."""
+    from core.risk_engine import RiskPolicy
+
+    class AlwaysBuy:
+        def analyze_and_decide(self, symbol, market_data):
+            return {"symbol": symbol, "action": "BUY", "confidence": 95.0, "risk_level": "LOW"}
+
+    symbols = ("BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT")
+    data = {s: _rows(260) for s in symbols}
+    result = bt.replay(data, step=20, brain_factory=AlwaysBuy)
+    policy = RiskPolicy(total_capital=bt.CAPITAL)
+    held = result.open_trades
+    assert result.trades == []                              # never a SELL
+    assert 0 < len(held) <= policy.max_positions
+    committed = sum((t.cost + t.entry_fee for t in held), Decimal("0"))
+    assert committed <= bt.CAPITAL * policy.portfolio_exposure_pct + Decimal("0.01")
+    assert sum(result.buy_rejections.values()) > 0          # later BUYs were refused by limits
+
+
+def test_round_trip_trades_are_booked_with_fees_and_net():
+    """Guards the v5.30 bug where every BUY was refused (quantity x price
+    mismatch), which made the report silently show zero trades."""
+
+    class Alternating:
+        def __init__(self):
+            self.n = 0
+
+        def analyze_and_decide(self, symbol, market_data):
+            self.n += 1
+            action = "BUY" if self.n % 2 else "SELL"
+            return {"symbol": symbol, "action": action, "confidence": 95.0, "risk_level": "MEDIUM"}
+
+    result = bt.replay({"BTCUSDT": _rows(400, drift=0.001, wobble=0.0)}, step=20, brain_factory=Alternating)
+    summary = bt.summarize(result)
+    assert summary["closed_trades"] >= 3
+    assert summary["buy_rejections"] == {}
+    for trade in result.trades:
+        assert trade.entry_fee > 0 and trade.exit_fee > 0
+        assert trade.cost + trade.entry_fee <= bt.CAPITAL * Decimal("0.25") + Decimal("0.01")  # MEDIUM cap
+        assert trade.exit_price > trade.entry_price                                          # rising series
+    assert summary["net_pnl"] == sum((t.net for t in result.trades), Decimal("0"))
+    assert summary["fees"] > 0
