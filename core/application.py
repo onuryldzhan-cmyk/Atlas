@@ -59,6 +59,7 @@ import traceback
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
+from collections.abc import Mapping
 from typing import Any
 
 from core.logger import AtlasLogger
@@ -92,7 +93,11 @@ from portfolio.capital_manager import CapitalManager
 from core.position_controller import PositionController
 from core.paper_trader import PaperTrader
 
-from core.risk_engine import RiskEngine, RiskPolicy
+from core.risk_engine import (
+    EXP001_PAPER_CONFIDENCE_EXPERIMENT,
+    RiskEngine,
+    RiskPolicy,
+)
 from core.position_sizing import PositionSizingService
 from core.capital_reservation import (
     CapitalReservationLedger,
@@ -369,6 +374,23 @@ EXECUTION_AUDIT_EVENT_FILE = "audit/atlas_audit_events.jsonl"
 PAPER_TRADE_BOOK_FILE = "paper_trades.json"
 
 
+def count_experiment_admissions(audit_store: AuditEventStore, experiment_id: str) -> int:
+    """Count RISK_APPROVED audit events tagged with ``experiment_id``.
+
+    Raises if the log cannot be read, so the caller can fail closed.
+    """
+
+    count = 0
+
+    for event in audit_store.query(event_type="RISK_APPROVED"):
+        details = event.payload.get("details")
+
+        if isinstance(details, Mapping) and details.get("experiment_id") == experiment_id:
+            count += 1
+
+    return count
+
+
 # =============================================================
 # SUPERVISOR PROVENANCE
 # =============================================================
@@ -495,6 +517,7 @@ class AtlasApplication:
         evidence_directory: str | Path | None = None,
         venue_rule_freshness_policy: VenueRuleFreshnessPolicy | None = None,
         log_directory: str | Path | None = None,
+        paper_confidence_experiment: bool = False,
     ) -> None:
         logger.info(
             "Initializing %s v%s",
@@ -504,6 +527,10 @@ class AtlasApplication:
 
         self.exchange_name = str(exchange_name)
         self.execution_mode = str(execution_mode).upper()
+        # registry v5.01 EXP-001. Off unless the production entry point asks
+        # for it, so a bare or test-built application keeps default floors
+        # regardless of the calendar date. Honoured in PAPER only.
+        self.paper_confidence_experiment = paper_confidence_experiment is True
         self.symbols = list(symbols) if symbols else None
         self.market_interval = float(market_interval)
         # None means "resolve from the environment now", which is the
@@ -678,6 +705,12 @@ class AtlasApplication:
         # -----------------------------------------------------
 
         self._build_execution_durability()
+
+        # -----------------------------------------------------
+        # EXP-001 paper confidence experiment (registry v5.01)
+        # -----------------------------------------------------
+
+        self._attach_paper_confidence_experiment()
 
         # -----------------------------------------------------
         # Venue instrument precision (Block 5D)
@@ -917,6 +950,48 @@ class AtlasApplication:
             self._root_source(EVIDENCE_DIRECTORY_ENV),
             self.idempotency_store.loaded,
             self.transaction_journal.has_unresolved(),
+        )
+
+    def _attach_paper_confidence_experiment(self) -> None:
+        """Attach EXP-001 to the RiskEngine when opted in, and in PAPER mode only.
+
+        The sample cap must survive restarts, so prior tagged admissions are
+        counted from the durable audit log. If that log cannot be read the
+        experiment stays unattached: the default floors are the fail-closed
+        state.
+        """
+
+        if not self.paper_confidence_experiment or self.execution_mode != "PAPER":
+            return
+
+        experiment = EXP001_PAPER_CONFIDENCE_EXPERIMENT
+
+        try:
+            prior = count_experiment_admissions(
+                self.audit_store,
+                experiment.experiment_id,
+            )
+        except Exception:
+            logger.exception(
+                "%s not attached: audit log unreadable, default confidence floors remain",
+                experiment.experiment_id,
+            )
+            return
+
+        self.risk_engine.attach_experiment(
+            experiment,
+            prior_admissions=prior,
+        )
+
+        logger.info(
+            "%s attached (PAPER): floor=%s buckets=%s window=%s..%s admissions=%s/%s",
+            experiment.experiment_id,
+            experiment.minimum_confidence,
+            sorted(b.value for b in experiment.buckets),
+            experiment.starts_at.isoformat(),
+            experiment.ends_at.isoformat(),
+            prior,
+            experiment.max_admissions,
         )
 
     @staticmethod

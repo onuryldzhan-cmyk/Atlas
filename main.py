@@ -429,6 +429,7 @@ class AtlasProcess:
 
         self.application = AtlasApplication(
             execution_mode="PAPER",
+            paper_confidence_experiment=True,
         )
 
         logger.info(

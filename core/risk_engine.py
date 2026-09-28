@@ -39,6 +39,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation, ROUND_HALF_EVEN, localcontext
 from datetime import UTC, datetime
 from enum import Enum
+import threading
 from typing import Any, Mapping
 
 
@@ -148,6 +149,63 @@ def _default_buckets() -> dict[RiskBucket, BucketPolicy]:
         RiskBucket.MEDIUM: BucketPolicy(Decimal("0.25"), Decimal("0.70"), Decimal("0.40")),
         RiskBucket.HIGH: BucketPolicy(Decimal("0.10"), Decimal("0.80"), Decimal("0.20")),
     }
+
+
+@dataclass(frozen=True)
+class ConfidenceFloorExperiment:
+    """A time-boxed, sample-capped lowering of the BUY confidence floor.
+
+    It is not policy: ``RiskPolicy`` and its version stay unchanged, so
+    persisted risk state keeps matching. It can only lower the floor for the
+    named buckets, never below the policy's global minimum, and only while
+    ``starts_at <= now < ends_at`` and fewer than ``max_admissions`` tagged
+    approvals have been issued. Attachment is the composition root's job and
+    is restricted to PAPER there.
+    """
+
+    experiment_id: str
+    minimum_confidence: Decimal
+    buckets: frozenset[RiskBucket]
+    starts_at: datetime
+    ends_at: datetime
+    max_admissions: int
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.experiment_id, str) or not self.experiment_id.strip():
+            raise ValueError("experiment_id is required")
+        floor = decimal_value(self.minimum_confidence, "minimum_confidence", allow_zero=False)
+        if floor > ONE:
+            raise ValueError("minimum_confidence must be between 0 and 1")
+        object.__setattr__(self, "minimum_confidence", floor)
+        buckets = frozenset(self.buckets)
+        if not buckets or not all(isinstance(b, RiskBucket) for b in buckets):
+            raise ValueError("buckets must be a non-empty set of RiskBucket")
+        object.__setattr__(self, "buckets", buckets)
+        for name in ("starts_at", "ends_at"):
+            value = getattr(self, name)
+            if not isinstance(value, datetime) or value.tzinfo is None:
+                raise ValueError(f"{name} must be a timezone-aware datetime")
+        if self.ends_at <= self.starts_at:
+            raise ValueError("ends_at must be after starts_at")
+        if (not isinstance(self.max_admissions, int) or isinstance(self.max_admissions, bool)
+                or self.max_admissions <= 0):
+            raise ValueError("max_admissions must be a positive integer")
+
+    def is_open(self, now: datetime, admissions: int) -> bool:
+        return self.starts_at <= now < self.ends_at and admissions < self.max_admissions
+
+
+# registry v5.01, GRANT-EXP001-PAPER-CONFIDENCE-EXPERIMENT. Pinned here on
+# purpose: no config file or environment variable may enable, extend or
+# loosen it. Changing any value is a governed change.
+EXP001_PAPER_CONFIDENCE_EXPERIMENT = ConfidenceFloorExperiment(
+    experiment_id="EXP-001",
+    minimum_confidence=Decimal("0.60"),
+    buckets=frozenset({RiskBucket.MEDIUM, RiskBucket.HIGH}),
+    starts_at=datetime(2026, 9, 28, 10, 0, tzinfo=UTC),
+    ends_at=datetime(2026, 10, 12, 10, 0, tzinfo=UTC),
+    max_admissions=50,
+)
 
 
 @dataclass(frozen=True)
@@ -368,6 +426,7 @@ class RiskDecision:
     drawdown_pct: Decimal = ZERO
     drawdown_level: DrawdownLevel = DrawdownLevel.NORMAL
     policy_version: str = ""
+    experiment_id: str = ""
 
     @property
     def approved(self) -> bool:
@@ -381,6 +440,7 @@ class RiskDecision:
             "reserved_capital": str(self.reserved_capital), "daily_realized_pnl": str(self.daily_realized_pnl),
             "drawdown_amount": str(self.drawdown_amount), "drawdown_pct": str(self.drawdown_pct),
             "drawdown_level": self.drawdown_level.value, "policy_version": self.policy_version,
+            "experiment_id": self.experiment_id,
         }
 
 
@@ -403,9 +463,58 @@ class RiskEngine:
         self.policy = policy
         self.approved_count = 0
         self.rejected_count = 0
+        self.experiment: ConfidenceFloorExperiment | None = None
+        self.experiment_admissions = 0
+        self.experiment_closed_reason: str | None = None
+        self._experiment_clock = lambda: datetime.now(UTC)
+        self._experiment_lock = threading.Lock()
+
+    def attach_experiment(self, experiment: ConfidenceFloorExperiment, *, prior_admissions: int,
+                          clock: Any = None) -> None:
+        """Attach a confidence-floor experiment; the caller restricts this to PAPER."""
+        if not isinstance(experiment, ConfidenceFloorExperiment):
+            raise ValueError("experiment must be a ConfidenceFloorExperiment")
+        if not isinstance(prior_admissions, int) or isinstance(prior_admissions, bool) or prior_admissions < 0:
+            raise ValueError("prior_admissions must be a non-negative integer")
+        self.experiment = experiment
+        self.experiment_admissions = prior_admissions
+        if clock is not None:
+            self._experiment_clock = clock
+
+    def close_experiment(self, reason: str) -> None:
+        """Close the attached experiment for the rest of this process; only tightens."""
+        if self.experiment is not None and self.experiment_closed_reason is None:
+            self.experiment_closed_reason = str(reason) or "CLOSED"
+
+    def _experiment_floor(self, bucket: RiskBucket) -> Decimal | None:
+        experiment = self.experiment
+        if experiment is None or self.experiment_closed_reason is not None:
+            return None
+        if bucket not in experiment.buckets:
+            return None
+        if not experiment.is_open(self._experiment_clock(), self.experiment_admissions):
+            return None
+        return max(self.policy.global_minimum_confidence, experiment.minimum_confidence)
+
+    def experiment_status(self) -> dict[str, Any] | None:
+        experiment = self.experiment
+        if experiment is None:
+            return None
+        return {
+            "experiment_id": experiment.experiment_id,
+            "active": (self.experiment_closed_reason is None
+                       and experiment.is_open(self._experiment_clock(), self.experiment_admissions)),
+            "closed_reason": self.experiment_closed_reason,
+            "minimum_confidence": str(experiment.minimum_confidence),
+            "buckets": sorted(b.value for b in experiment.buckets),
+            "starts_at": experiment.starts_at.isoformat(),
+            "ends_at": experiment.ends_at.isoformat(),
+            "admissions": self.experiment_admissions,
+            "max_admissions": experiment.max_admissions,
+        }
 
     def _decision(self, status: RiskDecisionStatus, reason: str, state: RiskState,
-                  *, allocation: Decimal = ZERO) -> RiskDecision:
+                  *, allocation: Decimal = ZERO, experiment_id: str = "") -> RiskDecision:
         with localcontext() as context:
             context.prec = RISK_CONTEXT_PRECISION
             context.rounding = ROUND_HALF_EVEN
@@ -416,7 +525,8 @@ class RiskEngine:
         level = self._drawdown_level(drawdown_pct)
         return RiskDecision(status, reason, allocation, gross, available,
                             self.policy.reserved_capital, state.realized_daily_pnl,
-                            drawdown_amount, drawdown_pct, level, self.policy.version)
+                            drawdown_amount, drawdown_pct, level, self.policy.version,
+                            experiment_id)
 
     def _drawdown_level(self, pct: Decimal) -> DrawdownLevel:
         if pct >= self.policy.drawdown_halt_pct:
@@ -491,9 +601,15 @@ class RiskEngine:
         if risk_level == UNSUPPORTED_RISK_SENTINEL:
             return reject("UNSUPPORTED_RISK_LEVEL")
 
-        bucket_policy = self.policy.buckets[RiskBucket(risk_level)]
-        if confidence < max(self.policy.global_minimum_confidence, bucket_policy.minimum_confidence):
-            return reject("CONFIDENCE_BELOW_POLICY")
+        bucket = RiskBucket(risk_level)
+        bucket_policy = self.policy.buckets[bucket]
+        experiment_id = ""
+        default_floor = max(self.policy.global_minimum_confidence, bucket_policy.minimum_confidence)
+        if confidence < default_floor:
+            experiment_floor = self._experiment_floor(bucket)
+            if experiment_floor is None or confidence < experiment_floor:
+                return reject("CONFIDENCE_BELOW_POLICY")
+            experiment_id = self.experiment.experiment_id
         with localcontext() as context:
             context.prec = RISK_CONTEXT_PRECISION
             context.rounding = ROUND_HALF_EVEN
@@ -527,8 +643,16 @@ class RiskEngine:
             return reject("INSUFFICIENT_ALLOCATABLE_CAPITAL")
         if approved < allocation:
             return reject("REQUEST_EXCEEDS_RISK_LIMIT")
+        if experiment_id:
+            # Re-check and count atomically so concurrent evaluations cannot
+            # overshoot the cap or slip past a close between check and count.
+            with self._experiment_lock:
+                if self._experiment_floor(bucket) is None:
+                    return reject("CONFIDENCE_BELOW_POLICY")
+                self.experiment_admissions += 1
         self.approved_count += 1
-        return self._decision(RiskDecisionStatus.APPROVE, "RISK_APPROVED", state, allocation=approved)
+        return self._decision(RiskDecisionStatus.APPROVE, "RISK_APPROVED", state, allocation=approved,
+                              experiment_id=experiment_id)
 
     def validate(self, decision: Mapping[str, Any], state: RiskState | None = None) -> dict[str, Any]:
         """Compatibility adapter; absent authoritative state deliberately fails closed."""
@@ -551,4 +675,5 @@ class RiskEngine:
 
     def status(self) -> dict[str, Any]:
         return {"version": self.VERSION, "policy_version": self.policy.version,
-                "approved": self.approved_count, "blocked": self.rejected_count}
+                "approved": self.approved_count, "blocked": self.rejected_count,
+                "experiment": self.experiment_status()}
