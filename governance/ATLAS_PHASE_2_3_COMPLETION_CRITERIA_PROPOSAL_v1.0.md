@@ -60,10 +60,12 @@ In every case the runtime either resumes exactly or refuses new risk. It never s
 - Every endpoint is loopback-only.
 - An unreadable source is shown as *unavailable* and never invented.
 
-**Today: PARTIAL.**
-- Loopback guard: tested (`tests/test_loopback_host_header_guard.py`).
-- Execution-gates endpoint: shows the enforced EXP-001 floor and fails as *unavailable* (`tests/test_dashboard_execution_gates.py`).
-- **Missing:** an inventory proving *every* route is read-only.
+**Today: MET.**
+- Loopback guard: `tests/test_loopback_host_header_guard.py`.
+- Route inventory: `tests/test_status_api_read_only_inventory.py`.
+  - All 19 routes, including the included observability router, are GET-only. The single exception is `POST /login`, which only redirects to `/dashboard` and is proven never to touch the runtime.
+  - Adding any other state-changing route fails the test until it is reviewed and allow-listed.
+- Unavailable sources report as unavailable: `tests/test_dashboard_execution_gates.py` and the observability endpoints return 503 with a reason when their artifact is missing.
 
 ### 4. Supervisor
 **Criterion.**
