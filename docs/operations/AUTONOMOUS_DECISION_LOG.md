@@ -24,6 +24,8 @@ Under this mandate:
 | 9 | 2026-09-28 | Continue with the remaining roadmap steps | **Stopped at the dependency wall** | Registry prerequisites chain every next item through ARCH-001 (OBS→TEST→PERF→REL→SEC→DATA→GOV). ARCH-001 needs the owner's scope decision (Q1). | — |
 | 10 | 2026-09-28 | Owner: all delegated items take the recommended option | **Q1:** ARCH-001 baseline = existing, test-enforced architecture. **Q3:** keep 0.1%. **Q4:** account-level net P&L and fees on the panel, per-trade details still withheld. **Q2:** decide at the window end. | Recommended options as offered. | registry v5.24 |
 | 11 | 2026-09-28 | Owner: "all corporate agents, visible on the website" | **Full 35-unit roster on the panel with honest status**; no new AI agent implemented (Phase 6) | Showing planned agents as running would break the No-Hallucination rule. Building them now breaks rules 1 and 10. The panel shows the whole company and exactly what exists. | registry v5.25 |
+| 12 | 2026-09-28 | CODE-001, OBS-001, TEST-001, REL-001, SEC-001.1, DATA-001, GOV-001, SEC-002 | **Baseline adopted with evidence and listed gaps; PERF-001 pending the owner's telemetry run** | Same recommended approach as ARCH-001: adopt what the repo enforces and add ratchets (code-health, test count, secret-literal scan). Not certification. | registry v5.26–v5.28 |
+| 13 | 2026-09-28 | Phase 4 (strategy research / backtest) | **Stopped; needs owner scoping** | A faithful backtest must replay the real decision chain, and the macro agent's historical inputs are not available offline. A simplified backtest would misrepresent Atlas. The research design is a material choice. | queued Q5 |
 | 4 | 2026-09-28 | Next roadmap item | **Do not start ARCH-001 autonomously** | Its specification is lost (GOV-DRIFT-005). Starting it would mean inventing an architecture spec, a CLAUDE.md STOP condition. | queued below |
 
 ## Queued for the owner (not decided under the mandate)
@@ -33,4 +35,5 @@ Under this mandate:
 | Q1 | ARCH-001 scope (prerequisite of CODE-001, OBS, TEST and others) | The original spec is lost. The owner must pick a scope: for example, adopt the existing `packaging/atlas_architecture_map.json` layer rules plus forbidden edges as ARCH-001's canonical baseline, or write a new spec. |
 | Q2 | EXP-001 keep or stop (2026-10-12) | Owner decision, based on `tools/exp001_report`. |
 | Q4 | Show fees, net P&L and entry/exit prices on the panel | This widens what the loopback web API exposes. An existing test forbids it on purpose; loosening it is the owner's security call. |
+| Q5 | Phase 4 research design: how to backtest faithfully (historical macro data source, or a macro-neutral replay clearly labelled as such) | This is a material methodology choice. Wrong evidence is worse than none (rule 3). |
 | Q3 | Paper fee rate versus the real account tier | Only the owner knows the Binance tier. |
