@@ -114,6 +114,7 @@
     "exchange/market_feed.py",
     "main.py",
     "observability/__init__.py",
+    "observability/organization.py",
     "observability/panel_router.py",
     "observability/panel_sources.py",
     "portfolio/capital_manager.py",

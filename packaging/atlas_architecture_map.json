@@ -533,6 +533,7 @@
     "exchange/market_feed.py": "L2",
     "main.py": "L3",
     "observability/__init__.py": "L5",
+    "observability/organization.py": "L5",
     "observability/panel_router.py": "L5",
     "observability/panel_sources.py": "L5",
     "portfolio/capital_manager.py": "L3",

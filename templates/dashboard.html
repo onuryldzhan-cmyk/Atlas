@@ -304,6 +304,29 @@
                     </div>
                 </section>
 
+                <section class="card card-primary card-outline mb-4" aria-labelledby="section-org-title">
+                    <div class="card-header">
+                        <h3 id="section-org-title" class="card-title">Atlas Organizasyonu (kurumsal yapı &amp; ajanlar)</h3>
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" title="Daralt">
+                                <svg data-lte-icon="collapse"><use href="#icon-minus"/></svg><svg data-lte-icon="expand"><use href="#icon-plus"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="org-summary" class="mb-2">Yükleniyor...</div>
+                        <div id="org-hierarchy" class="d-flex flex-wrap align-items-center gap-1 mb-3"></div>
+                        <div class="btn-group btn-group-sm mb-3" role="group" aria-label="Durum filtresi">
+                            <button type="button" class="btn btn-outline-secondary active" data-org-filter="ALL">Tümü</button>
+                            <button type="button" class="btn btn-outline-success" data-org-filter="ACTIVE">Aktif</button>
+                            <button type="button" class="btn btn-outline-warning" data-org-filter="PARTIAL">Kısmi</button>
+                            <button type="button" class="btn btn-outline-secondary" data-org-filter="PLANNED">Planlı</button>
+                        </div>
+                        <div id="org-units" class="row g-2"></div>
+                        <div class="small text-body-secondary mt-2">Kaynak: docs/vision. <b>Aktif</b> = çalışan kodla destekleniyor (dosyalar listelenir), <b>Kısmi</b> = bir parçası var, <b>Planlı</b> = yol haritasındaki fazı. Hiçbir yapay zekâ birimi işlem açamaz; yalnız deterministik risk/sermaye zinciri (PAPER) onay verir, canlı para KAPALI.</div>
+                    </div>
+                </section>
+
                 <section class="card card-warning card-outline mb-4" aria-labelledby="section-integrity-title">
                     <div class="card-header">
                         <h3 id="section-integrity-title" class="card-title">System Integrity</h3>
@@ -1135,6 +1158,75 @@
                 : '<span class="text-body-secondary">Henüz kapanan işlem yok.</span>';
         }
 
+        // ---------------------------------------------------------------
+        // Organization roster (read-only, /api/organization)
+        // ---------------------------------------------------------------
+        const ORG_STATUS = {
+            ACTIVE: { label: 'Aktif', tone: 'success' },
+            PARTIAL: { label: 'Kısmi', tone: 'warning' },
+            PLANNED: { label: 'Planlı', tone: 'secondary' },
+        };
+        const ORG_TIER_LABEL = {
+            OWNER: 'Owner', CEO_AI: 'CEO AI', DIRECTOR_AI: 'Director AI',
+            EXECUTIVE_ASSISTANT: 'Executive Assistant', DEPARTMENT: 'Departmanlar',
+            WORKER_AGENT: 'Worker Agents', SPECIALIZED_UNIT: 'Specialized AI Units', MICRO_AGENT: 'Micro Agents',
+        };
+        let orgFilter = 'ALL';
+        let orgPayload = null;
+
+        function orgStatusBadge(status) {
+            const meta = ORG_STATUS[status] || { label: status, tone: 'secondary' };
+            return badge(meta.label, meta.tone);
+        }
+
+        function renderOrgUnit(unit) {
+            const list = (items) => (Array.isArray(items) ? items : []).map((x) => `<li>${esc(x)}</li>`).join('');
+            const code = Array.isArray(unit.implemented_by) && unit.implemented_by.length
+                ? `<div class="small text-body-secondary mt-1">kod: ${unit.implemented_by.map((p) => `<span class="font-monospace">${esc(p)}</span>`).join(', ')}</div>`
+                : '';
+            const phase = unit.phase === null || unit.phase === undefined ? '' : ` <span class="small text-body-secondary">Faz ${esc(unit.phase)}</span>`;
+            return `<div class="col-12 col-md-6 col-xl-4" data-org-status="${esc(unit.status)}"><div class="subpanel h-100">` +
+                `<div class="d-flex justify-content-between align-items-start gap-2"><span class="fw-bold">${esc(unit.name)}</span>` +
+                `<span class="text-nowrap">${orgStatusBadge(unit.status)}${phase}</span></div>` +
+                `<div class="small text-body-secondary">${esc(ORG_TIER_LABEL[unit.tier] || unit.tier)}</div>` +
+                `<div class="small mt-1">${esc(unit.mission)}</div>` +
+                `<details class="small mt-1"><summary>yetki sınırları</summary>` +
+                `<div class="text-success">yapabilir:</div><ul class="mb-1">${list(unit.can)}</ul>` +
+                `<div class="text-danger">yapamaz:</div><ul class="mb-0">${list(unit.cannot)}</ul></details>` +
+                code + `</div></div>`;
+        }
+
+        function renderOrganization(payload) {
+            orgPayload = payload;
+            const units = Array.isArray(payload.units) ? payload.units : [];
+            const counts = payload.counts || {};
+            document.getElementById('org-summary').innerHTML =
+                `<span class="fw-bold">${units.length} birim</span> &nbsp;` +
+                ['ACTIVE', 'PARTIAL', 'PLANNED'].map((s) => `${orgStatusBadge(s)} ${esc(counts[s] ?? 0)}`).join(' &nbsp;');
+            const tiers = Array.isArray(payload.tiers) ? payload.tiers : [];
+            document.getElementById('org-hierarchy').innerHTML = tiers.map((tier) => {
+                const members = units.filter((u) => u.tier === tier);
+                const active = members.filter((u) => u.status === 'ACTIVE').length;
+                return `<span class="badge text-bg-${active ? 'success' : 'secondary'} fw-normal">` +
+                    `${esc(ORG_TIER_LABEL[tier] || tier)} <span class="opacity-75">${active}/${members.length}</span></span>`;
+            }).join('<span class="text-body-secondary">&rarr;</span>');
+            const shown = orgFilter === 'ALL' ? units : units.filter((u) => u.status === orgFilter);
+            document.getElementById('org-units').innerHTML = shown.map(renderOrgUnit).join('') ||
+                '<div class="text-body-secondary">Bu filtrede birim yok.</div>';
+        }
+
+        function updateOrganization() {
+            fetchPanel('/api/organization', 'org-summary', renderOrganization);
+        }
+
+        document.addEventListener('click', (event) => {
+            const button = event.target.closest('[data-org-filter]');
+            if (!button) return;
+            orgFilter = button.getAttribute('data-org-filter');
+            document.querySelectorAll('[data-org-filter]').forEach((b) => b.classList.toggle('active', b === button));
+            if (orgPayload) renderOrganization(orgPayload);
+        });
+
         function updateTradeHistoryPanel() {
             fetchPanel('/api/trades', 'trade-history-panel', (payload) => {
                 renderPerformance(payload);
@@ -1424,6 +1516,7 @@
         renderPriceSparkline();
         setInterval(updateSignalsGrid, 5000);
         updateSignalsGrid();
+        updateOrganization();
         function updateSlowPanels() {
             updateTestResultsPanel();
             updateGovernancePanel();

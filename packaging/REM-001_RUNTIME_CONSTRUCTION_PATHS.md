@@ -20,10 +20,10 @@ Command: `python -m tools.build_rem001_gate1_maps construction --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `2de68b7fdcdae5c578fe17422f8c712ed8897338` |
-| generated_from_tree | `64780b6d2f3883f6196fba81f5c855c8331c1e96` |
+| generated_from_commit | `e35547787748cd5ada76b66204e86eca02b250db` |
+| generated_from_tree | `2272f8f0bf0db398b6bbb59be04a5306477dbb5e` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['ore/execution_manager.py', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'tests/test_paper_fee_model.py', 'tools/reconcile_execution_authorities.py'] |
+| modified_tracked_paths_at_generation | ['observability/organization.py', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/atlas_architecture_map.json', 'packaging/atlas_runtime_closure.json', 'templates/dashboard.html', 'tests/test_organization_roster.py', 'web_app.py'] |
 
 ## Analysis
 
@@ -57,8 +57,8 @@ below: it counted pattern hits, these count resolved call sites.
 | --- | --- |
 | entry_points | `main.py`, `web_app.py`, `atlas_service.py`, `atlas_supervisor.py` |
 | composition_root_canonical | `core/application.py` (ADR-0001) |
-| modules_in_runtime_closure | 111 |
-| classes_defined_in_closure | 395 |
+| modules_in_runtime_closure | 112 |
+| classes_defined_in_closure | 396 |
 | construction_sites | 287 |
 | modules_constructing | 33 |
 | classes_constructed | 122 |

@@ -35,6 +35,7 @@ from fastapi.responses import (
 from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 
+from observability.organization import organization_public
 from observability import panel_sources
 from observability.panel_router import (
     build_observability_router,
@@ -2258,6 +2259,26 @@ def create_app(
         return JSONResponse(
             status_code=200,
             content=content,
+        )
+
+    @application.get(
+        "/api/organization",
+        response_class=JSONResponse,
+    )
+    async def api_organization(
+        request: Request,
+    ) -> JSONResponse:
+        # Registry v5.25: the Atlas organization roster (every corporate unit
+        # and agent from the owner's vision documents) with its real status.
+        # Static, read-only data; ACTIVE only where running code backs it.
+        if not is_loopback_request(request):
+            return JSONResponse(
+                status_code=403,
+                content=NON_LOOPBACK_RESPONSE,
+            )
+        return JSONResponse(
+            status_code=200,
+            content=organization_public(),
         )
 
     @application.get(
