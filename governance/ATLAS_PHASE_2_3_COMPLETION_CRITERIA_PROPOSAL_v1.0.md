@@ -106,8 +106,9 @@ In every case the runtime either resumes exactly or refuses new risk. It never s
 In addition, every repair keeps the original bytes.
 
 **Today: PARTIAL.**
-- The audit-chain fork has a diagnosis tool and a quarantine repair tool. Both are tested, and the repair was applied successfully on the owner machine (registry v5.06).
-- **Missing:** a written runbook mapping each store's failure mode to its outcome. The v5.09 table is the starting point.
+- `docs/operations/RECOVERY_RUNBOOK.md` maps every verified failure (the audit fork, the lock, and the five durable stores) to its symptom, what Atlas does, the action to take, and the evidence.
+- Only the audit fork has a repair tool.
+- **Missing, owner decision:** repair procedures for the other five stores. Today they are "stop and report".
 
 ### 7. Testing
 **Criterion.**
