@@ -27,7 +27,8 @@ Mission: a self-improving multi-agent system that continuously proposes and vali
 - **Development priority order (roadmap-level):** Core architecture → Correctness → Safety → Data → Decision intelligence → Risk → Execution → Learning → Self-improvement → Governance → Observability → UI → Autonomous organization. UI work (including the observability panel and eventual Atlas HQ) never delays Core.
 
 ## Roadmap discipline
-- Fixed 0–10 phase roadmap. New ideas get distributed into existing phases, never a new phase.
+- Fixed 0–10 phase roadmap. New ideas get distributed into existing phases, never a new phase. The phases are enumerated in `governance/ATLAS_ROADMAP_PHASE_0_10_ENUMERATION_v1.0.md` (registry v4.90): 0 Foundation, 1 Core, 2 Investment Engine, 3 Reliability, 4 Research, 5 Security/Risk, 6 Organization, 7 Memory, 8 Atlas HQ, 9 Evolution, 10 Controlled Live.
+- AI independence (ADR-0011, `docs/adr/0011-ai-independent-deterministic-core.md`): the deterministic core never depends on an AI provider; AI output is always a proposal; Claude Code is a development tool, not an Atlas runtime component. Enforced for the runtime closure by `tests/architecture/test_runtime_has_no_ai_provider_dependency.py`.
 - Core operating rule: **keep developing Atlas, do not keep redefining Atlas** — finish existing roadmap work before new features; evaluate new tech/ideas only for whether they speed up or delay current work.
 - New-idea evaluation format: **What / Why / Where (which existing phase) / Dependencies / Risk / Cost / Alternative / Decision (ACCEPT / DEFER / REJECT)** — no new feature is auto-accepted.
 - Three authority domains that never auto-grant each other permission: **learning**, **self-modifying code**, and **managing live capital**.
