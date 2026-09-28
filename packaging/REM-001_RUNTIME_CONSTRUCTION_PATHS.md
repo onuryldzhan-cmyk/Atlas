@@ -20,10 +20,10 @@ Command: `python -m tools.build_rem001_gate1_maps construction --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `93e789ff38cea25d0c66d18e1078308fed7c2998` |
-| generated_from_tree | `154633be9aa853ccabebb039190542af4430f3e7` |
+| generated_from_commit | `9c7eaabe36e6724db9f2cbe69925f8f6a8def1a6` |
+| generated_from_tree | `968b42b2c523a5a05b8e2af58b7f97aabcedee3a` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['docs/operations/OWNER_TERMINAL_TASKS.md', 'main.py', 'ore/atlas_config.py', 'tests/test_atlas_config.py'] |
+| modified_tracked_paths_at_generation | ['ai/core/intelligence/risk_engine.py', 'i/core/atlas_brain.py', 'tests/test_regime_risk_level.py'] |
 
 ## Analysis
 
@@ -93,20 +93,20 @@ classes and their observed constructors:
 
 | constructing module | class | defining module | line | enclosing scope |
 | --- | --- | --- | --- | --- |
-| `ai/core/atlas_brain.py` | `Action` | `core/decision_intelligence.py` | 878 | `AtlasBrain::_build_phase5_agent_evidence` |
+| `ai/core/atlas_brain.py` | `Action` | `core/decision_intelligence.py` | 887 | `AtlasBrain::_build_phase5_agent_evidence` |
 | `ai/core/atlas_brain.py` | `AdvisoryRiskScorer` | `ai/core/intelligence/risk_engine.py` | 255 | `AtlasBrain::initialize_modules` |
 | `ai/core/atlas_brain.py` | `AgentFusion` | `ai/core/intelligence/agent_fusion.py` | 243 | `AtlasBrain::initialize_modules` |
 | `ai/core/atlas_brain.py` | `AtlasMemoryCore` | `ai/core/atlas_memory_core.py` | 231 | `AtlasBrain::initialize_modules` |
 | `ai/core/atlas_brain.py` | `AtlasReasoningEngine` | `ai/core/atlas_reasoning_engine.py` | 235 | `AtlasBrain::initialize_modules` |
 | `ai/core/atlas_brain.py` | `AtlasWorldModel` | `ai/core/atlas_world_model.py` | 239 | `AtlasBrain::initialize_modules` |
-| `ai/core/atlas_brain.py` | `ClaimSource` | `data_layer/contracts.py` | 1299 | `AtlasBrain::_record_one_agent_claim` |
+| `ai/core/atlas_brain.py` | `ClaimSource` | `data_layer/contracts.py` | 1308 | `AtlasBrain::_record_one_agent_claim` |
 | `ai/core/atlas_brain.py` | `ConfidenceEngine` | `ai/core/intelligence/confidence/confidence_engine.py` | 253 | `AtlasBrain::initialize_modules` |
 | `ai/core/atlas_brain.py` | `DecisionBuilder` | `ai/core/intelligence/decision_builder.py` | 257 | `AtlasBrain::initialize_modules` |
-| `ai/core/atlas_brain.py` | `Evidence` | `core/decision_intelligence.py` | 925 | `AtlasBrain::_build_phase5_agent_evidence` |
-| `ai/core/atlas_brain.py` | `FusionPolicy` | `core/decision_intelligence.py` | 782 | `AtlasBrain::_build_phase5_shadow_proposal` |
+| `ai/core/atlas_brain.py` | `Evidence` | `core/decision_intelligence.py` | 934 | `AtlasBrain::_build_phase5_agent_evidence` |
+| `ai/core/atlas_brain.py` | `FusionPolicy` | `core/decision_intelligence.py` | 791 | `AtlasBrain::_build_phase5_shadow_proposal` |
 | `ai/core/atlas_brain.py` | `MemoryAdapter` | `ai/core/intelligence/memory_adapter.py` | 249 | `AtlasBrain::initialize_modules` |
 | `ai/core/atlas_brain.py` | `ReasoningAdapter` | `ai/core/intelligence/reasoning_adapter.py` | 245 | `AtlasBrain::initialize_modules` |
-| `ai/core/atlas_brain.py` | `SignalFusion` | `core/decision_intelligence.py` | 789 | `AtlasBrain::_build_phase5_shadow_proposal` |
+| `ai/core/atlas_brain.py` | `SignalFusion` | `core/decision_intelligence.py` | 798 | `AtlasBrain::_build_phase5_shadow_proposal` |
 | `ai/core/intelligence/decision_builder.py` | `Decision` | `UNKNOWN` | 84 | `DecisionBuilder::create` |
 | `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 569 | `BinancePublicDataProvider::get_candles` |
 | `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 893 | `BinancePublicDataProvider::_parse_candle` |

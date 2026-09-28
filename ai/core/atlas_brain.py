@@ -78,7 +78,7 @@ from .intelligence.confidence.confidence_engine import ConfidenceEngine
 from .intelligence.decision_builder import DecisionBuilder
 from .intelligence.memory_adapter import MemoryAdapter
 from .intelligence.reasoning_adapter import ReasoningAdapter
-from .intelligence.risk_engine import AdvisoryRiskScorer
+from .intelligence.risk_engine import AdvisoryRiskScorer, regime_risk_result
 
 from core.decision_intelligence import (
     Action,
@@ -444,8 +444,16 @@ class AtlasBrain:
             # RISK ANALYSIS
             # =================================================
 
-            risk_result = self.risk.calculate(
+            # Advisory score kept for audit only (metadata["advisory_risk"]).
+            advisory_risk_result = self.risk.calculate(
                 confidence=confidence_result.value
+            )
+
+            # Registry v5.22: the bucket-selecting risk_level comes from
+            # the measured volatility regime (fail-closed to HIGH).
+            risk_result = regime_risk_result(
+                market_data,
+                normalized_symbol,
             )
 
             # =================================================
@@ -488,6 +496,7 @@ class AtlasBrain:
                 {
                     "brain_version": self.VERSION,
                     "brain_session_id": self.session_id,
+                    "advisory_risk": advisory_risk_result.to_dict(),
                     "analysis_timestamp": datetime.now(
                         UTC
                     ).isoformat(),
