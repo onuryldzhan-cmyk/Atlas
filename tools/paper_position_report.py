@@ -18,6 +18,7 @@ import argparse
 import json
 import sys
 import urllib.request
+from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 
@@ -62,14 +63,29 @@ def approvals_by_symbol(audit_path: Path) -> dict[str, list[dict]]:
 
 
 def entry_approval(approvals: list[dict], opened_at: str | None) -> dict | None:
-    """The latest approval at or before the position was opened."""
+    """The approval closest in time to when the position was opened.
+
+    The RISK_APPROVED audit event can be written milliseconds *after* the
+    fill stamps ``opened_at``, so "latest before opening" would skip the
+    real approval and attribute an older, unrelated one.
+    """
 
     if not approvals:
         return None
     if not opened_at:
         return approvals[-1]
-    before = [a for a in approvals if str(a.get("timestamp") or "") <= opened_at]
-    return (before or approvals)[-1]
+    try:
+        opened = datetime.fromisoformat(opened_at)
+    except ValueError:
+        return approvals[-1]
+
+    def distance(approval: dict) -> float:
+        try:
+            return abs((datetime.fromisoformat(str(approval.get("timestamp"))) - opened).total_seconds())
+        except ValueError:
+            return float("inf")
+
+    return min(approvals, key=distance)
 
 
 def live_price(symbol: str) -> Decimal | None:

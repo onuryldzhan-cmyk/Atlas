@@ -44,3 +44,16 @@ def test_entry_approval_picks_the_latest_one_before_opening():
     chosen = tool.entry_approval(approvals, "2026-09-28T11:30:00+00:00")
 
     assert chosen["experiment_id"] == "EXP-001"
+
+
+def test_an_approval_written_just_after_the_fill_is_still_the_one_chosen():
+    """Owner run 2026-09-28: BNB opened 10:47:04.397, approved 10:47:04.409."""
+
+    approvals = [
+        {"timestamp": "2026-09-27T09:00:00+00:00", "confidence": 67.7, "experiment_id": None},
+        {"timestamp": "2026-09-28T10:47:04.409057+00:00", "confidence": 60.43, "experiment_id": "EXP-001"},
+    ]
+
+    chosen = tool.entry_approval(approvals, "2026-09-28T10:47:04.397057+00:00")
+
+    assert chosen["experiment_id"] == "EXP-001"
