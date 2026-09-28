@@ -104,7 +104,10 @@ In every case the runtime either resumes exactly or refuses new risk. It never s
     - a failed or dead panel no longer stops trading;
     - the panel is retried every 30s on a worker thread, so the heartbeat never starves;
     - a runtime stop still ends the process.
-  - Open LOW items: the panel-down state appears only in logs; a hung uvicorn shutdown can orphan a thread; no real-server restart test exists yet.
+  - LOW items:
+    - The real-server restart is now tested (`test_a_real_web_server_restarts_after_dying_and_serves_again`).
+    - The panel-down state is visible only in logs: one CRITICAL, then a WARNING on every failed retry. This is accepted, because the panel itself is the thing that is down.
+    - A hung uvicorn shutdown can orphan a thread. This is still open and bounded, since the bind is retried.
 
 - *A trading halt never hides the panel:* health keeps reporting through a halt (`tests/test_application_health_market_signals.py::test_halted_execution_is_not_healthy`, which reports rather than hides).
 

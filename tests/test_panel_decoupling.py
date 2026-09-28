@@ -125,3 +125,41 @@ def test_a_slow_restart_never_blocks_the_main_loop_heartbeat(monkeypatch):
     # ~4 ticks while the restart is stuck: the loop kept beating.
     assert len(heartbeats) >= 3
     assert process.exit_code == 0
+
+
+def test_a_real_web_server_restarts_after_dying_and_serves_again():
+    """Audit LOW: the restart path exercised against a real uvicorn server,
+    not fakes. It starts, serves, dies, is restarted by build_process's
+    restart hook against the same runtime, and serves again."""
+
+    import urllib.request
+
+    from atlas_service import AtlasWebServer, build_process
+    from tests.test_merged_process_composition import _StubRuntime, _free_port
+
+    port = _free_port()
+    web_server = AtlasWebServer(port=port, startup_timeout=20.0)
+    process = build_process(server=web_server)
+    runtime = _StubRuntime()
+
+    def get_health() -> int:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/health", timeout=5) as response:
+            return response.status
+
+    process.on_started(runtime)  # type: ignore[arg-type]
+    try:
+        assert get_health() == 200
+
+        # The panel dies on its own (not via stop()).
+        dying = web_server.thread
+        web_server.server.should_exit = True
+        dying.join(timeout=10)
+        assert web_server.is_alive() is False
+
+        process.restart_subordinate()
+
+        assert web_server.is_alive() is True
+        assert web_server.thread is not dying
+        assert get_health() == 200
+    finally:
+        web_server.stop()
