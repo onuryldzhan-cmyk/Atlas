@@ -1,0 +1,39 @@
+"""CODE-001 baseline ratchet (registry v5.26): runtime code quality may only improve.
+
+Numbers were measured on 2026-09-28 over the runtime closure. A change that
+lowers one should lower the pinned ceiling in the same commit (tighten the
+ratchet); raising a ceiling needs a successor registry record.
+"""
+
+from tools.code_health_report import measure
+
+PRINT_CALLS_CEILING = 128
+LONG_FUNCTIONS_BASELINE = {
+    "ai/core/intelligence/agent_fusion.py::fuse",
+    "atlas_os/scheduling/scheduler.py::_execute_task",
+    "core/execution_manager.py::execute",
+    "core/execution_manager.py::risk_check",
+    "core/execution_manager.py::_execute_paper_buy",
+    "core/market_loop.py::process_symbol",
+    "web_app.py::create_app",
+}
+
+REPORT = measure()
+
+
+def test_no_bare_except_in_runtime():
+    assert REPORT["bare_except"] == []
+
+
+def test_no_todo_or_fixme_in_runtime():
+    assert REPORT["todo_fixme"] == []
+
+
+def test_print_calls_never_increase():
+    assert REPORT["print_calls"] <= PRINT_CALLS_CEILING
+
+
+def test_no_new_overlong_functions():
+    new = set(REPORT["long_functions"]) - LONG_FUNCTIONS_BASELINE
+    assert not new, f"new function over 300 lines: {sorted(new)}"
+
