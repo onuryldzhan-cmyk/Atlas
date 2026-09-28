@@ -35,6 +35,16 @@ python -m tools.check_execution_authority_agreement
 
 Start Atlas only if it prints `ready=True`.
 
+## 3. EXP-001 results (read-only, safe while Atlas runs; any time, and on 2026-10-12)
+
+```powershell
+python -m tools.exp001_report
+```
+
+Shows EXP-001 trades vs policy-floor trades: win rate (with a 95% range),
+gross P&L, fees, holding time, and whether the sample is big enough to
+conclude anything (needs >= 30 closed trades). Paste the output.
+
 ## Done (kept for reference)
 
 - Audit-fork quarantine applied 2026-09-28 (registry v5.06).
