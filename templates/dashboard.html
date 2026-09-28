@@ -300,7 +300,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="small text-body-secondary mt-2">Rakamlar brüttür (fiyat farkı). Ücret sonrası net sonuç için: <span class="font-monospace">python -m tools.exp001_report</span>. Bu panel yalnız okur.</div>
+                        <div class="small text-body-secondary mt-2">Grafik ve tablo brüttür (fiyat farkı); "net P&amp;L" hesabın tüm ücretler düşülmüş gerçekleşen sonucudur. Ayrıntılı rapor: <span class="font-monospace">python -m tools.exp001_report</span>. Bu panel yalnız okur.</div>
                     </div>
                 </section>
 
@@ -1087,7 +1087,11 @@
                 kpi('ort. işlem', pnlSpan(avg, 2)) +
                 kpi('en iyi / en kötü', pnls.length
                     ? `${pnlSpan(Math.max(...pnls), 2)} / ${pnlSpan(Math.min(...pnls), 2)}` : 'n/a') +
-                kpi('ort. süre', avgHours === null ? 'n/a' : `<span class="font-monospace">${avgHours.toFixed(1)} sa</span>`);
+                kpi('ort. süre', avgHours === null ? 'n/a' : `<span class="font-monospace">${avgHours.toFixed(1)} sa</span>`) +
+                // account-level net after fees (registry v5.24); n/a when the book is unreadable
+                kpi('net P&amp;L (ücret sonrası)', payload.account ? pnlSpan(payload.account.realized_net_pnl, 2) : 'n/a') +
+                kpi('toplam ücret', payload.account && toNum(payload.account.fees) !== null
+                    ? `<span class="font-monospace">${toNum(payload.account.fees).toFixed(2)}</span>` : 'n/a');
 
             let running = 0;
             const cumulative = pnls.map((p) => (running += p));

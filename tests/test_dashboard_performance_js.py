@@ -90,3 +90,11 @@ def test_malformed_rows_are_dropped_not_counted_as_zero():
     r = _run({"total_trades": 3, "win_rate": 66.67, "total_gross_pnl": "6.21", "recent_trades": trades})
     assert r["data"] == pytest.approx([-1.25, 3.45, 6.21])
     assert "ETHUSDT" not in r["trades"]
+
+
+def test_account_net_and_fees_shown_when_present_and_na_when_absent():
+    with_account = _run({"total_trades": 3, "win_rate": 66.67, "total_gross_pnl": "6.21", "recent_trades": TRADES,
+                         "account": {"realized_net_pnl": "4.10", "fees": "2.11"}})
+    assert "+4.10" in with_account["kpis"] and "2.11" in with_account["kpis"]
+    without = _run({"total_trades": 3, "win_rate": 66.67, "total_gross_pnl": "6.21", "recent_trades": TRADES})
+    assert without["kpis"].count("n/a") >= 2

@@ -982,6 +982,23 @@ def _public_signal(
     return payload
 
 
+def _account_totals(portfolio_foundation: Any) -> dict[str, str] | None:
+    """Account-level realized net P&L and fees from the durable book, or None."""
+
+    snapshot = getattr(portfolio_foundation, "snapshot", None)
+    if not callable(snapshot):
+        return None
+    try:
+        snap = snapshot()
+        return {
+            "realized_net_pnl": str(Decimal(str(snap["realized_net_pnl"]))),
+            "fees": str(Decimal(str(snap["fees"]))),
+        }
+    except Exception:
+        logger.debug("Account totals unavailable", exc_info=True)
+        return None
+
+
 def _public_trade(
     record: dict[str, Any],
 ) -> dict[str, Any]:
@@ -2219,19 +2236,28 @@ def create_app(
                 },
             )
 
+        content = {
+            "available": True,
+            "total_trades": total_trades,
+            "wins": wins,
+            "losses": losses,
+            "win_rate": win_rate,
+            "total_gross_pnl": str(total_gross_pnl),
+            "recent_trades": [
+                _public_trade(record) for record in recent
+            ],
+        }
+        # Registry v5.24 (owner, recommended option): account-level realized
+        # net P&L and total fees only - aggregates the operator already sees
+        # in tools/exp001_report. Per-position cost, fees and prices stay off
+        # the web surface. Present only when the durable book can be read;
+        # never a placeholder.
+        account = _account_totals(portfolio_foundation)
+        if account is not None:
+            content["account"] = account
         return JSONResponse(
             status_code=200,
-            content={
-                "available": True,
-                "total_trades": total_trades,
-                "wins": wins,
-                "losses": losses,
-                "win_rate": win_rate,
-                "total_gross_pnl": str(total_gross_pnl),
-                "recent_trades": [
-                    _public_trade(record) for record in recent
-                ],
-            },
+            content=content,
         )
 
     @application.get(

@@ -449,3 +449,25 @@ def test_new_endpoints_refuse_non_loopback_clients() -> None:
         assert (
             response.json()["reason"] == "ATLAS_WEB_PANEL_IS_LOCALHOST_ONLY"
         ), route
+
+
+def test_trades_endpoint_adds_account_net_and_fees_only_when_book_readable() -> None:
+    """Registry v5.24: account-level aggregates only; per-trade fields unchanged."""
+
+    class Readable:
+        closed_archive = FakeClosedArchive({"p1": _closed_record("p1", "BTCUSDT", "12.5")})
+
+        def snapshot(self):
+            return {"realized_net_pnl": "10.3", "fees": "2.2", "cash": "LEAK-CASH"}
+
+    class Broken:
+        closed_archive = FakeClosedArchive({})
+
+        def snapshot(self):
+            raise RuntimeError("not ready")
+
+    payload = _trades_client(Readable()).get("/api/trades").json()
+    assert payload["account"] == {"realized_net_pnl": "10.3", "fees": "2.2"}
+    assert "LEAK-CASH" not in str(payload)
+    assert set(payload["recent_trades"][0]) == {"symbol", "gross_pnl", "opened_at", "closed_at"}
+    assert "account" not in _trades_client(Broken()).get("/api/trades").json()
