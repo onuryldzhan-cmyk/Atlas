@@ -2,7 +2,7 @@
 
 ## Status
 
-**Proposed** 2026-09-28 (UTC). Awaiting owner acceptance.
+**Accepted** 2026-09-28 (UTC) by the owner ("a ve c başla" in the Claude Code session, answering option A "ADR-0012'yi kabul et"). Recorded in registry v5.07. Proposed earlier the same day in commit 5c955f3.
 
 - Principle only. It authorizes no implementation.
 - Amends ADR-0011's governed self-modification pipeline in one respect: how the owner is reached. Every other part of ADR-0011 stands unchanged.
