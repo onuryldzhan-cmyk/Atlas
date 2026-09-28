@@ -68,6 +68,9 @@ def test_main_prints_labelled_report_with_injected_history(capsys):
         time.time = original
     out = capsys.readouterr().out
     assert "MACRO-NEUTRAL REPLAY" in out and "Nothing was changed" in out
+    # The expected "manager unavailable" warning must not flood the console.
+    import logging
+    assert logging.getLogger("AtlasAI.MarketLoop").level == logging.ERROR
 
 
 def test_portfolio_limits_apply_across_symbols_on_one_clock():

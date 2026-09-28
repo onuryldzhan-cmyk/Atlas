@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import io
+import logging
 import os
 import sys
 import tempfile
@@ -403,6 +404,12 @@ def main(argv: list[str] | None = None, fetch: Fetcher | None = None) -> int:
                         help="owner-approved staged entries/exits: 3 tranches, +1.5%%/+3%% ladder, 1.5%% trailing, -3%% confirmed stop")
     parser.add_argument("--sleeves", action="store_true", help="cap each risk bucket at 50/35/15%% of capital across all symbols")
     args = parser.parse_args(argv)
+
+    # The replay drives MarketLoop without an ExecutionManager on purpose, so
+    # its per-decision "execution skipped: manager unavailable" warning is
+    # expected noise here; it flooded the console and slowed the run.
+    # Errors still surface.
+    logging.getLogger("AtlasAI.MarketLoop").setLevel(logging.ERROR)
 
     from tools.measure_volatility_ceiling import fetch_page
 
