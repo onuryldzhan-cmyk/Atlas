@@ -27,12 +27,11 @@
 
 In every case the runtime either resumes exactly or refuses new risk. It never silently continues.
 
-**Today: MET for new risk; one open question.**
+**Today: NOT MET. One HIGH finding is open.**
 - Restart, idempotent replay and crash recovery have existing tests (the Block 5B/5C/5D and F1–F6 suites).
-- Corrupting any durable store leaves Atlas running but refusing new risk. Two test files pin this:
-  - `tests/test_corrupt_risk_state_fails_closed.py` (v5.11);
-  - `tests/test_corrupt_execution_state_fails_closed.py`, which covers the idempotency log, the journal and the financial state (execution halts with `RECOVERY_REQUIRED`) and the reservation store (`CAPITAL_RESERVATION_STATE_NOT_READY`).
-- **Open question (UNKNOWN):** can a *held* position still be exited while execution is halted by a corrupt store? A halt blocking exits is conservative, but it can also trap risk. Owner decision needed on the intended behaviour.
+- Five stores were each damaged in four ways (garbled, truncated, empty, deleted), then a BUY was attempted on a symbol with no open position (`tests/test_corrupt_execution_state_fails_closed.py`, 20 cases). In 18 cases new risk is refused: the idempotency log, the financial state and a malformed journal halt execution; the reservation and risk stores refuse admission.
+- **HIGH (audit follow-up, 2026-09-28): an *empty or deleted* `execution_transaction_journal.jsonl` is not detected.** Atlas treats it as a fresh journal and keeps trading, and a new ETH BUY executed. This breaks CLAUDE.md's rule that corrupted state is detected and halted, never silently continued through. It is pinned as a strict xfail. The fix changes journal/execution startup behaviour (CRITICAL) and **needs an owner grant**. The likely direction is to refuse a missing or empty journal while other durable state shows prior executions.
+- **Open question (UNKNOWN):** can a *held* position still be exited while execution is halted by a corrupt store? A halt that blocks exits is conservative, but it can also trap risk. Owner decision needed on the intended behaviour.
 
 ### 2. Reconnect
 **Criterion (as first drafted).**
@@ -48,7 +47,7 @@ In every case the runtime either resumes exactly or refuses new risk. It never s
   - `tests/test_application_health_market_signals.py::test_stale_market_data_does_not_flip_healthy`.
 - *Impact:* with the current design, a stale feed does not by itself block a BUY. What prevents decisions on a dead feed is the `DUPLICATE_CLOSED_CANDLE` skip: with no new closed candle, the loop processes nothing new (`core/market_loop.py:681-705`). A feed that returns old but not-yet-seen candles, such as after a backfill, is only *detected and logged* (`test_backfill_gap_exceeding_window_is_detected_and_logged`). It is not blocked.
 - *Decision required from the owner:*
-  - **(a)** keep observability-only and amend the criterion to "a dead feed produces no new decision (duplicate-candle guard), recovery is automatic, staleness is visible". This is **MET today**, per `tests/test_market_loop_reconnect.py` (9 tests) and the duplicate-candle guard.
+  - **(a)** keep observability-only and amend the criterion to "a dead feed produces no new decision (duplicate-candle guard), recovery is automatic, staleness is visible". This is **MET today**, per `tests/test_market_loop_reconnect.py`: its 9 recovery and staleness tests, plus `test_a_dead_feed_repeating_the_same_closed_candle_makes_no_new_decision`, which was added after audit HIGH-1 and proves no second analysis or order happens on a repeated candle.
   - **(b)** make staleness or candle age a gate on new risk. This is a behaviour change that needs its own grant, tests and audit.
 
 **Today:** MET under (a). NOT MET under (b).
@@ -87,7 +86,13 @@ In every case the runtime either resumes exactly or refuses new risk. It never s
 - A web failure cannot stop trading, and a trading halt cannot hide the panel.
 
 **Today: MET for the first two points. CONFLICT on the third.**
-- *Imports and calls:* `tests/architecture/test_web_layer_is_read_only.py` (AST-based) proves that `web_app.py` and `observability/*` import no core, ai, risk, execution or storage module and call no state-changing method. A mutant with a forbidden import and a `.stop()` call fails it.
+- *Imports and calls:* `tests/architecture/test_web_layer_is_read_only.py` (AST-based) proves the following for `web_app.py` and `observability/*`:
+  - no core, ai, risk, execution or storage module is imported;
+  - no state-changing method is called directly;
+  - there is no `setattr`/`delattr`, and no attribute store except on FastAPI app state;
+  - every `getattr` or `_resolve_attr` lookup resolves to a known, non-mutating name.
+  
+  It was strengthened after audit MEDIUM-3. Four escape mutants (setattr, getattr-call on `process_symbol`, an attribute store on a runtime object, and a getattr with a non-literal name) all fail it.
 - *Web disabled:* `python main.py` runs the full runtime with no web surface. Evidence: the owner's 2026-09-28 13:44 run, and `tests/test_merged_process_composition.py::test_process_without_hooks_is_unchanged`.
 - **CONFLICT:**
   - *Expected:* a web failure cannot stop trading.
@@ -149,3 +154,16 @@ Until then it keeps gating its nine dependants (ARCH-001, CODE-001, OBS-001, TES
 ## Decision required
 
 Accept these criteria as written, amend them, or reject them. Acceptance is recorded as a successor registry record that fills `completion_criteria` for the milestone.
+
+## Phase-level independent audit (item 8), 2026-09-28
+
+The audit found no BLOCKING issue. Findings and their disposition:
+- **HIGH-1:** the reconnect evidence did not test the duplicate-candle guard. **Fixed:** a dead-feed test was added.
+- **MEDIUM-1:** the runbook was wrong about deleted or empty financial state. **Fixed:** the row is corrected, and the cases are now tested.
+- **MEDIUM-2:** corruption coverage was too narrow. **Fixed:** 5 stores × 4 modes are now tested. This surfaced the journal HIGH gap above.
+- **MEDIUM-3:** the web read-only test was too narrow. **Fixed:** the test was strengthened and mutation-checked.
+- **LOW-1:** the duplicate-candle memory is in-process only, so after a restart the last candle can be decided again. Execution idempotency is expected to make that replay harmless. That is UNKNOWN, still open.
+- **LOW-2:** the Windows lock behaviour has not been proven by an owner run. Still open.
+- **Not inspected:** EXP-001 cap durability and the paper/live boundary. These go into the next audit pass.
+
+**Item 8 status: NOT MET while the journal HIGH is open** (the close condition requires no open HIGH).

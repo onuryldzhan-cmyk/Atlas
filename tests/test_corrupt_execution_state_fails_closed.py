@@ -1,9 +1,12 @@
-"""A corrupt durable execution store never admits new risk (Phase 2-3 item 1).
+"""A corrupt or missing durable execution store never admits new risk.
 
-Probed 2026-09-28 (registry v5.09): Atlas starts with a corrupt store (no
-restart loop) but refuses every new BUY. The append logs and the financial
-state halt execution (RECOVERY_REQUIRED); a corrupt reservation store
-refuses admission (CAPITAL_RESERVATION_STATE_NOT_READY).
+Phase 2-3 item 1; audit MEDIUM-1/2 widened the corruption modes. Probed
+2026-09-28: Atlas starts with a damaged store (no restart loop) and refuses
+new risk - except the one known gap below.
+
+KNOWN GAP (HIGH, owner decision pending): an *empty or deleted*
+transaction journal is accepted as a fresh journal and trading continues.
+Pinned as a strict xfail so the day it is fixed this test says so.
 """
 
 from __future__ import annotations
@@ -15,23 +18,44 @@ from core.application import (
     EXECUTION_FINANCIAL_STATE_FILE,
     EXECUTION_IDEMPOTENCY_STATE_FILE,
     EXECUTION_TRANSACTION_JOURNAL_FILE,
+    RISK_ACCOUNTING_STATE_FILE,
     AtlasApplication,
 )
 from tests.test_block5c_upstream_sizing_authority import execution_enabled_loop, seed_state
 
+MODES = {
+    "garbled": lambda p: p.write_text(p.read_text(encoding="utf-8")[:-20] + "garbage}\n", encoding="utf-8"),
+    "truncated": lambda p: p.write_text(p.read_text(encoding="utf-8")[: len(p.read_text(encoding="utf-8")) // 2], encoding="utf-8"),
+    "empty": lambda p: p.write_text("", encoding="utf-8"),
+    "deleted": lambda p: p.unlink(),
+}
 
-def _garble(path):
-    text = path.read_text(encoding="utf-8")
-    path.write_text(text[:-20] + "garbage}\n", encoding="utf-8")
+STORES = [
+    EXECUTION_IDEMPOTENCY_STATE_FILE,
+    EXECUTION_TRANSACTION_JOURNAL_FILE,
+    EXECUTION_FINANCIAL_STATE_FILE,
+    CAPITAL_RESERVATION_STATE_FILE,
+    RISK_ACCOUNTING_STATE_FILE,
+]
+
+JOURNAL_GAP = pytest.mark.xfail(
+    strict=True,
+    reason="HIGH: an empty/deleted transaction journal is accepted as fresh "
+           "(Phase 2-3 proposal item 1, owner decision pending)",
+)
 
 
-@pytest.mark.parametrize("store, expected_status, halts", [
-    (EXECUTION_IDEMPOTENCY_STATE_FILE, "RECOVERY_REQUIRED", True),
-    (EXECUTION_TRANSACTION_JOURNAL_FILE, "RECOVERY_REQUIRED", True),
-    (EXECUTION_FINANCIAL_STATE_FILE, "RECOVERY_REQUIRED", True),
-    (CAPITAL_RESERVATION_STATE_FILE, "REJECTED", False),
-])
-def test_new_risk_is_refused_after_the_store_is_corrupted(tmp_path, store, expected_status, halts):
+def _cases():
+    for store in STORES:
+        for mode in MODES:
+            marks = [JOURNAL_GAP] if (
+                store == EXECUTION_TRANSACTION_JOURNAL_FILE and mode in {"empty", "deleted"}
+            ) else []
+            yield pytest.param(store, mode, marks=marks, id=f"{store}-{mode}")
+
+
+@pytest.mark.parametrize("store, mode", list(_cases()))
+def test_new_risk_on_another_symbol_is_refused(tmp_path, store, mode):
     root = seed_state(tmp_path / "state")
 
     first = AtlasApplication(state_directory=root)
@@ -39,15 +63,20 @@ def test_new_risk_is_refused_after_the_store_is_corrupted(tmp_path, store, expec
     assert execution_enabled_loop(first, "BUY").process_symbol("BTCUSDT")["status"] == "PAPER_EXECUTED"
     first.stop()
 
-    _garble(root / store)
+    MODES[mode](root / store)
 
-    app = AtlasApplication(state_directory=root)  # starts: no restart loop
+    try:
+        app = AtlasApplication(state_directory=root)
+    except RuntimeError:
+        return  # refusing to start is fail-closed too
+
     app.execution.start()
     try:
-        result = execution_enabled_loop(app, "BUY", epoch=5).process_symbol("BTCUSDT")
+        loop = execution_enabled_loop(app, "BUY", epoch=5)
+        loop.symbols = ["ETHUSDT"]  # a symbol with no open position
+        result = loop.process_symbol("ETHUSDT")
 
-        assert result["status"] == expected_status
-        assert app.execution.execution_halted is halts
+        assert result["status"] != "PAPER_EXECUTED"
         assert app.execution._risk_admissions == {}
     finally:
         app.stop()

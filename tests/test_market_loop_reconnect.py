@@ -404,3 +404,43 @@ def test_backfill_within_window_is_not_flagged() -> None:
         event.get("event") == "MARKET_DATA_BACKFILL_GAP_EXCEEDED"
         for event in event_bus.events
     )
+
+
+# ---------------------------------------------------------------------
+# Dead feed: the same closed candle again produces no new decision
+# (Phase 2-3 item 2, audit HIGH-1)
+# ---------------------------------------------------------------------
+
+
+def test_a_dead_feed_repeating_the_same_closed_candle_makes_no_new_decision(tmp_path) -> None:
+    from tests.test_block5c_upstream_sizing_authority import (
+        application,
+        execution_enabled_loop,
+    )
+
+    app = application(tmp_path)
+    app.execution.start()
+    try:
+        loop = execution_enabled_loop(app, "BUY")
+
+        calls = []
+        original = loop.brain.analyze_and_decide
+
+        def counting(symbol, market_data):
+            calls.append(symbol)
+            return original(symbol, market_data)
+
+        loop.brain.analyze_and_decide = counting
+
+        first = loop.process_symbol("BTCUSDT")
+        assert first["status"] == "PAPER_EXECUTED"
+        assert len(calls) == 1
+
+        # The feed keeps returning the identical closed candles (a stalled
+        # exchange / dead websocket): no second analysis, no second order.
+        second = loop.process_symbol("BTCUSDT")
+        assert second["status"] == "SKIPPED"
+        assert second["reason"] == "DUPLICATE_CLOSED_CANDLE"
+        assert len(calls) == 1
+    finally:
+        app.stop()
