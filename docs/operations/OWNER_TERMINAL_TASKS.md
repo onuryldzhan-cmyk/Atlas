@@ -55,6 +55,17 @@ python tools/extract_candle_age_telemetry.py --json > reports/observability/tele
 The first prints cycle-duration and candle-age statistics (paste the output;
 it becomes the PERF-001 baseline). The second fills the panel's Telemetri card.
 
+## 5. Backtest: replay the real decision chain on the last 7 days (read-only; several minutes)
+
+```powershell
+python -m tools.backtest_replay --days 7 --step 15
+python -m tools.backtest_replay --days 7 --step 15 --exp001
+```
+
+The first uses the policy thresholds, the second the EXP-001 floor. Paste both
+outputs. Macro and sentiment are excluded (stated in the report), so this is a
+conservative research estimate, not a promise.
+
 ## Done (kept for reference)
 
 - Audit-fork quarantine applied 2026-09-28 (registry v5.06).
