@@ -151,6 +151,8 @@ def main(argv: list[str] | None = None, fetch: Fetcher = fetch_page) -> int:
 
     results = []
     for symbol in [s.strip().upper() for s in args.symbols.split(",") if s.strip()]:
+        # progress on stderr so --json output stays clean
+        print(f"downloading {symbol} ({args.days} days of 1m candles)...", file=sys.stderr, flush=True)
         try:
             results.append(measure(symbol, fetch_closes(symbol, args.days, fetch)))
         except Exception as exc:
