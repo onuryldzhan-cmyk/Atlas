@@ -985,6 +985,14 @@ def _public_signal(
 
     payload["agents"] = agents
 
+    # Which past experience shaped this decision (BRAIN-MEM-001): the caution
+    # record only, with a fixed key set; None when memory changed nothing.
+    adjustment = metadata.get("memory_adjustment")
+    payload["memory"] = (
+        {key: adjustment.get(key) for key in ("reason", "confidence_before", "confidence_after", "trades", "net_expectancy")}
+        if isinstance(adjustment, dict) else None
+    )
+
     return payload
 
 

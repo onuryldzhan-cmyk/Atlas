@@ -34,9 +34,12 @@ SIGNAL_LEAK_MARKERS = (
     CANDLE_LEAK_MARKER,
 )
 
+# "memory" added 2026-09-30 (owner MEGA 3 §11, registry v5.82): the fixed
+# BRAIN-MEM-001 caution fields only, read from metadata.memory_adjustment.
 ALLOWED_SIGNAL_KEYS = frozenset(
-    {"symbol", "action", "confidence", "risk_level", "agents"}
+    {"symbol", "action", "confidence", "risk_level", "agents", "memory"}
 )
+ALLOWED_MEMORY_KEYS = frozenset({"reason", "confidence_before", "confidence_after", "trades", "net_expectancy"})
 ALLOWED_AGENT_KEYS = frozenset({"status", "action", "score", "reason"})
 
 
@@ -146,6 +149,8 @@ def test_signals_endpoint_does_not_leak_metadata_internals() -> None:
             f"unexpected keys for {symbol}: "
             f"{sorted(set(signal) - ALLOWED_SIGNAL_KEYS)}"
         )
+
+        assert signal.get("memory") is None or set(signal["memory"]) <= ALLOWED_MEMORY_KEYS
 
         for agent_name, agent in signal["agents"].items():
             assert set(agent) <= ALLOWED_AGENT_KEYS, (
