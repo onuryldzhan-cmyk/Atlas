@@ -81,7 +81,9 @@ def trade_universe(path: Path | str = DEFAULT_INSTRUMENT_RULES_PATH) -> list[str
     if len(symbols) > MAX_TRADE_UNIVERSE:
         raise ValueError(f"{len(symbols)} symbols in {path}: at most {MAX_TRADE_UNIVERSE} (owner decision v5.41)")
     return symbols or None
-PAPER_CONFIDENCE_EXPERIMENT = True
+# EXP-001 stopped early by the owner on 2026-09-29 (registry v5.71): 16 trades,
+# 6/16 winners after fees, gross -74.48, net -99.30; back to the policy floor.
+PAPER_CONFIDENCE_EXPERIMENT = False
 
 # Minimum spacing between two "heartbeat write failed" announcements, so a
 # target that flaps between failing and working cannot flood the log.
@@ -510,9 +512,9 @@ class AtlasProcess:
 
         self.application = AtlasApplication(
             execution_mode=EXECUTION_MODE,
-            # the EXP-001 opt-in stays a literal here: it is pinned to this
-            # one call site by test_only_main_entry_point_opts_in
-            paper_confidence_experiment=True,
+            # EXP-001 stopped by the owner (v5.71); re-enabling it is an
+            # owner decision and must stay a literal at this one call site
+            paper_confidence_experiment=False,
             paper_fee_rate=PAPER_FEE_RATE_PER_SIDE,
             symbols=trade_universe(),
         )

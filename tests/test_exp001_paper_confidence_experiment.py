@@ -312,7 +312,9 @@ def test_only_main_entry_point_opts_in():
     hits = [p.relative_to(root).as_posix() for p in root.rglob("*.py")
             if "tests" not in p.parts and not any(part.startswith(("archive", "phase")) for part in p.parts)
             and "paper_confidence_experiment=True" in p.read_text(encoding="utf-8", errors="ignore")]
-    assert hits == ["main.py"]
+    # EXP-001 was stopped by the owner on 2026-09-29 (registry v5.71): nothing opts in
+    assert hits == []
+    assert "paper_confidence_experiment=False" in (root / "main.py").read_text(encoding="utf-8")
 
 
 # =====================================================================
