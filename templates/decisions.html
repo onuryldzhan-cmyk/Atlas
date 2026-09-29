@@ -57,7 +57,7 @@
         lines.push(`<div class="svc"><span>Karar</span><span><b>${esc(sig.action || 'bilinmiyor')}</b> · güven ${num(sig.confidence)} · risk ${esc(sig.risk_level || 'bilinmiyor')}</span></div>`);
         lines.push(`<div class="svc"><span>Ajan oyları (${evaluated.length}/${agents.length || 5} değerlendirdi)</span><span class="text-end">${agents.map(([n, a]) =>
             a.status === 'EVALUATED' ? `<span class="sym">${esc(n)}: ${esc(a.action ?? '?')} ${a.score != null ? num(a.score, 2) : ''}</span>`
-                : `<span class="sym" title="${esc(a.reason)}">${esc(n)}: dışarıda (${esc(a.reason)})</span>`).join('')}</span></div>`);
+                : `<span class="sym" title="${esc(a.reason)}">${esc(n)}: ${n === 'sentiment' && a.reason === 'UNAVAILABLE_NO_PROVIDER' ? 'çekimser (Fear &amp; Greed nötr bölgede ya da okunamadı)' : 'dışarıda (' + esc(a.reason) + ')'}</span>`).join('')}</span></div>`);
         if (evaluated.length < (agents.length || 5)) lines.push('<div class="muted">Eksik ajan güveni yükseltmez: payda beklenen ajan sayısıdır (NB-5).</div>');
         const exMin = gates.execution_minimum_confidence;
         const rp = gates.risk_policy || {};
