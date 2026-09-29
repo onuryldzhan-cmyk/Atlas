@@ -9,6 +9,7 @@ through the governed logs (memory records, tasks, proposals):
 
   quant_research        performance report over the closed-position archive -> memory (only when new trades closed)
   strategy_lab          evidence-backed proposals from what the trades taught -> proposals (owner decides)
+  market_regime         regime of each universe coin (trend / sideways / high-vol / panic) -> memory (observation only)
   red_team              counter-view on each open strategy proposal: is the evidence enough? -> memory
   executive_assistant   self-review of code, tests, security and agents -> tasks
   data_quality          health check of the durable book, venue rules, logs
@@ -93,6 +94,27 @@ def strategy_lab(records_dir: Path) -> dict[str, Any]:
     return {"verdict": "OK", "summary": f"yeni öneri: {filed}; açık olduğu için tekrar edilmeyen: {len(out['skipped_open'])}"}
 
 
+def market_regime(records_dir: Path, symbols=None, fetch_closes=None) -> dict[str, Any]:
+    """Observation only: how many coins are trending right now. Nothing reads this at decision time."""
+    from tools import regime_engine as R
+
+    snap = R.snapshot(symbols or R.load_symbols(), fetch_closes or R.binance_closes)
+    counts: dict[str, int] = {}
+    for r in snap.values():
+        counts[r["regime"]] = counts.get(r["regime"], 0) + 1
+    if counts.get("UNKNOWN") == len(snap):
+        return {"verdict": "WARN", "summary": f"{len(snap)} coin için veri alınamadı; rejim bilinmiyor"}
+    existing = {r["record_id"] for r in cli.read_log(records_dir / cli.MEMORY_LOG)} if (records_dir / cli.MEMORY_LOG).exists() else set()
+    summary = ", ".join(f"{k} {v}" for k, v in sorted(counts.items(), key=lambda x: -x[1]))
+    cli.add_memory_record(records_dir, {
+        "record_id": f"MR-{len(existing) + 1:04d}", "type": "EXPERIMENTS", "authority": "RESEARCH",
+        "title": f"Piyasa rejimi: {summary}",
+        "body": json.dumps({"counts": counts, "coins": {k: {"regime": v["regime"]} for k, v in snap.items()}}, ensure_ascii=False),
+        "author": "market_regime", "source": "tools/agent_cycle.py (regime_engine)"})
+    trend = counts.get("TREND_UP", 0)
+    return {"verdict": "OK", "summary": f"{summary}; yükselen trendde {trend}/{len(snap)} coin"}
+
+
 def executive_assistant(records_dir: Path) -> dict[str, Any]:
     from tools.atlas_self_review import run
 
@@ -166,6 +188,7 @@ def red_team(records_dir: Path) -> dict[str, Any]:
 AGENTS: tuple[tuple[str, str, Callable[[Path], dict[str, Any]]], ...] = (
     ("quant_research", "Performans analizi", quant_research),
     ("strategy_lab", "Strateji önerileri", strategy_lab),
+    ("market_regime", "Piyasa rejimi", market_regime),
     ("red_team", "Karşı görüş", red_team),
     ("executive_assistant", "Öz-değerlendirme", executive_assistant),
     ("data_quality", "Veri sağlığı", data_quality),

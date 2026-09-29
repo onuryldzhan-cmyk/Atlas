@@ -95,6 +95,32 @@ def history(closes: list[float], step: int = 6) -> dict[str, int]:
     return counts
 
 
+def snapshot(symbols: list[str], fetch_closes) -> dict[str, dict[str, Any]]:
+    """Current regime and 30-day history per coin; a failed download is UNKNOWN, never guessed."""
+    out: dict[str, dict[str, Any]] = {}
+    for sym in symbols:
+        try:
+            closes = fetch_closes(sym)
+        except Exception as exc:
+            out[sym] = {"regime": "UNKNOWN", "reason": type(exc).__name__}
+            continue
+        out[sym] = {**classify(closes), "history": history(closes)}
+    return out
+
+
+def binance_closes(symbol: str, days: int = 30) -> list[float]:
+    from tools.select_universe import http_get
+
+    rows = http_get(f"/api/v3/klines?symbol={symbol}&interval=1h&limit={min(1000, days * 24)}")
+    return [float(r[4]) for r in rows[:-1]]  # drop the still-open candle
+
+
+def load_symbols(path: str = "config/universe_selection.json") -> list[str]:
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    return [s if isinstance(s, str) else s["symbol"] for s in data.get("symbols", [])]
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--symbols", default=None)
@@ -102,23 +128,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--days", type=int, default=30)
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
-    from tools.select_universe import http_get
-
     if args.symbols:
-        symbols = [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
+        symbols = [x.strip().upper() for x in args.symbols.split(",") if x.strip()]
     else:
-        with open(args.symbols_file, encoding="utf-8") as f:
-            data = json.load(f)
-        symbols = [s if isinstance(s, str) else s["symbol"] for s in data.get("symbols", [])]
-    out = {}
-    for sym in symbols:
-        try:
-            rows = http_get(f"/api/v3/klines?symbol={sym}&interval=1h&limit={min(1000, args.days * 24)}")
-            closes = [float(r[4]) for r in rows[:-1]]  # drop the still-open candle
-        except Exception as exc:
-            out[sym] = {"regime": "UNKNOWN", "reason": f"{type(exc).__name__}"}
-            continue
-        out[sym] = {**classify(closes), "history": history(closes)}
+        symbols = load_symbols(args.symbols_file)
+    out = snapshot(symbols, lambda sym: binance_closes(sym, args.days))
     if args.json:
         print(json.dumps(out, ensure_ascii=False, indent=2))
         return 0

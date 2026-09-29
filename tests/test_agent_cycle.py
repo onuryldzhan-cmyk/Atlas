@@ -55,3 +55,14 @@ def test_red_team_challenges_each_open_proposal_once(tmp_path, monkeypatch):
     recs = memory_records.replay(cli.read_log(records / cli.MEMORY_LOG))
     rt = [r for r in recs.values() if r["author"] == "red_team"]
     assert len(rt) == 1 and rt[0]["type"] == "REVIEWS" and rt[0]["claims"][0]["counter_evidence"]
+
+
+def test_market_regime_agent_records_observation_and_never_guesses(tmp_path):
+    up = [100 * 1.002 ** i for i in range(200)]
+    out = ac.market_regime(tmp_path, ["UPUSDT", "BADUSDT"],
+                           lambda s: up if s == "UPUSDT" else (_ for _ in ()).throw(OSError("net")))
+    assert out["verdict"] == "OK" and "UNKNOWN 1" in out["summary"]
+    rec = [r for r in memory_records.replay(cli.read_log(tmp_path / cli.MEMORY_LOG)).values() if r["author"] == "market_regime"]
+    assert len(rec) == 1 and json.loads(rec[0]["body"])["coins"]["BADUSDT"]["regime"] == "UNKNOWN"
+    down = ac.market_regime(tmp_path, ["X"], lambda s: (_ for _ in ()).throw(OSError("net")))
+    assert down["verdict"] == "WARN"
