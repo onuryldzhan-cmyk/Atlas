@@ -36,7 +36,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 
 from observability.organization import organization_public
-from observability import command_center, governance_records, panel_sources, portfolio_view, readiness, research_view, roadmap_view, security_view
+from observability import agent_states, command_center, governance_records, panel_sources, portfolio_view, readiness, research_view, roadmap_view, security_view
 from observability.panel_router import (
     build_observability_router,
     is_loopback_request,
@@ -1661,6 +1661,15 @@ def _execution_gates_payload(
     }
 
 
+def _response_json(response: Any) -> Any:
+    """The JSON body of an in-process JSONResponse, or None."""
+
+    try:
+        return json.loads(response.body)
+    except (AttributeError, ValueError):
+        return None
+
+
 def create_app(
     *,
     runtime: Any | None = None,
@@ -2342,6 +2351,20 @@ def create_app(
 
         application.add_api_route(path, _governance_route, methods=["GET"],
                                   response_class=JSONResponse)
+
+    # Atlas HQ backbone: every agent's state, room and hand-offs, derived only
+    # from the recorded logs and the running market loop (read-only).
+    @application.get("/api/agent-states", response_class=JSONResponse)
+    async def api_agent_states(request: Request) -> JSONResponse:
+        if not is_loopback_request(request):
+            return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+        signals = _response_json(await api_signals(request))
+
+        def _build() -> dict:
+            return agent_states.build(governance_records.read_tasks(), governance_records.read_proposals(),
+                                      governance_records.read_memory(), signals)
+
+        return JSONResponse(status_code=200, content=await run_in_threadpool(_build))
 
     # Registry v5.37: Command Center brief and Atlas Chat. Both only read
     # the payloads above (health, account totals, proposals, tasks, memory);

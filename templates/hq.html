@@ -50,13 +50,13 @@
 
 <div class="hq-grid">
     <aside class="pane">
-        <h2>Organizasyon</h2>
+        <h2>Ajanlar (canlı durum)</h2>
         <div id="org-list">Yükleniyor...</div>
     </aside>
     <main class="pane">
         <canvas id="hq-canvas" aria-label="Atlas HQ 3D görünüm" role="img"></canvas>
         <div id="hq-3d-off" class="text-body-secondary small p-4" hidden>3D kapalı. Tüm bilgiler yan ve alt panellerde.</div>
-        <div id="unit-detail" class="small mt-2 text-body-secondary">Bir odaya ya da soldaki bir birime tıklayın.</div>
+        <div id="unit-detail" class="small mt-2 text-body-secondary">Bir ajana (3D) ya da soldaki listeye tıklayın.</div>
     </main>
     <aside class="pane">
         <h2>Trading (PAPER)</h2>
@@ -67,7 +67,7 @@
 </div>
 
 <div class="bottom">
-    <div class="pane"><h2>Kararınızı bekleyen</h2><div id="b-proposals" class="big">…</div><a href="/dashboard#section-proposals-title" class="small">Öneriler →</a></div>
+    <div class="pane"><h2>Kararınızı bekleyen</h2><div id="b-proposals" class="big">…</div><a href="/governance" class="small">Öneriler →</a></div>
     <div class="pane"><h2>Görevler</h2><div id="b-tasks" class="big">…</div></div>
     <div class="pane"><h2>Sistem</h2><div id="b-health" class="big">…</div></div>
     <div class="pane"><h2>Çalışan ajan</h2><div id="b-agents" class="big">…</div></div>
@@ -88,100 +88,121 @@
 (() => {
     const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const getJSON = async (url) => { try { const r = await fetch(url); return await r.json(); } catch (e) { return { available: false, reason: 'network error' }; } };
-    // Presentation colours only; the state itself comes from the APIs.
-    const LIVE = { WORKING: '#3b82f6', WAITING: '#06b6d4', BLOCKED: '#ef4444', IDLE: '#64748b' };
-    const STATIC = { ACTIVE: '#22c55e', PARTIAL: '#eab308', PLANNED: '#475569' };
-    const DEPARTMENT_TIERS = ['DEPARTMENT', 'SPECIALIZED_UNIT'];
-    let units = [], live = {}, perms = {}, selected = null, show3d = true;
-
-    function colourOf(u) { const s = live[u.id]; return s ? LIVE[s.status] || LIVE.IDLE : STATIC[u.status] || STATIC.PLANNED; }
-    function stateText(u) { const s = live[u.id]; return s ? s.status : u.status; }
+    // Presentation colours only; every state comes from /api/agent-states (recorded evidence).
+    const STATE = { WORKING: '#3b82f6', REVIEWING: '#a855f7', WAITING: '#06b6d4', WAITING_FOR_HUMAN: '#f59e0b',
+        BLOCKED: '#ef4444', ERROR: '#ef4444', IDLE: '#22c55e', OFFLINE: '#475569' };
+    const STATE_TR = { WORKING: 'çalışıyor', REVIEWING: 'inceliyor', WAITING: 'bekliyor', WAITING_FOR_HUMAN: 'onayınızı bekliyor',
+        BLOCKED: 'engelli', ERROR: 'hata', IDLE: 'hazır', OFFLINE: 'iz yok' };
+    // Room layout (presentation): command in the centre, wings around it.
+    const ROOM_POS = { command: [0, 0], research: [-4, -2.6], memory: [-4, 2.6], dev: [4, -2.6], security: [4, 2.6],
+        quant: [0, 4.2], review: [2.2, -4.2], governance: [-2.2, -4.2], system: [0, -5.4] };
+    let agents = [], flows = [], rooms = {}, perms = {}, selected = null, show3d = true;
 
     function renderOrg() {
-        const order = ['OWNER', 'CEO_AI', 'DIRECTOR_AI', 'EXECUTIVE_ASSISTANT', 'DEPARTMENT', 'SPECIALIZED_UNIT', 'WORKER_AGENT', 'MICRO_AGENT'];
-        const sorted = [...units].sort((a, b) => order.indexOf(a.tier) - order.indexOf(b.tier));
-        document.getElementById('org-list').innerHTML = sorted.map((u) =>
-            `<div class="unit-row${selected === u.id ? ' sel' : ''}" data-unit="${esc(u.id)}"><span><span class="dot" style="background:${colourOf(u)}"></span>${esc(u.name)}</span>` +
-            `<span class="text-body-secondary">${esc(stateText(u))}</span></div>`).join('');
+        const order = ['WAITING_FOR_HUMAN', 'ERROR', 'BLOCKED', 'WORKING', 'REVIEWING', 'WAITING', 'IDLE', 'OFFLINE'];
+        const sorted = [...agents].sort((a, b) => order.indexOf(a.state) - order.indexOf(b.state));
+        document.getElementById('org-list').innerHTML = sorted.map((a) =>
+            `<div class="unit-row${selected === a.id ? ' sel' : ''}" data-unit="${esc(a.id)}"><span><span class="dot" style="background:${STATE[a.state]}"></span>${esc(a.name)}</span>` +
+            `<span class="text-body-secondary">${esc(STATE_TR[a.state] || a.state)}</span></div>`).join('') || '<span class="text-body-secondary">Ajan durumu okunamadı.</span>';
     }
 
     function renderDetail() {
-        const u = units.find((x) => x.id === selected);
-        if (!u) return;
-        const s = live[u.id];
-        const caps = (perms[u.id] || {}).capabilities || [];
+        const a = agents.find((x) => x.id === selected);
+        if (!a) return;
+        const caps = (perms[a.id] || {}).capabilities || [];
+        const out = flows.filter((f) => f.from === a.id).map((f) => `→ ${esc(f.to)} (${esc(f.label)})`);
+        const inn = flows.filter((f) => f.to === a.id).map((f) => `← ${esc(f.from)} (${esc(f.label)})`);
         document.getElementById('unit-detail').innerHTML =
-            `<div class="text-body"><b>${esc(u.name)}</b> — ${esc(u.status)}${u.phase != null ? ' · Faz ' + esc(u.phase) : ''}</div>` +
-            `<div>${esc(u.mission)}</div>` +
-            `<div>Canlı durum: <b>${esc(s ? s.status : 'görev yok')}</b>${s && s.current_task ? ' · görev ' + esc(s.current_task) : ''}</div>` +
-            `<div>Yetkiler: ${caps.length ? caps.map((c) => `<span class="badge text-bg-secondary">${esc(c)}</span>`).join(' ') : 'yok'}</div>` +
-            `<div>Son işler: ${s && s.recent.length ? s.recent.map((r) => esc(r.task + '#' + r.step + ' ' + r.status)).join(', ') : '-'}</div>`;
+            `<div class="text-body"><b>${esc(a.name)}</b> · ${esc(a.room_name)} · <span style="color:${STATE[a.state]}">${esc(STATE_TR[a.state] || a.state)}</span></div>` +
+            `<div>Şu an: ${esc(a.doing)}</div><div class="text-body-secondary">Kaynak kayıt: ${esc(a.source || 'yok')}</div>` +
+            `<div>İş akışı: ${[...inn, ...out].join(' · ') || 'yok'}</div>` +
+            `<div>Yetkiler: ${caps.length ? caps.map((c) => `<span class="badge text-bg-secondary">${esc(c)}</span>`).join(' ') : 'kayıtlı yetki yok'}</div>` +
+            `<div class="text-body-secondary">Hiçbir ajan para harcayamaz, yayına alamaz ya da kendi kararını onaylayamaz.</div>`;
     }
 
-    // ------------------------------------------------------------ 3D view
+    // ------------------------------------------------------------ 3D view (dependency-free canvas)
     const canvas = document.getElementById('hq-canvas');
     const ctx = canvas.getContext('2d');
-    let angle = 0, rooms = [];
+    let angle = 0.35, spots = [];
 
     function project(x, y, z, w, h) {
         const cos = Math.cos(angle), sin = Math.sin(angle);
         const rx = x * cos - z * sin, rz = x * sin + z * cos;
-        const tilt = 0.85, ry = y * Math.cos(tilt) - rz * Math.sin(tilt), dz = y * Math.sin(tilt) + rz * Math.cos(tilt);
-        const scale = Math.min(w, h * 1.6) * 0.58 / (dz + 9);
-        return { x: w / 2 + rx * scale, y: h * 0.42 + ry * scale, s: scale, depth: dz };
+        const tilt = 0.9, ry = y * Math.cos(tilt) - rz * Math.sin(tilt), dz = y * Math.sin(tilt) + rz * Math.cos(tilt);
+        const scale = Math.min(w, h * 1.6) * 0.78 / (dz + 13);
+        return { x: w / 2 + rx * scale, y: h * 0.47 + ry * scale, s: scale, depth: dz };
+    }
+
+    function agentPos(a) {
+        const members = agents.filter((x) => x.room === a.room);
+        const i = members.indexOf(a), n = members.length, [rx, rz] = ROOM_POS[a.room] || [0, 0];
+        const ang = n > 1 ? (i / n) * Math.PI * 2 : 0, r = n > 1 ? Math.min(1.05, 0.35 + 0.12 * n) : 0;
+        return [rx + Math.cos(ang) * r, rz + Math.sin(ang) * r];
     }
 
     function draw(t) {
-        const w = canvas.width = canvas.clientWidth * devicePixelRatio;
-        const h = canvas.height = canvas.clientHeight * devicePixelRatio;
+        const d = devicePixelRatio;
+        const w = canvas.width = canvas.clientWidth * d;
+        const h = canvas.height = canvas.clientHeight * d;
         ctx.clearRect(0, 0, w, h);
-        const depts = units.filter((u) => DEPARTMENT_TIERS.includes(u.tier));
-        const radius = 4.2;
-        // floor ring
-        ctx.strokeStyle = 'rgba(59,130,246,.18)'; ctx.lineWidth = 1;
-        ctx.beginPath();
-        for (let i = 0; i <= 64; i++) { const a = i / 64 * Math.PI * 2; const p = project(Math.cos(a) * radius, 1, Math.sin(a) * radius, w, h); i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y); }
-        ctx.stroke();
-        const core = project(0, 0, 0, w, h);
-        rooms = depts.map((u, i) => {
-            const a = i / depts.length * Math.PI * 2;
-            const p = project(Math.cos(a) * radius, 1, Math.sin(a) * radius, w, h);
-            return { u, p };
-        }).sort((a, b) => b.p.depth - a.p.depth);
-        // links from core to rooms with work
-        rooms.forEach(({ u, p }) => {
-            const s = live[u.id];
-            ctx.strokeStyle = s && s.status === 'WORKING' ? 'rgba(59,130,246,.7)' : 'rgba(148,163,184,.12)';
-            ctx.lineWidth = s && s.status === 'WORKING' ? 2 * devicePixelRatio : 1;
-            ctx.beginPath(); ctx.moveTo(core.x, core.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+        // floor grid
+        ctx.strokeStyle = 'rgba(148,163,184,.07)'; ctx.lineWidth = 1;
+        for (let i = -7; i <= 7; i++) {
+            let a = project(i, 1, -7, w, h), b = project(i, 1, 7, w, h); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+            a = project(-7, 1, i, w, h); b = project(7, 1, i, w, h); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+        }
+        // rooms (floor plates + name)
+        Object.entries(ROOM_POS).forEach(([id, [x, z]]) => {
+            const c = [[-1.35, -1.35], [1.35, -1.35], [1.35, 1.35], [-1.35, 1.35]].map(([dx, dz]) => project(x + dx, 1, z + dz, w, h));
+            const busy = agents.some((a) => a.room === id && ['WORKING', 'REVIEWING', 'WAITING_FOR_HUMAN', 'ERROR', 'BLOCKED'].includes(a.state));
+            ctx.fillStyle = busy ? 'rgba(59,130,246,.10)' : 'rgba(148,163,184,.05)';
+            ctx.strokeStyle = busy ? 'rgba(96,165,250,.55)' : 'rgba(148,163,184,.22)';
+            ctx.beginPath(); c.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.closePath(); ctx.fill(); ctx.stroke();
+            const lp = project(x, 1, z + 1.6, w, h);
+            ctx.fillStyle = '#64748b'; ctx.font = `600 ${10 * d}px system-ui`; ctx.textAlign = 'center';
+            ctx.fillText((rooms[id] || id).toLocaleUpperCase('tr-TR'), lp.x, lp.y);
         });
-        // core
-        const pulse = 1 + 0.06 * Math.sin(t / 500);
-        const g = ctx.createRadialGradient(core.x, core.y, 0, core.x, core.y, core.s * 0.9 * pulse);
-        g.addColorStop(0, 'rgba(96,165,250,.95)'); g.addColorStop(1, 'rgba(59,130,246,0)');
-        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(core.x, core.y, core.s * 0.9 * pulse, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#e2e8f0'; ctx.font = `${12 * devicePixelRatio}px system-ui`; ctx.textAlign = 'center';
-        ctx.fillText('ATLAS CORE', core.x, core.y + 4 * devicePixelRatio);
-        // rooms
-        rooms.forEach(({ u, p }) => {
-            const size = p.s * 0.32, c = colourOf(u), s = live[u.id];
-            ctx.globalAlpha = u.status === 'PLANNED' && !s ? 0.45 : 1;
-            ctx.fillStyle = c + '33'; ctx.strokeStyle = c; ctx.lineWidth = (u.id === selected ? 3 : 1.5) * devicePixelRatio;
-            ctx.beginPath(); ctx.rect(p.x - size, p.y - size * 0.7, size * 2, size * 1.4); ctx.fill(); ctx.stroke();
-            if (s && s.status === 'WORKING') { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(p.x + size - 5, p.y - size * 0.7 + 5, 3 * devicePixelRatio * (1 + 0.4 * Math.sin(t / 200)), 0, Math.PI * 2); ctx.fill(); }
-            ctx.fillStyle = '#cbd5e1'; ctx.font = `${Math.max(9, size / 4.2)}px system-ui`;
-            if (p.depth < 0.5 || u.id === selected || s) ctx.fillText(u.name.replace(/ (Department|Team|Center|Laboratory)$/, ''), p.x, p.y + 3);
+        // flows: a packet travels along each recorded hand-off
+        const pos = {}; agents.forEach((a) => { pos[a.id] = agentPos(a); });
+        flows.forEach((f, k) => {
+            const A = pos[f.from], B = pos[f.to]; if (!A || !B) return;
+            const a = project(A[0], 0.2, A[1], w, h), b = project(B[0], 0.2, B[1], w, h);
+            ctx.strokeStyle = f.kind === 'proposal' ? 'rgba(245,158,11,.35)' : f.kind === 'vote' ? 'rgba(34,197,94,.18)' : 'rgba(96,165,250,.28)';
+            ctx.lineWidth = d; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+            if (show3d) {
+                const u = ((t / 2400) + k * 0.17) % 1;
+                ctx.fillStyle = f.kind === 'proposal' ? '#f59e0b' : f.kind === 'vote' ? '#22c55e' : '#60a5fa';
+                ctx.beginPath(); ctx.arc(a.x + (b.x - a.x) * u, a.y + (b.y - a.y) * u, 2.2 * d, 0, Math.PI * 2); ctx.fill();
+            }
+        });
+        // agents as figures standing in their room
+        spots = agents.map((a) => {
+            const [x, z] = pos[a.id], foot = project(x, 1, z, w, h), head = project(x, -0.35, z, w, h);
+            return { a, foot, head, depth: foot.depth };
+        }).sort((p, q) => q.depth - p.depth);
+        spots.forEach(({ a, foot, head }) => {
+            const c = STATE[a.state] || STATE.OFFLINE, r = Math.max(4 * d, foot.s * 0.16);
+            const active = ['WORKING', 'REVIEWING'].includes(a.state), alert = ['ERROR', 'BLOCKED', 'WAITING_FOR_HUMAN'].includes(a.state);
+            ctx.globalAlpha = a.state === 'OFFLINE' ? 0.4 : 1;
+            ctx.strokeStyle = c; ctx.lineWidth = 2 * d; ctx.beginPath(); ctx.moveTo(foot.x, foot.y); ctx.lineTo(head.x, head.y + r); ctx.stroke();
+            if (alert || active) {
+                ctx.strokeStyle = c; ctx.globalAlpha = 0.35 + 0.35 * Math.abs(Math.sin(t / (alert ? 250 : 600)));
+                ctx.beginPath(); ctx.arc(head.x, head.y, r * 1.9, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
+            }
+            ctx.fillStyle = c; ctx.beginPath(); ctx.arc(head.x, head.y, r, 0, Math.PI * 2); ctx.fill();
+            if (a.id === selected) { ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 2 * d; ctx.beginPath(); ctx.arc(head.x, head.y, r * 1.5, 0, Math.PI * 2); ctx.stroke(); }
+            ctx.fillStyle = '#cbd5e1'; ctx.font = `${10 * d}px system-ui`; ctx.textAlign = 'center';
+            if (a.state !== 'OFFLINE' || a.id === selected) ctx.fillText(a.name, head.x, head.y - r - 4 * d);
             ctx.globalAlpha = 1;
-            p.hit = size;
         });
-        if (show3d) { angle += 0.0015; requestAnimationFrame(draw); }
+        if (show3d) { angle += 0.0008; requestAnimationFrame(draw); }
     }
 
     canvas.addEventListener('click', (e) => {
         const r = canvas.getBoundingClientRect();
         const x = (e.clientX - r.left) * devicePixelRatio, y = (e.clientY - r.top) * devicePixelRatio;
-        const hit = [...rooms].reverse().find(({ p }) => Math.abs(x - p.x) < p.hit && Math.abs(y - p.y) < p.hit * 0.7);
-        if (hit) { selected = hit.u.id; renderOrg(); renderDetail(); }
+        const hit = [...spots].reverse().find(({ head }) => Math.hypot(x - head.x, y - head.y) < 16 * devicePixelRatio);
+        if (hit) { selected = hit.a.id; renderOrg(); renderDetail(); }
     });
     document.getElementById('org-list').addEventListener('click', (e) => {
         const row = e.target.closest('[data-unit]');
@@ -196,11 +217,11 @@
 
     // ------------------------------------------------------------ data
     async function refresh() {
-        const [org, tasks, permissions, cc] = await Promise.all([
-            getJSON('/api/organization'), getJSON('/api/tasks'), getJSON('/api/permissions'), getJSON('/api/command-center')]);
-        units = org.available ? org.units : [];
-        live = tasks.available ? tasks.agents || {} : {};
+        const [st, permissions, cc] = await Promise.all([
+            getJSON('/api/agent-states'), getJSON('/api/permissions'), getJSON('/api/command-center')]);
+        agents = st.available ? st.agents : []; flows = st.available ? st.flows : []; rooms = st.available ? st.rooms : {};
         perms = {}; (permissions.units || []).forEach((p) => { perms[p.id] = p; });
+        if (!selected && agents.length) selected = (agents.find((a) => a.state === 'WAITING_FOR_HUMAN') || agents[0]).id;
         renderOrg(); renderDetail();
         if (cc.available) {
             const healthy = cc.health.healthy === true;
@@ -209,7 +230,7 @@
             document.getElementById('b-proposals').textContent = cc.proposals.available ? cc.proposals.awaiting_owner.length : 'okunamadı';
             const tc = cc.tasks.counts || {};
             document.getElementById('b-tasks').textContent = cc.tasks.available ? `${tc.IN_PROGRESS || 0} sürüyor / ${tc.BLOCKED || 0} engelli` : 'okunamadı';
-            document.getElementById('b-agents').textContent = cc.agents.working.length;
+            document.getElementById('b-agents').textContent = agents.filter((a) => ['WORKING', 'REVIEWING'].includes(a.state)).length + ' / ' + agents.length;
             const t = cc.trading;
             document.getElementById('trading').innerHTML = t.available
                 ? `<div class="kv"><span>Net gerçekleşen P/L</span><b>${esc(t.realized_net_pnl)}</b></div><div class="kv"><span>Ödenen ücret</span><b>${esc(t.fees)}</b></div><div class="kv"><span>Mod</span><b>PAPER</b></div><a class="small" href="/dashboard">Pozisyonlar ve işlemler →</a>`

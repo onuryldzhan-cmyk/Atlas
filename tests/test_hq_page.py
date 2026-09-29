@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 
 import web_app
 
-ALLOWED_APIS = {"/api/organization", "/api/tasks", "/api/permissions", "/api/command-center", "/api/chat?q="}
+ALLOWED_APIS = {"/api/agent-states", "/api/organization", "/api/tasks", "/api/permissions", "/api/command-center", "/api/chat?q="}
 
 
 def _page() -> str:
