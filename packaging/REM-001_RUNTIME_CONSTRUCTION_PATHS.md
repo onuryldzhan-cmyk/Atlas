@@ -20,8 +20,8 @@ Command: `python -m tools.build_rem001_gate1_maps construction --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `ffde96d66e47ee1020afac54900ce1bd902fb26c` |
-| generated_from_tree | `bbc47762033eb5d6f651ae81aedcd90ad296bd7e` |
+| generated_from_commit | `b9bc33965dcc6f715e600bad9178b1a35dc489d9` |
+| generated_from_tree | `a46413545db8b4040ae2640efac8d538852cb98d` |
 | tracked_working_tree_clean | True |
 | modified_tracked_paths_at_generation | none |
 
@@ -57,7 +57,7 @@ below: it counted pattern hits, these count resolved call sites.
 | --- | --- |
 | entry_points | `main.py`, `web_app.py`, `atlas_service.py`, `atlas_supervisor.py` |
 | composition_root_canonical | `core/application.py` (ADR-0001) |
-| modules_in_runtime_closure | 125 |
+| modules_in_runtime_closure | 126 |
 | classes_defined_in_closure | 414 |
 | construction_sites | 291 |
 | modules_constructing | 35 |
