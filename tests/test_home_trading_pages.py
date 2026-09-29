@@ -9,16 +9,17 @@ from fastapi.testclient import TestClient
 
 import web_app
 
-READ_ONLY_APIS = {"/api/portfolio", "/api/command-center", "/api/trades", "/api/proposals", "/api/tasks", "/api/memory", "/api/permissions"}
+READ_ONLY_APIS = {"/api/portfolio", "/api/command-center", "/api/trades", "/api/proposals", "/api/tasks", "/api/memory", "/api/permissions", "/api/status",
+                  "/api/observability/test-results", "/api/observability/telemetry-summary"}
 
 
-@pytest.mark.parametrize("name", ["home.html", "trading.html", "governance.html"])
+@pytest.mark.parametrize("name", ["home.html", "trading.html", "governance.html", "system.html"])
 def test_pages_only_read_and_never_write(name):
     html = web_app.TEMPLATE_DIR.joinpath(name).read_text(encoding="utf-8")
     assert set(re.findall(r"getJSON\('([^']+)'", html)) <= READ_ONLY_APIS
     assert "<form" not in html and not re.search(r"method\s*:", html)
     assert "<script src=" not in html
-    assert "Değer uydurulmaz" in html or "tahmin edilmez" in html or "kısmen gösterilmez" in html
+    assert "Değer uydurulmaz" in html or "tahmin edilmez" in html or "kısmen gösterilmez" in html or "asla \"sağlıklı\" sayılmaz" in html
 
 
 def test_start_page_stays_simple():
@@ -28,7 +29,7 @@ def test_start_page_stays_simple():
         assert f'href="{link}"' in html
 
 
-@pytest.mark.parametrize("path", ["/home", "/trading", "/governance"])
+@pytest.mark.parametrize("path", ["/home", "/trading", "/governance", "/system"])
 def test_pages_are_served_and_loopback_guarded(path):
     assert TestClient(web_app.create_app()).get(path).status_code == 200
     assert TestClient(web_app.create_app(), base_url="http://evil.example").get(path).status_code == 403

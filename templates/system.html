@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+{#
+  Atlas system health page (registry v5.44). Loopback-only, read-only.
+  Everything comes from existing read-only endpoints: /api/status (runtime,
+  market loop incl. per-symbol market-data staleness, execution operational
+  state, venue rules), /api/proposals, /api/tasks, /api/memory (governance
+  log integrity) and /api/observability/* (test artifact, telemetry).
+  A missing source is shown as UNKNOWN, never as healthy.
+#}
+<html lang="tr" data-bs-theme="dark" data-lte-color-mode="off">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Atlas — Sistem</title>
+    <link rel="stylesheet" href="/assets/adminlte.min.css">
+    <style>
+        body { background: #0b0f17; }
+        .atlas-nav a { color: var(--bs-secondary-color); text-decoration: none; padding: .35rem .7rem; border-radius: .4rem; white-space: nowrap; }
+        .atlas-nav a.active, .atlas-nav a:hover { color: var(--bs-body-color); background: var(--bs-tertiary-bg); }
+        .wrap { max-width: 1200px; margin: 0 auto; padding: 16px; }
+        .pane { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+        .pane h2 { font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--bs-secondary-color); margin-bottom: .7rem; }
+        .svc { display: flex; justify-content: space-between; gap: 8px; padding: .45rem 0; border-bottom: 1px solid rgba(255,255,255,.06); }
+        .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
+        .OK { background: #22c55e; } .DEGRADED { background: #f59e0b; } .DOWN { background: #ef4444; } .UNKNOWN { background: #64748b; }
+        .muted { color: var(--bs-secondary-color); font-size: .85rem; }
+        .sym { display: inline-block; margin: 2px; padding: 2px 6px; border-radius: 4px; font-size: .75rem; background: rgba(255,255,255,.05); }
+    </style>
+</head>
+<body>
+<nav class="navbar bg-body border-bottom px-3 flex-wrap gap-2">
+    <span class="navbar-brand fw-bold"><span class="text-primary">ATLAS</span> Sistem</span>
+    <div class="atlas-nav d-flex flex-wrap gap-1">
+        <a href="/home">Başlangıç</a>
+        <a href="/trading">Trading</a>
+        <a href="/governance">Kararlar &amp; Hafıza</a>
+        <a href="/system" class="active">Sistem</a>
+        <a href="/hq">Atlas HQ</a>
+        <a href="/agents">Ajanlar</a>
+        <a href="/dashboard">Operasyon</a>
+    </div>
+</nav>
+<div class="wrap">
+    <div class="pane"><h2>Servisler</h2><div id="services">Yükleniyor...</div>
+        <div class="muted mt-2">Yeşil = sağlıklı, turuncu = bozulmuş, kırmızı = çalışmıyor, gri = bilinmiyor (kaynak okunamadı; asla "sağlıklı" sayılmaz).</div></div>
+    <div class="pane"><h2>Piyasa verisi (coin başına)</h2><div id="symbols">Yükleniyor...</div></div>
+</div>
+<script>
+(() => {
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const getJSON = async (url) => { try { const r = await fetch(url); return await r.json(); } catch (e) { return { available: false, reason: 'network error' }; } };
+    const ageSeconds = (iso) => { const t = Date.parse(iso || ''); return Number.isNaN(t) ? null : Math.max(0, (Date.now() - t) / 1000); };
+    // Presentation thresholds only: the supervisor's own stale limit is 30 s.
+    const CYCLE_STALE_S = 30;
+    const row = (name, state, detail) => `<div class="svc"><span><span class="dot ${state}"></span>${esc(name)}</span><span class="muted text-end">${esc(state)} · ${detail}</span></div>`;
+
+    async function refresh() {
+        const [st, pr, tk, mm, tr, tel] = await Promise.all([getJSON('/api/status'), getJSON('/api/proposals'), getJSON('/api/tasks'),
+            getJSON('/api/memory'), getJSON('/api/observability/test-results'), getJSON('/api/observability/telemetry-summary')]);
+        const rows = [];
+        const rt = st.runtime || {};
+        rows.push(st.available === false ? row('Çalışma zamanı', 'UNKNOWN', esc(st.reason))
+            : row('Çalışma zamanı', rt.healthy === true ? 'OK' : (rt.state ? 'DOWN' : 'UNKNOWN'), `${esc(rt.state || '?')}${rt.emergency_mode ? ' · ACİL MOD' : ''}`));
+        const ml = st.market_loop || {};
+        const age = ageSeconds(ml.last_cycle);
+        rows.push(!ml.name ? row('Piyasa döngüsü', 'UNKNOWN', 'durum yok')
+            : row('Piyasa döngüsü', !ml.running ? 'DOWN' : (age === null || age > CYCLE_STALE_S ? 'DEGRADED' : 'OK'),
+                `${ml.running ? 'çalışıyor' : 'durdu'} · son döngü ${age === null ? '?' : age.toFixed(0) + ' sn önce'} · süre ${ml.last_cycle_duration == null ? '?' : Number(ml.last_cycle_duration).toFixed(2) + ' sn'} · ${esc(ml.symbol_count ?? '?')} coin`));
+        const stale = Object.entries(ml.market_data_staleness || {}).filter(([, v]) => v && v.stale).map(([k]) => k);
+        rows.push(!ml.market_data_staleness ? row('Piyasa verisi', 'UNKNOWN', 'bayatlık bilgisi yok')
+            : row('Piyasa verisi', stale.length ? 'DEGRADED' : 'OK', stale.length ? `bayat: ${esc(stale.join(', '))}` : 'tüm coinler güncel'));
+        const ex = st.execution || {}, op = ex.operational_state || {};
+        rows.push(!ex.name ? row('İşlem motoru', 'UNKNOWN', 'durum yok')
+            : row('İşlem motoru', op.execution_halted || op.recovery_required ? 'DOWN' : 'OK',
+                `mod ${esc(ex.mode)} · canlı ${ex.live_execution_enabled ? 'AÇIK' : 'kapalı'} · ${op.execution_halted ? 'DURDURULDU' : 'aktif'}${op.recovery_required ? ' · kurtarma gerekli' : ''} · denetim ${esc(op.audit_runtime_state || '?')}`));
+        const vr = ex.venue_rules || {};
+        rows.push(!vr.status ? row('Binance kuralları', 'UNKNOWN', 'bilgi yok')
+            : row('Binance kuralları', vr.status === 'FRESH' ? 'OK' : 'DEGRADED', `${esc(vr.status)} · ${esc(vr.symbol_count)} coin`));
+        const ct = st.controller || {};
+        rows.push(!ct.name ? row('Denetleyici', 'UNKNOWN', 'durum yok')
+            : row('Denetleyici', ct.running ? (ct.errors ? 'DEGRADED' : 'OK') : 'DOWN', `${ct.running ? 'çalışıyor' : 'durdu'} · hata ${esc(ct.errors ?? 0)}`));
+        for (const [name, p] of [['Öneri kaydı', pr], ['Görev kaydı', tk], ['Hafıza kaydı', mm]]) {
+            rows.push(row(name, p.available ? 'OK' : 'DOWN', p.available ? 'hash zinciri sağlam' : esc(p.reason)));
+        }
+        const totals = tr.totals || {};
+        rows.push(!tr.available ? row('Test sonuçları', 'UNKNOWN', esc(tr.reason || 'artifact yok'))
+            : row('Test sonuçları', (totals.failures || 0) + (totals.errors || 0) > 0 || (tr.commit_alignment || {}).state !== 'MATCH' ? 'DEGRADED' : 'OK',
+                `${esc(totals.tests ?? '?')} test · ${esc(totals.failures ?? 0)} hata · commit ${esc((tr.commit_alignment || {}).state || '?')}`));
+        rows.push(!tel.available ? row('Telemetri özeti', 'UNKNOWN', esc(tel.reason || 'yok'))
+            : row('Telemetri özeti', 'OK', 'kaydedilmiş rapor mevcut'));
+        document.getElementById('services').innerHTML = rows.join('');
+        const symbols = Object.entries(ml.market_data_staleness || {});
+        document.getElementById('symbols').innerHTML = symbols.length ? symbols.map(([s, v]) =>
+            `<span class="sym"><span class="dot ${v && v.stale ? 'DEGRADED' : 'OK'}"></span>${esc(s)} ${v && v.seconds_since_last_success != null ? Number(v.seconds_since_last_success).toFixed(0) + ' sn' : '?'}</span>`).join('')
+            : '<span class="muted">Coin başına veri yok (çalışma zamanı bağlı değil).</span>';
+    }
+    refresh();
+    setInterval(refresh, 5000);
+})();
+</script>
+</body>
+</html>
