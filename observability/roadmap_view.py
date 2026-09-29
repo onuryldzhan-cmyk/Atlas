@@ -19,11 +19,18 @@ ROADMAP_RELPATH = "governance/ATLAS_ROADMAP_PHASE_0_10_ENUMERATION_v1.0.md"
 _ROW = re.compile(r"^\|\s*\*\*(\d+)\*\*\s*\|\s*([^|]+?)\s*\|\s*(.+?)\s*\|\s*$")
 
 EVIDENCE: dict[int, list[str]] = {
+    0: ["pre-existing: startup configuration validation (main.py 'Configuration valid'), refuses to start otherwise",
+        "pre-existing: ~6000-test suite with a CI check of the two known accepted failures (tools/ci_check_known_accepted_failures.py)",
+        "pre-existing: governance registries versioned as successors, never edited in place"],
+    1: ["pre-existing: single composition root core/application.py (tests/architecture/test_composition_root_is_unique.py)",
+        "pre-existing: layer rules enforced by tests/architecture (B2 layer-import finding is a known accepted failure)",
+        "pre-existing: event bus core/event_bus.py"],
     2: ["v5.40 live PAPER portfolio valued at real prices (/api/portfolio)",
         "v5.41/v5.51 trade universe = coins with real Binance rules, 8/8/4 selection from Binance data",
         "v5.47/v5.53/v5.54 replay realism (slippage, next-candle fill) and strategy research flags, walk-forward comparison",
         "v5.45 data health check of the durable book (read from a copy)"],
-    3: ["v5.37 Command Center brief and status", "v5.44 System health page (unknown is never healthy)"],
+    3: ["v5.37 Command Center brief and status", "v5.44 System health page (unknown is never healthy)",
+        "v5.58 readiness and liveness endpoints", "v5.59 failure drill (18 sandbox fault injections) and incident records"],
     4: ["v5.42 self-review files improvement tasks from real evidence",
         "v5.47 performance report: what Atlas learns from its real trades", "v5.52 strategy research document"],
     5: ["v5.34 capability permission model (financial_execute/deploy never grantable to AI)",
@@ -31,9 +38,10 @@ EVIDENCE: dict[int, list[str]] = {
         "v5.55 Security page over the running code"],
     6: ["v5.34 proposal lifecycle, only the owner approves", "v5.35 deterministic Atlas Manager and task routing",
         "v5.50 agent scorecards"],
-    7: ["v5.34 Atlas Memory with provenance and authority levels", "v5.43 Decisions & Memory page"],
+    7: ["v5.34 Atlas Memory with provenance and authority levels", "v5.43 Decisions & Memory page",
+        "v5.61 claim / evidence / counter-evidence on memory records"],
     8: ["v5.38 Atlas HQ (dependency-free 3D core)", "v5.40 simple start page and Trading page",
-        "v5.48 Atlas Chat over the live portfolio", "v5.49 professional operator theme"],
+        "v5.48 Atlas Chat over the live portfolio", "v5.49 professional operator theme", "v5.60 decision explanation page (/decisions)"],
     9: ["v5.42 observe-and-propose self-review only (autonomous deployment DENIED)"],
     10: [],
 }

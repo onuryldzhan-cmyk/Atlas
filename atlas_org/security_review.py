@@ -107,7 +107,7 @@ def _is_true(node: ast.AST | None) -> bool:
 
 def _python(path: str, text: str, report: SecurityReport) -> None:
     try:
-        tree = ast.parse(text, filename=path)
+        tree = ast.parse(text.lstrip("\ufeff"), filename=path)  # a UTF-8 BOM is valid Python source
     except SyntaxError as exc:
         report.findings.append(Finding("EXTERNAL_CODE", REVIEW, path, exc.lineno, "file does not parse"))
         return
