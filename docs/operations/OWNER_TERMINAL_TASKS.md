@@ -67,6 +67,30 @@ entries/exits and the 50/35/15 capital split. Paste both outputs. Macro and
 sentiment are excluded (stated in the report), so the result is a
 conservative research estimate, not a promise.
 
+## 0. SIRADAKİ (2026-09-29 akşam) — sırayla, Atlas-test klasöründe
+
+Atlas'ı kapat (Ctrl+C bir kez), sonra:
+
+```
+git fetch origin claude/exp001-on-owner-lineage
+git merge --no-edit origin/claude/exp001-on-owner-lineage
+python -m tools.strategy_compare --days 21 --windows 3
+python -m tools.performance_report --record
+python -m tools.strategy_agent
+python -m tools.strategy_agent --apply
+git add governance/records
+git commit -m "Owner run: strategy agent proposals"
+git push origin HEAD:claude/exp001-on-owner-lineage
+python atlas_supervisor.py
+```
+
+strategy_compare bitene kadar tuşa basma ("24/24 bitti" yazar); tabloyu yapıştır. strategy_agent önerileri
+"Kararlar & Hafıza → Öneriler" sekmesine düşer; onay yalnız senin imzanla olur.
+
+Bekleyen kararların: (1) ajanlar için Anthropic API anahtarı (yalnız senin makinende, ANTHROPIC_API_KEY), (2) aylık bütçe
+(öneri 20 $), (3) önce hangi ajanlar (öneri: araştırma, strateji, test, inceleme; kod ajanı kapalı başlar), (4) max_positions
+(20 coin için 5 dar), (5) EXP-001 kararı (12 Ekim).
+
 ## 6a. 20 coini gerçek veriyle seç: 8 trend / 8 orta risk / 4 yüksek risk (registry v5.51) — ÖNCE BU
 
 Atlas kapalıyken:
