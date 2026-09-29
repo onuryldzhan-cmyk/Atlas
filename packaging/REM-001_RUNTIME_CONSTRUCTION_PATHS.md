@@ -20,8 +20,8 @@ Command: `python -m tools.build_rem001_gate1_maps construction --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `e5f28f61daf3514afa03a67c0f83b5264d66f0f1` |
-| generated_from_tree | `02fca54d9e66b0a7e5d6d3eb52435c5dd5dff7f1` |
+| generated_from_commit | `3986fd5276acb8828e0ec3278ab7160561be76f3` |
+| generated_from_tree | `ec0d46a364a1d559015e3861c1591268ef25f3a1` |
 | tracked_working_tree_clean | True |
 | modified_tracked_paths_at_generation | none |
 
@@ -207,44 +207,44 @@ classes and their observed constructors:
 | `atlas_os/services/dependency_manager.py` | `ServiceNotFoundError` | `atlas_os/services/registry.py` | 1225 | `DependencyServiceManager::_require_registered_key` |
 | `atlas_os/services/dependency_manager.py` | `ServiceRegistry` | `atlas_os/services/registry.py` | 217 | `DependencyServiceManager::__init__` |
 | `atlas_service.py` | `AtlasProcess` | `main.py` | 427 | `build_process` |
-| `core/application.py` | `AppliedExecutionArchiveStore` | `core/execution_portfolio_foundation.py` | 934 | `AtlasApplication::_build_financial_services` |
+| `core/application.py` | `AppliedExecutionArchiveStore` | `core/execution_portfolio_foundation.py` | 937 | `AtlasApplication::_build_financial_services` |
 | `core/application.py` | `AtlasBrain` | `UNKNOWN` | 721 | `AtlasApplication::_build_services` |
-| `core/application.py` | `AtlasController` | `core/controller/atlas_controller.py` | 828 | `AtlasApplication::_build_services` |
+| `core/application.py` | `AtlasController` | `core/controller/atlas_controller.py` | 831 | `AtlasApplication::_build_services` |
 | `core/application.py` | `AtlasLogger` | `core/logger.py` | 660 | `AtlasApplication::_build_infrastructure` |
 | `core/application.py` | `AtlasRuntime` | `core/runtime.py` | 664 | `AtlasApplication::_build_infrastructure` |
-| `core/application.py` | `AuditEventStore` | `core/audit_event_store.py` | 978 | `AtlasApplication::_build_execution_durability` |
-| `core/application.py` | `CapabilityGateway` | `core/tool_gateway_contracts.py` | 869 | `AtlasApplication::_build_capability_gateway` |
+| `core/application.py` | `AuditEventStore` | `core/audit_event_store.py` | 981 | `AtlasApplication::_build_execution_durability` |
+| `core/application.py` | `CapabilityGateway` | `core/tool_gateway_contracts.py` | 872 | `AtlasApplication::_build_capability_gateway` |
 | `core/application.py` | `CapitalManager` | `portfolio/capital_manager.py` | 683 | `AtlasApplication::_build_services` |
-| `core/application.py` | `CapitalReservationLedger` | `core/capital_reservation.py` | 920 | `AtlasApplication::_build_financial_services` |
-| `core/application.py` | `ClosedPositionArchiveStore` | `core/execution_portfolio_foundation.py` | 937 | `AtlasApplication::_build_financial_services` |
+| `core/application.py` | `CapitalReservationLedger` | `core/capital_reservation.py` | 923 | `AtlasApplication::_build_financial_services` |
+| `core/application.py` | `ClosedPositionArchiveStore` | `core/execution_portfolio_foundation.py` | 940 | `AtlasApplication::_build_financial_services` |
 | `core/application.py` | `EventBus` | `core/event_bus.py` | 665 | `AtlasApplication::_build_infrastructure` |
 | `core/application.py` | `EvidenceStore` | `data_layer/evidence_store.py` | 717 | `AtlasApplication::_build_services` |
-| `core/application.py` | `ExecutionIdempotencyStore` | `core/execution_idempotency_store.py` | 970 | `AtlasApplication::_build_execution_durability` |
+| `core/application.py` | `ExecutionIdempotencyStore` | `core/execution_idempotency_store.py` | 973 | `AtlasApplication::_build_execution_durability` |
 | `core/application.py` | `ExecutionManager` | `core/execution_manager.py` | 774 | `AtlasApplication::_build_services` |
-| `core/application.py` | `ExecutionPortfolioFoundation` | `core/execution_portfolio_foundation.py` | 930 | `AtlasApplication::_build_financial_services` |
-| `core/application.py` | `ExecutionTransactionJournal` | `core/execution_transaction_journal.py` | 974 | `AtlasApplication::_build_execution_durability` |
-| `core/application.py` | `ExperimentAdmissionLedger` | `core/experiment_ledger.py` | 1027 | `AtlasApplication::_attach_paper_confidence_experiment` |
+| `core/application.py` | `ExecutionPortfolioFoundation` | `core/execution_portfolio_foundation.py` | 933 | `AtlasApplication::_build_financial_services` |
+| `core/application.py` | `ExecutionTransactionJournal` | `core/execution_transaction_journal.py` | 977 | `AtlasApplication::_build_execution_durability` |
+| `core/application.py` | `ExperimentAdmissionLedger` | `core/experiment_ledger.py` | 1030 | `AtlasApplication::_attach_paper_confidence_experiment` |
 | `core/application.py` | `FearGreedProvider` | `atlas_finance/market_data/fear_greed_provider.py` | 800 | `AtlasApplication::_build_services` |
-| `core/application.py` | `FinancialStateStore` | `core/execution_portfolio_foundation.py` | 931 | `AtlasApplication::_build_financial_services` |
-| `core/application.py` | `JsonReservationStore` | `core/capital_reservation.py` | 921 | `AtlasApplication::_build_financial_services` |
-| `core/application.py` | `JsonRiskStateStore` | `core/risk_state_store.py` | 916 | `AtlasApplication::_build_financial_services` |
+| `core/application.py` | `FinancialStateStore` | `core/execution_portfolio_foundation.py` | 934 | `AtlasApplication::_build_financial_services` |
+| `core/application.py` | `JsonReservationStore` | `core/capital_reservation.py` | 924 | `AtlasApplication::_build_financial_services` |
+| `core/application.py` | `JsonRiskStateStore` | `core/risk_state_store.py` | 919 | `AtlasApplication::_build_financial_services` |
 | `core/application.py` | `LifecycleManager` | `core/lifecycle.py` | 667 | `AtlasApplication::_build_infrastructure` |
-| `core/application.py` | `LocalCapabilityProbeAdapter` | `core/local_capability_adapter.py` | 873 | `AtlasApplication::_build_capability_gateway` |
+| `core/application.py` | `LocalCapabilityProbeAdapter` | `core/local_capability_adapter.py` | 876 | `AtlasApplication::_build_capability_gateway` |
 | `core/application.py` | `MarketFeed` | `exchange/market_feed.py` | 734 | `AtlasApplication::_build_services` |
 | `core/application.py` | `MarketLoop` | `core/market_loop.py` | 811 | `AtlasApplication::_build_services` |
 | `core/application.py` | `MarketRiskRegimeProvider` | `core/market_risk_regime.py` | 809 | `AtlasApplication::_build_services` |
 | `core/application.py` | `PaperTrader` | `core/paper_trader.py` | 691 | `AtlasApplication::_build_services` |
 | `core/application.py` | `PositionController` | `core/position_controller.py` | 697 | `AtlasApplication::_build_services` |
-| `core/application.py` | `PositionSizingService` | `core/position_sizing.py` | 912 | `AtlasApplication::_build_financial_services` |
-| `core/application.py` | `ReservationArchiveStore` | `core/capital_reservation.py` | 925 | `AtlasApplication::_build_financial_services` |
-| `core/application.py` | `RiskEngine` | `core/risk_engine.py` | 904 | `AtlasApplication::_build_financial_services` |
-| `core/application.py` | `RiskPolicy` | `core/risk_engine.py` | 896 | `AtlasApplication::_build_financial_services` |
+| `core/application.py` | `PositionSizingService` | `core/position_sizing.py` | 915 | `AtlasApplication::_build_financial_services` |
+| `core/application.py` | `ReservationArchiveStore` | `core/capital_reservation.py` | 928 | `AtlasApplication::_build_financial_services` |
+| `core/application.py` | `RiskEngine` | `core/risk_engine.py` | 907 | `AtlasApplication::_build_financial_services` |
+| `core/application.py` | `RiskPolicy` | `core/risk_engine.py` | 899 | `AtlasApplication::_build_financial_services` |
 | `core/application.py` | `Scheduler` | `core/scheduler.py` | 666 | `AtlasApplication::_build_infrastructure` |
 | `core/application.py` | `ServiceContainer` | `core/service_container.py` | 668 | `AtlasApplication::_build_infrastructure` |
 | `core/application.py` | `TreasuryYieldProvider` | `atlas_finance/market_data/treasury_yield_provider.py` | 808 | `AtlasApplication::_build_services` |
-| `core/application.py` | `UnconfiguredPolicyGate` | `core/local_capability_adapter.py` | 867 | `AtlasApplication::_build_capability_gateway` |
+| `core/application.py` | `UnconfiguredPolicyGate` | `core/local_capability_adapter.py` | 870 | `AtlasApplication::_build_capability_gateway` |
 | `core/application.py` | `VenueRuleFreshnessPolicy` | `core/venue_rule_freshness.py` | 618 | `AtlasApplication::__init__` |
-| `core/application.py` | `VenueRuleFreshnessService` | `core/venue_rule_freshness.py` | 1098 | `AtlasApplication::_build_instrument_rules` |
+| `core/application.py` | `VenueRuleFreshnessService` | `core/venue_rule_freshness.py` | 1101 | `AtlasApplication::_build_instrument_rules` |
 | `core/execution_idempotency_store.py` | `DurableAppendLog` | `core/durable_append_log.py` | 151 | `ExecutionIdempotencyStore::__init__` |
 | `core/execution_idempotency_store.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 291 | `ExecutionIdempotencyStore::load` |
 | `core/execution_idempotency_store.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 303 | `ExecutionIdempotencyStore::load` |
@@ -254,17 +254,17 @@ classes and their observed constructors:
 | `core/execution_manager.py` | `AuditEventStore` | `core/audit_event_store.py` | 413 | `ExecutionManager::__init__` |
 | `core/execution_manager.py` | `ExecutionIdempotencyStore` | `core/execution_idempotency_store.py` | 370 | `ExecutionManager::__init__` |
 | `core/execution_manager.py` | `ExecutionRequest` | `core/execution_models.py` | 2562 | `ExecutionManager::build_request` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 4367 | `ExecutionManager::paper_execute` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5624 | `ExecutionManager::_block_live_dispatch` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5684 | `ExecutionManager::live_execute` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5775 | `ExecutionManager::live_execute` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6029 | `ExecutionManager::_failure_result` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 4393 | `ExecutionManager::paper_execute` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5650 | `ExecutionManager::_block_live_dispatch` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5710 | `ExecutionManager::live_execute` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5801 | `ExecutionManager::live_execute` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6055 | `ExecutionManager::_failure_result` |
 | `core/execution_manager.py` | `ExecutionTransactionJournal` | `core/execution_transaction_journal.py` | 389 | `ExecutionManager::__init__` |
 | `core/execution_manager.py` | `FinancialRuntimeSafetyService` | `data_layer/runtime_safety.py` | 400 | `ExecutionManager::__init__` |
 | `core/execution_manager.py` | `FinancialRuntimeSafetyService` | `data_layer/runtime_safety.py` | 476 | `ExecutionManager::_assess_financial_readiness` |
 | `core/execution_manager.py` | `PositionExposure` | `core/risk_engine.py` | 2852 | `ExecutionManager::_derived_position_exposures` |
-| `core/execution_manager.py` | `RestoredRiskState` | `core/risk_state_store.py` | 4037 | `ExecutionManager::_record_realized_risk_accounting` |
-| `core/execution_manager.py` | `RiskRequest` | `core/risk_engine.py` | 3245 | `ExecutionManager::risk_check` |
+| `core/execution_manager.py` | `RestoredRiskState` | `core/risk_state_store.py` | 4063 | `ExecutionManager::_record_realized_risk_accounting` |
+| `core/execution_manager.py` | `RiskRequest` | `core/risk_engine.py` | 3271 | `ExecutionManager::risk_check` |
 | `core/execution_manager.py` | `RiskState` | `core/risk_engine.py` | 2928 | `ExecutionManager::_derive_risk_state` |
 | `core/execution_manager.py` | `VenueRuleFreshnessService` | `core/venue_rule_freshness.py` | 299 | `ExecutionManager::__init__` |
 | `core/execution_transaction_journal.py` | `DurableAppendLog` | `core/durable_append_log.py` | 174 | `ExecutionTransactionJournal::__init__` |

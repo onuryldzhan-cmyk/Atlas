@@ -15,9 +15,9 @@
 | 1 | Core completion (decision path, outcome, analysis, lesson, memory, calibration, strategy lifecycle, walk-forward, attribution, counterfactual, portfolio risk, data integrity, realistic paper, recovery) | single-execution-authority test; outcome fingerprint; post-trade analysis; book metrics; lesson lifecycle; **M-1 fix** (last-good evidence / fail closed); L-1 dedupe; L-2 cache; **strategy registry + lifecycle** (`atlas_org/strategy_registry.py`, `config/strategy_registry.json`); **order state machine** (`core/order_lifecycle.py`, informed by NautilusTrader source) | agent attribution from logged votes; calibration buckets 50–100 in `learning_view` |
 | 2 | Governance + agent ecosystem | agent cycle (8 rule-based agents), red_team, knowledge_manager, owner-only approval | output-validation contract for agent records; agent experience scorecards |
 | 3 | Final integration + certification + 3D | first certification table (self-audit) | per-decision inspector (decision → votes → gates) on `/decisions` |
-| 4 | Portfolio / market / execution | **F-3 engine side** (unrealized in daily loss, flag OFF) | wire mark-to-market unrealized P/L into RiskState; exposure report per asset |
+| 4 | Portfolio / market / execution | **F-3 engine side + wiring**: `MarketLoop.mark_prices` (fresh closes only) → `ExecutionManager._mark_to_market` → `RiskState.unrealized_pnl` (flag OFF) | exposure report per asset / direction |
 | 5 | Data engineering | **data source registry** (`config/data_sources.json`; a test fails if code uses an unregistered host) | show the registry on `/system`; candle quality rules |
-| 6 | Reliability | supervisor, heartbeat, readiness (existing) | degradation matrix (component → safe behaviour) with tests |
+| 6 | Reliability | supervisor, heartbeat, readiness (existing); **degradation matrix** `config/degradation_matrix.json` with a code-evidence test | incident auto-record from agent-cycle FAILs |
 | 7 | Independent final audit | self-audit v1 | **real independent audit: needs a separate reviewer** |
 | 8 | Model orchestration | — | DEFERRED (AI-001: no LLM in runtime); registry contract only |
 | 9 | Simulation / digital twin | replay drives the real market loop | seeded, versioned dataset manifest for replay |
