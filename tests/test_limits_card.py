@@ -45,3 +45,14 @@ def test_treasury_nav_single_denomination_and_mixed_currency_not_summed():
     assert out["nav"] == out["equity"] == "1010.00" and out["denomination"] == "USDT"
     mixed = pv.build(snap, {"BTCUSDT": "110"}, None, quote_assets={"BTCUSDT": "TRY"})
     assert mixed["nav"] is None and mixed["denomination"] is None and "mixed quote currencies" in mixed["incomplete_reason"]
+
+
+def test_exposure_by_asset_and_concentration():
+    from observability import portfolio_view as pv
+
+    snap = {"cash": "800", "fees": "0", "committed_capital": "200", "realized_gross_pnl": "0", "realized_net_pnl": "0",
+            "positions": {"BTCUSDT": {"base_quantity": "1", "cost_quote": "150", "average_entry_price": "150"},
+                          "ETHUSDT": {"base_quantity": "1", "cost_quote": "50", "average_entry_price": "50"}}}
+    out = pv.build(snap, {"BTCUSDT": "150", "ETHUSDT": "50"}, None)
+    assert out["exposure_by_asset"] == {"BTCUSDT": "15.00", "ETHUSDT": "5.00"} and out["largest_concentration_pct"] == "15.00"
+    assert pv.build(snap, {"BTCUSDT": "150"}, None)["exposure_by_asset"] is None  # a missing price is never guessed

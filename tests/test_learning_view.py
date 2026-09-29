@@ -72,3 +72,12 @@ def test_stale_lesson_expires_but_is_kept():
         r["closed_at"] = "2026-07-01T10:00:00+00:00"
     out = L.build(old + [trade(99)], [])
     assert next(x for x in out["lessons"] if x["id"] == "L-COIN-OLDUSDT")["status"] == "EXPIRED"
+
+
+def test_counterfactual_is_labelled_and_book_decay_detected():
+    rows = [trade(i, gross="20") for i in range(6)] + [trade(i, gross="-30") for i in range(6, 12)]
+    out = L.build(rows, [])
+    cf = out["experiences"][0]["analysis"]["counterfactual"]
+    assert cf["label"].startswith("COUNTERFACTUAL") and cf["no_trade_net"] == "0"
+    book = next(x for x in out["lessons"] if x["id"] == "L-BOOK-ALL")
+    assert book["status"] == "CONTESTED"  # the strategy got worse: decay is visible, nothing is deleted

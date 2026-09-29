@@ -111,6 +111,13 @@ def build(snapshot: dict[str, Any], prices: dict[str, Any], price_time: Any,
         "fees": _fmt(fees),
         "exposure_pct": _fmt(market_value / equity * 100) if complete and equity else None,
         "positions": positions,
+        # Task 4 exposure model: share of equity per asset and the largest single
+        # concentration (spot long-only today, so directional exposure = total).
+        "exposure_by_asset": ({p["symbol"]: _fmt(Decimal(p["market_value"]) / equity * 100) for p in positions}
+                              if complete and equity else None),
+        "largest_concentration_pct": (_fmt(max((Decimal(p["market_value"]) for p in positions), default=Decimal("0")) / equity * 100)
+                                      if complete and equity else None),
+        "direction": "LONG_ONLY_SPOT",
         "prices_as_of": str(price_time) if price_time else None,
         "price_age_seconds": round(age, 1) if age is not None else None,
         "prices_stale": stale,

@@ -121,6 +121,9 @@ def post_trade(exp: dict[str, Any], gross: Decimal, net: Decimal, cost: Decimal)
             "fees_turned_win_into_loss": gross > 0 >= net,
             "direction_right": gross > 0,
             "worth_taking_in_hindsight": net > 0,
+            # Counterfactuals (MEGA 1 §13): computed, never recorded as executions.
+            "counterfactual": {"no_trade_net": "0", "no_trade_vs_actual": str((-net).quantize(Decimal("0.0001"))),
+                               "fee_free_net": str(gross), "label": "COUNTERFACTUAL (not an execution result)"},
             "not_measured": ["slippage (PAPER fill model)", "max adverse/favourable excursion (no intratrade path stored)",
                              "entry confidence (joined offline by tools/reality_check)"]}
 
@@ -191,6 +194,8 @@ def build(closed: Iterable[dict[str, Any]], memory_records: Iterable[dict[str, A
         groups.setdefault(("REGIME", str(e["regime"])), []).append(e)
     lessons = [_lesson(f"L-{kind}-{name}", f"{'coin' if kind == 'COIN' else 'rejim'} {name}", g, validated)
                for (kind, name), g in sorted(groups.items())]
+    if exps:  # strategy decay (task 11): the whole book as one lesson, older vs newer half
+        lessons.append(_lesson("L-BOOK-ALL", "tüm defter (strateji çürümesi)", exps, validated))
     newest = max((str(e["closed_at"]) for e in exps), default=None)
     for lesson in lessons:
         age = _minutes(lesson["last_observed"], newest) if newest else None
