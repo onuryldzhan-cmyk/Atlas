@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+{# Decision explanation page (registry v5.60). Loopback-only, read-only: joins /api/signals and /api/execution-gates. #}
+<html lang="tr" data-bs-theme="dark" data-lte-color-mode="off">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Atlas — Kararlar</title>
+    <link rel="stylesheet" href="/assets/adminlte.min.css">
+    <style>
+        body { background: #0b0f17; }
+        .atlas-nav a { color: var(--bs-secondary-color); text-decoration: none; padding: .35rem .7rem; border-radius: .4rem; white-space: nowrap; }
+        .atlas-nav a.active, .atlas-nav a:hover { color: var(--bs-body-color); background: var(--bs-tertiary-bg); }
+        .wrap { max-width: 1200px; margin: 0 auto; padding: 16px; }
+        .pane { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+        .pane h2 { font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--bs-secondary-color); margin-bottom: .7rem; }
+        .svc { display: flex; justify-content: space-between; gap: 8px; padding: .45rem 0; border-bottom: 1px solid rgba(255,255,255,.06); }
+        .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
+        .OK { background: #22c55e; } .DEGRADED { background: #f59e0b; } .DOWN { background: #ef4444; } .UNKNOWN { background: #64748b; }
+        .muted { color: var(--bs-secondary-color); font-size: .85rem; }
+        .sym { display: inline-block; margin: 2px; padding: 2px 6px; border-radius: 4px; font-size: .75rem; background: rgba(255,255,255,.05); }
+    </style>
+    {% include "_atlas_theme.html" %}
+</head>
+<body>
+<nav class="navbar bg-body border-bottom px-3 flex-wrap gap-2">
+    <span class="navbar-brand fw-bold"><span class="text-primary">ATLAS</span> Karar açıklaması</span>
+    <div class="atlas-nav d-flex flex-wrap gap-1">
+        <a href="/home">Başlangıç</a>
+        <a href="/trading">Trading</a>
+        <a href="/governance">Kararlar &amp; Hafıza</a>
+        <a href="/research">Araştırma</a>
+        <a href="/system">Sistem</a>
+        <a href="/security">Güvenlik</a>
+        <a href="/decisions" class="active">Kararlar</a>
+        <a href="/roadmap">Yol haritası</a>
+        <a href="/hq">Atlas HQ</a>
+        <a href="/agents">Ajanlar</a>
+        <a href="/dashboard">Operasyon</a>
+    </div>
+</nav>
+<div class="wrap">
+    <div class="pane"><h2>Neden bu kararı verdin?</h2>
+        <div class="muted">Her coin için son döngünün kararı: ajan oyları, birleşik güven, risk kovası, güven eşikleri ve risk motorunun son sonucu.
+        Hepsi kayıtlı çalışma zamanı durumundan ve denetim kaydından okunur. Değer uydurulmaz; okunamayan kaynak "bilinmiyor" gösterilir. Bu sayfa hiçbir işlem yapamaz.</div></div>
+    <div id="decisions">Yükleniyor...</div>
+</div>
+<script>
+(() => {
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const getJSON = async (url) => { try { const r = await fetch(url); return await r.json(); } catch (e) { return { available: false, reason: 'network error' }; } };
+    const num = (v, d = 1) => (typeof v === 'number' && Number.isFinite(v)) ? v.toFixed(d) : 'bilinmiyor';
+
+    function explain(sym, sig, gates) {
+        const lines = [];
+        const agents = Object.entries(sig.agents || {});
+        const evaluated = agents.filter(([, a]) => a.status === 'EVALUATED');
+        lines.push(`<div class="svc"><span>Karar</span><span><b>${esc(sig.action || 'bilinmiyor')}</b> · güven ${num(sig.confidence)} · risk ${esc(sig.risk_level || 'bilinmiyor')}</span></div>`);
+        lines.push(`<div class="svc"><span>Ajan oyları (${evaluated.length}/${agents.length || 5} değerlendirdi)</span><span class="text-end">${agents.map(([n, a]) =>
+            a.status === 'EVALUATED' ? `<span class="sym">${esc(n)}: ${esc(a.action ?? '?')} ${a.score != null ? num(a.score, 2) : ''}</span>`
+                : `<span class="sym" title="${esc(a.reason)}">${esc(n)}: dışarıda (${esc(a.reason)})</span>`).join('')}</span></div>`);
+        if (evaluated.length < (agents.length || 5)) lines.push('<div class="muted">Eksik ajan güveni yükseltmez: payda beklenen ajan sayısıdır (NB-5).</div>');
+        const exMin = gates.execution_minimum_confidence;
+        const rp = gates.risk_policy || {};
+        const bucket = rp.available && rp.buckets ? rp.buckets[sig.risk_level] : null;
+        const gate = (label, need) => need == null ? `${label}: bilinmiyor`
+            : `${label} ≥ ${num(need)} → ${typeof sig.confidence === 'number' ? (sig.confidence >= need ? 'geçer' : 'geçmez') : 'bilinmiyor'}`;
+        lines.push(`<div class="svc"><span>Güven eşikleri</span><span class="text-end">${esc(gate('İşlem motoru', exMin))} · ${esc(gate('Risk kovası', bucket ? bucket.required_confidence_pct : null))}</span></div>`);
+        const ld = gates.latest_risk_decisions || {};
+        const rd = ld.available ? (ld.by_symbol || {})[sym] : null;
+        lines.push(`<div class="svc"><span>Risk motorunun son sonucu</span><span class="text-end">${!ld.available ? 'bilinmiyor (' + esc(ld.reason || 'denetim kaydı okunamadı') + ')'
+            : rd ? `${esc(rd.outcome)}${rd.reason ? ' · ' + esc(rd.reason) : ''} · ${esc(rd.action)} güven ${num(rd.confidence)} · ${esc(rd.decided_at || '?')}`
+            : 'son denetim penceresinde bu coin için risk kararı yok (HOLD işlem motoruna gitmez)'}</span></div>`);
+        return `<div class="pane"><h2>${esc(sym)}</h2>${lines.join('')}</div>`;
+    }
+
+    async function refresh() {
+        const [sg, gt] = await Promise.all([getJSON('/api/signals'), getJSON('/api/execution-gates')]);
+        const el = document.getElementById('decisions');
+        if (sg.status !== 'SUCCESS') { el.innerHTML = `<div class="pane muted">Kararlar okunamadı: ${esc(sg.reason || 'bilinmiyor')}</div>`; return; }
+        const entries = Object.entries(sg.signals || {}).sort(([a], [b]) => a.localeCompare(b));
+        el.innerHTML = entries.length ? entries.map(([s, v]) => explain(s, v, gt.available ? gt : {})).join('')
+            : '<div class="pane muted">Henüz karar yok (piyasa döngüsü ilk turunu tamamlamadı).</div>';
+    }
+    refresh();
+    setInterval(refresh, 5000);
+})();
+</script>
+</body>
+</html>

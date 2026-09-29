@@ -1803,7 +1803,8 @@ def create_app(
     # Registry v5.40 (owner: a simple start page, details on other pages).
     for _path, _template in (("/home", "home.html"), ("/trading", "trading.html"), ("/governance", "governance.html"),
                              ("/system", "system.html"), ("/security", "security.html"),
-                             ("/roadmap", "roadmap.html"), ("/research", "research.html")):
+                             ("/roadmap", "roadmap.html"), ("/research", "research.html"),
+                             ("/decisions", "decisions.html")):
         async def _static_page(request: Request, _template=_template) -> Response:
             if not is_loopback_request(request):
                 return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)

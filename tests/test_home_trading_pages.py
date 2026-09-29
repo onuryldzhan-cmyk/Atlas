@@ -11,10 +11,10 @@ import web_app
 
 READ_ONLY_APIS = {"/api/portfolio", "/api/command-center", "/api/trades", "/api/proposals", "/api/tasks", "/api/memory", "/api/permissions", "/api/status",
                   "/api/observability/test-results", "/api/observability/telemetry-summary",
-                  "/api/chat?q=", "/api/security", "/api/roadmap", "/api/research", "/api/execution-gates", "/api/readiness"}
+                  "/api/chat?q=", "/api/security", "/api/roadmap", "/api/research", "/api/execution-gates", "/api/readiness", "/api/signals"}
 
 
-@pytest.mark.parametrize("name", ["home.html", "trading.html", "governance.html", "system.html", "security.html", "roadmap.html", "research.html"])
+@pytest.mark.parametrize("name", ["home.html", "trading.html", "governance.html", "system.html", "security.html", "roadmap.html", "research.html", "decisions.html"])
 def test_pages_only_read_and_never_write(name):
     html = web_app.TEMPLATE_DIR.joinpath(name).read_text(encoding="utf-8")
     assert set(re.findall(r"getJSON\('([^']+)'", html)) <= READ_ONLY_APIS
@@ -30,7 +30,7 @@ def test_start_page_stays_simple():
         assert f'href="{link}"' in html
 
 
-@pytest.mark.parametrize("path", ["/home", "/trading", "/governance", "/system", "/security", "/roadmap", "/research"])
+@pytest.mark.parametrize("path", ["/home", "/trading", "/governance", "/system", "/security", "/roadmap", "/research", "/decisions"])
 def test_pages_are_served_and_loopback_guarded(path):
     assert TestClient(web_app.create_app()).get(path).status_code == 200
     assert TestClient(web_app.create_app(), base_url="http://evil.example").get(path).status_code == 403
@@ -71,3 +71,10 @@ def test_research_list_reads_titles_only():
     out = research_view.read_research()
     assert out["available"] and any("Trading strategy" in d["title"] or "strategy" in d["title"].lower() for d in out["documents"])
     assert all(set(d) == {"file", "title", "bytes"} for d in out["documents"])
+
+
+def test_decisions_page_explains_from_recorded_sources_only():
+    html = web_app.TEMPLATE_DIR.joinpath("decisions.html").read_text(encoding="utf-8")
+    assert set(re.findall(r"getJSON\('([^']+)'", html)) == {"/api/signals", "/api/execution-gates"}
+    for part in ("Ajan oyları", "Güven eşikleri", "Risk motorunun son sonucu", "NB-5"):
+        assert part in html
