@@ -92,12 +92,13 @@
         const security = cur.filter((x) => x.kind === 'SECURITY').pop();
         const checks = security && security.checks ? Object.entries(security.checks).map(([k, v]) =>
             badge(`${k}: ${v}`, v === 'PASS' ? 'success' : v === 'FAIL' ? 'danger' : 'warning')).join(' ') : '';
-        const files = (p.affected_files || []).map((f) => `<code>${esc(f)}</code>`).join(', ') || '-';
+        const files = (p.affected_files || p.affected_components || []).map((f) => `<code>${esc(f)}</code>`).join(', ') || '-';
+        const claims = Array.isArray(p.claims) ? p.claims.map((c) => `<div class="mt-1"><b>İddia:</b> ${esc(c.claim)}<br><b>Kanıt:</b> ${esc(c.evidence)}<br><b>Karşı kanıt:</b> ${esc(c.counter_evidence)}</div>`).join('') : '';
         const history = (p.history || []).map((h) => `<li>#${esc(h.seq)} ${esc(h.event)} — ${esc(h.actor)} → ${esc(h.status)} <span class="muted">${esc(h.at)}</span></li>`).join('');
         return `<div class="item"><div class="d-flex justify-content-between flex-wrap gap-2"><b>${esc(p.id)} — ${esc(p.title)}</b>${badge(p.status, p.status === 'READY_FOR_OWNER' ? 'danger' : 'secondary')}</div>` +
             `<div class="mt-1"><span class="stage rec">Öneren: ${esc(p.author)} · risk ${esc(p.risk_level)} · rev ${esc(p.revision)}</span>${review('CODE')}${review('SECURITY')}${tests}${decision}${applied}</div>` +
             `<details class="small mt-1"><summary>ayrıntı</summary><div><b>Problem:</b> ${esc(p.problem)}</div><div><b>Gerekçe:</b> ${esc(p.motivation)}</div>` +
-            `<div><b>Değişiklik:</b> ${esc(p.proposed_changes)}</div><div><b>Dosyalar:</b> ${files}</div><div><b>Geri alma:</b> ${esc(p.rollback_plan)}</div>` +
+            `<div><b>Değişiklik:</b> ${esc(p.proposed_changes)}</div><div><b>Dosyalar:</b> ${files}</div><div><b>Geri alma:</b> ${esc(p.rollback_plan)}</div>${claims}` +
             (checks ? `<div><b>Güvenlik:</b> ${checks}</div>` : '') + `<ol class="mb-0">${history}</ol></details></div>`;
     }
 

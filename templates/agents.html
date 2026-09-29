@@ -36,12 +36,18 @@
     <nav class="app-header navbar navbar-expand bg-body border-bottom">
         <div class="container-fluid">
             <span class="navbar-brand fw-bold"><span class="text-primary">ATLAS AI</span> Terminal</span>
-            <div class="atlas-nav d-flex gap-1">
+            <div class="atlas-nav d-flex flex-wrap gap-1">
                 <a href="/home">Başlangıç</a>
                 <a href="/trading">Trading</a>
-                <a href="/hq">HQ</a>
-                <a href="/dashboard">Panel</a>
-                <a href="/agents" class="active" aria-current="page">Ajanlar &amp; Organizasyon</a>
+                <a href="/governance">Kararlar &amp; Hafıza</a>
+                <a href="/research">Araştırma</a>
+                <a href="/system">Sistem</a>
+                <a href="/security">Güvenlik</a>
+                <a href="/decisions">Kararlar</a>
+                <a href="/roadmap">Yol haritası</a>
+                <a href="/hq">Atlas HQ</a>
+                <a href="/agents" class="active" aria-current="page">Ajanlar</a>
+                <a href="/dashboard">Operasyon</a>
             </div>
             <span class="small text-body-secondary d-none d-md-inline">loopback-only · yalnız okur</span>
         </div>
@@ -74,6 +80,17 @@
                         <div id="live-agents" class="row g-2">Yükleniyor...</div>
                         <div class="small text-body-secondary mt-2">Her ajan her coin için bir oy verir (kanıt). Oyların birleşimi karardır;
                             kararı <b>ajanlar değil</b> deterministik risk zinciri onaylar. "karara uyum" = ajanın oyu, son kararla aynı olan coin sayısı.</div>
+                    </div>
+                </section>
+
+                <section class="card card-warning card-outline mb-3" aria-labelledby="work-title">
+                    <div class="card-header"><h3 id="work-title" class="card-title">Görevler ve iş durumu (ajan çalışanları)</h3></div>
+                    <div class="card-body">
+                        <div id="work" class="small">Yükleniyor...</div>
+                        <div class="small text-body-secondary mt-2">Oy veren 5 ajan her döngüde otomatik çalışır. Organizasyon ajanları (araştırma, kod, inceleme, güvenlik)
+                            görev <b>adımı</b> ile çalışır: bir adım ancak bir çalıştırıcı onu alıp sonucunu kaydedince ilerler. Kural tabanlı çalıştırıcılar
+                            (performans raporu, öz-değerlendirme, strateji ajanı, güvenlik muhafızı) sahip makinesinde komutla çalışır; dil modeli
+                            çalıştırıcısı (AI-001) sahip kararını bekler. Beklemede olan adım "çalışıyor" gösterilmez.</div>
                     </div>
                 </section>
 
@@ -236,6 +253,22 @@
         }
     }
 
+    function renderWork(tasks, proposals) {
+        const el = document.getElementById('work');
+        if (!tasks || tasks.available !== true) { el.innerHTML = '<span class="badge text-bg-secondary">görev kaydı okunamadı</span>'; return; }
+        const open = (tasks.tasks || []).filter((t) => t.status !== 'DONE');
+        const waiting = open.flatMap((t) => t.steps.filter((st) => st.status !== 'DONE').map((st) => ({ task: t.id, ...st })));
+        const byUnit = {};
+        waiting.forEach((w) => { (byUnit[w.unit || 'atanmadı'] = byUnit[w.unit || 'atanmadı'] || []).push(w); });
+        const props = proposals && proposals.available ? (proposals.proposals || []) : [];
+        const awaiting = props.filter((p) => !['APPLIED', 'REJECTED', 'ROLLED_BACK', 'SUPERSEDED'].includes(p.status));
+        const rows = Object.entries(byUnit).map(([unit, list]) => `<tr><td>${esc(unit)}</td><td>${list.length}</td>` +
+            `<td>${list.map((w) => esc(w.task) + ' · ' + esc(w.goal)).join('<br>')}</td><td><span class="badge text-bg-secondary">çalıştırıcı bekliyor</span></td></tr>`).join('');
+        el.innerHTML = `<div class="mb-2">Açık görev: <b>${open.length}</b> · bekleyen adım: <b>${waiting.length}</b> · sahibin kararını bekleyen öneri: <b>${awaiting.length}</b></div>` +
+            (rows ? `<table class="table table-sm mb-0"><thead><tr><th>Birim</th><th>Adım</th><th>İş</th><th>Durum</th></tr></thead><tbody>${rows}</tbody></table>`
+                : '<div class="text-body-secondary">Bekleyen adım yok.</div>');
+    }
+
     async function refreshLive() {
         renderLiveAgents(await getJson('/api/signals'));
     }
@@ -258,6 +291,8 @@
         if (owner) renderDetail(owner);
         refreshLive();
         setInterval(refreshLive, 10000);
+        const [tasks, proposals] = await Promise.all([getJson('/api/tasks'), getJson('/api/proposals')]);
+        renderWork(tasks, proposals);
     }
 
     if (typeof window !== 'undefined' && typeof document !== 'undefined' && document.addEventListener && !window.__ATLAS_TEST__) {
