@@ -228,7 +228,50 @@ AGENTS: tuple[tuple[str, str, Callable[[Path], dict[str, Any]]], ...] = (
 )
 
 
+VERDICTS = ("OK", "WARN", "FAIL")
+
+
+def validate_outcome(outcome: Any) -> dict[str, Any]:
+    """Task 2 / MEGA 2 §12: an agent's output is data, validated before it is recorded.
+
+    Schema: {"verdict": OK|WARN|FAIL, "summary": str}. Anything else becomes
+    FAIL / INVALID_AGENT_OUTPUT. The summary is passed through the
+    SensitiveDataGuard and capped, so a secret or an injected instruction is
+    stored as inert, redacted text - it never gains authority.
+    """
+    from atlas_security import sanitize_sensitive_data
+
+    if not isinstance(outcome, dict) or outcome.get("verdict") not in VERDICTS or not isinstance(outcome.get("summary"), str):
+        return {"verdict": "FAIL", "summary": "INVALID_AGENT_OUTPUT"}
+    return {"verdict": outcome["verdict"], "summary": str(sanitize_sensitive_data(outcome["summary"]))[:500]}
+
+
 AGENT_BUDGET_S = 300.0  # task 18: one agent taking longer is flagged as a runaway (WARN), never silent
+
+
+def _open_incidents(records_dir: Path, results: list[dict[str, Any]]) -> None:
+    """Task 6 / reliability §12: a FAILed agent opens one OPEN incident (DETECTED); never a duplicate.
+
+    Classification, containment and resolution (root cause, actions,
+    prevention) are the owner's, recorded later as a superseding record.
+    """
+    from atlas_org import memory_records
+
+    log = records_dir / cli.MEMORY_LOG
+    mem = memory_records.replay(cli.read_log(log)) if log.exists() else {}
+    open_units = {svc for r in mem.values() if r["type"] == "INCIDENTS" and r["superseded_by"] is None
+                  and (r.get("incident") or {}).get("status") != "RESOLVED" for svc in (r.get("incident") or {}).get("services", [])}
+    for r in results:
+        if r["verdict"] != "FAIL" or r["unit"] in open_units:
+            continue
+        existing = {x["record_id"] for x in cli.read_log(log)} if log.exists() else set()
+        cli.add_memory_record(records_dir, {
+            "record_id": f"IN-{len(existing) + 1:04d}", "type": "INCIDENTS", "authority": "TEMPORARY",
+            "title": f"Olay: {r['name']} ajanı başarısız", "body": r["summary"],
+            "author": "executive_assistant", "source": "tools/agent_cycle.py (automatic detection)",
+            "incident": {"what": r["summary"][:300], "detected_at": cli.now(), "severity": "MEDIUM",
+                         "services": [r["unit"]], "status": "OPEN"}})
+        open_units.add(r["unit"])
 
 
 def run_cycle(records_dir: Path = cli.RECORDS_DIR, agents=AGENTS) -> dict[str, Any]:
@@ -236,13 +279,14 @@ def run_cycle(records_dir: Path = cli.RECORDS_DIR, agents=AGENTS) -> dict[str, A
     for unit, name, fn in agents:
         started = time.monotonic()
         try:
-            outcome = fn(records_dir)
+            outcome = validate_outcome(fn(records_dir))
         except Exception as exc:  # one agent failing never stops the others
             outcome = {"verdict": "FAIL", "summary": f"{type(exc).__name__}: {exc}"[:300]}
         seconds = round(time.monotonic() - started, 2)
         if seconds > AGENT_BUDGET_S and outcome.get("verdict") == "OK":
             outcome = {**outcome, "verdict": "WARN", "summary": f"süre bütçesi aşıldı ({seconds}s > {AGENT_BUDGET_S:g}s); " + str(outcome.get("summary", ""))}
         results.append({"unit": unit, "name": name, **outcome, "seconds": seconds})
+    _open_incidents(records_dir, results)
     existing = {r["record_id"] for r in cli.read_log(records_dir / cli.MEMORY_LOG)} if (records_dir / cli.MEMORY_LOG).exists() else set()
     rid = f"AC-{len(existing) + 1:04d}"
     ok = sum(1 for r in results if r["verdict"] == "OK")

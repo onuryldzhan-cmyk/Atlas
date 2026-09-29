@@ -87,3 +87,21 @@ def test_cycle_records_resources_and_flags_runaway_agent(tmp_path, monkeypatch):
     assert out["results"][0]["verdict"] == "WARN" and "bütçe" in out["results"][0]["summary"]
     rec = memory_records.replay(cli.read_log(tmp_path / cli.MEMORY_LOG))[out["record_id"]]
     assert json.loads(rec["body"])["resources"]["llm_tokens"].startswith("N/A")
+
+
+def test_invalid_or_leaky_agent_output_is_contained(tmp_path):
+    agents = (("bad", "Bad", lambda _: {"verdict": "APPROVE_DEPLOY", "summary": "ok"}),
+              ("none", "None", lambda _: None),
+              ("leak", "Leak", lambda _: {"verdict": "OK", "summary": "api_key=sk-ABCDEF1234567890SECRET done"}))
+    out = ac.run_cycle(tmp_path, agents)
+    assert [r["verdict"] for r in out["results"]] == ["FAIL", "FAIL", "OK"]
+    assert out["results"][0]["summary"] == "INVALID_AGENT_OUTPUT"
+    assert "sk-ABCDEF1234567890SECRET" not in out["results"][2]["summary"]
+
+
+def test_failed_agent_opens_one_incident_not_duplicates(tmp_path):
+    boom = (("x", "X", lambda _: (_ for _ in ()).throw(RuntimeError("disk full"))),)
+    ac.run_cycle(tmp_path, boom)
+    ac.run_cycle(tmp_path, boom)
+    inc = [r for r in memory_records.replay(cli.read_log(tmp_path / cli.MEMORY_LOG)).values() if r["type"] == "INCIDENTS"]
+    assert len(inc) == 1 and inc[0]["incident"]["status"] == "OPEN" and inc[0]["incident"]["services"] == ["x"]
