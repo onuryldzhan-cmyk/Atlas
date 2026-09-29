@@ -67,6 +67,42 @@ entries/exits and the 50/35/15 capital split. Paste both outputs. Macro and
 sentiment are excluded (stated in the report), so the result is a
 conservative research estimate, not a promise.
 
+## 6. 20 coin: gerçek Binance kurallarını çek (registry v5.41) — ÖNCE BU
+
+Bulut ortamı Binance'e erişemiyor; kurallar yalnızca senin bilgisayarında, Binance'ten çekilebilir. Atlas kapalıyken:
+
+```
+git pull
+python tools/refresh_venue_instrument_rules.py --preset owner-20
+git diff --stat config/instrument_rules.json
+git add config/instrument_rules.json
+git commit -m "Venue rules for the owner's 20 coins (Binance exchangeInfo)"
+git push
+```
+
+Bir coin Binance'te TRADING değilse araç `REFUSED` der ve dosyaya dokunmaz; çıktıyı bana yapıştır. Başarılıysa Atlas'ı yeniden başlat: 20 coin taranır (en fazla 5 açık pozisyon, risk sınırları aynı).
+
+## 7. Sahip imza anahtarı (registry v5.39) — bir kez
+
+```
+python -m tools.atlas_org_cli owner-init
+```
+
+Anahtar `C:\Users\<sen>\.atlas\owner.key` içinde oluşur. Kimseyle paylaşma, depoya koyma. Onaylar bu anahtarla imzalanır.
+
+## 8. Yeni sayfalar
+
+Atlas çalışırken tarayıcıda: `http://127.0.0.1:8000/home` (sade başlangıç), `/trading` (sermaye, kâr/zarar, pozisyonlar), `/hq` (3D merkez).
+
+## 9. Öz-değerlendirme (isteğe bağlı)
+
+```
+python -m tools.atlas_self_review
+python -m tools.atlas_self_review --apply
+```
+
+İlki yalnızca gösterir; ikincisi görevleri açar (paneldeki "Görevler" bölümünde görünür).
+
 ## Done (kept for reference)
 
 - Audit-fork quarantine applied 2026-09-28 (registry v5.06).
