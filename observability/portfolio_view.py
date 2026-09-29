@@ -51,7 +51,7 @@ def _fmt(value: Decimal | None, places: Decimal = Q) -> str | None:
 
 
 def build(snapshot: dict[str, Any], prices: dict[str, Any], price_time: Any,
-          now: datetime | None = None) -> dict[str, Any]:
+          now: datetime | None = None, quote_assets: dict[str, str] | None = None) -> dict[str, Any]:
     now = now or datetime.now(UTC)
     cash, fees = _d(snapshot.get("cash")), _d(snapshot.get("fees"))
     committed, realized_gross = _d(snapshot.get("committed_capital")), _d(snapshot.get("realized_gross_pnl"))
@@ -82,6 +82,12 @@ def build(snapshot: dict[str, Any], prices: dict[str, Any], price_time: Any,
                        unrealized_pct=_fmt(pnl / cost * 100) if cost else None)
         positions.append(row)
 
+    # Treasury (owner task 15): one denomination only. If instrument rules say a
+    # held symbol is quoted in another currency, totals are not added up (no FX
+    # source exists, so no conversion is invented).
+    denominations = sorted({(quote_assets or {}).get(sym, "USDT") for sym in (snapshot.get("positions") or {})} | {"USDT"})
+    if len(denominations) > 1:
+        missing.append("mixed quote currencies " + "/".join(denominations))
     complete = not missing
     equity = cash + market_value if complete else None
     total_pnl = equity - starting if equity is not None else None
@@ -96,6 +102,8 @@ def build(snapshot: dict[str, Any], prices: dict[str, Any], price_time: Any,
         "invested_cost": _fmt(committed),
         "market_value": _fmt(market_value) if complete else None,
         "equity": _fmt(equity),
+        "nav": _fmt(equity),
+        "denomination": denominations[0] if len(denominations) == 1 else None,
         "realized_net_pnl": _fmt(realized_net),
         "unrealized_pnl": _fmt(unrealized) if complete else None,
         "total_pnl": _fmt(total_pnl),

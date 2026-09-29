@@ -34,3 +34,14 @@ def test_web_helper_reads_durable_risk_file(tmp_path):
     assert web_app._limits_payload(runtime, "0")["realized_loss_today"] == "100.00"
     runtime.risk_state_store.path = tmp_path / "missing.json"
     assert web_app._limits_payload(runtime, "0")["reason"] == "RISK_STATE_UNREADABLE"
+
+
+def test_treasury_nav_single_denomination_and_mixed_currency_not_summed():
+    from observability import portfolio_view as pv
+
+    snap = {"cash": "900", "fees": "1", "committed_capital": "100", "realized_gross_pnl": "0", "realized_net_pnl": "0",
+            "positions": {"BTCUSDT": {"base_quantity": "1", "cost_quote": "100", "average_entry_price": "100"}}}
+    out = pv.build(snap, {"BTCUSDT": "110"}, None, quote_assets={"BTCUSDT": "USDT"})
+    assert out["nav"] == out["equity"] == "1010.00" and out["denomination"] == "USDT"
+    mixed = pv.build(snap, {"BTCUSDT": "110"}, None, quote_assets={"BTCUSDT": "TRY"})
+    assert mixed["nav"] is None and mixed["denomination"] is None and "mixed quote currencies" in mixed["incomplete_reason"]

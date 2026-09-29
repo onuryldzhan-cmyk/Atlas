@@ -1680,6 +1680,15 @@ def _learning_payload(runtime: Any, memory: dict) -> dict:
     return learning_view.build(closed, memory.get("records") or [] if isinstance(memory, dict) else [])
 
 
+def _quote_assets(runtime: Any) -> dict[str, str]:
+    """symbol -> quote asset from the loaded instrument rules (empty when not attached)."""
+    rules = _resolve_attr(runtime, "instrument_ruleset")
+    table = getattr(rules, "rules", None)
+    if table is None or not hasattr(table, "items"):
+        return {}
+    return {str(sym): str(getattr(r, "quote_asset", "")) for sym, r in table.items() if getattr(r, "quote_asset", "")}
+
+
 def _limits_payload(runtime: Any, unrealized: Any) -> dict:
     """Read-only FTMO-style limits card from the durable risk-accounting file and the live policy."""
     store = _resolve_attr(runtime, "risk_state_store")
@@ -2485,7 +2494,7 @@ def create_app(
                         signals[symbol] = {k: decision.get(k) for k in PUBLIC_SIGNAL_KEYS}
             except Exception:
                 logger.debug("Market loop status unavailable for portfolio", exc_info=True)
-        payload = portfolio_view.build(snapshot, prices, price_time)
+        payload = portfolio_view.build(snapshot, prices, price_time, quote_assets=_quote_assets(runtime))
         if payload.get("available"):
             # Every scanned coin with its latest real price and the loop's decision.
             payload["market"] = [{"symbol": sym, "price": str(prices[sym]), **signals[sym]} for sym in sorted(prices)]
