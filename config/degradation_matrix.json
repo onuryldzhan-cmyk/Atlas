@@ -1,0 +1,26 @@
+{
+  "schema_version": "1",
+  "note": "Reliability task #6 / MEGA 3 §2: what Atlas does when a component fails. Each row names the code that implements it; tests/test_degradation_matrix.py checks the evidence string exists in that file. Behaviours only - no restart of financial state without reconciliation.",
+  "components": [
+    {"component": "market data (per coin)", "failure": "stale / no closed candle / future candle",
+     "behaviour": "no BUY for that coin; staleness reported", "evidence": {"core/market_loop.py": "buy_stale_data_skipped", "core/candle_processor.py": "future_candles_rejected"}},
+    {"component": "sentiment / macro / market-risk providers", "failure": "unavailable or neutral",
+     "behaviour": "that agent abstains; fusion needs >= 3 participating agents or it ABSTAINs", "evidence": {"core/decision_intelligence.py": "Action.ABSTAIN"}},
+    {"component": "memory (closed-trade archive)", "failure": "unreadable / malformed",
+     "behaviour": "last good evidence per coin, else fail-closed caution on BUY (M-1)", "evidence": {"ai/core/intelligence/memory_adapter.py": "_FAIL_CLOSED"}},
+    {"component": "risk accounting state", "failure": "cannot be restored",
+     "behaviour": "no new risk; status BLOCK_RECOVERY_REQUIRED", "evidence": {"core/execution_manager.py": "RISK_STATE_RESTORATION_FAILED"}},
+    {"component": "durable financial foundation", "failure": "not ready / corrupt",
+     "behaviour": "fail closed; never falls back to caller-supplied positions", "evidence": {"core/execution_manager.py": "DURABLE_FINANCIAL_FOUNDATION_NOT_READY"}},
+    {"component": "execution commit", "failure": "write outcome unknown",
+     "behaviour": "execution halts as COMMIT_STATUS_UNKNOWN; manual recovery", "evidence": {"core/execution_transaction_journal.py": "COMMIT_STATUS_UNKNOWN"}},
+    {"component": "mark prices (F-3, flag on)", "failure": "missing / stale / provider error",
+     "behaviour": "unrealized P&L unknown -> no new risk; exits allowed", "evidence": {"core/risk_engine.py": "UNREALIZED_PNL_UNKNOWN", "core/execution_manager.py": "unrealized P&L unknown"}},
+    {"component": "instrument (venue) rules", "failure": "stale / missing",
+     "behaviour": "admission refused for affected symbols", "evidence": {"core/instrument_rules.py": "UNAVAILABLE"}},
+    {"component": "Atlas process", "failure": "crash / hang",
+     "behaviour": "supervisor restarts; startup recovery + journal check before trading", "evidence": {"tools/start_atlas.py": "supervisor"}},
+    {"component": "Security Guardian", "failure": "scan unavailable",
+     "behaviour": "agent cycle reports WARN; governed changes still need the owner's signed approval", "evidence": {"tools/agent_cycle.py": "tarama yapılamadı"}}
+  ]
+}

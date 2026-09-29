@@ -2937,7 +2937,33 @@ class ExecutionManager:
             state_ready=True,
             accounting_day_utc=restored.accounting_day_utc.isoformat(),
             policy_version=restored.policy_version,
+            unrealized_pnl=self._mark_to_market(positions),
         )
+
+    def _mark_to_market(self, positions: Any) -> Decimal | None:
+        """Unrealized P&L of open positions (audit F-3), or None when not fully known.
+
+        Computed only when the risk policy counts it; any position without a
+        fresh mark price makes the whole figure unknown (never zero-filled),
+        which the engine turns into UNREALIZED_PNL_UNKNOWN for new risk.
+        """
+        if not getattr(self.risk_engine.policy, "count_unrealized_in_daily_loss", False):
+            return None
+        provider = getattr(self, "mark_price_provider", None)
+        if provider is None:
+            return None
+        try:
+            prices = provider() or {}
+            total = Decimal("0")
+            for p in positions:
+                price = prices.get(p.symbol)
+                if price is None:
+                    return None
+                total += Decimal(str(price)) * p.base_quantity - p.quote_exposure
+            return total if total.is_finite() else None
+        except Exception:
+            logger.warning("mark-to-market unavailable; unrealized P&L unknown", exc_info=True)
+            return None
 
     @staticmethod
     def _derive_reduce_only(

@@ -820,6 +820,9 @@ class AtlasApplication:
             macro_provider=self.macro_provider,
             market_risk_provider=self.market_risk_provider,
         )
+        # Audit F-3: fresh closed-candle marks for the risk engine's optional
+        # unrealized daily-loss check (read-only; unused while the flag is off).
+        self.execution.mark_price_provider = self.market_loop.mark_prices
 
         # -----------------------------------------------------
         # Controller

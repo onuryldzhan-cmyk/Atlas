@@ -2299,6 +2299,22 @@ class MarketLoop:
         except Exception:
             logger.debug("recent candle snapshot skipped for %s", symbol, exc_info=True)
 
+    def mark_prices(self, max_age_s: float = 300.0, now_ms: int | None = None) -> dict[str, Decimal]:
+        """Last closed-candle close per symbol, only when fresh (audit F-3 mark-to-market).
+
+        A symbol with no candle or a stale one is left out; the caller treats
+        a missing price as unknown, never as zero.
+        """
+        now = now_ms if now_ms is not None else int(time.time() * 1000)
+        out: dict[str, Decimal] = {}
+        for symbol, rows in dict(self.recent_candles).items():
+            if not rows:
+                continue
+            open_time, close = rows[-1][0], rows[-1][4]
+            if now - open_time <= max_age_s * 1000 and close > 0:
+                out[symbol] = Decimal(str(close))
+        return out
+
     def candles(self, symbol: str) -> tuple[tuple[int, float, float, float, float], ...]:
         """Read-only view of the last closed candles for one symbol (empty if none)."""
         return self.recent_candles.get(str(symbol).upper(), ())
