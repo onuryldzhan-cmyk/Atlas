@@ -76,6 +76,7 @@ git fetch origin claude/exp001-on-owner-lineage
 git merge --no-edit origin/claude/exp001-on-owner-lineage
 python -m tools.strategy_compare --days 21 --windows 3
 python -m tools.performance_report --record
+python -m tools.reality_check
 python -m tools.strategy_agent
 python -m tools.strategy_agent --apply
 git add governance/records

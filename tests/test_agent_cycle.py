@@ -31,6 +31,7 @@ def test_real_agents_on_a_small_book(tmp_path, monkeypatch):
            "opened_at": "2026-09-29T10:00:00+00:00", "closed_at": "2026-09-29T10:30:00+00:00"}
     archive.write_text("".join(json.dumps(row) + "\n" for _ in range(12)), encoding="utf-8")
     monkeypatch.setattr(ac, "_archive_path", lambda: archive)
+    monkeypatch.setattr(ac, "_approvals", lambda: {})
     records = tmp_path / "records"
     first = ac.quant_research(records)
     assert "12 işlem analiz edildi" in first["summary"]
@@ -45,6 +46,7 @@ def test_red_team_challenges_each_open_proposal_once(tmp_path, monkeypatch):
            "opened_at": "2026-09-29T10:00:00+00:00", "closed_at": "2026-09-29T10:30:00+00:00"}
     archive.write_text("".join(json.dumps(row) + "\n" for _ in range(3)), encoding="utf-8")
     monkeypatch.setattr(ac, "_archive_path", lambda: archive)
+    monkeypatch.setattr(ac, "_approvals", lambda: {})
     records = tmp_path / "records"
     ac.strategy_lab(records)
     first = ac.red_team(records)

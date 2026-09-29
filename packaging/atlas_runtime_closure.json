@@ -122,6 +122,7 @@
     "exchange/market_feed.py",
     "main.py",
     "observability/__init__.py",
+    "observability/agent_states.py",
     "observability/command_center.py",
     "observability/governance_records.py",
     "observability/organization.py",

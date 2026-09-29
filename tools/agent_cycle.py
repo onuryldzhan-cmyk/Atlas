@@ -38,29 +38,49 @@ def _archive_path() -> Path:
     return resolve_state_directory() / EXECUTION_CLOSED_POSITIONS_FILE
 
 
+def _approvals() -> dict:
+    from core.application import EXECUTION_AUDIT_EVENT_FILE, resolve_state_directory
+    from tools.paper_position_report import approvals_by_symbol
+
+    return approvals_by_symbol(resolve_state_directory() / EXECUTION_AUDIT_EVENT_FILE)
+
+
 def _last_recorded_trades(records_dir: Path) -> int | None:
     from atlas_org import memory_records
 
     records = memory_records.replay(cli.read_log(records_dir / cli.MEMORY_LOG)) if (records_dir / cli.MEMORY_LOG).exists() else {}
-    counts = [json.loads(r["body"]).get("total", {}).get("trades") for r in records.values()
-              if r["author"] == "quant_research" and r["type"] == "EXPERIMENTS" and r["body"].startswith("{")]
+    counts = []
+    for r in sorted(records.values(), key=lambda x: x["seq"]):
+        if r["author"] != "quant_research" or r["type"] != "EXPERIMENTS":
+            continue
+        try:
+            counts.append(json.loads(r["body"]).get("total", {}).get("trades"))
+        except (ValueError, AttributeError):  # an older truncated body is skipped, never fatal
+            continue
     return counts[-1] if counts else None
 
 
 def quant_research(records_dir: Path) -> dict[str, Any]:
     from tools.exp001_report import load_closed
     from tools.performance_report import analyse
+    from tools.reality_check import run as reality
 
-    report = analyse(load_closed(_archive_path()))
+    closed = load_closed(_archive_path())
+    report = analyse(closed)
     n = report["total"].get("trades", 0)
     if n == _last_recorded_trades(records_dir):
         return {"verdict": "OK", "summary": f"{n} işlem; yeni kapanan işlem yok, rapor tekrar yazılmadı"}
-    existing = {r["record_id"] for r in cli.read_log(records_dir / cli.MEMORY_LOG)}
+    real = reality(closed, _approvals())
+    body = {"total": report["total"], "lessons": report["lessons"], "trader_book": report.get("trader_book"),
+            "reality": real}
+    existing = {r["record_id"] for r in cli.read_log(records_dir / cli.MEMORY_LOG)} if (records_dir / cli.MEMORY_LOG).exists() else set()
     cli.add_memory_record(records_dir, {
         "record_id": f"PR-{len(existing) + 1:04d}", "type": "EXPERIMENTS", "authority": "RESEARCH",
-        "title": f"Performans raporu: {n} işlem", "body": json.dumps(report, ensure_ascii=False)[:20000],
-        "author": "quant_research", "source": "tools/agent_cycle.py (performance_report)"})
-    return {"verdict": "OK", "summary": f"{n} işlem analiz edildi ve hafızaya yazıldı; dersler: {report['lessons'][0]}"}
+        "title": f"Performans ve gerçeklik raporu: {n} işlem", "body": json.dumps(body, ensure_ascii=False, default=str),
+        "author": "quant_research", "source": "tools/agent_cycle.py (performance_report + reality_check)"})
+    costs = real["costs"]
+    edge = "" if not costs.get("trades") else ("; kenar maliyeti karşılıyor" if costs["edge_covers_costs"] else "; KENAR MALİYETİ KARŞILAMIYOR")
+    return {"verdict": "OK", "summary": f"{n} işlem analiz edildi, hafızaya yazıldı; {report['lessons'][0]}{edge}"}
 
 
 def strategy_lab(records_dir: Path) -> dict[str, Any]:
