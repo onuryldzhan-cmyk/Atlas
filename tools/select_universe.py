@@ -74,7 +74,8 @@ def eligible(exchange_info: dict, tickers: list[dict]) -> list[dict]:
 
 
 def with_weekly_stats(candidates: list[dict], get: Getter) -> list[dict]:
-    for c in candidates:
+    for i, c in enumerate(candidates, 1):
+        print(f"  {i}/{len(candidates)} {c['symbol']} ...", file=sys.stderr, flush=True)
         rows = get(f"/api/v3/klines?symbol={c['symbol']}&interval=1d&limit=8")
         closes = [float(r[4]) for r in rows]
         if len(closes) < 8 or closes[0] <= 0:
@@ -123,6 +124,7 @@ def main(argv: list[str] | None = None, get: Getter = http_get) -> int:
     parser.add_argument("--output", default=str(OUTPUT))
     args = parser.parse_args(argv)
     try:
+        print("Binance'ten veri çekiliyor (birkaç dakika sürebilir; Ctrl+C'ye basma)...", file=sys.stderr, flush=True)
         info, tickers = get("/api/v3/exchangeInfo"), get("/api/v3/ticker/24hr")
         candidates = with_weekly_stats(eligible(info, tickers)[:80], get)
     except Exception as exc:  # network / venue failure: nothing is written
