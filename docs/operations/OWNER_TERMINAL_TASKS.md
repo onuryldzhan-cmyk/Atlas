@@ -81,19 +81,13 @@ python -m tools.strategy_agent --apply
 git add governance/records
 git commit -m "Owner run: strategy agent proposals"
 git push origin HEAD:claude/exp001-on-owner-lineage
-python atlas_supervisor.py
+python -m tools.start_atlas
 ```
 
-Ajanları sürekli çalıştırmak için AYRI bir PowerShell penceresinde (Atlas-test klasöründe):
-
-```
-python -m tools.agent_cycle --every 60
-```
-
-Her saat performans analizi, strateji önerisi, öz-değerlendirme, veri sağlığı ve güvenlik taraması yapar; sonucu Ajanlar sayfasında görürsün. Kayıtları arada bir `git add governance/records`, commit ve push ile gönder.
+Bu tek komut Atlas'ı ve ajanları birlikte başlatır; bundan sonra `python atlas_supervisor.py` yerine bunu kullan. Ajanlar her saat performans analizi, strateji önerisi, öz-değerlendirme, veri sağlığı ve güvenlik taraması yapar; sonucu Ajanlar sayfasında görürsün. Kayıtları arada bir `git add governance/records`, commit ve push ile gönder.
 
 strategy_compare bitene kadar tuşa basma ("24/24 bitti" yazar); tabloyu yapıştır. strategy_agent önerileri
-"Kararlar & Hafıza → Öneriler" sekmesine düşer; onay yalnız senin imzanla olur.
+"Hafıza → Öneriler ve hafıza" sayfasına düşer; onay yalnız senin imzanla olur.
 
 Bekleyen kararların: (1) ajanlar için Anthropic API anahtarı (yalnız senin makinende, ANTHROPIC_API_KEY), (2) aylık bütçe
 (öneri 20 $), (3) önce hangi ajanlar (öneri: araştırma, strateji, test, inceleme; kod ajanı kapalı başlar), (4) max_positions

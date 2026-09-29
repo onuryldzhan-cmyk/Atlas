@@ -127,11 +127,17 @@
         <div class="container-fluid flex-wrap gap-1">
             <span class="navbar-brand fw-bold text-primary">ATLAS AI <span class="fw-light text-body">Terminal</span></span>
             <span class="atlas-nav d-flex flex-wrap gap-1">
-                <a href="/home">Başlangıç</a><a href="/trading">Trading</a><a href="/governance">Kararlar &amp; Hafıza</a>
-                <a href="/research">Araştırma</a><a href="/system">Sistem</a><a href="/security">Güvenlik</a>
-                <a href="/decisions">Kararlar</a><a href="/roadmap">Yol haritası</a><a href="/hq">Atlas HQ</a>
-                <a href="/agents">Ajanlar</a><a href="/dashboard" class="active" aria-current="page">Operasyon</a>
-            </span>
+        <a href="/home">Başlangıç</a>
+        <a href="/trading">Trading</a>
+        <a href="/agents" class="active" aria-current="page">Ajanlar</a>
+        <a href="/governance">Hafıza</a>
+        <a href="/system">Sistem</a>
+        <a href="/hq">Atlas HQ</a>
+    </span>
+    <span class="atlas-subnav d-flex flex-wrap gap-1 w-100">
+        <a href="/agents">Ajanlar ve görevler</a>
+        <a href="/dashboard" class="active">Operasyon paneli</a>
+    </span>
             <span class="ms-auto small text-body-secondary d-none d-xxl-inline">
                 Loopback-only operator panel &mdash; no authentication &middot;
                 referans sembol <span class="text-body">{{ symbol }}</span> (binance_global)

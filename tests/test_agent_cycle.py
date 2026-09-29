@@ -37,3 +37,19 @@ def test_real_agents_on_a_small_book(tmp_path, monkeypatch):
     assert "yeni kapanan işlem yok" in ac.quant_research(records)["summary"]  # no duplicate report
     assert "SA-FEE-DRAG.1" in ac.strategy_lab(records)["summary"]
     assert "yeni öneri: yok" in ac.strategy_lab(records)["summary"]           # open proposal not refiled
+
+
+def test_red_team_challenges_each_open_proposal_once(tmp_path, monkeypatch):
+    archive = tmp_path / "closed.jsonl"
+    row = {"symbol": "BTCUSDT", "cost_quote": "1000", "gross_pnl": "0.5",
+           "opened_at": "2026-09-29T10:00:00+00:00", "closed_at": "2026-09-29T10:30:00+00:00"}
+    archive.write_text("".join(json.dumps(row) + "\n" for _ in range(3)), encoding="utf-8")
+    monkeypatch.setattr(ac, "_archive_path", lambda: archive)
+    records = tmp_path / "records"
+    ac.strategy_lab(records)
+    first = ac.red_team(records)
+    assert "SA-FEE-DRAG.1: KANIT YETERSİZ" in first["summary"]
+    assert "yeni öneri yok" in ac.red_team(records)["summary"]
+    recs = memory_records.replay(cli.read_log(records / cli.MEMORY_LOG))
+    rt = [r for r in recs.values() if r["author"] == "red_team"]
+    assert len(rt) == 1 and rt[0]["type"] == "REVIEWS" and rt[0]["claims"][0]["counter_evidence"]
