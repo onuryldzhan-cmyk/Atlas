@@ -48,6 +48,13 @@ class MarketEdge:
     # Audit finding F-2: seed strengths are hand-written, not measured. They are
     # a HYPOTHESIS until a measured source replaces them; never evidence.
     provenance: str = "STATIC_SEED_HYPOTHESIS"
+    # Temporal validity (task 12): ISO dates; None = open-ended. A relationship
+    # outside its window is not used as context; it is kept, never deleted.
+    valid_from: Optional[str] = None
+    valid_until: Optional[str] = None
+
+    def is_valid_at(self, when: str) -> bool:
+        return (self.valid_from is None or self.valid_from <= when) and (self.valid_until is None or when < self.valid_until)
     
     def to_dict(self) -> Dict:
         return {
@@ -59,6 +66,8 @@ class MarketEdge:
             "description": self.description,
             "provenance": self.provenance,
             "validated": self.provenance.startswith("MEASURED"),
+            "valid_from": self.valid_from,
+            "valid_until": self.valid_until,
         }
 
 class SimpleGraph:
