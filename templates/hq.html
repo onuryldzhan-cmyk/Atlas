@@ -71,7 +71,8 @@
     <div class="pane" style="grid-column:1/-1"><h2>Canlı aktivite (yalnız kayıtlı olaylar)</h2>
         <div class="small mb-1"><label><input type="checkbox" class="feed-cat" value="RUNTIME" checked> Çalışma</label>
             <label class="ms-2"><input type="checkbox" class="feed-cat" value="GOVERNANCE" checked> Yönetim</label>
-            <label class="ms-2"><input type="checkbox" class="feed-cat" value="SECURITY" checked> Güvenlik</label></div>
+            <label class="ms-2"><input type="checkbox" class="feed-cat" value="SECURITY" checked> Güvenlik</label>
+            <label class="ms-2"><input type="checkbox" class="feed-cat" value="TRADE" checked> İşlem</label></div>
         <div id="activity" class="small">Yükleniyor...</div></div>
     <div class="pane" style="grid-column:1/-1"><h2>Ajan operasyon tablosu</h2><div id="ops-table" class="small table-responsive">Yükleniyor...</div></div>
     <div class="pane"><h2>Kararınızı bekleyen</h2><div id="b-proposals" class="big">…</div><a href="/governance" class="small">Öneriler →</a></div>
@@ -114,7 +115,7 @@
     }
 
     let activity = [];
-    const CAT = { RUNTIME: 'info', GOVERNANCE: 'primary', SECURITY: 'danger' };
+    const CAT = { RUNTIME: 'info', GOVERNANCE: 'primary', SECURITY: 'danger', TRADE: 'success' };
     function renderActivity() {
         const on = [...document.querySelectorAll('.feed-cat')].filter((c) => c.checked).map((c) => c.value);
         const rows = activity.filter((e) => on.includes(e.category));
@@ -243,13 +244,19 @@
 
     // ------------------------------------------------------------ data
     async function refresh() {
-        const [st, permissions, cc] = await Promise.all([
-            getJSON('/api/agent-states'), getJSON('/api/permissions'), getJSON('/api/command-center')]);
+        const [st, permissions, cc, tr] = await Promise.all([
+            getJSON('/api/agent-states'), getJSON('/api/permissions'), getJSON('/api/command-center'), getJSON('/api/trades')]);
         agents = st.available ? st.agents : []; flows = st.available ? st.flows : []; rooms = st.available ? st.rooms : {};
         perms = {}; (permissions.units || []).forEach((p) => { perms[p.id] = p; });
         if (!selected && agents.length) selected = (agents.find((a) => a.state === 'WAITING_FOR_HUMAN') || agents[0]).id;
         document.getElementById('hq-conn').hidden = !!st.available;
         activity = st.available ? (st.activity || []) : [];
+        // Timeline (task 19): real closed trades from the durable archive, opened and closed as two events.
+        (tr && Array.isArray(tr.recent_trades) ? tr.recent_trades : []).forEach((t) => {
+            if (t.opened_at) activity.push({ at: t.opened_at, agent: 'execution', category: 'TRADE', text: `${t.symbol} pozisyon açıldı` });
+            if (t.closed_at) activity.push({ at: t.closed_at, agent: 'execution', category: 'TRADE', text: `${t.symbol} kapandı, brüt ${t.gross_pnl}` });
+        });
+        activity.sort((a, b) => String(b.at).localeCompare(String(a.at)));
         renderOrg(); renderDetail(); renderActivity(); renderOps();
         if (cc.available) {
             const healthy = cc.health.healthy === true;

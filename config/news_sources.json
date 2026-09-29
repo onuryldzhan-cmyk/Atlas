@@ -1,0 +1,13 @@
+{
+  "schema_version": "1",
+  "note": "Task 14 (news / NLP). No news source is active: a licensed source must be chosen by the owner first (external-code / data gate). These rules bind any future source.",
+  "active_sources": [],
+  "required_fields": ["provider", "reliability", "latency", "language", "coverage", "source_type", "license", "status"],
+  "rules": {
+    "duplicates": "the same event from N outlets is ONE piece of evidence, not N",
+    "sentiment": "evidence only; never a trade signal on its own",
+    "materiality": "LOW / MEDIUM / HIGH / UNKNOWN - a classification, not an execution decision",
+    "unverified_social": "recorded as low-quality evidence, never as fact",
+    "authority": "news can add caution or a no-trade window; it can never create an order"
+  }
+}
