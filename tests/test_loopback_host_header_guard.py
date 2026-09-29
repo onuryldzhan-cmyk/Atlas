@@ -100,6 +100,8 @@ WEB_APP_GUARDED_ROUTES = [
     "/trading",
     "/governance",
     "/system",
+    "/security",
+    "/api/security",
     "/api/risk-accounting",
     "/api/system-integrity",
     "/api/execution-gates",

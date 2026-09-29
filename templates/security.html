@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+{#
+  Atlas security page (registry v5.55). Loopback-only, read-only.
+  The Security Guardian's scan of the running code (/api/security) and the
+  authority limits. REVIEW findings are shown, never hidden or turned green.
+#}
+<html lang="tr" data-bs-theme="dark" data-lte-color-mode="off">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Atlas — Güvenlik</title>
+    <link rel="stylesheet" href="/assets/adminlte.min.css">
+    <style>
+        .atlas-nav a { text-decoration: none; white-space: nowrap; }
+        .wrap { max-width: 1200px; margin: 0 auto; padding: 16px; }
+        .pane { padding: 14px; margin-bottom: 14px; }
+        .check { display: flex; justify-content: space-between; padding: .4rem 0; border-bottom: 1px solid var(--atlas-line); }
+        .table-wrap { overflow-x: auto; }
+    </style>
+    {% include "_atlas_theme.html" %}
+</head>
+<body>
+<nav class="navbar px-3 flex-wrap gap-2">
+    <span class="navbar-brand fw-bold"><span class="text-primary">ATLAS</span> Güvenlik</span>
+    <div class="atlas-nav d-flex flex-wrap gap-1">
+        <a href="/home">Başlangıç</a>
+        <a href="/trading">Trading</a>
+        <a href="/governance">Kararlar &amp; Hafıza</a>
+        <a href="/system">Sistem</a>
+        <a href="/security" class="active">Güvenlik</a>
+        <a href="/hq">Atlas HQ</a>
+        <a href="/agents">Ajanlar</a>
+        <a href="/dashboard">Operasyon</a>
+    </div>
+</nav>
+<div class="wrap">
+    <div class="row g-3">
+        <div class="col-lg-4">
+            <div class="pane"><h2>Genel durum</h2><div id="overall">Yükleniyor...</div></div>
+            <div class="pane"><h2>Yetki sınırları</h2><div id="authority">Yükleniyor...</div></div>
+        </div>
+        <div class="col-lg-8">
+            <div class="pane"><h2>Güvenlik Muhafızı — kontroller</h2><div id="checks">Yükleniyor...</div></div>
+        </div>
+    </div>
+    <div class="pane"><h2>Bulgular</h2><div id="findings" class="table-wrap">Yükleniyor...</div></div>
+    <div class="small muted">Tarama: çalışan kodun tamamı (runtime closure), yalnız okunur, commit başına bir kez. Statik analiz (AST + desen); FAIL = tehlikeli yapı, REVIEW = bir insan bakmalı (ör. Binance'e ağ erişimi beklenen bir kullanımdır ama listelenir).</div>
+</div>
+<script>
+(() => {
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const getJSON = async (url) => { try { const r = await fetch(url); return await r.json(); } catch (e) { return { available: false, reason: 'network error' }; } };
+    const tone = { PASS: 'success', REVIEW: 'warning', REVIEW_REQUIRED: 'warning', FAIL: 'danger' };
+    const label = { DEPENDENCIES: 'Bağımlılıklar', SECRETS: 'Gizli anahtarlar', FILESYSTEM: 'Dosya sistemi', NETWORK: 'Ağ erişimi',
+        EXTERNAL_CODE: 'Dinamik / dış kod', SUBPROCESS: 'Komut çalıştırma', PRIVILEGE: 'Yetki / yönetişim', PROMPT_INJECTION: 'Talimat enjeksiyonu' };
+    const set = (id, html) => { document.getElementById(id).innerHTML = html; };
+    async function refresh() {
+        const s = await getJSON('/api/security');
+        if (!s.available) { ['overall', 'checks', 'findings', 'authority'].forEach((id) => set(id, `<span class="muted">Okunamadı: ${esc(s.reason)}</span>`)); return; }
+        const fails = s.findings.filter((f) => f.level === 'FAIL').length;
+        set('overall', `<div class="value">${`<span class="badge text-bg-${tone[s.overall]}">${esc(s.overall)}</span>`}</div>` +
+            `<div class="small muted mt-2">${esc(s.files_reviewed)} dosya · ${fails} FAIL · ${s.findings.length - fails} REVIEW · commit ${esc(String(s.commit).slice(0, 10))}</div>`);
+        set('checks', Object.entries(s.checks).map(([k, v]) => `<div class="check"><span>${esc(label[k] || k)}</span><span class="badge text-bg-${tone[v]}">${esc(v)}</span></div>`).join(''));
+        const a = s.authority;
+        set('authority', `<div class="check"><span>Canlı para</span><b>${esc(a.live_authority)}</b></div>` +
+            `<div class="check"><span>Üretim yetkisi</span><b>${esc(a.production_authority)}</b></div>` +
+            `<div class="check"><span>Otomatik yayına alma</span><b>${esc(a.autonomous_deployment_authority)}</b></div>` +
+            `<div class="small muted mt-2">Hiçbir yapay zekâ birimine verilemez: ${a.never_granted_to_ai.map((c) => `<code>${esc(c)}</code>`).join(', ')}</div>`);
+        set('findings', s.findings.length
+            ? '<table class="table table-sm mb-0"><thead><tr><th>Düzey</th><th>Kategori</th><th>Dosya</th><th class="text-end">Satır</th><th>Ayrıntı</th></tr></thead><tbody>' +
+              s.findings.map((f) => `<tr><td><span class="badge text-bg-${tone[f.level]}">${esc(f.level)}</span></td><td>${esc(label[f.category] || f.category)}</td>` +
+                `<td><code>${esc(f.path)}</code></td><td class="text-end">${esc(f.line ?? '')}</td><td>${esc(f.detail)}</td></tr>`).join('') + '</tbody></table>'
+            : '<span class="muted">Bulgu yok.</span>');
+    }
+    refresh();
+})();
+</script>
+</body>
+</html>
