@@ -125,6 +125,7 @@
     "observability/agent_states.py",
     "observability/command_center.py",
     "observability/governance_records.py",
+    "observability/learning_view.py",
     "observability/organization.py",
     "observability/panel_router.py",
     "observability/panel_sources.py",

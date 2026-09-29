@@ -549,6 +549,7 @@
     "observability/agent_states.py": "L5",
     "observability/command_center.py": "L5",
     "observability/governance_records.py": "L5",
+    "observability/learning_view.py": "L5",
     "observability/organization.py": "L5",
     "observability/panel_router.py": "L5",
     "observability/panel_sources.py": "L5",

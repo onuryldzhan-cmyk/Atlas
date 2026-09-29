@@ -61,3 +61,21 @@ Each step is small, tested and read-only toward execution. None of them touch th
 | TailAdmin free-react-tailwind-admin-dashboard | MIT | 1.3k | Visual reference only (A1 rejected for now). |
 
 **Not fetched this turn** (UNKNOWN; same decision class as their category): OpenTerminalUI, Neuberg, CryptoTraderPro, crypto-dashboard, Shadcn templates, Velora, Craft, Anvians, 3danalytics, pmndrs/uikit, Planeo, Agent Arena, Lost in Frame.
+
+## Second batch verified (2026-09-30)
+
+| Repo | License | Stars | Decision |
+|---|---|---|---|
+| laanito/OpenTerminalUI | MIT | 9 | **Reference.** Its FastAPI backend is like Atlas's. Walk-forward and Monte Carlo already exist in Atlas (`strategy_compare`, `reality_check`). Its VaR/CVaR portfolio risk is a candidate for Phase 3 (deferred until more than 1 open position is typical). |
+| KoNananachan/Neuberg | **Business Source License 1.1** | 207 | **REJECT code**: the licence is not open source for production use. Ideas only. |
+| Rux1500/crypto-dashboard | MIT | 0 | **Idea:** funding-rate, open-interest and movers views. Deferred: Atlas has no perpetuals data and does not fetch 24-hour change today; it shows no invented data. |
+| tre-systems/planeo | MIT | 1 | **Pattern:** SSE event hub. Deferred; polling of the real state API is enough at the current scale. |
+| ColorlibHQ/velora-ui | MIT | 33 | Visual reference only (A1). |
+| Gzeu/CryptoTraderPro | MIT | 1 | Ideas: price alerts and a Cmd+K search. Deferred (UI). |
+
+## Implemented in v5.77 (read-only; no runtime, execution or financial-state change)
+
+- **C1 / C2 / C3.** `observability/learning_view.py` and `GET /api/learning`: experiences with an environment tag and a look-ahead-free regime tag; lessons per coin and per regime with the CANDIDATE / PROVISIONAL / VALIDATED (owner-signed) / CONTESTED lifecycle; contradictions kept, never deleted; duplicates counted once.
+- **C4.** "Öğrenme" tab on the Hafıza page.
+- **B1 / B2.** The HQ has a live activity feed with RUNTIME / GOVERNANCE / SECURITY categories, per-agent history in the inspector, token / cost shown as N/A, an agent operations table, a CONNECTION LOST banner and an empty-feed "AKTİVİTE YOK" message. The `market_regime` agent was added to the organization.
+- **A2.** Semantic colour tokens and a restrained glass style on panels only; reduced-motion support.
