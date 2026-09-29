@@ -18,6 +18,9 @@ from typing import Any
 INTENTS = (
     ("proposal_detail", r"(proposal|[oö]neri)\s*#?\s*(p-\d+|\d+)"),
     ("approve", r"onayla|approve|reddet|reject"),
+    ("help", r"yard[ıi]m|help|ne sorabilirim|neler sorabilirim|komutlar"),
+    ("positions", r"pozisyon|position|elimde|neler var|ne tutuyor"),
+    ("pnl", r"\bk[aâ]r(\b|[ıi]|lar)|zarar|kazan[cç]|getiri|pnl|p/l|sermaye|bakiye|balance|equity|ne kadar para"),
     ("proposals", r"proposal|[oö]neri|karar|onay|decision|bekleyen"),
     ("tasks", r"g[oö]rev|task|i[sş] (var|ne)"),
     ("agents", r"ajan|agent|kim [cç]al[ıi][sş][ıi]yor|who is working"),
@@ -29,7 +32,8 @@ INTENTS = (
 
 
 def compose(*, health: dict[str, Any], account: dict[str, Any] | None,
-            proposals: dict[str, Any], tasks: dict[str, Any], memory: dict[str, Any]) -> dict[str, Any]:
+            proposals: dict[str, Any], tasks: dict[str, Any], memory: dict[str, Any],
+            portfolio: dict[str, Any] | None = None) -> dict[str, Any]:
     def section(payload: dict[str, Any]) -> dict[str, Any]:
         return payload if payload.get("available") else {"available": False,
                                                          "reason": payload.get("reason", "UNKNOWN")}
@@ -52,7 +56,25 @@ def compose(*, health: dict[str, Any], account: dict[str, Any] | None,
         "memory": {"available": memory.get("available", False),
                    "records": len(memory.get("records", [])) if memory.get("available") else None},
         "_proposals": section(proposals),
+        "_portfolio": portfolio if portfolio and portfolio.get("available") else None,
     }
+
+
+def _coin_in(text: str, portfolio: dict[str, Any] | None) -> str | None:
+    """A coin the question names (BTC, btcusdt, ...), matched against the coins Atlas really scans."""
+
+    if not portfolio:
+        return None
+    for item in portfolio.get("market", []):
+        symbol = item["symbol"]
+        base = symbol[:-4] if symbol.endswith("USDT") else symbol
+        if re.search(rf"\b({base.lower()}|{symbol.lower()})\b", text):
+            return symbol
+    return None
+
+
+def _money(value: Any) -> str:
+    return "bilinmiyor" if value is None else f"{float(value):,.2f} $".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 def classify(question: str) -> tuple[str, re.Match | None]:
@@ -70,6 +92,11 @@ def _unavailable(name: str, part: dict[str, Any]) -> str:
 
 def answer(question: str, brief: dict[str, Any]) -> dict[str, Any]:
     intent, match = classify(question)
+    portfolio = brief.get("_portfolio")
+    normalised = (question or "").replace("İ", "i").replace("I", "i").lower().replace("ı", "i")
+    coin = _coin_in(normalised, portfolio)
+    if coin and intent not in ("approve", "proposal_detail"):
+        intent = "coin"
     h, t, p, k, a, m = (brief["health"], brief["trading"], brief["proposals"], brief["tasks"],
                         brief["agents"], brief["memory"])
     navigate = None
@@ -98,6 +125,12 @@ def answer(question: str, brief: dict[str, Any]) -> dict[str, Any]:
                 else "Şu anda çalışan ajan yok (ajanlar yalnızca görev atandığında çalışır).")
 
     def trading_line() -> str:
+        if portfolio:
+            stale = " Fiyatlar ESKİ, piyasa döngüsünü kontrol edin." if portfolio.get("prices_stale") else ""
+            pct = portfolio.get("total_pnl_pct")
+            return (f"PAPER hesap (canlı para KAPALI): toplam sermaye {_money(portfolio.get('equity'))}, "
+                    f"toplam kâr/zarar {_money(portfolio.get('total_pnl'))}"
+                    f"{'' if pct is None else f' (%{pct})'}, açık pozisyon {len(portfolio.get('positions', []))}.{stale}")
         if not t["available"]:
             return _unavailable("Trading (PAPER)", t)
         return (f"Trading PAPER modunda (canlı para KAPALI). Gerçekleşen net kâr/zarar {t['realized_net_pnl']}, "
@@ -134,6 +167,40 @@ def answer(question: str, brief: dict[str, Any]) -> dict[str, Any]:
         lines = [agent_line()]
     elif intent == "trading":
         lines = [trading_line()]
+    elif intent == "pnl":
+        if portfolio:
+            lines = [trading_line(), f"Gerçekleşen net {_money(portfolio.get('realized_net_pnl'))}, gerçekleşmemiş "
+                     f"{_money(portfolio.get('unrealized_pnl'))}, ödenen ücret {_money(portfolio.get('fees'))}, "
+                     f"başlangıç {_money(portfolio.get('starting_capital'))}."]
+            navigate = "/trading"
+        else:
+            lines = [trading_line()]
+    elif intent == "positions":
+        if not portfolio:
+            lines = [trading_line()]
+        elif not portfolio.get("positions"):
+            lines = ["Açık pozisyon yok."]
+        else:
+            lines = ["Açık pozisyonlar: " + "; ".join(
+                f"{p['symbol']} {p['quantity']} adet, ortalama {p['average_entry_price']}, şimdi "
+                f"{p['price'] or 'fiyat yok'}, K/Z {_money(p['unrealized_pnl'])}"
+                f"{'' if p['unrealized_pct'] is None else ' (%' + p['unrealized_pct'] + ')'}"
+                for p in portfolio["positions"]) + "."]
+            navigate = "/trading"
+    elif intent == "coin":
+        m = next(x for x in portfolio["market"] if x["symbol"] == coin)
+        held = next((p for p in portfolio.get("positions", []) if p["symbol"] == coin), None)
+        conf = m.get("confidence")
+        lines = [f"{coin}: fiyat {m['price']} (gerçek, Binance mum kapanışı), Atlas'ın son kararı {m.get('action') or '-'}"
+                 f"{'' if conf is None else f' (güven {float(conf):.0f})'}, risk {m.get('risk_level') or '-'}."]
+        lines.append(f"Pozisyonda: {held['quantity']} adet, ortalama {held['average_entry_price']}, K/Z "
+                     f"{_money(held['unrealized_pnl'])}." if held else "Bu coinde açık pozisyon yok.")
+        if portfolio.get("prices_stale"):
+            lines.append("Uyarı: fiyatlar eski.")
+    elif intent == "help":
+        lines = ["Sorabilecekleriniz: 'bugün ne oldu', 'toplam kâr ne kadar', 'pozisyonlarım', 'BTC ne durumda', "
+                 "'sistemde sorun var mı', 'bekleyen öneriler', 'öneri P-0001', 'görevler', 'kim çalışıyor', 'hafıza'. "
+                 "Atlas Chat yalnız gerçek durumu okur; işlem açamaz, onay veremez."]
     elif intent == "memory":
         lines = [f"Atlas Hafızası'nda {m['records']} kayıt var." if m["available"]
                  else "Atlas Hafızası okunamadı."]

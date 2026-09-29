@@ -10,7 +10,8 @@ from fastapi.testclient import TestClient
 import web_app
 
 READ_ONLY_APIS = {"/api/portfolio", "/api/command-center", "/api/trades", "/api/proposals", "/api/tasks", "/api/memory", "/api/permissions", "/api/status",
-                  "/api/observability/test-results", "/api/observability/telemetry-summary"}
+                  "/api/observability/test-results", "/api/observability/telemetry-summary",
+                  "/api/chat?q="}
 
 
 @pytest.mark.parametrize("name", ["home.html", "trading.html", "governance.html", "system.html"])

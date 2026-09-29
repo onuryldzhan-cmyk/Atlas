@@ -1229,7 +1229,9 @@
             }
             log.insertAdjacentHTML('afterbegin', `<div class="mb-2"><div><b>Sen:</b> ${esc(q)}</div><div><b>Atlas:</b> ${esc(text)}</div></div>`);
             input.value = '';
-            if (navigate) {
+            if (navigate && navigate.startsWith('/')) {
+                window.location.href = navigate;
+            } else if (navigate) {
                 const target = document.getElementById('section-proposals-title');
                 if (target) target.scrollIntoView({ behavior: 'smooth' });
             }

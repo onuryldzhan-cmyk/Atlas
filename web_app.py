@@ -2349,6 +2349,7 @@ def create_app(
             proposals=governance_records.read_proposals(),
             tasks=governance_records.read_tasks(),
             memory=governance_records.read_memory(),
+            portfolio=_portfolio_payload(),
         )
 
     # Registry v5.40 (owner: real-time capital and P/L, not fake data): the
@@ -2396,6 +2397,7 @@ def create_app(
             return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
         brief = await run_in_threadpool(_command_center_brief)
         brief.pop("_proposals", None)
+        brief.pop("_portfolio", None)
         return JSONResponse(status_code=200, content=brief)
 
     @application.get("/api/chat", response_class=JSONResponse)

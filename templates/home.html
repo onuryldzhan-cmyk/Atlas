@@ -66,6 +66,14 @@
         </div></div>
     </div>
     <div id="price-note" class="small text-body-secondary mt-2"></div>
+    <div class="kpi mt-3">
+        <div class="label mb-2">Atlas'a sor</div>
+        <div class="input-group input-group-sm">
+            <input id="chat-input" type="text" autocomplete="off" maxlength="500" class="form-control" placeholder="Toplam kâr ne kadar? · BTC ne durumda? · Pozisyonlarım · Bekleyen öneriler" aria-label="Atlas'a sor">
+            <button id="chat-send" class="btn btn-primary" type="button">Sor</button>
+        </div>
+        <div id="chat-log" class="small mt-2"></div>
+    </div>
 </div>
 
 <script>
@@ -113,6 +121,17 @@
             ].map(([k, v]) => `<div class="d-flex justify-content-between border-bottom border-secondary-subtle py-1"><span>${k}</span><span>${v}</span></div>`).join(''));
         }
     }
+    async function ask() {
+        const input = document.getElementById('chat-input'), q = input.value.trim();
+        if (!q) return;
+        const data = await getJSON('/api/chat?q=' + encodeURIComponent(q));
+        document.getElementById('chat-log').insertAdjacentHTML('afterbegin',
+            `<div class="mb-2"><div><b>Sen:</b> ${esc(q)}</div><div><b>Atlas:</b> ${esc(data.answer || data.reason || 'cevap yok')}` +
+            `${data.navigate && data.navigate.startsWith('/') ? ` <a href="${esc(data.navigate)}">ayrıntı →</a>` : ''}</div></div>`);
+        input.value = '';
+    }
+    document.getElementById('chat-send').addEventListener('click', ask);
+    document.getElementById('chat-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') ask(); });
     refresh();
     setInterval(refresh, 5000);
 })();
