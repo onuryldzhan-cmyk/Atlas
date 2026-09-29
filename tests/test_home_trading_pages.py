@@ -11,10 +11,10 @@ import web_app
 
 READ_ONLY_APIS = {"/api/portfolio", "/api/command-center", "/api/trades", "/api/proposals", "/api/tasks", "/api/memory", "/api/permissions", "/api/status",
                   "/api/observability/test-results", "/api/observability/telemetry-summary",
-                  "/api/chat?q=", "/api/security"}
+                  "/api/chat?q=", "/api/security", "/api/roadmap"}
 
 
-@pytest.mark.parametrize("name", ["home.html", "trading.html", "governance.html", "system.html", "security.html"])
+@pytest.mark.parametrize("name", ["home.html", "trading.html", "governance.html", "system.html", "security.html", "roadmap.html"])
 def test_pages_only_read_and_never_write(name):
     html = web_app.TEMPLATE_DIR.joinpath(name).read_text(encoding="utf-8")
     assert set(re.findall(r"getJSON\('([^']+)'", html)) <= READ_ONLY_APIS
@@ -30,7 +30,7 @@ def test_start_page_stays_simple():
         assert f'href="{link}"' in html
 
 
-@pytest.mark.parametrize("path", ["/home", "/trading", "/governance", "/system", "/security"])
+@pytest.mark.parametrize("path", ["/home", "/trading", "/governance", "/system", "/security", "/roadmap"])
 def test_pages_are_served_and_loopback_guarded(path):
     assert TestClient(web_app.create_app()).get(path).status_code == 200
     assert TestClient(web_app.create_app(), base_url="http://evil.example").get(path).status_code == 403
@@ -54,3 +54,12 @@ def test_security_api_scans_the_runtime_without_writing(tmp_path):
     assert out["available"] and set(out["checks"]) >= {"SECRETS", "SUBPROCESS", "NETWORK"}
     assert out["overall"] in ("PASS", "REVIEW_REQUIRED", "FAIL") and out["files_reviewed"] > 50
     assert out["authority"]["live_authority"] == "DENIED"
+
+
+def test_roadmap_parses_the_canonical_record_and_claims_nothing_done():
+    from observability import roadmap_view
+
+    out = roadmap_view.read_roadmap()
+    assert out["available"] and [p["phase"] for p in out["phases"]] == list(range(11))
+    assert all("complete" not in p["status"].lower() or "not a completion" in p["status"].lower() for p in out["phases"])
+    assert out["phases"][10]["status"].startswith("LOCKED")

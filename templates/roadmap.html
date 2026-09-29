@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+{#
+  Atlas roadmap page (registry v5.56). Loopback-only, read-only.
+  The canonical Phase 0-10 table (/api/roadmap, parsed from the governance
+  record) with recorded evidence per phase. Evidence is not a completion
+  claim; no phase is shown as done here.
+#}
+<html lang="tr" data-bs-theme="dark" data-lte-color-mode="off">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Atlas — Yol haritası</title>
+    <link rel="stylesheet" href="/assets/adminlte.min.css">
+    <style>
+        .atlas-nav a { text-decoration: none; white-space: nowrap; }
+        .wrap { max-width: 1100px; margin: 0 auto; padding: 16px; }
+        .pane { padding: 14px; margin-bottom: 12px; }
+        .phase-no { font-size: 22px; font-weight: 700; color: var(--atlas-accent); min-width: 2.2rem; }
+    </style>
+    {% include "_atlas_theme.html" %}
+</head>
+<body>
+<nav class="navbar px-3 flex-wrap gap-2">
+    <span class="navbar-brand fw-bold"><span class="text-primary">ATLAS</span> Yol haritası</span>
+    <div class="atlas-nav d-flex flex-wrap gap-1">
+        <a href="/home">Başlangıç</a>
+        <a href="/trading">Trading</a>
+        <a href="/governance">Kararlar &amp; Hafıza</a>
+        <a href="/system">Sistem</a>
+        <a href="/security">Güvenlik</a>
+        <a href="/roadmap" class="active">Yol haritası</a>
+        <a href="/hq">Atlas HQ</a>
+        <a href="/agents">Ajanlar</a>
+        <a href="/dashboard">Operasyon</a>
+    </div>
+</nav>
+<div class="wrap">
+    <div id="head" class="small muted mb-3">Yükleniyor...</div>
+    <div id="phases"></div>
+</div>
+<script>
+(() => {
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const getJSON = async (url) => { try { const r = await fetch(url); return await r.json(); } catch (e) { return { available: false, reason: 'network error' }; } };
+    (async () => {
+        const r = await getJSON('/api/roadmap');
+        if (!r.available) { document.getElementById('head').textContent = 'Okunamadı: ' + (r.reason || ''); return; }
+        document.getElementById('head').innerHTML = `Kaynak: <code>${esc(r.source)}</code> · Güncel odak (sahip): <b>${esc(r.current_focus || '-')}</b> · Merdiven: ${esc(r.ladder)}` +
+            '<br>Kanıt, tamamlandı demek değildir: bir faz ancak tam kapıdan (test, bağımsız denetim, sahip onayı) sonra kapanır.';
+        document.getElementById('phases').innerHTML = r.phases.map((p) => `<div class="pane d-flex gap-3">` +
+            `<div class="phase-no">${esc(p.phase)}</div><div class="flex-grow-1">` +
+            `<div class="d-flex justify-content-between flex-wrap gap-2"><b>${esc(p.name)}</b>` +
+            `<span class="badge text-bg-${p.phase === 10 ? 'dark' : (p.evidence.length ? 'info' : 'secondary')}">${esc(p.status)}</span></div>` +
+            `<div class="small muted">${esc(p.scope)}</div>` +
+            (p.evidence.length ? `<ul class="small mb-0 mt-1">${p.evidence.map((e) => `<li>${esc(e)}</li>`).join('')}</ul>` : '') +
+            `</div></div>`).join('');
+    })();
+})();
+</script>
+</body>
+</html>
