@@ -111,6 +111,7 @@
             `${r.supersedes ? ' · yerine geçtiği ' + esc(r.supersedes) : ''}</div>` +
             `<details class="small"><summary>içerik</summary><div style="white-space:pre-wrap">${esc(r.body)}</div>` +
             (r.evaluation ? `<div class="mt-1">${Object.entries(r.evaluation).map(([k, v]) => `<div><b>${esc(k)}:</b> ${esc(v)}</div>`).join('')}</div>` : '') +
+            (Array.isArray(r.claims) ? `<div class="mt-1">${r.claims.map((c) => `<div><b>İddia:</b> ${esc(c.claim)}<br><b>Kanıt:</b> ${esc(c.evidence)}<br><b>Karşı kanıt:</b> ${esc(c.counter_evidence)}</div>`).join('')}</div>` : '') +
             `</details></div>`).join('') : '<span class="muted">Bu türde kayıt yok.</span>');
     }
 

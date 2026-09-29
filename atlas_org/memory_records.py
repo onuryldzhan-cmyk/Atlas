@@ -50,6 +50,11 @@ INCIDENT_RESOLUTION_FIELDS = ("root_cause", "actions", "prevention")
 INCIDENT_SEVERITIES = ("LOW", "MEDIUM", "HIGH", "CRITICAL")
 INCIDENT_STATUSES = ("OPEN", "CONTAINED", "RESOLVED")
 
+# Owner principle #14: a claim is written with the evidence for it and the
+# evidence against it. Optional on any record (older records stay valid);
+# when present, every part is required - "none found" must be said explicitly.
+CLAIM_FIELDS = ("claim", "evidence", "counter_evidence")
+
 RESEARCH_FIELDS = ("project", "license", "maintenance", "dependencies",
                    "security_observations", "recommendation")
 
@@ -102,6 +107,12 @@ def replay(events: Iterable[dict[str, Any]], owner_key: bytes | None = None) -> 
                 unresolved = [f for f in INCIDENT_RESOLUTION_FIELDS if not incident.get(f)]
                 _check(not unresolved, f"seq {seq}: a resolved incident needs {unresolved}")
             _check(auth is not Authority.AUTHORITATIVE, f"seq {seq}: an incident report is evidence, not policy")
+        claims = ev.get("claims")
+        if claims is not None:
+            _check(isinstance(claims, list) and claims, f"seq {seq}: claims must be a non-empty list")
+            for c in claims:
+                _check(isinstance(c, dict) and all(isinstance(c.get(f), str) and c[f].strip() for f in CLAIM_FIELDS),
+                       f"seq {seq}: each claim needs {list(CLAIM_FIELDS)} (write 'none found' if there is no counter-evidence)")
         old = ev.get("supersedes")
         if old is not None:
             _check(old in records, f"seq {seq}: supersedes unknown record {old}")
@@ -116,6 +127,7 @@ def replay(events: Iterable[dict[str, Any]], owner_key: bytes | None = None) -> 
             "related_proposal": ev.get("related_proposal"),
             "related_decision": ev.get("related_decision"),
             "evaluation": ev.get("evaluation"), "incident": ev.get("incident"),
+            "claims": ev.get("claims"),
             "supersedes": old, "superseded_by": None,
             "owner_verified": verified if author == OWNER else None,
         }
