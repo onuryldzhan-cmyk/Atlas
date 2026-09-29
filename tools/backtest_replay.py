@@ -170,6 +170,34 @@ def _state(holdings: dict, realized_today: Decimal, equity: Decimal, peak: Decim
                      RiskPolicy(total_capital=CAPITAL).version)
 
 
+def _hourly_bars(rows: list[list], end: int) -> list[tuple[Decimal, Decimal, Decimal]]:
+    """(high, low, close) of complete 60-minute bars ending at rows[end - 1] (no look-ahead)."""
+
+    bars = []
+    for stop in range(end, 59, -60):
+        chunk = rows[stop - 60:stop]
+        bars.append((max(Decimal(str(r[2])) for r in chunk), min(Decimal(str(r[3])) for r in chunk),
+                     Decimal(str(chunk[-1][4]))))
+    return list(reversed(bars))
+
+
+def _ema(values: list[Decimal], period: int) -> Decimal | None:
+    if len(values) < period:
+        return None
+    k = Decimal(2) / Decimal(period + 1)
+    ema = sum(values[:period], Decimal("0")) / period
+    for v in values[period:]:
+        ema = v * k + ema * (1 - k)
+    return ema
+
+
+def _atr(bars: list[tuple[Decimal, Decimal, Decimal]], period: int = 14) -> Decimal | None:
+    if len(bars) < period + 1:
+        return None
+    trs = [max(h - l, abs(h - bars[i - 1][2]), abs(l - bars[i - 1][2])) for i, (h, l, _) in enumerate(bars) if i > 0]
+    return sum(trs[-period:], Decimal("0")) / period
+
+
 def _align(candles_by_symbol: dict[str, list[list]]) -> dict[str, list[list]]:
     """Keep only minutes every symbol has, so all symbols step through the
     same clock (the runtime processes all symbols each cycle)."""
@@ -185,7 +213,8 @@ def _align(candles_by_symbol: dict[str, list[list]]) -> dict[str, list[list]]:
 def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: bool = False,
            staged: bool = False, sleeves: bool = False, brain_factory=None,
            slippage_bps: int = 0, next_open_fill: bool = False,
-           min_hold_min: int = 0, sell_confirm: int = 1) -> Result:
+           min_hold_min: int = 0, sell_confirm: int = 1,
+           trend_ema_hours: int = 0, atr_stop: Decimal | float = 0, risk_per_trade: Decimal | float = 0) -> Result:
     """Baseline (staged=False, sleeves=False) = today's runtime behaviour.
     staged=True adds the approved tranche entries, take-profit ladder, trailing
     stop and confirmed hard stop; sleeves=True caps each risk bucket's total
@@ -197,6 +226,12 @@ def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: 
     acts after the candle closes). Strategy research: min_hold_min ignores a
     SELL signal until the position is that old; sell_confirm requires that
     many consecutive SELL decisions. Staged protective exits are unaffected.
+    Strategy research (v5.53): trend_ema_hours > 0 allows a BUY only when the
+    price is above the EMA of that many completed 1-hour closes; atr_stop > 0
+    closes a position after STOP_CONFIRM_CANDLES closes below
+    entry - atr_stop x ATR(14, 1-hour) fixed at entry; risk_per_trade > 0
+    (needs atr_stop) sizes so a stop-out loses at most that fraction of
+    equity, never above the bucket's own allocation (risk-reducing only).
     All defaults reproduce the baseline exactly."""
 
     if brain_factory is None:
@@ -217,6 +252,8 @@ def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: 
     holdings: dict[str, Position] = {}
     sell_streak: dict[str, int] = {}
     slip = Decimal(slippage_bps) / Decimal(10000)
+    atr_stop, risk_per_trade = Decimal(str(atr_stop)), Decimal(str(risk_per_trade))
+    stop_level: dict[str, Decimal] = {}
 
     def reject(code: str) -> None:
         result.buy_rejections[code] = result.buy_rejections.get(code, 0) + 1
@@ -269,6 +306,8 @@ def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: 
                     day = cutoff.date().isoformat()
                     when = cutoff.isoformat()
                     price = Decimal(str(feed.rows[-1][4]))
+                    if price <= 0:
+                        continue  # a corrupt candle is skipped, never traded on
                     fill_ref = price
                     if next_open_fill:
                         if end >= len(data[symbol]):
@@ -295,6 +334,14 @@ def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: 
                             elif pos.tp2 and price <= pos.peak * (1 - TRAILING):
                                 sell(pos, Decimal("1"), sell_fill, day, when, "TRAILING_STOP")
                                 pos = None
+
+                    # --- ATR protective stop (research): fixed at entry, confirmed by closes
+                    pos = holdings.get(symbol)
+                    if atr_stop > 0 and pos is not None and symbol in stop_level:
+                        closes = [Decimal(str(r[4])) for r in feed.rows[-STOP_CONFIRM_CANDLES:]]
+                        if all(c < stop_level[symbol] for c in closes):
+                            sell(pos, Decimal("1"), sell_fill, day, when, "ATR_STOP")
+                            stop_level.pop(symbol, None)
 
                     brain.last = None
                     loop.process_symbol(symbol, processing_cutoff=cutoff)
@@ -328,6 +375,12 @@ def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: 
                         if price < pos.avg_entry or close_ms - pos.last_tranche_ms < TRANCHE_MIN_GAP_MS:
                             continue
                     result.buy_signals += 1
+                    bars = _hourly_bars(data[symbol], end) if (trend_ema_hours or atr_stop) else []
+                    if trend_ema_hours and not is_add:
+                        ema = _ema([b[2] for b in bars], trend_ema_hours)
+                        if ema is None or price <= ema:
+                            reject("TREND_FILTER")
+                            continue
                     if confidence < EXECUTION_GATE:
                         reject("EXECUTION_GATE")
                         continue
@@ -350,6 +403,14 @@ def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: 
                             reject("SLEEVE_FULL")
                             continue
                         amount = min(amount, room)
+                    atr = _atr(bars) if atr_stop else None
+                    if atr_stop and atr is None:
+                        reject("ATR_UNAVAILABLE")
+                        continue
+                    if risk_per_trade and atr and not is_add:
+                        stop_distance = atr_stop * atr / price
+                        if stop_distance > 0:
+                            amount = min(amount, ledger["equity"] * risk_per_trade / stop_distance)
                     amount = min(amount, ledger["cash"])
                     # quantity x price must equal the requested allocation exactly
                     base = (amount / price).quantize(Decimal("0.00000001"), rounding=ROUND_DOWN)
@@ -387,6 +448,8 @@ def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: 
                     pos.fees_open += fee
                     pos.tranches += 1
                     pos.last_tranche_ms = close_ms
+                    if atr_stop and atr and not is_add:
+                        stop_level[symbol] = price - atr_stop * atr
                     ledger["cash"] -= amount
             result.open_trades.extend(p.as_trade() for p in holdings.values())
         finally:
@@ -432,6 +495,9 @@ def main(argv: list[str] | None = None, fetch: Fetcher | None = None) -> int:
     parser.add_argument("--next-open-fill", action="store_true", help="fill at the next candle's open (realistic latency)")
     parser.add_argument("--min-hold", type=int, default=0, help="minutes before a SELL signal may close a position")
     parser.add_argument("--sell-confirm", type=int, default=1, help="consecutive SELL decisions required to close")
+    parser.add_argument("--trend-ema", type=int, default=0, help="BUY only above the EMA of this many 1-hour closes")
+    parser.add_argument("--atr-stop", type=float, default=0, help="protective stop at entry - K x ATR(14, 1h)")
+    parser.add_argument("--risk-per-trade", type=float, default=0, help="max equity fraction lost at the ATR stop (needs --atr-stop)")
     args = parser.parse_args(argv)
 
     # The replay drives MarketLoop without an ExecutionManager on purpose, so
@@ -450,14 +516,16 @@ def main(argv: list[str] | None = None, fetch: Fetcher | None = None) -> int:
     print("replaying the real decision chain (this takes a few minutes)...", file=sys.stderr, flush=True)
     s = summarize(replay(data, step=args.step, exp001=args.exp001, staged=args.staged, sleeves=args.sleeves,
                          slippage_bps=args.slippage_bps, next_open_fill=args.next_open_fill,
-                         min_hold_min=args.min_hold, sell_confirm=args.sell_confirm))
+                         min_hold_min=args.min_hold, sell_confirm=args.sell_confirm,
+                         trend_ema_hours=args.trend_ema, atr_stop=args.atr_stop, risk_per_trade=args.risk_per_trade))
 
     print("MACRO-NEUTRAL REPLAY - macro and sentiment EXCLUDED; fills at candle close; "
           f"fee {PAPER_FEE_RATE_PER_SIDE:.1%}/side; slippage {args.slippage_bps} bps; "
           f"fill at {'next candle open' if args.next_open_fill else 'decision candle close'}; symbols stepped on one clock with shared cash, "
           "open positions and daily realized P&L fed to RiskEngine (equity realized-only)")
     print(f"days={args.days} step={args.step}m symbols={','.join(data)} exp001={args.exp001} "
-          f"staged={args.staged} sleeves={args.sleeves} min_hold={args.min_hold}m sell_confirm={args.sell_confirm}")
+          f"staged={args.staged} sleeves={args.sleeves} min_hold={args.min_hold}m sell_confirm={args.sell_confirm} "
+          f"trend_ema={args.trend_ema}h atr_stop={args.atr_stop} risk_per_trade={args.risk_per_trade}")
     print(f"decisions: {s['decisions']}  BUY signals: {s['buy_signals']}  rejected: {s['buy_rejections']}")
     print(f"closed trades: {s['closed_trades']} (open at end: {s['open_at_end']}, under EXP-001: {s['experiment_trades']})")
     if s["closed_trades"]:

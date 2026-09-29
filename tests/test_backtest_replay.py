@@ -247,3 +247,38 @@ def test_min_hold_and_sell_confirm_defer_churn():
     confirmed = _run(sell_confirm=2)
     assert held["closed_trades"] < base["closed_trades"] and held["exit_reasons"].get("SELL_DEFERRED", 0) > 0
     assert confirmed["exit_reasons"].get("SELL_DEFERRED", 0) > 0
+
+
+# ---------------------------------------------------------------- v5.53 trend filter, ATR stop, risk per trade
+
+class _AlwaysBuy:
+    def analyze_and_decide(self, symbol, market_data):
+        return {"symbol": symbol, "action": "BUY", "confidence": 95.0, "risk_level": "LOW"}
+
+
+def test_trend_filter_blocks_buys_in_a_downtrend():
+    down = {"BTCUSDT": _rows(1200, drift=-0.0006)}
+    s = bt.summarize(bt.replay(down, step=10, brain_factory=_AlwaysBuy, trend_ema_hours=3))
+    assert s["buy_rejections"].get("TREND_FILTER", 0) > 0
+    up = {"BTCUSDT": _rows(1200, drift=0.0006)}
+    assert bt.summarize(bt.replay(up, step=10, brain_factory=_AlwaysBuy, trend_ema_hours=3))["buy_rejections"].get("TREND_FILTER", 0) == 0
+
+
+def test_atr_stop_exits_a_falling_position():
+    crash = _rows(900, drift=0.0003)
+    last = float(crash[-1][4])
+    for i in range(600):
+        price = last * (0.998 ** (i + 1))
+        open_ms = int(crash[-1][0]) + 60_000
+        crash.append([open_ms, f"{price:.4f}", f"{price * 1.001:.4f}", f"{price * 0.999:.4f}", f"{price:.4f}", "10",
+                      open_ms + 59_999, "0", 0, "4", "400", "0"])
+    s = bt.summarize(bt.replay({"BTCUSDT": crash}, step=10, brain_factory=_AlwaysBuy, atr_stop=2))
+    assert s["exit_reasons"].get("ATR_STOP", 0) >= 1
+
+
+def test_risk_per_trade_only_shrinks_positions():
+    data = {"BTCUSDT": _rows(1200, drift=0.0004)}
+    full = bt.replay(data, step=10, brain_factory=_AlwaysBuy, atr_stop=2)
+    capped = bt.replay(data, step=10, brain_factory=_AlwaysBuy, atr_stop=2, risk_per_trade=0.0001)
+    first = lambda r: (r.trades + r.open_trades)[0]
+    assert first(capped).cost <= first(full).cost

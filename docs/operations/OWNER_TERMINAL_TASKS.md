@@ -137,6 +137,16 @@ python -m tools.backtest_replay --days 7 --step 15 --exp001 --slippage-bps 5 --n
 
 1: bugünkü durum. 2: gerçekçi dolum (kayma + gecikme). 3 ve 4: al-sat sıklığını azaltan iki strateji fikri. Dördünü de yapıştır.
 
+Strateji araştırmasından üç fikir daha (docs/research/TRADING_STRATEGY_COMPARISON_2026-09-29.md):
+
+```
+python -m tools.backtest_replay --days 7 --step 15 --exp001 --slippage-bps 5 --next-open-fill --trend-ema 20
+python -m tools.backtest_replay --days 7 --step 15 --exp001 --slippage-bps 5 --next-open-fill --atr-stop 2
+python -m tools.backtest_replay --days 7 --step 15 --exp001 --slippage-bps 5 --next-open-fill --atr-stop 2 --risk-per-trade 0.01
+```
+
+5: 1 saatlik trend filtresi. 6: oynaklığa göre stop. 7: işlem başına en fazla %1 risk.
+
 ## 12. Atlas'ın kendi işlemlerinden öğrendikleri
 
 ```
