@@ -32,7 +32,7 @@ from typing import Any
 from ai.core.intelligence.trade_evidence import net_pnl
 
 MIN_SAMPLE = 10
-BANDS = ((0, 60), (60, 70), (70, 80), (80, 101))
+BANDS = ((0, 50), (50, 60), (60, 70), (70, 80), (80, 90), (90, 101))  # owner MEGA 1 §12 buckets
 EXTRA_COST_BPS = (0, 10, 20)  # worse execution per trade, in basis points of the entry notional
 
 
@@ -55,9 +55,19 @@ def calibration(records: list[dict], approvals: dict[str, list[dict]]) -> list[d
         out.append({"band": f"{lo}-{min(hi, 100)}", "trades": n,
                     "win_rate_after_fees": None if not n else round(sum(1 for x in nets if x > 0) / n, 3),
                     "net_expectancy": None if not n else round(float(sum(nets) / n), 4),
+                    "win_rate_95ci": None if not n else wilson(sum(1 for x in nets if x > 0), n),
                     "verdict": "INSUFFICIENT" if n < MIN_SAMPLE else "MEASURED"})
     out.append({"band": "confidence unknown", "trades": unattributed})
     return out
+
+
+def wilson(wins: int, n: int, z: float = 1.96) -> list[float]:
+    """95 % Wilson interval of the win rate: keeps the uncertainty of a small bucket visible."""
+    p = wins / n
+    denom = 1 + z * z / n
+    centre = (p + z * z / (2 * n)) / denom
+    half = z * ((p * (1 - p) / n + z * z / (4 * n * n)) ** 0.5) / denom
+    return [round(max(0.0, centre - half), 3), round(min(1.0, centre + half), 3)]
 
 
 def max_drawdown(pnls: list[float]) -> float:
@@ -102,10 +112,35 @@ def cost_check(records: list[dict]) -> dict[str, Any]:
             "edge_covers_costs": sum(net) > 0}
 
 
+def var_es(records: list[dict], levels: tuple[float, ...] = (0.95, 0.99)) -> dict[str, Any]:
+    """Historical per-trade VaR and Expected Shortfall of net P/L (loss shown as a positive number).
+
+    Method: empirical quantile of Atlas's own closed-trade net P/L, no
+    distribution assumed. With fewer than MIN_SAMPLE trades it is reported
+    INSUFFICIENT; the tail beyond the worst observed trade is UNKNOWN, so the
+    99 % figure from a small sample understates tail risk (stated, not hidden).
+    """
+    nets = sorted(float(net_pnl(r)) for r in records)
+    n = len(nets)
+    out: dict[str, Any] = {"method": "historical, per trade, net of estimated fees", "trades": n,
+                           "verdict": "MEASURED" if n >= MIN_SAMPLE else "INSUFFICIENT",
+                           "worst_observed": round(-nets[0], 4) if n else None,
+                           "tail_note": "losses worse than the worst observed trade are not represented"}
+    for lv in levels:
+        if not n:
+            out[f"var_{int(lv * 100)}"] = out[f"es_{int(lv * 100)}"] = None
+            continue
+        k = max(1, int((1 - lv) * n))
+        tail = nets[:k]
+        out[f"var_{int(lv * 100)}"] = round(-tail[-1], 4)
+        out[f"es_{int(lv * 100)}"] = round(-sum(tail) / len(tail), 4)
+    return out
+
+
 def run(records: list[dict], approvals: dict[str, list[dict]]) -> dict[str, Any]:
     n = len(records)
     return {"trades": n, "sample_ok": n >= MIN_SAMPLE, "calibration": calibration(records, approvals),
-            "monte_carlo": monte_carlo(records), "costs": cost_check(records),
+            "monte_carlo": monte_carlo(records), "costs": cost_check(records), "var_es": var_es(records),
             "note": "PAPER fills; fees estimated at 0.1%/side; resampling assumes future trades look like past ones"}
 
 
@@ -126,7 +161,7 @@ def main(argv: list[str] | None = None) -> int:
     print("\n[güven kalibrasyonu: Atlas'ın güveni gerçekte ne getirdi?]")
     for row in out["calibration"]:
         print(f"  güven {row['band']:<18} {row['trades']:>3} işlem  " + (
-            f"kazanma {row['win_rate_after_fees']}  beklenti {row['net_expectancy']}  {row['verdict']}" if row.get("win_rate_after_fees") is not None else ""))
+            f"kazanma {row['win_rate_after_fees']} (%95 aralık {row['win_rate_95ci']})  beklenti {row['net_expectancy']}  {row['verdict']}" if row.get("win_rate_after_fees") is not None else ""))
     print("\n[Monte Carlo: sonraki 50 işlemde en kötü durumlar, daha kötü dolum senaryolarıyla]")
     for row in out["monte_carlo"]:
         print(f"  +{row['extra_cost_bps']:>2} bp  medyan düşüş {row['median_max_drawdown']:>8}  %95 {row['p95_max_drawdown']:>8}  "
@@ -135,6 +170,10 @@ def main(argv: list[str] | None = None) -> int:
     if c.get("trades"):
         print(f"\n[maliyet] işlem başı brüt {c['avg_gross_per_trade']}  maliyet {c['avg_cost_per_trade']}  net {c['avg_net_per_trade']}  "
               f"-> {'kenar maliyeti karşılıyor' if c['edge_covers_costs'] else 'KENAR MALİYETİ KARŞILAMIYOR'}")
+    v = out["var_es"]
+    if v["trades"]:
+        print(f"\n[VaR / ES, {v['method']}] %95 VaR {v['var_95']}  ES {v['es_95']}  |  %99 VaR {v['var_99']}  ES {v['es_99']}  "
+              f"| en kötü işlem {v['worst_observed']}  ({v['verdict']}; {v['tail_note']})")
     print("\n" + out["note"])
     return 0
 
