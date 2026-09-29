@@ -12,15 +12,15 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 | authorization_id | REM-001-GATE1-MECHANICAL |
 | granted_by_registry | `governance/current/ATLAS_MILESTONE_REGISTRY_v4.32.json` |
 | decision_record | `governance/ATLAS_BASELINE_IDENTITY_AND_GATE1_SCOPE_DECISION_v1.0.md` |
-| finding | GOV-DRIFT-005 (OPEN, not resolved by this artifact) |
+| finding | GOV-DRIFT-005 (not resolved by this artifact; its current status is recorded in the latest governance registry) |
 | scope | Read-only analysis and artifact emission. This file is not a certification, does not advance `gate_1_state`, and carries no approval. |
 
 ## Source identity
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `db8bdf3f22e05a730ca6c3a8ec4eae51f8b66d4b` |
-| generated_from_tree | `6e4b60a9cd88d2d65d70717ef3509af092aa5e19` |
+| generated_from_commit | `c97e92156f5f8cf9c2f8c680ec501d6602fa1d77` |
+| generated_from_tree | `288526bde67002884d1ccf4e8a740f8e7f163d84` |
 | tracked_working_tree_clean | True |
 | modified_tracked_paths_at_generation | none |
 
@@ -59,12 +59,12 @@ observation.
 
 | field | value |
 | --- | --- |
-| entry_points | `main.py`, `web_app.py` |
-| modules_in_runtime_closure | 105 |
+| entry_points | `main.py`, `web_app.py`, `atlas_service.py`, `atlas_supervisor.py` |
+| modules_in_runtime_closure | 129 |
 | declared_state_file_constants | 10 |
-| persistence_sites | 52 |
-| modules_with_persistence_sites | 24 |
-| distinct_state_file_literals | 23 |
+| persistence_sites | 87 |
+| modules_with_persistence_sites | 37 |
+| distinct_state_file_literals | 34 |
 | parse_failures | 0 |
 
 ## Declared durable state surface
@@ -97,58 +97,76 @@ nothing is inferred from an absence.
 | literal | modules naming it |
 | --- | --- |
 | `*.json` | `observability/panel_sources.py` |
-| `.json` | `core/execution_idempotency_store.py`, `core/execution_transaction_journal.py` |
-| `atlas-local.sqlite3` | `data_layer/config.py` |
+| `.json` | `atlas_org/security_review.py`, `core/execution_idempotency_store.py`, `core/execution_transaction_journal.py` |
+| `/openapi.json` | `web_app.py` |
 | `atlas_memory.json` | `ai/core/atlas_memory_core.py` |
 | `atlas_reasoning.json` | `ai/core/atlas_reasoning_engine.py` |
+| `atlas_runtime_closure.json` | `observability/security_view.py` |
 | `atlas_world_model.json` | `ai/core/atlas_world_model.py` |
 | `audit/atlas_audit_events.jsonl` | `core/application.py` |
 | `capital_reservations.json` | `core/application.py` |
 | `capital_reservations_archive.jsonl` | `core/application.py` |
 | `data/capital_positions.json` | `portfolio/capital_manager.py` |
+| `data_layer.sqlite` | `data_layer/__init__.py` |
+| `evidence_store.sqlite3` | `data_layer/evidence_store.py` |
 | `execution_applied_executions.jsonl` | `core/application.py` |
 | `execution_closed_positions.jsonl` | `core/application.py` |
 | `execution_financial_state.json` | `core/application.py` |
 | `execution_idempotency.jsonl` | `core/application.py` |
 | `execution_transaction_journal.jsonl` | `core/application.py` |
+| `experiment_admissions.json` | `core/experiment_ledger.py` |
 | `instrument_rules.json` | `core/application.py` |
+| `market_loop_telemetry.jsonl` | `core/logger.py` |
+| `memory.jsonl` | `observability/governance_records.py` |
 | `memory_data/audit/atlas_audit_events.jsonl` | `core/audit_event_store.py` |
 | `memory_data/execution_idempotency.jsonl` | `core/execution_idempotency_store.py` |
 | `memory_data/execution_transaction_journal.jsonl` | `core/execution_transaction_journal.py` |
+| `packaging/atlas_architecture_map.json` | `atlas_org/proposals.py`, `observability/organization.py` |
 | `paper_trades.json` | `core/application.py`, `core/paper_trader.py` |
+| `proposals.jsonl` | `observability/governance_records.py` |
+| `reports/observability/telemetry_summary.json` | `observability/panel_sources.py` |
 | `reports/observability/test_results.meta.json` | `observability/panel_sources.py` |
 | `risk_accounting_state.json` | `core/application.py` |
 | `runtime_data/audit/atlas_os_audit.jsonl` | `atlas_os/audit/audit_log.py` |
+| `supervisor_heartbeat.json` | `atlas_supervisor.py` |
+| `tasks.jsonl` | `observability/governance_records.py` |
 
 ## Persistence sites
 
 | module | operation | line | enclosing scope |
 | --- | --- | --- | --- |
-| `ai/core/atlas_brain.py` | ATOMIC_REPLACE | 528 | `AtlasBrain::world_analysis` |
-| `ai/core/atlas_memory_core.py` | OPEN_WRITE_MODE | 189 | `AtlasMemoryCore::save` |
-| `ai/core/atlas_memory_core.py` | JSON_DUMP | 190 | `AtlasMemoryCore::save` |
-| `ai/core/atlas_reasoning_engine.py` | OPEN_WRITE_MODE | 771 | `AtlasReasoningEngine::save` |
-| `ai/core/atlas_reasoning_engine.py` | JSON_DUMP | 782 | `AtlasReasoningEngine::save` |
-| `ai/core/atlas_world_model.py` | OPEN_WRITE_MODE | 209 | `AtlasWorldModel::save` |
-| `ai/core/atlas_world_model.py` | JSON_DUMP | 210 | `AtlasWorldModel::save` |
+| `ai/core/atlas_brain.py` | ATOMIC_REPLACE | 616 | `AtlasBrain::world_analysis` |
+| `ai/core/atlas_memory_core.py` | OPEN_WRITE_MODE | 194 | `AtlasMemoryCore::save` |
+| `ai/core/atlas_memory_core.py` | JSON_DUMP | 195 | `AtlasMemoryCore::save` |
+| `ai/core/atlas_reasoning_engine.py` | OPEN_WRITE_MODE | 776 | `AtlasReasoningEngine::save` |
+| `ai/core/atlas_reasoning_engine.py` | JSON_DUMP | 787 | `AtlasReasoningEngine::save` |
+| `ai/core/atlas_world_model.py` | OPEN_WRITE_MODE | 228 | `AtlasWorldModel::save` |
+| `ai/core/atlas_world_model.py` | JSON_DUMP | 229 | `AtlasWorldModel::save` |
 | `atlas_finance/market_data/binance_public_provider.py` | ATOMIC_REPLACE | 1011 | `BinancePublicDataProvider::_normalize_symbol` |
 | `atlas_finance/market_data/binance_public_provider.py` | ATOMIC_REPLACE | 1011 | `BinancePublicDataProvider::_normalize_symbol` |
 | `atlas_finance/market_data/binance_public_provider.py` | ATOMIC_REPLACE | 1011 | `BinancePublicDataProvider::_normalize_symbol` |
 | `atlas_finance/market_data/market_feed_service.py` | ATOMIC_REPLACE | 1719 | `MarketFeedService::_normalize_symbol` |
 | `atlas_finance/market_data/market_feed_service.py` | ATOMIC_REPLACE | 1719 | `MarketFeedService::_normalize_symbol` |
 | `atlas_finance/market_data/market_feed_service.py` | ATOMIC_REPLACE | 1719 | `MarketFeedService::_normalize_symbol` |
+| `atlas_org/proposals.py` | ATOMIC_REPLACE | 118 | `normalise_repo_path` |
+| `atlas_org/security_review.py` | ATOMIC_REPLACE | 203 | `_requirements::parse` |
+| `atlas_org/security_review.py` | ATOMIC_REPLACE | 216 | `files_digest` |
+| `atlas_org/security_review.py` | ATOMIC_REPLACE | 226 | `review_change` |
+| `atlas_org/tasks.py` | ATOMIC_REPLACE | 222 | `agent_scorecards::when` |
 | `atlas_os/audit/audit_log.py` | FSYNC | 607 | `AuditLogService::_persist_record` |
 | `atlas_os/audit/audit_log.py` | ATOMIC_REPLACE | 741 | `AuditLogService::rotate` |
-| `core/audit_event.py` | ATOMIC_REPLACE | 565 | `AuditEvent::_normalize_timestamp` |
-| `core/audit_event_store.py` | FSYNC | 331 | `AuditEventStore::_append_event_locked` |
-| `core/candle_processor.py` | ATOMIC_REPLACE | 1061 | `CandleProcessor::_to_milliseconds` |
+| `atlas_supervisor.py` | UNLINK | 454 | `_discard_heartbeat_file` |
+| `core/audit_event.py` | ATOMIC_REPLACE | 566 | `AuditEvent::_normalize_timestamp` |
+| `core/audit_event_store.py` | FSYNC | 340 | `AuditEventStore::_append_event_locked` |
+| `core/candle_processor.py` | ATOMIC_REPLACE | 1071 | `CandleProcessor::_to_milliseconds` |
 | `core/capital_reservation.py` | JSON_DUMP | 111 | `JsonReservationStore::save` |
 | `core/capital_reservation.py` | FSYNC | 113 | `JsonReservationStore::save` |
 | `core/capital_reservation.py` | ATOMIC_REPLACE | 114 | `JsonReservationStore::save` |
 | `core/capital_reservation.py` | UNLINK | 117 | `JsonReservationStore::save` |
 | `core/capital_reservation.py` | FSYNC | 169 | `ReservationArchiveStore::append` |
-| `core/capital_reservation.py` | ATOMIC_REPLACE | 376 | `CapitalReservationLedger::_transition` |
-| `core/capital_reservation.py` | ATOMIC_REPLACE | 428 | `CapitalReservationLedger::commit` |
+| `core/capital_reservation.py` | ATOMIC_REPLACE | 363 | `CapitalReservationLedger::reserve` |
+| `core/capital_reservation.py` | ATOMIC_REPLACE | 401 | `CapitalReservationLedger::_transition` |
+| `core/capital_reservation.py` | ATOMIC_REPLACE | 453 | `CapitalReservationLedger::commit` |
 | `core/decision_adapter.py` | ATOMIC_REPLACE | 688 | `DecisionAdapter::_confidence_to_percent` |
 | `core/decision_adapter.py` | ATOMIC_REPLACE | 916 | `DecisionAdapter::get_created_at` |
 | `core/durable_append_log.py` | FSYNC | 285 | `DurableAppendLog::append` |
@@ -156,24 +174,52 @@ nothing is inferred from an absence.
 | `core/durable_append_log.py` | ATOMIC_REPLACE | 349 | `DurableAppendLog::rewrite` |
 | `core/durable_append_log.py` | UNLINK | 356 | `DurableAppendLog::rewrite` |
 | `core/execution_idempotency_store.py` | UNLINK | 863 | `ExecutionIdempotencyStore::reset` |
-| `core/execution_manager.py` | ATOMIC_REPLACE | 5624 | `ExecutionManager::_normalize_confidence` |
+| `core/execution_manager.py` | ATOMIC_REPLACE | 6421 | `ExecutionManager::_normalize_confidence` |
 | `core/execution_models.py` | ATOMIC_REPLACE | 96 | `normalize_timestamp` |
 | `core/execution_portfolio_foundation.py` | ATOMIC_REPLACE | 64 | `_utc` |
-| `core/execution_portfolio_foundation.py` | FSYNC | 177 | `FinancialStateStore::save` |
-| `core/execution_portfolio_foundation.py` | ATOMIC_REPLACE | 178 | `FinancialStateStore::save` |
-| `core/execution_portfolio_foundation.py` | FSYNC | 251 | `AppliedExecutionArchiveStore::append` |
-| `core/execution_portfolio_foundation.py` | FSYNC | 415 | `ClosedPositionArchiveStore::append` |
-| `core/execution_transaction_journal.py` | UNLINK | 949 | `ExecutionTransactionJournal::reset` |
-| `core/paper_trader.py` | OPEN_WRITE_MODE | 565 | `PaperTrader::save` |
-| `core/paper_trader.py` | JSON_DUMP | 574 | `PaperTrader::save` |
+| `core/execution_portfolio_foundation.py` | FSYNC | 183 | `FinancialStateStore::save` |
+| `core/execution_portfolio_foundation.py` | ATOMIC_REPLACE | 184 | `FinancialStateStore::save` |
+| `core/execution_portfolio_foundation.py` | FSYNC | 257 | `AppliedExecutionArchiveStore::append` |
+| `core/execution_portfolio_foundation.py` | FSYNC | 421 | `ClosedPositionArchiveStore::append` |
+| `core/execution_transaction_journal.py` | UNLINK | 953 | `ExecutionTransactionJournal::reset` |
+| `core/experiment_ledger.py` | OPEN_WRITE_MODE | 69 | `ExperimentAdmissionLedger::record` |
+| `core/experiment_ledger.py` | JSON_DUMP | 70 | `ExperimentAdmissionLedger::record` |
+| `core/experiment_ledger.py` | FSYNC | 72 | `ExperimentAdmissionLedger::record` |
+| `core/experiment_ledger.py` | ATOMIC_REPLACE | 73 | `ExperimentAdmissionLedger::record` |
+| `core/experiment_ledger.py` | FSYNC | 80 | `ExperimentAdmissionLedger::record` |
+| `core/instance_lock.py` | OPEN_WRITE_MODE | 90 | `acquire` |
+| `core/logger.py` | OPEN_WRITE_MODE | 91 | `_TelemetryFileWriter::__init__` |
+| `core/paper_trader.py` | ATOMIC_REPLACE | 791 | `PaperTrader::_load_failed` |
+| `core/paper_trader.py` | OPEN_WRITE_MODE | 839 | `PaperTrader::save` |
+| `core/paper_trader.py` | JSON_DUMP | 852 | `PaperTrader::save` |
+| `core/paper_trader.py` | FSYNC | 874 | `PaperTrader::save` |
+| `core/paper_trader.py` | ATOMIC_REPLACE | 879 | `PaperTrader::save` |
 | `core/risk_state_store.py` | JSON_DUMP | 98 | `JsonRiskStateStore::save` |
 | `core/risk_state_store.py` | FSYNC | 99 | `JsonRiskStateStore::save` |
 | `core/risk_state_store.py` | ATOMIC_REPLACE | 100 | `JsonRiskStateStore::save` |
 | `core/risk_state_store.py` | UNLINK | 103 | `JsonRiskStateStore::save` |
+| `data_layer/evidence_store.py` | ATOMIC_REPLACE | 288 | `_utc_text` |
+| `data_layer/evidence_store.py` | ATOMIC_REPLACE | 882 | `EvidenceStore::sources_for` |
 | `data_layer/migrations.py` | ATOMIC_REPLACE | 146 | `apply_migrations` |
 | `data_layer/models.py` | ATOMIC_REPLACE | 54 | `utc_text` |
 | `data_layer/models.py` | ATOMIC_REPLACE | 61 | `utc_text` |
-| `observability/panel_sources.py` | ATOMIC_REPLACE | 370 | `_supersedes_name` |
+| `main.py` | PATH_WRITE_TEXT | 570 | `AtlasProcess::_write_heartbeat` |
+| `observability/agent_states.py` | ATOMIC_REPLACE | 56 | `_age_s` |
+| `observability/agent_states.py` | ATOMIC_REPLACE | 59 | `_age_s` |
+| `observability/command_center.py` | ATOMIC_REPLACE | 77 | `_money` |
+| `observability/command_center.py` | ATOMIC_REPLACE | 77 | `_money` |
+| `observability/command_center.py` | ATOMIC_REPLACE | 77 | `_money` |
+| `observability/command_center.py` | ATOMIC_REPLACE | 81 | `classify` |
+| `observability/command_center.py` | ATOMIC_REPLACE | 81 | `classify` |
+| `observability/command_center.py` | ATOMIC_REPLACE | 81 | `classify` |
+| `observability/command_center.py` | ATOMIC_REPLACE | 96 | `answer` |
+| `observability/command_center.py` | ATOMIC_REPLACE | 96 | `answer` |
+| `observability/command_center.py` | ATOMIC_REPLACE | 96 | `answer` |
+| `observability/panel_sources.py` | ATOMIC_REPLACE | 377 | `_supersedes_name` |
+| `observability/portfolio_view.py` | ATOMIC_REPLACE | 41 | `_age_seconds` |
+| `observability/portfolio_view.py` | ATOMIC_REPLACE | 45 | `_age_seconds` |
+| `observability/readiness.py` | ATOMIC_REPLACE | 27 | `_age` |
+| `observability/readiness.py` | ATOMIC_REPLACE | 31 | `_age` |
 | `portfolio/capital_manager.py` | OPEN_WRITE_MODE | 797 | `CapitalManager::save_positions` |
 | `portfolio/capital_manager.py` | JSON_DUMP | 808 | `CapitalManager::save_positions` |
 
