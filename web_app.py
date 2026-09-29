@@ -2310,6 +2310,7 @@ def create_app(
         ("/api/proposals", governance_records.read_proposals),
         ("/api/memory", governance_records.read_memory),
         ("/api/permissions", governance_records.read_permissions),
+        ("/api/tasks", governance_records.read_tasks),
     ):
         async def _governance_route(request: Request, _reader=reader) -> JSONResponse:
             if not is_loopback_request(request):

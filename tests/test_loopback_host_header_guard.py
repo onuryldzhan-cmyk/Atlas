@@ -90,6 +90,7 @@ WEB_APP_GUARDED_ROUTES = [
     "/api/proposals",
     "/api/memory",
     "/api/permissions",
+    "/api/tasks",
     "/agents",
     "/api/risk-accounting",
     "/api/system-integrity",

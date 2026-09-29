@@ -458,6 +458,7 @@
     "atlas_org/memory_records.py": "L1",
     "atlas_org/permissions.py": "L1",
     "atlas_org/proposals.py": "L1",
+    "atlas_org/tasks.py": "L1",
     "atlas_os/__init__.py": "L2",
     "atlas_os/audit/__init__.py": "L2",
     "atlas_os/audit/audit_log.py": "L2",

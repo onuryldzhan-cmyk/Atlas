@@ -13,7 +13,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from atlas_org import memory_records, permissions, proposals
+from atlas_org import memory_records, permissions, proposals, tasks
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 RECORDS_RELPATH = "governance/records"
@@ -67,4 +67,23 @@ def read_permissions() -> dict[str, Any]:
         "available": True,
         "never_granted_to_ai": sorted(c.value for c in permissions.NEVER_GRANTED_TO_AI),
         "units": permissions.permissions_public(),
+    }
+
+
+def read_tasks(repository_root: Path | None = None) -> dict[str, Any]:
+    root = REPOSITORY_ROOT if repository_root is None else Path(repository_root)
+    try:
+        state = tasks.replay(_load(root / RECORDS_RELPATH / "tasks.jsonl"))
+    except proposals.ProposalLogError as exc:
+        return {"available": False, "reason": str(exc)}
+    items = [{**t, "completeness": tasks.completeness(t)} for t in state.values()]
+    counts: dict[str, int] = {}
+    for item in items:
+        counts[item["status"]] = counts.get(item["status"], 0) + 1
+    return {
+        "available": True,
+        "manager": "deterministic rules (atlas_org/manager.py), no LLM",
+        "counts": counts,
+        "agents": tasks.agent_activity(state),
+        "tasks": sorted(items, key=lambda i: i["history"][-1]["seq"], reverse=True),
     }

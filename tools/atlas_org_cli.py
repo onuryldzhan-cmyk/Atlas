@@ -7,6 +7,8 @@ Usage (examples):
       --payload '{"kind":"CODE","verdict":"PASS","summary":"..."}'
   python -m tools.atlas_org_cli proposal-event --id P-0001 --event OWNER_APPROVE --actor owner --owner-confirm P-0001
   python -m tools.atlas_org_cli memory-add --json record.json
+  python -m tools.atlas_org_cli task-request "Atlas, market data bağlantısını araştır"
+  python -m tools.atlas_org_cli task-event --id T-0001 --event START --actor open_source_research --payload '{"step":0}'
   python -m tools.atlas_org_cli verify
 
 Every write re-reads and replays the whole log first; a corrupted log is
@@ -27,12 +29,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Iterator
 
-from atlas_org import memory_records, proposals
+from atlas_org import manager, memory_records, proposals, tasks
 
 ROOT = Path(__file__).resolve().parents[1]
 RECORDS_DIR = ROOT / "governance" / "records"
 PROPOSALS_LOG = "proposals.jsonl"
 MEMORY_LOG = "memory.jsonl"
+TASKS_LOG = "tasks.jsonl"
 
 
 def read_log(path: Path) -> list[dict[str, Any]]:
@@ -98,6 +101,40 @@ def add_memory_record(directory: Path, fields: dict[str, Any]) -> dict[str, Any]
     return record
 
 
+def add_task_event(directory: Path, *, task_id: str, event: str, actor: str,
+                   payload: dict[str, Any] | None = None, at: str | None = None) -> dict[str, Any]:
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / TASKS_LOG
+    with _lock(path):
+        record = tasks.next_event(read_log(path), task_id=task_id, event=event, actor=actor,
+                                  at=at or now(), payload=payload)
+        _append(path, record)
+    return record
+
+
+def request_task(directory: Path, request: str, at: str | None = None) -> dict[str, Any]:
+    """Atlas Manager: classify, plan, create the task and route every step."""
+
+    plan = manager.classify(request)
+    if plan.refusal:
+        return {"created": False, "category": plan.category, "reason": plan.refusal}
+    existing = tasks.replay(read_log(directory / TASKS_LOG))
+    task_id = f"T-{len(existing) + 1:04d}"
+    add_task_event(directory, task_id=task_id, event="CREATE", actor=tasks.MANAGER,
+                   payload=plan.to_payload(request), at=at)
+    unrouted = []
+    for index, step in enumerate(plan.steps):
+        unit = manager.route(step.role, step.capability)
+        if unit is None:
+            unrouted.append(index)
+            add_task_event(directory, task_id=task_id, event="BLOCK", actor=tasks.MANAGER,
+                           payload={"step": index, "reason": f"no unit holds {step.capability} for {step.role}"}, at=at)
+            continue
+        add_task_event(directory, task_id=task_id, event="ASSIGN", actor=tasks.MANAGER,
+                       payload={"step": index, "unit": unit}, at=at)
+    return {"created": True, "task_id": task_id, "category": plan.category, "unrouted_steps": unrouted}
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--dir", default=str(RECORDS_DIR))
@@ -114,6 +151,14 @@ def main(argv: list[str] | None = None) -> int:
     ev.add_argument("--owner-confirm", default=None)
     mem = sub.add_parser("memory-add")
     mem.add_argument("--json", required=True)
+    treq = sub.add_parser("task-request")
+    treq.add_argument("request")
+    tev = sub.add_parser("task-event")
+    tev.add_argument("--id", required=True)
+    tev.add_argument("--event", required=True, choices=[e.value for e in tasks.TaskEvent if e.value != "CREATE"])
+    tev.add_argument("--actor", required=True)
+    tev.add_argument("--payload", default="{}")
+    tev.add_argument("--owner-confirm", default=None)
     sub.add_parser("verify")
     args = parser.parse_args(argv)
     directory = Path(args.dir)
@@ -129,12 +174,23 @@ def main(argv: list[str] | None = None) -> int:
                 return 2
             rec = add_proposal_event(directory, proposal_id=args.id, event=args.event,
                                      actor=args.actor, payload=json.loads(args.payload))
+        elif args.cmd == "task-request":
+            out = request_task(directory, args.request)
+            print(json.dumps(out, ensure_ascii=False))
+            return 0 if out["created"] else 3
+        elif args.cmd == "task-event":
+            if args.event == "CANCEL" and args.owner_confirm != args.id:
+                print("refused: cancelling needs --owner-confirm <task id>", file=sys.stderr)
+                return 2
+            rec = add_task_event(directory, task_id=args.id, event=args.event, actor=args.actor,
+                                 payload=json.loads(args.payload))
         elif args.cmd == "memory-add":
             rec = add_memory_record(directory, json.loads(Path(args.json).read_text(encoding="utf-8")))
         else:
             p = proposals.replay(read_log(directory / PROPOSALS_LOG))
             m = memory_records.replay(read_log(directory / MEMORY_LOG))
-            print(f"OK: {len(p)} proposals, {len(m)} memory records, chains intact")
+            t = tasks.replay(read_log(directory / TASKS_LOG))
+            print(f"OK: {len(p)} proposals, {len(m)} memory records, {len(t)} tasks, chains intact")
             return 0
     except proposals.ProposalLogError as exc:
         print(f"refused: {exc}", file=sys.stderr)

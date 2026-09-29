@@ -76,6 +76,7 @@ GRANTS: dict[str, tuple[Capability, ...]] = {
     "open_source_research": (*_READ, _R.WEB_RESEARCH, _R.MEMORY_WRITE),
     "ai_model_research": (*_READ, _R.WEB_RESEARCH),
     "code_review": (*_READ, _R.RUN_TESTS),
+    "code_engineering": (*_READ, _R.WRITE_CODE, _R.RUN_TESTS),
     "experiment_manager": (*_READ, _R.FINANCIAL_READ, _R.RUN_TESTS, _R.MEMORY_WRITE),
     "knowledge_manager": (*_READ, _R.MEMORY_WRITE),
     "roadmap_planner": _READ,

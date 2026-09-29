@@ -315,6 +315,9 @@
                     <div class="card-body">
                         <div id="proposals-summary" class="mb-2">Yükleniyor...</div>
                         <div id="proposals-list" class="row g-2"></div>
+                        <h4 class="h6 mt-3">Görevler (Atlas Manager) &amp; ajan durumları</h4>
+                        <div id="tasks-agents" class="d-flex flex-wrap gap-1 mb-2"></div>
+                        <div id="tasks-list">Yükleniyor...</div>
                         <h4 class="h6 mt-3">Atlas Hafızası (son kayıtlar)</h4>
                         <div id="memory-list">Yükleniyor...</div>
                         <div class="small text-body-secondary mt-2">Kaynak: <span class="font-monospace">governance/records/*.jsonl</span> (her okumada hash zinciri doğrulanır; bozuk kayıt gösterilmez). Bir ajanın <b>tavsiyesi</b> onay değildir: yalnız siz onaylarsınız (<span class="font-monospace">python -m tools.atlas_org_cli proposal-event ... --actor owner --owner-confirm ID</span>). Bu panel yalnız okur.</div>
@@ -1224,6 +1227,24 @@
                     ? `${badge(`${waiting} öneri kararınızı bekliyor`, waiting ? 'danger' : 'success')} &nbsp; toplam ${items.length}`
                     : '<span class="text-body-secondary">Henüz kayıtlı öneri yok.</span>';
                 document.getElementById('proposals-list').innerHTML = items.map(renderProposal).join('');
+            });
+            fetchPanel('/api/tasks', 'tasks-list', (payload) => {
+                const agents = payload.agents || {};
+                const tone = { WORKING: 'primary', WAITING: 'info', BLOCKED: 'danger', IDLE: 'secondary' };
+                document.getElementById('tasks-agents').innerHTML = Object.keys(agents).sort().map((id) =>
+                    badge(`${id}: ${agents[id].status}${agents[id].current_task ? ' (' + agents[id].current_task + ')' : ''}`,
+                        tone[agents[id].status] || 'secondary')).join(' ');
+                const items = (Array.isArray(payload.tasks) ? payload.tasks : []).slice(0, 10);
+                document.getElementById('tasks-list').innerHTML = items.length
+                    ? '<ul class="small mb-0">' + items.map((t) => {
+                        const done = t.steps.filter((s) => s.status === 'DONE').length;
+                        const c = t.completeness || {};
+                        const flags = (c.conflicts && c.conflicts.length ? ' ' + badge('çelişki', 'danger') : '') +
+                            (t.proposal_id ? ' → öneri ' + esc(t.proposal_id) : '');
+                        return `<li>${badge(t.status, t.status === 'DONE' ? 'success' : t.status === 'BLOCKED' ? 'danger' : 'info')} ` +
+                            `<b>${esc(t.id)}</b> ${badge(t.category, 'light')} ${esc(t.request)} — adım ${done}/${t.steps.length}${flags}</li>`;
+                    }).join('') + '</ul>'
+                    : '<span class="text-body-secondary">Henüz görev yok. (Atlas Manager kural tabanlıdır; yapay zekâ değildir.)</span>';
             });
             fetchPanel('/api/memory', 'memory-list', (payload) => {
                 const records = (Array.isArray(payload.records) ? payload.records : []).slice(0, 10);
