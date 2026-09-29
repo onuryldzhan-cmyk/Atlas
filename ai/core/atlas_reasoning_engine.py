@@ -23,6 +23,11 @@ import os
 
 from atlas_security import sanitize_sensitive_mapping
 
+import logging as _logging
+
+# Diagnostics go to the log, not stdout (registry v5.50: 20 coins x every cycle flooded the console).
+_log = _logging.getLogger(__name__)
+
 
 class DecisionType(Enum):
 
@@ -148,7 +153,7 @@ class AtlasReasoningEngine:
         self._ensure_data_dir()
 
 
-        print(
+        _log.debug(
             "[REASONING] Atlas Reasoning Engine v2.1 baslatildi"
         )
 
@@ -394,7 +399,7 @@ class AtlasReasoningEngine:
 
 
 
-        print(
+        _log.debug(
 
             f"[REASONING] {symbol} -> "
             f"{decision_type.value.upper()} "
@@ -793,7 +798,7 @@ class AtlasReasoningEngine:
 
 
 
-        print(
+        _log.debug(
 
             f"[REASONING] Saved {filepath}"
 
@@ -843,7 +848,7 @@ class AtlasReasoningEngine:
 
 
 
-            print(
+            _log.debug(
 
                 f"[REASONING] Loaded {filepath}"
 
@@ -870,13 +875,13 @@ class AtlasReasoningEngine:
 if __name__ == "__main__":
 
 
-    print("=" * 60)
+    _log.debug("=" * 60)
 
-    print(
+    _log.debug(
         "ATLAS REASONING ENGINE v2.1 TEST"
     )
 
-    print("=" * 60)
+    _log.debug("=" * 60)
 
 
 
@@ -921,7 +926,7 @@ if __name__ == "__main__":
 
     print()
 
-    print(
+    _log.debug(
 
         result.to_dict()
 

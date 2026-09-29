@@ -95,6 +95,11 @@ from core.decision_intelligence import (
 # not reach the infrastructure that persists it.
 from data_layer.contracts import ClaimSource
 
+import logging as _logging
+
+# Diagnostics go to the log, not stdout (registry v5.50: 20 coins x every cycle flooded the console).
+_log = _logging.getLogger(__name__)
+
 
 logger = logging.getLogger(
     "AtlasAI.IntelligenceBrain"
@@ -201,7 +206,7 @@ class AtlasBrain:
 
         self.status = self.STATUS_ACTIVE
 
-        print(
+        _log.debug(
             f"[ATLAS BRAIN] Intelligence Brain "
             f"v{self.VERSION} active"
         )
@@ -256,7 +261,7 @@ class AtlasBrain:
 
             self.builder = DecisionBuilder()
 
-            print(
+            _log.debug(
                 "[ATLAS BRAIN] All intelligence modules loaded"
             )
 
@@ -277,7 +282,7 @@ class AtlasBrain:
                 "Atlas intelligence initialization failed"
             )
 
-            print(
+            _log.debug(
                 f"[ATLAS INIT ERROR] {exc}"
             )
 
@@ -319,15 +324,15 @@ class AtlasBrain:
             self._validate_pipeline()
 
             print()
-            print(
+            _log.debug(
                 "=" * 60
             )
-            print(
+            _log.debug(
                 f"ATLAS INTELLIGENCE "
                 f"v{self.VERSION} : "
                 f"{normalized_symbol}"
             )
-            print(
+            _log.debug(
                 "=" * 60
             )
 
@@ -435,7 +440,7 @@ class AtlasBrain:
                 )
             )
 
-            print(
+            _log.debug(
                 f"[CONFIDENCE] "
                 f"{intermediate_confidence}%"
             )
@@ -560,7 +565,7 @@ class AtlasBrain:
                 normalized_symbol,
             )
 
-            print(
+            _log.debug(
                 f"[ATLAS ERROR] {exc}"
             )
 
@@ -621,7 +626,7 @@ class AtlasBrain:
             except TypeError:
                 related_count = 0
 
-            print(
+            _log.debug(
                 f"[WORLD] "
                 f"{related_count} related assets"
             )
@@ -636,7 +641,7 @@ class AtlasBrain:
                 symbol,
             )
 
-            print(
+            _log.debug(
                 f"[WORLD ERROR] {exc}"
             )
 

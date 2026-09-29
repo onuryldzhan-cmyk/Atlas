@@ -32,6 +32,11 @@ from typing import Dict
 
 from analysis.evidence_status import MarketDataEvidenceStatus
 
+import logging as _logging
+
+# Diagnostics go to the log, not stdout (registry v5.50: 20 coins x every cycle flooded the console).
+_log = _logging.getLogger(__name__)
+
 
 
 
@@ -259,7 +264,7 @@ class AgentFusion:
 
 
 
-        print(
+        _log.debug(
             "[AGENTS] Agent Fusion Engine v10.0 initialized"
         )
 
@@ -338,7 +343,7 @@ class AgentFusion:
 
                 unavailable[agent_name] = reason
 
-                print(
+                _log.debug(
                     f"[AGENT] {agent_name}: "
                     f"EXCLUDED status={reason}"
                 )
@@ -361,7 +366,7 @@ class AgentFusion:
                     "SCORE_MISSING_DESPITE_AVAILABLE_STATUS"
                 )
 
-                print(
+                _log.debug(
                     f"[AGENT] {agent_name}: "
                     f"EXCLUDED status=SCORE_MISSING_DESPITE_AVAILABLE_STATUS"
                 )
@@ -383,7 +388,7 @@ class AgentFusion:
                     "SCORE_OUT_OF_CONTRACT_RANGE"
                 )
 
-                print(
+                _log.debug(
                     f"[AGENT] {agent_name}: "
                     f"EXCLUDED status=SCORE_OUT_OF_CONTRACT_RANGE"
                 )
@@ -408,7 +413,7 @@ class AgentFusion:
 
             }
 
-            print(
+            _log.debug(
 
                 f"[AGENT] {agent_name}: "
                 f"{action} "
@@ -491,7 +496,7 @@ class AgentFusion:
                 momentum_unavailable_reason
             )
 
-            print(
+            _log.debug(
                 f"[AGENT] momentum: "
                 f"EXCLUDED status={momentum_unavailable_reason}"
             )
@@ -519,7 +524,7 @@ class AgentFusion:
 
             }
 
-            print(
+            _log.debug(
 
                 f"[AGENT] momentum: "
                 f"{momentum_action} "

@@ -22,6 +22,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
+import logging as _logging
+
+# Diagnostics go to the log, not stdout (registry v5.50: 20 coins x every cycle flooded the console).
+_log = _logging.getLogger(__name__)
+
 
 
 # =====================================================
@@ -114,7 +119,7 @@ class AdvisoryRiskScorer:
 
 
 
-        print(
+        _log.debug(
             "[RISK] Atlas Risk Engine v10.0 initialized"
         )
 

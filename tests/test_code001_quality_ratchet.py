@@ -7,7 +7,7 @@ ratchet); raising a ceiling needs a successor registry record.
 
 from tools.code_health_report import measure
 
-PRINT_CALLS_CEILING = 128
+PRINT_CALLS_CEILING = 36  # v5.50: AI-module diagnostics moved to logging (was 128)
 LONG_FUNCTIONS_BASELINE = {
     "ai/core/intelligence/agent_fusion.py::fuse",
     "atlas_os/scheduling/scheduler.py::_execute_task",

@@ -96,5 +96,6 @@ def read_tasks(repository_root: Path | None = None) -> dict[str, Any]:
         "manager": "deterministic rules (atlas_org/manager.py), no LLM",
         "counts": counts,
         "agents": tasks.agent_activity(state),
+        "scorecards": tasks.agent_scorecards(state),
         "tasks": sorted(items, key=lambda i: i["history"][-1]["seq"], reverse=True),
     }

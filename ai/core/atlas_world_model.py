@@ -6,6 +6,11 @@ from enum import Enum
 import json
 import os
 
+import logging as _logging
+
+# Diagnostics go to the log, not stdout (registry v5.50: 20 coins x every cycle flooded the console).
+_log = _logging.getLogger(__name__)
+
 class RelationshipType(Enum):
     CAUSAL = "causal"
     CORRELATION = "correlation"
@@ -93,7 +98,7 @@ class AtlasWorldModel:
         self.data_dir = data_dir
         self._ensure_data_dir()
         self._initialize_default_nodes()
-        print("[WORLD] Atlas World Model v2.0 baslatildi")
+        _log.debug("[WORLD] Atlas World Model v2.0 baslatildi")
     
     def _ensure_data_dir(self):
         if not os.path.exists(self.data_dir):
@@ -208,7 +213,7 @@ class AtlasWorldModel:
         
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
-        print(f"[WORLD] Kaydedildi: {filepath}")
+        _log.debug(f"[WORLD] Kaydedildi: {filepath}")
     
     def load(self, filepath: str = None):
         if filepath is None:
@@ -217,7 +222,7 @@ class AtlasWorldModel:
         try:
             with open(filepath, "r", encoding="utf-8") as f:
                 json.load(f)
-            print(f"[WORLD] Yuklendi: {filepath}")
+            _log.debug(f"[WORLD] Yuklendi: {filepath}")
             return True
         except FileNotFoundError:
             return False
@@ -225,47 +230,47 @@ class AtlasWorldModel:
 
 # ========== TEST BOLUMU ==========
 if __name__ == "__main__":
-    print("-" * 60)
-    print("ATLAS WORLD MODEL v2.0 - TEST")
-    print("-" * 60)
+    _log.debug("-" * 60)
+    _log.debug("ATLAS WORLD MODEL v2.0 - TEST")
+    _log.debug("-" * 60)
     
     world = AtlasWorldModel()
     
     # Test 1: Node listeleme
-    print("\n[TEST 1] Tum node'lar...")
+    _log.debug("\n[TEST 1] Tum node'lar...")
     nodes = world.get_all_nodes()
-    print(f"Toplam node: {len(nodes)}")
+    _log.debug(f"Toplam node: {len(nodes)}")
     for n in nodes[:5]:
-        print(f"  {n.node_id}: {n.name} ({n.category}) = {n.current_value}")
+        _log.debug(f"  {n.node_id}: {n.name} ({n.category}) = {n.current_value}")
     
     # Test 2: Edge listeleme
-    print("\n[TEST 2] Tum edge'ler...")
+    _log.debug("\n[TEST 2] Tum edge'ler...")
     edges = world.get_all_edges()
-    print(f"Toplam edge: {len(edges)}")
+    _log.debug(f"Toplam edge: {len(edges)}")
     for e in edges[:5]:
-        print(f"  {e.source} -> {e.target} [{e.relationship.value}] (guc: {e.strength})")
+        _log.debug(f"  {e.source} -> {e.target} [{e.relationship.value}] (guc: {e.strength})")
     
     # Test 3: Yol bulma
-    print("\n[TEST 3] Yol bulma: FED -> BTC...")
+    _log.debug("\n[TEST 3] Yol bulma: FED -> BTC...")
     path = world.find_path("FED", "BTC")
-    print(f"Yol: {' -> '.join(path) if path else 'Bulunamadi'}")
+    _log.debug(f"Yol: {' -> '.join(path) if path else 'Bulunamadi'}")
     
     # Test 4: Etki zinciri
-    print("\n[TEST 4] FED etki zinciri...")
+    _log.debug("\n[TEST 4] FED etki zinciri...")
     impacts = world.get_impact_chain("FED", depth=2)
     for target, info in impacts.items():
-        print(f"  {target}: guc={info['strength']}, lag={info['lag_hours']}s, iliski={info['relationship']}")
+        _log.debug(f"  {target}: guc={info['strength']}, lag={info['lag_hours']}s, iliski={info['relationship']}")
     
     # Test 5: Node guncelleme
-    print("\n[TEST 5] Node deger guncelleme...")
+    _log.debug("\n[TEST 5] Node deger guncelleme...")
     world.update_node_value("BTC", 68000)
     btc = world.get_node("BTC")
-    print(f"BTC yeni deger: {btc.current_value}")
+    _log.debug(f"BTC yeni deger: {btc.current_value}")
     
     # Test 6: Kaydet
-    print("\n[TEST 6] Kaydetme...")
+    _log.debug("\n[TEST 6] Kaydetme...")
     world.save()
     
-    print("\n" + "-" * 60)
-    print("TUM TESTLER BASARILI!")
-    print("-" * 60)
+    _log.debug("\n" + "-" * 60)
+    _log.debug("TUM TESTLER BASARILI!")
+    _log.debug("-" * 60)

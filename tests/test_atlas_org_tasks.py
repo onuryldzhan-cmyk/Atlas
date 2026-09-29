@@ -179,3 +179,13 @@ def test_workflow_a_research_ends_in_a_provenanced_memory_record(tmp_path):
     record = memory_records.replay(cli.read_log(tmp_path / "memory.jsonl"))["M-R1"]
     assert record["related_task"] == tid and record["authority"] == "RESEARCH"
     assert tasks.replay(cli.read_log(tmp_path / "tasks.jsonl"))[tid]["status"] == "DONE"
+
+
+def test_agent_scorecards_come_from_the_log_only(tmp_path):
+    tid = cli.request_task(tmp_path, "güvenlik taraması yap", at=AT)["task_id"]
+    _run_step(tmp_path, tid, 0, "PASS")
+    _run_step(tmp_path, tid, 1, "FAIL")
+    cards = tasks.agent_scorecards(tasks.replay(cli.read_log(tmp_path / "tasks.jsonl")))
+    assert cards["security"]["steps_done"] == 1 and cards["security"]["fail_rate"] == 0.0
+    assert cards["code_review"]["verdicts"] == {"FAIL": 1} and cards["code_review"]["fail_rate"] == 1.0
+    assert cards["security"]["avg_minutes_per_step"] == 0.0

@@ -54,7 +54,7 @@
         <button type="button" class="btn btn-sm btn-primary" data-tab="proposals">Öneriler</button>
         <button type="button" class="btn btn-sm btn-outline-secondary" data-tab="tasks">Görevler</button>
         <button type="button" class="btn btn-sm btn-outline-secondary" data-tab="memory">Hafıza</button>
-        <button type="button" class="btn btn-sm btn-outline-secondary" data-tab="permissions">Yetkiler</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-tab="permissions">Ajanlar &amp; yetkiler</button>
     </div>
     <div class="pane" data-panel="proposals"><h2>Öneriler</h2><div id="proposals">Yükleniyor...</div></div>
     <div class="pane" data-panel="tasks" hidden><h2>Görevler</h2><div id="tasks">Yükleniyor...</div></div>
@@ -129,8 +129,14 @@
         } else set('memory', unavailable(m));
         set('permissions', !perms.available ? unavailable(perms) :
             `<div class="small mb-2">Hiçbir yapay zekâ birimine verilemeyen: ${perms.never_granted_to_ai.map((c) => badge(c, 'danger')).join(' ')}</div>` +
-            '<table class="table table-sm"><thead><tr><th>Birim</th><th>Risk</th><th>Yetkiler</th></tr></thead><tbody>' +
-            perms.units.map((u) => `<tr><td>${esc(u.id)}</td><td>${badge(u.risk_level, u.risk_level === 'HIGH' ? 'warning' : 'secondary')}</td><td>${u.capabilities.map((c) => `<code>${esc(c)}</code>`).join(' ')}</td></tr>`).join('') + '</tbody></table>');
+            '<table class="table table-sm"><thead><tr><th>Birim</th><th>Risk</th><th>Yetkiler</th><th class="text-end">Biten adım</th><th class="text-end">Başarısız %</th><th class="text-end">Engel</th><th class="text-end">Ort. dk/adım</th></tr></thead><tbody>' +
+            perms.units.map((u) => {
+                const card = ((t.available && t.scorecards) || {})[u.id] || null;
+                const fail = card && card.fail_rate != null ? Math.round(card.fail_rate * 100) : null;
+                return `<tr><td>${esc(u.id)}</td><td>${badge(u.risk_level, u.risk_level === 'HIGH' ? 'warning' : 'secondary')}</td><td>${u.capabilities.map((c) => `<code>${esc(c)}</code>`).join(' ')}</td>` +
+                    `<td class="text-end">${card ? esc(card.steps_done) : '—'}</td><td class="text-end ${fail != null && fail >= 50 ? 'down' : ''}">${fail == null ? '—' : fail}</td>` +
+                    `<td class="text-end">${card ? esc(card.blocked) : '—'}</td><td class="text-end">${card && card.avg_minutes_per_step != null ? esc(card.avg_minutes_per_step) : '—'}</td></tr>`;
+            }).join('') + '</tbody></table><div class="small muted">Karne yalnız görev kaydından hesaplanır; yetki vermez, yönlendirmeyi değiştirmez.</div>');
     }
 
     document.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => {

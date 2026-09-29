@@ -26,6 +26,11 @@ from core.decision import (
     DecisionAction
 )
 
+import logging as _logging
+
+# Diagnostics go to the log, not stdout (registry v5.50: 20 coins x every cycle flooded the console).
+_log = _logging.getLogger(__name__)
+
 
 
 
@@ -43,7 +48,7 @@ class DecisionBuilder:
     def __init__(self):
 
 
-        print(
+        _log.debug(
             "[DECISION] Decision Builder v10.0 initialized"
         )
 
@@ -195,7 +200,7 @@ class DecisionBuilder:
 
 
 
-        print(
+        _log.debug(
 
             f"[DECISION] "
             f"{symbol} | "

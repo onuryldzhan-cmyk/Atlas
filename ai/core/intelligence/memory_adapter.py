@@ -15,6 +15,11 @@ Responsibilities:
 
 from __future__ import annotations
 
+import logging as _logging
+
+# Diagnostics go to the log, not stdout (registry v5.50: 20 coins x every cycle flooded the console).
+_log = _logging.getLogger(__name__)
+
 
 
 
@@ -39,7 +44,7 @@ class MemoryAdapter:
 
 
 
-        print(
+        _log.debug(
             "[MEMORY] Memory Adapter v10.0 initialized"
         )
 
@@ -113,7 +118,7 @@ class MemoryAdapter:
 
 
 
-            print(
+            _log.debug(
 
                 f"[MEMORY ERROR] {e}"
 
@@ -145,7 +150,7 @@ class MemoryAdapter:
 
 
 
-        print(
+        _log.debug(
 
             f"[MEMORY] "
             f"trades={trades} "

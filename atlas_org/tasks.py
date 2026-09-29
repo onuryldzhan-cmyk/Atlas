@@ -206,3 +206,47 @@ def agent_activity(tasks: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]
     for entry in state.values():
         entry["recent"] = entry["recent"][-5:]
     return state
+
+
+def agent_scorecards(tasks: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """Per unit, from the log only: finished steps, verdicts, blocks and time per step.
+
+    A scorecard is evidence about how the organization works, never an
+    authority: it changes no routing and grants nothing (registry v5.50).
+    """
+
+    from datetime import datetime
+
+    def when(stamp: str) -> datetime | None:
+        try:
+            return datetime.fromisoformat(str(stamp).replace("Z", "+00:00"))
+        except ValueError:
+            return None
+
+    cards: dict[str, dict[str, Any]] = {}
+    for t in tasks.values():
+        started: dict[int, datetime] = {}
+        for h in t["history"]:
+            step = h.get("step")
+            if h["event"] == TaskEvent.START.value and isinstance(step, int):
+                moment = when(h["at"])
+                if moment:
+                    started[step] = moment
+            elif h["event"] == TaskEvent.RESULT.value and isinstance(step, int):
+                unit = t["steps"][step]["unit"]
+                card = cards.setdefault(unit, {"steps_done": 0, "verdicts": {}, "blocked": 0, "minutes": []})
+                card["steps_done"] += 1
+                verdict = (t["steps"][step]["result"] or {}).get("verdict", "UNKNOWN")
+                card["verdicts"][verdict] = card["verdicts"].get(verdict, 0) + 1
+                end = when(h["at"])
+                if step in started and end:
+                    card["minutes"].append((end - started[step]).total_seconds() / 60)
+            elif h["event"] == TaskEvent.BLOCK.value and isinstance(step, int) and t["steps"][step]["unit"]:
+                unit = t["steps"][step]["unit"]
+                cards.setdefault(unit, {"steps_done": 0, "verdicts": {}, "blocked": 0, "minutes": []})["blocked"] += 1
+    for card in cards.values():
+        minutes = card.pop("minutes")
+        card["avg_minutes_per_step"] = round(sum(minutes) / len(minutes), 1) if minutes else None
+        done = card["steps_done"]
+        card["fail_rate"] = round(card["verdicts"].get("FAIL", 0) / done, 2) if done else None
+    return cards

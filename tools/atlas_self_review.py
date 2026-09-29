@@ -126,6 +126,11 @@ def agent_findings(records: Path) -> list[dict[str, Any]]:
                                                                      "failed": len(failed)},
                         "request": f"araştır: {task['id']} görevinde ajan işi takıldı ({len(blocked)} engelli, "
                                    f"{len(failed)} başarısız adım) - süreci iyileştir"})
+    for unit, card in sorted(task_log.agent_scorecards(state).items()):
+        if card["steps_done"] >= 4 and (card["fail_rate"] or 0) >= 0.5:
+            out.append({"source": "agent_performance", "evidence": {"unit": unit, **card},
+                        "request": f"araştır: {unit} ajanının başarısızlık oranı %{card['fail_rate'] * 100:.0f} "
+                                   f"({card['steps_done']} adım) - çalışma yöntemini iyileştir"})
     return out[:MAX_PER_SOURCE]
 
 
