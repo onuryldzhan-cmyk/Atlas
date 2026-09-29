@@ -2299,6 +2299,17 @@ class MarketLoop:
         except Exception:
             logger.debug("recent candle snapshot skipped for %s", symbol, exc_info=True)
 
+    def _telemetry_decision(self, symbol: str) -> dict[str, Any] | None:
+        decision = self.last_signals.get(symbol)
+        if not isinstance(decision, dict):
+            return None
+        meta = decision.get("metadata") if isinstance(decision.get("metadata"), dict) else {}
+        agents = meta.get("agents") if isinstance(meta.get("agents"), dict) else {}
+        votes = {name: str(v.get("action")) for name, v in agents.items() if isinstance(v, dict) and v.get("action") is not None}
+        conf = decision.get("confidence")
+        return {"action": str(decision.get("action")), "confidence": conf if isinstance(conf, (int, float)) else None,
+                "votes": votes}
+
     def mark_prices(self, max_age_s: float = 300.0, now_ms: int | None = None) -> dict[str, Decimal]:
         """Last closed-candle close per symbol, only when fresh (audit F-3 mark-to-market).
 
@@ -2943,6 +2954,9 @@ class MarketLoop:
                     "processing_cutoff": measurement[
                         "processing_cutoff"
                     ],
+                    # Agent attribution (owner MEGA 1 §11): the decision and
+                    # each agent's vote, observation only; None when absent.
+                    "decision": self._telemetry_decision(symbol),
                 }
 
                 telemetry_logger.info(
