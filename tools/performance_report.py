@@ -73,6 +73,14 @@ def _group_stats(records: list[dict]) -> dict[str, Any]:
             "verdict": verdict}
 
 
+def trader_book(records: list[dict]) -> dict[str, Any]:
+    """Per coin, the metrics the runtime memory uses (BRAIN-MEM-001): expectancy after fees, profit factor, streak."""
+
+    from ai.core.intelligence.trade_evidence import symbol_evidence
+
+    return {s: symbol_evidence(records, s) for s in sorted({r.get("symbol", "?") for r in records})}
+
+
 def analyse(records: list[dict]) -> dict[str, Any]:
     groups: dict[str, dict[str, list[dict]]] = {"coin": defaultdict(list), "holding_time": defaultdict(list),
                                                  "hour_utc": defaultdict(list)}
@@ -93,6 +101,7 @@ def analyse(records: list[dict]) -> dict[str, Any]:
         share = Decimal(total["est_fees"]) / abs(Decimal(total["gross_pnl"]))
         if share > Decimal("0.5"):
             lessons.append(f"ücretler brüt kâr/zararın %{share * 100:.0f}'i: işlem sıklığı (al-sat dönüşü) maliyeti belirliyor")
+    report["trader_book"] = trader_book(records)
     report["lessons"] = lessons or ["henüz güvenilir bir ders yok: örnek yetersiz ya da sonuçlar kararsız"]
     return report
 
@@ -122,6 +131,15 @@ def main(argv: list[str] | None = None) -> int:
             for key, s in table.items():
                 print(f"  {key:<14} {s['trades']:>4} işlem  net {s['est_net_pnl']:>10}  ücret {s['est_fees']:>8}  "
                       f"kazanma {s['win_rate_after_fees'] if s['win_rate_after_fees'] is not None else '-'}  {s['verdict']}")
+        print("\n[trader defteri: işlem başı net beklenti, kâr faktörü, en uzun kayıp serisi, hafıza etkisi]")
+        for sym, b in report["trader_book"].items():
+            if not b.get("available"):
+                print(f"  {sym:<14} okunamadı ({b.get('reason')})")
+                continue
+            pf = "-" if b["profit_factor"] is None else f"{b['profit_factor']:.2f}"
+            effect = "AL güveni -5" if b["effect"] < 0 else f"yok (en az {b['min_trades']} işlem ve kanıtlı zarar gerekir)"
+            print(f"  {sym:<14} {b['trades']:>3} işlem  beklenti {b['net_expectancy']:>8.2f}  kâr faktörü {pf:>5}  "
+                  f"kayıp serisi {b['longest_losing_streak']}  etki: {effect}")
         print("\nDERSLER (kanıt eşiği: en az %d işlem, güven aralığı 50%%'nin tamamen altında/üstünde):" % MIN_SAMPLE)
         for lesson in report["lessons"]:
             print("  - " + lesson)

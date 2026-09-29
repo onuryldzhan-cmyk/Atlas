@@ -252,7 +252,10 @@ class AtlasBrain:
             )
 
             self.memory = MemoryAdapter(
-                self.memory_core
+                self.memory_core,
+                closed_trades_reader=self.config.get(
+                    "closed_trades_reader"
+                ),
             )
 
             self.confidence = ConfidenceEngine()
@@ -366,7 +369,7 @@ class AtlasBrain:
             # MEMORY ANALYSIS
             # =================================================
 
-            memory_result = self.memory.analyze()
+            memory_result = self.memory.analyze(normalized_symbol)
 
             # =================================================
             # AGENT FUSION
@@ -491,6 +494,8 @@ class AtlasBrain:
             # ConfidenceEngine results belong in metadata only.
             # =================================================
 
+            memory_adjustment = self._memory_buy_caution(decision, memory_result)  # BRAIN-MEM-001
+
             confidence_explanation = (
                 self._safe_confidence_explanation(
                     confidence_result
@@ -512,6 +517,7 @@ class AtlasBrain:
                     "confidence_explanation": (
                         confidence_explanation
                     ),
+                    "memory_adjustment": memory_adjustment,
                     "final_confidence": (
                         float(
                             decision.confidence
@@ -1549,6 +1555,34 @@ class AtlasBrain:
             ),
             2,
         )
+
+    # BRAIN-MEM-001 (owner-approved plan v2): a coin whose own closed trades
+    # prove a losing book (>= 10 trades, negative net expectancy after fees)
+    # gets up to 5 points less BUY confidence. Caution only: never raised,
+    # never applied to SELL (which reduces exposure), 0 on missing data.
+    @staticmethod
+    def _memory_buy_caution(
+        decision: Any,
+        memory_result: Any,
+    ) -> dict[str, Any] | None:
+        effect = memory_result.get("effect") if isinstance(memory_result, dict) else None
+        if (
+            not isinstance(effect, (int, float))
+            or isinstance(effect, bool)
+            or effect >= 0
+            or str(getattr(decision, "action", "")).upper().split(".")[-1] != "BUY"
+        ):
+            return None
+        before = float(decision.confidence)
+        penalty = min(abs(float(effect)), 0.05) * 100
+        decision.confidence = round(max(0.0, before - penalty), 2)
+        return {
+            "reason": "LOSING_BOOK_AFTER_FEES",
+            "confidence_before": before,
+            "confidence_after": float(decision.confidence),
+            "trades": memory_result.get("trades"),
+            "net_expectancy": memory_result.get("net_expectancy"),
+        }
 
     def _safe_confidence_explanation(
         self,

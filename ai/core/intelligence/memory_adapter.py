@@ -36,11 +36,15 @@ class MemoryAdapter:
 
     def __init__(
         self,
-        memory_core=None
+        memory_core=None,
+        closed_trades_reader=None
     ):
 
 
         self.memory = memory_core
+        # BRAIN-MEM-001: a callable returning the durable closed-position
+        # archive records (read-only). None keeps the historical behaviour.
+        self.closed_trades_reader = closed_trades_reader
 
 
 
@@ -58,7 +62,9 @@ class MemoryAdapter:
     # =====================================================
 
 
-    def analyze(self):
+    def analyze(self, symbol=None):
+        if self.closed_trades_reader is not None and symbol:
+            return self._trade_book(symbol)
 
 
 
@@ -251,3 +257,19 @@ class MemoryAdapter:
 
 
         return 0
+
+    def _trade_book(self, symbol):
+        """Per-coin evidence from Atlas's own closed trades; unreadable -> no effect."""
+
+        from ai.core.intelligence.trade_evidence import symbol_evidence
+
+        try:
+            records = list(self.closed_trades_reader())
+        except Exception as exc:  # unreadable archive never becomes a signal
+            _log.warning("closed-trade archive unreadable for memory: %s", type(exc).__name__)
+            return {"source": "closed_position_archive", "symbol": symbol, "available": False,
+                    "reason": "ARCHIVE_UNREADABLE", "trades": 0, "effect": 0.0}
+        evidence = symbol_evidence(records, symbol)
+        evidence["source"] = "closed_position_archive"
+        evidence.setdefault("trades", 0)
+        return evidence

@@ -722,6 +722,9 @@ class AtlasApplication:
             event_bus=self.event_bus,
             state_directory=self.state_directory,
             evidence_store=self.evidence_store,
+            closed_positions_path=(
+                self.state_directory / EXECUTION_CLOSED_POSITIONS_FILE
+            ),
         )
 
         # -----------------------------------------------------

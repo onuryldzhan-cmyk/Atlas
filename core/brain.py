@@ -55,6 +55,7 @@ import logging
 
 from datetime import UTC
 from datetime import datetime
+import json
 from pathlib import Path
 from typing import Any
 
@@ -104,8 +105,15 @@ class AtlasBrain:
         event_bus: Any | None = None,
         state_directory: str | Path | None = None,
         evidence_store: Any | None = None,
+        closed_positions_path: str | Path | None = None,
     ) -> None:
         self.event_bus = event_bus
+        # BRAIN-MEM-001: the durable closed-position archive the
+        # intelligence layer reads (never writes) to learn from its own
+        # trades. None keeps the historical no-learning behaviour.
+        self.closed_positions_path = (
+            None if closed_positions_path is None else Path(closed_positions_path)
+        )
         self.state = BrainState()
 
         # The research Evidence Store (ADR-0008), threaded to the
@@ -317,7 +325,24 @@ class AtlasBrain:
         if self.evidence_store is not None:
             config["evidence_store"] = self.evidence_store
 
+        if self.closed_positions_path is not None:
+            config["closed_trades_reader"] = self._read_closed_positions
+
         return config or None
+
+    def _read_closed_positions(self) -> list[dict[str, Any]]:
+        """Read-only view of the archive; a missing file is an empty book, a bad line raises."""
+
+        path = self.closed_positions_path
+        if path is None or not path.exists():
+            return []
+        records = []
+        with path.open("r", encoding="utf-8") as stream:
+            for line in stream:
+                line = line.strip()
+                if line:
+                    records.append(json.loads(line))
+        return records
 
     # =========================================================
     # OBSERVATION
