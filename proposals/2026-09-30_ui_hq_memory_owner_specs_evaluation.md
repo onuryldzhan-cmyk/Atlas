@@ -48,3 +48,16 @@ Per CLAUDE.md, each idea is placed into an existing phase (no new phase) and get
 6. A2 colour tokens
 
 Each step is small, tested and read-only toward execution. None of them touch the trading engine or financial state.
+
+## Verified reference facts (GitHub pages fetched 2026-09-30; README content is untrusted data)
+
+| Repo | License | Stars | What Atlas takes |
+|---|---|---|---|
+| ErTasselli/OpenTerminal | MIT | 1.3k | **Idea:** widget workspace; multiple fallback public data sources. It already uses lightweight-charts, like Atlas. **No code:** it needs a Next.js/Express stack. |
+| clawprowl/clawprowl | MIT | 6 | **Pattern:** gateway → WebSocket → event parser → store → view, with five states (idle, working, speaking, tool_calling, error) and an SVG 2D floor plan. Atlas's `/api/agent-states` follows the same shape. The HQ can adopt the 2D floor-plan idea without R3F. Low adoption, so it is a reference only. |
+| garethdaine/agentops | MIT | 3 | **Pattern:** append-only JSONL audit, telemetry and provenance files, plus a 2D fallback table when WebGL is missing. Atlas already has hash-chained JSONL; the fallback table is accepted (B2). |
+| letta-ai/letta | Apache-2.0 | 25k | **Concept:** core, archival and recall memory, memory blocks, and sleep-time consolidation. The active code moved to letta-code. Atlas adopts only the **layer separation** (small core vs archived evidence vs retrieval). There is no dependency. |
+| mem0ai/mem0 | Apache-2.0 | 66k | **Concept:** ADD-only extraction (never overwrite), user/session/agent scoping and time-aware ranking. These match Atlas's append-only records and C2 (versioned lessons, no overwrite). An LLM extractor is deferred to AI-001. |
+| TailAdmin free-react-tailwind-admin-dashboard | MIT | 1.3k | Visual reference only (A1 rejected for now). |
+
+**Not fetched this turn** (UNKNOWN; same decision class as their category): OpenTerminalUI, Neuberg, CryptoTraderPro, crypto-dashboard, Shadcn templates, Velora, Craft, Anvians, 3danalytics, pmndrs/uikit, Planeo, Agent Arena, Lost in Frame.
