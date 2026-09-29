@@ -36,7 +36,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 
 from observability.organization import organization_public
-from observability import command_center, governance_records, panel_sources
+from observability import command_center, governance_records, panel_sources, portfolio_view
 from observability.panel_router import (
     build_observability_router,
     is_loopback_request,
@@ -1800,6 +1800,15 @@ def create_app(
             context={},
         )
 
+    # Registry v5.40 (owner: a simple start page, details on other pages).
+    for _path, _template in (("/home", "home.html"), ("/trading", "trading.html")):
+        async def _static_page(request: Request, _template=_template) -> Response:
+            if not is_loopback_request(request):
+                return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+            return templates.TemplateResponse(request=request, name=_template, context={})
+
+        application.add_api_route(_path, _static_page, methods=["GET"], response_class=HTMLResponse)
+
     @application.get("/hq", response_class=HTMLResponse)
     async def hq_page(request: Request) -> Response:
         # Registry v5.38: Atlas HQ. Static shell; the 3D view is presentation
@@ -2340,6 +2349,45 @@ def create_app(
             tasks=governance_records.read_tasks(),
             memory=governance_records.read_memory(),
         )
+
+    # Registry v5.40 (owner: real-time capital and P/L, not fake data): the
+    # durable PAPER book valued at MarketLoop's latest real prices. Read-only:
+    # snapshot() and status() are the runtime's own public accessors.
+    def _portfolio_payload() -> dict:
+        runtime = application.state.atlas_runtime
+        foundation = _resolve_attr(runtime, "portfolio_foundation")
+        snapshot_method = getattr(foundation, "snapshot", None)
+        if not callable(snapshot_method):
+            return {"available": False, "reason": "PORTFOLIO_FOUNDATION_NOT_ATTACHED"}
+        try:
+            snapshot = snapshot_method()
+        except Exception as exc:
+            logger.debug("Portfolio snapshot unavailable", exc_info=True)
+            return {"available": False, "reason": "PORTFOLIO_SNAPSHOT_FAILED", "error_type": type(exc).__name__}
+        prices, signals, price_time = {}, {}, None
+        market_loop = _resolve_attr(runtime, "market_loop")
+        loop_status = getattr(market_loop, "status", None)
+        if callable(loop_status):
+            try:
+                status = loop_status()
+                price_time = status.get("last_cycle")
+                for symbol, decision in (status.get("last_signals") or {}).items():
+                    if isinstance(decision, dict) and decision.get("price") is not None:
+                        prices[symbol] = decision["price"]
+                        signals[symbol] = {k: decision.get(k) for k in PUBLIC_SIGNAL_KEYS}
+            except Exception:
+                logger.debug("Market loop status unavailable for portfolio", exc_info=True)
+        payload = portfolio_view.build(snapshot, prices, price_time)
+        if payload.get("available"):
+            # Every scanned coin with its latest real price and the loop's decision.
+            payload["market"] = [{"symbol": sym, "price": str(prices[sym]), **signals[sym]} for sym in sorted(prices)]
+        return payload
+
+    @application.get("/api/portfolio", response_class=JSONResponse)
+    async def api_portfolio(request: Request) -> JSONResponse:
+        if not is_loopback_request(request):
+            return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+        return JSONResponse(status_code=200, content=await run_in_threadpool(_portfolio_payload))
 
     @application.get("/api/command-center", response_class=JSONResponse)
     async def api_command_center(request: Request) -> JSONResponse:

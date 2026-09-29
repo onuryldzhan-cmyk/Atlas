@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+{#
+  Atlas start page (registry v5.40). Loopback-only, read-only.
+  Owner: "başlangıç Dashboard'ı çok ayrıntılı olmasın, ayrıntılar başka
+  sayfalara aktarılsın". Only the essentials; every value comes from
+  /api/portfolio (real PAPER book + real prices) and /api/command-center.
+  Unavailable data is shown as unavailable, never filled in.
+#}
+<html lang="tr" data-bs-theme="dark" data-lte-color-mode="off">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Atlas — Başlangıç</title>
+    <link rel="stylesheet" href="/assets/adminlte.min.css">
+    <style>
+        body { background: #0b0f17; }
+        .atlas-nav a { color: var(--bs-secondary-color); text-decoration: none; padding: .35rem .7rem; border-radius: .4rem; white-space: nowrap; }
+        .atlas-nav a.active, .atlas-nav a:hover { color: var(--bs-body-color); background: var(--bs-tertiary-bg); }
+        .wrap { max-width: 1100px; margin: 0 auto; padding: 16px; }
+        .kpi { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 16px; height: 100%; }
+        .kpi .label { font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; color: var(--bs-secondary-color); }
+        .kpi .value { font-size: 1.7rem; font-weight: 700; line-height: 1.2; }
+        .kpi .sub { font-size: .8rem; color: var(--bs-secondary-color); }
+        .up { color: #22c55e; } .down { color: #ef4444; }
+        .card-link { display: block; text-decoration: none; color: inherit; }
+        .card-link:hover .kpi { border-color: var(--bs-primary); }
+        table.coins td, table.coins th { padding: .35rem .5rem; font-size: .9rem; }
+    </style>
+</head>
+<body>
+<nav class="navbar bg-body border-bottom px-3 flex-wrap gap-2">
+    <span class="navbar-brand fw-bold"><span class="text-primary">ATLAS</span></span>
+    <div class="atlas-nav d-flex flex-wrap gap-1">
+        <a href="/home" class="active">Başlangıç</a>
+        <a href="/trading">Trading</a>
+        <a href="/hq">Atlas HQ</a>
+        <a href="/agents">Ajanlar</a>
+        <a href="/dashboard">Operasyon</a>
+    </div>
+    <span id="status-pill" class="small">…</span>
+</nav>
+
+<div class="wrap">
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-lg-3"><a class="card-link" href="/trading"><div class="kpi">
+            <div class="label">Toplam sermaye</div><div id="k-equity" class="value">…</div><div id="k-start" class="sub"></div></div></a></div>
+        <div class="col-6 col-lg-3"><a class="card-link" href="/trading"><div class="kpi">
+            <div class="label">Toplam kâr / zarar</div><div id="k-pnl" class="value">…</div><div id="k-pnl-sub" class="sub"></div></div></a></div>
+        <div class="col-6 col-lg-3"><a class="card-link" href="/trading"><div class="kpi">
+            <div class="label">Kullanılabilir nakit</div><div id="k-cash" class="value">…</div><div id="k-exposure" class="sub"></div></div></a></div>
+        <div class="col-6 col-lg-3"><a class="card-link" href="/dashboard#section-proposals-title"><div class="kpi">
+            <div class="label">Kararınızı bekleyen</div><div id="k-decisions" class="value">…</div><div class="sub">öneri</div></div></a></div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-7"><div class="kpi">
+            <div class="d-flex justify-content-between"><div class="label">Coinler (gerçek zamanlı)</div><a href="/trading" class="small">Ayrıntı →</a></div>
+            <div id="coins" class="mt-2">Yükleniyor...</div>
+        </div></div>
+        <div class="col-lg-5"><div class="kpi">
+            <div class="label mb-2">Durum</div>
+            <div id="status-list" class="small">Yükleniyor...</div>
+            <div class="mt-3 small text-body-secondary">PAPER modu: gerçek piyasa verisi, sanal para. Canlı para KAPALI.</div>
+        </div></div>
+    </div>
+    <div id="price-note" class="small text-body-secondary mt-2"></div>
+</div>
+
+<script>
+(() => {
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const getJSON = async (url) => { try { const r = await fetch(url); return await r.json(); } catch (e) { return { available: false, reason: 'network error' }; } };
+    const money = (v) => (v === null || v === undefined) ? '—' : Number(v).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' $';
+    const signed = (v, suffix = '') => (v === null || v === undefined) ? '—' : (Number(v) > 0 ? '+' : '') + Number(v).toLocaleString('tr-TR', { maximumFractionDigits: 2 }) + suffix;
+    const tone = (v) => (v === null || v === undefined || Number(v) === 0) ? '' : (Number(v) > 0 ? 'up' : 'down');
+    const set = (id, html) => { document.getElementById(id).innerHTML = html; };
+
+    async function refresh() {
+        const [p, cc] = await Promise.all([getJSON('/api/portfolio'), getJSON('/api/command-center')]);
+        if (p.available) {
+            set('k-equity', money(p.equity));
+            set('k-start', `başlangıç ${money(p.starting_capital)}`);
+            set('k-pnl', `<span class="${tone(p.total_pnl)}">${signed(p.total_pnl, ' $')}</span>`);
+            set('k-pnl-sub', `<span class="${tone(p.total_pnl_pct)}">${signed(p.total_pnl_pct, ' %')}</span> · ücretler ${money(p.fees)}`);
+            set('k-cash', money(p.available_capital));
+            set('k-exposure', p.exposure_pct === null ? '' : `piyasada %${Number(p.exposure_pct).toFixed(1)} · ${p.positions.length} açık pozisyon`);
+            const held = new Set(p.positions.map((x) => x.symbol));
+            set('coins', (p.market || []).length
+                ? '<table class="table table-sm coins mb-0"><thead><tr><th>Coin</th><th class="text-end">Fiyat</th><th>Sinyal</th><th></th></tr></thead><tbody>' +
+                  p.market.map((m) => `<tr><td>${esc(m.symbol.replace('USDT', ''))}</td><td class="text-end">${esc(Number(m.price).toLocaleString('tr-TR', { maximumFractionDigits: 6 }))}</td>` +
+                    `<td><span class="badge text-bg-${m.action === 'BUY' ? 'success' : m.action === 'SELL' ? 'danger' : 'secondary'}">${esc(m.action || '—')}</span> <span class="text-body-secondary">${m.confidence == null ? '' : esc(Number(m.confidence).toFixed(0))}</span></td>` +
+                    `<td>${held.has(m.symbol) ? '<span class="badge text-bg-primary">pozisyonda</span>' : ''}</td></tr>`).join('') + '</tbody></table>'
+                : '<span class="text-body-secondary">Piyasa döngüsü henüz fiyat üretmedi.</span>');
+            set('price-note', p.prices_as_of ? `Fiyatlar: ${esc(p.prices_as_of)}${p.prices_stale ? ' — ESKİ, piyasa döngüsünü kontrol edin' : ''}` +
+                (p.incomplete_reason ? ` · Eksik: ${esc(p.incomplete_reason)}` : '') : '');
+        } else {
+            ['k-equity', 'k-pnl', 'k-cash'].forEach((id) => set(id, '—'));
+            set('k-start', `veri yok: ${esc(p.reason)}`);
+            set('coins', `<span class="text-body-secondary">Atlas çalışma zamanı bağlı değil (${esc(p.reason)}). Değer uydurulmaz.</span>`);
+        }
+        if (cc.available) {
+            const healthy = cc.health.healthy === true;
+            set('status-pill', `<span class="badge text-bg-${healthy ? 'success' : 'danger'}">${healthy ? 'ÇALIŞIYOR' : esc(cc.health.state || 'BİLİNMİYOR')}</span>`);
+            set('k-decisions', cc.proposals.available ? cc.proposals.awaiting_owner.length : '—');
+            const tc = cc.tasks.counts || {};
+            set('status-list', [
+                ['Sistem', healthy ? 'sağlıklı' : `sorun: ${esc(cc.health.reason || cc.health.state)}`],
+                ['Çalışan ajan', cc.agents.working.length ? esc(cc.agents.working.join(', ')) : 'yok'],
+                ['Görevler', cc.tasks.available ? `${tc.IN_PROGRESS || 0} sürüyor · ${tc.BLOCKED || 0} engelli` : 'okunamadı'],
+                ['Hafıza', cc.memory.available ? `${cc.memory.records} kayıt` : 'okunamadı'],
+            ].map(([k, v]) => `<div class="d-flex justify-content-between border-bottom border-secondary-subtle py-1"><span>${k}</span><span>${v}</span></div>`).join(''));
+        }
+    }
+    refresh();
+    setInterval(refresh, 5000);
+})();
+</script>
+</body>
+</html>

@@ -550,6 +550,7 @@
     "observability/organization.py": "L5",
     "observability/panel_router.py": "L5",
     "observability/panel_sources.py": "L5",
+    "observability/portfolio_view.py": "L5",
     "portfolio/capital_manager.py": "L3",
     "web_app.py": "L5"
   },

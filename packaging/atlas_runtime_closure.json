@@ -126,6 +126,7 @@
     "observability/organization.py",
     "observability/panel_router.py",
     "observability/panel_sources.py",
+    "observability/portfolio_view.py",
     "portfolio/capital_manager.py",
     "web_app.py"
   ]

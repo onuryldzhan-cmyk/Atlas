@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+{#
+  Atlas Trading page (registry v5.40). Loopback-only, read-only.
+  Capital, P/L and open positions from /api/portfolio (durable PAPER book
+  valued at MarketLoop's real prices); closed trades from /api/trades.
+  Nothing here can place, change or cancel anything.
+#}
+<html lang="tr" data-bs-theme="dark" data-lte-color-mode="off">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Atlas — Trading</title>
+    <link rel="stylesheet" href="/assets/adminlte.min.css">
+    <style>
+        body { background: #0b0f17; }
+        .atlas-nav a { color: var(--bs-secondary-color); text-decoration: none; padding: .35rem .7rem; border-radius: .4rem; white-space: nowrap; }
+        .atlas-nav a.active, .atlas-nav a:hover { color: var(--bs-body-color); background: var(--bs-tertiary-bg); }
+        .wrap { max-width: 1250px; margin: 0 auto; padding: 16px; }
+        .pane { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+        .pane h2 { font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--bs-secondary-color); margin-bottom: .7rem; }
+        .kv { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,.05); font-size: .9rem; }
+        .up { color: #22c55e; } .down { color: #ef4444; }
+        .table-wrap { overflow-x: auto; }
+        table td, table th { font-size: .86rem; white-space: nowrap; }
+    </style>
+</head>
+<body>
+<nav class="navbar bg-body border-bottom px-3 flex-wrap gap-2">
+    <span class="navbar-brand fw-bold"><span class="text-primary">ATLAS</span> Trading</span>
+    <div class="atlas-nav d-flex flex-wrap gap-1">
+        <a href="/home">Başlangıç</a>
+        <a href="/trading" class="active">Trading</a>
+        <a href="/hq">Atlas HQ</a>
+        <a href="/agents">Ajanlar</a>
+        <a href="/dashboard">Operasyon</a>
+    </div>
+    <span class="small"><span class="badge text-bg-secondary">PAPER</span> <span class="badge text-bg-dark">Canlı para KAPALI</span></span>
+</nav>
+
+<div class="wrap">
+    <div id="banner" class="small text-body-secondary mb-2"></div>
+    <div class="row g-3">
+        <div class="col-lg-4">
+            <div class="pane"><h2>Hesap</h2><div id="account">Yükleniyor...</div></div>
+        </div>
+        <div class="col-lg-8">
+            <div class="pane"><h2>Açık pozisyonlar (gerçek zamanlı fiyatla)</h2><div id="positions" class="table-wrap">Yükleniyor...</div></div>
+            <div class="pane"><h2>Coinler</h2><div id="market" class="table-wrap">Yükleniyor...</div></div>
+        </div>
+    </div>
+    <div class="pane"><h2>Kapanan işlemler</h2><div id="trades" class="table-wrap">Yükleniyor...</div></div>
+    <div class="small text-body-secondary">Kaynak: kalıcı PAPER defteri (execution_portfolio_foundation) ve piyasa döngüsünün Binance'ten aldığı gerçek mum kapanış fiyatları. Başlangıç sermayesi defterin kendi muhasebe özdeşliğinden hesaplanır. Fiyatı olmayan pozisyon tahmin edilmez, "eksik" gösterilir.</div>
+</div>
+
+<script>
+(() => {
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const getJSON = async (url) => { try { const r = await fetch(url); return await r.json(); } catch (e) { return { available: false, reason: 'network error' }; } };
+    const num = (v, d = 2) => (v === null || v === undefined) ? '—' : Number(v).toLocaleString('tr-TR', { minimumFractionDigits: d, maximumFractionDigits: d });
+    const px = (v) => (v === null || v === undefined) ? '—' : Number(v).toLocaleString('tr-TR', { maximumFractionDigits: 8 });
+    const tone = (v) => (v === null || v === undefined || Number(v) === 0) ? '' : (Number(v) > 0 ? 'up' : 'down');
+    const signed = (v, d = 2) => (v === null || v === undefined) ? '—' : `<span class="${tone(v)}">${Number(v) > 0 ? '+' : ''}${num(v, d)}</span>`;
+    const set = (id, html) => { document.getElementById(id).innerHTML = html; };
+
+    function renderPortfolio(p) {
+        if (!p.available) {
+            ['account', 'positions', 'market'].forEach((id) => set(id, `<span class="text-body-secondary">Veri yok (${esc(p.reason)}). Değer uydurulmaz.</span>`));
+            return;
+        }
+        set('banner', `Fiyat zamanı: ${esc(p.prices_as_of || 'bilinmiyor')}${p.price_age_seconds != null ? ` (${esc(p.price_age_seconds)} sn önce)` : ''}` +
+            (p.prices_stale ? ' — <b class="down">fiyatlar ESKİ</b>' : '') + (p.incomplete_reason ? ` · <b class="down">eksik: ${esc(p.incomplete_reason)}</b>` : ''));
+        set('account', [
+            ['Başlangıç sermayesi', num(p.starting_capital) + ' $'],
+            ['Toplam sermaye (özsermaye)', p.equity === null ? '—' : num(p.equity) + ' $'],
+            ['Toplam kâr / zarar', `${signed(p.total_pnl)} $ (${signed(p.total_pnl_pct)} %)`],
+            ['Gerçekleşen net kâr / zarar', `${signed(p.realized_net_pnl)} $`],
+            ['Gerçekleşmemiş kâr / zarar', `${signed(p.unrealized_pnl)} $`],
+            ['Ödenen ücretler', num(p.fees) + ' $'],
+            ['Nakit', num(p.cash) + ' $'],
+            ['Kullanılabilir', num(p.available_capital) + ' $'],
+            ['Pozisyon maliyeti', num(p.invested_cost) + ' $'],
+            ['Piyasa değeri', p.market_value === null ? '—' : num(p.market_value) + ' $'],
+            ['Piyasadaki oran', p.exposure_pct === null ? '—' : num(p.exposure_pct, 1) + ' %'],
+        ].map(([k, v]) => `<div class="kv"><span>${k}</span><b>${v}</b></div>`).join(''));
+        set('positions', p.positions.length
+            ? '<table class="table table-sm mb-0"><thead><tr><th>Coin</th><th class="text-end">Miktar</th><th class="text-end">Ort. giriş</th><th class="text-end">Güncel</th><th class="text-end">Maliyet</th><th class="text-end">Değer</th><th class="text-end">K/Z $</th><th class="text-end">K/Z %</th><th>Açılış</th></tr></thead><tbody>' +
+              p.positions.map((r) => `<tr><td>${esc(r.symbol)}</td><td class="text-end">${px(r.quantity)}</td><td class="text-end">${px(r.average_entry_price)}</td>` +
+                `<td class="text-end">${r.price === null ? '<span class="down">eksik</span>' : px(r.price)}</td><td class="text-end">${num(r.cost)}</td>` +
+                `<td class="text-end">${num(r.market_value)}</td><td class="text-end">${signed(r.unrealized_pnl)}</td><td class="text-end">${signed(r.unrealized_pct)}</td>` +
+                `<td>${esc((r.opened_at || '').replace('T', ' ').slice(0, 16))}</td></tr>`).join('') + '</tbody></table>'
+            : '<span class="text-body-secondary">Açık pozisyon yok.</span>');
+        set('market', (p.market || []).length
+            ? '<table class="table table-sm mb-0"><thead><tr><th>Coin</th><th class="text-end">Fiyat</th><th>Karar</th><th class="text-end">Güven</th><th>Risk</th></tr></thead><tbody>' +
+              p.market.map((m) => `<tr><td>${esc(m.symbol)}</td><td class="text-end">${px(m.price)}</td>` +
+                `<td><span class="badge text-bg-${m.action === 'BUY' ? 'success' : m.action === 'SELL' ? 'danger' : 'secondary'}">${esc(m.action || '—')}</span></td>` +
+                `<td class="text-end">${m.confidence == null ? '—' : num(m.confidence, 0)}</td><td>${esc(m.risk_level || '—')}</td></tr>`).join('') + '</tbody></table>'
+            : '<span class="text-body-secondary">Piyasa döngüsü henüz fiyat üretmedi.</span>');
+    }
+
+    function renderTrades(t) {
+        if (!t || t.available !== true) { set('trades', `<span class="text-body-secondary">Veri yok (${esc((t && (t.reason || t.status)) || 'bilinmiyor')}).</span>`); return; }
+        const rows = Array.isArray(t.recent_trades) ? t.recent_trades : [];
+        const head = `<div class="small mb-2">Toplam ${esc(t.total_trades)} işlem · kazanan ${esc(t.wins)} · kaybeden ${esc(t.losses)} · brüt ${signed(t.total_gross_pnl)} $` +
+            (t.account ? ` · net (ücretler düşülmüş) ${signed(t.account.realized_net_pnl)} $` : '') + '</div>';
+        set('trades', head + (rows.length
+            ? '<table class="table table-sm mb-0"><thead><tr><th>Coin</th><th>Açılış</th><th>Kapanış</th><th class="text-end">Brüt K/Z $</th></tr></thead><tbody>' +
+              rows.slice().reverse().map((r) => `<tr><td>${esc(r.symbol)}</td><td>${esc((r.opened_at || '').replace('T', ' ').slice(0, 16))}</td>` +
+                `<td>${esc((r.closed_at || '').replace('T', ' ').slice(0, 16))}</td><td class="text-end">${signed(r.gross_pnl)}</td></tr>`).join('') + '</tbody></table>'
+            : '<span class="text-body-secondary">Henüz kapanan işlem yok.</span>'));
+    }
+
+    async function refresh() {
+        const [p, t] = await Promise.all([getJSON('/api/portfolio'), getJSON('/api/trades')]);
+        renderPortfolio(p);
+        renderTrades(t);
+    }
+    refresh();
+    setInterval(refresh, 5000);
+})();
+</script>
+</body>
+</html>
