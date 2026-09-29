@@ -441,6 +441,7 @@
     "ai/core/intelligence/memory_adapter.py": "L4",
     "ai/core/intelligence/reasoning_adapter.py": "L4",
     "ai/core/intelligence/risk_engine.py": "L4",
+    "ai/core/intelligence/trade_evidence.py": "L4",
     "analysis/__init__.py": "L4",
     "analysis/evidence_status.py": "L1",
     "analysis/world_analysis_engine.py": "L4",

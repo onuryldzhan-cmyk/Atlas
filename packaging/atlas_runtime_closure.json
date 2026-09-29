@@ -17,6 +17,7 @@
     "ai/core/intelligence/memory_adapter.py",
     "ai/core/intelligence/reasoning_adapter.py",
     "ai/core/intelligence/risk_engine.py",
+    "ai/core/intelligence/trade_evidence.py",
     "analysis/__init__.py",
     "analysis/evidence_status.py",
     "analysis/world_analysis_engine.py",
