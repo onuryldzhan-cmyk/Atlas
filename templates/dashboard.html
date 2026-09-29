@@ -222,6 +222,21 @@
                   parent (agent breakdown, decision log, known limitations)
                   is a nested <details> that collapses on its own.
                 #}
+                <section class="card card-dark card-outline mb-4" aria-labelledby="section-command-title">
+                    <div class="card-header">
+                        <h3 id="section-command-title" class="card-title">Komuta Merkezi &amp; Atlas Chat</h3>
+                    </div>
+                    <div class="card-body">
+                        <div id="command-strip" class="d-flex flex-wrap gap-2 mb-3">Yükleniyor...</div>
+                        <div id="chat-box" class="input-group input-group-sm mb-2">
+                            <input id="chat-input" type="text" autocomplete="off" class="form-control" maxlength="500" placeholder="Atlas, bugün ne oldu? · öneriler · öneri P-0001 · görevler · ajanlar · sistem sağlığı · trading" aria-label="Atlas'a sor">
+                            <button id="chat-send" class="btn btn-primary" type="button">Sor</button>
+                        </div>
+                        <div id="chat-log" class="small"></div>
+                        <div class="small text-body-secondary mt-2">Atlas Chat kural tabanlıdır (yapay zekâ değildir): yalnız panelin okuduğu gerçek durumdan cevap verir, hiçbir şeyi değiştiremez ve onay veremez.</div>
+                    </div>
+                </section>
+
                 <section class="card card-primary card-outline mb-4" aria-labelledby="section-decisions-title">
                     <div class="card-header">
                         <h3 id="section-decisions-title" class="card-title">Otonom Kararlar &amp; Execution Eşikleri</h3>
@@ -1179,6 +1194,52 @@
         }
 
         // ---------------------------------------------------------------
+        // Command Center strip + Atlas Chat (read-only, registry v5.37)
+        // ---------------------------------------------------------------
+        function updateCommandCenter() {
+            fetchPanel('/api/command-center', 'command-strip', (b) => {
+                const tile = (label, value, tone) => `<div class="subpanel px-3 py-2"><div class="small text-body-secondary">${esc(label)}</div>${badge(value, tone)}</div>`;
+                const waiting = b.proposals.available ? b.proposals.awaiting_owner.length : null;
+                const tc = b.tasks.counts || {};
+                document.getElementById('command-strip').innerHTML = [
+                    tile('Sistem', b.health.healthy === true ? 'SAĞLIKLI' : (b.health.state || 'BİLİNMİYOR'), b.health.healthy === true ? 'success' : 'danger'),
+                    tile('Kararınızı bekleyen', waiting === null ? 'okunamadı' : `${waiting} öneri`, waiting ? 'danger' : 'success'),
+                    tile('Görevler', b.tasks.available ? `${tc.IN_PROGRESS || 0} sürüyor · ${tc.BLOCKED || 0} engelli` : 'okunamadı', (tc.BLOCKED || 0) ? 'warning' : 'info'),
+                    tile('Çalışan ajan', `${b.agents.working.length}`, b.agents.working.length ? 'primary' : 'secondary'),
+                    tile('Trading', b.trading.available ? `PAPER · net ${b.trading.realized_net_pnl}` : 'PAPER · bağlı değil', 'secondary'),
+                    tile('Canlı para', 'KAPALI', 'dark'),
+                ].join('');
+            });
+        }
+
+        async function askAtlas() {
+            const input = document.getElementById('chat-input');
+            const q = input.value.trim();
+            if (!q) return;
+            const log = document.getElementById('chat-log');
+            let text;
+            let navigate = null;
+            try {
+                const res = await fetch('/api/chat?q=' + encodeURIComponent(q));
+                const data = await res.json();
+                text = data.answer || 'cevap yok';
+                navigate = data.navigate;
+            } catch (error) {
+                text = 'Bağlantı hatası.';
+            }
+            log.insertAdjacentHTML('afterbegin', `<div class="mb-2"><div><b>Sen:</b> ${esc(q)}</div><div><b>Atlas:</b> ${esc(text)}</div></div>`);
+            input.value = '';
+            if (navigate) {
+                const target = document.getElementById('section-proposals-title');
+                if (target) target.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+        document.getElementById('chat-send').addEventListener('click', askAtlas);
+        document.getElementById('chat-input').addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') askAtlas();
+        });
+
+        // ---------------------------------------------------------------
         // Proposals and Atlas Memory (read-only, registry v5.34)
         // ---------------------------------------------------------------
         const PROPOSAL_TONE = {
@@ -1633,6 +1694,7 @@
             updateSystemIntegrityPanel();
             updateTelemetryPanel();
             updateProposals();
+            updateCommandCenter();
             return updateExecutionGates();
         }
         setInterval(updateSlowPanels, 30000);

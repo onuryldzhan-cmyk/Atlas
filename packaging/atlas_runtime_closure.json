@@ -120,6 +120,7 @@
     "exchange/market_feed.py",
     "main.py",
     "observability/__init__.py",
+    "observability/command_center.py",
     "observability/governance_records.py",
     "observability/organization.py",
     "observability/panel_router.py",

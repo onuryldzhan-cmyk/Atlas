@@ -91,6 +91,8 @@ WEB_APP_GUARDED_ROUTES = [
     "/api/memory",
     "/api/permissions",
     "/api/tasks",
+    "/api/command-center",
+    "/api/chat",
     "/agents",
     "/api/risk-accounting",
     "/api/system-integrity",

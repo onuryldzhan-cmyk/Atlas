@@ -36,7 +36,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 
 from observability.organization import organization_public
-from observability import governance_records, panel_sources
+from observability import command_center, governance_records, panel_sources
 from observability.panel_router import (
     build_observability_router,
     is_loopback_request,
@@ -2319,6 +2319,34 @@ def create_app(
 
         application.add_api_route(path, _governance_route, methods=["GET"],
                                   response_class=JSONResponse)
+
+    # Registry v5.37: Command Center brief and Atlas Chat. Both only read
+    # the payloads above (health, account totals, proposals, tasks, memory);
+    # the chat is deterministic and cannot act.
+    def _command_center_brief() -> dict:
+        runtime = application.state.atlas_runtime
+        return command_center.compose(
+            health=_safe_runtime_health(runtime),
+            account=_account_totals(_resolve_attr(runtime, "portfolio_foundation")),
+            proposals=governance_records.read_proposals(),
+            tasks=governance_records.read_tasks(),
+            memory=governance_records.read_memory(),
+        )
+
+    @application.get("/api/command-center", response_class=JSONResponse)
+    async def api_command_center(request: Request) -> JSONResponse:
+        if not is_loopback_request(request):
+            return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+        brief = await run_in_threadpool(_command_center_brief)
+        brief.pop("_proposals", None)
+        return JSONResponse(status_code=200, content=brief)
+
+    @application.get("/api/chat", response_class=JSONResponse)
+    async def api_chat(request: Request, q: str = "") -> JSONResponse:
+        if not is_loopback_request(request):
+            return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+        brief = await run_in_threadpool(_command_center_brief)
+        return JSONResponse(status_code=200, content=command_center.answer(q[:500], brief))
 
     @application.get(
         "/api/agent-evidence",
