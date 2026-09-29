@@ -98,6 +98,7 @@ WEB_APP_GUARDED_ROUTES = [
     "/hq",
     "/home",
     "/trading",
+    "/governance",
     "/api/risk-accounting",
     "/api/system-integrity",
     "/api/execution-gates",

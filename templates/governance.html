@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+{#
+  Atlas decisions & memory page (registry v5.43). Loopback-only, read-only.
+  Proposals (full lifecycle, reviews, tests, rollback, history), tasks,
+  Atlas Memory with provenance, and every unit's permissions - from
+  /api/proposals, /api/tasks, /api/memory, /api/permissions. A
+  recommendation, a review, an owner approval and an applied change are
+  shown as four visibly different things. Nothing here can approve.
+#}
+<html lang="tr" data-bs-theme="dark" data-lte-color-mode="off">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Atlas — Kararlar &amp; Hafıza</title>
+    <link rel="stylesheet" href="/assets/adminlte.min.css">
+    <style>
+        body { background: #0b0f17; }
+        .atlas-nav a { color: var(--bs-secondary-color); text-decoration: none; padding: .35rem .7rem; border-radius: .4rem; white-space: nowrap; }
+        .atlas-nav a.active, .atlas-nav a:hover { color: var(--bs-body-color); background: var(--bs-tertiary-bg); }
+        .wrap { max-width: 1200px; margin: 0 auto; padding: 16px; }
+        .pane { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+        .pane h2 { font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--bs-secondary-color); margin-bottom: .7rem; }
+        .stage { display: inline-block; padding: .15rem .5rem; border-radius: .35rem; font-size: .75rem; border: 1px solid; margin-right: .25rem; }
+        .stage.rec { border-color: #64748b; color: #cbd5e1; }        /* recommendation (agent) */
+        .stage.rev { border-color: #06b6d4; color: #67e8f9; }        /* review (agent, independent) */
+        .stage.own { border-color: #f59e0b; color: #fcd34d; background: rgba(245,158,11,.08); }  /* owner decision */
+        .stage.app { border-color: #22c55e; color: #86efac; background: rgba(34,197,94,.08); }   /* applied */
+        .tabs button { margin-right: .3rem; }
+        .item { border-bottom: 1px solid rgba(255,255,255,.06); padding: .6rem 0; }
+        .muted { color: var(--bs-secondary-color); }
+    </style>
+</head>
+<body>
+<nav class="navbar bg-body border-bottom px-3 flex-wrap gap-2">
+    <span class="navbar-brand fw-bold"><span class="text-primary">ATLAS</span> Kararlar &amp; Hafıza</span>
+    <div class="atlas-nav d-flex flex-wrap gap-1">
+        <a href="/home">Başlangıç</a>
+        <a href="/trading">Trading</a>
+        <a href="/governance" class="active">Kararlar &amp; Hafıza</a>
+        <a href="/hq">Atlas HQ</a>
+        <a href="/agents">Ajanlar</a>
+        <a href="/dashboard">Operasyon</a>
+    </div>
+</nav>
+
+<div class="wrap">
+    <div class="small muted mb-2">
+        <span class="stage rec">Tavsiye (ajan)</span><span class="stage rev">İnceleme (bağımsız ajan)</span><span class="stage own">Sahip kararı</span><span class="stage app">Uygulandı</span>
+        — Atlas hiçbir öneriyi kendisi onaylayamaz. Onay yalnız sahibin imzalı kararıdır.
+    </div>
+    <div class="tabs mb-3">
+        <button type="button" class="btn btn-sm btn-primary" data-tab="proposals">Öneriler</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-tab="tasks">Görevler</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-tab="memory">Hafıza</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-tab="permissions">Yetkiler</button>
+    </div>
+    <div class="pane" data-panel="proposals"><h2>Öneriler</h2><div id="proposals">Yükleniyor...</div></div>
+    <div class="pane" data-panel="tasks" hidden><h2>Görevler</h2><div id="tasks">Yükleniyor...</div></div>
+    <div class="pane" data-panel="memory" hidden><h2>Atlas Hafızası</h2>
+        <div class="mb-2"><select id="memory-type" class="form-select form-select-sm w-auto d-inline-block" aria-label="Tür"><option value="">Tüm türler</option></select></div>
+        <div id="memory">Yükleniyor...</div></div>
+    <div class="pane" data-panel="permissions" hidden><h2>Birim yetkileri</h2><div id="permissions">Yükleniyor...</div></div>
+</div>
+
+<script>
+(() => {
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const getJSON = async (url) => { try { const r = await fetch(url); return await r.json(); } catch (e) { return { available: false, reason: 'network error' }; } };
+    const set = (id, html) => { document.getElementById(id).innerHTML = html; };
+    const badge = (t, tone) => `<span class="badge text-bg-${tone}">${esc(t)}</span>`;
+    const unavailable = (p) => `<span class="muted">Okunamadı: ${esc(p.reason || 'bilinmiyor')}. Bozuk kayıt kısmen gösterilmez.</span>`;
+    let memoryRecords = [];
+
+    function proposalHtml(p) {
+        const cur = (p.reviews || []).filter((r) => r.revision === p.revision);
+        const review = (kind) => {
+            const r = cur.filter((x) => x.kind === kind).pop();
+            return r ? `<span class="stage rev">${esc(kind)}: ${esc(r.verdict)} · ${esc(r.reviewer)}</span>` : `<span class="stage rev muted">${esc(kind)}: yok</span>`;
+        };
+        const tests = p.tests && p.tests.revision === p.revision
+            ? `<span class="stage rev">Testler: ${esc(p.tests.passed)} geçti / ${esc(p.tests.failed)} kaldı</span>` : '<span class="stage rev muted">Testler: yok</span>';
+        const decision = p.owner_decision
+            ? `<span class="stage own">Sahip: ${esc(p.owner_decision.decision)} · ${esc(p.owner_decision.at)} · ${p.owner_decision.verified === true ? 'imza doğrulandı' : 'imza bu ekranda doğrulanamaz'}</span>`
+            : (p.status === 'READY_FOR_OWNER' ? '<span class="stage own">KARARINIZI BEKLİYOR</span>' : '');
+        const applied = ['APPLIED', 'ROLLED_BACK'].includes(p.status) ? `<span class="stage app">${esc(p.status === 'APPLIED' ? 'Uygulandı' : 'Geri alındı')}</span>` : '';
+        const security = cur.filter((x) => x.kind === 'SECURITY').pop();
+        const checks = security && security.checks ? Object.entries(security.checks).map(([k, v]) =>
+            badge(`${k}: ${v}`, v === 'PASS' ? 'success' : v === 'FAIL' ? 'danger' : 'warning')).join(' ') : '';
+        const files = (p.affected_files || []).map((f) => `<code>${esc(f)}</code>`).join(', ') || '-';
+        const history = (p.history || []).map((h) => `<li>#${esc(h.seq)} ${esc(h.event)} — ${esc(h.actor)} → ${esc(h.status)} <span class="muted">${esc(h.at)}</span></li>`).join('');
+        return `<div class="item"><div class="d-flex justify-content-between flex-wrap gap-2"><b>${esc(p.id)} — ${esc(p.title)}</b>${badge(p.status, p.status === 'READY_FOR_OWNER' ? 'danger' : 'secondary')}</div>` +
+            `<div class="mt-1"><span class="stage rec">Öneren: ${esc(p.author)} · risk ${esc(p.risk_level)} · rev ${esc(p.revision)}</span>${review('CODE')}${review('SECURITY')}${tests}${decision}${applied}</div>` +
+            `<details class="small mt-1"><summary>ayrıntı</summary><div><b>Problem:</b> ${esc(p.problem)}</div><div><b>Gerekçe:</b> ${esc(p.motivation)}</div>` +
+            `<div><b>Değişiklik:</b> ${esc(p.proposed_changes)}</div><div><b>Dosyalar:</b> ${files}</div><div><b>Geri alma:</b> ${esc(p.rollback_plan)}</div>` +
+            (checks ? `<div><b>Güvenlik:</b> ${checks}</div>` : '') + `<ol class="mb-0">${history}</ol></details></div>`;
+    }
+
+    function renderMemory() {
+        const type = document.getElementById('memory-type').value;
+        const rows = memoryRecords.filter((r) => !type || r.type === type);
+        set('memory', rows.length ? rows.map((r) => `<div class="item"><div>${badge(r.authority, r.authority === 'AUTHORITATIVE' ? 'primary' : 'secondary')} ${badge(r.type, 'light')} ` +
+            `${r.status === 'HISTORICAL' ? badge('eski sürüm', 'dark') : ''} <b>${esc(r.title)}</b></div>` +
+            `<div class="small muted">yazan ${esc(r.author)} · ${esc(r.created_at)} · kaynak ${esc(r.source)}` +
+            `${r.related_task ? ' · görev ' + esc(r.related_task) : ''}${r.related_proposal ? ' · öneri ' + esc(r.related_proposal) : ''}` +
+            `${r.supersedes ? ' · yerine geçtiği ' + esc(r.supersedes) : ''}</div>` +
+            `<details class="small"><summary>içerik</summary><div style="white-space:pre-wrap">${esc(r.body)}</div>` +
+            (r.evaluation ? `<div class="mt-1">${Object.entries(r.evaluation).map(([k, v]) => `<div><b>${esc(k)}:</b> ${esc(v)}</div>`).join('')}</div>` : '') +
+            `</details></div>`).join('') : '<span class="muted">Bu türde kayıt yok.</span>');
+    }
+
+    async function refresh() {
+        const [p, t, m, perms] = await Promise.all([getJSON('/api/proposals'), getJSON('/api/tasks'), getJSON('/api/memory'), getJSON('/api/permissions')]);
+        set('proposals', !p.available ? unavailable(p) : (p.proposals.length
+            ? `<div class="small muted mb-2">Kayıt başı: #${esc(p.head.seq)} ${esc(p.head.hash || '')} (sonradan kısaltma olursa bu değişir)</div>` + p.proposals.map(proposalHtml).join('')
+            : '<span class="muted">Henüz öneri yok.</span>'));
+        set('tasks', !t.available ? unavailable(t) : (t.tasks.length ? t.tasks.map((x) => {
+            const steps = x.steps.map((s) => `<li>${esc(s.goal)} — <b>${esc(s.unit || 'atanmadı')}</b> (${esc(s.capability)}) ${badge(s.status, s.status === 'DONE' ? 'success' : s.status === 'BLOCKED' ? 'danger' : 'info')}` +
+                `${s.result ? ` <span class="muted">${esc(s.result.verdict)}: ${esc(s.result.summary)}</span>` : ''}</li>`).join('');
+            return `<div class="item"><b>${esc(x.id)}</b> ${badge(x.category, 'light')} ${badge(x.status, x.status === 'DONE' ? 'success' : 'info')} ${esc(x.request)}` +
+                `${x.proposal_id ? ' → öneri ' + esc(x.proposal_id) : ''}<ol class="small mb-0">${steps}</ol></div>`;
+        }).join('') : '<span class="muted">Henüz görev yok.</span>'));
+        if (m.available) {
+            memoryRecords = m.records;
+            const select = document.getElementById('memory-type');
+            if (select.options.length === 1) m.types.forEach((ty) => select.insertAdjacentHTML('beforeend', `<option value="${esc(ty)}">${esc(ty)}</option>`));
+            renderMemory();
+        } else set('memory', unavailable(m));
+        set('permissions', !perms.available ? unavailable(perms) :
+            `<div class="small mb-2">Hiçbir yapay zekâ birimine verilemeyen: ${perms.never_granted_to_ai.map((c) => badge(c, 'danger')).join(' ')}</div>` +
+            '<table class="table table-sm"><thead><tr><th>Birim</th><th>Risk</th><th>Yetkiler</th></tr></thead><tbody>' +
+            perms.units.map((u) => `<tr><td>${esc(u.id)}</td><td>${badge(u.risk_level, u.risk_level === 'HIGH' ? 'warning' : 'secondary')}</td><td>${u.capabilities.map((c) => `<code>${esc(c)}</code>`).join(' ')}</td></tr>`).join('') + '</tbody></table>');
+    }
+
+    document.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => {
+        document.querySelectorAll('[data-tab]').forEach((x) => { x.className = 'btn btn-sm ' + (x === b ? 'btn-primary' : 'btn-outline-secondary'); });
+        document.querySelectorAll('[data-panel]').forEach((panel) => { panel.hidden = panel.getAttribute('data-panel') !== b.getAttribute('data-tab'); });
+    }));
+    document.getElementById('memory-type').addEventListener('change', renderMemory);
+    refresh();
+    setInterval(refresh, 15000);
+})();
+</script>
+</body>
+</html>
