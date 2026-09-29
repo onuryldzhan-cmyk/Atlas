@@ -546,15 +546,16 @@ KNOWN_LIMITATIONS: tuple[dict[str, str], ...] = (
     },
     {
         "id": "DAILY-LOSS-LIMIT-WIRING",
-        "status": "OPEN_NOT_YET_WIRED",
+        "status": "RESOLVED_REALIZED_ONLY",
         "registry_reference": (
-            "v4.81 paper_risk_accounting_day_auto_rollover_result "
-            "informational_pre_existing"
+            "v4.81 original limitation; wired by v4.82 paper_realized_pnl_"
+            "risk_accounting; text corrected by registry v5.79"
         ),
         "summary": (
-            "Realized daily P&L is not accumulated anywhere yet, so the "
-            "daily-loss limit cannot trip; equity in the risk store only "
-            "refreshes at the daily rollover."
+            "Realized daily P&L is accumulated on every SELL commit "
+            "(execution_manager), so the 5% daily-loss limit can trip. It "
+            "counts realized loss only; open positions' unrealized loss is "
+            "not counted (see RISK-EQUITY-UNREALIZED-DRAWDOWN-GAP-001)."
         ),
     },
     {
