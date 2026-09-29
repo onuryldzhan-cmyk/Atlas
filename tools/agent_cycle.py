@@ -228,6 +228,9 @@ AGENTS: tuple[tuple[str, str, Callable[[Path], dict[str, Any]]], ...] = (
 )
 
 
+AGENT_BUDGET_S = 300.0  # task 18: one agent taking longer is flagged as a runaway (WARN), never silent
+
+
 def run_cycle(records_dir: Path = cli.RECORDS_DIR, agents=AGENTS) -> dict[str, Any]:
     results = []
     for unit, name, fn in agents:
@@ -236,14 +239,20 @@ def run_cycle(records_dir: Path = cli.RECORDS_DIR, agents=AGENTS) -> dict[str, A
             outcome = fn(records_dir)
         except Exception as exc:  # one agent failing never stops the others
             outcome = {"verdict": "FAIL", "summary": f"{type(exc).__name__}: {exc}"[:300]}
-        results.append({"unit": unit, "name": name, **outcome, "seconds": round(time.monotonic() - started, 2)})
+        seconds = round(time.monotonic() - started, 2)
+        if seconds > AGENT_BUDGET_S and outcome.get("verdict") == "OK":
+            outcome = {**outcome, "verdict": "WARN", "summary": f"süre bütçesi aşıldı ({seconds}s > {AGENT_BUDGET_S:g}s); " + str(outcome.get("summary", ""))}
+        results.append({"unit": unit, "name": name, **outcome, "seconds": seconds})
     existing = {r["record_id"] for r in cli.read_log(records_dir / cli.MEMORY_LOG)} if (records_dir / cli.MEMORY_LOG).exists() else set()
     rid = f"AC-{len(existing) + 1:04d}"
     ok = sum(1 for r in results if r["verdict"] == "OK")
     cli.add_memory_record(records_dir, {
         "record_id": rid, "type": "OPERATIONS", "authority": "TEMPORARY",
         "title": f"Ajan döngüsü: {ok}/{len(results)} ajan sorunsuz",
-        "body": json.dumps({"agent_cycle": results}, ensure_ascii=False),
+        "body": json.dumps({"agent_cycle": results,
+                            "resources": {"total_seconds": round(sum(r["seconds"] for r in results), 2),
+                                          "llm_tokens": "N/A (rule-based agents, no model calls)",
+                                          "cost": "N/A", "budget_per_agent_s": AGENT_BUDGET_S}}, ensure_ascii=False),
         "author": "executive_assistant", "source": "tools/agent_cycle.py"})
     return {"record_id": rid, "results": results}
 

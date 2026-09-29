@@ -79,3 +79,11 @@ def test_knowledge_manager_records_only_on_status_change(tmp_path, monkeypatch):
     assert "değişmedi" in ac.knowledge_manager(records)["summary"]
     km = [r for r in memory_records.replay(cli.read_log(records / cli.MEMORY_LOG)).values() if r["author"] == "knowledge_manager"]
     assert len(km) == 1 and json.loads(km[0]["body"])["statuses"]["L-COIN-BTCUSDT"] == "PROPOSED"
+
+
+def test_cycle_records_resources_and_flags_runaway_agent(tmp_path, monkeypatch):
+    monkeypatch.setattr(ac, "AGENT_BUDGET_S", -1.0)  # any duration exceeds it
+    out = ac.run_cycle(tmp_path, (("a", "A", lambda _: {"verdict": "OK", "summary": "done"}),))
+    assert out["results"][0]["verdict"] == "WARN" and "bütçe" in out["results"][0]["summary"]
+    rec = memory_records.replay(cli.read_log(tmp_path / cli.MEMORY_LOG))[out["record_id"]]
+    assert json.loads(rec["body"])["resources"]["llm_tokens"].startswith("N/A")
