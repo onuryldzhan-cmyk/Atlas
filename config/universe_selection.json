@@ -1,0 +1,200 @@
+{
+  "generated_at": "2026-09-29T13:13:23.253545+00:00",
+  "source": "https://api.binance.com (ticker/24hr, exchangeInfo, klines 1d)",
+  "rules": {
+    "top_liquid": 30,
+    "min_quote_volume_usd": 20000000,
+    "medium_max_daily_vol_7d": 0.06
+  },
+  "groups": {
+    "TREND": [
+      {
+        "symbol": "QNTUSDT",
+        "base": "QNT",
+        "quote_volume_24h": 163989054,
+        "change_24h_pct": 8.654,
+        "return_7d": 2.4903,
+        "volatility_7d": 0.3413
+      },
+      {
+        "symbol": "PUMPUSDT",
+        "base": "PUMP",
+        "quote_volume_24h": 73407064,
+        "change_24h_pct": 9.52,
+        "return_7d": 0.2915,
+        "volatility_7d": 0.1022
+      },
+      {
+        "symbol": "NMRUSDT",
+        "base": "NMR",
+        "quote_volume_24h": 26455160,
+        "change_24h_pct": 13.098,
+        "return_7d": 0.2762,
+        "volatility_7d": 0.1428
+      },
+      {
+        "symbol": "AAVEUSDT",
+        "base": "AAVE",
+        "quote_volume_24h": 55168109,
+        "change_24h_pct": 16.38,
+        "return_7d": 0.1794,
+        "volatility_7d": 0.0696
+      },
+      {
+        "symbol": "ENAUSDT",
+        "base": "ENA",
+        "quote_volume_24h": 52200134,
+        "change_24h_pct": -5.434,
+        "return_7d": 0.1741,
+        "volatility_7d": 0.0815
+      },
+      {
+        "symbol": "ONDOUSDT",
+        "base": "ONDO",
+        "quote_volume_24h": 43440469,
+        "change_24h_pct": -1.913,
+        "return_7d": 0.174,
+        "volatility_7d": 0.1156
+      },
+      {
+        "symbol": "LINKUSDT",
+        "base": "LINK",
+        "quote_volume_24h": 129888695,
+        "change_24h_pct": 5.732,
+        "return_7d": 0.1733,
+        "volatility_7d": 0.0496
+      },
+      {
+        "symbol": "HBARUSDT",
+        "base": "HBAR",
+        "quote_volume_24h": 144973255,
+        "change_24h_pct": -3.472,
+        "return_7d": 0.151,
+        "volatility_7d": 0.1099
+      }
+    ],
+    "MEDIUM": [
+      {
+        "symbol": "BTCUSDT",
+        "base": "BTC",
+        "quote_volume_24h": 1259286194,
+        "change_24h_pct": 1.257,
+        "return_7d": -0.0209,
+        "volatility_7d": 0.0097
+      },
+      {
+        "symbol": "ETHUSDT",
+        "base": "ETH",
+        "quote_volume_24h": 834367255,
+        "change_24h_pct": 1.985,
+        "return_7d": -0.0062,
+        "volatility_7d": 0.0117
+      },
+      {
+        "symbol": "ZECUSDT",
+        "base": "ZEC",
+        "quote_volume_24h": 387769573,
+        "change_24h_pct": -9.242,
+        "return_7d": -0.1133,
+        "volatility_7d": 0.0483
+      },
+      {
+        "symbol": "SOLUSDT",
+        "base": "SOL",
+        "quote_volume_24h": 278583406,
+        "change_24h_pct": 1.238,
+        "return_7d": 0.0207,
+        "volatility_7d": 0.0242
+      },
+      {
+        "symbol": "XRPUSDT",
+        "base": "XRP",
+        "quote_volume_24h": 254847300,
+        "change_24h_pct": 1.852,
+        "return_7d": -0.0174,
+        "volatility_7d": 0.0267
+      },
+      {
+        "symbol": "NEARUSDT",
+        "base": "NEAR",
+        "quote_volume_24h": 211090299,
+        "change_24h_pct": -7.025,
+        "return_7d": 0.0913,
+        "volatility_7d": 0.0595
+      },
+      {
+        "symbol": "BABYUSDT",
+        "base": "BABY",
+        "quote_volume_24h": 113595028,
+        "change_24h_pct": 4.332,
+        "return_7d": 0.0624,
+        "volatility_7d": 0.0443
+      },
+      {
+        "symbol": "BNBUSDT",
+        "base": "BNB",
+        "quote_volume_24h": 99800583,
+        "change_24h_pct": -0.014,
+        "return_7d": -0.0287,
+        "volatility_7d": 0.013
+      }
+    ],
+    "HIGH": [
+      {
+        "symbol": "0GUSDT",
+        "base": "0G",
+        "quote_volume_24h": 23746151,
+        "change_24h_pct": 38.271,
+        "return_7d": 0.404,
+        "volatility_7d": 0.066
+      },
+      {
+        "symbol": "ALGOUSDT",
+        "base": "ALGO",
+        "quote_volume_24h": 26173466,
+        "change_24h_pct": 1.154,
+        "return_7d": 0.1731,
+        "volatility_7d": 0.0644
+      },
+      {
+        "symbol": "SUIUSDT",
+        "base": "SUI",
+        "quote_volume_24h": 163383292,
+        "change_24h_pct": -0.904,
+        "return_7d": 0.1455,
+        "volatility_7d": 0.0838
+      },
+      {
+        "symbol": "FETUSDT",
+        "base": "FET",
+        "quote_volume_24h": 23526371,
+        "change_24h_pct": -1.24,
+        "return_7d": 0.1006,
+        "volatility_7d": 0.0857
+      }
+    ],
+    "HELD_KEPT": []
+  },
+  "symbols": [
+    "0GUSDT",
+    "AAVEUSDT",
+    "ALGOUSDT",
+    "BABYUSDT",
+    "BNBUSDT",
+    "BTCUSDT",
+    "ENAUSDT",
+    "ETHUSDT",
+    "FETUSDT",
+    "HBARUSDT",
+    "LINKUSDT",
+    "NEARUSDT",
+    "NMRUSDT",
+    "ONDOUSDT",
+    "PUMPUSDT",
+    "QNTUSDT",
+    "SOLUSDT",
+    "SUIUSDT",
+    "XRPUSDT",
+    "ZECUSDT"
+  ]
+}
