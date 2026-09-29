@@ -25,9 +25,18 @@
     .navbar { background: var(--atlas-panel) !important; border-bottom: 1px solid var(--atlas-line) !important; min-height: 48px; }
     .navbar-brand { font-size: 15px; letter-spacing: .04em; }
     .navbar-brand .text-primary { color: var(--atlas-accent) !important; }
-    .atlas-nav a { color: var(--atlas-muted) !important; padding: .3rem .65rem !important; border-radius: 4px !important; font-size: 13px; }
+    .atlas-nav a { text-decoration: none !important; white-space: nowrap; color: var(--atlas-muted) !important; padding: .3rem .65rem !important; border-radius: 4px !important; font-size: 13px; }
     .atlas-nav a.active { color: var(--atlas-text) !important; background: var(--atlas-panel-2) !important; box-shadow: inset 0 -2px 0 var(--atlas-accent); }
     .atlas-nav a:hover { color: var(--atlas-text) !important; }
+    .pane, .kpi, .card-body, td { overflow-wrap: anywhere; }
+    /* AdminLTE KPI boxes: calm panels with a colored status edge instead of full-color blocks */
+    .small-box { background: var(--atlas-panel) !important; color: var(--atlas-text) !important; border: 1px solid var(--atlas-line) !important; border-left-width: 4px !important; box-shadow: none !important; }
+    .small-box.text-bg-success { border-left-color: #22c55e !important; }
+    .small-box.text-bg-warning { border-left-color: #f59e0b !important; }
+    .small-box.text-bg-danger { border-left-color: #ef4444 !important; }
+    .small-box.text-bg-secondary, .small-box.text-bg-info, .small-box.text-bg-primary { border-left-color: #64748b !important; }
+    .small-box h3 { font-size: 1.35rem !important; font-weight: 600 !important; }
+    .small-box p, .small-box .kpi-note { color: var(--atlas-muted) !important; }
     .pane, .kpi { background: var(--atlas-panel) !important; border: 1px solid var(--atlas-line) !important; border-radius: var(--atlas-radius) !important; box-shadow: none !important; }
     .pane h2, .kpi .label, .label { font-size: 12px !important; font-weight: 600; letter-spacing: .02em !important; text-transform: none !important; color: var(--atlas-muted) !important; }
     .kpi .value { font-size: 24px !important; font-weight: 600 !important; }

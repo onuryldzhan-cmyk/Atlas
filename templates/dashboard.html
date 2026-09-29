@@ -106,6 +106,7 @@
         #trade-log .log-time { color: #6e7681; }
         #trade-log .log-muted { color: #8b949e; }
     </style>
+    {% include "_atlas_theme.html" %}
 </head>
 <body class="layout-fixed bg-body-tertiary">
 {#
@@ -125,11 +126,13 @@
     <nav class="app-header navbar navbar-expand bg-body">
         <div class="container-fluid flex-wrap gap-1">
             <span class="navbar-brand fw-bold text-primary">ATLAS AI <span class="fw-light text-body">Terminal</span></span>
-            <span class="d-flex gap-1 small">
-                <a href="/dashboard" class="btn btn-sm btn-secondary" aria-current="page">Panel</a>
-                <a href="/home" class="btn btn-sm btn-primary">Başlangıç</a> <a href="/trading" class="btn btn-sm btn-outline-primary">Trading</a> <a href="/hq" class="btn btn-sm btn-outline-primary">Atlas HQ</a> <a href="/agents" class="btn btn-sm btn-outline-secondary">Ajanlar &amp; Organizasyon</a>
+            <span class="atlas-nav d-flex flex-wrap gap-1">
+                <a href="/home">Başlangıç</a><a href="/trading">Trading</a><a href="/governance">Kararlar &amp; Hafıza</a>
+                <a href="/research">Araştırma</a><a href="/system">Sistem</a><a href="/security">Güvenlik</a>
+                <a href="/decisions">Kararlar</a><a href="/roadmap">Yol haritası</a><a href="/hq">Atlas HQ</a>
+                <a href="/agents">Ajanlar</a><a href="/dashboard" class="active" aria-current="page">Operasyon</a>
             </span>
-            <span class="ms-auto small text-body-secondary">
+            <span class="ms-auto small text-body-secondary d-none d-xxl-inline">
                 Loopback-only operator panel &mdash; no authentication &middot;
                 referans sembol <span class="text-body">{{ symbol }}</span> (binance_global)
             </span>

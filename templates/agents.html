@@ -30,6 +30,7 @@
         .vote { font-family: var(--bs-font-monospace); font-size: .8rem; }
         .rule { border-left: 3px solid var(--bs-primary); padding-left: .6rem; margin-bottom: .4rem; font-size: .875rem; }
     </style>
+    {% include "_atlas_theme.html" %}
 </head>
 <body class="layout-fixed">
 <div class="app-wrapper">
@@ -49,7 +50,7 @@
                 <a href="/agents" class="active" aria-current="page">Ajanlar</a>
                 <a href="/dashboard">Operasyon</a>
             </div>
-            <span class="small text-body-secondary d-none d-md-inline">loopback-only · yalnız okur</span>
+            <span class="small text-body-secondary d-none d-xxl-inline">loopback-only · yalnız okur</span>
         </div>
     </nav>
     <main class="app-main">
@@ -58,6 +59,28 @@
 
                 <div id="org-kpis" class="row g-2 mb-3">Yükleniyor...</div>
 
+
+
+
+                <section class="card card-warning card-outline mb-3" aria-labelledby="work-title">
+                    <div class="card-header"><h3 id="work-title" class="card-title">Görevler ve iş durumu (ajan çalışanları)</h3></div>
+                    <div class="card-body">
+                        <div id="cycle" class="small mb-3">Yükleniyor...</div>
+                        <div id="work" class="small">Yükleniyor...</div>
+                        <div class="small text-body-secondary mt-2">Oy veren 5 ajan her döngüde otomatik çalışır. Organizasyon ajanları (araştırma, kod, inceleme, güvenlik)
+                            görev <b>adımı</b> ile çalışır: bir adım ancak bir çalıştırıcı onu alıp sonucunu kaydedince ilerler. Kural tabanlı çalıştırıcılar
+                            (performans raporu, öz-değerlendirme, strateji ajanı, güvenlik muhafızı) sahip makinesinde komutla çalışır; dil modeli
+                            çalıştırıcısı (AI-001) sahip kararını bekler. Beklemede olan adım "çalışıyor" gösterilmez.</div>
+                    </div>
+                </section>
+                <section class="card card-success card-outline mb-3" aria-labelledby="live-title">
+                    <div class="card-header"><h3 id="live-title" class="card-title">Canlı ajan monitörü (çalışan ajanlar)</h3></div>
+                    <div class="card-body">
+                        <div id="live-agents" class="row g-2">Yükleniyor...</div>
+                        <div class="small text-body-secondary mt-2">Her ajan her coin için bir oy verir (kanıt). Oyların birleşimi karardır;
+                            kararı <b>ajanlar değil</b> deterministik risk zinciri onaylar. "karara uyum" = ajanın oyu, son kararla aynı olan coin sayısı.</div>
+                    </div>
+                </section>
                 <section class="card card-primary card-outline mb-3" aria-labelledby="chart-title">
                     <div class="card-header"><h3 id="chart-title" class="card-title">Organizasyon şeması (2B)</h3></div>
                     <div class="card-body">
@@ -73,28 +96,6 @@
                         </div>
                     </div>
                 </section>
-
-                <section class="card card-success card-outline mb-3" aria-labelledby="live-title">
-                    <div class="card-header"><h3 id="live-title" class="card-title">Canlı ajan monitörü (çalışan ajanlar)</h3></div>
-                    <div class="card-body">
-                        <div id="live-agents" class="row g-2">Yükleniyor...</div>
-                        <div class="small text-body-secondary mt-2">Her ajan her coin için bir oy verir (kanıt). Oyların birleşimi karardır;
-                            kararı <b>ajanlar değil</b> deterministik risk zinciri onaylar. "karara uyum" = ajanın oyu, son kararla aynı olan coin sayısı.</div>
-                    </div>
-                </section>
-
-                <section class="card card-warning card-outline mb-3" aria-labelledby="work-title">
-                    <div class="card-header"><h3 id="work-title" class="card-title">Görevler ve iş durumu (ajan çalışanları)</h3></div>
-                    <div class="card-body">
-                        <div id="cycle" class="small mb-3">Yükleniyor...</div>
-                        <div id="work" class="small">Yükleniyor...</div>
-                        <div class="small text-body-secondary mt-2">Oy veren 5 ajan her döngüde otomatik çalışır. Organizasyon ajanları (araştırma, kod, inceleme, güvenlik)
-                            görev <b>adımı</b> ile çalışır: bir adım ancak bir çalıştırıcı onu alıp sonucunu kaydedince ilerler. Kural tabanlı çalıştırıcılar
-                            (performans raporu, öz-değerlendirme, strateji ajanı, güvenlik muhafızı) sahip makinesinde komutla çalışır; dil modeli
-                            çalıştırıcısı (AI-001) sahip kararını bekler. Beklemede olan adım "çalışıyor" gösterilmez.</div>
-                    </div>
-                </section>
-
                 <section class="card card-secondary card-outline mb-3" aria-labelledby="rules-title">
                     <div class="card-header"><h3 id="rules-title" class="card-title">Ajan çalışma kuralları (vizyon belgelerinden)</h3></div>
                     <div class="card-body">
