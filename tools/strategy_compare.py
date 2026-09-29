@@ -40,6 +40,7 @@ VARIANTS: dict[str, dict[str, Any]] = {
     "maliyet kapısı 3x": {**REALISTIC, "cost_gate": 3},
     "rejim filtresi (sadece TREND_UP)": {**REALISTIC, "regime_filter": True},
     "aşamalı + paylar + maliyet kapısı": {**REALISTIC, "staged": True, "sleeves": True, "cost_gate": 3},
+    "rejim filtresi + aşamalı + paylar": {**REALISTIC, "regime_filter": True, "staged": True, "sleeves": True},
 }
 REFERENCE = "gerçekçi dolum (referans)"
 
@@ -83,8 +84,13 @@ def main(argv: list[str] | None = None, fetch=None) -> int:
     parser.add_argument("--symbols", default=",".join(bt.DEFAULT_SYMBOLS))
     parser.add_argument("--symbols-file", default=None, help="JSON with a 'symbols' list (config/universe_selection.json)")
     parser.add_argument("--no-exp001", action="store_true", help="replay without the EXP-001 floor")
+    parser.add_argument("--only", default=None, help="comma-separated words; run only variants whose name contains one (the reference always runs)")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
+    variants = VARIANTS
+    if args.only:
+        words = [w.strip().lower() for w in args.only.split(",") if w.strip()]
+        variants = {k: v for k, v in VARIANTS.items() if k == REFERENCE or any(w in k.lower() for w in words)}
     logging.getLogger("AtlasAI.MarketLoop").setLevel(logging.ERROR)
     symbols = [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
     if args.symbols_file:
@@ -95,8 +101,8 @@ def main(argv: list[str] | None = None, fetch=None) -> int:
     for symbol in symbols:
         print(f"downloading {symbol} ({args.days} days)...", file=sys.stderr, flush=True)
         data[symbol] = bt._history(symbol, args.days, fetch)
-    print(f"replaying {len(VARIANTS)} variants x {args.windows} windows (this takes a while)...", file=sys.stderr, flush=True)
-    result = compare(data, args.windows, args.step, not args.no_exp001)
+    print(f"replaying {len(variants)} variants x {args.windows} windows (this takes a while)...", file=sys.stderr, flush=True)
+    result = compare(data, args.windows, args.step, not args.no_exp001, variants=variants)
     if args.json:
         print(json.dumps(result, default=str, ensure_ascii=False, indent=2))
         return 0
@@ -105,10 +111,10 @@ def main(argv: list[str] | None = None, fetch=None) -> int:
     header = "".join(f"  pencere {i + 1:<17}" for i in range(args.windows))
     print(f"{'strateji':<28}{header}  karar")
     for name, rows in result["table"].items():
-        cells = "".join(f"  net {Decimal(r['net_pnl']):>8.2f} dd {Decimal(r['max_drawdown']):>6.2f}" for r in rows)
+        cells = "".join(f"  net {Decimal(r['net_pnl']):>8.2f} dd {Decimal(r['max_drawdown']):>6.2f} n {r['closed_trades']:>3}/{r['open_at_end']}" for r in rows)
         print(f"{name:<28}{cells}  {result['verdicts'][name]}")
     print("\nBETTER = her pencerede gerçekçi referanstan daha iyi net ve daha kötü olmayan en büyük düşüş. "
-          "Araştırma kanıtıdır; hiçbir şey değiştirilmedi.")
+          "n = kapanan/pencere sonunda açık işlem. Araştırma kanıtıdır; hiçbir şey değiştirilmedi.")
     return 0
 
 
