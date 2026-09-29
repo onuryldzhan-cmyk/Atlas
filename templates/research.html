@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+{#
+  Atlas research, experiments & analytics page (registry v5.57). Loopback-only,
+  read-only. EXP-001 from /api/execution-gates, closed-trade analytics from
+  /api/trades (gross, most recent trades only - the full net report is
+  tools/performance_report.py), research documents from /api/research and
+  RESEARCH/EXPERIMENTS memory records from /api/memory.
+#}
+<html lang="tr" data-bs-theme="dark" data-lte-color-mode="off">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Atlas — Araştırma</title>
+    <link rel="stylesheet" href="/assets/adminlte.min.css">
+    <style>
+        .atlas-nav a { text-decoration: none; white-space: nowrap; }
+        .wrap { max-width: 1200px; margin: 0 auto; padding: 16px; }
+        .pane { padding: 14px; margin-bottom: 14px; }
+        .kv { display: flex; justify-content: space-between; padding: 3px 0; }
+        .bar { height: 8px; background: var(--atlas-panel-2); border-radius: 3px; overflow: hidden; }
+        .bar > span { display: block; height: 100%; background: var(--atlas-accent); }
+        .table-wrap { overflow-x: auto; }
+    </style>
+    {% include "_atlas_theme.html" %}
+</head>
+<body>
+<nav class="navbar px-3 flex-wrap gap-2">
+    <span class="navbar-brand fw-bold"><span class="text-primary">ATLAS</span> Araştırma</span>
+    <div class="atlas-nav d-flex flex-wrap gap-1">
+        <a href="/home">Başlangıç</a>
+        <a href="/trading">Trading</a>
+        <a href="/governance">Kararlar &amp; Hafıza</a>
+        <a href="/research" class="active">Araştırma</a>
+        <a href="/system">Sistem</a>
+        <a href="/security">Güvenlik</a>
+        <a href="/roadmap">Yol haritası</a>
+        <a href="/hq">Atlas HQ</a>
+        <a href="/agents">Ajanlar</a>
+        <a href="/dashboard">Operasyon</a>
+    </div>
+</nav>
+<div class="wrap">
+    <div class="row g-3">
+        <div class="col-lg-5"><div class="pane"><h2>Deney: EXP-001</h2><div id="exp">Yükleniyor...</div></div></div>
+        <div class="col-lg-7"><div class="pane"><h2>İşlem analitiği (son kapanan işlemler, brüt)</h2><div id="analytics" class="table-wrap">Yükleniyor...</div></div></div>
+    </div>
+    <div class="pane"><h2>Araştırma belgeleri</h2><div id="docs">Yükleniyor...</div></div>
+    <div class="pane"><h2>Hafızadaki araştırma ve deney kayıtları</h2><div id="records">Yükleniyor...</div></div>
+    <div class="small muted">Araştırma kanıt ve öneridir, politika değildir: bir bulgu ancak sahibin onayladığı bir öneriyle davranışa dönüşür. Ücretler düşülmüş tam rapor: <code>python -m tools.performance_report</code>.</div>
+</div>
+<script>
+(() => {
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const getJSON = async (url) => { try { const r = await fetch(url); return await r.json(); } catch (e) { return { available: false, reason: 'network error' }; } };
+    const set = (id, html) => { document.getElementById(id).innerHTML = html; };
+    const num = (v, d = 2) => Number(v).toLocaleString('tr-TR', { minimumFractionDigits: d, maximumFractionDigits: d });
+    const tone = (v) => (Number(v) > 0 ? 'up' : Number(v) < 0 ? 'down' : '');
+    (async () => {
+        const [gates, trades, docs, mem] = await Promise.all([getJSON('/api/execution-gates'), getJSON('/api/trades'), getJSON('/api/research'), getJSON('/api/memory')]);
+        const e = gates && gates.experiment;
+        if (!e || e.available !== true) set('exp', `<span class="muted">Okunamadı: ${esc((e && e.reason) || (gates && gates.reason) || 'çalışma zamanı bağlı değil')}</span>`);
+        else if (!e.attached) set('exp', '<span class="muted">Bağlı deney yok.</span>');
+        else {
+            const pct = e.max_admissions ? Math.min(100, 100 * e.admissions / e.max_admissions) : 0;
+            set('exp', `<div class="kv"><span>Durum</span><b>${e.active ? 'AKTİF' : 'KAPALI (' + esc(e.closed_reason || '-') + ')'}</b></div>` +
+                `<div class="kv"><span>Kabul</span><b>${esc(e.admissions)} / ${esc(e.max_admissions)}</b></div><div class="bar mb-2"><span style="width:${pct}%"></span></div>` +
+                `<div class="kv"><span>Güven eşiği</span><b>%${esc(e.required_confidence_pct)}</b></div>` +
+                `<div class="kv"><span>Kovalar</span><b>${esc((e.buckets || []).join(', '))}</b></div>` +
+                `<div class="kv"><span>Bitiş</span><b>${esc(e.ends_at)}</b></div>` +
+                '<div class="small muted mt-2">Karar (sürdür / durdur) sahibindir; kanıt: <code>python -m tools.exp001_report</code>.</div>');
+        }
+        if (!trades || trades.available !== true) set('analytics', `<span class="muted">Veri yok (${esc((trades && (trades.reason || trades.status)) || 'bilinmiyor')}).</span>`);
+        else {
+            const rows = trades.recent_trades || [];
+            const by = {};
+            rows.forEach((t) => { const b = by[t.symbol] || (by[t.symbol] = { n: 0, wins: 0, gross: 0 }); b.n += 1; b.gross += Number(t.gross_pnl); if (Number(t.gross_pnl) > 0) b.wins += 1; });
+            const keys = Object.keys(by).sort((a, b) => by[b].gross - by[a].gross);
+            set('analytics', `<div class="small mb-2">Toplam ${esc(trades.total_trades)} işlem · son ${rows.length} işlem gösteriliyor · kazanma %${trades.win_rate == null ? '-' : num(trades.win_rate, 0)}</div>` +
+                (keys.length ? '<table class="table table-sm mb-0"><thead><tr><th>Coin</th><th class="text-end">İşlem</th><th class="text-end">Kazanan</th><th class="text-end">Brüt K/Z $</th></tr></thead><tbody>' +
+                    keys.map((k) => `<tr><td>${esc(k)}</td><td class="text-end">${by[k].n}</td><td class="text-end">${by[k].wins}</td><td class="text-end ${tone(by[k].gross)}">${num(by[k].gross)}</td></tr>`).join('') + '</tbody></table>'
+                    : '<span class="muted">Henüz kapanan işlem yok.</span>'));
+        }
+        set('docs', docs.available ? (docs.documents.length ? '<ul class="mb-0">' + docs.documents.map((d) => `<li><b>${esc(d.title)}</b> <span class="muted small"><code>${esc(d.file)}</code></span></li>`).join('') + '</ul>' : '<span class="muted">Belge yok.</span>')
+            : `<span class="muted">Okunamadı: ${esc(docs.reason)}</span>`);
+        const recs = mem.available ? mem.records.filter((r) => r.type === 'RESEARCH' || r.type === 'EXPERIMENTS') : [];
+        set('records', !mem.available ? `<span class="muted">Okunamadı: ${esc(mem.reason)}</span>` : (recs.length
+            ? '<ul class="mb-0">' + recs.map((r) => `<li><span class="badge text-bg-secondary">${esc(r.authority)}</span> <b>${esc(r.title)}</b> <span class="muted small">— ${esc(r.author)}, ${esc(r.created_at)}, kaynak ${esc(r.source)}</span></li>`).join('') + '</ul>'
+            : '<span class="muted">Henüz kayıt yok (python -m tools.performance_report --record ile eklenir).</span>'));
+    })();
+})();
+</script>
+</body>
+</html>

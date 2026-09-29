@@ -36,7 +36,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 
 from observability.organization import organization_public
-from observability import command_center, governance_records, panel_sources, portfolio_view, roadmap_view, security_view
+from observability import command_center, governance_records, panel_sources, portfolio_view, research_view, roadmap_view, security_view
 from observability.panel_router import (
     build_observability_router,
     is_loopback_request,
@@ -1803,7 +1803,7 @@ def create_app(
     # Registry v5.40 (owner: a simple start page, details on other pages).
     for _path, _template in (("/home", "home.html"), ("/trading", "trading.html"), ("/governance", "governance.html"),
                              ("/system", "system.html"), ("/security", "security.html"),
-                             ("/roadmap", "roadmap.html")):
+                             ("/roadmap", "roadmap.html"), ("/research", "research.html")):
         async def _static_page(request: Request, _template=_template) -> Response:
             if not is_loopback_request(request):
                 return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
@@ -2332,6 +2332,7 @@ def create_app(
         ("/api/tasks", governance_records.read_tasks),
         ("/api/security", security_view.read_security),
         ("/api/roadmap", roadmap_view.read_roadmap),
+        ("/api/research", research_view.read_research),
     ):
         async def _governance_route(request: Request, _reader=reader) -> JSONResponse:
             if not is_loopback_request(request):
