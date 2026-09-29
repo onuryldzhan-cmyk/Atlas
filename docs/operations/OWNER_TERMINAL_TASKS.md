@@ -126,6 +126,14 @@ python -m tools.data_health_check
 
 Her satır OK / WARN / FAIL / UNKNOWN. Çıktıyı bana yapıştır; FAIL varsa birlikte bakarız.
 
+## 11a. TEK KOMUTLA tüm stratejileri karşılaştır (önerilen; uzun sürer, Ctrl+C yok)
+
+```
+python -m tools.strategy_compare --days 21 --windows 3
+```
+
+Tabloyu bana yapıştır. (Aşağıdaki 11. bölümdeki tek tek komutlara artık gerek yok.)
+
 ## 11. Gerçekçilik ve strateji backtest'leri (her biri birkaç dakika; Ctrl+C yok)
 
 ```
