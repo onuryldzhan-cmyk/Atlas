@@ -53,9 +53,13 @@ def compare(data: dict[str, list[list]], windows: int, step: int, exp001: bool,
             brain_factory=None, variants: dict[str, dict[str, Any]] = VARIANTS) -> dict[str, Any]:
     parts = split(data, windows)
     table: dict[str, list[dict[str, Any]]] = {}
+    total, done = len(variants) * len(parts), 0
     for name, kw in variants.items():
-        table[name] = [bt.summarize(bt.replay(part, step=step, exp001=exp001, brain_factory=brain_factory, **kw))
-                       for part in parts]
+        table[name] = []
+        for part in parts:
+            table[name].append(bt.summarize(bt.replay(part, step=step, exp001=exp001, brain_factory=brain_factory, **kw)))
+            done += 1
+            print(f"  {done}/{total} bitti ({name}) - Ctrl+C'ye basma", file=sys.stderr, flush=True)
     ref = table[REFERENCE]
     verdicts = {}
     for name, rows in table.items():
