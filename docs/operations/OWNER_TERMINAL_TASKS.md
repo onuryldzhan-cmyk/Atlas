@@ -111,6 +111,23 @@ python -m tools.data_health_check
 
 Her satır OK / WARN / FAIL / UNKNOWN. Çıktıyı bana yapıştır; FAIL varsa birlikte bakarız.
 
+## 11. Gerçekçilik ve strateji backtest'leri (her biri birkaç dakika; Ctrl+C yok)
+
+```
+python -m tools.backtest_replay --days 7 --step 15 --exp001
+python -m tools.backtest_replay --days 7 --step 15 --exp001 --slippage-bps 5 --next-open-fill
+python -m tools.backtest_replay --days 7 --step 15 --exp001 --slippage-bps 5 --next-open-fill --min-hold 60
+python -m tools.backtest_replay --days 7 --step 15 --exp001 --slippage-bps 5 --next-open-fill --sell-confirm 2
+```
+
+1: bugünkü durum. 2: gerçekçi dolum (kayma + gecikme). 3 ve 4: al-sat sıklığını azaltan iki strateji fikri. Dördünü de yapıştır.
+
+## 12. Atlas'ın kendi işlemlerinden öğrendikleri
+
+```
+python -m tools.performance_report
+```
+
 ## Done (kept for reference)
 
 - Audit-fork quarantine applied 2026-09-28 (registry v5.06).

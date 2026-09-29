@@ -206,3 +206,44 @@ def test_baseline_mode_is_unchanged_by_staged_code():
     scenario = [96.5, 96.4, 96.3]
     result = bt.replay({"BTCUSDT": _path(scenario)}, step=1, staged=False, brain_factory=BuyOnce)
     assert result.trades == [] and len(result.open_trades) == 1   # no stop in baseline mode
+
+
+# ---------------------------------------------------------------- v5.47 realism + strategy research
+
+class _Flip:
+    """BUY, then SELL, alternating every decision: maximal churn."""
+
+    def __init__(self):
+        self.n = 0
+
+    def analyze_and_decide(self, symbol, market_data):
+        self.n += 1
+        action = "BUY" if self.n % 2 else "SELL"
+        return {"symbol": symbol, "action": action, "confidence": 95.0, "risk_level": "LOW"}
+
+
+def _run(**kw):
+    data = {"BTCUSDT": _rows(420)}
+    return bt.summarize(bt.replay(data, step=10, brain_factory=_Flip, **kw))
+
+
+def test_defaults_reproduce_the_baseline_exactly():
+    assert _run() == _run(slippage_bps=0, next_open_fill=False, min_hold_min=0, sell_confirm=1)
+
+
+def test_slippage_makes_results_worse_never_better():
+    base, slipped = _run(), _run(slippage_bps=10)
+    assert base["closed_trades"] > 0
+    assert slipped["net_pnl"] < base["net_pnl"]
+
+
+def test_next_open_fill_changes_fills():
+    assert _run(next_open_fill=True)["net_pnl"] != _run()["net_pnl"]
+
+
+def test_min_hold_and_sell_confirm_defer_churn():
+    base = _run()
+    held = _run(min_hold_min=60)
+    confirmed = _run(sell_confirm=2)
+    assert held["closed_trades"] < base["closed_trades"] and held["exit_reasons"].get("SELL_DEFERRED", 0) > 0
+    assert confirmed["exit_reasons"].get("SELL_DEFERRED", 0) > 0

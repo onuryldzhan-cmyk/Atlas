@@ -116,6 +116,7 @@ class Position:
     peak: Decimal = Decimal("0")
     tp1: bool = False
     tp2: bool = False
+    entry_ms: int = 0
 
     @property
     def avg_entry(self) -> Decimal:
@@ -182,11 +183,21 @@ def _align(candles_by_symbol: dict[str, list[list]]) -> dict[str, list[list]]:
 
 
 def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: bool = False,
-           staged: bool = False, sleeves: bool = False, brain_factory=None) -> Result:
+           staged: bool = False, sleeves: bool = False, brain_factory=None,
+           slippage_bps: int = 0, next_open_fill: bool = False,
+           min_hold_min: int = 0, sell_confirm: int = 1) -> Result:
     """Baseline (staged=False, sleeves=False) = today's runtime behaviour.
     staged=True adds the approved tranche entries, take-profit ladder, trailing
     stop and confirmed hard stop; sleeves=True caps each risk bucket's total
-    open cost across all symbols at 50/35/15% of capital."""
+    open cost across all symbols at 50/35/15% of capital.
+
+    Realism (registry v5.47, research only): slippage_bps fills every order
+    that many basis points against the trader; next_open_fill fills at the
+    NEXT candle's open instead of the decision candle's close (the runtime
+    acts after the candle closes). Strategy research: min_hold_min ignores a
+    SELL signal until the position is that old; sell_confirm requires that
+    many consecutive SELL decisions. Staged protective exits are unaffected.
+    All defaults reproduce the baseline exactly."""
 
     if brain_factory is None:
         from ai.core.atlas_brain import AtlasBrain
@@ -204,6 +215,8 @@ def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: 
     ledger = {"cash": CAPITAL, "equity": CAPITAL, "peak": CAPITAL}
     realized_by_day: dict[str, Decimal] = {}
     holdings: dict[str, Position] = {}
+    sell_streak: dict[str, int] = {}
+    slip = Decimal(slippage_bps) / Decimal(10000)
 
     def reject(code: str) -> None:
         result.buy_rejections[code] = result.buy_rejections.get(code, 0) + 1
@@ -256,6 +269,12 @@ def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: 
                     day = cutoff.date().isoformat()
                     when = cutoff.isoformat()
                     price = Decimal(str(feed.rows[-1][4]))
+                    fill_ref = price
+                    if next_open_fill:
+                        if end >= len(data[symbol]):
+                            continue  # no next candle to fill on
+                        fill_ref = Decimal(str(data[symbol][end][1]))
+                    buy_fill, sell_fill = fill_ref * (1 + slip), fill_ref * (1 - slip)
 
                     # --- staged exit monitor (deterministic, before the decision)
                     pos = holdings.get(symbol)
@@ -263,18 +282,18 @@ def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: 
                         avg = pos.avg_entry
                         closes = [Decimal(str(r[4])) for r in feed.rows[-STOP_CONFIRM_CANDLES:]]
                         if all(c < avg * (1 - HARD_STOP) for c in closes):
-                            sell(pos, Decimal("1"), price, day, when, "HARD_STOP")
+                            sell(pos, Decimal("1"), sell_fill, day, when, "HARD_STOP")
                             pos = None
                         else:
                             pos.peak = max(pos.peak, price)
                             if not pos.tp1 and price >= avg * (1 + TAKE_PROFIT_1):
                                 pos.tp1 = True
-                                sell(pos, Decimal(1) / Decimal(3), price, day, when, "TAKE_PROFIT_1")
+                                sell(pos, Decimal(1) / Decimal(3), sell_fill, day, when, "TAKE_PROFIT_1")
                             elif pos.tp1 and not pos.tp2 and price >= avg * (1 + TAKE_PROFIT_2):
                                 pos.tp2 = True
-                                sell(pos, Decimal("0.5"), price, day, when, "TAKE_PROFIT_2")
+                                sell(pos, Decimal("0.5"), sell_fill, day, when, "TAKE_PROFIT_2")
                             elif pos.tp2 and price <= pos.peak * (1 - TRAILING):
-                                sell(pos, Decimal("1"), price, day, when, "TRAILING_STOP")
+                                sell(pos, Decimal("1"), sell_fill, day, when, "TRAILING_STOP")
                                 pos = None
 
                     brain.last = None
@@ -291,8 +310,13 @@ def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: 
                     bucket = normalize_risk(decision.get("risk", decision.get("risk_level")))
                     pos = holdings.get(symbol)
 
+                    sell_streak[symbol] = sell_streak.get(symbol, 0) + 1 if action == "SELL" else 0
                     if action == "SELL" and pos is not None and confidence >= EXECUTION_GATE:
-                        sell(pos, Decimal("1"), price, day, when, "SELL_SIGNAL")
+                        held_min = (close_ms - pos.entry_ms) / 60_000
+                        if held_min < min_hold_min or sell_streak[symbol] < sell_confirm:
+                            result.exit_reasons["SELL_DEFERRED"] = result.exit_reasons.get("SELL_DEFERRED", 0) + 1
+                            continue
+                        sell(pos, Decimal("1"), sell_fill, day, when, "SELL_SIGNAL")
                         continue
                     if action != "BUY":
                         continue
@@ -350,12 +374,13 @@ def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: 
                     fee = amount * fee_rate / (1 + fee_rate)
                     cost = amount - fee
                     if not is_add:
-                        pos = Position(symbol, sizing_name, bool(verdict.experiment_id), when, target, peak=price)
+                        pos = Position(symbol, sizing_name, bool(verdict.experiment_id), when, target, peak=price,
+                                       entry_ms=close_ms)
                         holdings[symbol] = pos
                     else:
                         result.tranche_adds += 1
-                    pos.qty += cost / price
-                    pos.qty_bought += cost / price
+                    pos.qty += cost / buy_fill
+                    pos.qty_bought += cost / buy_fill
                     pos.cost_total += cost
                     pos.cost_open += cost
                     pos.fees_in += fee
@@ -403,6 +428,10 @@ def main(argv: list[str] | None = None, fetch: Fetcher | None = None) -> int:
     parser.add_argument("--staged", action="store_true",
                         help="owner-approved staged entries/exits: 3 tranches, +1.5%%/+3%% ladder, 1.5%% trailing, -3%% confirmed stop")
     parser.add_argument("--sleeves", action="store_true", help="cap each risk bucket at 50/35/15%% of capital across all symbols")
+    parser.add_argument("--slippage-bps", type=int, default=0, help="fill every order this many basis points against you")
+    parser.add_argument("--next-open-fill", action="store_true", help="fill at the next candle's open (realistic latency)")
+    parser.add_argument("--min-hold", type=int, default=0, help="minutes before a SELL signal may close a position")
+    parser.add_argument("--sell-confirm", type=int, default=1, help="consecutive SELL decisions required to close")
     args = parser.parse_args(argv)
 
     # The replay drives MarketLoop without an ExecutionManager on purpose, so
@@ -419,13 +448,16 @@ def main(argv: list[str] | None = None, fetch: Fetcher | None = None) -> int:
         print(f"downloading {symbol} ({args.days} days)...", file=sys.stderr, flush=True)
         data[symbol] = _history(symbol, args.days, fetch)
     print("replaying the real decision chain (this takes a few minutes)...", file=sys.stderr, flush=True)
-    s = summarize(replay(data, step=args.step, exp001=args.exp001, staged=args.staged, sleeves=args.sleeves))
+    s = summarize(replay(data, step=args.step, exp001=args.exp001, staged=args.staged, sleeves=args.sleeves,
+                         slippage_bps=args.slippage_bps, next_open_fill=args.next_open_fill,
+                         min_hold_min=args.min_hold, sell_confirm=args.sell_confirm))
 
     print("MACRO-NEUTRAL REPLAY - macro and sentiment EXCLUDED; fills at candle close; "
-          f"fee {PAPER_FEE_RATE_PER_SIDE:.1%}/side; no slippage; symbols stepped on one clock with shared cash, "
+          f"fee {PAPER_FEE_RATE_PER_SIDE:.1%}/side; slippage {args.slippage_bps} bps; "
+          f"fill at {'next candle open' if args.next_open_fill else 'decision candle close'}; symbols stepped on one clock with shared cash, "
           "open positions and daily realized P&L fed to RiskEngine (equity realized-only)")
     print(f"days={args.days} step={args.step}m symbols={','.join(data)} exp001={args.exp001} "
-          f"staged={args.staged} sleeves={args.sleeves}")
+          f"staged={args.staged} sleeves={args.sleeves} min_hold={args.min_hold}m sell_confirm={args.sell_confirm}")
     print(f"decisions: {s['decisions']}  BUY signals: {s['buy_signals']}  rejected: {s['buy_rejections']}")
     print(f"closed trades: {s['closed_trades']} (open at end: {s['open_at_end']}, under EXP-001: {s['experiment_trades']})")
     if s["closed_trades"]:
