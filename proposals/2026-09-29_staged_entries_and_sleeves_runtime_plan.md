@@ -44,3 +44,25 @@ S1 is implemented in a separate change with tests:
 - sleeve math with fees.
 
 Then an independent audit, then the owner signs S1.
+
+## Finding before S1 (2026-09-29): the bucket is not stored on a position
+
+- `RiskState.positions` (`PositionExposure`) carries symbol, quantity, price and exposure, but not the risk bucket a position was opened under. A per-bucket sleeve therefore needs that fact to be durable.
+- **Proposed design (owner decision):**
+  - add `risk_bucket` to the open-position record in the portfolio foundation at BUY time;
+  - positions already open before the change get `UNKNOWN` and count against the **smallest** sleeve (HIGH, 15 %). Unknown can only refuse more, never allow more.
+- **Migration checklist for this state-shape change:**
+  - idempotency: the same BUY replayed writes the same bucket;
+  - resume and retry;
+  - ordering;
+  - duplicates;
+  - partial state: a missing field reads as UNKNOWN;
+  - rollback: the field is ignored by the old code;
+  - K0–K6 crash-recovery coverage.
+- **Alternative rejected:** deriving the bucket from the audit log at every evaluation. It is fragile, slow, and makes the risk gate depend on log parsing.
+
+## Cost gate, research first (2026-09-29)
+
+- The runtime has no "expected move" estimate. The replay now tests a proxy: 2 × ATR(14, 1 h) / price must be at least 3 × the round-trip cost (2 × fee + 2 × slippage).
+- It is available as `strategy_compare` variants "maliyet kapısı 3x" and "aşamalı + paylar + maliyet kapısı".
+- The owner's run decides whether it goes to the runtime.
