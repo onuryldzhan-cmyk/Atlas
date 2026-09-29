@@ -86,6 +86,7 @@
                 <section class="card card-warning card-outline mb-3" aria-labelledby="work-title">
                     <div class="card-header"><h3 id="work-title" class="card-title">Görevler ve iş durumu (ajan çalışanları)</h3></div>
                     <div class="card-body">
+                        <div id="cycle" class="small mb-3">Yükleniyor...</div>
                         <div id="work" class="small">Yükleniyor...</div>
                         <div class="small text-body-secondary mt-2">Oy veren 5 ajan her döngüde otomatik çalışır. Organizasyon ajanları (araştırma, kod, inceleme, güvenlik)
                             görev <b>adımı</b> ile çalışır: bir adım ancak bir çalıştırıcı onu alıp sonucunu kaydedince ilerler. Kural tabanlı çalıştırıcılar
@@ -269,6 +270,21 @@
                 : '<div class="text-body-secondary">Bekleyen adım yok.</div>');
     }
 
+    function renderCycle(memory) {
+        const el = document.getElementById('cycle');
+        if (!memory || memory.available !== true) { el.innerHTML = '<span class="badge text-bg-secondary">hafıza okunamadı</span>'; return; }
+        const last = (memory.records || []).filter((r) => r.type === 'OPERATIONS' && String(r.id).startsWith('AC-'))
+            .sort((a, b) => b.seq - a.seq)[0];
+        if (!last) { el.innerHTML = '<div class="text-body-secondary">Henüz ajan döngüsü çalışmadı (sahip makinesinde: <code>python -m tools.agent_cycle --every 60</code>).</div>'; return; }
+        let results = [];
+        try { results = JSON.parse(last.body).agent_cycle || []; } catch (e) { results = []; }
+        const tone = (v) => v === 'OK' ? 'success' : v === 'WARN' ? 'warning' : 'danger';
+        el.innerHTML = `<div class="mb-1"><b>Son ajan döngüsü</b> ${esc(last.id)} · ${esc(last.created_at)}</div>` +
+            `<table class="table table-sm mb-0"><thead><tr><th>Ajan</th><th>Görev</th><th>Sonuç</th><th>Ne yaptı</th></tr></thead><tbody>` +
+            results.map((r) => `<tr><td>${esc(r.unit)}</td><td>${esc(r.name)}</td><td><span class="badge text-bg-${tone(r.verdict)}">${esc(r.verdict)}</span></td><td>${esc(r.summary)}</td></tr>`).join('') +
+            '</tbody></table>';
+    }
+
     async function refreshLive() {
         renderLiveAgents(await getJson('/api/signals'));
     }
@@ -293,6 +309,7 @@
         setInterval(refreshLive, 10000);
         const [tasks, proposals] = await Promise.all([getJson('/api/tasks'), getJson('/api/proposals')]);
         renderWork(tasks, proposals);
+        renderCycle(await getJson('/api/memory'));
     }
 
     if (typeof window !== 'undefined' && typeof document !== 'undefined' && document.addEventListener && !window.__ATLAS_TEST__) {

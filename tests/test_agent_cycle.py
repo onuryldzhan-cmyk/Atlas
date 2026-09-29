@@ -1,0 +1,39 @@
+"""Agent cycle: every rule-based agent runs, one failure never stops the rest, the cycle is recorded."""
+
+from __future__ import annotations
+
+import json
+
+from atlas_org import memory_records
+from tools import agent_cycle as ac
+from tools import atlas_org_cli as cli
+
+
+def test_cycle_runs_all_agents_isolates_failures_and_records(tmp_path):
+    def ok(_):
+        return {"verdict": "OK", "summary": "done"}
+
+    def boom(_):
+        raise RuntimeError("archive locked")
+
+    agents = (("a", "A", ok), ("b", "B", boom), ("c", "C", ok))
+    out = ac.run_cycle(tmp_path, agents)
+    assert [r["verdict"] for r in out["results"]] == ["OK", "FAIL", "OK"]
+    assert "archive locked" in out["results"][1]["summary"]
+    rec = memory_records.replay(cli.read_log(tmp_path / cli.MEMORY_LOG))[out["record_id"]]
+    assert rec["type"] == "OPERATIONS" and rec["authority"] == "TEMPORARY"
+    assert len(json.loads(rec["body"])["agent_cycle"]) == 3
+
+
+def test_real_agents_on_a_small_book(tmp_path, monkeypatch):
+    archive = tmp_path / "closed.jsonl"
+    row = {"symbol": "BTCUSDT", "cost_quote": "1000", "gross_pnl": "0.5",
+           "opened_at": "2026-09-29T10:00:00+00:00", "closed_at": "2026-09-29T10:30:00+00:00"}
+    archive.write_text("".join(json.dumps(row) + "\n" for _ in range(12)), encoding="utf-8")
+    monkeypatch.setattr(ac, "_archive_path", lambda: archive)
+    records = tmp_path / "records"
+    first = ac.quant_research(records)
+    assert "12 işlem analiz edildi" in first["summary"]
+    assert "yeni kapanan işlem yok" in ac.quant_research(records)["summary"]  # no duplicate report
+    assert "SA-FEE-DRAG.1" in ac.strategy_lab(records)["summary"]
+    assert "yeni öneri: yok" in ac.strategy_lab(records)["summary"]           # open proposal not refiled

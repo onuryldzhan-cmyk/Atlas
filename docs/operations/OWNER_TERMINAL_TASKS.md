@@ -84,6 +84,14 @@ git push origin HEAD:claude/exp001-on-owner-lineage
 python atlas_supervisor.py
 ```
 
+Ajanları sürekli çalıştırmak için AYRI bir PowerShell penceresinde (Atlas-test klasöründe):
+
+```
+python -m tools.agent_cycle --every 60
+```
+
+Her saat performans analizi, strateji önerisi, öz-değerlendirme, veri sağlığı ve güvenlik taraması yapar; sonucu Ajanlar sayfasında görürsün. Kayıtları arada bir `git add governance/records`, commit ve push ile gönder.
+
 strategy_compare bitene kadar tuşa basma ("24/24 bitti" yazar); tabloyu yapıştır. strategy_agent önerileri
 "Kararlar & Hafıza → Öneriler" sekmesine düşer; onay yalnız senin imzanla olur.
 
