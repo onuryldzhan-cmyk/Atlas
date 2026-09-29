@@ -20,8 +20,8 @@ Command: `python -m tools.build_rem001_gate1_maps construction --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `3986fd5276acb8828e0ec3278ab7160561be76f3` |
-| generated_from_tree | `ec0d46a364a1d559015e3861c1591268ef25f3a1` |
+| generated_from_commit | `a3d71255c8bd6c2a6956723e1d8c48e324c8dae4` |
+| generated_from_tree | `db325a5d8c6f1f2904b96c2a7db4b4410616d7a1` |
 | tracked_working_tree_clean | True |
 | modified_tracked_paths_at_generation | none |
 
@@ -254,17 +254,17 @@ classes and their observed constructors:
 | `core/execution_manager.py` | `AuditEventStore` | `core/audit_event_store.py` | 413 | `ExecutionManager::__init__` |
 | `core/execution_manager.py` | `ExecutionIdempotencyStore` | `core/execution_idempotency_store.py` | 370 | `ExecutionManager::__init__` |
 | `core/execution_manager.py` | `ExecutionRequest` | `core/execution_models.py` | 2562 | `ExecutionManager::build_request` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 4393 | `ExecutionManager::paper_execute` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5650 | `ExecutionManager::_block_live_dispatch` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5710 | `ExecutionManager::live_execute` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5801 | `ExecutionManager::live_execute` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6055 | `ExecutionManager::_failure_result` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 4413 | `ExecutionManager::paper_execute` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5670 | `ExecutionManager::_block_live_dispatch` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5730 | `ExecutionManager::live_execute` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5821 | `ExecutionManager::live_execute` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6075 | `ExecutionManager::_failure_result` |
 | `core/execution_manager.py` | `ExecutionTransactionJournal` | `core/execution_transaction_journal.py` | 389 | `ExecutionManager::__init__` |
 | `core/execution_manager.py` | `FinancialRuntimeSafetyService` | `data_layer/runtime_safety.py` | 400 | `ExecutionManager::__init__` |
 | `core/execution_manager.py` | `FinancialRuntimeSafetyService` | `data_layer/runtime_safety.py` | 476 | `ExecutionManager::_assess_financial_readiness` |
 | `core/execution_manager.py` | `PositionExposure` | `core/risk_engine.py` | 2852 | `ExecutionManager::_derived_position_exposures` |
-| `core/execution_manager.py` | `RestoredRiskState` | `core/risk_state_store.py` | 4063 | `ExecutionManager::_record_realized_risk_accounting` |
-| `core/execution_manager.py` | `RiskRequest` | `core/risk_engine.py` | 3271 | `ExecutionManager::risk_check` |
+| `core/execution_manager.py` | `RestoredRiskState` | `core/risk_state_store.py` | 4083 | `ExecutionManager::_record_realized_risk_accounting` |
+| `core/execution_manager.py` | `RiskRequest` | `core/risk_engine.py` | 3291 | `ExecutionManager::risk_check` |
 | `core/execution_manager.py` | `RiskState` | `core/risk_engine.py` | 2928 | `ExecutionManager::_derive_risk_state` |
 | `core/execution_manager.py` | `VenueRuleFreshnessService` | `core/venue_rule_freshness.py` | 299 | `ExecutionManager::__init__` |
 | `core/execution_transaction_journal.py` | `DurableAppendLog` | `core/durable_append_log.py` | 174 | `ExecutionTransactionJournal::__init__` |
