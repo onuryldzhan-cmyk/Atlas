@@ -86,6 +86,11 @@
         const ct = st.controller || {};
         rows.push(!ct.name ? row('Denetleyici', 'UNKNOWN', 'durum yok')
             : row('Denetleyici', ct.running ? (ct.errors ? 'DEGRADED' : 'OK') : 'DOWN', `${ct.running ? 'çalışıyor' : 'durdu'} · hata ${esc(ct.errors ?? 0)}`));
+        if (mm.available) {
+            const open = mm.records.filter((r) => r.type === 'INCIDENTS' && r.status === 'CURRENT' && r.incident && r.incident.status !== 'RESOLVED');
+            const worst = open.some((r) => ['HIGH', 'CRITICAL'].includes(r.incident.severity)) ? 'DOWN' : (open.length ? 'DEGRADED' : 'OK');
+            rows.push(row('Açık olaylar', worst, open.length ? open.map((r) => `${esc(r.id.split('.')[0])} ${esc(r.incident.severity)} ${esc(r.incident.status)}: ${esc(r.incident.what)}`).join(' · ') : 'yok'));
+        }
         for (const [name, p] of [['Öneri kaydı', pr], ['Görev kaydı', tk], ['Hafıza kaydı', mm]]) {
             rows.push(row(name, p.available ? 'OK' : 'DOWN', p.available ? 'hash zinciri sağlam' : esc(p.reason)));
         }

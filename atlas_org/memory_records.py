@@ -33,6 +33,7 @@ class RecordType(str, Enum):
     REVIEWS = "REVIEWS"
     ROADMAP = "ROADMAP"
     OPERATIONS = "OPERATIONS"
+    INCIDENTS = "INCIDENTS"
 
 
 class Authority(str, Enum):
@@ -43,6 +44,11 @@ class Authority(str, Enum):
     TEMPORARY = "TEMPORARY"
     REJECTED = "REJECTED"
 
+
+INCIDENT_FIELDS = ("what", "detected_at", "severity", "services", "status")
+INCIDENT_RESOLUTION_FIELDS = ("root_cause", "actions", "prevention")
+INCIDENT_SEVERITIES = ("LOW", "MEDIUM", "HIGH", "CRITICAL")
+INCIDENT_STATUSES = ("OPEN", "CONTAINED", "RESOLVED")
 
 RESEARCH_FIELDS = ("project", "license", "maintenance", "dependencies",
                    "security_observations", "recommendation")
@@ -85,6 +91,17 @@ def replay(events: Iterable[dict[str, Any]], owner_key: bytes | None = None) -> 
             evaluation = ev.get("evaluation") or {}
             missing = [f for f in RESEARCH_FIELDS if not evaluation.get(f)]
             _check(not missing, f"seq {seq}: research evaluation missing {missing}")
+        if rtype is RecordType.INCIDENTS:
+            # vision §38: detect -> classify -> contain -> diagnose -> recover -> review -> document
+            incident = ev.get("incident") or {}
+            missing = [f for f in INCIDENT_FIELDS if not incident.get(f)]
+            _check(not missing, f"seq {seq}: incident missing {missing}")
+            _check(incident["severity"] in INCIDENT_SEVERITIES and incident["status"] in INCIDENT_STATUSES
+                   and isinstance(incident["services"], list), f"seq {seq}: bad incident severity/status/services")
+            if incident["status"] == "RESOLVED":
+                unresolved = [f for f in INCIDENT_RESOLUTION_FIELDS if not incident.get(f)]
+                _check(not unresolved, f"seq {seq}: a resolved incident needs {unresolved}")
+            _check(auth is not Authority.AUTHORITATIVE, f"seq {seq}: an incident report is evidence, not policy")
         old = ev.get("supersedes")
         if old is not None:
             _check(old in records, f"seq {seq}: supersedes unknown record {old}")
@@ -98,7 +115,8 @@ def replay(events: Iterable[dict[str, Any]], owner_key: bytes | None = None) -> 
             "source": ev["source"], "related_task": ev.get("related_task"),
             "related_proposal": ev.get("related_proposal"),
             "related_decision": ev.get("related_decision"),
-            "evaluation": ev.get("evaluation"), "supersedes": old, "superseded_by": None,
+            "evaluation": ev.get("evaluation"), "incident": ev.get("incident"),
+            "supersedes": old, "superseded_by": None,
             "owner_verified": verified if author == OWNER else None,
         }
         prev, expected = ev["hash"], expected + 1
