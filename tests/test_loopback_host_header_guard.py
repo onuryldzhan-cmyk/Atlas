@@ -106,6 +106,8 @@ WEB_APP_GUARDED_ROUTES = [
     "/api/roadmap",
     "/research",
     "/api/research",
+    "/api/liveness",
+    "/api/readiness",
     "/api/risk-accounting",
     "/api/system-integrity",
     "/api/execution-gates",

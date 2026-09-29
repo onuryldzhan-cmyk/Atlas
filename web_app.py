@@ -36,7 +36,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 
 from observability.organization import organization_public
-from observability import command_center, governance_records, panel_sources, portfolio_view, research_view, roadmap_view, security_view
+from observability import command_center, governance_records, panel_sources, portfolio_view, readiness, research_view, roadmap_view, security_view
 from observability.panel_router import (
     build_observability_router,
     is_loopback_request,
@@ -2388,6 +2388,21 @@ def create_app(
             # Every scanned coin with its latest real price and the loop's decision.
             payload["market"] = [{"symbol": sym, "price": str(prices[sym]), **signals[sym]} for sym in sorted(prices)]
         return payload
+
+    # Registry v5.58 (master command §24/§26): liveness and readiness.
+    @application.get("/api/liveness", response_class=JSONResponse)
+    async def api_liveness(request: Request) -> JSONResponse:
+        if not is_loopback_request(request):
+            return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+        # The web process answered: that is all liveness claims.
+        return JSONResponse(status_code=200, content={"alive": True, "at": datetime.now(UTC).isoformat()})
+
+    @application.get("/api/readiness", response_class=JSONResponse)
+    async def api_readiness(request: Request) -> JSONResponse:
+        if not is_loopback_request(request):
+            return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+        result = readiness.evaluate(_safe_runtime_status(application.state.atlas_runtime))
+        return JSONResponse(status_code=200 if result["ready"] else 503, content=result)
 
     @application.get("/api/portfolio", response_class=JSONResponse)
     async def api_portfolio(request: Request) -> JSONResponse:

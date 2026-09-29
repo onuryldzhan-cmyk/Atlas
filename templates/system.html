@@ -59,9 +59,12 @@
     const row = (name, state, detail) => `<div class="svc"><span><span class="dot ${state}"></span>${esc(name)}</span><span class="muted text-end">${esc(state)} · ${detail}</span></div>`;
 
     async function refresh() {
+        const rd = await getJSON('/api/readiness');
         const [st, pr, tk, mm, tr, tel] = await Promise.all([getJSON('/api/status'), getJSON('/api/proposals'), getJSON('/api/tasks'),
             getJSON('/api/memory'), getJSON('/api/observability/test-results'), getJSON('/api/observability/telemetry-summary')]);
         const rows = [];
+        rows.push(row('Hazırlık (işlem yapmaya hazır mı)', rd.ready === true ? 'OK' : (rd.checks ? 'DOWN' : 'UNKNOWN'),
+            rd.checks ? rd.checks.filter((c) => !c.ok).map((c) => `${esc(c.check)}: ${esc(c.detail)}`).join(' · ') || 'tüm koşullar sağlandı' : 'okunamadı'));
         const rt = st.runtime || {};
         rows.push(st.available === false ? row('Çalışma zamanı', 'UNKNOWN', esc(st.reason))
             : row('Çalışma zamanı', rt.healthy === true ? 'OK' : (rt.state ? 'DOWN' : 'UNKNOWN'), `${esc(rt.state || '?')}${rt.emergency_mode ? ' · ACİL MOD' : ''}`));

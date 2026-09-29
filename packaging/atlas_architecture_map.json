@@ -551,6 +551,7 @@
     "observability/panel_router.py": "L5",
     "observability/panel_sources.py": "L5",
     "observability/portfolio_view.py": "L5",
+    "observability/readiness.py": "L5",
     "observability/research_view.py": "L5",
     "observability/roadmap_view.py": "L5",
     "observability/security_view.py": "L5",
