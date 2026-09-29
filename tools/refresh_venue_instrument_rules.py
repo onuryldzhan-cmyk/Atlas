@@ -381,14 +381,36 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="symbol to refresh; repeatable. Defaults to the destination file's current symbols.",
     )
+    parser.add_argument(
+        "--preset",
+        choices=sorted(SYMBOL_PRESETS),
+        default=None,
+        help="a named symbol list (owner-20: the owner's 20-coin universe, registry v5.41).",
+    )
     parser.add_argument("--destination", default=str(REFERENCE_CONFIG_PATH))
     parser.add_argument("--base-url", default=DEFAULT_BASE_URL)
     parser.add_argument("--timeout-seconds", type=float, default=DEFAULT_TIMEOUT_SECONDS)
     return parser
 
 
+# Registry v5.41, owner decision 2026-09-29: "coinlerin sayısını 20 yap".
+# Long-listed, high-volume Binance USDT spot pairs. Every rule is still fetched
+# from Binance and validated; a symbol Binance does not list as TRADING is
+# refused by the adapter, never filled in.
+SYMBOL_PRESETS = {
+    "owner-20": (
+        "BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT",
+        "DOGEUSDT", "ADAUSDT", "TRXUSDT", "AVAXUSDT", "LINKUSDT",
+        "DOTUSDT", "LTCUSDT", "BCHUSDT", "NEARUSDT", "UNIUSDT",
+        "ATOMUSDT", "XLMUSDT", "SUIUSDT", "APTUSDT", "FILUSDT",
+    ),
+}
+
+
 def main(argv: list[str] | None = None) -> int:
     arguments = _build_parser().parse_args(argv)
+    if arguments.preset:
+        arguments.symbols = sorted(set(arguments.symbols or ()) | set(SYMBOL_PRESETS[arguments.preset]))
 
     try:
         report = refresh_venue_instrument_rules(

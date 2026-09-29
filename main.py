@@ -35,12 +35,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from core.application import AtlasApplication, resolve_state_directory
+from core.application import DEFAULT_INSTRUMENT_RULES_PATH, AtlasApplication, resolve_state_directory
 from core.atlas_config import AtlasConfigError, load_config
 from core.execution_manager import PAPER_FEE_RATE_PER_SIDE
 from core.audit_event_store import AuditChainIntegrityError
 from core import instance_lock
 from core.instance_lock import INSTANCE_LOCK_FILE_NAME, InstanceLockHeldError
+from core.instrument_rules import InstrumentRulesConfigError, load_instrument_ruleset
 
 
 LOGGER_NAME = "AtlasAI.Main"
@@ -57,6 +58,29 @@ HEARTBEAT_FILE_ENV = "ATLAS_SUPERVISOR_HEARTBEAT_FILE"
 # Fixed, not configurable (CFG-001): core/atlas_config.load_config refuses
 # any mode but PAPER while live authority is DENIED.
 EXECUTION_MODE = "PAPER"
+
+# Registry v5.41 (owner: 20 coins, real data only): Atlas scans and may trade
+# exactly the symbols that have a real Binance venue rule in
+# config/instrument_rules.json, written only by
+# tools/refresh_venue_instrument_rules.py from Binance's exchangeInfo. A coin
+# without a real rule is never scanned; nothing is invented.
+MAX_TRADE_UNIVERSE = 20
+
+
+def trade_universe(path: Path | str = DEFAULT_INSTRUMENT_RULES_PATH) -> list[str] | None:
+    """The configured symbols, or None to keep MarketLoop's defaults.
+
+    None when the rules file cannot be read: AtlasApplication then loads it
+    itself and halts execution fail-closed exactly as before this change.
+    """
+
+    try:
+        symbols = sorted(load_instrument_ruleset(path).symbols)
+    except InstrumentRulesConfigError:
+        return None
+    if len(symbols) > MAX_TRADE_UNIVERSE:
+        raise ValueError(f"{len(symbols)} symbols in {path}: at most {MAX_TRADE_UNIVERSE} (owner decision v5.41)")
+    return symbols or None
 PAPER_CONFIDENCE_EXPERIMENT = True
 
 # Minimum spacing between two "heartbeat write failed" announcements, so a
@@ -490,6 +514,7 @@ class AtlasProcess:
             # one call site by test_only_main_entry_point_opts_in
             paper_confidence_experiment=True,
             paper_fee_rate=PAPER_FEE_RATE_PER_SIDE,
+            symbols=trade_universe(),
         )
 
         logger.info(
