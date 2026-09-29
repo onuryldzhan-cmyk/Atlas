@@ -23,6 +23,7 @@
         .table-wrap { overflow-x: auto; }
         table td, table th { font-size: .86rem; white-space: nowrap; }
     </style>
+    <script src="/assets/lightweight-charts.js"></script>
     {% include "_atlas_theme.html" %}
 </head>
 <body>
@@ -54,6 +55,12 @@
             <div class="pane"><h2>Coinler</h2><div id="market" class="table-wrap">Yükleniyor...</div></div>
         </div>
     </div>
+    <div class="pane"><h2>Fiyat grafiği (1 dk kapanmış mumlar) ve Atlas'ın işlemleri</h2>
+        <div class="d-flex gap-2 align-items-center mb-2 small"><label for="chart-symbol">Coin</label>
+            <select id="chart-symbol" class="form-select form-select-sm" style="max-width:180px"></select>
+            <span id="chart-note" class="text-body-secondary"></span></div>
+        <div id="price-chart" style="height:340px"></div>
+        <div class="small text-body-secondary mt-1">▲ AL (işlem açılışı) · ▼ SAT (kapanış), kapanan işlemlerden. Grafik: TradingView Lightweight Charts™ (Apache-2.0), <a href="https://www.tradingview.com/" rel="noopener">tradingview.com</a>.</div></div>
     <div class="pane"><h2>Kapanan işlemler</h2><div id="trades" class="table-wrap">Yükleniyor...</div></div>
     <div class="small text-body-secondary">Kaynak: kalıcı PAPER defteri (execution_portfolio_foundation) ve piyasa döngüsünün Binance'ten aldığı gerçek mum kapanış fiyatları. Başlangıç sermayesi defterin kendi muhasebe özdeşliğinden hesaplanır. Fiyatı olmayan pozisyon tahmin edilmez, "eksik" gösterilir.</div>
 </div>
@@ -115,10 +122,51 @@
             : '<span class="text-body-secondary">Henüz kapanan işlem yok.</span>'));
     }
 
+    // ------------------------------------------------------------ price chart (read-only)
+    let chart = null, series = null, chartSymbol = '', lastTrades = [];
+    function ensureChart() {
+        if (chart || typeof LightweightCharts === 'undefined') return;
+        chart = LightweightCharts.createChart(document.getElementById('price-chart'), {
+            autoSize: true, layout: { background: { color: 'transparent' }, textColor: '#94a3b8', attributionLogo: true },
+            grid: { vertLines: { color: 'rgba(148,163,184,.08)' }, horzLines: { color: 'rgba(148,163,184,.08)' } },
+            timeScale: { timeVisible: true, secondsVisible: false }, rightPriceScale: { borderColor: 'rgba(148,163,184,.2)' } });
+        series = chart.addCandlestickSeries({ upColor: '#22c55e', downColor: '#ef4444', borderVisible: false, wickUpColor: '#22c55e', wickDownColor: '#ef4444' });
+    }
+    function fillSymbols(p) {
+        const sel = document.getElementById('chart-symbol');
+        const symbols = (p.market || []).map((m) => m.symbol);
+        if (!symbols.length || sel.options.length === symbols.length) return;
+        sel.innerHTML = symbols.map((sym) => `<option>${esc(sym)}</option>`).join('');
+        chartSymbol = chartSymbol || (symbols.includes('BTCUSDT') ? 'BTCUSDT' : symbols[0]);
+        sel.value = chartSymbol;
+    }
+    async function refreshChart() {
+        if (!chartSymbol) return;
+        ensureChart();
+        const data = await getJSON('/api/candles?symbol=' + encodeURIComponent(chartSymbol));
+        const note = document.getElementById('chart-note');
+        if (!data.available || !series) { note.textContent = `veri yok (${data.reason || 'grafik yüklenemedi'})`; if (series) series.setData([]); return; }
+        note.textContent = `${data.candles.length} mum`;
+        series.setData(data.candles);
+        const first = data.candles[0].time;
+        const toSec = (iso) => Math.floor(Date.parse(iso) / 1000);
+        const marks = [];
+        lastTrades.filter((r) => r.symbol === chartSymbol).forEach((r) => {
+            const o = toSec(r.opened_at), c = toSec(r.closed_at);
+            if (o >= first) marks.push({ time: o - (o % 60), position: 'belowBar', color: '#22c55e', shape: 'arrowUp', text: 'AL' });
+            if (c >= first) marks.push({ time: c - (c % 60), position: 'aboveBar', color: Number(r.gross_pnl) >= 0 ? '#22c55e' : '#ef4444', shape: 'arrowDown', text: 'SAT ' + Number(r.gross_pnl).toFixed(2) });
+        });
+        series.setMarkers(marks.sort((a, b) => a.time - b.time));
+    }
+    document.getElementById('chart-symbol').addEventListener('change', (e) => { chartSymbol = e.target.value; refreshChart(); });
+
     async function refresh() {
         const [p, t] = await Promise.all([getJSON('/api/portfolio'), getJSON('/api/trades')]);
         renderPortfolio(p);
         renderTrades(t);
+        if (p.available) fillSymbols(p);
+        lastTrades = t && Array.isArray(t.recent_trades) ? t.recent_trades : [];
+        refreshChart();
     }
     refresh();
     setInterval(refresh, 5000);

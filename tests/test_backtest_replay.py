@@ -282,3 +282,13 @@ def test_risk_per_trade_only_shrinks_positions():
     capped = bt.replay(data, step=10, brain_factory=_AlwaysBuy, atr_stop=2, risk_per_trade=0.0001)
     first = lambda r: (r.trades + r.open_trades)[0]
     assert first(capped).cost <= first(full).cost
+
+
+def test_cost_gate_blocks_buys_when_the_expected_move_cannot_pay_the_costs():
+    calm = {"BTCUSDT": _rows(1200, drift=0.0004)}
+    gated = bt.summarize(bt.replay(calm, step=10, brain_factory=_AlwaysBuy, cost_gate=1000))
+    assert gated["buy_rejections"].get("EXPECTED_MOVE_BELOW_COST", 0) > 0
+    assert gated["buy_rejections"].get("EXPECTED_MOVE_BELOW_COST", 0) >= bt.summarize(
+        bt.replay(calm, step=10, brain_factory=_AlwaysBuy, cost_gate=0.0001))["buy_rejections"].get("EXPECTED_MOVE_BELOW_COST", 0)
+    ungated = bt.summarize(bt.replay(calm, step=10, brain_factory=_AlwaysBuy))
+    assert ungated["buy_rejections"].get("EXPECTED_MOVE_BELOW_COST", 0) == 0

@@ -272,6 +272,10 @@ class MarketLoop:
         #     "BTCUSDT": "open:1785160800000"
         # }
         self.last_processed_candles: dict[str, str] = {}
+        # Observation only (registry v5.72): the last closed candles per
+        # symbol, as immutable (open_time_ms, open, high, low, close) tuples
+        # for the read-only price chart. Never read by the decision path.
+        self.recent_candles: dict[str, tuple[tuple[int, float, float, float, float], ...]] = {}
 
         # Last time a market-data fetch actually delivered candles for
         # each symbol, independent of whether those candles were new.
@@ -663,6 +667,7 @@ class MarketLoop:
                     ),
                 }
 
+            self._remember_candles(symbol, closed_candles)
             candle_identity = (
                 self.processor.latest_closed_identity(
                     closed_candles
@@ -2280,6 +2285,23 @@ class MarketLoop:
             "reference_windows": None,
             "reason": reason if isinstance(reason, str) else "UNSPECIFIED",
         }
+
+    RECENT_CANDLE_LIMIT = 240
+
+    def _remember_candles(self, symbol: str, closed_candles: Any) -> None:
+        """Keep a small immutable copy for the chart; never raises, never blocks a decision."""
+        try:
+            rows = []
+            for c in list(closed_candles)[-self.RECENT_CANDLE_LIMIT:]:
+                rows.append((int(c["open_time"]), float(c["open"]), float(c["high"]),
+                             float(c["low"]), float(c["close"])))
+            self.recent_candles[symbol] = tuple(rows)
+        except Exception:
+            logger.debug("recent candle snapshot skipped for %s", symbol, exc_info=True)
+
+    def candles(self, symbol: str) -> tuple[tuple[int, float, float, float, float], ...]:
+        """Read-only view of the last closed candles for one symbol (empty if none)."""
+        return self.recent_candles.get(str(symbol).upper(), ())
 
     @staticmethod
     def _agent_evidence_snapshot(

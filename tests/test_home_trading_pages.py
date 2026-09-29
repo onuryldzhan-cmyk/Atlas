@@ -11,7 +11,7 @@ import web_app
 
 READ_ONLY_APIS = {"/api/portfolio", "/api/command-center", "/api/trades", "/api/proposals", "/api/tasks", "/api/memory", "/api/permissions", "/api/status",
                   "/api/observability/test-results", "/api/observability/telemetry-summary",
-                  "/api/chat?q=", "/api/security", "/api/roadmap", "/api/research", "/api/execution-gates", "/api/readiness", "/api/signals"}
+                  "/api/chat?q=", "/api/security", "/api/roadmap", "/api/research", "/api/execution-gates", "/api/readiness", "/api/signals", "/api/candles?symbol="}
 
 
 @pytest.mark.parametrize("name", ["home.html", "trading.html", "governance.html", "system.html", "security.html", "roadmap.html", "research.html", "decisions.html"])
@@ -19,7 +19,9 @@ def test_pages_only_read_and_never_write(name):
     html = web_app.TEMPLATE_DIR.joinpath(name).read_text(encoding="utf-8")
     assert set(re.findall(r"getJSON\('([^']+)'", html)) <= READ_ONLY_APIS
     assert "<form" not in html and not re.search(r"method\s*:", html)
-    assert "<script src=" not in html
+    # no CDN or external script: only vendored, hash-pinned assets from the /assets allowlist (v5.72)
+    sources = re.findall(r'<script src="([^"]+)"', html)
+    assert all(src.startswith("/assets/") and src.removeprefix("/assets/") in web_app.VENDORED_ASSETS for src in sources)
     assert "Değer uydurulmaz" in html or "tahmin edilmez" in html or "kısmen gösterilmez" in html or "asla \"sağlıklı\" sayılmaz" in html or "Okunamadı" in html
 
 

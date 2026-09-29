@@ -107,6 +107,7 @@ WEB_APP_GUARDED_ROUTES = [
     "/research",
     "/decisions",
     "/api/agent-states",
+    "/api/candles",
     "/api/research",
     "/api/liveness",
     "/api/readiness",

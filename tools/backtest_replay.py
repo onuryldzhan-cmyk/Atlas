@@ -214,7 +214,8 @@ def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: 
            staged: bool = False, sleeves: bool = False, brain_factory=None,
            slippage_bps: int = 0, next_open_fill: bool = False,
            min_hold_min: int = 0, sell_confirm: int = 1,
-           trend_ema_hours: int = 0, atr_stop: Decimal | float = 0, risk_per_trade: Decimal | float = 0) -> Result:
+           trend_ema_hours: int = 0, atr_stop: Decimal | float = 0, risk_per_trade: Decimal | float = 0,
+           cost_gate: Decimal | float = 0) -> Result:
     """Baseline (staged=False, sleeves=False) = today's runtime behaviour.
     staged=True adds the approved tranche entries, take-profit ladder, trailing
     stop and confirmed hard stop; sleeves=True caps each risk bucket's total
@@ -253,6 +254,10 @@ def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: 
     sell_streak: dict[str, int] = {}
     slip = Decimal(slippage_bps) / Decimal(10000)
     atr_stop, risk_per_trade = Decimal(str(atr_stop)), Decimal(str(risk_per_trade))
+    # cost_gate > 0 (research, strategy framework layer 1): a new BUY needs the
+    # expected move - 2 x ATR(14, 1-hour) / price, a ~2-4 h horizon - to be at
+    # least cost_gate x the round-trip cost (2 x fee + 2 x slippage)
+    cost_gate = Decimal(str(cost_gate))
     stop_level: dict[str, Decimal] = {}
 
     def reject(code: str) -> None:
@@ -375,7 +380,7 @@ def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: 
                         if price < pos.avg_entry or close_ms - pos.last_tranche_ms < TRANCHE_MIN_GAP_MS:
                             continue
                     result.buy_signals += 1
-                    bars = _hourly_bars(data[symbol], end) if (trend_ema_hours or atr_stop) else []
+                    bars = _hourly_bars(data[symbol], end) if (trend_ema_hours or atr_stop or cost_gate) else []
                     if trend_ema_hours and not is_add:
                         ema = _ema([b[2] for b in bars], trend_ema_hours)
                         if ema is None or price <= ema:
@@ -403,6 +408,12 @@ def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: 
                             reject("SLEEVE_FULL")
                             continue
                         amount = min(amount, room)
+                    if cost_gate and not is_add:
+                        gate_atr = _atr(bars)
+                        round_trip = 2 * fee_rate + 2 * slip
+                        if gate_atr is None or 2 * gate_atr / price < cost_gate * round_trip:
+                            reject("EXPECTED_MOVE_BELOW_COST")
+                            continue
                     atr = _atr(bars) if atr_stop else None
                     if atr_stop and atr is None:
                         reject("ATR_UNAVAILABLE")

@@ -231,6 +231,11 @@ VENDORED_ASSETS = {
         BASE_DIR / "static" / "vendor" / "chartjs-4.5.1" / "chart.umd.min.js",
         "text/javascript",
     ),
+    # Apache-2.0 + TradingView attribution (kept on via attributionLogo), v5.72
+    "lightweight-charts.js": (
+        BASE_DIR / "static" / "vendor" / "lightweight-charts-4.2.3" / "lightweight-charts.standalone.production.js",
+        "text/javascript",
+    ),
 }
 
 # Defense-in-depth response headers applied to every response this
@@ -1661,6 +1666,26 @@ def _execution_gates_payload(
     }
 
 
+def _candles_payload(market_loop: Any, symbol: str) -> dict[str, Any]:
+    """Chart data for one symbol; unknown or malformed input is reported, never guessed."""
+
+    symbol = str(symbol or "").strip().upper()
+    if not symbol or not symbol.isalnum() or len(symbol) > 20:
+        return {"available": False, "reason": "INVALID_SYMBOL"}
+    reader = getattr(market_loop, "candles", None)
+    if not callable(reader):
+        return {"available": False, "reason": "MARKET_LOOP_NOT_ATTACHED"}
+    try:
+        rows = reader(symbol)
+        candles = [{"time": int(t) // 1000, "open": o, "high": h, "low": lo, "close": c} for t, o, h, lo, c in rows]
+    except Exception:
+        logger.exception("Candle read failed")
+        return {"available": False, "reason": "CANDLES_UNREADABLE"}
+    if not candles:
+        return {"available": False, "reason": "NO_CANDLES_YET", "symbol": symbol}
+    return {"available": True, "symbol": symbol, "interval": "1m", "candles": candles}
+
+
 def _response_json(response: Any) -> Any:
     """The JSON body of an in-process JSONResponse, or None."""
 
@@ -2351,6 +2376,15 @@ def create_app(
 
         application.add_api_route(path, _governance_route, methods=["GET"],
                                   response_class=JSONResponse)
+
+    # Price chart (v5.72): the market loop's last closed candles for one coin,
+    # read-only; the chart overlays Atlas's own trades from /api/trades.
+    @application.get("/api/candles", response_class=JSONResponse)
+    async def api_candles(request: Request, symbol: str = "") -> JSONResponse:
+        if not is_loopback_request(request):
+            return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+        return JSONResponse(status_code=200, content=_candles_payload(
+            _resolve_attr(application.state.atlas_runtime, "market_loop"), symbol))
 
     # Atlas HQ backbone: every agent's state, room and hand-offs, derived only
     # from the recorded logs and the running market loop (read-only).

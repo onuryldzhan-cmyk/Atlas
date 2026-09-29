@@ -1,98 +1,124 @@
 {
-  "purpose": "Third-party UI assets vendored for the loopback-only operator dashboard (templates/dashboard.html). Served only through web_app.py's loopback-guarded /assets/{name} allowlist route; no CDN reference remains.",
-  "vetted_on": "2026-09-27",
-  "assets": [
-    {
-      "package": "admin-lte",
-      "version": "4.9.1",
-      "license": "MIT",
-      "upstream_repository": "https://github.com/ColorlibHQ/AdminLTE",
-      "upstream_release_tag": "v4.9.1",
-      "npm_publisher": "silkalns",
-      "tarball": "https://registry.npmjs.org/admin-lte/-/admin-lte-4.9.1.tgz",
-      "tarball_integrity": "sha512-NmVAH7INZjEE+OpVGATGtoRQllaetxzT9AaOMm8eMa9CxW+Okd/kWwCThYeJ7g/sR0/t9sbQoIfCk9Aht8hIqQ==",
-      "files": {
-        "adminlte-4.9.1/adminlte.min.css": {
-          "tarball_path": "package/dist/css/adminlte.min.css",
-          "sha256": "0934e1e6298dd4666440703dd613fdbb1a3c5f1554467923c29464ef4a5682ea",
-          "modified": false
-        },
-        "adminlte-4.9.1/LICENSE": {
-          "tarball_path": "package/LICENSE",
-          "sha256": "9e8b0d4e7ce8c13e67a2373d5094910c263fd95b1e49bdf45dc2a9813be5996b",
-          "modified": false
-        },
-        "adminlte-4.9.1/adminlte.min.js": {
-          "tarball_path": "package/dist/js/adminlte.min.js",
-          "sha256": "922181e2098af61f2c6d8e997b1acccf37bdfa27c9dd0c9e20d15282ae31eddb",
-          "modified": false
-        }
-      },
-      "notes": "adminlte.min.css compiles in Bootstrap 5.3 CSS, so Bootstrap's MIT license is carried alongside. adminlte.min.js (added 2026-09-27, same verified v4.9.1 tarball) provides the CardWidget collapse behaviour through a document-level click handler; it is standalone vanilla JS with no dependency on Bootstrap's JavaScript, which remains unvendored. Its only storage use is localStorage for sidebar state (this page has no sidebar) and for the ColorMode theme; the dashboard sets data-lte-color-mode=\"off\" on <html>, which disables ColorMode entirely, so the declared dark theme is never overridden and no theme is read or written. Its AccessibilityManager adds a live region, visually hidden skip links and landmark roles. Both files' trailing sourceMappingURL comments point at local .map files that are not vendored; browsers only request them with devtools open, and the request stays on loopback (404)."
+ "purpose": "Third-party UI assets vendored for the loopback-only operator dashboard (templates/dashboard.html). Served only through web_app.py's loopback-guarded /assets/{name} allowlist route; no CDN reference remains.",
+ "vetted_on": "2026-09-27",
+ "assets": [
+  {
+   "package": "admin-lte",
+   "version": "4.9.1",
+   "license": "MIT",
+   "upstream_repository": "https://github.com/ColorlibHQ/AdminLTE",
+   "upstream_release_tag": "v4.9.1",
+   "npm_publisher": "silkalns",
+   "tarball": "https://registry.npmjs.org/admin-lte/-/admin-lte-4.9.1.tgz",
+   "tarball_integrity": "sha512-NmVAH7INZjEE+OpVGATGtoRQllaetxzT9AaOMm8eMa9CxW+Okd/kWwCThYeJ7g/sR0/t9sbQoIfCk9Aht8hIqQ==",
+   "files": {
+    "adminlte-4.9.1/adminlte.min.css": {
+     "tarball_path": "package/dist/css/adminlte.min.css",
+     "sha256": "0934e1e6298dd4666440703dd613fdbb1a3c5f1554467923c29464ef4a5682ea",
+     "modified": false
     },
-    {
-      "package": "bootstrap",
-      "version": "5.3.8",
-      "license": "MIT",
-      "upstream_repository": "https://github.com/twbs/bootstrap",
-      "tarball": "https://registry.npmjs.org/bootstrap/-/bootstrap-5.3.8.tgz",
-      "tarball_integrity": "sha512-HP1SZDqaLDPwsNiqRqi5NcP0SSXciX2s9E+RyqJIIqGo+vJeN5AJVM98CXmW/Wux0nQ5L7jeWUdplCEf0Ee+tg==",
-      "files": {
-        "adminlte-4.9.1/BOOTSTRAP_LICENSE": {
-          "tarball_path": "package/LICENSE",
-          "sha256": "4620c84ad5ce8602ff65640ed6b7c8b78ebb9e036584f0ebc1ccc88206a4bb51",
-          "modified": false
-        }
-      },
-      "notes": "License file only; Bootstrap's CSS reaches the page through adminlte.min.css."
+    "adminlte-4.9.1/LICENSE": {
+     "tarball_path": "package/LICENSE",
+     "sha256": "9e8b0d4e7ce8c13e67a2373d5094910c263fd95b1e49bdf45dc2a9813be5996b",
+     "modified": false
     },
-    {
-      "package": "chart.js",
-      "version": "4.5.1",
-      "license": "MIT",
-      "upstream_repository": "https://github.com/chartjs/Chart.js",
-      "upstream_release_tag": "v4.5.1",
-      "upstream_release_published_at": "2025-10-13T08:51:55Z",
-      "upstream_repository_license_spdx": "MIT",
-      "npm_publisher": "chartjs-ci",
-      "tarball": "https://registry.npmjs.org/chart.js/-/chart.js-4.5.1.tgz",
-      "tarball_integrity": "sha512-GIjfiT9dbmHRiYi6Nl2yFCq7kkwdkp1W/lp2J99rX0yo9tgJGn3lKQATztIjb5tVtevcBtIdICNWqlq5+E8/Pw==",
-      "files": {
-        "chartjs-4.5.1/chart.umd.min.js": {
-          "tarball_path": "package/dist/chart.umd.min.js",
-          "sha256": "48444a82d4edcb5bec0f1965faacdde18d9c17db3063d042abada2f705c9f54a",
-          "modified": false
-        },
-        "chartjs-4.5.1/LICENSE.md": {
-          "tarball_path": "package/LICENSE.md",
-          "sha256": "41a84aa2caba645f966a18d9c2056b73e6d3a81d80bc0046bc0011a2634d4cce",
-          "modified": false
-        }
-      },
-      "notes": "Latest version on the npm registry when vetted (dist-tag latest = 4.5.1). The UMD build is self-contained and bundles its one runtime dependency, @kurkle/color v0.3.2 (MIT, banner present in the file), whose license is carried alongside. Used for the price sparkline and the S-3/M-2 telemetry bar charts."
-    },
-    {
-      "package": "@kurkle/color",
-      "version": "0.3.2",
-      "license": "MIT",
-      "upstream_repository": "https://github.com/kurkle/color",
-      "tarball": "https://registry.npmjs.org/@kurkle/color/-/color-0.3.2.tgz",
-      "tarball_integrity": "sha512-fuscdXJ9G1qb7W8VdHi+IwRqij3lBkosAm4ydQtEmbY58OzHXqQhvlxqEkoz0yssNVn38bcpRWgA9PP+OGoisw==",
-      "files": {
-        "chartjs-4.5.1/KURKLE_COLOR_LICENSE.md": {
-          "tarball_path": "package/LICENSE.md",
-          "sha256": "2859c50313bad2ba77b081410c477beaf92b60ca13a77a248d89859a6dd6ac81",
-          "modified": false
-        }
-      },
-      "notes": "License file only; the code reaches the page bundled inside chart.umd.min.js."
+    "adminlte-4.9.1/adminlte.min.js": {
+     "tarball_path": "package/dist/js/adminlte.min.js",
+     "sha256": "922181e2098af61f2c6d8e997b1acccf37bdfa27c9dd0c9e20d15282ae31eddb",
+     "modified": false
     }
-  ],
-  "security_review": {
-    "network_or_telemetry_code": "none found. adminlte.min.css contains no @import and no external url(); its only http(s) strings are license/website comments and the SVG XML namespace in inline data: URIs. adminlte.min.js and chart.umd.min.js were scanned for fetch(, XMLHttpRequest, WebSocket, sendBeacon, EventSource, importScripts, Worker(, dynamic import(, .src= assignment, script-element creation, window.open, location., navigator. and document.cookie: no occurrence in either file. Their only http(s) strings are banner/license comments (adminlte.io, colorlib.com, the AdminLTE LICENSE URL; chartjs.org, the kurkle/color readme).",
-    "dynamic_code": "none. No eval( or new Function in either script; the three 'Function(' matches in chart.umd.min.js are the method name _tickFormatFunction(.",
-    "storage": "adminlte.min.js: localStorage for sidebar state and the ColorMode theme only (ColorMode disabled by the page). chart.umd.min.js: none. The dashboard's own inline script keeps the price sparkline's observations in sessionStorage.",
-    "javascript_vendored": true,
-    "provenance_check": "Each tarball was downloaded from registry.npmjs.org and its sha512 matched the registry's dist.integrity before extraction; vendored files are byte-identical to the tarball entries (sha256 above)."
+   },
+   "notes": "adminlte.min.css compiles in Bootstrap 5.3 CSS, so Bootstrap's MIT license is carried alongside. adminlte.min.js (added 2026-09-27, same verified v4.9.1 tarball) provides the CardWidget collapse behaviour through a document-level click handler; it is standalone vanilla JS with no dependency on Bootstrap's JavaScript, which remains unvendored. Its only storage use is localStorage for sidebar state (this page has no sidebar) and for the ColorMode theme; the dashboard sets data-lte-color-mode=\"off\" on <html>, which disables ColorMode entirely, so the declared dark theme is never overridden and no theme is read or written. Its AccessibilityManager adds a live region, visually hidden skip links and landmark roles. Both files' trailing sourceMappingURL comments point at local .map files that are not vendored; browsers only request them with devtools open, and the request stays on loopback (404)."
+  },
+  {
+   "package": "bootstrap",
+   "version": "5.3.8",
+   "license": "MIT",
+   "upstream_repository": "https://github.com/twbs/bootstrap",
+   "tarball": "https://registry.npmjs.org/bootstrap/-/bootstrap-5.3.8.tgz",
+   "tarball_integrity": "sha512-HP1SZDqaLDPwsNiqRqi5NcP0SSXciX2s9E+RyqJIIqGo+vJeN5AJVM98CXmW/Wux0nQ5L7jeWUdplCEf0Ee+tg==",
+   "files": {
+    "adminlte-4.9.1/BOOTSTRAP_LICENSE": {
+     "tarball_path": "package/LICENSE",
+     "sha256": "4620c84ad5ce8602ff65640ed6b7c8b78ebb9e036584f0ebc1ccc88206a4bb51",
+     "modified": false
+    }
+   },
+   "notes": "License file only; Bootstrap's CSS reaches the page through adminlte.min.css."
+  },
+  {
+   "package": "chart.js",
+   "version": "4.5.1",
+   "license": "MIT",
+   "upstream_repository": "https://github.com/chartjs/Chart.js",
+   "upstream_release_tag": "v4.5.1",
+   "upstream_release_published_at": "2025-10-13T08:51:55Z",
+   "upstream_repository_license_spdx": "MIT",
+   "npm_publisher": "chartjs-ci",
+   "tarball": "https://registry.npmjs.org/chart.js/-/chart.js-4.5.1.tgz",
+   "tarball_integrity": "sha512-GIjfiT9dbmHRiYi6Nl2yFCq7kkwdkp1W/lp2J99rX0yo9tgJGn3lKQATztIjb5tVtevcBtIdICNWqlq5+E8/Pw==",
+   "files": {
+    "chartjs-4.5.1/chart.umd.min.js": {
+     "tarball_path": "package/dist/chart.umd.min.js",
+     "sha256": "48444a82d4edcb5bec0f1965faacdde18d9c17db3063d042abada2f705c9f54a",
+     "modified": false
+    },
+    "chartjs-4.5.1/LICENSE.md": {
+     "tarball_path": "package/LICENSE.md",
+     "sha256": "41a84aa2caba645f966a18d9c2056b73e6d3a81d80bc0046bc0011a2634d4cce",
+     "modified": false
+    }
+   },
+   "notes": "Latest version on the npm registry when vetted (dist-tag latest = 4.5.1). The UMD build is self-contained and bundles its one runtime dependency, @kurkle/color v0.3.2 (MIT, banner present in the file), whose license is carried alongside. Used for the price sparkline and the S-3/M-2 telemetry bar charts."
+  },
+  {
+   "package": "@kurkle/color",
+   "version": "0.3.2",
+   "license": "MIT",
+   "upstream_repository": "https://github.com/kurkle/color",
+   "tarball": "https://registry.npmjs.org/@kurkle/color/-/color-0.3.2.tgz",
+   "tarball_integrity": "sha512-fuscdXJ9G1qb7W8VdHi+IwRqij3lBkosAm4ydQtEmbY58OzHXqQhvlxqEkoz0yssNVn38bcpRWgA9PP+OGoisw==",
+   "files": {
+    "chartjs-4.5.1/KURKLE_COLOR_LICENSE.md": {
+     "tarball_path": "package/LICENSE.md",
+     "sha256": "2859c50313bad2ba77b081410c477beaf92b60ca13a77a248d89859a6dd6ac81",
+     "modified": false
+    }
+   },
+   "notes": "License file only; the code reaches the page bundled inside chart.umd.min.js."
+  },
+  {
+   "package": "lightweight-charts",
+   "version": "4.2.3",
+   "license": "Apache-2.0",
+   "upstream_repository": "https://github.com/tradingview/lightweight-charts",
+   "upstream_release_tag": "v4.2.3",
+   "tarball": "https://registry.npmjs.org/lightweight-charts/-/lightweight-charts-4.2.3.tgz",
+   "tarball_integrity": "sha512-5kS/2hY3wNYNzhnS8Gb+GAS07DX8GPF2YVDnd2NMC85gJVQ6RLU6YrXNgNJ6eg0AnWPwCnvaGtYmGky3HiLQEw==",
+   "tarball_shasum": "0a0174793fc246b37bd8b96d1d4caadd2ecb329e",
+   "files": {
+    "lightweight-charts-4.2.3/lightweight-charts.standalone.production.js": {
+     "tarball_path": "package/dist/lightweight-charts.standalone.production.js",
+     "sha256": "c7dda807d662a95b3d257119ed315cec669e3bdf5aaece75c480a39307f23540",
+     "modified": false
+    },
+    "lightweight-charts-4.2.3/LICENSE": {
+     "tarball_path": "package/LICENSE",
+     "sha256": "70c9d5382506dd184465425c08a99ad9bd6d9ac1313c252968ba0b585e5ef823",
+     "modified": false
+    }
+   },
+   "notes": "Added 2026-09-29 (registry v5.72, owner: adopt useful projects). Apache-2.0 plus TradingView's attribution requirement: the Trading page keeps the chart's attributionLogo (link to tradingview.com) on. Scanned: no fetch/XHR/WebSocket/eval/new Function/import(); only URLs are the SVG namespace, the Apache license and the TradingView attribution link."
   }
+ ],
+ "security_review": {
+  "network_or_telemetry_code": "none found. adminlte.min.css contains no @import and no external url(); its only http(s) strings are license/website comments and the SVG XML namespace in inline data: URIs. adminlte.min.js and chart.umd.min.js were scanned for fetch(, XMLHttpRequest, WebSocket, sendBeacon, EventSource, importScripts, Worker(, dynamic import(, .src= assignment, script-element creation, window.open, location., navigator. and document.cookie: no occurrence in either file. Their only http(s) strings are banner/license comments (adminlte.io, colorlib.com, the AdminLTE LICENSE URL; chartjs.org, the kurkle/color readme).",
+  "dynamic_code": "none. No eval( or new Function in either script; the three 'Function(' matches in chart.umd.min.js are the method name _tickFormatFunction(.",
+  "storage": "adminlte.min.js: localStorage for sidebar state and the ColorMode theme only (ColorMode disabled by the page). chart.umd.min.js: none. The dashboard's own inline script keeps the price sparkline's observations in sessionStorage.",
+  "javascript_vendored": true,
+  "provenance_check": "Each tarball was downloaded from registry.npmjs.org and its sha512 matched the registry's dist.integrity before extraction; vendored files are byte-identical to the tarball entries (sha256 above)."
+ },
+ "vetted_on_history": [
+  "2026-09-29 lightweight-charts 4.2.3"
+ ]
 }

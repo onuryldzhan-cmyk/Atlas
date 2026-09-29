@@ -130,7 +130,8 @@ def test_vendored_files_match_recorded_provenance() -> None:
     checked = 0
 
     for asset in manifest["assets"]:
-        assert asset["license"] == "MIT"
+        # permissive licenses only; Apache-2.0 added for lightweight-charts (v5.72, owner-approved adoption)
+        assert asset["license"] in ("MIT", "Apache-2.0")
 
         for relative, record in asset["files"].items():
             digest = hashlib.sha256((VENDOR_DIR / relative).read_bytes()).hexdigest()
@@ -138,8 +139,19 @@ def test_vendored_files_match_recorded_provenance() -> None:
             assert record["modified"] is False
             checked += 1
 
-    assert checked == 7
+    assert checked == 9
     assert "MIT License" in (VENDOR_DIR / "adminlte-4.9.1" / "LICENSE").read_text(encoding="utf-8")
+    assert "Apache License" in (VENDOR_DIR / "lightweight-charts-4.2.3" / "LICENSE").read_text(encoding="utf-8")
+
+
+def test_lightweight_charts_makes_no_network_request_and_runs_no_dynamic_code() -> None:
+    script = (VENDOR_DIR / "lightweight-charts-4.2.3" / "lightweight-charts.standalone.production.js").read_text(encoding="utf-8")
+    for forbidden in ("fetch(", "XMLHttpRequest", "WebSocket", "sendBeacon", "EventSource", "importScripts",
+                      "Worker(", "import(", "eval(", "new Function", "document.cookie", "window.open", "localStorage"):
+        assert forbidden not in script, forbidden
+    urls = set(re.findall(r"""https?://[^\s"'<>)]+""", script))
+    assert {u.split("?")[0] for u in urls} <= {"http://www.w3.org/2000/svg", "https://www.apache.org/licenses/LICENSE-2.0",
+                                               "https://www.tradingview.com/"}
 
 
 def test_vendored_stylesheet_makes_no_network_request() -> None:
