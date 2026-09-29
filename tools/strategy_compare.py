@@ -45,6 +45,21 @@ VARIANTS: dict[str, dict[str, Any]] = {
 REFERENCE = "gerçekçi dolum (referans)"
 
 
+def dataset_manifest(data: dict[str, list[list]]) -> dict[str, Any]:
+    """Content hash + shape of the exact candles replayed (task 9 reproducibility)."""
+    import hashlib
+
+    per = {}
+    h = hashlib.sha256()
+    for sym in sorted(data):
+        rows = data[sym]
+        blob = json.dumps(rows, separators=(",", ":"), default=str).encode()
+        h.update(sym.encode() + blob)
+        per[sym] = {"rows": len(rows), "first_open": rows[0][0] if rows else None,
+                    "last_open": rows[-1][0] if rows else None, "sha256": hashlib.sha256(blob).hexdigest()[:16]}
+    return {"dataset_sha256": h.hexdigest(), "symbols": per}
+
+
 def split(data: dict[str, list[list]], windows: int) -> list[dict[str, list[list]]]:
     length = min(len(rows) for rows in data.values())
     size = length // windows
@@ -85,6 +100,8 @@ def main(argv: list[str] | None = None, fetch=None) -> int:
     parser.add_argument("--symbols-file", default=None, help="JSON with a 'symbols' list (config/universe_selection.json)")
     parser.add_argument("--no-exp001", action="store_true", help="replay without the EXP-001 floor")
     parser.add_argument("--only", default=None, help="comma-separated words; run only variants whose name contains one (the reference always runs)")
+    parser.add_argument("--save-dataset", default=None, help="write the downloaded candles to this JSON file")
+    parser.add_argument("--dataset", default=None, help="replay a saved dataset instead of downloading (reproducible)")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
     variants = VARIANTS
@@ -97,12 +114,25 @@ def main(argv: list[str] | None = None, fetch=None) -> int:
         symbols = json.loads(Path(args.symbols_file).read_text(encoding="utf-8"))["symbols"]
     if fetch is None:
         from tools.measure_volatility_ceiling import fetch_page as fetch
-    data = {}
-    for symbol in symbols:
-        print(f"downloading {symbol} ({args.days} days)...", file=sys.stderr, flush=True)
-        data[symbol] = bt._history(symbol, args.days, fetch)
+    if args.dataset:
+        saved = json.loads(Path(args.dataset).read_text(encoding="utf-8"))
+        data = saved["data"]
+        if dataset_manifest(data)["dataset_sha256"] != saved["manifest"]["dataset_sha256"]:
+            print("DATASET CORRUPTED: hash mismatch, refusing to replay", file=sys.stderr)
+            return 2
+    else:
+        data = {}
+        for symbol in symbols:
+            print(f"downloading {symbol} ({args.days} days)...", file=sys.stderr, flush=True)
+            data[symbol] = bt._history(symbol, args.days, fetch)
+    manifest = dataset_manifest(data)
+    if args.save_dataset:
+        Path(args.save_dataset).write_text(json.dumps({"manifest": manifest, "data": data}, default=str), encoding="utf-8")
     print(f"replaying {len(variants)} variants x {args.windows} windows (this takes a while)...", file=sys.stderr, flush=True)
     result = compare(data, args.windows, args.step, not args.no_exp001, variants=variants)
+    result["dataset"] = manifest
+    result["parameters"] = {"windows": args.windows, "step": args.step, "exp001": not args.no_exp001,
+                            "variants": sorted(variants)}
     if args.json:
         print(json.dumps(result, default=str, ensure_ascii=False, indent=2))
         return 0
@@ -115,6 +145,7 @@ def main(argv: list[str] | None = None, fetch=None) -> int:
         print(f"{name:<28}{cells}  {result['verdicts'][name]}")
     print("\nBETTER = her pencerede gerçekçi referanstan daha iyi net ve daha kötü olmayan en büyük düşüş. "
           "n = kapanan/pencere sonunda açık işlem. Araştırma kanıtıdır; hiçbir şey değiştirilmedi.")
+    print(f"Veri seti özeti (sha256): {manifest['dataset_sha256'][:16]} — aynı sonucu almak için --save-dataset / --dataset kullan.")
     return 0
 
 
