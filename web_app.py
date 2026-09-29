@@ -1800,6 +1800,14 @@ def create_app(
             context={},
         )
 
+    @application.get("/hq", response_class=HTMLResponse)
+    async def hq_page(request: Request) -> Response:
+        # Registry v5.38: Atlas HQ. Static shell; the 3D view is presentation
+        # only and every value comes from the read-only APIs it polls.
+        if not is_loopback_request(request):
+            return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+        return templates.TemplateResponse(request=request, name="hq.html", context={})
+
     @application.get(
         "/dashboard",
         response_class=HTMLResponse,

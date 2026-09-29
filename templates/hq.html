@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+{#
+  Atlas HQ (registry v5.38). Loopback-only, read-only presentation.
+  3D = identity, 2D panels = operations (owner's design, 2026-09-29).
+  The 3D view is a dependency-free Canvas perspective projection; it holds
+  NO business logic: every colour and number comes from the read-only
+  /api/organization, /api/tasks, /api/permissions, /api/command-center and
+  /api/chat endpoints. The page works with the 3D view switched off.
+#}
+<html lang="tr" data-bs-theme="dark" data-lte-color-mode="off">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Atlas HQ</title>
+    <link rel="stylesheet" href="/assets/adminlte.min.css">
+    <style>
+        body { background: #0b0f17; }
+        .atlas-nav a { color: var(--bs-secondary-color); text-decoration: none; padding: .35rem .75rem; border-radius: .4rem; }
+        .atlas-nav a.active, .atlas-nav a:hover { color: var(--bs-body-color); background: var(--bs-tertiary-bg); }
+        .hq-grid { display: grid; grid-template-columns: 260px 1fr 280px; gap: 12px; padding: 12px; }
+        @media (max-width: 1100px) { .hq-grid { grid-template-columns: 1fr; } }
+        .pane { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 12px; }
+        #org-list { max-height: 560px; overflow-y: auto; }
+        .pane h2 { font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; color: var(--bs-secondary-color); margin-bottom: .6rem; }
+        #hq-canvas { width: 100%; height: 520px; display: block; border-radius: 10px; background: radial-gradient(ellipse at center, #121a2b 0%, #070a10 70%); cursor: pointer; }
+        .unit-row { display: flex; justify-content: space-between; gap: 6px; font-size: .82rem; padding: 3px 4px; border-radius: 5px; cursor: pointer; }
+        .unit-row:hover, .unit-row.sel { background: rgba(255,255,255,.06); }
+        .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+        .kv { display: flex; justify-content: space-between; font-size: .85rem; padding: 2px 0; }
+        .bottom { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 0 12px 12px; }
+        @media (max-width: 900px) { .bottom { grid-template-columns: 1fr 1fr; } }
+        .big { font-size: 1.4rem; font-weight: 700; }
+    </style>
+</head>
+<body>
+<nav class="navbar bg-body border-bottom px-3">
+    <span class="navbar-brand fw-bold"><span class="text-primary">ATLAS</span> HQ</span>
+    <div class="atlas-nav d-flex gap-1">
+        <a href="/hq" class="active">HQ</a>
+        <a href="/dashboard">Panel</a>
+        <a href="/agents">Ajanlar &amp; Organizasyon</a>
+    </div>
+    <span class="small"><span id="hq-health">…</span> · <span id="hq-clock"></span>
+        <button id="toggle-3d" class="btn btn-sm btn-outline-secondary ms-2" type="button">3D: açık</button></span>
+</nav>
+
+<div class="hq-grid">
+    <aside class="pane">
+        <h2>Organizasyon</h2>
+        <div id="org-list">Yükleniyor...</div>
+    </aside>
+    <main class="pane">
+        <canvas id="hq-canvas" aria-label="Atlas HQ 3D görünüm" role="img"></canvas>
+        <div id="hq-3d-off" class="text-body-secondary small p-4" hidden>3D kapalı. Tüm bilgiler yan ve alt panellerde.</div>
+        <div id="unit-detail" class="small mt-2 text-body-secondary">Bir odaya ya da soldaki bir birime tıklayın.</div>
+    </main>
+    <aside class="pane">
+        <h2>Trading (PAPER)</h2>
+        <div id="trading">Yükleniyor...</div>
+        <h2 class="mt-3">Yetki sınırı</h2>
+        <div class="small">Canlı para: <span class="badge text-bg-dark">KAPALI</span><br>İşlem & deploy yetkisi hiçbir yapay zekâ birimine verilemez.</div>
+    </aside>
+</div>
+
+<div class="bottom">
+    <div class="pane"><h2>Kararınızı bekleyen</h2><div id="b-proposals" class="big">…</div><a href="/dashboard#section-proposals-title" class="small">Öneriler →</a></div>
+    <div class="pane"><h2>Görevler</h2><div id="b-tasks" class="big">…</div></div>
+    <div class="pane"><h2>Sistem</h2><div id="b-health" class="big">…</div></div>
+    <div class="pane"><h2>Çalışan ajan</h2><div id="b-agents" class="big">…</div></div>
+</div>
+<div class="px-3 pb-3">
+    <div class="pane">
+        <h2>Atlas Chat</h2>
+        <div class="input-group input-group-sm mb-2">
+            <input id="chat-input" type="text" autocomplete="off" maxlength="500" class="form-control" placeholder="Atlas, bugün ne oldu?" aria-label="Atlas'a sor">
+            <button id="chat-send" class="btn btn-primary" type="button">Sor</button>
+        </div>
+        <div id="chat-log" class="small"></div>
+        <div class="small text-body-secondary">Kural tabanlı; yalnız gerçek durumdan cevap verir, hiçbir şeyi değiştiremez.</div>
+    </div>
+</div>
+
+<script>
+(() => {
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const getJSON = async (url) => { try { const r = await fetch(url); return await r.json(); } catch (e) { return { available: false, reason: 'network error' }; } };
+    // Presentation colours only; the state itself comes from the APIs.
+    const LIVE = { WORKING: '#3b82f6', WAITING: '#06b6d4', BLOCKED: '#ef4444', IDLE: '#64748b' };
+    const STATIC = { ACTIVE: '#22c55e', PARTIAL: '#eab308', PLANNED: '#475569' };
+    const DEPARTMENT_TIERS = ['DEPARTMENT', 'SPECIALIZED_UNIT'];
+    let units = [], live = {}, perms = {}, selected = null, show3d = true;
+
+    function colourOf(u) { const s = live[u.id]; return s ? LIVE[s.status] || LIVE.IDLE : STATIC[u.status] || STATIC.PLANNED; }
+    function stateText(u) { const s = live[u.id]; return s ? s.status : u.status; }
+
+    function renderOrg() {
+        const order = ['OWNER', 'CEO_AI', 'DIRECTOR_AI', 'EXECUTIVE_ASSISTANT', 'DEPARTMENT', 'SPECIALIZED_UNIT', 'WORKER_AGENT', 'MICRO_AGENT'];
+        const sorted = [...units].sort((a, b) => order.indexOf(a.tier) - order.indexOf(b.tier));
+        document.getElementById('org-list').innerHTML = sorted.map((u) =>
+            `<div class="unit-row${selected === u.id ? ' sel' : ''}" data-unit="${esc(u.id)}"><span><span class="dot" style="background:${colourOf(u)}"></span>${esc(u.name)}</span>` +
+            `<span class="text-body-secondary">${esc(stateText(u))}</span></div>`).join('');
+    }
+
+    function renderDetail() {
+        const u = units.find((x) => x.id === selected);
+        if (!u) return;
+        const s = live[u.id];
+        const caps = (perms[u.id] || {}).capabilities || [];
+        document.getElementById('unit-detail').innerHTML =
+            `<div class="text-body"><b>${esc(u.name)}</b> — ${esc(u.status)}${u.phase != null ? ' · Faz ' + esc(u.phase) : ''}</div>` +
+            `<div>${esc(u.mission)}</div>` +
+            `<div>Canlı durum: <b>${esc(s ? s.status : 'görev yok')}</b>${s && s.current_task ? ' · görev ' + esc(s.current_task) : ''}</div>` +
+            `<div>Yetkiler: ${caps.length ? caps.map((c) => `<span class="badge text-bg-secondary">${esc(c)}</span>`).join(' ') : 'yok'}</div>` +
+            `<div>Son işler: ${s && s.recent.length ? s.recent.map((r) => esc(r.task + '#' + r.step + ' ' + r.status)).join(', ') : '-'}</div>`;
+    }
+
+    // ------------------------------------------------------------ 3D view
+    const canvas = document.getElementById('hq-canvas');
+    const ctx = canvas.getContext('2d');
+    let angle = 0, rooms = [];
+
+    function project(x, y, z, w, h) {
+        const cos = Math.cos(angle), sin = Math.sin(angle);
+        const rx = x * cos - z * sin, rz = x * sin + z * cos;
+        const tilt = 0.85, ry = y * Math.cos(tilt) - rz * Math.sin(tilt), dz = y * Math.sin(tilt) + rz * Math.cos(tilt);
+        const scale = Math.min(w, h * 1.6) * 0.58 / (dz + 9);
+        return { x: w / 2 + rx * scale, y: h * 0.42 + ry * scale, s: scale, depth: dz };
+    }
+
+    function draw(t) {
+        const w = canvas.width = canvas.clientWidth * devicePixelRatio;
+        const h = canvas.height = canvas.clientHeight * devicePixelRatio;
+        ctx.clearRect(0, 0, w, h);
+        const depts = units.filter((u) => DEPARTMENT_TIERS.includes(u.tier));
+        const radius = 4.2;
+        // floor ring
+        ctx.strokeStyle = 'rgba(59,130,246,.18)'; ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let i = 0; i <= 64; i++) { const a = i / 64 * Math.PI * 2; const p = project(Math.cos(a) * radius, 1, Math.sin(a) * radius, w, h); i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y); }
+        ctx.stroke();
+        const core = project(0, 0, 0, w, h);
+        rooms = depts.map((u, i) => {
+            const a = i / depts.length * Math.PI * 2;
+            const p = project(Math.cos(a) * radius, 1, Math.sin(a) * radius, w, h);
+            return { u, p };
+        }).sort((a, b) => b.p.depth - a.p.depth);
+        // links from core to rooms with work
+        rooms.forEach(({ u, p }) => {
+            const s = live[u.id];
+            ctx.strokeStyle = s && s.status === 'WORKING' ? 'rgba(59,130,246,.7)' : 'rgba(148,163,184,.12)';
+            ctx.lineWidth = s && s.status === 'WORKING' ? 2 * devicePixelRatio : 1;
+            ctx.beginPath(); ctx.moveTo(core.x, core.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+        });
+        // core
+        const pulse = 1 + 0.06 * Math.sin(t / 500);
+        const g = ctx.createRadialGradient(core.x, core.y, 0, core.x, core.y, core.s * 0.9 * pulse);
+        g.addColorStop(0, 'rgba(96,165,250,.95)'); g.addColorStop(1, 'rgba(59,130,246,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(core.x, core.y, core.s * 0.9 * pulse, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#e2e8f0'; ctx.font = `${12 * devicePixelRatio}px system-ui`; ctx.textAlign = 'center';
+        ctx.fillText('ATLAS CORE', core.x, core.y + 4 * devicePixelRatio);
+        // rooms
+        rooms.forEach(({ u, p }) => {
+            const size = p.s * 0.32, c = colourOf(u), s = live[u.id];
+            ctx.globalAlpha = u.status === 'PLANNED' && !s ? 0.45 : 1;
+            ctx.fillStyle = c + '33'; ctx.strokeStyle = c; ctx.lineWidth = (u.id === selected ? 3 : 1.5) * devicePixelRatio;
+            ctx.beginPath(); ctx.rect(p.x - size, p.y - size * 0.7, size * 2, size * 1.4); ctx.fill(); ctx.stroke();
+            if (s && s.status === 'WORKING') { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(p.x + size - 5, p.y - size * 0.7 + 5, 3 * devicePixelRatio * (1 + 0.4 * Math.sin(t / 200)), 0, Math.PI * 2); ctx.fill(); }
+            ctx.fillStyle = '#cbd5e1'; ctx.font = `${Math.max(9, size / 4.2)}px system-ui`;
+            if (p.depth < 0.5 || u.id === selected || s) ctx.fillText(u.name.replace(/ (Department|Team|Center|Laboratory)$/, ''), p.x, p.y + 3);
+            ctx.globalAlpha = 1;
+            p.hit = size;
+        });
+        if (show3d) { angle += 0.0015; requestAnimationFrame(draw); }
+    }
+
+    canvas.addEventListener('click', (e) => {
+        const r = canvas.getBoundingClientRect();
+        const x = (e.clientX - r.left) * devicePixelRatio, y = (e.clientY - r.top) * devicePixelRatio;
+        const hit = [...rooms].reverse().find(({ p }) => Math.abs(x - p.x) < p.hit && Math.abs(y - p.y) < p.hit * 0.7);
+        if (hit) { selected = hit.u.id; renderOrg(); renderDetail(); }
+    });
+    document.getElementById('org-list').addEventListener('click', (e) => {
+        const row = e.target.closest('[data-unit]');
+        if (row) { selected = row.getAttribute('data-unit'); renderOrg(); renderDetail(); }
+    });
+    document.getElementById('toggle-3d').addEventListener('click', (e) => {
+        show3d = !show3d;
+        canvas.hidden = !show3d; document.getElementById('hq-3d-off').hidden = show3d;
+        e.target.textContent = '3D: ' + (show3d ? 'açık' : 'kapalı');
+        if (show3d) requestAnimationFrame(draw);
+    });
+
+    // ------------------------------------------------------------ data
+    async function refresh() {
+        const [org, tasks, permissions, cc] = await Promise.all([
+            getJSON('/api/organization'), getJSON('/api/tasks'), getJSON('/api/permissions'), getJSON('/api/command-center')]);
+        units = org.available ? org.units : [];
+        live = tasks.available ? tasks.agents || {} : {};
+        perms = {}; (permissions.units || []).forEach((p) => { perms[p.id] = p; });
+        renderOrg(); renderDetail();
+        if (cc.available) {
+            const healthy = cc.health.healthy === true;
+            document.getElementById('hq-health').innerHTML = `<span class="badge text-bg-${healthy ? 'success' : 'danger'}">SYSTEM ${esc(healthy ? 'ONLINE' : (cc.health.state || 'UNKNOWN'))}</span>`;
+            document.getElementById('b-health').textContent = healthy ? 'Sağlıklı' : (cc.health.state || 'bilinmiyor');
+            document.getElementById('b-proposals').textContent = cc.proposals.available ? cc.proposals.awaiting_owner.length : 'okunamadı';
+            const tc = cc.tasks.counts || {};
+            document.getElementById('b-tasks').textContent = cc.tasks.available ? `${tc.IN_PROGRESS || 0} sürüyor / ${tc.BLOCKED || 0} engelli` : 'okunamadı';
+            document.getElementById('b-agents').textContent = cc.agents.working.length;
+            const t = cc.trading;
+            document.getElementById('trading').innerHTML = t.available
+                ? `<div class="kv"><span>Net gerçekleşen P/L</span><b>${esc(t.realized_net_pnl)}</b></div><div class="kv"><span>Ödenen ücret</span><b>${esc(t.fees)}</b></div><div class="kv"><span>Mod</span><b>PAPER</b></div><a class="small" href="/dashboard">Pozisyonlar ve işlemler →</a>`
+                : `<div class="text-body-secondary small">Portföy bağlı değil (${esc(t.reason)}). Değer uydurulmaz.</div>`;
+        }
+    }
+
+    async function ask() {
+        const input = document.getElementById('chat-input'), q = input.value.trim();
+        if (!q) return;
+        const data = await getJSON('/api/chat?q=' + encodeURIComponent(q));
+        document.getElementById('chat-log').insertAdjacentHTML('afterbegin',
+            `<div class="mb-2"><div><b>Sen:</b> ${esc(q)}</div><div><b>Atlas:</b> ${esc(data.answer || data.reason || 'cevap yok')}</div></div>`);
+        input.value = '';
+    }
+    document.getElementById('chat-send').addEventListener('click', ask);
+    document.getElementById('chat-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') ask(); });
+
+    setInterval(() => { document.getElementById('hq-clock').textContent = new Date().toLocaleTimeString('tr-TR'); }, 1000);
+    refresh(); setInterval(refresh, 10000);
+    requestAnimationFrame(draw);
+})();
+</script>
+</body>
+</html>

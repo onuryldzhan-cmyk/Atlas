@@ -147,3 +147,29 @@ def test_tasks_reader(tmp_path):
     out = gr.read_tasks(tmp_path)
     assert out["available"] and out["tasks"][0]["category"] == "RESEARCH"
     assert out["agents"]["open_source_research"]["status"] == "WAITING"
+
+
+def test_workflow_a_research_ends_in_a_provenanced_memory_record(tmp_path):
+    from atlas_org import memory_records
+
+    tid = cli.request_task(tmp_path, "Atlas, TradingView lightweight-charts kütüphanesini araştır", at=AT)["task_id"]
+    t = tasks.replay(cli.read_log(tmp_path / "tasks.jsonl"))[tid]
+    assert [s["unit"] for s in t["steps"]] == ["open_source_research", "security", "knowledge_manager"]
+    evaluation = {"project": "tradingview/lightweight-charts", "license": "Apache-2.0 + attribution",
+                  "maintenance": "active", "dependencies": "none at runtime",
+                  "security_observations": "static JS, vendor with SHA-256", "recommendation": "review further"}
+    for i in range(3):
+        unit = t["steps"][i]["unit"]
+        cli.add_task_event(tmp_path, task_id=tid, event="START", actor=unit, payload={"step": i}, at=AT)
+        if unit == "knowledge_manager":
+            cli.add_memory_record(tmp_path, {"record_id": "M-R1", "type": "RESEARCH", "authority": "RESEARCH",
+                                             "title": "lightweight-charts", "body": "evaluation",
+                                             "author": unit, "source": "task " + tid, "related_task": tid,
+                                             "evaluation": evaluation, "at": AT})
+        cli.add_task_event(tmp_path, task_id=tid, event="RESULT", actor=unit,
+                           payload={"step": i, "verdict": "INFO" if i != 1 else "PASS", "summary": f"s{i}",
+                                    "evidence": ["M-R1"] if unit == "knowledge_manager" else []}, at=AT)
+    cli.add_task_event(tmp_path, task_id=tid, event="COMPLETE", actor=tasks.ASSISTANT, at=AT)
+    record = memory_records.replay(cli.read_log(tmp_path / "memory.jsonl"))["M-R1"]
+    assert record["related_task"] == tid and record["authority"] == "RESEARCH"
+    assert tasks.replay(cli.read_log(tmp_path / "tasks.jsonl"))[tid]["status"] == "DONE"

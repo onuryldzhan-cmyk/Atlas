@@ -94,6 +94,7 @@ WEB_APP_GUARDED_ROUTES = [
     "/api/command-center",
     "/api/chat",
     "/agents",
+    "/hq",
     "/api/risk-accounting",
     "/api/system-integrity",
     "/api/execution-gates",
