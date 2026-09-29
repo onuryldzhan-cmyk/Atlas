@@ -55,6 +55,7 @@
             <div class="pane"><h2>Coinler</h2><div id="market" class="table-wrap">Yükleniyor...</div></div>
         </div>
     </div>
+    <div class="pane"><h2>Risk limitleri (FTMO tarzı kart, sadece gösterim)</h2><div id="limits" class="small">Yükleniyor...</div></div>
     <div class="pane"><h2>Fiyat grafiği (1 dk kapanmış mumlar) ve Atlas'ın işlemleri</h2>
         <div class="d-flex gap-2 align-items-center mb-2 small"><label for="chart-symbol">Coin</label>
             <select id="chart-symbol" class="form-select form-select-sm" style="max-width:180px"></select>
@@ -160,9 +161,27 @@
     }
     document.getElementById('chart-symbol').addEventListener('change', (e) => { chartSymbol = e.target.value; refreshChart(); });
 
+    function bar(label, value, pct) {
+        const n = pct == null ? null : Math.min(100, Number(pct));
+        const cls = n == null ? 'bg-secondary' : n >= 80 ? 'bg-danger' : n >= 50 ? 'bg-warning' : 'bg-success';
+        return `<div class="mb-2"><div class="d-flex justify-content-between"><span>${esc(label)}</span><span>${esc(value ?? 'bilinmiyor')}${pct == null ? '' : ' (' + esc(pct) + '% kullanıldı)'}</span></div>`
+            + `<div class="progress" style="height:6px"><div class="progress-bar ${cls}" style="width:${n ?? 0}%"></div></div></div>`;
+    }
+    function renderLimits(p) {
+        const el = document.getElementById('limits');
+        const l = p && p.limits;
+        if (!l || !l.available) { el.textContent = 'Risk durumu okunamadı: ' + ((l && l.reason) || 'bilinmiyor'); return; }
+        const lv = l.drawdown_levels_pct || {};
+        el.innerHTML = bar(`Bugünkü gerçekleşen zarar / günlük limit ${l.daily_limit} $`, l.realized_loss_today + ' $', l.realized_used_pct)
+            + bar('Açık pozisyonlar dahil zarar (risk motoru bunu henüz saymıyor)', l.loss_with_open_positions == null ? null : l.loss_with_open_positions + ' $', l.with_open_used_pct)
+            + `<div>Zirveden düşüş: <b>%${esc(l.drawdown_pct)}</b> · uyarı %${esc(lv.warning)} · kısıtlama %${esc(lv.restrict)} · yeni risk durur %${esc(lv.halt)}</div>`
+            + `<div class="text-body-secondary">Muhasebe günü (UTC): ${esc(l.accounting_day_utc)}. Kararı risk motoru verir; bu kart sadece gösterir.</div>`;
+    }
+
     async function refresh() {
         const [p, t] = await Promise.all([getJSON('/api/portfolio'), getJSON('/api/trades')]);
         renderPortfolio(p);
+        renderLimits(p);
         renderTrades(t);
         if (p.available) fillSymbols(p);
         lastTrades = t && Array.isArray(t.recent_trades) ? t.recent_trades : [];

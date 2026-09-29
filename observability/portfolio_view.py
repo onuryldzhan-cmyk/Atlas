@@ -108,3 +108,34 @@ def build(snapshot: dict[str, Any], prices: dict[str, Any], price_time: Any,
         "prices_stale": stale,
         "incomplete_reason": f"no current price for {', '.join(missing)}" if missing else None,
     }
+
+
+def limits_card(risk_state: dict[str, Any] | None, policy: dict[str, Any], unrealized_pnl: Any) -> dict[str, Any]:
+    """FTMO-style limits card (research 2026-09-30). Read-only; the risk engine decides, this only shows.
+
+    ``realized_today`` is what the engine's daily-loss gate counts today;
+    ``with_open`` adds the open positions' unrealized P/L, which the engine
+    does NOT count yet (RISK-EQUITY-UNREALIZED-DRAWDOWN-GAP-001). Missing
+    inputs are reported as missing, never filled in.
+    """
+    if not isinstance(risk_state, dict):
+        return {"available": False, "reason": "RISK_STATE_UNAVAILABLE"}
+    realized, peak, equity = (_d(risk_state.get(k)) for k in ("realized_daily_pnl", "peak_equity", "current_equity"))
+    capital, daily_pct = _d(policy.get("total_capital")), _d(policy.get("max_daily_loss_pct"))
+    if None in (realized, peak, equity, capital) or peak <= 0 or capital <= 0:
+        return {"available": False, "reason": "RISK_STATE_INCOMPLETE"}
+    limit = capital * daily_pct if daily_pct is not None else None
+    loss = max(-realized, Decimal("0"))
+    unreal = _d(unrealized_pnl)
+    with_open = max(-(realized + unreal), Decimal("0")) if unreal is not None else None
+    used = lambda x: _fmt(x / limit * 100) if limit and x is not None else None
+    dd = (peak - equity) / peak * 100
+    return {
+        "available": True, "accounting_day_utc": risk_state.get("accounting_day_utc"),
+        "daily_limit": _fmt(limit), "realized_loss_today": _fmt(loss), "realized_used_pct": used(loss),
+        "loss_with_open_positions": _fmt(with_open), "with_open_used_pct": used(with_open),
+        "drawdown_pct": _fmt(dd),
+        "drawdown_levels_pct": {k: _fmt(_d(policy.get(f"drawdown_{k}_pct")) * 100) for k in ("warning", "restrict", "halt")
+                                if _d(policy.get(f"drawdown_{k}_pct")) is not None},
+        "note": "The daily-loss gate counts realized loss only; the open-position figure is shown for awareness.",
+    }

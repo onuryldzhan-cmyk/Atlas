@@ -1666,6 +1666,25 @@ def _execution_gates_payload(
     }
 
 
+def _limits_payload(runtime: Any, unrealized: Any) -> dict:
+    """Read-only FTMO-style limits card from the durable risk-accounting file and the live policy."""
+    store = _resolve_attr(runtime, "risk_state_store")
+    policy = _resolve_attr(runtime, "risk_policy")
+    path = getattr(store, "path", None)
+    if path is None or policy is None:
+        return {"available": False, "reason": "RISK_STATE_NOT_ATTACHED"}
+    try:
+        state = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {"available": False, "reason": "RISK_STATE_UNREADABLE"}
+    limits = {"total_capital": getattr(policy, "total_capital", None),
+              "max_daily_loss_pct": getattr(policy, "max_daily_loss_pct", None),
+              "drawdown_warning_pct": getattr(policy, "drawdown_warning_pct", None),
+              "drawdown_restrict_pct": getattr(policy, "drawdown_restrict_pct", None),
+              "drawdown_halt_pct": getattr(policy, "drawdown_halt_pct", None)}
+    return portfolio_view.limits_card(state, limits, unrealized)
+
+
 def _candles_payload(market_loop: Any, symbol: str) -> dict[str, Any]:
     """Chart data for one symbol; unknown or malformed input is reported, never guessed."""
 
@@ -2445,6 +2464,7 @@ def create_app(
         if payload.get("available"):
             # Every scanned coin with its latest real price and the loop's decision.
             payload["market"] = [{"symbol": sym, "price": str(prices[sym]), **signals[sym]} for sym in sorted(prices)]
+            payload["limits"] = _limits_payload(runtime, payload.get("unrealized_pnl"))
         return payload
 
     # Registry v5.58 (master command §24/§26): liveness and readiness.
