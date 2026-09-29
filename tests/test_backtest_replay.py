@@ -292,3 +292,11 @@ def test_cost_gate_blocks_buys_when_the_expected_move_cannot_pay_the_costs():
         bt.replay(calm, step=10, brain_factory=_AlwaysBuy, cost_gate=0.0001))["buy_rejections"].get("EXPECTED_MOVE_BELOW_COST", 0)
     ungated = bt.summarize(bt.replay(calm, step=10, brain_factory=_AlwaysBuy))
     assert ungated["buy_rejections"].get("EXPECTED_MOVE_BELOW_COST", 0) == 0
+
+
+def test_regime_filter_buys_only_in_an_uptrend():
+    import math
+    chop = {"BTCUSDT": _rows(4000, drift=0.0, wobble=0.004)}
+    s = bt.summarize(bt.replay(chop, step=30, brain_factory=_AlwaysBuy, regime_filter=True))
+    assert s["buy_rejections"].get("REGIME_NOT_TREND_UP", 0) > 0
+    assert bt.summarize(bt.replay(chop, step=30, brain_factory=_AlwaysBuy))["buy_rejections"].get("REGIME_NOT_TREND_UP", 0) == 0

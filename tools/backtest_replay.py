@@ -215,7 +215,7 @@ def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: 
            slippage_bps: int = 0, next_open_fill: bool = False,
            min_hold_min: int = 0, sell_confirm: int = 1,
            trend_ema_hours: int = 0, atr_stop: Decimal | float = 0, risk_per_trade: Decimal | float = 0,
-           cost_gate: Decimal | float = 0) -> Result:
+           cost_gate: Decimal | float = 0, regime_filter: bool = False) -> Result:
     """Baseline (staged=False, sleeves=False) = today's runtime behaviour.
     staged=True adds the approved tranche entries, take-profit ladder, trailing
     stop and confirmed hard stop; sleeves=True caps each risk bucket's total
@@ -258,6 +258,8 @@ def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: 
     # expected move - 2 x ATR(14, 1-hour) / price, a ~2-4 h horizon - to be at
     # least cost_gate x the round-trip cost (2 x fee + 2 x slippage)
     cost_gate = Decimal(str(cost_gate))
+    # regime_filter (research): a new BUY only when tools.regime_engine
+    # classifies the coin's completed 1-hour closes as TREND_UP
     stop_level: dict[str, Decimal] = {}
 
     def reject(code: str) -> None:
@@ -380,7 +382,7 @@ def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: 
                         if price < pos.avg_entry or close_ms - pos.last_tranche_ms < TRANCHE_MIN_GAP_MS:
                             continue
                     result.buy_signals += 1
-                    bars = _hourly_bars(data[symbol], end) if (trend_ema_hours or atr_stop or cost_gate) else []
+                    bars = _hourly_bars(data[symbol], end) if (trend_ema_hours or atr_stop or cost_gate or regime_filter) else []
                     if trend_ema_hours and not is_add:
                         ema = _ema([b[2] for b in bars], trend_ema_hours)
                         if ema is None or price <= ema:
@@ -408,6 +410,11 @@ def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: 
                             reject("SLEEVE_FULL")
                             continue
                         amount = min(amount, room)
+                    if regime_filter and not is_add:
+                        from tools.regime_engine import classify
+                        if classify([float(b[2]) for b in bars])["regime"] != "TREND_UP":
+                            reject("REGIME_NOT_TREND_UP")
+                            continue
                     if cost_gate and not is_add:
                         gate_atr = _atr(bars)
                         round_trip = 2 * fee_rate + 2 * slip
@@ -554,7 +561,14 @@ def _history(symbol: str, days: int, fetch: Fetcher) -> list[list]:
     start = now_ms - days * 24 * 60 * 60_000
     rows: list[list] = []
     while start < now_ms:
-        page = fetch(symbol, start)
+        for attempt in range(4):  # the owner's network times out now and then: retry, then give up loudly
+            try:
+                page = fetch(symbol, start)
+                break
+            except OSError:
+                if attempt == 3:
+                    raise
+                time.sleep(2 ** attempt * 2)
         if not page:
             break
         rows.extend(r for r in page if int(r[6]) < now_ms)

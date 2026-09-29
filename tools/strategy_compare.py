@@ -38,6 +38,7 @@ VARIANTS: dict[str, dict[str, Any]] = {
     "ATR stop 2x + %1 risk": {**REALISTIC, "atr_stop": 2, "risk_per_trade": 0.01},
     "aşamalı + paylar": {**REALISTIC, "staged": True, "sleeves": True},
     "maliyet kapısı 3x": {**REALISTIC, "cost_gate": 3},
+    "rejim filtresi (sadece TREND_UP)": {**REALISTIC, "regime_filter": True},
     "aşamalı + paylar + maliyet kapısı": {**REALISTIC, "staged": True, "sleeves": True, "cost_gate": 3},
 }
 REFERENCE = "gerçekçi dolum (referans)"
