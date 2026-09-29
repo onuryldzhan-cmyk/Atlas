@@ -50,12 +50,15 @@ def test_malformed_record_is_no_signal():
     assert out["available"] is False and out["effect"] == 0.0
 
 
-def test_adapter_unreadable_archive_is_no_signal_and_legacy_path_kept():
+def test_adapter_unreadable_archive_fails_closed_and_legacy_path_kept():
+    # Policy changed 2026-09-30 (audit finding M-1, owner "istediğim her şeyi yap"):
+    # an unreadable archive used to mean effect 0, which removed caution when
+    # evidence disappeared (NB-4). With no last-good evidence it now fails closed.
     def boom():
         raise OSError("locked")
 
     out = MemoryAdapter(None, closed_trades_reader=boom).analyze("BTCUSDT")
-    assert out["available"] is False and out["effect"] == 0.0
+    assert out["available"] is False and out["effect"] == LOSING_EFFECT
     assert MemoryAdapter(None).analyze()["effect"] == 0  # no reader: historical behaviour
 
 
@@ -94,3 +97,47 @@ def test_end_to_end_losing_archive_lowers_buy_through_the_adapter(tmp_path):
     assert adj["reason"] == "LOSING_BOOK_AFTER_FEES" and decision.confidence == pytest.approx(58.6)
     other = SimpleNamespace(action=DecisionAction.BUY, confidence=63.6)
     assert IntelligenceBrain._memory_buy_caution(other, memory.analyze("ETHUSDT")) is None
+
+
+def test_m1_removing_evidence_never_removes_caution():
+    """NB-4: a losing book, then an unreadable archive -> the caution stays."""
+    from ai.core.intelligence.memory_adapter import MemoryAdapter
+
+    state = {"records": [trade(gross="-5")] * MIN_TRADES, "fail": False}
+
+    def reader():
+        if state["fail"]:
+            raise OSError("locked")
+        return state["records"]
+
+    adapter = MemoryAdapter(None, closed_trades_reader=reader)
+    assert adapter.analyze("BTCUSDT")["effect"] == LOSING_EFFECT
+    state["fail"] = True
+    degraded = adapter.analyze("BTCUSDT")
+    assert degraded["effect"] == LOSING_EFFECT and degraded["degraded_reason"] == "ARCHIVE_UNREADABLE"
+    state.update(fail=False, records=[trade(gross="-5")] * MIN_TRADES + [{"symbol": "BTCUSDT", "gross_pnl": "x"}])
+    assert adapter.analyze("BTCUSDT")["effect"] == LOSING_EFFECT  # malformed record: last good kept
+
+
+def test_m1_unreadable_with_no_history_fails_closed():
+    from ai.core.intelligence.memory_adapter import MemoryAdapter
+
+    def reader():
+        raise OSError("gone")
+
+    out = MemoryAdapter(None, closed_trades_reader=reader).analyze("ETHUSDT")
+    assert out["effect"] == LOSING_EFFECT and out["reason"] == "ARCHIVE_UNREADABLE_FAIL_CLOSED"
+
+
+def test_l1_l2_reader_dedupes_by_position_id_and_caches(tmp_path):
+    import json as _json
+
+    from core.brain import AtlasBrain
+
+    path = tmp_path / "closed.jsonl"
+    row = {"position_id": "p1", "symbol": "BTCUSDT", "cost_quote": "1000", "gross_pnl": "-5"}
+    path.write_text(_json.dumps(row) + "\n" + _json.dumps(row) + "\n", encoding="utf-8")
+    brain = AtlasBrain.__new__(AtlasBrain)
+    brain.closed_positions_path = path
+    assert len(brain._read_closed_positions()) == 1
+    assert brain._read_closed_positions() == brain._read_closed_positions()

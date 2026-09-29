@@ -45,6 +45,9 @@ class MarketEdge:
     strength: float = 0.5  # 0.0 - 1.0
     lag_hours: int = 0
     description: str = ""
+    # Audit finding F-2: seed strengths are hand-written, not measured. They are
+    # a HYPOTHESIS until a measured source replaces them; never evidence.
+    provenance: str = "STATIC_SEED_HYPOTHESIS"
     
     def to_dict(self) -> Dict:
         return {
@@ -53,7 +56,9 @@ class MarketEdge:
             "relationship": self.relationship.value,
             "strength": self.strength,
             "lag_hours": self.lag_hours,
-            "description": self.description
+            "description": self.description,
+            "provenance": self.provenance,
+            "validated": self.provenance.startswith("MEASURED"),
         }
 
 class SimpleGraph:

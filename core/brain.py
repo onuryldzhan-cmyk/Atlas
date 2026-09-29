@@ -331,18 +331,35 @@ class AtlasBrain:
         return config or None
 
     def _read_closed_positions(self) -> list[dict[str, Any]]:
-        """Read-only view of the archive; a missing file is an empty book, a bad line raises."""
+        """Read-only view of the archive; a missing file is an empty book, a bad line raises.
+
+        Re-read only when the file's size or mtime changes (L-2); a row
+        repeated with the same position_id is counted once (L-1).
+        """
 
         path = self.closed_positions_path
         if path is None or not path.exists():
             return []
-        records = []
+        stat = path.stat()
+        key = (stat.st_mtime_ns, stat.st_size)
+        cached = getattr(self, "_closed_cache", None)
+        if cached is not None and cached[0] == key:
+            return list(cached[1])
+        records, seen = [], set()
         with path.open("r", encoding="utf-8") as stream:
             for line in stream:
                 line = line.strip()
-                if line:
-                    records.append(json.loads(line))
-        return records
+                if not line:
+                    continue
+                record = json.loads(line)
+                pid = record.get("position_id") if isinstance(record, dict) else None
+                if pid is not None:
+                    if pid in seen:
+                        continue
+                    seen.add(pid)
+                records.append(record)
+        self._closed_cache = (key, records)
+        return list(records)
 
     # =========================================================
     # OBSERVATION

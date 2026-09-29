@@ -1,0 +1,43 @@
+{
+  "schema_version": "1",
+  "live_authority": "DENIED",
+  "strategies": [
+    {
+      "id": "atlas-fusion", "version": "v1", "environment": "PAPER", "status": "PAPER",
+      "description": "Current runtime decision: five voting agents fused, two confidence gates, canonical RiskEngine.",
+      "specification": {
+        "entry": "fusion BUY with confidence >= policy floor (60) and risk-bucket floor",
+        "exit": "fusion SELL on a held position; risk reduction always allowed",
+        "risk": "canonical RiskEngine buckets, 5% daily loss, drawdown 5/10/15%",
+        "timeframe": "1m closed candles",
+        "instruments": "config/universe_selection.json (20 Binance spot USDT pairs)",
+        "required_data": "Binance public klines, 10y yields, Fear & Greed",
+        "assumptions": "PAPER fills at candle close (idealised: audit F-4)",
+        "invalidation": "net expectancy after fees < 0 over >= 30 closed trades"
+      },
+      "history": [
+        {"status": "DISCOVERED", "at": "2026-07-01", "evidence": "initial Atlas design"},
+        {"status": "DEFINED", "at": "2026-07-15", "evidence": "core/decision_intelligence.py + risk policy phase3-risk-v1"},
+        {"status": "BACKTESTED", "at": "2026-09-29", "evidence": "tools/strategy_compare.py reference row (registry v5.75)"},
+        {"status": "WARNING", "at": "2026-09-30", "evidence": "reference net -129.56 over 3 windows; reality_check expectancy -7.42/trade (15 trades)"},
+        {"status": "PAPER", "at": "2026-09-30", "evidence": "kept in PAPER for observation only; EXP-001 stopped (v5.71)"}
+      ]
+    },
+    {
+      "id": "regime-filter-trend-up", "version": "v1", "environment": "RESEARCH", "status": "BACKTESTED",
+      "description": "BUY only when tools.regime_engine.classify(1h) == TREND_UP.",
+      "specification": {
+        "entry": "fusion BUY and regime TREND_UP", "exit": "as atlas-fusion v1",
+        "risk": "as atlas-fusion v1; UNKNOWN regime blocks", "timeframe": "1m decisions, 1h regime",
+        "instruments": "universe_selection.json", "required_data": ">= 60 closed 1h bars per coin",
+        "assumptions": "regime persists for the holding period",
+        "invalidation": "fails the pre-registered bar in proposals/2026-09-30_regime_filter_runtime_DRAFT.md"
+      },
+      "history": [
+        {"status": "DISCOVERED", "at": "2026-09-29", "evidence": "regime_engine: ~90% of 30-day samples non-trending"},
+        {"status": "DEFINED", "at": "2026-09-29", "evidence": "tools/backtest_replay.py regime_filter"},
+        {"status": "BACKTESTED", "at": "2026-09-30", "evidence": "20 coins x 3 windows: -48.14 / +301.10 / +466.92, NOT PROVEN (v5.75)"}
+      ]
+    }
+  ]
+}

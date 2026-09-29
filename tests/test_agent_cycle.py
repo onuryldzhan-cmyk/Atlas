@@ -78,4 +78,4 @@ def test_knowledge_manager_records_only_on_status_change(tmp_path, monkeypatch):
     assert "durumu değişti" in ac.knowledge_manager(records)["summary"]
     assert "değişmedi" in ac.knowledge_manager(records)["summary"]
     km = [r for r in memory_records.replay(cli.read_log(records / cli.MEMORY_LOG)).values() if r["author"] == "knowledge_manager"]
-    assert len(km) == 1 and json.loads(km[0]["body"])["statuses"]["L-COIN-BTCUSDT"] == "CANDIDATE"
+    assert len(km) == 1 and json.loads(km[0]["body"])["statuses"]["L-COIN-BTCUSDT"] == "PROPOSED"

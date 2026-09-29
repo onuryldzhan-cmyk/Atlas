@@ -66,7 +66,7 @@
         <div class="mb-2"><select id="memory-type" class="form-select form-select-sm w-auto d-inline-block" aria-label="Tür"><option value="">Tüm türler</option></select></div>
         <div id="memory">Yükleniyor...</div></div>
     <div class="pane" data-panel="learning" hidden><h2>Öğrenme merkezi: deneyim → ders → çelişki</h2>
-        <div class="small muted mb-2">Her deneyim gerçek bir kapanan işlemdir (ortam: PAPER). Ders durumu örnek sayısıyla kazanılır, sonuçla değil: ADAY (&lt;10), GEÇİCİ (≥10), DOĞRULANMIŞ yalnız sahibin imzalı kaydıyla, ÇELİŞKİLİ = eski ve yeni yarılar ters yönde. Dersler karar değildir, güveni değiştirmez.</div>
+        <div class="small muted mb-2">Her deneyim gerçek bir kapanan işlemdir (ortam: PAPER). Ders durumu örnek sayısıyla kazanılır, sonuçla değil: ÖNERİLEN (&lt;10), DOĞRULANIYOR (≥10), ONAYLANMIŞ yalnız sahibin imzalı kaydıyla, SÜRESİ DOLMUŞ (30 gün gözlem yok), ÇELİŞKİLİ = eski ve yeni yarılar ters yönde. Dersler karar değildir, güveni değiştirmez.</div>
         <div id="learning">Yükleniyor...</div></div>
     <div class="pane" data-panel="permissions" hidden><h2>Birim yetkileri</h2><div id="permissions">Yükleniyor...</div></div>
 </div>
@@ -121,7 +121,7 @@
 
     async function refresh() {
         const [p, t, m, perms, lr] = await Promise.all([getJSON('/api/proposals'), getJSON('/api/tasks'), getJSON('/api/memory'), getJSON('/api/permissions'), getJSON('/api/learning')]);
-        const statusTr = { CANDIDATE: ['ADAY', 'secondary'], PROVISIONAL: ['GEÇİCİ', 'info'], VALIDATED: ['DOĞRULANMIŞ', 'success'], CONTESTED: ['ÇELİŞKİLİ', 'warning'] };
+        const statusTr = { PROPOSED: ['ÖNERİLEN', 'secondary'], VALIDATING: ['DOĞRULANIYOR', 'info'], CONFIRMED: ['ONAYLANMIŞ', 'success'], EXPIRED: ['SÜRESİ DOLMUŞ', 'dark'], CONTESTED: ['ÇELİŞKİLİ', 'warning'] };
         set('learning', !lr.available ? unavailable(lr) : (lr.experience_count === 0 ? '<span class="muted">Henüz kapanan işlem yok; deneyim de ders de yok.</span>' :
             `<div class="mb-2">${esc(lr.experience_count)} deneyim · ` + Object.entries(lr.lesson_status_counts).map(([k, v]) => badge(`${(statusTr[k] || [k])[0]} ${v}`, (statusTr[k] || [k, 'light'])[1])).join(' ') + '</div>' +
             '<table class="table table-sm"><thead><tr><th>Ders</th><th>Durum</th><th class="text-end">Örnek</th><th class="text-end">Destek / karşı</th><th>Son gözlem</th></tr></thead><tbody>' +

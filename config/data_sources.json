@@ -1,0 +1,23 @@
+{
+  "schema_version": "1",
+  "sources": [
+    {"source_id": "binance-spot-klines", "provider": "Binance public REST", "endpoint": "https://api.binance.com/api/v3/klines",
+     "data_type": "OHLCV candles", "symbols": "config/universe_selection.json", "timeframe": "1m (runtime), 1h (regime research)",
+     "role": "MARKET_TRUTH", "freshness_rule": "stale per-coin candle age rejected; not-yet-closed candles rejected",
+     "license": "Binance API Terms of Use (public market data)", "availability": "blocked from the cloud; owner machine only",
+     "fallback": "none: stale or missing data = no decision for that coin (fail closed)", "status": "ACTIVE",
+     "code": ["atlas_finance/market_data", "core/market_loop.py"]},
+    {"source_id": "binance-ticker-price", "provider": "Binance public REST", "endpoint": "https://api.binance.com/api/v3/ticker/price",
+     "data_type": "last price", "symbols": "universe", "timeframe": "snapshot", "role": "RESEARCH_TOOLING",
+     "freshness_rule": "tool-only", "license": "Binance API Terms of Use", "availability": "owner machine",
+     "fallback": "none", "status": "ACTIVE", "code": ["tools/"]},
+    {"source_id": "us-treasury-10y", "provider": "U.S. Treasury (home.treasury.gov)", "endpoint": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates",
+     "data_type": "10-year yield", "symbols": "macro", "timeframe": "daily", "role": "AGENT_EVIDENCE (macro vote)",
+     "freshness_rule": "daily; unavailable -> macro agent abstains", "license": "U.S. government public data",
+     "availability": "owner machine", "fallback": "abstain (never a neutral fake value)", "status": "ACTIVE", "code": ["ai/"]},
+    {"source_id": "alternative-me-fng", "provider": "alternative.me", "endpoint": "https://api.alternative.me/fng/",
+     "data_type": "Crypto Fear & Greed index", "symbols": "market-wide", "timeframe": "daily", "role": "AGENT_EVIDENCE (sentiment vote)",
+     "freshness_rule": "daily; neutral band -> sentiment abstains", "license": "free API, attribution requested by provider (UNKNOWN terms: verify)",
+     "availability": "owner machine", "fallback": "abstain", "status": "ACTIVE", "code": ["ai/"]}
+  ]
+}

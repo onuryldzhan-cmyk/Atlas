@@ -227,6 +227,11 @@ class RiskPolicy:
     max_positions: int = 5
     max_daily_loss_amount: Decimal | None = None
     max_daily_loss_pct: Decimal | None = Decimal("0.05")
+    # Audit finding F-3 (owner 2026-09-30): when True, the daily-loss gate also
+    # counts the open positions' unrealized loss (RiskState.unrealized_pnl).
+    # Unknown unrealized P&L then blocks new risk (fail closed). Default False
+    # keeps the historical, realized-only behaviour byte-identical.
+    count_unrealized_in_daily_loss: bool = False
     drawdown_warning_pct: Decimal = Decimal("0.05")
     drawdown_restrict_pct: Decimal = Decimal("0.10")
     drawdown_halt_pct: Decimal = Decimal("0.15")
@@ -377,8 +382,17 @@ class RiskState:
     state_ready: bool = False
     accounting_day_utc: str = ""
     policy_version: str = ""
+    # Mark-to-market P&L of open positions; None = not known (never guessed as 0).
+    unrealized_pnl: Decimal | None = None
 
     def __post_init__(self) -> None:
+        if self.unrealized_pnl is not None:
+            if isinstance(self.unrealized_pnl, float):
+                raise ValueError("unrealized_pnl must not be float")
+            u = Decimal(str(self.unrealized_pnl))
+            if not u.is_finite():
+                raise ValueError("unrealized_pnl must be finite")
+            object.__setattr__(self, "unrealized_pnl", u)
         committed = decimal_value(self.committed_quote, "committed_quote")
         peak = decimal_value(self.peak_equity, "peak_equity")
         current = decimal_value(self.current_equity, "current_equity")
@@ -644,6 +658,10 @@ class RiskEngine:
             context.prec = RISK_CONTEXT_PRECISION
             context.rounding = ROUND_HALF_EVEN
             loss = max(-state.realized_daily_pnl, ZERO)
+            if self.policy.count_unrealized_in_daily_loss:
+                if state.unrealized_pnl is None:
+                    return reject("UNREALIZED_PNL_UNKNOWN")
+                loss = max(-(state.realized_daily_pnl + state.unrealized_pnl), ZERO)
             daily_loss_ceiling = (
                 self.policy.total_capital * self.policy.max_daily_loss_pct
                 if self.policy.max_daily_loss_pct is not None else None

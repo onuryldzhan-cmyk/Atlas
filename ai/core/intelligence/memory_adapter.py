@@ -45,6 +45,9 @@ class MemoryAdapter:
         # BRAIN-MEM-001: a callable returning the durable closed-position
         # archive records (read-only). None keeps the historical behaviour.
         self.closed_trades_reader = closed_trades_reader
+        # Last readable evidence per coin (BRAIN-MEM-001 M-1): losing access to
+        # the archive must never make Atlas less cautious than it last was.
+        self._last_good: dict = {}
 
 
 
@@ -259,17 +262,30 @@ class MemoryAdapter:
         return 0
 
     def _trade_book(self, symbol):
-        """Per-coin evidence from Atlas's own closed trades; unreadable -> no effect."""
+        """Per-coin evidence from Atlas's own closed trades.
 
-        from ai.core.intelligence.trade_evidence import symbol_evidence
+        Unreadable archive or a malformed record for this coin (M-1, NB-4):
+        the last readable evidence for the coin is reused; with none, BUYs
+        get the losing-book caution (fail closed). Removing evidence can
+        therefore never raise confidence.
+        """
+
+        from ai.core.intelligence.trade_evidence import LOSING_EFFECT, symbol_evidence
 
         try:
             records = list(self.closed_trades_reader())
-        except Exception as exc:  # unreadable archive never becomes a signal
+            evidence = symbol_evidence(records, symbol)
+            failure = None if evidence.get("available", True) else evidence.get("reason", "MALFORMED_ARCHIVE_RECORD")
+        except Exception as exc:
             _log.warning("closed-trade archive unreadable for memory: %s", type(exc).__name__)
-            return {"source": "closed_position_archive", "symbol": symbol, "available": False,
-                    "reason": "ARCHIVE_UNREADABLE", "trades": 0, "effect": 0.0}
-        evidence = symbol_evidence(records, symbol)
-        evidence["source"] = "closed_position_archive"
-        evidence.setdefault("trades", 0)
-        return evidence
+            failure = "ARCHIVE_UNREADABLE"
+        if failure is None:
+            evidence["source"] = "closed_position_archive"
+            evidence.setdefault("trades", 0)
+            self._last_good[symbol] = dict(evidence)
+            return evidence
+        last = self._last_good.get(symbol)
+        if last is not None:
+            return {**last, "source": "last_good_closed_position_archive", "degraded_reason": failure}
+        return {"source": "closed_position_archive", "symbol": symbol, "available": False,
+                "reason": failure + "_FAIL_CLOSED", "trades": 0, "effect": LOSING_EFFECT}
