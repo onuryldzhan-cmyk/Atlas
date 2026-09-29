@@ -56,6 +56,7 @@
     <main class="pane">
         <canvas id="hq-canvas" aria-label="Atlas HQ 3D görünüm" role="img"></canvas>
         <div id="hq-3d-off" class="text-body-secondary small p-4" hidden>3D kapalı. Tüm bilgiler yan ve alt panellerde.</div>
+        <div id="hq-conn" class="alert alert-danger py-1 small mt-2" hidden>BAĞLANTI YOK: ajan durumu okunamadı. Sahne boş bırakıldı, aktivite uydurulmaz.</div>
         <div id="unit-detail" class="small mt-2 text-body-secondary">Bir ajana (3D) ya da soldaki listeye tıklayın.</div>
     </main>
     <aside class="pane">
@@ -67,6 +68,12 @@
 </div>
 
 <div class="bottom">
+    <div class="pane" style="grid-column:1/-1"><h2>Canlı aktivite (yalnız kayıtlı olaylar)</h2>
+        <div class="small mb-1"><label><input type="checkbox" class="feed-cat" value="RUNTIME" checked> Çalışma</label>
+            <label class="ms-2"><input type="checkbox" class="feed-cat" value="GOVERNANCE" checked> Yönetim</label>
+            <label class="ms-2"><input type="checkbox" class="feed-cat" value="SECURITY" checked> Güvenlik</label></div>
+        <div id="activity" class="small">Yükleniyor...</div></div>
+    <div class="pane" style="grid-column:1/-1"><h2>Ajan operasyon tablosu</h2><div id="ops-table" class="small table-responsive">Yükleniyor...</div></div>
     <div class="pane"><h2>Kararınızı bekleyen</h2><div id="b-proposals" class="big">…</div><a href="/governance" class="small">Öneriler →</a></div>
     <div class="pane"><h2>Görevler</h2><div id="b-tasks" class="big">…</div></div>
     <div class="pane"><h2>Sistem</h2><div id="b-health" class="big">…</div></div>
@@ -106,6 +113,23 @@
             `<span class="text-body-secondary">${esc(STATE_TR[a.state] || a.state)}</span></div>`).join('') || '<span class="text-body-secondary">Ajan durumu okunamadı.</span>';
     }
 
+    let activity = [];
+    const CAT = { RUNTIME: 'info', GOVERNANCE: 'primary', SECURITY: 'danger' };
+    function renderActivity() {
+        const on = [...document.querySelectorAll('.feed-cat')].filter((c) => c.checked).map((c) => c.value);
+        const rows = activity.filter((e) => on.includes(e.category));
+        document.getElementById('activity').innerHTML = rows.length ? rows.map((e) =>
+            `<div>${esc(String(e.at).slice(0, 19).replace('T', ' '))} <span class="badge text-bg-${CAT[e.category] || 'secondary'}">${esc(e.category)}</span> <b>${esc(e.agent)}</b> ${esc(e.text)}</div>`).join('')
+            : '<span class="text-body-secondary">AKTİVİTE YOK: kayıtlı olay bulunmadı.</span>';
+    }
+    function renderOps() {
+        document.getElementById('ops-table').innerHTML = agents.length ? '<table class="table table-sm mb-0"><thead><tr><th>Ajan</th><th>Oda</th><th>Durum</th><th>Şu an</th><th>Kaynak</th></tr></thead><tbody>' +
+            agents.map((a) => `<tr><td>${esc(a.name)}</td><td>${esc(a.room_name)}</td><td style="color:${STATE[a.state]}">${esc(STATE_TR[a.state] || a.state)}</td><td>${esc(a.doing)}</td><td>${esc(a.source || '—')}</td></tr>`).join('') + '</tbody></table>'
+            : '<span class="text-body-secondary">Ajan durumu okunamadı.</span>';
+    }
+    document.querySelectorAll('.feed-cat').forEach((c) => c.addEventListener('change', renderActivity));
+    if (!window.CanvasRenderingContext2D) { show3d = false; }
+
     function renderDetail() {
         const a = agents.find((x) => x.id === selected);
         if (!a) return;
@@ -117,6 +141,8 @@
             `<div>Şu an: ${esc(a.doing)}</div><div class="text-body-secondary">Kaynak kayıt: ${esc(a.source || 'yok')}</div>` +
             `<div>İş akışı: ${[...inn, ...out].join(' · ') || 'yok'}</div>` +
             `<div>Yetkiler: ${caps.length ? caps.map((c) => `<span class="badge text-bg-secondary">${esc(c)}</span>`).join(' ') : 'kayıtlı yetki yok'}</div>` +
+            `<div class="mt-1"><b>Geçmiş</b>${(a.history || []).length ? (a.history || []).map((e) => `<div>${esc(String(e.at).slice(0, 16).replace('T', ' '))} · ${esc(e.category)} · ${esc(e.text)}</div>`).join('') : ' <span class="text-body-secondary">kayıtlı olay yok</span>'}</div>` +
+            `<div class="text-body-secondary">Token / maliyet / gecikme: N/A (ajanlar kural tabanlı, dil modeli yok).</div>` +
             `<div class="text-body-secondary">Hiçbir ajan para harcayamaz, yayına alamaz ya da kendi kararını onaylayamaz.</div>`;
     }
 
@@ -222,7 +248,9 @@
         agents = st.available ? st.agents : []; flows = st.available ? st.flows : []; rooms = st.available ? st.rooms : {};
         perms = {}; (permissions.units || []).forEach((p) => { perms[p.id] = p; });
         if (!selected && agents.length) selected = (agents.find((a) => a.state === 'WAITING_FOR_HUMAN') || agents[0]).id;
-        renderOrg(); renderDetail();
+        document.getElementById('hq-conn').hidden = !!st.available;
+        activity = st.available ? (st.activity || []) : [];
+        renderOrg(); renderDetail(); renderActivity(); renderOps();
         if (cc.available) {
             const healthy = cc.health.healthy === true;
             document.getElementById('hq-health').innerHTML = `<span class="badge text-bg-${healthy ? 'success' : 'danger'}">SYSTEM ${esc(healthy ? 'ONLINE' : (cc.health.state || 'UNKNOWN'))}</span>`;

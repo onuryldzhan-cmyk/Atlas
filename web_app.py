@@ -36,7 +36,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 
 from observability.organization import organization_public
-from observability import agent_states, command_center, governance_records, panel_sources, portfolio_view, readiness, research_view, roadmap_view, security_view
+from observability import agent_states, command_center, governance_records, learning_view, panel_sources, portfolio_view, readiness, research_view, roadmap_view, security_view
 from observability.panel_router import (
     build_observability_router,
     is_loopback_request,
@@ -1666,6 +1666,20 @@ def _execution_gates_payload(
     }
 
 
+def _learning_payload(runtime: Any, memory: dict) -> dict:
+    """Experiences and lessons from the closed-position archive plus memory records (read-only)."""
+    archive = getattr(_resolve_attr(runtime, "portfolio_foundation"), "closed_archive", None)
+    load_index = getattr(archive, "load_index", None)
+    if not callable(load_index):
+        return {"available": False, "reason": "CLOSED_ARCHIVE_UNAVAILABLE"}
+    try:
+        records = getattr(load_index(), "by_position_id", None) or {}
+    except Exception as exc:
+        return {"available": False, "reason": "CLOSED_ARCHIVE_UNREADABLE", "error_type": type(exc).__name__}
+    closed = [dict(r, position_id=pid) for pid, r in records.items() if isinstance(r, dict)]
+    return learning_view.build(closed, memory.get("records") or [] if isinstance(memory, dict) else [])
+
+
 def _limits_payload(runtime: Any, unrealized: Any) -> dict:
     """Read-only FTMO-style limits card from the durable risk-accounting file and the live policy."""
     store = _resolve_attr(runtime, "risk_state_store")
@@ -2416,6 +2430,17 @@ def create_app(
         def _build() -> dict:
             return agent_states.build(governance_records.read_tasks(), governance_records.read_proposals(),
                                       governance_records.read_memory(), signals)
+
+        return JSONResponse(status_code=200, content=await run_in_threadpool(_build))
+
+    # Owner specification 2026-09-30: experiences, lessons, contradictions (read-only, derived).
+    @application.get("/api/learning", response_class=JSONResponse)
+    async def api_learning(request: Request) -> JSONResponse:
+        if not is_loopback_request(request):
+            return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+
+        def _build() -> dict:
+            return _learning_payload(application.state.atlas_runtime, governance_records.read_memory())
 
         return JSONResponse(status_code=200, content=await run_in_threadpool(_build))
 

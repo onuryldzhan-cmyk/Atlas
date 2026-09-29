@@ -33,6 +33,7 @@ AGENTS: dict[str, tuple[str, str]] = {  # unit id -> (display name, room)
     "open_source_research": ("Araştırma ajanı", "research"),
     "quant_research": ("Kantitatif araştırma", "quant"),
     "strategy_lab": ("Strateji laboratuvarı", "quant"),
+    "market_regime": ("Piyasa rejimi", "research"),
     "code_engineering": ("Kod ajanı", "dev"),
     "code_review": ("Kod inceleme", "review"),
     "red_team": ("Karşı görüş", "review"),
@@ -141,8 +142,31 @@ def build(tasks: dict, proposals: dict, memory: dict, signals: dict | None,
         set_state("atlas_manager", "WORKING", f"{len(sig)} coinde oyları birleştirip risk zincirine gönderiyor", "/api/signals")
 
     flows = [f for f in flows if f["from"] in agents and f["to"] in agents]
+    activity = _activity(records, proposals)
+    for a in agents.values():
+        a["history"] = [e for e in activity if e["agent"] == a["id"]][:10]
     counts: dict[str, int] = {}
     for a in agents.values():
         counts[a["state"]] = counts.get(a["state"], 0) + 1
     return {"available": True, "generated_at": now.isoformat(), "rooms": ROOMS,
-            "agents": list(agents.values()), "flows": flows, "counts": counts}
+            "agents": list(agents.values()), "flows": flows, "counts": counts, "activity": activity[:40]}
+
+
+def _category(record: dict[str, Any]) -> str:
+    """Runtime, governance and security events are kept apart (owner spec §44)."""
+    if record.get("author") == "security" or record.get("type") == "INCIDENTS":
+        return "SECURITY"
+    if record.get("type") in ("REVIEWS", "DECISIONS") or record.get("related_proposal"):
+        return "GOVERNANCE"
+    return "RUNTIME"
+
+
+def _activity(records: list[dict[str, Any]], proposals: dict) -> list[dict[str, Any]]:
+    """Real recorded events only, newest first. An empty log gives an empty feed, never filler."""
+    events = [{"at": r.get("created_at"), "agent": r.get("author"), "category": _category(r),
+               "text": r.get("title", ""), "source": r.get("id")} for r in records]
+    for p in proposals.get("proposals", []) if proposals.get("available") else []:
+        events.append({"at": p.get("created_at") or p.get("updated_at"), "agent": p.get("author"),
+                       "category": "GOVERNANCE", "text": f"{p.get('id')}: {p.get('title', '')} ({p.get('status')})",
+                       "source": p.get("id")})
+    return sorted((e for e in events if e["at"]), key=lambda e: str(e["at"]), reverse=True)

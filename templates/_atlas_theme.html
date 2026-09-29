@@ -3,8 +3,8 @@
   /governance, /system and /hq. Principles taken from professional trading
   terminals (FreqUI, Hummingbot dashboard, desk terminals): a fixed key-figure
   strip, tabular right-aligned numerals, colour only where it carries meaning
-  (profit/loss, health), square-ish panels with hairline borders, no glow,
-  gradients or glass effects. Pure CSS, no dependency.
+  (profit/loss, health), square-ish panels with hairline borders, no glow or
+  gradients; a light glass on panels only (owner spec 2026-09-30). Pure CSS, no dependency.
 #}
 <style>
     :root {
@@ -19,7 +19,24 @@
         --atlas-down: #e5484d;
         --atlas-warn: #d9a13b;
         --atlas-radius: 6px;
+        /* Semantic colours (owner spec 2026-09-30): each colour means one thing, set here only. */
+        --atlas-ai: #8b5cf6;        /* AI / agents */
+        --atlas-market: #22b8cf;    /* market / system info */
+        --atlas-profit: #26a269;    /* profit / healthy */
+        --atlas-risk: #e5484d;      /* risk / loss / security */
+        --atlas-warning: #d9a13b;   /* warning / waiting for approval */
+        --atlas-governance: #a78bfa;
+        --atlas-surface-glass: rgba(24, 33, 44, .72);
     }
+    /* Restrained glass: panels only, never behind numbers that must stay readable. */
+    .pane { background: var(--atlas-surface-glass); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+    .pane > h2 { border-left: 3px solid var(--atlas-market); padding-left: .5rem; }
+    .text-bg-primary { background-color: var(--atlas-ai) !important; }
+    .text-bg-info { background-color: var(--atlas-market) !important; color: #06121a !important; }
+    .text-bg-success { background-color: var(--atlas-profit) !important; }
+    .text-bg-danger { background-color: var(--atlas-risk) !important; }
+    .text-bg-warning { background-color: var(--atlas-warning) !important; color: #1a1204 !important; }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
     html, body { background: var(--atlas-bg) !important; color: var(--atlas-text); }
     body { font-family: "Inter", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; font-size: 14px; letter-spacing: .005em; }
     .navbar { background: var(--atlas-panel) !important; border-bottom: 1px solid var(--atlas-line) !important; min-height: 48px; }

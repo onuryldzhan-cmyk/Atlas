@@ -57,6 +57,7 @@
         <button type="button" class="btn btn-sm btn-primary" data-tab="proposals">Öneriler</button>
         <button type="button" class="btn btn-sm btn-outline-secondary" data-tab="tasks">Görevler</button>
         <button type="button" class="btn btn-sm btn-outline-secondary" data-tab="memory">Hafıza</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-tab="learning">Öğrenme</button>
         <button type="button" class="btn btn-sm btn-outline-secondary" data-tab="permissions">Ajanlar &amp; yetkiler</button>
     </div>
     <div class="pane" data-panel="proposals"><h2>Öneriler</h2><div id="proposals">Yükleniyor...</div></div>
@@ -64,6 +65,9 @@
     <div class="pane" data-panel="memory" hidden><h2>Atlas Hafızası</h2>
         <div class="mb-2"><select id="memory-type" class="form-select form-select-sm w-auto d-inline-block" aria-label="Tür"><option value="">Tüm türler</option></select></div>
         <div id="memory">Yükleniyor...</div></div>
+    <div class="pane" data-panel="learning" hidden><h2>Öğrenme merkezi: deneyim → ders → çelişki</h2>
+        <div class="small muted mb-2">Her deneyim gerçek bir kapanan işlemdir (ortam: PAPER). Ders durumu örnek sayısıyla kazanılır, sonuçla değil: ADAY (&lt;10), GEÇİCİ (≥10), DOĞRULANMIŞ yalnız sahibin imzalı kaydıyla, ÇELİŞKİLİ = eski ve yeni yarılar ters yönde. Dersler karar değildir, güveni değiştirmez.</div>
+        <div id="learning">Yükleniyor...</div></div>
     <div class="pane" data-panel="permissions" hidden><h2>Birim yetkileri</h2><div id="permissions">Yükleniyor...</div></div>
 </div>
 
@@ -116,7 +120,16 @@
     }
 
     async function refresh() {
-        const [p, t, m, perms] = await Promise.all([getJSON('/api/proposals'), getJSON('/api/tasks'), getJSON('/api/memory'), getJSON('/api/permissions')]);
+        const [p, t, m, perms, lr] = await Promise.all([getJSON('/api/proposals'), getJSON('/api/tasks'), getJSON('/api/memory'), getJSON('/api/permissions'), getJSON('/api/learning')]);
+        const statusTr = { CANDIDATE: ['ADAY', 'secondary'], PROVISIONAL: ['GEÇİCİ', 'info'], VALIDATED: ['DOĞRULANMIŞ', 'success'], CONTESTED: ['ÇELİŞKİLİ', 'warning'] };
+        set('learning', !lr.available ? unavailable(lr) : (lr.experience_count === 0 ? '<span class="muted">Henüz kapanan işlem yok; deneyim de ders de yok.</span>' :
+            `<div class="mb-2">${esc(lr.experience_count)} deneyim · ` + Object.entries(lr.lesson_status_counts).map(([k, v]) => badge(`${(statusTr[k] || [k])[0]} ${v}`, (statusTr[k] || [k, 'light'])[1])).join(' ') + '</div>' +
+            '<table class="table table-sm"><thead><tr><th>Ders</th><th>Durum</th><th class="text-end">Örnek</th><th class="text-end">Destek / karşı</th><th>Son gözlem</th></tr></thead><tbody>' +
+            lr.lessons.map((x) => `<tr><td>${esc(x.statement)}${x.halves ? `<div class="small muted">eski yarı ${esc(x.halves.older)} $ · yeni yarı ${esc(x.halves.newer)} $</div>` : ''}</td>` +
+                `<td>${badge((statusTr[x.status] || [x.status])[0], (statusTr[x.status] || [x.status, 'light'])[1])}</td><td class="text-end">${esc(x.sample_size)}</td>` +
+                `<td class="text-end">${esc(x.supporting)} / ${esc(x.contradicting)}</td><td class="small">${esc(x.last_observed)}</td></tr>`).join('') + '</tbody></table>' +
+            `<details class="small"><summary>son deneyimler (${esc(lr.experiences.length)})</summary>` + lr.experiences.slice().reverse().map((e) =>
+                `<div>${esc(e.id)} ${esc(e.symbol)} · rejim ${esc(e.regime)} · ${esc(e.environment)} · net ${esc(e.net_pnl)} $ ${badge(e.outcome === 'WIN' ? 'KAZANÇ' : 'KAYIP', e.outcome === 'WIN' ? 'success' : 'danger')}</div>`).join('') + '</details>'));
         set('proposals', !p.available ? unavailable(p) : (p.proposals.length
             ? `<div class="small muted mb-2">Kayıt başı: #${esc(p.head.seq)} ${esc(p.head.hash || '')} (sonradan kısaltma olursa bu değişir)</div>` + p.proposals.map(proposalHtml).join('')
             : '<span class="muted">Henüz öneri yok.</span>'));
