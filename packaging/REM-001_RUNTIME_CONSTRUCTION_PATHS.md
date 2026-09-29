@@ -20,8 +20,8 @@ Command: `python -m tools.build_rem001_gate1_maps construction --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `7975b238cf464241765540ad335f06db7691dcb8` |
-| generated_from_tree | `3b44301dff533a195c6a359becc03f52697709a4` |
+| generated_from_commit | `ef442e2710d34c7337383ada1062ff0159b36fdf` |
+| generated_from_tree | `a21553cc0a3fc4c38002ae71d8a1339581d218d9` |
 | tracked_working_tree_clean | True |
 | modified_tracked_paths_at_generation | none |
 
@@ -57,12 +57,12 @@ below: it counted pattern hits, these count resolved call sites.
 | --- | --- |
 | entry_points | `main.py`, `web_app.py`, `atlas_service.py`, `atlas_supervisor.py` |
 | composition_root_canonical | `core/application.py` (ADR-0001) |
-| modules_in_runtime_closure | 117 |
-| classes_defined_in_closure | 407 |
-| construction_sites | 290 |
-| modules_constructing | 34 |
-| classes_constructed | 123 |
-| construction_edges | 93 |
+| modules_in_runtime_closure | 118 |
+| classes_defined_in_closure | 411 |
+| construction_sites | 291 |
+| modules_constructing | 35 |
+| classes_constructed | 124 |
+| construction_edges | 94 |
 | ambiguous_class_names | 4 |
 | parse_failures | 0 |
 
@@ -182,6 +182,7 @@ classes and their observed constructors:
 | `atlas_finance/market_data/market_feed_service.py` | `MarketFeedSnapshot` | `atlas_finance/market_data/models.py` | 919 | `MarketFeedService::market_feed_snapshot` |
 | `atlas_finance/market_data/market_feed_service.py` | `MarketFeedStatistics` | `atlas_finance/market_data/models.py` | 842 | `MarketFeedService::statistics` |
 | `atlas_finance/market_data/market_feed_service.py` | `ServiceIdentity` | `atlas_os/contracts.py` | 366 | `MarketFeedService::__init__` |
+| `atlas_org/tasks.py` | `Capability` | `atlas_org/permissions.py` | 73 | `_new_task` |
 | `atlas_os/audit/audit_log.py` | `ServiceIdentity` | `atlas_os/contracts.py` | 310 | `AuditLogService::__init__` |
 | `atlas_os/configuration/configuration_service.py` | `ServiceIdentity` | `atlas_os/contracts.py` | 460 | `ConfigurationService::__init__` |
 | `atlas_os/events/event_bus.py` | `ServiceIdentity` | `atlas_os/contracts.py` | 310 | `EventBusService::__init__` |
