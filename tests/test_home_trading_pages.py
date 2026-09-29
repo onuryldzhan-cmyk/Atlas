@@ -76,5 +76,5 @@ def test_research_list_reads_titles_only():
 def test_decisions_page_explains_from_recorded_sources_only():
     html = web_app.TEMPLATE_DIR.joinpath("decisions.html").read_text(encoding="utf-8")
     assert set(re.findall(r"getJSON\('([^']+)'", html)) == {"/api/signals", "/api/execution-gates"}
-    for part in ("Ajan oyları", "Güven eşikleri", "Risk motorunun son sonucu", "NB-5"):
+    for part in ("Ajan oyları", "Güven eşikleri", "Risk motorunun son sonucu", "NB-5", "gates.experiment", "elde olmayan coin için SAT"):
         assert part in html

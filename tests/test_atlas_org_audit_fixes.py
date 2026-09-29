@@ -197,3 +197,11 @@ def test_new1_web_layer_never_reads_the_owner_key():
                                                                "risk_level": "LOW", "author": "a",
                                                                "owner_decision": {"verified": None}}]})
     assert "doğrulanamaz" in cc.answer("öneri P-0001", brief)["answer"]
+
+
+def test_utf8_bom_source_parses_and_is_still_scanned():
+    # web_app.py starts with a BOM; it is valid Python and must be scanned, not reported as unparseable
+    clean = review_change({"x.py": "﻿x = 1\n"})
+    assert clean.overall() == "PASS" and not clean.findings
+    risky = review_change({"x.py": "﻿import subprocess\nsubprocess.run('x', shell=True)\n"})
+    assert risky.overall() == "FAIL"

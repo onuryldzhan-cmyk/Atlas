@@ -64,12 +64,16 @@
         const bucket = rp.available && rp.buckets ? rp.buckets[sig.risk_level] : null;
         const gate = (label, need) => need == null ? `${label}: bilinmiyor`
             : `${label} ≥ ${num(need)} → ${typeof sig.confidence === 'number' ? (sig.confidence >= need ? 'geçer' : 'geçmez') : 'bilinmiyor'}`;
-        lines.push(`<div class="svc"><span>Güven eşikleri</span><span class="text-end">${esc(gate('İşlem motoru', exMin))} · ${esc(gate('Risk kovası', bucket ? bucket.required_confidence_pct : null))}</span></div>`);
+        const exp = gates.experiment || {};
+        const expApplies = exp.available && exp.attached && exp.active && sig.action === 'BUY' && (exp.buckets || []).includes(sig.risk_level);
+        const bucketNeed = expApplies ? exp.required_confidence_pct : (bucket ? bucket.required_confidence_pct : null);
+        const bucketLabel = expApplies ? `Risk kovası (${exp.experiment_id} deneyi, PAPER; politika ${num(bucket ? bucket.required_confidence_pct : null)})` : 'Risk kovası';
+        lines.push(`<div class="svc"><span>Güven eşikleri</span><span class="text-end">${esc(gate('İşlem motoru', exMin))} · ${esc(gate(bucketLabel, bucketNeed))}</span></div>`);
         const ld = gates.latest_risk_decisions || {};
         const rd = ld.available ? (ld.by_symbol || {})[sym] : null;
-        lines.push(`<div class="svc"><span>Risk motorunun son sonucu</span><span class="text-end">${!ld.available ? 'bilinmiyor (' + esc(ld.reason || 'denetim kaydı okunamadı') + ')'
+        lines.push(`<div class="svc"><span>Risk motorunun son sonucu (bu döngünün değil, son kaydedilenin)</span><span class="text-end">${!ld.available ? 'bilinmiyor (' + esc(ld.reason || 'denetim kaydı okunamadı') + ')'
             : rd ? `${esc(rd.outcome)}${rd.reason ? ' · ' + esc(rd.reason) : ''} · ${esc(rd.action)} güven ${num(rd.confidence)} · ${esc(rd.decided_at || '?')}`
-            : 'son denetim penceresinde bu coin için risk kararı yok (HOLD işlem motoruna gitmez)'}</span></div>`);
+            : 'son denetim penceresinde risk kararı yok: BEKLE, düşük güven veya elde olmayan coin için SAT risk motoruna hiç gitmez'}</span></div>`);
         return `<div class="pane"><h2>${esc(sym)}</h2>${lines.join('')}</div>`;
     }
 
