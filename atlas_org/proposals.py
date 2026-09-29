@@ -211,6 +211,18 @@ def _apply(proposals: dict[str, Proposal], event: dict[str, Any]) -> None:
             raise ProposalLogError(f"seq {event['seq']}: bad review kind/verdict")
         _require(actor != p.author, f"seq {event['seq']}: author {actor!r} cannot review own proposal")
         _require(bool(payload.get("summary")), f"seq {event['seq']}: review needs a summary")
+        if rk is ReviewKind.SECURITY:
+            # "Security PASS" must be backed by an evaluation of every category
+            # (atlas_org.security_review), and the verdict must be its worst.
+            from atlas_org.security_review import CATEGORIES, OVERALL, _RANK
+
+            checks = payload.get("checks") or {}
+            _require(isinstance(checks, dict) and set(checks) == set(CATEGORIES)
+                     and all(v in _RANK for v in checks.values()),
+                     f"seq {event['seq']}: security review needs checks for {list(CATEGORIES)}")
+            worst = max(checks.values(), key=_RANK.__getitem__)
+            _require(verdict.value == OVERALL[worst],
+                     f"seq {event['seq']}: security verdict {verdict.value} contradicts its checks ({OVERALL[worst]})")
         p.reviews.append({"kind": rk.value, "verdict": verdict.value, "reviewer": actor,
                           "summary": payload["summary"], "checks": payload.get("checks", {}),
                           "revision": p.revision, "at": at})

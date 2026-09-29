@@ -34,6 +34,7 @@
     "atlas_org/memory_records.py",
     "atlas_org/permissions.py",
     "atlas_org/proposals.py",
+    "atlas_org/security_review.py",
     "atlas_org/tasks.py",
     "atlas_os/__init__.py",
     "atlas_os/audit/__init__.py",

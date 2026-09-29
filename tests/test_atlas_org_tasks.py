@@ -8,6 +8,9 @@ from atlas_org import manager, proposals, tasks
 from atlas_org.tasks import TaskLogError
 from tools import atlas_org_cli as cli
 
+from atlas_org.security_review import CATEGORIES
+
+SEC_PASS = {c: "PASS" for c in CATEGORIES}
 AT = "2026-09-29T00:00:00Z"
 
 
@@ -76,7 +79,7 @@ def test_workflow_b_code_change_reaches_owner_decision_only(tmp_path):
         ("CREATE", "code_engineering", fields), ("SUBMIT", "code_engineering", {}),
         ("RECORD_TESTS", "code_engineering", {"command": "pytest", "passed": 5, "failed": 0}),
         ("REVIEW", "code_review", {"kind": "CODE", "verdict": "PASS", "summary": "ok"}),
-        ("REVIEW", "security", {"kind": "SECURITY", "verdict": "PASS", "summary": "ok"}),
+        ("REVIEW", "security", {"kind": "SECURITY", "verdict": "PASS", "summary": "ok", "checks": SEC_PASS}),
         ("MARK_READY", tasks.ASSISTANT, {}),
     ]:
         cli.add_proposal_event(tmp_path, proposal_id="P-1", event=ev, actor=actor, payload=payload, at=AT)

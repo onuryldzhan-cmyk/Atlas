@@ -10,6 +10,9 @@ from atlas_org import memory_records, permissions, proposals
 from atlas_org.proposals import ProposalLogError, next_event, replay
 from tools import atlas_org_cli
 
+from atlas_org.security_review import CATEGORIES
+
+SEC_PASS = {c: "PASS" for c in CATEGORIES}
 AT = "2026-09-28T00:00:00Z"
 FIELDS = {
     "title": "Market data reconnect", "problem": "stale feed", "motivation": "reliability",
@@ -32,7 +35,7 @@ def _ready_steps(pid="P-1"):
         (pid, "SUBMIT", "code_agent", {}),
         (pid, "RECORD_TESTS", "code_agent", {"command": "pytest", "passed": 10, "failed": 0}),
         (pid, "REVIEW", "code_review", {"kind": "CODE", "verdict": "PASS", "summary": "ok"}),
-        (pid, "REVIEW", "security", {"kind": "SECURITY", "verdict": "PASS", "summary": "ok"}),
+        (pid, "REVIEW", "security", {"kind": "SECURITY", "verdict": "PASS", "summary": "ok", "checks": SEC_PASS}),
         (pid, "MARK_READY", "executive_assistant", {}),
     ]
 
@@ -91,7 +94,7 @@ def test_failing_tests_or_failed_review_block_ready():
     with pytest.raises(ProposalLogError, match="failing"):
         _log(*steps, ("P-1", "MARK_READY", "executive_assistant", {}))
     steps = _ready_steps()[:-1]
-    steps[4] = ("P-1", "REVIEW", "security", {"kind": "SECURITY", "verdict": "FAIL", "summary": "secret"})
+    steps[4] = ("P-1", "REVIEW", "security", {"kind": "SECURITY", "verdict": "FAIL", "summary": "secret", "checks": {**SEC_PASS, "SECRETS": "FAIL"}})
     with pytest.raises(ProposalLogError, match="SECURITY"):
         _log(*steps, ("P-1", "MARK_READY", "executive_assistant", {}))
 

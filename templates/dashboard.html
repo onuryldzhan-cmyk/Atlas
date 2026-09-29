@@ -1192,6 +1192,14 @@
             APPLIED: 'Uygulandı', ROLLED_BACK: 'Geri alındı', SUPERSEDED: 'Yerine yenisi geldi',
         };
 
+        function securityChecks(reviews) {
+            const r = reviews.filter((x) => x.kind === 'SECURITY').pop();
+            if (!r || !r.checks) return '';
+            const tone = { PASS: 'success', REVIEW: 'warning', FAIL: 'danger' };
+            return '<div><b>Güvenlik kontrolleri:</b> ' + Object.keys(r.checks).map((k) =>
+                badge(`${k}: ${r.checks[k]}`, tone[r.checks[k]] || 'secondary')).join(' ') + '</div>';
+        }
+
         function renderProposal(p) {
             const reviews = Array.isArray(p.reviews) ? p.reviews.filter((r) => r.revision === p.revision) : [];
             const check = (kind) => {
@@ -1215,7 +1223,8 @@
                 `<details class="small mt-1"><summary>ayrıntılar</summary>` +
                 `<div><b>Problem:</b> ${esc(p.problem)}</div><div><b>Gerekçe:</b> ${esc(p.motivation)}</div>` +
                 `<div><b>Değişiklik:</b> ${esc(p.proposed_changes)}</div><div><b>Dosyalar:</b> ${files || '-'}</div>` +
-                `<div><b>Geri alma planı:</b> ${esc(p.rollback_plan)}</div><ol class="mb-0">${history}</ol></details>` +
+                `<div><b>Geri alma planı:</b> ${esc(p.rollback_plan)}</div>` + securityChecks(reviews) +
+                `<ol class="mb-0">${history}</ol></details>` +
                 `</div></div>`;
         }
 
