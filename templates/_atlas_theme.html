@@ -1,0 +1,48 @@
+{#
+  Shared Atlas operator theme (registry v5.49). Included by /home, /trading,
+  /governance, /system and /hq. Principles taken from professional trading
+  terminals (FreqUI, Hummingbot dashboard, desk terminals): a fixed key-figure
+  strip, tabular right-aligned numerals, colour only where it carries meaning
+  (profit/loss, health), square-ish panels with hairline borders, no glow,
+  gradients or glass effects. Pure CSS, no dependency.
+#}
+<style>
+    :root {
+        --atlas-bg: #0d1117;
+        --atlas-panel: #131a23;
+        --atlas-panel-2: #18212c;
+        --atlas-line: #243040;
+        --atlas-text: #d7dde5;
+        --atlas-muted: #8b98a8;
+        --atlas-accent: #4c8dff;
+        --atlas-up: #26a269;
+        --atlas-down: #e5484d;
+        --atlas-warn: #d9a13b;
+        --atlas-radius: 6px;
+    }
+    html, body { background: var(--atlas-bg) !important; color: var(--atlas-text); }
+    body { font-family: "Inter", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; font-size: 14px; letter-spacing: .005em; }
+    .navbar { background: var(--atlas-panel) !important; border-bottom: 1px solid var(--atlas-line) !important; min-height: 48px; }
+    .navbar-brand { font-size: 15px; letter-spacing: .04em; }
+    .navbar-brand .text-primary { color: var(--atlas-accent) !important; }
+    .atlas-nav a { color: var(--atlas-muted) !important; padding: .3rem .65rem !important; border-radius: 4px !important; font-size: 13px; }
+    .atlas-nav a.active { color: var(--atlas-text) !important; background: var(--atlas-panel-2) !important; box-shadow: inset 0 -2px 0 var(--atlas-accent); }
+    .atlas-nav a:hover { color: var(--atlas-text) !important; }
+    .pane, .kpi { background: var(--atlas-panel) !important; border: 1px solid var(--atlas-line) !important; border-radius: var(--atlas-radius) !important; box-shadow: none !important; }
+    .pane h2, .kpi .label, .label { font-size: 12px !important; font-weight: 600; letter-spacing: .02em !important; text-transform: none !important; color: var(--atlas-muted) !important; }
+    .kpi .value { font-size: 24px !important; font-weight: 600 !important; }
+    .value, .num, td.text-end, .kv b, .big, .sym { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+    .up { color: var(--atlas-up) !important; } .down { color: var(--atlas-down) !important; }
+    .table { --bs-table-bg: transparent !important; --bs-table-color: var(--atlas-text); }
+    table { --bs-table-bg: transparent; --bs-table-striped-bg: rgba(255,255,255,.015); }
+    .table > :not(caption) > * > * { border-bottom-color: var(--atlas-line) !important; padding: .4rem .55rem; }
+    .table thead th { font-size: 12px; font-weight: 600; letter-spacing: .02em; text-transform: none; color: var(--atlas-muted); border-bottom: 1px solid var(--atlas-line) !important; }
+    .table tbody tr:hover > * { background: var(--atlas-panel-2) !important; }
+    .badge { font-weight: 600; letter-spacing: .03em; border-radius: 3px; }
+    .btn { border-radius: 4px; }
+    .form-control, .form-select { background: var(--atlas-bg) !important; border-color: var(--atlas-line) !important; color: var(--atlas-text) !important; border-radius: 4px; }
+    .form-control:focus { border-color: var(--atlas-accent) !important; box-shadow: none !important; }
+    .kv { border-bottom: 1px solid var(--atlas-line) !important; }
+    .muted, .text-body-secondary { color: var(--atlas-muted) !important; }
+    a { color: var(--atlas-accent); }
+</style>
