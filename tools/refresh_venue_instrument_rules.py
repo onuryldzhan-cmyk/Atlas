@@ -387,6 +387,11 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="a named symbol list (owner-20: the owner's 20-coin universe, registry v5.41).",
     )
+    parser.add_argument(
+        "--symbols-file",
+        default=None,
+        help="a JSON file with a 'symbols' list, e.g. config/universe_selection.json from tools/select_universe.py",
+    )
     parser.add_argument("--destination", default=str(REFERENCE_CONFIG_PATH))
     parser.add_argument("--base-url", default=DEFAULT_BASE_URL)
     parser.add_argument("--timeout-seconds", type=float, default=DEFAULT_TIMEOUT_SECONDS)
@@ -411,6 +416,16 @@ def main(argv: list[str] | None = None) -> int:
     arguments = _build_parser().parse_args(argv)
     if arguments.preset:
         arguments.symbols = sorted(set(arguments.symbols or ()) | set(SYMBOL_PRESETS[arguments.preset]))
+    if arguments.symbols_file:
+        try:
+            listed = json.loads(Path(arguments.symbols_file).read_text(encoding="utf-8"))["symbols"]
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            print(f"REFUSED: cannot read symbols from {arguments.symbols_file}: {exc}", file=sys.stderr)
+            return 1
+        if not isinstance(listed, list) or not all(isinstance(x, str) for x in listed):
+            print("REFUSED: 'symbols' must be a list of strings", file=sys.stderr)
+            return 1
+        arguments.symbols = sorted(set(arguments.symbols or ()) | set(listed))
 
     try:
         report = refresh_venue_instrument_rules(

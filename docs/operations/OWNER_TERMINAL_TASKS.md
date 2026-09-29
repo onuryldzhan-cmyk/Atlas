@@ -67,7 +67,22 @@ entries/exits and the 50/35/15 capital split. Paste both outputs. Macro and
 sentiment are excluded (stated in the report), so the result is a
 conservative research estimate, not a promise.
 
-## 6. 20 coin: gerçek Binance kurallarını çek (registry v5.41) — ÖNCE BU
+## 6a. 20 coini gerçek veriyle seç: 8 trend / 8 orta risk / 4 yüksek risk (registry v5.51) — ÖNCE BU
+
+Atlas kapalıyken:
+
+```
+git pull
+python -m tools.select_universe
+python tools/refresh_venue_instrument_rules.py --symbols-file config/universe_selection.json
+git add config/universe_selection.json config/instrument_rules.json
+git commit -m "20-coin universe from Binance data + venue rules"
+git push
+```
+
+Seçim listesini ve iki çıktıyı bana yapıştır. (6. adımdaki sabit liste yerine bunu kullan.)
+
+## 6. 20 coin: gerçek Binance kurallarını çek (registry v5.41) — eski yol
 
 Bulut ortamı Binance'e erişemiyor; kurallar yalnızca senin bilgisayarında, Binance'ten çekilebilir. Atlas kapalıyken:
 
