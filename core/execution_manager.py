@@ -2940,6 +2940,26 @@ class ExecutionManager:
             unrealized_pnl=self._mark_to_market(positions),
         )
 
+    # Audit finding F-4 (owner 2026-09-30): PAPER fills at the candle close are
+    # idealised. With a positive value the fill moves against Atlas by this many
+    # basis points (BUY higher, SELL lower), rounded to the venue price tick in
+    # the adverse direction. 0 keeps the historical fill byte-identical.
+    PAPER_SLIPPAGE_BPS = Decimal("0")
+
+    def _paper_fill_price(self, request: Any) -> Any:
+        bps = Decimal(str(getattr(self, "paper_slippage_bps", self.PAPER_SLIPPAGE_BPS)))
+        if bps <= 0:
+            return request.price
+        price = Decimal(str(request.price))
+        buy = str(request.action).upper().endswith("BUY")
+        raw = price * (1 + bps / Decimal("10000")) if buy else price * (1 - bps / Decimal("10000"))
+        rules = self.instrument_rules.get(request.symbol) if self.instrument_rules is not None else None
+        tick = Decimal(str(getattr(rules, "price_tick", "0") or "0"))
+        if tick > 0:
+            from decimal import ROUND_CEILING, ROUND_FLOOR
+            raw = (raw / tick).to_integral_value(rounding=ROUND_CEILING if buy else ROUND_FLOOR) * tick
+        return float(raw) if raw > 0 else request.price
+
     def _mark_to_market(self, positions: Any) -> Decimal | None:
         """Unrealized P&L of open positions (audit F-3), or None when not fully known.
 
@@ -4397,7 +4417,7 @@ class ExecutionManager:
             execution_id=execution_id,
             symbol=request.symbol,
             action=request.action,
-            filled_price=request.price,
+            filled_price=self._paper_fill_price(request),
             filled_amount=0.0,
             mode=self.MODE_PAPER,
             data={

@@ -1,40 +1,54 @@
-# Owner's 20 mega tasks: step-by-step progress (started 2026-09-30)
+# Owner's 20 mega tasks: step-by-step progress (2026-09-30)
 
 **Rules for every step:**
 - smallest correct change;
 - tests;
 - no fake data;
-- CRITICAL changes (execution, risk, financial state) ship behind a flag that defaults OFF, until an independent audit and the owner's switch-on.
+- commit after each step.
 
-**Status values:** DONE / PARTIAL / NEXT / NEEDS-DATA (the owner's machine) / DEFERRED (with its reason).
+CRITICAL runtime changes ship **behind a switch that defaults OFF**, which keeps today's behaviour byte-identical. A switch is turned on only after an independent audit and the owner's decision.
 
-**Audit baseline:** `docs/audits/INDEPENDENT_STATUS_AUDIT_MEGA_TASKS_2026-09-30.md`.
+**Status values:**
 
-| # | Task | Steps done | Next step |
-|---|---|---|---|
-| 1 | Core completion (decision path, outcome, analysis, lesson, memory, calibration, strategy lifecycle, walk-forward, attribution, counterfactual, portfolio risk, data integrity, realistic paper, recovery) | single-execution-authority test; outcome fingerprint; post-trade analysis; book metrics; lesson lifecycle; **M-1 fix** (last-good evidence / fail closed); L-1 dedupe; L-2 cache; **strategy registry + lifecycle** (`atlas_org/strategy_registry.py`, `config/strategy_registry.json`); **order state machine** (`core/order_lifecycle.py`, informed by NautilusTrader source) | agent attribution from logged votes; calibration buckets 50–100 in `learning_view` |
-| 2 | Governance + agent ecosystem | agent cycle (8 rule-based agents), red_team, knowledge_manager, owner-only approval | output-validation contract for agent records; agent experience scorecards |
-| 3 | Final integration + certification + 3D | first certification table (self-audit) | per-decision inspector (decision → votes → gates) on `/decisions` |
-| 4 | Portfolio / market / execution | **F-3 engine side + wiring**: `MarketLoop.mark_prices` (fresh closes only) → `ExecutionManager._mark_to_market` → `RiskState.unrealized_pnl` (flag OFF) | exposure report per asset / direction |
-| 5 | Data engineering | **data source registry** (`config/data_sources.json`; a test fails if code uses an unregistered host) | show the registry on `/system`; candle quality rules |
-| 6 | Reliability | supervisor, heartbeat, readiness (existing); **degradation matrix** `config/degradation_matrix.json` with a code-evidence test | incident auto-record from agent-cycle FAILs |
-| 7 | Independent final audit | self-audit v1 | **real independent audit: needs a separate reviewer** |
-| 8 | Model orchestration | — | DEFERRED (AI-001: no LLM in runtime); registry contract only |
-| 9 | Simulation / digital twin | replay drives the real market loop | seeded, versioned dataset manifest for replay |
-| 10 | Advanced risk | Monte Carlo on the P/L (offline) | VaR / ES (historical, method recorded) in `reality_check` |
-| 11 | Strategy factory | strategy_compare + strategy_agent + **strategy registry** | strategy registry (shared with #1) |
-| 12 | Knowledge graph | **F-2**: world-model edges labelled STATIC_SEED_HYPOTHESIS | temporal validity fields; contradiction link to lessons |
-| 13 | Multi-venue | instrument rules for one venue | DEFERRED until a 2nd venue is decided (6C) |
-| 14 | News / NLP | — | DEFERRED: needs a licensed source decided by the owner |
-| 15 | Treasury | — | read-only NAV / cash / fees report from the book |
-| 16 | Disaster recovery | **F-6**: `tools/state_backup.py` backup / verify / restore plus a real restore-drill test | owner runs the first real backup (NEEDS-DATA) |
-| 17 | Deployment / environments | — | environment matrix (DEV / TEST / PAPER / PROD-CANDIDATE / PROD) as validated config |
-| 18 | Compute / cost | — | task duration per agent cycle (tokens N/A) |
-| 19 | Advanced 3D HQ | activity feed, ops table, inspector history | timeline view from the same activity feed |
-| 20 | Full digital trial | — | after #9 (dataset manifest) and F-4 (fills) |
+| Status | Meaning |
+|---|---|
+| DONE | The task's core is implemented and tested |
+| PARTIAL | Implemented steps are listed; the gap is named |
+| DEFERRED | Blocked on a named prerequisite |
+| NEEDS-OWNER | Needs data or a switch-on from the owner machine |
 
-**Pending owner decisions / data:**
-- `strategy_compare --only rejim,aşamalı` output;
-- S1 sleeves;
-- switching on F-3 after the wiring and the audit;
-- whether to commit.
+| # | Task | Status | What exists now (all tested) | Remaining gap / blocker |
+|---|---|---|---|---|
+| 1 | Core completion | PARTIAL | Single execution authority (architecture test); TradeOutcome fingerprint; post-trade analysis; labelled counterfactuals; book metrics (expectancy, profit factor, Sharpe, Sortino, drawdown, recovery factor); lesson lifecycle PROPOSED → VALIDATING → CONFIRMED (owner) / CONTESTED / EXPIRED; M-1 last-good / fail-closed memory; calibration buckets 0–50 … 90–100 with Wilson intervals; strategy registry and lifecycle; agent votes in telemetry plus an attribution tool; order state machine; F-4 PAPER slippage model (default 0) | Order state machine not yet enforced inside ExecutionManager. F-4 switch-on needs an end-to-end PAPER run with slippage > 0, then an audit. No runtime calibrated-confidence layer. Walk-forward uses replay windows; there is no purged or embargoed splitter. |
+| 2 | Governance + agent ecosystem | DONE (rule-based) | 8 rule-based agents in the cycle; red_team; knowledge_manager; market_regime; agent-output schema validation plus SensitiveDataGuard; owner-only approval; hash-chained logs | LLM agents wait on AI-001 |
+| 3 | Integration + certification + 3D | PARTIAL | Decision inspector shows votes, gates and **which memory evidence shaped the decision**; self-audit certification table | Per-decision replay; independent certification (task 7) |
+| 4 | Portfolio / market / execution | PARTIAL | F-3 unrealized P/L in daily loss (engine and mark-to-market wiring, switch OFF); exposure by asset; largest concentration; long-only spot direction | Correlation (a measured source is needed); liquidity and order book: the runtime has no source for them |
+| 5 | Data engineering | DONE (current scope) | Data source registry (a test fails on an unregistered host); **NaN / infinite OHLCV now rejected** (bug fixed); dataset manifest with sha256; save / replay | Feature store: no ML features exist yet |
+| 6 | Reliability | DONE (current scope) | Supervisor, heartbeat, readiness; degradation matrix with code evidence; a failed agent opens one OPEN incident; runaway-agent flag | Chaos testing of the live process: owner machine |
+| 7 | Independent final audit | NEEDS-OWNER | Self-audit exists (`docs/audits/`) | Needs a reviewer independent of this session |
+| 8 | Model orchestration | DONE (contract) | `config/model_registry.json`: no active model; routing, abstain on failure, "model confidence ≠ Atlas confidence"; a test pins no trading authority | Implementation waits on AI-001 |
+| 9 | Simulation / digital twin | DONE (research) | Replay drives the real chain; dataset hash; reproducible save / replay; a corrupted dataset is refused | — |
+| 10 | Advanced risk | DONE (offline) | Historical VaR / ES with a method note and a tail warning; Monte Carlo with worse execution | Correlation-break scenarios need measured correlation (task 4) |
+| 11 | Strategy factory | DONE (registry) | Strategy registry lifecycle: certification needs the owner plus an independent audit; book-level decay lesson; strategy_compare / strategy_agent | Automated hypothesis generation waits on AI-001 |
+| 12 | Knowledge graph | PARTIAL | World-model edges labelled STATIC_SEED_HYPOTHESIS; temporal validity; lessons carry evidence and contradictions | No graph store; relationships are not measured |
+| 13 | Multi-venue | DONE (contract, 1 venue) | `config/venues.json` bound to instrument rules by a test; no order submission | A second venue is an owner decision (6C) |
+| 14 | News / NLP | DEFERRED | Contract: no active source; one event = one piece of evidence; news can never create an order | The owner must choose a licensed source |
+| 15 | Treasury | PARTIAL | NAV and a single-denomination guard (mixed currencies never summed) | Deposits / withdrawals ledger; FX (no source) |
+| 16 | Disaster recovery | NEEDS-OWNER | Backup / verify / restore with a restore-drill test; corrupted backups refused | The owner runs the first real backup |
+| 17 | Deployment / environments | DONE (contract) | `config/environments.json` bound to `main.py`; only PRODUCTION has real money, and it is DENIED; Shadow comes before release | Artefact signing (Sigstore) is deferred |
+| 18 | Compute / cost | DONE (current scope) | Agent-cycle resource record; runaway budget flag; tokens N/A (no LLM) | — |
+| 19 | Advanced 3D HQ | PARTIAL | Real-state HQ; activity feed with RUNTIME / GOVERNANCE / SECURITY / **TRADE** timeline; inspector; ops table; CONNECTION LOST | R3F 3D engine deferred (new toolchain) |
+| 20 | Full digital trial | DONE (research) | `tools/digital_trial.py`: determinism plus injected NaN / duplicates / outage / out-of-order. Measured: bad ordering or duplicates → the coin is skipped (fail closed); NaN rejected; an outage gives fewer trades | Multi-regime long-period run on the owner machine with a saved dataset |
+
+## What the owner needs to do next (owner machine)
+
+1. **First real backup**, with Atlas stopped:
+   - `python -m tools.state_backup backup --out <folder>`
+2. **A dataset for the trial and the comparison:**
+   - `python -m tools.strategy_compare --days 30 --windows 3 --symbols-file config/universe_selection.json --only rejim,aşamalı --save-dataset ds.json`
+   - then `python -m tools.digital_trial --dataset ds.json`
+3. **Agent attribution** once a few trades have closed with votes recorded:
+   - `python -m tools.agent_attribution`
+4. **Decisions:**
+   - S1;
+   - switching on F-3 and F-4 after the independent audit.
