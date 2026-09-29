@@ -66,3 +66,16 @@ def test_market_regime_agent_records_observation_and_never_guesses(tmp_path):
     assert len(rec) == 1 and json.loads(rec[0]["body"])["coins"]["BADUSDT"]["regime"] == "UNKNOWN"
     down = ac.market_regime(tmp_path, ["X"], lambda s: (_ for _ in ()).throw(OSError("net")))
     assert down["verdict"] == "WARN"
+
+
+def test_knowledge_manager_records_only_on_status_change(tmp_path, monkeypatch):
+    archive = tmp_path / "closed.jsonl"
+    row = {"symbol": "BTCUSDT", "cost_quote": "1000", "gross_pnl": "-3",
+           "opened_at": "2026-09-29T10:00:00+00:00", "closed_at": "2026-09-29T10:30:00+00:00"}
+    archive.write_text("".join(json.dumps({**row, "position_id": f"p{i}"}) + "\n" for i in range(3)), encoding="utf-8")
+    monkeypatch.setattr(ac, "_archive_path", lambda: archive)
+    records = tmp_path / "records"
+    assert "durumu değişti" in ac.knowledge_manager(records)["summary"]
+    assert "değişmedi" in ac.knowledge_manager(records)["summary"]
+    km = [r for r in memory_records.replay(cli.read_log(records / cli.MEMORY_LOG)).values() if r["author"] == "knowledge_manager"]
+    assert len(km) == 1 and json.loads(km[0]["body"])["statuses"]["L-COIN-BTCUSDT"] == "CANDIDATE"

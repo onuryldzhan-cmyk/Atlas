@@ -10,6 +10,7 @@ through the governed logs (memory records, tasks, proposals):
   quant_research        performance report over the closed-position archive -> memory (only when new trades closed)
   strategy_lab          evidence-backed proposals from what the trades taught -> proposals (owner decides)
   market_regime         regime of each universe coin (trend / sideways / high-vol / panic) -> memory (observation only)
+  knowledge_manager     lesson lifecycle (candidate / provisional / contested) -> memory, only when a status changes
   red_team              counter-view on each open strategy proposal: is the evidence enough? -> memory
   executive_assistant   self-review of code, tests, security and agents -> tasks
   data_quality          health check of the durable book, venue rules, logs
@@ -115,6 +116,36 @@ def market_regime(records_dir: Path, symbols=None, fetch_closes=None) -> dict[st
     return {"verdict": "OK", "summary": f"{summary}; yükselen trendde {trend}/{len(snap)} coin"}
 
 
+def knowledge_manager(records_dir: Path) -> dict[str, Any]:
+    """Records the lesson book when a lesson's status changes. Evidence only; it never promotes to VALIDATED."""
+    from atlas_org import memory_records
+    from observability.learning_view import build
+    from tools.exp001_report import load_closed
+
+    log = records_dir / cli.MEMORY_LOG
+    mem = memory_records.public_view(memory_records.replay(cli.read_log(log))) if log.exists() else []
+    out = build(load_closed(_archive_path()), mem)
+    state = {x["id"]: x["status"] for x in out["lessons"]}
+    last = None
+    for r in sorted(mem, key=lambda r: r["seq"]):
+        if r["author"] == "knowledge_manager":
+            try:
+                last = json.loads(r["body"]).get("statuses")
+            except (ValueError, AttributeError):
+                continue
+    if state == last or not state:
+        return {"verdict": "OK", "summary": f"{out['experience_count']} deneyim; ders durumu değişmedi"}
+    changed = sorted(k for k in state if (last or {}).get(k) != state[k])
+    existing = {r["record_id"] for r in cli.read_log(log)} if log.exists() else set()
+    cli.add_memory_record(records_dir, {
+        "record_id": f"LS-{len(existing) + 1:04d}", "type": "EXPERIMENTS", "authority": "RESEARCH",
+        "title": f"Ders defteri: {len(state)} ders, değişen {len(changed)}",
+        "body": json.dumps({"statuses": state, "changed": changed, "counts": out["lesson_status_counts"],
+                            "contradictions": [x["id"] for x in out["contradictions"]]}, ensure_ascii=False),
+        "author": "knowledge_manager", "source": "tools/agent_cycle.py (observability/learning_view)"})
+    return {"verdict": "OK", "summary": f"{len(changed)} dersin durumu değişti; çelişkili: {len(out['contradictions'])}"}
+
+
 def executive_assistant(records_dir: Path) -> dict[str, Any]:
     from tools.atlas_self_review import run
 
@@ -189,6 +220,7 @@ AGENTS: tuple[tuple[str, str, Callable[[Path], dict[str, Any]]], ...] = (
     ("quant_research", "Performans analizi", quant_research),
     ("strategy_lab", "Strateji önerileri", strategy_lab),
     ("market_regime", "Piyasa rejimi", market_regime),
+    ("knowledge_manager", "Ders defteri", knowledge_manager),
     ("red_team", "Karşı görüş", red_team),
     ("executive_assistant", "Öz-değerlendirme", executive_assistant),
     ("data_quality", "Veri sağlığı", data_quality),
