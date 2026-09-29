@@ -103,6 +103,14 @@ python -m tools.atlas_self_review --apply
 
 İlki yalnızca gösterir; ikincisi görevleri açar (paneldeki "Görevler" bölümünde görünür).
 
+## 10. Veri sağlık denetimi (salt okunur; Atlas çalışırken de güvenli)
+
+```
+python -m tools.data_health_check
+```
+
+Her satır OK / WARN / FAIL / UNKNOWN. Çıktıyı bana yapıştır; FAIL varsa birlikte bakarız.
+
 ## Done (kept for reference)
 
 - Audit-fork quarantine applied 2026-09-28 (registry v5.06).
