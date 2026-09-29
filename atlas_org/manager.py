@@ -46,14 +46,21 @@ class Plan:
 
 # Checked first: anything here needs the owner, never a task.
 FORBIDDEN = (
-    (r"\b(canl[ıi]|live)\b.*\b(i[sş]lem|trade|trading|emir|order)|ger[cç]ek para|real money",
+    (r"\b(canl[ıi]|live)\b.*\b(i[sş]lem|trade|trading|emir|order)|ger[cç]ek para|real money|"
+     r"go(ing)? live|canl[ıi]ya (ge[cç]|al)|live'?a ge[cç]|mainnet|real account|ger[cç]ek hesap|"
+     r"real (funds?|capital)|ger[cç]ek (fon|bakiye|sermaye)",
      "live trading: live_authority is DENIED"),
     (r"\b(deploy|production|prod[uü]ksiyon|yay[ıi]na al)", "deployment: autonomous deployment is DENIED"),
-    (r"risk (limit|s[ıi]n[ıi]r)|max(imum)? (pozisyon|position|drawdown)|kald[ıi]ra[cç]|leverage",
-     "risk limits change only by an owner decision"),
-    (r"onay(ı|i)? (kald[ıi]r|atla|gerekmesin)|bypass|skip (approval|review|tests?)|without approval",
-     "approval, review and tests cannot be bypassed"),
-    (r"governance|y[oö]neti[sş]im kural|claude\.md|yetki(ni|sini|leri)? (de[gğ]i[sş]tir|art[ıi]r|ver)",
+    (r"risk (limit|s[ıi]n[ıi]r)|max(imum)? (pozisyon|position|drawdown)|kald[ıi]ra[cç]|leverage|"
+     r"stop.?loss|zarar durdur|kill.?switch|circuit.?breaker|devre kesici|acil durdur|emergency.?stop|"
+     r"sermaye(yi)? (pay|da[gğ][ıi]l|art|azalt|de[gğ]i[sş]tir)|capital (sleeve|allocation|increase)|exposure",
+     "risk and capital controls change only by an owner decision"),
+    (r"onay(ı|i)? (kald[ıi]r|atla|gerekmesin)|bypass|skip (approval|review|tests?)|without (approval|review)|"
+     r"auto.?approve|otomatik onay|testleri? (atla|kapat|devre d[ıi][sş][ıi])|disable (tests?|audit|logging)",
+     "approval, review, tests and audit cannot be bypassed"),
+    (r"governance|y[oö]neti[sş]im|claude\.md|agents\.md|atlas_org|\.claude|architecture_map|permission|"
+     r"yetki|izin(ler)?i? (de[gğ]i[sş]tir|ver|art)|kural(lar[ıi])? (de[gğ]i[sş]tir|kald[ıi]r)|"
+     r"(write|deploy|admin|root) access|access to|eri[sş]im (ver|a[cç])",
      "governance and permissions change only by an owner decision"),
 )
 
@@ -109,8 +116,14 @@ ROUTING: dict[str, tuple[str, ...]] = {
 }
 
 
+def normalise_text(text: str | None) -> str:
+    """Case-fold for Turkish and English alike: "İ"/"I" must not break matching (audit v5.39 F6)."""
+
+    return (text or "").replace("İ", "i").replace("I", "i").strip().lower().replace("ı", "i")
+
+
 def classify(request: str) -> Plan:
-    text = (request or "").strip().lower()
+    text = normalise_text(request)
     if not text:
         return Plan("NONE", "EMPTY", refusal="empty request")
     for pattern, reason in FORBIDDEN:

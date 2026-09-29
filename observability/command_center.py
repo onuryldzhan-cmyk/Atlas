@@ -56,7 +56,7 @@ def compose(*, health: dict[str, Any], account: dict[str, Any] | None,
 
 
 def classify(question: str) -> tuple[str, re.Match | None]:
-    text = (question or "").lower()
+    text = (question or "").replace("İ", "i").replace("I", "i").lower().replace("ı", "i")
     for intent, pattern in INTENTS:
         m = re.search(pattern, text)
         if m:
@@ -116,7 +116,10 @@ def answer(question: str, brief: dict[str, Any]) -> dict[str, Any]:
         items = brief["_proposals"].get("proposals", []) if brief["_proposals"].get("available") else []
         found = next((x for x in items if x["id"] == pid), None)
         if found:
-            lines = [f"{pid} — {found['title']}: durum {found['status']}, risk {found['risk_level']}, "
+            decision = found.get("owner_decision") or {}
+            note = (" (sahip imzası bu ekranda doğrulanamaz; kendi makinenizde: python -m tools.atlas_org_cli verify)"
+                    if decision and decision.get("verified") is not True else "")
+            lines = [f"{pid} — {found['title']}: durum {found['status']}{note}, risk {found['risk_level']}, "
                      f"öneren {found['author']}. Ayrıntılar Öneriler bölümünde."]
             navigate = f"proposal:{pid}"
         else:

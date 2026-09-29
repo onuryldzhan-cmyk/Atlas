@@ -75,39 +75,94 @@ def _append(path: Path, record: dict[str, Any]) -> None:
         os.fsync(handle.fileno())
 
 
+OWNER_KEY_ENV = "ATLAS_OWNER_KEY_FILE"
+
+
+def owner_key_path() -> Path:
+    """The owner's HMAC key: outside the repository, on the owner's machine only."""
+
+    return Path(os.environ.get(OWNER_KEY_ENV) or Path.home() / ".atlas" / "owner.key")
+
+
+def load_owner_key() -> bytes | None:
+    path = owner_key_path()
+    try:
+        if path.resolve().is_relative_to(ROOT.resolve()):
+            raise SystemExit(f"refused: the owner key must not live inside the repository ({path})")
+        raw = path.read_bytes()[:256].strip()
+    except FileNotFoundError:
+        return None
+    return raw if len(raw) >= 32 else None
+
+
+def owner_init() -> Path:
+    import secrets
+
+    path = owner_key_path()
+    if path.resolve().is_relative_to(ROOT.resolve()):
+        raise SystemExit("refused: choose a key path outside the repository")
+    if path.exists():
+        raise SystemExit(f"refused: {path} already exists (never overwritten: past signatures depend on it)")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    with os.fdopen(fd, "w") as handle:
+        handle.write(secrets.token_hex(32) + "\n")
+    return path
+
+
 def now() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def add_proposal_event(directory: Path, *, proposal_id: str, event: str, actor: str,
-                       payload: dict[str, Any] | None = None, at: str | None = None) -> dict[str, Any]:
+                       payload: dict[str, Any] | None = None, at: str | None = None,
+                       owner_key: bytes | None = None) -> dict[str, Any]:
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / PROPOSALS_LOG
     with _lock(path):
         events = read_log(path)
+        if event in ("MARK_READY", "OWNER_APPROVE"):
+            # Audit v5.39 F4: the evidence is re-checked before it is relied on -
+            # the reviewed files must be unchanged and the review must reproduce.
+            state = proposals.replay(events, owner_key).get(proposal_id)
+            security = [r for r in (state.current_reviews() if state else []) if r["kind"] == "SECURITY"]
+            if security:
+                from tools.security_guardian import reverify
+
+                problem = reverify(security[-1])
+                if problem:
+                    raise proposals.ProposalLogError(f"{proposal_id}: {problem}")
+        if event == "MARK_APPLIED":
+            # Nothing is marked applied on an approval this machine cannot verify.
+            state = proposals.replay(events, owner_key).get(proposal_id)
+            decision = state.owner_decision if state else None
+            if not decision or decision.get("verified") is not True:
+                raise proposals.ProposalLogError(
+                    f"{proposal_id}: MARK_APPLIED needs an owner approval verified with the owner key")
         record = proposals.next_event(events, proposal_id=proposal_id, event=event, actor=actor,
-                                      at=at or now(), payload=payload)
+                                      at=at or now(), payload=payload, owner_key=owner_key)
         _append(path, record)
     return record
 
 
-def add_memory_record(directory: Path, fields: dict[str, Any]) -> dict[str, Any]:
+def add_memory_record(directory: Path, fields: dict[str, Any], owner_key: bytes | None = None) -> dict[str, Any]:
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / MEMORY_LOG
     fields = {"at": now(), **fields}
     with _lock(path):
-        record = memory_records.next_record(read_log(path), **fields)
+        record = memory_records.next_record(read_log(path), owner_key=owner_key, **fields)
         _append(path, record)
     return record
 
 
 def add_task_event(directory: Path, *, task_id: str, event: str, actor: str,
-                   payload: dict[str, Any] | None = None, at: str | None = None) -> dict[str, Any]:
+                   payload: dict[str, Any] | None = None, at: str | None = None,
+                   owner_key: bytes | None = None) -> dict[str, Any]:
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / TASKS_LOG
     with _lock(path):
         record = tasks.next_event(read_log(path), task_id=task_id, event=event, actor=actor,
-                                  at=at or now(), payload=payload)
+                                  at=at or now(), payload=payload, owner_key=owner_key)
         _append(path, record)
     return record
 
@@ -160,20 +215,31 @@ def main(argv: list[str] | None = None) -> int:
     tev.add_argument("--payload", default="{}")
     tev.add_argument("--owner-confirm", default=None)
     sub.add_parser("verify")
+    sub.add_parser("owner-init", help="create the owner's signing key outside the repository (once)")
     args = parser.parse_args(argv)
     directory = Path(args.dir)
+    if args.cmd == "owner-init":
+        path = owner_init()
+        print(f"owner key created: {path}\nKeep it private: never commit, paste or share it. "
+              "Only this machine can sign owner decisions.")
+        return 0
+    key = load_owner_key()
 
     try:
         if args.cmd == "proposal-create":
             fields = json.loads(Path(args.json).read_text(encoding="utf-8"))
             rec = add_proposal_event(directory, proposal_id=args.id, event="CREATE",
-                                     actor=args.actor, payload=fields)
+                                     actor=args.actor, payload=fields, owner_key=key)
         elif args.cmd == "proposal-event":
+            if args.event == "REVIEW" and json.loads(args.payload).get("kind") == "SECURITY":
+                print("refused: security reviews are recorded only by python -m tools.security_guardian --record",
+                      file=sys.stderr)
+                return 2
             if args.event in ("OWNER_APPROVE", "OWNER_REJECT") and args.owner_confirm != args.id:
                 print("refused: an owner decision needs --owner-confirm <proposal id>", file=sys.stderr)
                 return 2
             rec = add_proposal_event(directory, proposal_id=args.id, event=args.event,
-                                     actor=args.actor, payload=json.loads(args.payload))
+                                     actor=args.actor, payload=json.loads(args.payload), owner_key=key)
         elif args.cmd == "task-request":
             out = request_task(directory, args.request)
             print(json.dumps(out, ensure_ascii=False))
@@ -183,14 +249,18 @@ def main(argv: list[str] | None = None) -> int:
                 print("refused: cancelling needs --owner-confirm <task id>", file=sys.stderr)
                 return 2
             rec = add_task_event(directory, task_id=args.id, event=args.event, actor=args.actor,
-                                 payload=json.loads(args.payload))
+                                 payload=json.loads(args.payload), owner_key=key)
         elif args.cmd == "memory-add":
-            rec = add_memory_record(directory, json.loads(Path(args.json).read_text(encoding="utf-8")))
+            rec = add_memory_record(directory, json.loads(Path(args.json).read_text(encoding="utf-8")), owner_key=key)
         else:
-            p = proposals.replay(read_log(directory / PROPOSALS_LOG))
-            m = memory_records.replay(read_log(directory / MEMORY_LOG))
-            t = tasks.replay(read_log(directory / TASKS_LOG))
-            print(f"OK: {len(p)} proposals, {len(m)} memory records, {len(t)} tasks, chains intact")
+            p = proposals.replay(read_log(directory / PROPOSALS_LOG), key)
+            m = memory_records.replay(read_log(directory / MEMORY_LOG), key)
+            t = tasks.replay(read_log(directory / TASKS_LOG), key)
+            heads = {name: (log[-1]["seq"], log[-1]["hash"][:16]) if log else (0, "-")
+                     for name in (PROPOSALS_LOG, MEMORY_LOG, TASKS_LOG) for log in [read_log(directory / name)]}
+            sigs = "owner signatures VERIFIED" if key else "owner signatures NOT verified (no owner key on this machine)"
+            print(f"OK: {len(p)} proposals, {len(m)} memory records, {len(t)} tasks, chains intact; {sigs}")
+            print("log heads (seq, hash) - note them to detect later truncation: " + json.dumps(heads))
             return 0
     except proposals.ProposalLogError as exc:
         print(f"refused: {exc}", file=sys.stderr)

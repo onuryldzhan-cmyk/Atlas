@@ -20,7 +20,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from atlas_org.security_review import SecurityReport, review_change
+from atlas_org.security_review import SecurityReport, files_digest, review_change
 
 ROOT = Path(__file__).resolve().parents[1]
 EXIT = {"PASS": 0, "REVIEW_REQUIRED": 1, "FAIL": 2}
@@ -54,6 +54,44 @@ def collect(base: str) -> tuple[dict[str, str], dict[str, tuple[str, str]]]:
     return files, deps
 
 
+def read_files(paths: list[str], base: str) -> tuple[dict[str, str], dict[str, tuple[str, str]]]:
+    """Current contents of exactly these paths (and the base version of requirement files)."""
+
+    files, deps = {}, {}
+    for rel in paths:
+        path = ROOT / rel
+        text = ""
+        if path.is_file() and path.stat().st_size <= MAX_FILE_BYTES:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        files[rel] = text
+        name = Path(rel).name
+        if name.startswith("requirements") and name.endswith(".txt") or rel.startswith("requirements/"):
+            try:
+                old = _git("show", f"{base}:{rel}")
+            except subprocess.CalledProcessError:
+                old = ""
+            deps[rel] = (old, text)
+    return files, deps
+
+
+def reverify(review: dict) -> str | None:
+    """Re-run the guardian on the reviewed files; None if the recorded review still holds, else why not."""
+
+    files_reviewed = review.get("files_reviewed")
+    if not isinstance(files_reviewed, list) or not review.get("files_digest") or not review.get("base"):
+        return "security review has no files_reviewed/files_digest/base to re-verify"
+    try:
+        files, deps = read_files(files_reviewed, review["base"])
+    except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+        return f"git error while re-verifying: {exc}"
+    if files_digest(files) != review["files_digest"]:
+        return "reviewed files changed since the security review: re-run python -m tools.security_guardian --record"
+    fresh = review_change(files, deps)
+    if fresh.checks() != review.get("checks"):
+        return f"security review does not reproduce: recorded {review.get('checks')} vs now {fresh.checks()}"
+    return None
+
+
 def render(report: SecurityReport) -> str:
     data = report.to_dict()
     lines = ["SECURITY REVIEW"]
@@ -63,6 +101,7 @@ def render(report: SecurityReport) -> str:
         where = f"{f['path']}:{f['line']}" if f["line"] else f["path"]
         lines.append(f"  [{f['level']}] {f['category']} {where} - {f['detail']}")
     lines.append(f"files reviewed: {len(data['files_reviewed'])}")
+    lines.append("note: static, heuristic analysis (AST + patterns); REVIEW means a human must look")
     return "\n".join(lines)
 
 
@@ -88,7 +127,9 @@ def main(argv: list[str] | None = None) -> int:
             atlas_org_cli.add_proposal_event(
                 atlas_org_cli.RECORDS_DIR, proposal_id=args.record, event="REVIEW", actor="security",
                 payload={"kind": "SECURITY", "verdict": report.overall(), "summary": summary,
-                         "checks": report.checks(), "findings": report.to_dict()["findings"][:200]})
+                         "tool": "security_guardian", "base": args.base,
+                         "files_reviewed": report.files_reviewed, "files_digest": files_digest(files),
+                         "checks": report.checks(), "findings": report.to_dict()["findings"]})
         except ProposalLogError as exc:
             print(f"not recorded: {exc}", file=sys.stderr)
             return 3

@@ -16,7 +16,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any, Iterable
 
-from atlas_org.proposals import GENESIS_HASH, OWNER, ProposalLogError, event_hash
+from atlas_org.proposals import GENESIS_HASH, OWNER, ProposalLogError, event_hash, owner_check, sign_if_owner
 
 
 class RecordType(str, Enum):
@@ -57,7 +57,7 @@ def _check(condition: bool, message: str) -> None:
         raise MemoryLogError(message)
 
 
-def replay(events: Iterable[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+def replay(events: Iterable[dict[str, Any]], owner_key: bytes | None = None) -> dict[str, dict[str, Any]]:
     records: dict[str, dict[str, Any]] = {}
     expected, prev = 1, GENESIS_HASH
     for ev in events:
@@ -66,6 +66,7 @@ def replay(events: Iterable[dict[str, Any]]) -> dict[str, dict[str, Any]]:
         _check(seq == expected, f"sequence break: expected {expected}, got {seq!r}")
         _check(ev.get("prev_hash") == prev, f"seq {seq}: hash chain broken")
         _check(ev.get("hash") == event_hash(ev), f"seq {seq}: record altered")
+        verified = owner_check(ev, owner_key)
         rid, author = ev.get("record_id"), ev.get("author")
         _check(isinstance(rid, str) and rid, f"seq {seq}: missing record_id")
         _check(rid not in records, f"seq {seq}: duplicate record {rid}")
@@ -98,16 +99,18 @@ def replay(events: Iterable[dict[str, Any]]) -> dict[str, dict[str, Any]]:
             "related_proposal": ev.get("related_proposal"),
             "related_decision": ev.get("related_decision"),
             "evaluation": ev.get("evaluation"), "supersedes": old, "superseded_by": None,
+            "owner_verified": verified if author == OWNER else None,
         }
         prev, expected = ev["hash"], expected + 1
     return records
 
 
-def next_record(events: list[dict[str, Any]], **fields: Any) -> dict[str, Any]:
+def next_record(events: list[dict[str, Any]], owner_key: bytes | None = None, **fields: Any) -> dict[str, Any]:
     record = {"seq": len(events) + 1,
               "prev_hash": events[-1]["hash"] if events else GENESIS_HASH, **fields}
+    sign_if_owner(record, owner_key)
     record["hash"] = event_hash(record)
-    replay([*events, record])
+    replay([*events, record], owner_key)
     return record
 
 

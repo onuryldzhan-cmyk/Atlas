@@ -34,10 +34,15 @@ def _load(path: Path) -> list[dict[str, Any]]:
         raise proposals.ProposalLogError(f"{path.name}: unreadable ({type(exc).__name__})")
 
 
+def _head(events: list[dict[str, Any]]) -> dict[str, Any]:
+    return {"seq": events[-1]["seq"], "hash": events[-1]["hash"][:16]} if events else {"seq": 0, "hash": None}
+
+
 def read_proposals(repository_root: Path | None = None) -> dict[str, Any]:
     root = REPOSITORY_ROOT if repository_root is None else Path(repository_root)
     try:
-        state = proposals.replay(_load(root / RECORDS_RELPATH / "proposals.jsonl"))
+        events = _load(root / RECORDS_RELPATH / "proposals.jsonl")
+        state = proposals.replay(events)
     except proposals.ProposalLogError as exc:
         return {"available": False, "reason": str(exc)}
     items = [p.to_public_dict() for p in state.values()]
@@ -46,6 +51,12 @@ def read_proposals(repository_root: Path | None = None) -> dict[str, Any]:
         counts[item["status"]] = counts.get(item["status"], 0) + 1
     return {
         "available": True,
+        "head": _head(events),
+        # The web layer never holds the owner key (audit v5.39 NEW-1): an HMAC
+        # verification key is also a signing key. Owner decisions are
+        # therefore always shown as unverified here; the owner verifies on
+        # their machine with: python -m tools.atlas_org_cli verify
+        "owner_signatures": "NOT_VERIFIED_IN_WEB (verify: python -m tools.atlas_org_cli verify)",
         "counts": counts,
         "awaiting_owner": [i["id"] for i in items if i["status"] == "READY_FOR_OWNER"],
         "proposals": sorted(items, key=lambda i: i["history"][-1]["seq"], reverse=True),

@@ -11,6 +11,9 @@ from tools import atlas_org_cli as cli
 from atlas_org.security_review import CATEGORIES
 
 SEC_PASS = {c: "PASS" for c in CATEGORIES}
+from atlas_org.security_review import files_digest as _files_digest
+
+BIND = {"files_reviewed": [], "files_digest": _files_digest({}), "base": "HEAD"}
 AT = "2026-09-29T00:00:00Z"
 
 
@@ -79,7 +82,7 @@ def test_workflow_b_code_change_reaches_owner_decision_only(tmp_path):
         ("CREATE", "code_engineering", fields), ("SUBMIT", "code_engineering", {}),
         ("RECORD_TESTS", "code_engineering", {"command": "pytest", "passed": 5, "failed": 0}),
         ("REVIEW", "code_review", {"kind": "CODE", "verdict": "PASS", "summary": "ok"}),
-        ("REVIEW", "security", {"kind": "SECURITY", "verdict": "PASS", "summary": "ok", "checks": SEC_PASS}),
+        ("REVIEW", "security", {"kind": "SECURITY", "verdict": "PASS", "summary": "ok", "checks": SEC_PASS, "tool": "security_guardian", **BIND, "findings": []}),
         ("MARK_READY", tasks.ASSISTANT, {}),
     ]:
         cli.add_proposal_event(tmp_path, proposal_id="P-1", event=ev, actor=actor, payload=payload, at=AT)
@@ -114,7 +117,10 @@ def test_only_assigned_unit_reports_and_conflicts_block_completion(tmp_path):
         cli.add_task_event(tmp_path, task_id=tid, event="COMPLETE", actor=tasks.ASSISTANT, at=AT)
 
 
-def test_only_owner_cancels_and_agent_activity_is_derived(tmp_path):
+def test_only_owner_cancels_and_agent_activity_is_derived(tmp_path, monkeypatch):
+    keyfile = tmp_path.parent / f"{tmp_path.name}_owner.key"
+    keyfile.write_text("a" * 64)
+    monkeypatch.setenv("ATLAS_OWNER_KEY_FILE", str(keyfile))
     tid = cli.request_task(tmp_path, "bu kütüphaneyi araştır", at=AT)["task_id"]
     cli.add_task_event(tmp_path, task_id=tid, event="START", actor="open_source_research", payload={"step": 0}, at=AT)
     state = tasks.replay(cli.read_log(tmp_path / "tasks.jsonl"))

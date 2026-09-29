@@ -13,6 +13,10 @@ from tools import atlas_org_cli
 from atlas_org.security_review import CATEGORIES
 
 SEC_PASS = {c: "PASS" for c in CATEGORIES}
+KEY = b"k" * 32  # test-only owner key
+from atlas_org.security_review import files_digest as _files_digest
+
+BIND = {"files_reviewed": [], "files_digest": _files_digest({}), "base": "HEAD"}
 AT = "2026-09-28T00:00:00Z"
 FIELDS = {
     "title": "Market data reconnect", "problem": "stale feed", "motivation": "reliability",
@@ -35,7 +39,7 @@ def _ready_steps(pid="P-1"):
         (pid, "SUBMIT", "code_agent", {}),
         (pid, "RECORD_TESTS", "code_agent", {"command": "pytest", "passed": 10, "failed": 0}),
         (pid, "REVIEW", "code_review", {"kind": "CODE", "verdict": "PASS", "summary": "ok"}),
-        (pid, "REVIEW", "security", {"kind": "SECURITY", "verdict": "PASS", "summary": "ok", "checks": SEC_PASS}),
+        (pid, "REVIEW", "security", {"kind": "SECURITY", "verdict": "PASS", "summary": "ok", "checks": SEC_PASS, "tool": "security_guardian", **BIND, "findings": []}),
         (pid, "MARK_READY", "executive_assistant", {}),
     ]
 
@@ -71,9 +75,9 @@ def test_happy_path_reaches_owner_and_only_owner_approves():
     assert replay(events)["P-1"].status is proposals.ProposalStatus.READY_FOR_OWNER
     with pytest.raises(ProposalLogError, match="only the owner"):
         next_event(events, proposal_id="P-1", event="OWNER_APPROVE", actor="ceo_ai", at=AT)
-    events.append(next_event(events, proposal_id="P-1", event="OWNER_APPROVE", actor="owner", at=AT))
+    events.append(next_event(events, proposal_id="P-1", event="OWNER_APPROVE", actor="owner", at=AT, owner_key=KEY))
     events.append(next_event(events, proposal_id="P-1", event="MARK_APPLIED", actor="deployment_manager", at=AT))
-    events.append(next_event(events, proposal_id="P-1", event="ROLL_BACK", actor="owner", at=AT))
+    events.append(next_event(events, proposal_id="P-1", event="ROLL_BACK", actor="owner", at=AT, owner_key=KEY))
     p = replay(events)["P-1"]
     assert p.status is proposals.ProposalStatus.ROLLED_BACK
     assert p.owner_decision["decision"] == "APPROVED"
@@ -94,7 +98,7 @@ def test_failing_tests_or_failed_review_block_ready():
     with pytest.raises(ProposalLogError, match="failing"):
         _log(*steps, ("P-1", "MARK_READY", "executive_assistant", {}))
     steps = _ready_steps()[:-1]
-    steps[4] = ("P-1", "REVIEW", "security", {"kind": "SECURITY", "verdict": "FAIL", "summary": "secret", "checks": {**SEC_PASS, "SECRETS": "FAIL"}})
+    steps[4] = ("P-1", "REVIEW", "security", {"kind": "SECURITY", "verdict": "FAIL", "summary": "secret", "checks": {**SEC_PASS, "SECRETS": "FAIL"}, "tool": "security_guardian", **BIND, "findings": [{"category": "SECRETS", "level": "FAIL"}]})
     with pytest.raises(ProposalLogError, match="SECURITY"):
         _log(*steps, ("P-1", "MARK_READY", "executive_assistant", {}))
 
@@ -109,10 +113,10 @@ def test_cannot_apply_without_approval_and_rejected_is_final():
     events = _log(*_ready_steps())
     with pytest.raises(ProposalLogError):
         next_event(events, proposal_id="P-1", event="MARK_APPLIED", actor="deployment_manager", at=AT)
-    events.append(next_event(events, proposal_id="P-1", event="OWNER_REJECT", actor="owner", at=AT))
+    events.append(next_event(events, proposal_id="P-1", event="OWNER_REJECT", actor="owner", at=AT, owner_key=KEY))
     for ev in ("MARK_APPLIED", "OWNER_APPROVE", "SUPERSEDE"):
         with pytest.raises(ProposalLogError):
-            next_event(events, proposal_id="P-1", event=ev, actor="owner", at=AT)
+            next_event(events, proposal_id="P-1", event=ev, actor="owner", at=AT, owner_key=KEY)
 
 
 def test_revision_invalidates_old_reviews():
@@ -167,10 +171,10 @@ RESEARCH_EVAL = {"project": "x", "license": "MIT", "maintenance": "active", "dep
 def test_only_owner_writes_or_supersedes_authoritative_memory():
     with pytest.raises(ProposalLogError, match="owner"):
         memory_records.next_record([], **{**MEM, "authority": "AUTHORITATIVE"})
-    log = [memory_records.next_record([], **{**MEM, "authority": "AUTHORITATIVE", "author": "owner"})]
+    log = [memory_records.next_record([], owner_key=KEY, **{**MEM, "authority": "AUTHORITATIVE", "author": "owner"})]
     with pytest.raises(ProposalLogError, match="owner"):
         memory_records.next_record(log, **{**MEM, "record_id": "M-2", "supersedes": "M-1"})
-    log.append(memory_records.next_record(log, **{**MEM, "record_id": "M-2", "supersedes": "M-1",
+    log.append(memory_records.next_record(log, owner_key=KEY, **{**MEM, "record_id": "M-2", "supersedes": "M-1",
                                                   "author": "owner", "authority": "AUTHORITATIVE"}))
     view = {r["id"]: r for r in memory_records.public_view(memory_records.replay(log))}
     assert view["M-1"]["status"] == "HISTORICAL" and view["M-2"]["status"] == "CURRENT"
@@ -182,7 +186,7 @@ def test_research_needs_full_evaluation_and_is_never_authoritative():
         memory_records.next_record([], **base)
     memory_records.next_record([], **base, evaluation=RESEARCH_EVAL)
     with pytest.raises(ProposalLogError, match="never authoritative"):
-        memory_records.next_record([], **{**base, "authority": "AUTHORITATIVE", "author": "owner"},
+        memory_records.next_record([], owner_key=KEY, **{**base, "authority": "AUTHORITATIVE", "author": "owner"},
                                    evaluation=RESEARCH_EVAL)
 
 
@@ -204,7 +208,10 @@ def test_cli_writes_chain_and_refuses_truncated_log(tmp_path):
     assert atlas_org_cli.main(["--dir", str(tmp_path), "verify"]) == 1
 
 
-def test_cli_owner_decision_needs_explicit_confirmation(tmp_path):
+def test_cli_owner_decision_needs_explicit_confirmation(tmp_path, monkeypatch):
+    keyfile = tmp_path.parent / f"{tmp_path.name}_owner.key"
+    keyfile.write_text("a" * 64)
+    monkeypatch.setenv("ATLAS_OWNER_KEY_FILE", str(keyfile))
     for step in _ready_steps():
         atlas_org_cli.add_proposal_event(tmp_path, proposal_id=step[0], event=step[1], actor=step[2], payload=step[3])
     args = ["--dir", str(tmp_path), "proposal-event", "--id", "P-1", "--event", "OWNER_APPROVE", "--actor", "owner"]

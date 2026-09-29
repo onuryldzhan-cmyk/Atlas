@@ -17,7 +17,7 @@ from enum import Enum
 from typing import Any, Iterable
 
 from atlas_org import permissions
-from atlas_org.proposals import GENESIS_HASH, OWNER, ProposalLogError, event_hash
+from atlas_org.proposals import GENESIS_HASH, OWNER, ProposalLogError, event_hash, owner_check, sign_if_owner
 
 
 class TaskLogError(ProposalLogError):
@@ -165,7 +165,7 @@ def _apply(tasks: dict[str, dict[str, Any]], ev: dict[str, Any]) -> None:
                                   "step": payload.get("step"), "note": payload.get("reason") or payload.get("summary", "")})
 
 
-def replay(events: Iterable[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+def replay(events: Iterable[dict[str, Any]], owner_key: bytes | None = None) -> dict[str, dict[str, Any]]:
     tasks: dict[str, dict[str, Any]] = {}
     expected, prev = 1, GENESIS_HASH
     for ev in events:
@@ -173,18 +173,20 @@ def replay(events: Iterable[dict[str, Any]]) -> dict[str, dict[str, Any]]:
         _check(ev.get("seq") == expected, f"sequence break: expected {expected}, got {ev.get('seq')!r}")
         _check(ev.get("prev_hash") == prev, f"seq {expected}: hash chain broken")
         _check(ev.get("hash") == event_hash(ev), f"seq {expected}: record altered")
+        owner_check(ev, owner_key)
         _apply(tasks, ev)
         prev, expected = ev["hash"], expected + 1
     return tasks
 
 
 def next_event(events: list[dict[str, Any]], *, task_id: str, event: TaskEvent | str, actor: str,
-               at: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+               at: str, payload: dict[str, Any] | None = None, owner_key: bytes | None = None) -> dict[str, Any]:
     record = {"seq": len(events) + 1, "prev_hash": events[-1]["hash"] if events else GENESIS_HASH,
               "task_id": task_id, "event": TaskEvent(event).value, "actor": actor, "at": at,
               "payload": payload or {}}
+    sign_if_owner(record, owner_key)
     record["hash"] = event_hash(record)
-    replay([*events, record])
+    replay([*events, record], owner_key)
     return record
 
 

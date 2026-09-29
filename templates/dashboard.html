@@ -1271,7 +1271,8 @@
                 ? badge(`${p.tests.passed} geçti / ${p.tests.failed} kaldı`, p.tests.failed === 0 ? 'success' : 'danger')
                 : badge('yok', 'secondary');
             const decision = p.owner_decision
-                ? `<div class="fw-bold mt-1">Sahip kararı: ${esc(p.owner_decision.decision)} (${esc(p.owner_decision.at)})</div>` : '';
+                ? `<div class="fw-bold mt-1">Sahip kararı: ${esc(p.owner_decision.decision)} (${esc(p.owner_decision.at)}) ` +
+                  (p.owner_decision.verified === true ? badge('imza doğrulandı', 'success') : badge('imza bu makinede doğrulanamadı', 'warning')) + `</div>` : '';
             const files = (Array.isArray(p.affected_files) ? p.affected_files : []).map((f) => `<span class="font-monospace">${esc(f)}</span>`).join(', ');
             const history = (Array.isArray(p.history) ? p.history : []).map((h) =>
                 `<li>#${esc(h.seq)} ${esc(h.event)} — ${esc(h.actor)} → ${esc(h.status)} <span class="text-body-secondary">${esc(h.at)}</span></li>`).join('');

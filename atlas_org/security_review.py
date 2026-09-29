@@ -9,7 +9,9 @@ Keyword patterns are used only where the input is text by nature: credential
 shapes (same shapes as tests/test_sec001_no_secret_literals.py) and
 prompt-injection phrases in documents.
 
-Each category ends PASS, REVIEW or FAIL; the overall verdict is the worst
+Static and heuristic by nature: aliasing through variables (``f = s.run``)
+is a known limit, so a PASS means "no known-dangerous construct found", not
+"proven safe". Each category ends PASS, REVIEW or FAIL; the overall verdict is the worst
 one (FAIL > REVIEW_REQUIRED > PASS). REVIEW means a human must look; it is
 never silently turned into PASS.
 """
@@ -49,6 +51,9 @@ UNSAFE_DESERIALIZE = {("pickle", "load"), ("pickle", "loads"), ("marshal", "load
 SUBPROCESS_FUNCS = {"run", "call", "check_call", "check_output", "Popen", "getoutput", "getstatusoutput"}
 DESTRUCTIVE_FS = {("shutil", "rmtree"), ("os", "remove"), ("os", "unlink"), ("os", "rmdir"),
                   ("os", "removedirs"), ("os", "chmod"), ("os", "chown")}
+# Indirection that hides what is called (audit v5.39 F3): reported rather than trusted.
+SENSITIVE_MODULES = {"os", "subprocess", "builtins", "pty", "importlib", "ctypes", "shutil", "pickle", "marshal"}
+SPAWN_CALLS = {("pty", "spawn"), ("os", "fork"), ("os", "forkpty"), ("os", "posix_spawn"), ("os", "posix_spawnp")}
 REQ_LINE = re.compile(r"^\s*([A-Za-z0-9_.\-\[\]]+)\s*(==\s*[^\s;#]+)?")
 
 
@@ -117,11 +122,40 @@ def _python(path: str, text: str, report: SecurityReport) -> None:
             top = node.module.split(".")[0]
             for a in node.names:
                 aliases[a.asname or a.name] = f"{top}.{a.name}"
+                if a.name == "*" and top in SENSITIVE_MODULES:
+                    report.findings.append(Finding("EXTERNAL_CODE", FAIL, path, node.lineno,
+                                                   f"from {node.module} import * hides which calls are made"))
             if top in NETWORK_MODULES:
                 report.findings.append(Finding("NETWORK", REVIEW, path, node.lineno, f"imports from {node.module}"))
     for node in ast.walk(tree):
+        if isinstance(node, ast.Name) and node.id in ("__builtins__", "__import__"):
+            report.findings.append(Finding("EXTERNAL_CODE", FAIL, path, node.lineno, f"{node.id} reference"))
+        if isinstance(node, ast.Subscript):
+            base = _dotted(node.value)
+            if base == ("sys", "modules") or (isinstance(node.value, ast.Call) and _dotted(node.value.func) in (("vars",), ("globals",), ("locals",))):
+                report.findings.append(Finding("EXTERNAL_CODE", REVIEW, path, node.lineno,
+                                               "module or namespace lookup by name hides the call"))
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            mods = [a.name for a in node.names] if isinstance(node, ast.Import) else [node.module or ""]
+            if any(m.split(".")[0] in ("runpy", "code", "codeop") for m in mods):
+                report.findings.append(Finding("EXTERNAL_CODE", FAIL, path, node.lineno,
+                                               f"runs arbitrary code: {', '.join(mods)}"))
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            mods = [a.name for a in node.names] if isinstance(node, ast.Import) else [node.module or ""]
+            if any(m.split(".")[0] in ("importlib", "ctypes") for m in mods):
+                report.findings.append(Finding("EXTERNAL_CODE", REVIEW, path, node.lineno,
+                                               f"dynamic import / native call module: {', '.join(mods)}"))
+    for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
             continue
+        if isinstance(node.func, ast.Name) and node.func.id == "getattr" and len(node.args) >= 2:
+            target = _dotted(node.args[0])
+            module = aliases.get(target[0], target[0]).split(".")[0] if target else ""
+            attr = node.args[1].value if isinstance(node.args[1], ast.Constant) else None
+            if module in SENSITIVE_MODULES:
+                level = FAIL if attr is None or attr in DANGEROUS_CALLS | SUBPROCESS_FUNCS | {"system", "popen", "spawn"} else REVIEW
+                report.findings.append(Finding("EXTERNAL_CODE", level, path, node.lineno,
+                                               f"getattr({module}, {attr!r}) hides the call"))
         name = _dotted(node.func)
         if not name:
             continue
@@ -129,8 +163,15 @@ def _python(path: str, text: str, report: SecurityReport) -> None:
         full = (*head.split("."), *name[1:])
         kw = {k.arg: k.value for k in node.keywords if k.arg}
         line = node.lineno
-        if len(full) == 1 and full[0] in DANGEROUS_CALLS:
-            report.findings.append(Finding("EXTERNAL_CODE", FAIL, path, line, f"{full[0]}() executes dynamic code"))
+        if full[0] == "asyncio" and full[-1] in ("create_subprocess_shell", "create_subprocess_exec"):
+            level = FAIL if full[-1].endswith("shell") else REVIEW
+            report.findings.append(Finding("SUBPROCESS", level, path, line, f"asyncio.{full[-1]}"))
+        elif full[:2] in SPAWN_CALLS or (full[0] == "os" and len(full) > 1 and full[1].startswith("spawn")):
+            report.findings.append(Finding("SUBPROCESS", FAIL, path, line, f"{'.'.join(full)} starts a process"))
+        elif full[0] == "importlib" and full[-1] in ("import_module", "__import__"):
+            report.findings.append(Finding("EXTERNAL_CODE", REVIEW, path, line, "importlib.import_module: dynamic import"))
+        elif (len(full) == 1 and full[0] in DANGEROUS_CALLS) or (full[0] == "builtins" and full[-1] in DANGEROUS_CALLS):
+            report.findings.append(Finding("EXTERNAL_CODE", FAIL, path, line, f"{full[-1]}() executes dynamic code"))
         elif full[:2] in UNSAFE_DESERIALIZE:
             report.findings.append(Finding("EXTERNAL_CODE", FAIL, path, line, f"{'.'.join(full)} deserializes untrusted data"))
         elif full[:2] == ("yaml", "load") and "Loader" not in kw and len(node.args) < 2:
@@ -163,6 +204,18 @@ def _requirements(old: str, new: str) -> dict[str, str | None]:
         return out
     before, after = parse(old), parse(new)
     return {k: v for k, v in after.items() if before.get(k, "<absent>") != v}
+
+
+def files_digest(files: dict[str, str]) -> str:
+    """SHA-256 over the sorted (path, content-hash) pairs: binds a review to exact contents."""
+
+    import hashlib
+
+    h = hashlib.sha256()
+    for path in sorted(files):
+        h.update(path.replace("\\", "/").encode("utf-8") + b"\0")
+        h.update(hashlib.sha256(files[path].encode("utf-8")).hexdigest().encode("ascii") + b"\n")
+    return h.hexdigest()
 
 
 def review_change(files: dict[str, str], dependency_changes: dict[str, tuple[str, str]] | None = None) -> SecurityReport:

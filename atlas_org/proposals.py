@@ -3,9 +3,11 @@
 A proposal's state is never stored directly: it is the replay of its events.
 Each event carries ``seq`` (1..n, contiguous across the whole log),
 ``prev_hash`` and ``hash`` (SHA-256 of the canonical event body), so an
-edited, reordered, duplicated, dropped or truncated record is detected on
-replay and the log is refused as a whole (corrupted state is halted, never
-silently continued through).
+edited, reordered, duplicated or partially written record, or one dropped
+from the middle, is detected on replay and the log is refused as a whole.
+Whole records cut from the END are not detectable from the log alone (audit
+v5.39 F5): ``atlas_org_cli verify`` prints each log's head (seq, hash) and
+the panel shows it, so the owner can compare against a noted head.
 
 Authority rules enforced on every replay, not only when an event is written:
 
@@ -24,6 +26,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Iterable
@@ -102,12 +105,53 @@ RISK_LEVELS = ("LOW", "MEDIUM", "HIGH", "CRITICAL")
 # Protected governance surface: Atlas may not change its own rules quietly.
 # A proposal touching any of these must be CRITICAL, and like every proposal
 # it can only be approved by the owner.
-PROTECTED_PREFIXES = ("CLAUDE.md", "AGENTS.md", "governance/", "atlas_org/",
-                      "tests/architecture/", ".claude/", "packaging/atlas_architecture_map.json")
+# Protected files and directories, compared on normalised, case-folded path
+# parts (audit v5.39 F2: "/CLAUDE.md", "claude.md", "docs/../CLAUDE.md",
+# "Governance/x" and repo-absolute paths all resolve to a protected entry).
+PROTECTED_FILES = ("claude.md", "agents.md", "packaging/atlas_architecture_map.json")
+PROTECTED_DIRS = ("governance", "atlas_org", "tests/architecture", ".claude")
+
+
+def normalise_repo_path(path: str) -> str:
+    """Repo-relative, case-folded, '..'-resolved; an escape above the root is kept as '..'."""
+
+    text = str(path).replace("\\", "/").strip().casefold()
+    parts: list[str] = []
+    for part in text.split("/"):
+        if part in ("", "."):
+            continue
+        if part == "..":
+            if parts and parts[-1] != "..":
+                parts.pop()
+            else:
+                parts.append("..")
+            continue
+        parts.append(part)
+    if text.startswith("/") or re.match(r"^[a-z]:", text):
+        return "/" + "/".join(parts)
+    return "/".join(parts)
+
+
+_SUSPICIOUS_PATH = re.compile(r"[\x00-\x1f\x7f\u200b-\u200f\u2028-\u202e\u2060\ufeff]|::|(^|/)~|\.$|\. ?/")
 
 
 def touches_protected(paths: Iterable[str]) -> bool:
-    return any(str(p).replace("\\", "/").removeprefix("./").startswith(PROTECTED_PREFIXES) for p in paths)
+    for raw in paths:
+        if _SUSPICIOUS_PATH.search(str(raw)):
+            # Control/zero-width characters, NTFS streams, trailing dots and "~"
+            # can alias a protected file (audit v5.39 F2): treated as protected.
+            return True
+        norm = normalise_repo_path(raw)
+        if norm.startswith(".."):
+            return True
+        parts = norm.lstrip("/").split("/")
+        # An absolute path may point into the repository from anywhere (the
+        # owner's checkout is not named "atlas"): test every suffix.
+        candidates = ["/".join(parts[i:]) for i in range(len(parts))] if norm.startswith("/") else [norm]
+        for cand in candidates:
+            if cand in PROTECTED_FILES or any(cand == d or cand.startswith(d + "/") for d in PROTECTED_DIRS):
+                return True
+    return False
 
 
 class ProposalLogError(ValueError):
@@ -220,11 +264,26 @@ def _apply(proposals: dict[str, Proposal], event: dict[str, Any]) -> None:
             _require(isinstance(checks, dict) and set(checks) == set(CATEGORIES)
                      and all(v in _RANK for v in checks.values()),
                      f"seq {event['seq']}: security review needs checks for {list(CATEGORIES)}")
+            findings = payload.get("findings")
+            _require(isinstance(payload.get("files_digest"), str) and len(payload["files_digest"]) == 64
+                     and isinstance(payload.get("files_reviewed"), list) and bool(payload.get("base")),
+                     f"seq {event['seq']}: a security review must bind files_reviewed, files_digest and base")
+            _require(payload.get("tool") == "security_guardian" and isinstance(findings, list),
+                     f"seq {event['seq']}: a security review must carry the security_guardian report (tool, findings)")
+            derived = {c: "PASS" for c in CATEGORIES}
+            for f in findings:
+                _require(isinstance(f, dict) and f.get("category") in derived and f.get("level") in _RANK,
+                         f"seq {event['seq']}: malformed security finding")
+                if _RANK[f["level"]] > _RANK[derived[f["category"]]]:
+                    derived[f["category"]] = f["level"]
+            _require(derived == checks, f"seq {event['seq']}: security checks do not match the reported findings")
             worst = max(checks.values(), key=_RANK.__getitem__)
             _require(verdict.value == OVERALL[worst],
                      f"seq {event['seq']}: security verdict {verdict.value} contradicts its checks ({OVERALL[worst]})")
         p.reviews.append({"kind": rk.value, "verdict": verdict.value, "reviewer": actor,
                           "summary": payload["summary"], "checks": payload.get("checks", {}),
+                          "files_reviewed": payload.get("files_reviewed"), "files_digest": payload.get("files_digest"),
+                          "base": payload.get("base"),
                           "revision": p.revision, "at": at})
     elif kind is E.MARK_READY:
         _require(p.tests is not None and p.tests["revision"] == p.revision,
@@ -256,7 +315,32 @@ def _apply(proposals: dict[str, Proposal], event: dict[str, Any]) -> None:
                       "status": p.status.value, "note": payload.get("note", "")})
 
 
-def replay(events: Iterable[dict[str, Any]]) -> dict[str, Proposal]:
+def owner_check(event: dict[str, Any], owner_key: bytes | None) -> bool | None:
+    """Owner events must be signed (atlas_org.owner_auth); None = no key here to verify."""
+
+    from atlas_org import owner_auth
+
+    if event.get("actor") != OWNER and event.get("author") != OWNER:
+        _require(owner_auth.SIG_FIELD not in event, f"seq {event.get('seq')}: owner_sig on a non-owner event")
+        return None
+    try:
+        return owner_auth.check(event, owner_key)
+    except owner_auth.OwnerSignatureError as exc:
+        raise ProposalLogError(str(exc))
+
+
+def sign_if_owner(record: dict[str, Any], owner_key: bytes | None) -> None:
+    from atlas_org import owner_auth
+
+    if record.get("actor") == OWNER or record.get("author") == OWNER:
+        _require(owner_key is not None, "an owner event needs the owner's key (tools/atlas_org_cli.py owner-init)")
+        try:
+            record[owner_auth.SIG_FIELD] = owner_auth.sign(owner_key, record)
+        except owner_auth.OwnerSignatureError as exc:
+            raise ProposalLogError(str(exc))
+
+
+def replay(events: Iterable[dict[str, Any]], owner_key: bytes | None = None) -> dict[str, Proposal]:
     """Rebuild every proposal from the log; raise ProposalLogError on any defect."""
 
     proposals: dict[str, Proposal] = {}
@@ -267,13 +351,17 @@ def replay(events: Iterable[dict[str, Any]]) -> dict[str, Proposal]:
                  f"sequence break: expected {expected_seq}, got {event.get('seq')!r}")
         _require(event.get("prev_hash") == prev, f"seq {expected_seq}: hash chain broken")
         _require(event.get("hash") == event_hash(event), f"seq {expected_seq}: record altered")
+        verified = owner_check(event, owner_key)
         _apply(proposals, event)
+        if event["event"] in (E.OWNER_APPROVE.value, E.OWNER_REJECT.value):
+            proposals[event["proposal_id"]].owner_decision["verified"] = verified
         prev, expected_seq = event["hash"], expected_seq + 1
     return proposals
 
 
 def next_event(events: list[dict[str, Any]], *, proposal_id: str, event: EventType | str,
-               actor: str, at: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+               actor: str, at: str, payload: dict[str, Any] | None = None,
+               owner_key: bytes | None = None) -> dict[str, Any]:
     """Build the next chained event and prove it is valid by replaying the whole log with it."""
 
     record: dict[str, Any] = {
@@ -285,6 +373,7 @@ def next_event(events: list[dict[str, Any]], *, proposal_id: str, event: EventTy
         "at": at,
         "payload": payload or {},
     }
+    sign_if_owner(record, owner_key)
     record["hash"] = event_hash(record)
-    replay([*events, record])
+    replay([*events, record], owner_key)
     return record
