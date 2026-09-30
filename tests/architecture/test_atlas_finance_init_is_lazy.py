@@ -74,10 +74,11 @@ HEAVY_CHAIN = frozenset(
 )
 
 # The two Group B2 edges, as the gate measures them. Pinned as a prediction.
-EXPECTED_GROUP_B2_EDGES = (
-    "atlas_finance/market_data/contracts.py -> atlas_finance/__init__.py",
-    "atlas_finance/market_data/contracts.py -> atlas_finance/market_data/__init__.py",
-)
+# Registry v5.84 (owner 2026-09-30, "b2 izin"): both package markers were
+# reclassified L2 -> L1 exactly as data_layer/__init__.py was under v4.39, so the
+# two Group B2 ancestor edges no longer exist. The expected set is now empty and
+# the check still fails in both directions (any new edge, or the edges returning).
+EXPECTED_GROUP_B2_EDGES: tuple[str, ...] = ()
 
 # ``__all__`` for both packages, pinned at their pre-change values. The grant
 # requires the public surface to be unchanged; this is what enforces it.

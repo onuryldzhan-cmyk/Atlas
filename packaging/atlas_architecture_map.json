@@ -405,6 +405,16 @@
       "reason": "research/** is L4 research/intelligence (ADR-0009). research/ holds a stronger invariant than L4 itself: research/__init__.py promises no connection to the Atlas runtime, which is enforced as zero first-party imports outside research/ by tests/test_research_isolation.py -- stricter than L4's stdlib+L0+L1 allowance, and stricter than find_forbidden_edges, which exempts TYPE_CHECKING-guarded imports. This rule is inert today: compute_module_layers iterates only the runtime closure, and research/** is reachable from no entry point, so it assigns no module and leaves module_layers unchanged. It is recorded in advance so the classification is a decision on the record rather than one made under pressure the day research/ is first wired in (W1, ADR-0009)"
     },
     {
+      "pattern": "atlas_finance/__init__.py",
+      "layer": "L1",
+      "reason": "PEP 562 lazy package marker (made lazy under registry v4.45): importing it loads no L2 module; re-exports resolve per attribute through importlib strings on first access. Classified L1 as a correction of a stale label, exactly as data_layer/__init__.py under registry v4.39 GRANT-ANCESTOR-INIT-RECLASSIFICATION; no forbidden_edges rule changed and nothing added to permitted_exceptions. Authorized by the owner 2026-09-30 ('b2 izin', registry v5.84), closing ARCH-EDGE-001 Group B2. NOT self-enforcing: held by the runtime regression tests in tests/architecture/test_atlas_finance_init_is_lazy.py, a binding condition of this assignment."
+    },
+    {
+      "pattern": "atlas_finance/market_data/__init__.py",
+      "layer": "L1",
+      "reason": "PEP 562 lazy package marker (made lazy under registry v4.45): importing it loads no L2 module; re-exports resolve per attribute through importlib strings on first access. Classified L1 as a correction of a stale label, exactly as data_layer/__init__.py under registry v4.39 GRANT-ANCESTOR-INIT-RECLASSIFICATION; no forbidden_edges rule changed and nothing added to permitted_exceptions. Authorized by the owner 2026-09-30 ('b2 izin', registry v5.84), closing ARCH-EDGE-001 Group B2. NOT self-enforcing: held by the runtime regression tests in tests/architecture/test_atlas_finance_init_is_lazy.py, a binding condition of this assignment."
+    },
+    {
       "pattern": "atlas_finance/*",
       "layer": "L2",
       "reason": "explicit: atlas_finance/** concrete providers/services default to L2, except the L1 contract/model exceptions listed above"
@@ -445,8 +455,8 @@
     "analysis/__init__.py": "L4",
     "analysis/evidence_status.py": "L1",
     "analysis/world_analysis_engine.py": "L4",
-    "atlas_finance/__init__.py": "L2",
-    "atlas_finance/market_data/__init__.py": "L2",
+    "atlas_finance/__init__.py": "L1",
+    "atlas_finance/market_data/__init__.py": "L1",
     "atlas_finance/market_data/binance_public_provider.py": "L2",
     "atlas_finance/market_data/contracts.py": "L1",
     "atlas_finance/market_data/exceptions.py": "L2",
