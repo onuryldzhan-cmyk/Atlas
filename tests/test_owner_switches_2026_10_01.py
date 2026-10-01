@@ -104,3 +104,16 @@ def test_csv_export_neutralises_formulas():
     import web_app
     html = web_app.TEMPLATE_DIR.joinpath("postmortem.html").read_text(encoding="utf-8")
     assert "Audit F-F" in html and "t = \"'\" + t" in html
+
+
+def test_unrealized_counts_fees_so_it_is_never_rosier(tmp_path):
+    # Independent audit 2026-10-01 F-C: entry fees and the estimated exit fee are included.
+    app = AtlasApplication(state_directory=seed_state(tmp_path / "state"), count_unrealized_in_daily_loss=True,
+                           paper_fee_rate="0.001")
+    m = app.execution
+    m.start()
+    m.execute({"symbol": "BTCUSDT", "action": "BUY", "price": 10.0, "amount": 100,
+               "confidence": 90.0, "risk": "MEDIUM", "request_id": "b1"})
+    m.mark_price_provider = lambda: {"BTCUSDT": Decimal("10")}
+    flat = m._mark_to_market(m._derived_position_exposures())
+    assert flat is not None and flat < 0  # unchanged price still shows the fees paid and owed

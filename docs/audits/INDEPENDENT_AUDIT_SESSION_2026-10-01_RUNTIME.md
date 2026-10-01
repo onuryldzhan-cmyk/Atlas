@@ -80,6 +80,6 @@ No path to a real order was found. Execution mode is PAPER and live authority is
 | **F-B (MEDIUM)** | Fixed (visibility) | `ExecutionManager.unpriced_held_symbols` is shown in `status()`, and readiness reports `held_position_prices` as FAIL naming the coin. The refusal itself stays, because it fails closed. |
 | **F-D (LOW)** | Fixed | Observer violations are now changed under the manager's lock. |
 | **F-F (LOW)** | Fixed | The CSV export prefixes formula-like cells with `'`. |
-| **F-C (LOW)** | Deferred | Entry fees are still missing from unrealized P&L. |
+| **F-C (LOW)** | Fixed | Unrealized P&L is now measured against cost basis plus entry fees, net of the estimated exit fee. It can only be more conservative. |
 | **F-E (LOW)** | Deferred | The experiment is off, so this has no effect today. |
 | **F-G (INFO)** | Deferred | Record numbering in `overview_snapshot`. |

@@ -3025,6 +3025,8 @@ class ExecutionManager:
         try:
             prices = provider() or {}
             self.unpriced_held_symbols = []
+            foundation = getattr(self, "portfolio_foundation", None)
+            book = (foundation.snapshot().get("positions") or {}) if foundation is not None else {}
             total = Decimal("0")
             for p in positions:
                 price = prices.get(p.symbol)
@@ -3032,7 +3034,16 @@ class ExecutionManager:
                     # Audit F-B: name the coin, so readiness can say why new buys stop.
                     self.unpriced_held_symbols = sorted({q.symbol for q in positions if prices.get(q.symbol) is None})
                     return None
-                total += Decimal(str(price)) * p.base_quantity - p.quote_exposure
+                value = Decimal(str(price)) * p.base_quantity
+                held = book.get(p.symbol)
+                if held is not None:
+                    # Audit F-C: measured against what the position really cost (cost
+                    # basis + entry fees) and net of the fee a close would pay, so
+                    # the figure can only be more conservative than before.
+                    cost = Decimal(str(held["cost_quote"])) + Decimal(str(held.get("entry_fees") or "0"))
+                    total += value - cost - value * Decimal(str(getattr(self, "paper_fee_rate", 0)))
+                else:
+                    total += value - p.quote_exposure
             return total if total.is_finite() else None
         except Exception:
             logger.warning("mark-to-market unavailable; unrealized P&L unknown", exc_info=True)
