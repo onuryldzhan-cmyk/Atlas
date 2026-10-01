@@ -46,5 +46,5 @@ Owner: approve A or B (recommended B), or reject. Then an independent audit, the
 - **F-2, checked.** The runtime refuses a second BUY on an open position (`DUPLICATE_OPEN_POSITION`, verified by a test), so a position never gets a second bucket. If records ever disagree, the position reads UNKNOWN, which is now the strictest outcome.
 - **F-3, partly fixed.** A corrupt file is logged once at ERROR level. Repair stays with the owner; deleting the file is safe.
 - **F-4, design text corrected.** The record is written **before** the durable commit, not after. This is harmless: position ids are deterministic per `request_id`, and an id whose open never commits is never looked up.
-- **F-5, fixed.** The weak `hasattr` test was replaced. Tests were added for: an add-on under a different bucket, a failing sidecar not changing the trade, the wiring, and NB-4 evidence removal.
+- **F-5, mostly fixed** (re-audit R-3: still missing a restart test and a full flag-off decision comparison; the wiring test only checks a line of source text). The weak `hasattr` test was replaced. Tests were added for: an add-on under a different bucket, a failing sidecar not changing the trade, the wiring, and NB-4 evidence removal.
 - **F-6 / F-7 deferred:** file growth and reading cost; a lock between read and append, and Windows behaviour (UNKNOWN).
