@@ -37,4 +37,33 @@
     {% endfor %}
     {% endfor %}
     <a class="cc" href="/hq">Command Center ↗</a>
+    <div class="grp" style="text-transform:none">Ctrl+K: hızlı git</div>
 </aside>
+{# Ctrl+K palette (Dashboard "later" item, 2026-10-01): navigation only. No fetch, no write. #}
+<div id="atlas-pal" hidden style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999">
+    <div style="max-width:420px;margin:12vh auto;background:var(--atlas-panel);border:1px solid var(--atlas-line);border-radius:8px;padding:10px">
+        <input id="atlas-pal-q" aria-label="Sayfa ara" placeholder="Sayfa ara…" style="width:100%;background:var(--atlas-bg);color:var(--atlas-text);border:1px solid var(--atlas-line);border-radius:6px;padding:6px 8px">
+        <div id="atlas-pal-list" style="margin-top:6px"></div>
+    </div>
+</div>
+<script>
+(() => {
+    const pages = [...document.querySelectorAll('.atlas-side a')].map((a) => [a.textContent.trim(), a.getAttribute('href')])
+        .concat([['İşlem analizi (post-mortem)', '/postmortem'], ['Güvenlik', '/security'], ['Yol haritası', '/roadmap']]);
+    const pal = document.getElementById('atlas-pal'), q = document.getElementById('atlas-pal-q'), list = document.getElementById('atlas-pal-list');
+    let hits = [];
+    const draw = () => {
+        const t = q.value.toLowerCase();
+        hits = pages.filter(([l, h]) => (l + ' ' + h).toLowerCase().includes(t));
+        list.innerHTML = '';
+        hits.forEach(([l, h], i) => { const a = document.createElement('a'); a.href = h; a.textContent = l; a.style.cssText = 'display:block;padding:5px 8px;border-radius:6px;text-decoration:none;color:' + (i ? 'var(--atlas-muted)' : 'var(--atlas-text)'); list.appendChild(a); });
+    };
+    document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); pal.hidden = false; q.value = ''; draw(); q.focus(); }
+        else if (!pal.hidden && e.key === 'Escape') pal.hidden = true;
+        else if (!pal.hidden && e.key === 'Enter' && hits.length) location.href = hits[0][1];
+    });
+    q.addEventListener('input', draw);
+    pal.addEventListener('click', (e) => { if (e.target === pal) pal.hidden = true; });
+})();
+</script>

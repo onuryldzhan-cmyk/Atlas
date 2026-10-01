@@ -134,3 +134,8 @@ def test_postmortem_shows_hindsight_as_evidence_and_unmeasured_as_such():
     html = web_app.TEMPLATE_DIR.joinpath("postmortem.html").read_text(encoding="utf-8")
     assert "hiçbir kararı değiştirmez" in html and "Ölçülmeyenler" in html and "N/A" in html
     assert 'href="/postmortem"' in web_app.TEMPLATE_DIR.joinpath("trading.html").read_text(encoding="utf-8")
+
+
+def test_ctrl_k_palette_only_navigates():
+    html = web_app.TEMPLATE_DIR.joinpath("_atlas_sidebar.html").read_text(encoding="utf-8")
+    assert "atlas-pal" in html and "fetch(" not in html and "<form" not in html and "innerHTML = ''" in html
