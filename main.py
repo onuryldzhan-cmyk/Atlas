@@ -83,7 +83,11 @@ def trade_universe(path: Path | str = DEFAULT_INSTRUMENT_RULES_PATH) -> list[str
     return symbols or None
 # EXP-001 stopped early by the owner on 2026-09-29 (registry v5.71): 16 trades,
 # 6/16 winners after fees, gross -74.48, net -99.30; back to the policy floor.
-PAPER_CONFIDENCE_EXPERIMENT = False
+# 2026-10-01: owner switched on EXP-002 ("Sadece EXP-002"), approved by the
+# independent audit docs/audits/INDEPENDENT_AUDIT_FUNDING_SENTIMENT_EXP002_2026-10-01.md
+# with funding sentiment OFF: MEDIUM only, floor 0.62, 30 admissions, 2026-10-02..16, PAPER.
+PAPER_CONFIDENCE_EXPERIMENT = True
+PAPER_CONFIDENCE_EXPERIMENT_ID = "EXP-002"
 
 # Minimum spacing between two "heartbeat write failed" announcements, so a
 # target that flaps between failing and working cannot flood the log.
@@ -512,9 +516,10 @@ class AtlasProcess:
 
         self.application = AtlasApplication(
             execution_mode=EXECUTION_MODE,
-            # EXP-001 stopped by the owner (v5.71); re-enabling it is an
-            # owner decision and must stay a literal at this one call site
-            paper_confidence_experiment=False,
+            # EXP-001 stopped by the owner (v5.71). EXP-002 switched on by the
+            # owner 2026-10-01; experiments stay literals at this one call site.
+            paper_confidence_experiment=True,
+            paper_confidence_experiment_id="EXP-002",
             paper_fee_rate=PAPER_FEE_RATE_PER_SIDE,
             # Owner switch-on 2026-10-01 ("Aç onayı da veriyorum") after the
             # independent audits: F-3 (unrealized loss in the daily loss limit),

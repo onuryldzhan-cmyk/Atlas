@@ -99,7 +99,8 @@ def test_runtime_variable_list_covers_every_name_the_runtime_reads():
 
 def test_main_mode_is_paper_and_passes_its_own_validation(roots):
     assert main.EXECUTION_MODE == "PAPER"
-    assert main.PAPER_CONFIDENCE_EXPERIMENT is False  # EXP-001 stopped by the owner (v5.71); matches the call site literal
+    # Test policy change 2026-10-01: the owner switched on EXP-002 (EXP-001 stays stopped, v5.71).
+    assert main.PAPER_CONFIDENCE_EXPERIMENT is True and main.PAPER_CONFIDENCE_EXPERIMENT_ID == "EXP-002"
     config = load_config({}, execution_mode=main.EXECUTION_MODE,
                          paper_confidence_experiment=main.PAPER_CONFIDENCE_EXPERIMENT)
     assert config.execution_mode == "PAPER"

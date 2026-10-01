@@ -33,11 +33,17 @@ def test_cap_reverts_to_default():
     assert engine(now=INSIDE, experiment=EXP, prior=30).evaluate(buy(bucket="MEDIUM", confidence="0.63"), state()).reason_code == "CONFIDENCE_BELOW_POLICY"
 
 
-def test_main_keeps_experiments_off_until_the_owner_turns_one_on():
+# Test policy change 2026-10-01: was "main keeps experiments off"; the owner switched on EXP-002
+# after the independent audit (funding sentiment stays OFF, audit condition).
+def test_main_runs_exp002_only_with_funding_off_and_constants_match_the_call_site():
+    import main
     tree = ast.parse((Path(__file__).resolve().parents[1] / "main.py").read_text(encoding="utf-8"))
     call = next(n for n in ast.walk(tree) if isinstance(n, ast.Call) and getattr(n.func, "id", None) == "AtlasApplication")
     kw = {k.arg: k.value for k in call.keywords}
-    assert ast.literal_eval(kw["paper_confidence_experiment"]) is False
+    assert ast.literal_eval(kw["paper_confidence_experiment"]) is True
+    assert ast.literal_eval(kw["paper_confidence_experiment_id"]) == "EXP-002"
+    assert "funding_sentiment" not in kw
+    assert main.PAPER_CONFIDENCE_EXPERIMENT is True and main.PAPER_CONFIDENCE_EXPERIMENT_ID == "EXP-002"
 
 
 def test_unknown_experiment_id_attaches_nothing(tmp_path):
