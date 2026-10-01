@@ -19,10 +19,10 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `637da41546ca6e6481f3c2817095f2a06d1da83a` |
-| generated_from_tree | `69caf2db3690e35847f5aaa510764fbca5ebe244` |
+| generated_from_commit | `3a11c08ed4bd3c1354b26e71680d57cae73939c9` |
+| generated_from_tree | `b001dd013a229ea467840461efa0c12df01caca5` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['ackaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'tests/test_exp001_paper_confidence_experiment.py'] |
+| modified_tracked_paths_at_generation | ['ackaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md'] |
 
 ## What this artifact is, and what it is not
 
