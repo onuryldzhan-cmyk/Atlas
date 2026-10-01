@@ -61,12 +61,21 @@ def dataset_manifest(data: dict[str, list[list]]) -> dict[str, Any]:
     return {"dataset_sha256": h.hexdigest(), "symbols": per}
 
 
-def split(data: dict[str, list[list]], windows: int) -> list[dict[str, list[list]]]:
+def split(data: dict[str, list[list]], windows: int, embargo: int = 0) -> list[dict[str, list[list]]]:
+    """Consecutive, non-overlapping windows.
+
+    embargo > 0 (roadmap C-3, purge/embargo): the first `embargo` candles of
+    every window after the first are dropped, so a trend or position spilling
+    over a window boundary cannot inflate the next window's result. 0 keeps
+    the historical split exactly.
+    """
+    if embargo < 0:
+        raise ValueError("embargo must be >= 0")
     length = min(len(rows) for rows in data.values())
     size = length // windows
-    if size <= bt.WINDOW + 60:
-        raise ValueError(f"window too short: {size} candles; use more --days or fewer --windows")
-    return [{s: rows[i * size:(i + 1) * size] for s, rows in data.items()} for i in range(windows)]
+    if size - embargo <= bt.WINDOW + 60:
+        raise ValueError(f"window too short: {size - embargo} candles after embargo; use more --days or fewer --windows")
+    return [{s: rows[i * size + (embargo if i else 0):(i + 1) * size] for s, rows in data.items()} for i in range(windows)]
 
 
 def _one(job: tuple) -> dict[str, Any]:
@@ -76,10 +85,11 @@ def _one(job: tuple) -> dict[str, Any]:
 
 
 def compare(data: dict[str, list[list]], windows: int, step: int, exp001: bool,
-            brain_factory=None, variants: dict[str, dict[str, Any]] = VARIANTS, jobs: int = 1) -> dict[str, Any]:
+            brain_factory=None, variants: dict[str, dict[str, Any]] = VARIANTS, jobs: int = 1,
+            embargo: int = 0) -> dict[str, Any]:
     """Every variant on every window. jobs > 1 runs the independent replays in parallel
     processes (same inputs, same deterministic results, just faster)."""
-    parts = split(data, windows)
+    parts = split(data, windows, embargo)
     work = [(name, i, (part, step, exp001, brain_factory, kw))
             for name, kw in variants.items() for i, part in enumerate(parts)]
     results: dict[tuple[str, int], dict[str, Any]] = {}
@@ -113,6 +123,8 @@ def main(argv: list[str] | None = None, fetch=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--days", type=int, default=21)
     parser.add_argument("--windows", type=int, default=3)
+    parser.add_argument("--embargo", type=int, default=0,
+                        help="candles dropped at the start of every window after the first (no spill-over between windows)")
     parser.add_argument("--step", type=int, default=15)
     parser.add_argument("--jobs", type=int, default=max(1, (os.cpu_count() or 2) - 1),
                         help="parallel processes (default: all cores but one)")
@@ -153,7 +165,7 @@ def main(argv: list[str] | None = None, fetch=None) -> int:
     if args.save_dataset:
         Path(args.save_dataset).write_text(json.dumps({"manifest": manifest, "data": data}, default=str), encoding="utf-8")
     print(f"replaying {len(variants)} variants x {args.windows} windows (this takes a while)...", file=sys.stderr, flush=True)
-    result = compare(data, args.windows, args.step, not args.no_exp001, variants=variants, jobs=args.jobs)
+    result = compare(data, args.windows, args.step, not args.no_exp001, variants=variants, jobs=args.jobs, embargo=args.embargo)
     result["dataset"] = manifest
     if args.output:
         out = Path(args.output)
@@ -161,7 +173,7 @@ def main(argv: list[str] | None = None, fetch=None) -> int:
         tmp.write_text(json.dumps({**result, "finished_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()},
                                   default=str, ensure_ascii=False), encoding="utf-8")
         os.replace(tmp, out)
-    result["parameters"] = {"windows": args.windows, "step": args.step, "exp001": not args.no_exp001,
+    result["parameters"] = {"embargo": args.embargo, "windows": args.windows, "step": args.step, "exp001": not args.no_exp001,
                             "variants": sorted(variants)}
     if args.json:
         print(json.dumps(result, default=str, ensure_ascii=False, indent=2))

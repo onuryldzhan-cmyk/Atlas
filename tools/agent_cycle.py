@@ -194,7 +194,7 @@ def strategy_research(records_dir: Path, research_dir: Path | None = None, launc
         return {"verdict": "OK", "summary": "karşılaştırma arka planda sürüyor"}
     if result.exists() and now - result.stat().st_mtime < RESEARCH_EVERY_H * 3600:
         return {"verdict": "OK", "summary": "son karşılaştırma 24 saatten yeni; yeniden başlatılmadı"}
-    cmd = [sys.executable, "-m", "tools.strategy_compare", "--days", "30", "--windows", "3",
+    cmd = [sys.executable, "-m", "tools.strategy_compare", "--days", "30", "--windows", "3", "--embargo", "240",
            "--symbols-file", "config/universe_selection.json", "--json", "--output", str(result)]
     (launch or (lambda c: subprocess.Popen(c, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                                            cwd=str(Path(__file__).resolve().parents[1]))))(cmd)
