@@ -181,6 +181,9 @@ def strategy_research(records_dir: Path, research_dir: Path | None = None, launc
             "record_id": f"SC-{len(existing) + 1:04d}", "type": "EXPERIMENTS", "authority": "RESEARCH",
             "title": f"Strateji karşılaştırması: BETTER = {', '.join(better) or 'yok'}",
             "body": json.dumps({"verdicts": data.get("verdicts"), "net_by_window": nets,
+                                # full evidence for tools/regime_bar_check (drawdown and trade counts per window)
+                                "drawdown_by_window": {name: [r.get("max_drawdown") for r in rows] for name, rows in data.get("table", {}).items()},
+                                "closed_by_window": {name: [r.get("closed_trades") for r in rows] for name, rows in data.get("table", {}).items()},
                                 "dataset": (data.get("dataset") or {}).get("dataset_sha256"), "finished_at": data.get("finished_at")},
                                ensure_ascii=False, default=str),
             "author": "strategy_lab", "source": "tools/agent_cycle.py (strategy_research, background tools.strategy_compare)"})
