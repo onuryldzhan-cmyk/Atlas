@@ -35,6 +35,7 @@ from typing import Any, Iterable
 
 MIN_PROVISIONAL = 10
 MIN_HALF = 5
+LOSS_STREAK = 3  # reference: freqtrade StoplossGuard protection (idea only)
 COOLDOWN_MIN = 60  # reference: freqtrade CooldownPeriod protection (idea only)
 EXPIRE_DAYS = 30  # a lesson not observed for this long (relative to the newest trade) is EXPIRED, not deleted
 FEE_RATE_PER_SIDE = Decimal("0.001")  # same estimate as ai/core/intelligence/trade_evidence.py
@@ -216,7 +217,18 @@ def book_extras(exps: list[dict[str, Any]]) -> dict[str, Any]:
     cooldown = {"window_min": COOLDOWN_MIN, "trades": len(after_loss), "net": q(sum(after_loss, Decimal("0"))),
                 "verdict": "MEASURED" if len(after_loss) >= MIN_PROVISIONAL else "INSUFFICIENT",
                 "effect": "none: evidence for a possible protection rule, not a rule"}
+    # Loss-streak evidence for a freqtrade-style StoplossGuard (core proposal #4, DEFERRED as a
+    # runtime rule): trades opened right after LOSS_STREAK consecutive losing closes (book order).
+    after_streak, run = [], 0
+    for x in nets:
+        if run >= LOSS_STREAK:
+            after_streak.append(x)
+        run = run + 1 if x <= 0 else 0
+    loss_streak = {"streak": LOSS_STREAK, "trades": len(after_streak), "net": q(sum(after_streak, Decimal("0"))),
+                   "verdict": "MEASURED" if len(after_streak) >= MIN_PROVISIONAL else "INSUFFICIENT",
+                   "effect": "none: evidence for a possible protection rule, not a rule"}
     return {"per_coin": per_coin, "daily_realised": daily,
+            "loss_streak_evidence": loss_streak,
             "cooldown_evidence": cooldown,
             "avg_minutes_winners": avg(hold(True)), "avg_minutes_losers": avg(hold(False)),
             "longest_winning_streak": longest, "sqn": sqn,

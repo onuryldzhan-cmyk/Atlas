@@ -107,3 +107,5 @@ All ACCEPTs remain subject to owner approval and registry entry; every risk-path
 | **#6 Look-ahead check** | DONE (research) | `tools/lookahead_check.py`: replays a truncated and a full dataset; trades closed before the cut must be identical. A test confirms a strategy that peeks at future data is caught. Warm-up-length sensitivity is still open. |
 | **#8** | DEFERRED | CRITICAL; next. |
 | **#9, #10** | DEFERRED | As in the proposal. |
+| **#4 Loss-streak guard** | EVIDENCE FIRST (done) | `/postmortem` now shows how trades opened after 3 consecutive losses did (`loss_streak_evidence`). The runtime rule stays DEFERRED until that evidence is MEASURED (≥ 10 trades). |
+| **#8 Startup reconciliation** | ALREADY PRESENT (checked) | `FinancialRuntimeSafetyService` refuses to start on journal/idempotency disagreement (`SOURCE_DISAGREEMENT`), and `tools/reconcile_execution_authorities.py --dry-run` is the operator report. Venue-side reconciliation only applies once orders reach a venue (Shadow and later). |

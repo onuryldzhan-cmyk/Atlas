@@ -61,6 +61,7 @@
             <div class="col-md-6"><b>Günlük gerçekleşen (UTC)</b>${tbl(['Gün', 'İşlem', 'Net'], (x.daily_realised || []).slice(-14).reverse().map((d) =>
                 `<tr><td>${esc(d.day_utc)}</td><td class="num">${esc(d.trades)}</td><td class="num ${Number(d.net_realised) > 0 ? 'win' : 'loss'}">${esc(d.net_realised)}</td></tr>`))}</div></div>
             <div class="mt-2"><b>Zarardan sonra aceleyle girmek</b> (aynı coinde zararla kapanıştan sonraki ${esc((x.cooldown_evidence || {}).window_min)} dk): ${esc((x.cooldown_evidence || {}).trades)} işlem, net <span class="num">${na((x.cooldown_evidence || {}).net)}</span> (${esc((x.cooldown_evidence || {}).verdict === 'MEASURED' ? 'ölçüldü' : 'örnek az')}). <span class="muted">Sadece kanıt; bir kural değil.</span></div>
+            <div><b>Art arda zarardan sonra</b> (${esc((x.loss_streak_evidence || {}).streak)} zarar üst üste): ${esc((x.loss_streak_evidence || {}).trades)} işlem, net <span class="num">${na((x.loss_streak_evidence || {}).net)}</span> (${esc((x.loss_streak_evidence || {}).verdict === 'MEASURED' ? 'ölçüldü' : 'örnek az')}). <span class="muted">Sadece kanıt; bir kural değil.</span></div>
             <p class="muted mt-2">Çıkış nedeni: ${esc(x.per_exit_reason)}. ${esc((x.notes || {}).daily_realised || '')}. SQN: ${esc((x.notes || {}).sqn || '')}.</p>` : '';
         const rows = (l.experiences || []).slice().reverse();
         last = rows;

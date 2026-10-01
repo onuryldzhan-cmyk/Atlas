@@ -36,3 +36,12 @@ def test_cooldown_evidence_counts_reentries_after_a_loss_on_the_same_coin():
             row(4, "BTCUSDT", "3", "2026-10-01T14:00:00+00:00", "2026-10-01T14:30:00+00:00")]   # long after
     ev = build(rows, [])["book_extras"]["cooldown_evidence"]
     assert ev["trades"] == 1 and Decimal(ev["net"]) < 0 and ev["verdict"] == "INSUFFICIENT"
+
+
+def test_loss_streak_evidence_counts_trades_after_three_losses():
+    grosses = ["-5", "-5", "-5", "3", "-2", "-2", "-2", "-2", "4"]
+    rows = [row(i, "BTCUSDT", g, f"2026-10-01T{10 + i:02d}:00:00+00:00", f"2026-10-01T{10 + i:02d}:30:00+00:00")
+            for i, g in enumerate(grosses)]
+    ev = build(rows, [])["book_extras"]["loss_streak_evidence"]
+    # after the 3rd loss: "3"; after -2,-2,-2: "-2" and "4" (streak still >= 3 before each)
+    assert ev["trades"] == 3 and ev["verdict"] == "INSUFFICIENT"
