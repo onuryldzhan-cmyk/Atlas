@@ -33,6 +33,8 @@ AGENTS: dict[str, tuple[str, str]] = {  # unit id -> (display name, room)
     "open_source_research": ("Araştırma ajanı", "research"),
     "quant_research": ("Kantitatif araştırma", "quant"),
     "strategy_lab": ("Strateji laboratuvarı", "quant"),
+    "strategy_research": ("Strateji karşılaştırma", "research"),
+    "task_runner": ("Görev yürütücü", "command"),
     "market_regime": ("Piyasa rejimi", "research"),
     "code_engineering": ("Kod ajanı", "dev"),
     "code_review": ("Kod inceleme", "review"),
