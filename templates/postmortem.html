@@ -32,6 +32,7 @@
     <h1 class="h4">İşlem sonrası analiz</h1>
     <p class="muted">Kapanan her işlem için geriye dönük gerçekler. Bunlar sadece kanıttır, hiçbir kararı değiştirmez. Ortam: PAPER.</p>
     <div id="book" class="pane"></div>
+    <button id="csv" type="button" class="btn btn-sm btn-outline-secondary mb-2">CSV indir</button>
     <div id="trades" class="pane table-wrap"></div>
 </div>
 </main>
@@ -51,6 +52,7 @@
             <span class="num">net ${na(m.net_total)} · beklenti ${na(m.expectancy)} · kazanma oranı ${m.win_rate == null ? 'N/A' : esc((m.win_rate * 100).toFixed(1)) + '%'} · profit factor ${na(m.profit_factor)} · max düşüş ${na(m.max_drawdown)}</span>`
             : '<span class="muted">Henüz kapanan işlem yok.</span>';
         const rows = (l.experiences || []).slice().reverse();
+        last = rows;
         if (!rows.length) { trades.innerHTML = ''; return; }
         trades.innerHTML = `<table><thead><tr><th>Kapanış</th><th>Coin</th><th>Rejim</th><th>Süre (dk)</th><th>Brüt %</th><th>Net</th><th>Komisyon</th><th>Yön doğru?</th><th>Komisyon kazancı sildi?</th><th>İşlem yapmasaydı fark</th></tr></thead><tbody>${rows.map((e) => {
             const a = e.analysis || {}, cf = a.counterfactual || {};
@@ -60,6 +62,17 @@
         }).join('')}</tbody></table>
         <p class="muted mt-2">Ölçülmeyenler: ${esc(((rows[0].analysis || {}).not_measured || []).join(' · '))}. Son ${rows.length} / ${esc(l.experience_count)} işlem gösteriliyor.</p>`;
     }
+    let last = [];
+    document.getElementById('csv').addEventListener('click', () => {
+        // Export (Dashboard "later" item): the rows already on screen, built in the browser. Nothing is sent anywhere.
+        const cols = ['closed_at', 'symbol', 'regime', 'environment', 'notional', 'gross_pnl', 'net_pnl', 'outcome', 'fingerprint'];
+        const cell = (v) => '"' + String(v ?? 'N/A').replace(/"/g, '""') + '"';
+        const csv = [cols.join(',')].concat(last.map((e) => cols.map((c) => cell(e[c])).join(','))).join('\n');
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+        a.download = 'atlas_islemler.csv';
+        a.click();
+    });
     refresh();
     setInterval(refresh, 30000);
 })();
