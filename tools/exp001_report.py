@@ -35,7 +35,7 @@ from core.application import (
     resolve_state_directory,
 )
 from core.experiment_ledger import EXPERIMENT_LEDGER_FILE
-from core.risk_engine import EXP001_PAPER_CONFIDENCE_EXPERIMENT as EXP
+from core.risk_engine import EXP001_PAPER_CONFIDENCE_EXPERIMENT as EXP, PAPER_CONFIDENCE_EXPERIMENTS
 from tools.paper_position_report import approvals_by_symbol, entry_approval
 
 # Below this many closed trades per group no conclusion is drawn.
@@ -111,14 +111,14 @@ def summarize(records: list[dict]) -> dict:
     }
 
 
-def group_closed(closed: list[dict], approvals: dict[str, list[dict]]) -> dict[str, list[dict]]:
-    groups: dict[str, list[dict]] = {"EXP-001": [], "policy floor": [], "unattributed": []}
+def group_closed(closed: list[dict], approvals: dict[str, list[dict]], exp=EXP) -> dict[str, list[dict]]:
+    groups: dict[str, list[dict]] = {exp.experiment_id: [], "policy floor": [], "unattributed": []}
     for record in closed:
         approval = entry_approval(approvals.get(record.get("symbol", ""), []), record.get("opened_at"))
         if approval is None:
             groups["unattributed"].append(record)
-        elif approval.get("experiment_id") == EXP.experiment_id:
-            groups["EXP-001"].append(record)
+        elif approval.get("experiment_id") == exp.experiment_id:
+            groups[exp.experiment_id].append(record)
         else:
             groups["policy floor"].append(record)
     return groups
@@ -155,10 +155,16 @@ def print_group(name: str, summary: dict) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Read-only experiment results report")
+    parser.add_argument("--experiment", default="EXP-001", choices=sorted(PAPER_CONFIDENCE_EXPERIMENTS))
+    args = parser.parse_args(argv)
+    EXP = PAPER_CONFIDENCE_EXPERIMENTS[args.experiment]  # noqa: N806 - shadows the module default on purpose
     root = resolve_state_directory()
     closed = load_closed(root / EXECUTION_CLOSED_POSITIONS_FILE)
     approvals = approvals_by_symbol(root / EXECUTION_AUDIT_EVENT_FILE)
-    groups = group_closed(closed, approvals)
+    groups = group_closed(closed, approvals, EXP)
 
     admitted = sum(1 for items in approvals.values() for a in items
                    if a.get("experiment_id") == EXP.experiment_id)
@@ -178,7 +184,7 @@ def main(argv: list[str] | None = None) -> int:
           + (f", ledger {ledger}" if ledger is not None else ""))
     print()
 
-    for name in ("EXP-001", "policy floor", "unattributed"):
+    for name in (EXP.experiment_id, "policy floor", "unattributed"):
         if name == "unattributed" and not groups[name]:
             continue
         print_group(name, summarize(groups[name]))
@@ -191,7 +197,7 @@ def main(argv: list[str] | None = None) -> int:
         fees = Decimal(str(state.get("fees", "0")))
         print(f"account (all trades): realized gross {gross:.2f}, all fees {fees:.2f}, "
               f"net {gross - fees:.2f}, cash {Decimal(str(state.get('cash', '0'))):.2f}")
-    print("Nothing was changed. The keep/stop decision on EXP-001 is the owner's.")
+    print(f"Nothing was changed. The keep/stop decision on {EXP.experiment_id} is the owner's.")
     return 0
 
 

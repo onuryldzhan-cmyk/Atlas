@@ -107,3 +107,12 @@ def test_verdict_uses_net_after_estimated_fees():
     r = closed("B", "1", "2026-09-28T10:00:00+00:00", "2026-09-28T11:00:00+00:00")
     r["cost_quote"] = "800"
     assert report.verdict(report.summarize([r] * 30)).startswith("NOT PROFITABLE after estimated fees")
+
+
+def test_report_groups_exp002_admissions_under_their_own_id():
+    from core.risk_engine import EXP002_PAPER_CONFIDENCE_EXPERIMENT as EXP2
+    rows = [{"symbol": "BTCUSDT", "opened_at": "2026-10-03T10:00:00+00:00", "closed_at": "2026-10-03T11:00:00+00:00",
+             "cost_quote": "100", "gross_pnl": "1", "base_quantity": "1"}]
+    approvals = {"BTCUSDT": [{"at": "2026-10-03T10:00:00+00:00", "experiment_id": "EXP-002"}]}
+    groups = report.group_closed(rows, approvals, EXP2)
+    assert set(groups) == {"EXP-002", "policy floor", "unattributed"}
