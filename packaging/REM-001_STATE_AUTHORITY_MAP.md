@@ -19,10 +19,10 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `2a32633ea95c3a66ee9df3d479f3904eb22c0e7c` |
-| generated_from_tree | `f30abfec67d0c95716bb9cbaabc3990d7a8540a8` |
+| generated_from_commit | `324c995c7961dd750fb9e335dfcaefc3dbb9c931` |
+| generated_from_tree | `eb3d7e2ed313e56455886cf62851a5b395bec656` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['ackaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md'] |
+| modified_tracked_paths_at_generation | ['ackaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/atlas_architecture_map.json', 'packaging/atlas_runtime_closure.json'] |
 
 ## What this artifact is, and what it is not
 
@@ -60,11 +60,11 @@ observation.
 | field | value |
 | --- | --- |
 | entry_points | `main.py`, `web_app.py`, `atlas_service.py`, `atlas_supervisor.py` |
-| modules_in_runtime_closure | 131 |
+| modules_in_runtime_closure | 132 |
 | declared_state_file_constants | 10 |
-| persistence_sites | 88 |
-| modules_with_persistence_sites | 38 |
-| distinct_state_file_literals | 35 |
+| persistence_sites | 91 |
+| modules_with_persistence_sites | 39 |
+| distinct_state_file_literals | 36 |
 | parse_failures | 0 |
 
 ## Declared durable state surface
@@ -127,6 +127,7 @@ nothing is inferred from an absence.
 | `proposals.jsonl` | `observability/governance_records.py` |
 | `reports/observability/telemetry_summary.json` | `observability/panel_sources.py` |
 | `reports/observability/test_results.meta.json` | `observability/panel_sources.py` |
+| `risk-bucket sidecar unreadable: every position counts against every sleeve; repair: python -m core.position_risk_buckets repair <state>/position_risk_buckets.jsonl` | `observability/readiness.py` |
 | `risk_accounting_state.json` | `core/application.py` |
 | `runtime_data/audit/atlas_os_audit.jsonl` | `atlas_os/audit/audit_log.py` |
 | `supervisor_heartbeat.json` | `atlas_supervisor.py` |
@@ -196,6 +197,8 @@ nothing is inferred from an absence.
 | `core/paper_trader.py` | FSYNC | 874 | `PaperTrader::save` |
 | `core/paper_trader.py` | ATOMIC_REPLACE | 879 | `PaperTrader::save` |
 | `core/position_risk_buckets.py` | FSYNC | 81 | `PositionRiskBucketStore::record` |
+| `core/position_risk_buckets.py` | PATH_WRITE_TEXT | 107 | `repair_unfinished_tail` |
+| `core/position_risk_buckets.py` | PATH_WRITE_TEXT | 108 | `repair_unfinished_tail` |
 | `core/risk_state_store.py` | JSON_DUMP | 98 | `JsonRiskStateStore::save` |
 | `core/risk_state_store.py` | FSYNC | 99 | `JsonRiskStateStore::save` |
 | `core/risk_state_store.py` | ATOMIC_REPLACE | 100 | `JsonRiskStateStore::save` |
@@ -217,6 +220,7 @@ nothing is inferred from an absence.
 | `observability/command_center.py` | ATOMIC_REPLACE | 107 | `answer` |
 | `observability/command_center.py` | ATOMIC_REPLACE | 107 | `answer` |
 | `observability/command_center.py` | ATOMIC_REPLACE | 107 | `answer` |
+| `observability/event_contract.py` | ATOMIC_REPLACE | 57 | `_iso` |
 | `observability/panel_sources.py` | ATOMIC_REPLACE | 377 | `_supersedes_name` |
 | `observability/portfolio_view.py` | ATOMIC_REPLACE | 41 | `_age_seconds` |
 | `observability/portfolio_view.py` | ATOMIC_REPLACE | 45 | `_age_seconds` |
