@@ -20,8 +20,8 @@ Command: `python -m tools.build_rem001_gate1_maps construction --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `a3d71255c8bd6c2a6956723e1d8c48e324c8dae4` |
-| generated_from_tree | `db325a5d8c6f1f2904b96c2a7db4b4410616d7a1` |
+| generated_from_commit | `a97a4f6b4307748b54fc4aa34a6833345a28ea7b` |
+| generated_from_tree | `d3929ab5606958588598f58a7389e91ec0c5ffab` |
 | tracked_working_tree_clean | True |
 | modified_tracked_paths_at_generation | none |
 
@@ -254,17 +254,17 @@ classes and their observed constructors:
 | `core/execution_manager.py` | `AuditEventStore` | `core/audit_event_store.py` | 413 | `ExecutionManager::__init__` |
 | `core/execution_manager.py` | `ExecutionIdempotencyStore` | `core/execution_idempotency_store.py` | 370 | `ExecutionManager::__init__` |
 | `core/execution_manager.py` | `ExecutionRequest` | `core/execution_models.py` | 2562 | `ExecutionManager::build_request` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 4413 | `ExecutionManager::paper_execute` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5670 | `ExecutionManager::_block_live_dispatch` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5730 | `ExecutionManager::live_execute` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5821 | `ExecutionManager::live_execute` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6075 | `ExecutionManager::_failure_result` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 4417 | `ExecutionManager::paper_execute` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5674 | `ExecutionManager::_block_live_dispatch` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5734 | `ExecutionManager::live_execute` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5825 | `ExecutionManager::live_execute` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6079 | `ExecutionManager::_failure_result` |
 | `core/execution_manager.py` | `ExecutionTransactionJournal` | `core/execution_transaction_journal.py` | 389 | `ExecutionManager::__init__` |
 | `core/execution_manager.py` | `FinancialRuntimeSafetyService` | `data_layer/runtime_safety.py` | 400 | `ExecutionManager::__init__` |
 | `core/execution_manager.py` | `FinancialRuntimeSafetyService` | `data_layer/runtime_safety.py` | 476 | `ExecutionManager::_assess_financial_readiness` |
 | `core/execution_manager.py` | `PositionExposure` | `core/risk_engine.py` | 2852 | `ExecutionManager::_derived_position_exposures` |
-| `core/execution_manager.py` | `RestoredRiskState` | `core/risk_state_store.py` | 4083 | `ExecutionManager::_record_realized_risk_accounting` |
-| `core/execution_manager.py` | `RiskRequest` | `core/risk_engine.py` | 3291 | `ExecutionManager::risk_check` |
+| `core/execution_manager.py` | `RestoredRiskState` | `core/risk_state_store.py` | 4087 | `ExecutionManager::_record_realized_risk_accounting` |
+| `core/execution_manager.py` | `RiskRequest` | `core/risk_engine.py` | 3295 | `ExecutionManager::risk_check` |
 | `core/execution_manager.py` | `RiskState` | `core/risk_engine.py` | 2928 | `ExecutionManager::_derive_risk_state` |
 | `core/execution_manager.py` | `VenueRuleFreshnessService` | `core/venue_rule_freshness.py` | 299 | `ExecutionManager::__init__` |
 | `core/execution_transaction_journal.py` | `DurableAppendLog` | `core/durable_append_log.py` | 174 | `ExecutionTransactionJournal::__init__` |
@@ -279,11 +279,11 @@ classes and their observed constructors:
 | `core/local_capability_adapter.py` | `ToolDescriptor` | `core/tool_gateway_contracts.py` | 128 | `LocalCapabilityProbeAdapter` |
 | `core/local_capability_adapter.py` | `ToolInvocationResult` | `core/tool_gateway_contracts.py` | 156 | `LocalCapabilityProbeAdapter::invoke` |
 | `core/local_capability_adapter.py` | `ToolInvocationResult` | `core/tool_gateway_contracts.py` | 175 | `LocalCapabilityProbeAdapter::invoke` |
-| `core/market_loop.py` | `CandleProcessor` | `core/candle_processor.py` | 230 | `MarketLoop::__init__` |
-| `core/market_loop.py` | `DecisionAdapter` | `core/decision_adapter.py` | 233 | `MarketLoop::__init__` |
-| `core/market_loop.py` | `SizingInputs` | `core/position_sizing.py` | 1860 | `MarketLoop::_apply_position_sizing` |
-| `core/market_loop.py` | `TechnicalAnalyzer` | `core/technical_analyzer.py` | 231 | `MarketLoop::__init__` |
-| `core/market_loop.py` | `WorldAnalysisEngine` | `analysis/world_analysis_engine.py` | 232 | `MarketLoop::__init__` |
+| `core/market_loop.py` | `CandleProcessor` | `core/candle_processor.py` | 231 | `MarketLoop::__init__` |
+| `core/market_loop.py` | `DecisionAdapter` | `core/decision_adapter.py` | 234 | `MarketLoop::__init__` |
+| `core/market_loop.py` | `SizingInputs` | `core/position_sizing.py` | 1861 | `MarketLoop::_apply_position_sizing` |
+| `core/market_loop.py` | `TechnicalAnalyzer` | `core/technical_analyzer.py` | 232 | `MarketLoop::__init__` |
+| `core/market_loop.py` | `WorldAnalysisEngine` | `analysis/world_analysis_engine.py` | 233 | `MarketLoop::__init__` |
 | `core/model_provider_contracts.py` | `OperationResult` | `core/operational_contracts.py` | 483 | `ModelInvocationResult::to_operation_result` |
 | `core/position_sizing.py` | `RiskBucket` | `core/risk_engine.py` | 162 | `PositionSizingService::propose` |
 | `core/tool_gateway_contracts.py` | `CapabilityClass` | `core/model_provider_contracts.py` | 120 | `ToolDescriptor::__post_init__` |

@@ -19,10 +19,10 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `c97e92156f5f8cf9c2f8c680ec501d6602fa1d77` |
-| generated_from_tree | `288526bde67002884d1ccf4e8a740f8e7f163d84` |
-| tracked_working_tree_clean | True |
-| modified_tracked_paths_at_generation | none |
+| generated_from_commit | `a97a4f6b4307748b54fc4aa34a6833345a28ea7b` |
+| generated_from_tree | `d3929ab5606958588598f58a7389e91ec0c5ffab` |
+| tracked_working_tree_clean | False |
+| modified_tracked_paths_at_generation | ['ackaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md'] |
 
 ## What this artifact is, and what it is not
 
@@ -174,7 +174,7 @@ nothing is inferred from an absence.
 | `core/durable_append_log.py` | ATOMIC_REPLACE | 349 | `DurableAppendLog::rewrite` |
 | `core/durable_append_log.py` | UNLINK | 356 | `DurableAppendLog::rewrite` |
 | `core/execution_idempotency_store.py` | UNLINK | 863 | `ExecutionIdempotencyStore::reset` |
-| `core/execution_manager.py` | ATOMIC_REPLACE | 6421 | `ExecutionManager::_normalize_confidence` |
+| `core/execution_manager.py` | ATOMIC_REPLACE | 6425 | `ExecutionManager::_normalize_confidence` |
 | `core/execution_models.py` | ATOMIC_REPLACE | 96 | `normalize_timestamp` |
 | `core/execution_portfolio_foundation.py` | ATOMIC_REPLACE | 64 | `_utc` |
 | `core/execution_portfolio_foundation.py` | FSYNC | 183 | `FinancialStateStore::save` |
