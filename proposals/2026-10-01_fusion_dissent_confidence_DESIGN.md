@@ -1,6 +1,6 @@
 # AgentFusion: a dissenting vote must never raise the winner's confidence. Design, not implemented (2026-10-01)
 
-**Status:** CRITICAL (decision intelligence). Found by the independent audit of 2026-10-01 (`docs/audits/INDEPENDENT_AUDIT_FUNDING_SENTIMENT_EXP002_2026-10-01.md`, F-1).
+**Status:** CRITICAL (decision intelligence). **Implemented 2026-10-01 behind `AgentFusion.full_weight_denominator` (default OFF), switched via `AtlasApplication(fusion_full_weight_denominator=...)`; main.py does not pass it. Tests: `tests/test_fusion_dissent_confidence.py`. Still required: replay comparison, independent audit, owner switch-on after EXP-002 ends.** Found by the independent audit of 2026-10-01 (`docs/audits/INDEPENDENT_AUDIT_FUNDING_SENTIMENT_EXP002_2026-10-01.md`, F-1).
 
 ## Fact (measured by the audit with the real `fuse()`, typical live votes)
 | | Confidence of the BUY |

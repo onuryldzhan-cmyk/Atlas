@@ -552,6 +552,7 @@ class AtlasApplication:
         paper_slippage_bps: Decimal | str = "0",
         order_lifecycle_observe: bool = False,
         funding_sentiment: bool = False,
+        fusion_full_weight_denominator: bool = False,
     ) -> None:
         logger.info(
             "Initializing %s v%s",
@@ -573,6 +574,7 @@ class AtlasApplication:
         self.paper_slippage_bps = Decimal(str(paper_slippage_bps))
         self.order_lifecycle_observe = bool(order_lifecycle_observe)
         self.funding_sentiment = bool(funding_sentiment)
+        self.fusion_full_weight_denominator = bool(fusion_full_weight_denominator)
         if not self.paper_slippage_bps.is_finite() or not Decimal("0") <= self.paper_slippage_bps <= Decimal("100"):
             raise ValueError("paper_slippage_bps must be within [0, 100]")
         # registry v5.01 EXP-001. Off unless the production entry point asks
@@ -744,6 +746,7 @@ class AtlasApplication:
                 self.state_directory / EXECUTION_CLOSED_POSITIONS_FILE
             ),
         )
+        self.brain.fusion_full_weight_denominator = self.fusion_full_weight_denominator
 
         # -----------------------------------------------------
         # Market data

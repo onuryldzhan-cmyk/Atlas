@@ -287,6 +287,10 @@ class AtlasBrain:
             self.intelligence = IntelligenceBrain(
                 config=self._intelligence_config(),
             )
+            # Audit F-1 fix switch (default OFF): set on this brain's own fusion instance.
+            fusion = getattr(self.intelligence, "agents", None)
+            if fusion is not None and getattr(self, "fusion_full_weight_denominator", False):
+                fusion.full_weight_denominator = True
 
             logger.info(
                 "Intelligence Brain connected",

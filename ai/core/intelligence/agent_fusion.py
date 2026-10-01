@@ -548,6 +548,9 @@ class AgentFusion:
 
 
 
+    # Audit 2026-10-01 F-1 fix, OFF by default (set per instance by the composition root).
+    full_weight_denominator = False
+
     def fuse(
         self,
         signals
@@ -923,11 +926,24 @@ class AgentFusion:
 
         winning_mass = quantized_mass[action]
 
+        # proposals/2026-10-01_fusion_dissent_confidence_DESIGN.md (audit F-1):
+        # with FULL_WEIGHT_DENOMINATOR every expected agent is charged its full
+        # configured weight, so a dissenting or neutral vote counts exactly like
+        # an abstention for the winner (never more), and agreeing evidence can
+        # only add. NB-4 and NB-5 still hold: the denominator is the full roster.
+        # Default False keeps today's decisions byte-identical until the owner
+        # switches it on (after audit).
+        denominator = (
+            total_configured_weight
+            if self.full_weight_denominator
+            else total + missing_weight
+        )
+
         confidence = round(
 
             winning_mass
             / round(
-                total + missing_weight,
+                denominator,
                 self.MASS_PRECISION,
             ),
 
