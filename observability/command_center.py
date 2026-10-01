@@ -33,13 +33,23 @@ INTENTS = (
 
 def compose(*, health: dict[str, Any], account: dict[str, Any] | None,
             proposals: dict[str, Any], tasks: dict[str, Any], memory: dict[str, Any],
-            portfolio: dict[str, Any] | None = None) -> dict[str, Any]:
+            portfolio: dict[str, Any] | None = None,
+            agent_states: dict[str, Any] | None = None) -> dict[str, Any]:
     def section(payload: dict[str, Any]) -> dict[str, Any]:
         return payload if payload.get("available") else {"available": False,
                                                          "reason": payload.get("reason", "UNKNOWN")}
 
-    agents = tasks.get("agents", {}) if tasks.get("available") else {}
-    working = sorted(a for a, v in agents.items() if v.get("status") == "WORKING")
+    # Single source of agent state (Stage A1, 2026-10-01): when the
+    # observability.agent_states view is supplied, every surface (HQ, Overview,
+    # chat) reports the same states. Without it the task-log view is kept.
+    if agent_states and agent_states.get("available"):
+        agents = {a["id"]: {"status": a["state"]} for a in agent_states.get("agents", [])}
+        working = sorted(a for a, v in agents.items() if v["status"] in ("WORKING", "REVIEWING"))
+        source = "agent_states"
+    else:
+        agents = tasks.get("agents", {}) if tasks.get("available") else {}
+        working = sorted(a for a, v in agents.items() if v.get("status") == "WORKING")
+        source = "task_log"
     return {
         "available": True,
         "health": {"healthy": health.get("healthy"), "state": health.get("state"),
@@ -52,7 +62,8 @@ def compose(*, health: dict[str, Any], account: dict[str, Any] | None,
                       "reason": proposals.get("reason")},
         "tasks": {"available": tasks.get("available", False), "counts": tasks.get("counts", {}),
                   "reason": tasks.get("reason")},
-        "agents": {"working": working, "statuses": {a: v.get("status") for a, v in agents.items()}},
+        "agents": {"working": working, "statuses": {a: v.get("status") for a, v in agents.items()},
+                   "source": source},
         "memory": {"available": memory.get("available", False),
                    "records": len(memory.get("records", [])) if memory.get("available") else None},
         "_proposals": section(proposals),

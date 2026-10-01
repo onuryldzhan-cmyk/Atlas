@@ -2464,15 +2464,18 @@ def create_app(
     # Registry v5.37: Command Center brief and Atlas Chat. Both only read
     # the payloads above (health, account totals, proposals, tasks, memory);
     # the chat is deterministic and cannot act.
-    def _command_center_brief() -> dict:
+    def _command_center_brief(signals: dict | None = None) -> dict:
         runtime = application.state.atlas_runtime
+        tasks_view, proposals_view, memory_view = (governance_records.read_tasks(), governance_records.read_proposals(),
+                                                   governance_records.read_memory())
         return command_center.compose(
             health=_safe_runtime_health(runtime),
             account=_account_totals(_resolve_attr(runtime, "portfolio_foundation")),
-            proposals=governance_records.read_proposals(),
-            tasks=governance_records.read_tasks(),
-            memory=governance_records.read_memory(),
+            proposals=proposals_view,
+            tasks=tasks_view,
+            memory=memory_view,
             portfolio=_portfolio_payload(),
+            agent_states=agent_states.build(tasks_view, proposals_view, memory_view, signals),
         )
 
     # Registry v5.40 (owner: real-time capital and P/L, not fake data): the
@@ -2534,7 +2537,8 @@ def create_app(
     async def api_command_center(request: Request) -> JSONResponse:
         if not is_loopback_request(request):
             return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
-        brief = await run_in_threadpool(_command_center_brief)
+        signals = _response_json(await api_signals(request))
+        brief = await run_in_threadpool(_command_center_brief, signals)
         brief.pop("_proposals", None)
         brief.pop("_portfolio", None)
         return JSONResponse(status_code=200, content=brief)
@@ -2543,7 +2547,8 @@ def create_app(
     async def api_chat(request: Request, q: str = "") -> JSONResponse:
         if not is_loopback_request(request):
             return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
-        brief = await run_in_threadpool(_command_center_brief)
+        signals = _response_json(await api_signals(request))
+        brief = await run_in_threadpool(_command_center_brief, signals)
         return JSONResponse(status_code=200, content=command_center.answer(q[:500], brief))
 
     @application.get(
