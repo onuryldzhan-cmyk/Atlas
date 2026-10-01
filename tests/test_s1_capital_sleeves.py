@@ -57,3 +57,11 @@ def test_sell_is_never_blocked_by_a_sleeve():
 def test_unknown_share_for_bucket_fails_closed():
     engine = RiskEngine(policy(sleeves_enabled=True, sleeve_shares={"LOW": D("0.5")}))
     assert engine.evaluate(request(bucket="MEDIUM", amount="10"), state()).reason_code == "SLEEVE_UNKNOWN_BUCKET"
+
+
+def test_flag_off_whole_decision_ignores_buckets():
+    # S1 re-audit R-3: with sleeves OFF the full decision is identical whatever the recorded buckets say.
+    engine = RiskEngine(policy())
+    decisions = [engine.evaluate(request(bucket="MEDIUM", amount="100"), state(pos("BTCUSDT", "300", b))).to_dict()
+                 for b in ("MEDIUM", "LOW", "HIGH", None)]
+    assert all(d == decisions[0] for d in decisions)

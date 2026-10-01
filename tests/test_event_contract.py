@@ -64,3 +64,39 @@ def test_unsourced_statuses_are_declared_and_never_derived():
                for t in ("agent.tool.started", "agent.task.started", "agent.failed", "agent.task.blocked",
                          "agent.approval.requested", "agent.cycle.completed")}
     assert derived <= AGENT_STATUSES and not (derived & UNSOURCED_STATUSES)
+
+
+def test_adapter_turns_real_records_into_events_and_skips_misfits():
+    import json as _json
+    from observability.event_contract import events_from_records
+
+    records = [
+        {"id": "AC-0001", "created_at": "2026-10-01T19:00:00+00:00", "author": "executive_assistant",
+         "body": _json.dumps({"agent_cycle": [{"unit": "quant_research", "verdict": "OK", "summary": "12 işlem"},
+                                              {"unit": "red_team", "verdict": "FAIL", "summary": "api_key=sk-abc123456789abcdef"}]})},
+        {"id": "INC-0001", "type": "INCIDENTS", "created_at": "2026-10-01T19:01:00+00:00", "author": "security", "title": "x"},
+        {"id": "MEM-1", "created_at": "not a time", "author": "x", "title": "bad"},
+    ]
+    proposals = [{"id": "SA-1", "status": "READY_FOR_OWNER", "author": "strategy_lab", "created_at": "2026-10-01T19:02:00+00:00"}]
+    out = events_from_records(records, proposals)
+    types = [(e["agent"]["id"], e["event_type"]) for e in out["events"]]
+    assert ("quant_research", "agent.cycle.completed") in types and ("red_team", "agent.failed") in types
+    assert ("security", "incident.opened") in types and ("strategy_lab", "agent.approval.requested") in types
+    assert out["skipped"] == 1
+    assert all(e["payload"].get("source") for e in out["events"])  # every event has a record behind it
+    assert "sk-abc123456789abcdef" not in str(out)
+    now = datetime(2026, 10, 1, 19, 10, tzinfo=timezone.utc)
+    assert agent_state("red_team", out["events"], now=now)["status"] == "error"
+    assert agent_state("strategy_lab", out["events"], now=now)["status"] == "waiting_approval"
+    assert agent_state("market_regime", out["events"], now=now)["status"] == "offline"
+
+
+def test_events_api_is_read_only_and_loopback_guarded():
+    from fastapi.testclient import TestClient
+
+    import web_app
+
+    r = TestClient(web_app.create_app()).get("/api/events")
+    assert r.status_code == 200 and r.json()["schema"] == "atlas.event.v1"
+    assert TestClient(web_app.create_app(), base_url="http://evil.example").get("/api/events").status_code == 403
+    assert TestClient(web_app.create_app()).post("/api/events").status_code in (403, 405)

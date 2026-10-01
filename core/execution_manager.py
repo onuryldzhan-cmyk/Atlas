@@ -7474,6 +7474,11 @@ class ExecutionManager:
     def status(self) -> dict[str, Any]:
         with self._lock:
             return {
+                # S1 re-audit R-2: a corrupt bucket sidecar is visible, not only logged.
+                "position_risk_buckets": {
+                    "attached": self.position_risk_buckets is not None,
+                    "corrupt": bool(getattr(self.position_risk_buckets, "corrupt", False)),
+                },
                 "name": self.NAME,
                 "version": self.VERSION,
                 "mode": self.mode,

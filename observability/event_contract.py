@@ -120,3 +120,51 @@ def agent_state(agent_id: str, events: list[dict[str, Any]], *, now: datetime, s
     task = last["run"]["task_id"] if last["event_type"] in ("agent.task.started", "agent.tool.started") else None
     return {"id": agent_id, "status": status, "last_event": last["event_id"], "last_activity": last["timestamp"],
             "current_task": task, "current_tool": tool}
+
+
+def events_from_records(memory_records: list[dict[str, Any]], proposals: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    """Read-only adapter: existing governance logs -> contract events.
+
+    Every event points back to the record it came from (payload.source). A
+    record that does not fit the contract is skipped and counted, never
+    coerced. No event is produced without a record behind it.
+    """
+    out: list[dict[str, Any]] = []
+    skipped = 0
+
+    def add(raw: dict[str, Any]) -> None:
+        nonlocal skipped
+        try:
+            out.append(validate_event(raw))
+        except EventContractError:
+            skipped += 1
+
+    for r in memory_records:
+        rid, at, author = str(r.get("id") or "").lower(), r.get("created_at"), str(r.get("author") or "").lower()
+        try:
+            body = json.loads(r.get("body") or "{}")
+        except (ValueError, TypeError):
+            body = {}
+        cycle = body.get("agent_cycle") if isinstance(body, dict) else None
+        if isinstance(cycle, list):
+            for res in cycle:
+                if not isinstance(res, dict):
+                    skipped += 1
+                    continue
+                unit = str(res.get("unit") or "").lower()
+                failed = res.get("verdict") == "FAIL"
+                add({"event_id": f"{rid}:{unit}", "timestamp": at, "agent": {"id": unit},
+                     "event_type": "agent.failed" if failed else "agent.cycle.completed", "run": {"id": rid},
+                     "payload": {"verdict": res.get("verdict"), "summary": str(res.get("summary") or "")[:300], "source": r.get("id")}})
+            continue
+        etype = "incident.opened" if r.get("type") == "INCIDENTS" else "memory.record.added"
+        add({"event_id": rid, "timestamp": at, "agent": {"id": author}, "event_type": etype,
+             "payload": {"title": str(r.get("title") or "")[:200], "source": r.get("id")}})
+    for p in proposals or []:
+        pid = str(p.get("id") or "").lower()
+        etype = "agent.approval.requested" if p.get("status") == "READY_FOR_OWNER" else "governance.proposal.created"
+        add({"event_id": f"{pid}:{str(p.get('status') or '').lower()}", "timestamp": p.get("updated_at") or p.get("created_at"),
+             "agent": {"id": str(p.get("author") or "").lower()}, "event_type": etype,
+             "payload": {"title": str(p.get("title") or "")[:200], "status": p.get("status"), "source": p.get("id")}})
+    out.sort(key=lambda e: e["timestamp"])
+    return {"events": out, "skipped": skipped, "schema": SCHEMA_VERSION}

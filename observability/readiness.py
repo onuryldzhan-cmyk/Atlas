@@ -69,6 +69,12 @@ def evaluate(status: dict[str, Any], now: datetime | None = None) -> dict[str, A
     check("execution", None if halted is None or recovery is None else (halted is False and recovery is False),
           f"mode {execution.get('mode')}, halted {halted}, recovery required {recovery}")
 
+    buckets = execution.get("position_risk_buckets")
+    if isinstance(buckets, dict) and buckets.get("corrupt"):
+        # S1 re-audit R-2: every bucket reads UNKNOWN (the strictest sleeve use) until the owner repairs the file.
+        check("position_risk_buckets", False, "risk-bucket sidecar unreadable: every position counts against every sleeve; "
+              "repair: python -m core.position_risk_buckets repair <state>/position_risk_buckets.jsonl")
+
     rules = (execution.get("venue_rules") or {}).get("status")
     check("venue_rules", None if rules is None else rules == "FRESH", f"status {rules}")
 

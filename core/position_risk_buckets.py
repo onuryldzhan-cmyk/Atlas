@@ -83,3 +83,40 @@ class PositionRiskBucketStore:
 
     def lookup(self, position_id: str | None) -> str | None:
         return self.buckets().get(str(position_id or "")) if position_id else None
+
+
+def repair_unfinished_tail(path: Path) -> str:
+    """Owner-run repair (re-audit R-2): drop ONLY an unfinished last line (no trailing newline, unparseable).
+
+    Any other damage is refused: the owner inspects it, or deletes the file
+    (safe: every bucket then reads UNKNOWN). A copy is kept as <file>.bak first.
+    """
+    path = Path(path)
+    data = path.read_text(encoding="utf-8")
+    if not data or data.endswith("\n"):
+        raise ValueError("REFUSED: no unfinished last line to drop")
+    head, _, tail = data.rpartition("\n")
+    try:
+        json.loads(tail)
+        raise ValueError("REFUSED: the last line parses; nothing unfinished to drop")
+    except json.JSONDecodeError:
+        pass
+    for line in head.splitlines():
+        if line.strip():
+            json.loads(line)  # an earlier bad line raises: refused, never silently dropped
+    path.with_suffix(path.suffix + ".bak").write_text(data, encoding="utf-8")
+    path.write_text(head + "\n" if head else "", encoding="utf-8")
+    return f"dropped unfinished last line ({len(tail)} chars); backup at {path.name}.bak"
+
+
+if __name__ == "__main__":
+    import sys
+
+    if len(sys.argv) != 3 or sys.argv[1] != "repair":
+        print("usage: python -m core.position_risk_buckets repair <path to position_risk_buckets.jsonl>")
+        raise SystemExit(2)
+    try:
+        print(repair_unfinished_tail(Path(sys.argv[2])))
+    except (OSError, ValueError) as exc:
+        print(f"HATA: {exc}")
+        raise SystemExit(2)

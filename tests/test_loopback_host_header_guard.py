@@ -109,6 +109,7 @@ WEB_APP_GUARDED_ROUTES = [
     "/postmortem",  # Dashboard v2 post-mortem page (2026-10-01), read-only
     "/api/agent-states",
     "/api/learning",
+    "/api/events",  # Atlas Event Contract v1 (2026-10-01), read-only
     "/api/candles",
     "/api/research",
     "/api/liveness",

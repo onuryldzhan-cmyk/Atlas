@@ -2451,6 +2451,25 @@ def create_app(
         return JSONResponse(status_code=200, content=await run_in_threadpool(_build))
 
     # Owner specification 2026-09-30: experiences, lessons, contradictions (read-only, derived).
+    # Atlas Event Contract v1 (owner architecture 2026-10-01): governance logs as
+    # contract events. Read-only, loopback-only, every event backed by a record.
+    @application.get("/api/events", response_class=JSONResponse)
+    async def api_events(request: Request) -> JSONResponse:
+        if not is_loopback_request(request):
+            return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+
+        def _build() -> dict:
+            from observability.event_contract import events_from_records
+
+            memory, proposals = governance_records.read_memory(), governance_records.read_proposals()
+            out = events_from_records(memory.get("records") or [] if isinstance(memory, dict) else [],
+                                      proposals.get("proposals") or [] if isinstance(proposals, dict) and proposals.get("available") else [])
+            out["events"] = out["events"][-200:]
+            out["available"] = True
+            return out
+
+        return JSONResponse(status_code=200, content=await run_in_threadpool(_build))
+
     @application.get("/api/learning", response_class=JSONResponse)
     async def api_learning(request: Request) -> JSONResponse:
         if not is_loopback_request(request):

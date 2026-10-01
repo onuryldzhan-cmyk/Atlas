@@ -128,3 +128,64 @@ def test_application_wires_the_sidecar_into_the_state_directory():
     from core import application as app_mod
     src = inspect.getsource(app_mod)
     assert "PositionRiskBucketStore(self.state_directory / POSITION_RISK_BUCKETS_FILE)" in src
+
+
+# --- S1 re-audit R-2 / R-3 (2026-10-01) ---
+
+def test_repair_drops_only_an_unfinished_last_line(tmp_path):
+    from core.position_risk_buckets import repair_unfinished_tail
+
+    path = tmp_path / "b.jsonl"
+    s = PositionRiskBucketStore(path)
+    s.record("P1", "LOW")
+    path.write_text(path.read_text() + '{"position_id": "P2", "ri', encoding="utf-8")
+    assert s.lookup("P1") is None
+    repair_unfinished_tail(path)
+    assert PositionRiskBucketStore(path).lookup("P1") == "LOW"
+    assert (tmp_path / "b.jsonl.bak").exists()
+
+
+def test_repair_refuses_damage_in_the_middle(tmp_path):
+    import pytest
+    from core.position_risk_buckets import repair_unfinished_tail
+
+    path = tmp_path / "b.jsonl"
+    path.write_text('garbage\n{"position_id": "P1", "risk_bucket": "LOW"}\n{"x', encoding="utf-8")
+    with pytest.raises(ValueError):
+        repair_unfinished_tail(path)
+    with pytest.raises(ValueError):
+        repair_unfinished_tail(tmp_path / "ok.jsonl") if (tmp_path / "ok.jsonl").write_text("{}\n") else None
+
+
+def test_corrupt_sidecar_shows_in_status_and_readiness(tmp_path):
+    from observability import readiness
+    from tests.test_block5e_fee_settlement_accounting import application
+
+    app = application(tmp_path)
+    path = tmp_path / "sidecar.jsonl"
+    path.write_text('{"position_id": "P', encoding="utf-8")
+    app.execution.position_risk_buckets = PositionRiskBucketStore(path)
+    app.execution.position_risk_buckets.lookup("P1")
+    st = app.execution.status()["position_risk_buckets"]
+    assert st == {"attached": True, "corrupt": True}
+    result = readiness.evaluate({"runtime": {"healthy": True}, "execution": {"position_risk_buckets": st}})
+    assert any(c["check"] == "position_risk_buckets" and c["state"] == "FAIL" for c in result["checks"])
+    clean = readiness.evaluate({"runtime": {"healthy": True}, "execution": {"position_risk_buckets": {"attached": True, "corrupt": False}}})
+    assert not any(c["check"] == "position_risk_buckets" for c in clean["checks"])
+
+
+def test_bucket_survives_a_restart(tmp_path):
+    # R-3: a fresh application on the same state directory reads the same bucket.
+    from tests.test_block5e_fee_settlement_accounting import application
+
+    # Uses the application's own wiring (state_directory/position_risk_buckets.jsonl), not a test store.
+    first = application(tmp_path / "state")
+    first.execution.start()
+    first.execution.execute({"symbol": "BTCUSDT", "action": "BUY", "price": 10.0, "amount": 1000,
+                             "confidence": 90.0, "risk": "MEDIUM", "request_id": "b1"})
+    first.shutdown()
+    from core.application import AtlasApplication
+    second = AtlasApplication(state_directory=first.state_directory)
+    second.execution.start()
+    assert (first.state_directory / "position_risk_buckets.jsonl").exists()
+    assert [e.risk_bucket for e in second.execution._derived_position_exposures()] == ["MEDIUM"]
