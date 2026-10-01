@@ -33,6 +33,10 @@
     {% include "_atlas_theme.html" %}
 </head>
 <body class="layout-fixed">
+{% set atlas_active = "agents" %}
+<div class="atlas-shell">
+{% include "_atlas_sidebar.html" %}
+<div class="atlas-main">
 <div class="app-wrapper">
     <nav class="app-header navbar navbar-expand bg-body border-bottom">
         <div class="container-fluid">
@@ -316,5 +320,7 @@
         document.addEventListener('DOMContentLoaded', init);
     }
 </script>
+</div>
+</div>
 </body>
 </html>

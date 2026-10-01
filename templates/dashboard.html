@@ -109,6 +109,10 @@
     {% include "_atlas_theme.html" %}
 </head>
 <body class="layout-fixed bg-body-tertiary">
+{% set atlas_active = "portfolio" %}
+<div class="atlas-shell">
+{% include "_atlas_sidebar.html" %}
+<div class="atlas-main">
 {#
   Inline SVG icons: no icon font or external sprite is loaded.
 #}
@@ -1714,5 +1718,7 @@
         // waiting up to 5s with "yükleniyor" thresholds on every card.
         updateSlowPanels().then(updateSignalsGrid);
     </script>
+</div>
+</div>
 </body>
 </html>

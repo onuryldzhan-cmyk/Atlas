@@ -115,3 +115,15 @@ def test_theme_drops_glass_and_purple_and_uses_v1_palette():
     for colour in ("#0b0d10", "#11151a", "#171c22", "#242a31", "#f1f3f5", "#8b949e", "#5b8cff", "#35c98b", "#e5b95c", "#e56b6f", "#6ea8fe"):
         assert colour in css
     assert "http" not in css  # no CDN fonts
+
+
+@pytest.mark.parametrize("path,active", [("/home", "/home"), ("/agents", "/agents"), ("/dashboard", "/dashboard"),
+                                         ("/decisions", "/decisions"), ("/governance", "/governance#proposals"),
+                                         ("/research", "/research"), ("/roadmap", "/system"), ("/security", "/system"),
+                                         ("/system", "/system"), ("/trading", "/trading")])
+def test_every_page_shares_the_sidebar_with_one_active_item(path, active):
+    text = TestClient(web_app.create_app()).get(path).text
+    assert 'class="atlas-side"' in text and 'href="/hq"' in text
+    side = text[text.index('class="atlas-side"'):text.index("</aside>")]
+    assert side.count('aria-current="page"') == 1
+    assert f'<a href="{active}" class="active"' in text

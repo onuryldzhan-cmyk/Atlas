@@ -32,6 +32,10 @@
     {% include "_atlas_theme.html" %}
 </head>
 <body>
+{% set atlas_active = "proposals" %}
+<div class="atlas-shell">
+{% include "_atlas_sidebar.html" %}
+<div class="atlas-main">
 <nav class="navbar bg-body border-bottom px-3 flex-wrap gap-2">
     <span class="navbar-brand fw-bold"><span class="text-primary">ATLAS</span> Kararlar &amp; Hafıza</span>
     <div class="atlas-nav d-flex flex-wrap gap-1">
@@ -166,5 +170,7 @@
     setInterval(refresh, 15000);
 })();
 </script>
+</div>
+</div>
 </body>
 </html>

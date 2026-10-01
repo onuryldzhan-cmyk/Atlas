@@ -42,7 +42,7 @@ A file was moved only when all of the following held:
   - `data/market_provider.py`
 - **Stale JSON stores:**
   - `database/*.json` (6 files)
-  - `learning/model_memory.json`
+  - `learning/model_memory.json` — RESTORED 2026-10-01 (tests depend on it)
 
 ## Kept in place (still imported somewhere, or part of a data-layer migration inventory; they need a separate change)
 

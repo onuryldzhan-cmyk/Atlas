@@ -20,6 +20,10 @@
     {% include "_atlas_theme.html" %}
 </head>
 <body>
+{% set atlas_active = "system" %}
+<div class="atlas-shell">
+{% include "_atlas_sidebar.html" %}
+<div class="atlas-main">
 <nav class="navbar px-3 flex-wrap gap-2">
     <span class="navbar-brand fw-bold"><span class="text-primary">ATLAS</span> Güvenlik</span>
     <div class="atlas-nav d-flex flex-wrap gap-1">
@@ -78,5 +82,7 @@
     refresh();
 })();
 </script>
+</div>
+</div>
 </body>
 </html>
