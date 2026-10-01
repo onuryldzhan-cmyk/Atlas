@@ -19,10 +19,10 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `f83939b9424ece86025311716c6ecdcb237f4826` |
-| generated_from_tree | `a805138511d1f9894c39b6774766553429113208` |
+| generated_from_commit | `2a32633ea95c3a66ee9df3d479f3904eb22c0e7c` |
+| generated_from_tree | `f30abfec67d0c95716bb9cbaabc3990d7a8540a8` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['ackaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/atlas_architecture_map.json', 'packaging/atlas_runtime_closure.json'] |
+| modified_tracked_paths_at_generation | ['ackaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md'] |
 
 ## What this artifact is, and what it is not
 
@@ -195,7 +195,7 @@ nothing is inferred from an absence.
 | `core/paper_trader.py` | JSON_DUMP | 852 | `PaperTrader::save` |
 | `core/paper_trader.py` | FSYNC | 874 | `PaperTrader::save` |
 | `core/paper_trader.py` | ATOMIC_REPLACE | 879 | `PaperTrader::save` |
-| `core/position_risk_buckets.py` | FSYNC | 76 | `PositionRiskBucketStore::record` |
+| `core/position_risk_buckets.py` | FSYNC | 81 | `PositionRiskBucketStore::record` |
 | `core/risk_state_store.py` | JSON_DUMP | 98 | `JsonRiskStateStore::save` |
 | `core/risk_state_store.py` | FSYNC | 99 | `JsonRiskStateStore::save` |
 | `core/risk_state_store.py` | ATOMIC_REPLACE | 100 | `JsonRiskStateStore::save` |
