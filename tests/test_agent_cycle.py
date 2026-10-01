@@ -105,3 +105,19 @@ def test_failed_agent_opens_one_incident_not_duplicates(tmp_path):
     ac.run_cycle(tmp_path, boom)
     inc = [r for r in memory_records.replay(cli.read_log(tmp_path / cli.MEMORY_LOG)).values() if r["type"] == "INCIDENTS"]
     assert len(inc) == 1 and inc[0]["incident"]["status"] == "OPEN" and inc[0]["incident"]["services"] == ["x"]
+
+
+def test_task_runner_executes_rule_based_steps_and_flags_llm_steps(tmp_path, monkeypatch):
+    from atlas_org import tasks as T
+
+    monkeypatch.setattr(ac, "security", lambda _: {"verdict": "OK", "summary": "genel PASS"})
+    sec = cli.request_task(tmp_path, "güvenlik taraması yap", at="2026-10-01T00:00:00+00:00")["task_id"]
+    res = cli.request_task(tmp_path, "bu kütüphaneyi araştır", at="2026-10-01T00:00:00+00:00")["task_id"]
+    out = ac.task_runner(tmp_path)
+    state = T.replay(cli.read_log(tmp_path / cli.TASKS_LOG))
+    assert any(s["status"] == "DONE" and s["result"]["verdict"] == "PASS" for s in state[sec]["steps"])
+    assert state[res]["status"] == "BLOCKED" and "AI-001" in out["summary"]
+    for _ in range(5):  # one step per task per cycle; the log settles
+        ac.task_runner(tmp_path)
+    again = ac.task_runner(tmp_path)  # once settled, nothing is re-run or re-blocked
+    assert again["summary"] == "yürütülen adım: yok; AI-001 bekleyen: yok"

@@ -1,6 +1,6 @@
 """Start Atlas and its agents together with one command.
 
-  python -m tools.start_atlas                 # Atlas (supervised) + agent cycle every 60 minutes
+  python -m tools.start_atlas                 # Atlas (supervised) + agent cycle every 10 minutes
   python -m tools.start_atlas --every 30
 
 Atlas runs exactly as with `python atlas_supervisor.py` (same process, same
@@ -40,7 +40,7 @@ def agent_loop(stop: threading.Event, every_minutes: float, run_cycle=None, firs
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--every", type=float, default=60.0, help="agent cycle interval in minutes")
+    parser.add_argument("--every", type=float, default=10.0, help="agent cycle interval in minutes")
     args = parser.parse_args(argv)
     stop = threading.Event()
     agents = threading.Thread(target=agent_loop, args=(stop, args.every), daemon=True, name="atlas-agents")

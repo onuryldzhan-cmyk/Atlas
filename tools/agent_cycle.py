@@ -146,6 +146,56 @@ def knowledge_manager(records_dir: Path) -> dict[str, Any]:
     return {"verdict": "OK", "summary": f"{len(changed)} dersin durumu değişti; çelişkili: {len(out['contradictions'])}"}
 
 
+def _security_step(records_dir: Path) -> tuple[str, str]:
+    out = security(records_dir)
+    return ({"OK": "PASS", "WARN": "REVIEW_REQUIRED"}.get(out["verdict"], "FAIL"), out["summary"])
+
+
+def _data_step(records_dir: Path) -> tuple[str, str]:
+    out = data_quality(records_dir)
+    return ({"OK": "PASS", "WARN": "REVIEW_REQUIRED"}.get(out["verdict"], "FAIL"), out["summary"])
+
+
+# Units that can execute an assigned task step on their own today (rule-based).
+STEP_EXECUTORS = {"security": _security_step, "data_quality": _data_step}
+
+
+def task_runner(records_dir: Path) -> dict[str, Any]:
+    """Owner 2026-10-01: agents must not sit waiting for tasks.
+
+    Every ASSIGNED step whose unit has a rule-based executor is started and
+    finished now with a real result. A step whose unit needs a language model
+    (research, code, review) is BLOCKED once with the reason "needs AI-001",
+    so it is visible instead of silently waiting. Nothing here can approve,
+    deploy or touch money.
+    """
+    from atlas_org import tasks as T
+
+    log = records_dir / cli.TASKS_LOG
+    if not log.exists():
+        return {"verdict": "OK", "summary": "görev yok"}
+    done, blocked = [], []
+    for tid, task in sorted(T.replay(cli.read_log(log)).items()):
+        if task["status"] in ("DONE", "CANCELLED"):
+            continue
+        for step in task["steps"]:
+            if step["status"] != "ASSIGNED":
+                continue
+            unit, idx = step["unit"], step["index"]
+            runner = STEP_EXECUTORS.get(unit)
+            if runner is None:
+                cli.add_task_event(records_dir, task_id=tid, event="BLOCK", actor=T.ASSISTANT,
+                                   payload={"step": idx, "reason": f"{unit} için yürütücü yok: dil modeli gerekiyor (AI-001 kararı bekleniyor)"})
+                blocked.append(f"{tid}#{idx}")
+                break  # a BLOCK changes the task status; re-read on the next cycle
+            cli.add_task_event(records_dir, task_id=tid, event="START", actor=unit, payload={"step": idx})
+            verdict, summary = runner(records_dir)
+            cli.add_task_event(records_dir, task_id=tid, event="RESULT", actor=unit,
+                               payload={"step": idx, "verdict": verdict, "summary": summary[:500]})
+            done.append(f"{tid}#{idx}")
+    return {"verdict": "OK", "summary": f"yürütülen adım: {', '.join(done) or 'yok'}; AI-001 bekleyen: {', '.join(blocked) or 'yok'}"}
+
+
 def executive_assistant(records_dir: Path) -> dict[str, Any]:
     from tools.atlas_self_review import run
 
@@ -221,6 +271,7 @@ AGENTS: tuple[tuple[str, str, Callable[[Path], dict[str, Any]]], ...] = (
     ("strategy_lab", "Strateji önerileri", strategy_lab),
     ("market_regime", "Piyasa rejimi", market_regime),
     ("knowledge_manager", "Ders defteri", knowledge_manager),
+    ("task_runner", "Görev yürütücü", task_runner),
     ("red_team", "Karşı görüş", red_team),
     ("executive_assistant", "Öz-değerlendirme", executive_assistant),
     ("data_quality", "Veri sağlığı", data_quality),
