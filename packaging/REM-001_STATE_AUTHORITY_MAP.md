@@ -19,10 +19,10 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `324c995c7961dd750fb9e335dfcaefc3dbb9c931` |
-| generated_from_tree | `eb3d7e2ed313e56455886cf62851a5b395bec656` |
+| generated_from_commit | `a3e9820637e54ab8ef4b0b7a927d53b6bb951fff` |
+| generated_from_tree | `7b7160e2b9513f2a884fcba4efbac340fd3cb665` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['ackaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/atlas_architecture_map.json', 'packaging/atlas_runtime_closure.json'] |
+| modified_tracked_paths_at_generation | ['ackaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md'] |
 
 ## What this artifact is, and what it is not
 
@@ -127,7 +127,7 @@ nothing is inferred from an absence.
 | `proposals.jsonl` | `observability/governance_records.py` |
 | `reports/observability/telemetry_summary.json` | `observability/panel_sources.py` |
 | `reports/observability/test_results.meta.json` | `observability/panel_sources.py` |
-| `risk-bucket sidecar unreadable: every position counts against every sleeve; repair: python -m core.position_risk_buckets repair <state>/position_risk_buckets.jsonl` | `observability/readiness.py` |
+| `risk-bucket sidecar unreadable: every position counts against every sleeve; repair: python -m tools.position_risk_buckets_repair <state>/position_risk_buckets.jsonl` | `observability/readiness.py` |
 | `risk_accounting_state.json` | `core/application.py` |
 | `runtime_data/audit/atlas_os_audit.jsonl` | `atlas_os/audit/audit_log.py` |
 | `supervisor_heartbeat.json` | `atlas_supervisor.py` |
@@ -208,7 +208,7 @@ nothing is inferred from an absence.
 | `data_layer/migrations.py` | ATOMIC_REPLACE | 146 | `apply_migrations` |
 | `data_layer/models.py` | ATOMIC_REPLACE | 54 | `utc_text` |
 | `data_layer/models.py` | ATOMIC_REPLACE | 61 | `utc_text` |
-| `main.py` | PATH_WRITE_TEXT | 570 | `AtlasProcess::_write_heartbeat` |
+| `main.py` | PATH_WRITE_TEXT | 577 | `AtlasProcess::_write_heartbeat` |
 | `observability/agent_states.py` | ATOMIC_REPLACE | 58 | `_age_s` |
 | `observability/agent_states.py` | ATOMIC_REPLACE | 61 | `_age_s` |
 | `observability/command_center.py` | ATOMIC_REPLACE | 88 | `_money` |
