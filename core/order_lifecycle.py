@@ -56,7 +56,7 @@ class Order:
     def transition(self, new: str, reason: str) -> None:
         if new not in STATES:
             raise OrderLifecycleError(f"unknown state {new}")
-        late_fill = self.status == "CANCELLED" and new in ("PARTIALLY_FILLED", "FILLED") and reason.startswith("fill ")
+        late_fill = self.status == "CANCELLED" and new in ("PARTIALLY_FILLED", "FILLED") and getattr(self, "_applying_fill", False)
         if late_fill:
             self.history.append((self.status, new + " (LATE_FILL_AFTER_CANCEL)"))
             # a partially filled then cancelled order stays CANCELLED for its remainder
@@ -83,5 +83,9 @@ class Order:
             raise OrderLifecycleError(f"fill not allowed in {self.status}")
         self.fill_ids.add(fill_id)
         self.filled += qty
-        self.transition("FILLED" if self.filled == self.quantity else "PARTIALLY_FILLED", f"fill {fill_id}")
+        self._applying_fill = True  # audit A-2: only a real fill may take the late-fill path
+        try:
+            self.transition("FILLED" if self.filled == self.quantity else "PARTIALLY_FILLED", f"fill {fill_id}")
+        finally:
+            self._applying_fill = False
         return True

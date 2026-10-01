@@ -50,6 +50,7 @@ Responsibilities
 from __future__ import annotations
 
 import json
+import math
 import logging
 import threading
 import time
@@ -2307,7 +2308,8 @@ class MarketLoop:
         agents = meta.get("agents") if isinstance(meta.get("agents"), dict) else {}
         votes = {name: str(v.get("action")) for name, v in agents.items() if isinstance(v, dict) and v.get("action") is not None}
         conf = decision.get("confidence")
-        return {"action": str(decision.get("action")), "confidence": conf if isinstance(conf, (int, float)) else None,
+        finite = isinstance(conf, (int, float)) and not isinstance(conf, bool) and math.isfinite(conf)  # audit A-4
+        return {"action": str(decision.get("action")), "confidence": conf if finite else None,
                 "votes": votes}
 
     def mark_prices(self, max_age_s: float = 300.0, now_ms: int | None = None) -> dict[str, Decimal]:

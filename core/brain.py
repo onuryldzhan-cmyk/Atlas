@@ -341,10 +341,10 @@ class AtlasBrain:
         if path is None or not path.exists():
             return []
         stat = path.stat()
-        key = (stat.st_mtime_ns, stat.st_size)
+        key = (stat.st_mtime_ns, stat.st_size, stat.st_ino, stat.st_ctime_ns)  # audit A-5
         cached = getattr(self, "_closed_cache", None)
         if cached is not None and cached[0] == key:
-            return list(cached[1])
+            return [dict(r) if isinstance(r, dict) else r for r in cached[1]]
         records, seen = [], set()
         with path.open("r", encoding="utf-8") as stream:
             for line in stream:
@@ -359,7 +359,7 @@ class AtlasBrain:
                     seen.add(pid)
                 records.append(record)
         self._closed_cache = (key, records)
-        return list(records)
+        return [dict(r) if isinstance(r, dict) else r for r in records]
 
     # =========================================================
     # OBSERVATION

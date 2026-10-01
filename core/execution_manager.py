@@ -2948,7 +2948,9 @@ class ExecutionManager:
 
     def _paper_fill_price(self, request: Any) -> Any:
         bps = Decimal(str(getattr(self, "paper_slippage_bps", self.PAPER_SLIPPAGE_BPS)))
-        if bps <= 0:
+        if not bps.is_finite() or bps < 0 or bps >= 10000:  # audit A-3: never fail open
+            raise ValueError("PAPER_SLIPPAGE_BPS must be finite and in [0, 10000)")
+        if bps == 0:
             return request.price
         price = Decimal(str(request.price))
         buy = str(request.action).upper().endswith("BUY")
@@ -2958,7 +2960,9 @@ class ExecutionManager:
         if tick > 0:
             from decimal import ROUND_CEILING, ROUND_FLOOR
             raw = (raw / tick).to_integral_value(rounding=ROUND_CEILING if buy else ROUND_FLOOR) * tick
-        return float(raw) if raw > 0 else request.price
+        if raw <= 0:
+            raise ValueError("slipped fill price is not positive")
+        return float(raw)
 
     def _mark_to_market(self, positions: Any) -> Decimal | None:
         """Unrealized P&L of open positions (audit F-3), or None when not fully known.

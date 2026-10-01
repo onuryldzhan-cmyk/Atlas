@@ -28,6 +28,8 @@ def net_pnl(record: dict[str, Any]) -> Decimal:
 
     entry = Decimal(str(record["cost_quote"]))
     gross = Decimal(str(record["gross_pnl"]))
+    if not entry.is_finite() or not gross.is_finite():  # audit A-1: "Infinity" must not pass as a number
+        raise ValueError("non-finite archive value")
     exit_value = entry + gross
     fees = FEE_RATE_PER_SIDE * (entry + max(exit_value, Decimal("0")))
     return gross - fees
