@@ -108,15 +108,3 @@ def repair_unfinished_tail(path: Path) -> str:
     path.write_text(head + "\n" if head else "", encoding="utf-8")
     return f"dropped unfinished last line ({len(tail)} chars); backup at {path.name}.bak"
 
-
-if __name__ == "__main__":
-    import sys
-
-    if len(sys.argv) != 3 or sys.argv[1] != "repair":
-        print("usage: python -m core.position_risk_buckets repair <path to position_risk_buckets.jsonl>")
-        raise SystemExit(2)
-    try:
-        print(repair_unfinished_tail(Path(sys.argv[2])))
-    except (OSError, ValueError) as exc:
-        print(f"HATA: {exc}")
-        raise SystemExit(2)

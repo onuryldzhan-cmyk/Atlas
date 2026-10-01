@@ -545,6 +545,9 @@ class AtlasApplication:
         log_directory: str | Path | None = None,
         paper_confidence_experiment: bool = False,
         paper_fee_rate: Decimal | str = "0",
+        count_unrealized_in_daily_loss: bool = False,
+        sleeves_enabled: bool = False,
+        paper_slippage_bps: Decimal | str = "0",
     ) -> None:
         logger.info(
             "Initializing %s v%s",
@@ -558,6 +561,14 @@ class AtlasApplication:
         # every test and tool that builds the application); main.py passes
         # PAPER_FEE_RATE_PER_SIDE for the real runtime.
         self.paper_fee_rate = Decimal(str(paper_fee_rate))
+        # Owner switches F-3, S1 and F-4 (2026-10-01). Off for every test or
+        # tool that builds the application; main.py turns them on for the real
+        # runtime, the same opt-in pattern as paper_fee_rate.
+        self.count_unrealized_in_daily_loss = bool(count_unrealized_in_daily_loss)
+        self.sleeves_enabled = bool(sleeves_enabled)
+        self.paper_slippage_bps = Decimal(str(paper_slippage_bps))
+        if not self.paper_slippage_bps.is_finite() or not Decimal("0") <= self.paper_slippage_bps <= Decimal("100"):
+            raise ValueError("paper_slippage_bps must be within [0, 100]")
         # registry v5.01 EXP-001. Off unless the production entry point asks
         # for it, so a bare or test-built application keeps default floors
         # regardless of the calendar date. Honoured in PAPER only.
@@ -823,6 +834,7 @@ class AtlasApplication:
         # Audit F-3: fresh closed-candle marks for the risk engine's optional
         # unrealized daily-loss check (read-only; unused while the flag is off).
         self.execution.mark_price_provider = self.market_loop.mark_prices
+        self.execution.paper_slippage_bps = self.paper_slippage_bps
         # S1 step 2: record each position's risk bucket in a sidecar (decisions
         # are unchanged while sleeves_enabled stays False).
         from core.position_risk_buckets import POSITION_RISK_BUCKETS_FILE, PositionRiskBucketStore
@@ -906,6 +918,8 @@ class AtlasApplication:
                     self.capital.total_capital
                 )
             ),
+            count_unrealized_in_daily_loss=self.count_unrealized_in_daily_loss,
+            sleeves_enabled=self.sleeves_enabled,
         )
 
         self.risk_engine = RiskEngine(

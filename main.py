@@ -516,6 +516,13 @@ class AtlasProcess:
             # owner decision and must stay a literal at this one call site
             paper_confidence_experiment=False,
             paper_fee_rate=PAPER_FEE_RATE_PER_SIDE,
+            # Owner switch-on 2026-10-01 ("Aç onayı da veriyorum") after the
+            # independent audits: F-3 (unrealized loss in the daily loss limit),
+            # S1 capital sleeves, F-4 5 bp adverse PAPER slippage. Literals at
+            # this one call site, like the experiment flag above.
+            count_unrealized_in_daily_loss=True,
+            sleeves_enabled=True,
+            paper_slippage_bps="5",
             symbols=trade_universe(),
         )
 
