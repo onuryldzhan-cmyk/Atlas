@@ -42,6 +42,7 @@ VARIANTS: dict[str, dict[str, Any]] = {
     "rejim filtresi (sadece TREND_UP)": {**REALISTIC, "regime_filter": True},
     "aşamalı + paylar + maliyet kapısı": {**REALISTIC, "staged": True, "sleeves": True, "cost_gate": 3},
     "rejim filtresi + aşamalı + paylar": {**REALISTIC, "regime_filter": True, "staged": True, "sleeves": True},
+    "füzyon düzeltmesi (muhalif oy güveni artırmaz)": {**REALISTIC, "fusion_fix": True},
 }
 REFERENCE = "gerçekçi dolum (referans)"
 

@@ -72,3 +72,9 @@ def test_application_switch_reaches_the_fusion_instance(tmp_path):
     if fusion is not None:
         assert fusion.full_weight_denominator is True
     assert AgentFusion.full_weight_denominator is False  # never set globally
+
+
+def test_replay_research_variant_sets_the_flag_only_on_its_own_brains():
+    from tools import strategy_compare as sc
+    assert sc.VARIANTS["füzyon düzeltmesi (muhalif oy güveni artırmaz)"]["fusion_fix"] is True
+    assert AgentFusion.full_weight_denominator is False

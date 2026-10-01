@@ -215,7 +215,8 @@ def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: 
            slippage_bps: int = 0, next_open_fill: bool = False,
            min_hold_min: int = 0, sell_confirm: int = 1,
            trend_ema_hours: int = 0, atr_stop: Decimal | float = 0, risk_per_trade: Decimal | float = 0,
-           cost_gate: Decimal | float = 0, regime_filter: bool = False) -> Result:
+           cost_gate: Decimal | float = 0, regime_filter: bool = False,
+           fusion_fix: bool = False) -> Result:
     """Baseline (staged=False, sleeves=False) = today's runtime behaviour.
     staged=True adds the approved tranche entries, take-profit ladder, trailing
     stop and confirmed hard stop; sleeves=True caps each risk bucket's total
@@ -238,6 +239,16 @@ def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: 
     if brain_factory is None:
         from ai.core.atlas_brain import AtlasBrain
         brain_factory = AtlasBrain
+    if fusion_fix:
+        # research: audit F-1 full-weight denominator (proposals/2026-10-01_fusion_dissent_confidence_DESIGN.md)
+        base_factory = brain_factory
+
+        def brain_factory():
+            brain = base_factory()
+            fusion = getattr(brain, "agents", None)
+            if fusion is not None:
+                fusion.full_weight_denominator = True
+            return brain
     result = Result()
     fee_rate = PAPER_FEE_RATE_PER_SIDE
     risk = RiskEngine(RiskPolicy(total_capital=CAPITAL))
