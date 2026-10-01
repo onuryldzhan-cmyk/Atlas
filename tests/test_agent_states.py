@@ -42,7 +42,11 @@ def test_open_proposal_waits_for_the_owner_and_cycle_errors_show():
         {"id": "AC-0001", "seq": 1, "type": "OPERATIONS", "created_at": "2026-09-29T17:30:00Z", "body": body, "author": "executive_assistant"},
         {"id": "RT-0002", "seq": 2, "type": "REVIEWS", "author": "red_team", "related_proposal": "SA-FEE-DRAG.1", "title": "Karşı görüş"}]}
     out = build(OFF, proposals, memory, None, NOW)
-    assert state(out, "owner")["state"] == "WAITING_FOR_HUMAN"
+    # 2026-10-01: a DRAFT is not yet the owner's decision; only READY_FOR_OWNER waits on the
+    # owner (same definition as governance_records.awaiting_owner / the Command Center counter).
+    assert state(out, "owner")["state"] == "IDLE" and "hazırlık" in state(out, "owner")["doing"]
+    ready = {"available": True, "proposals": [{**proposals["proposals"][0], "status": "READY_FOR_OWNER"}]}
+    assert state(build(OFF, ready, memory, None, NOW), "owner")["state"] == "WAITING_FOR_HUMAN"
     assert state(out, "data_quality")["state"] == "ERROR"
     assert state(out, "quant_research")["state"] == "IDLE" and state(out, "quant_research")["source"] == "AC-0001"
     assert state(out, "red_team")["state"] == "REVIEWING"

@@ -114,22 +114,25 @@ def build(tasks: dict, proposals: dict, memory: dict, signals: dict | None,
                   for a, b in zip(units, units[1:]) if a and b and a != b]
 
     # proposals: review and the owner's decision
-    awaiting = []
+    awaiting, open_ids = [], []
     for p in proposals.get("proposals", []) if proposals.get("available") else []:
         if p.get("status") in ("APPLIED", "REJECTED", "ROLLED_BACK", "SUPERSEDED"):
             continue
-        awaiting.append(p["id"])
+        open_ids.append(p["id"])
+        if p.get("status") == "READY_FOR_OWNER":  # only what is really waiting on the owner's signature
+            awaiting.append(p["id"])
         flows.append({"from": p.get("author"), "to": "owner", "kind": "proposal", "label": p["id"]})
         for rv in p.get("reviews", []):
             flows.append({"from": p.get("author"), "to": rv.get("reviewer"), "kind": "review", "label": p["id"]})
     for r in records:
-        if r.get("author") == "red_team" and r.get("related_proposal") in awaiting:
+        if r.get("author") == "red_team" and r.get("related_proposal") in open_ids:
             set_state("red_team", "REVIEWING", r.get("title", ""), r["id"])
     if awaiting:
         set_state("owner", "WAITING_FOR_HUMAN", f"{len(awaiting)} öneri kararınızı bekliyor: {', '.join(awaiting[:3])}",
                   "proposals")
     elif proposals.get("available"):
-        set_state("owner", "IDLE", "bekleyen öneri yok", "proposals")
+        set_state("owner", "IDLE", f"onayınıza sunulmuş öneri yok ({len(open_ids)} öneri hazırlık aşamasında)" if open_ids
+                  else "bekleyen öneri yok", "proposals")
 
     # voting agents: the running market loop
     sig = (signals or {}).get("signals") if (signals or {}).get("status") == "SUCCESS" else None

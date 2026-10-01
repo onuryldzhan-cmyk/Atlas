@@ -115,12 +115,15 @@
     }
 
     let activity = [];
+    // Records are stored in UTC; show the operator's local time.
+    const localTime = (at, n) => { const d = new Date(at); return isNaN(d) ? String(at).slice(0, n).replace('T', ' ')
+        : d.toLocaleString('tr-TR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: n > 16 ? '2-digit' : undefined }); };
     const CAT = { RUNTIME: 'info', GOVERNANCE: 'primary', SECURITY: 'danger', TRADE: 'success' };
     function renderActivity() {
         const on = [...document.querySelectorAll('.feed-cat')].filter((c) => c.checked).map((c) => c.value);
         const rows = activity.filter((e) => on.includes(e.category));
         document.getElementById('activity').innerHTML = rows.length ? rows.map((e) =>
-            `<div>${esc(String(e.at).slice(0, 19).replace('T', ' '))} <span class="badge text-bg-${CAT[e.category] || 'secondary'}">${esc(e.category)}</span> <b>${esc(e.agent)}</b> ${esc(e.text)}</div>`).join('')
+            `<div>${esc(localTime(e.at, 19))} <span class="badge text-bg-${CAT[e.category] || 'secondary'}">${esc(e.category)}</span> <b>${esc(e.agent)}</b> ${esc(e.text)}</div>`).join('')
             : '<span class="text-body-secondary">AKTİVİTE YOK: kayıtlı olay bulunmadı.</span>';
     }
     function renderOps() {
@@ -142,7 +145,7 @@
             `<div>Şu an: ${esc(a.doing)}</div><div class="text-body-secondary">Kaynak kayıt: ${esc(a.source || 'yok')}</div>` +
             `<div>İş akışı: ${[...inn, ...out].join(' · ') || 'yok'}</div>` +
             `<div>Yetkiler: ${caps.length ? caps.map((c) => `<span class="badge text-bg-secondary">${esc(c)}</span>`).join(' ') : 'kayıtlı yetki yok'}</div>` +
-            `<div class="mt-1"><b>Geçmiş</b>${(a.history || []).length ? (a.history || []).map((e) => `<div>${esc(String(e.at).slice(0, 16).replace('T', ' '))} · ${esc(e.category)} · ${esc(e.text)}</div>`).join('') : ' <span class="text-body-secondary">kayıtlı olay yok</span>'}</div>` +
+            `<div class="mt-1"><b>Geçmiş</b>${(a.history || []).length ? (a.history || []).map((e) => `<div>${esc(localTime(e.at, 16))} · ${esc(e.category)} · ${esc(e.text)}</div>`).join('') : ' <span class="text-body-secondary">kayıtlı olay yok</span>'}</div>` +
             `<div class="text-body-secondary">Token / maliyet / gecikme: N/A (ajanlar kural tabanlı, dil modeli yok).</div>` +
             `<div class="text-body-secondary">Hiçbir ajan para harcayamaz, yayına alamaz ya da kendi kararını onaylayamaz.</div>`;
     }
