@@ -312,9 +312,12 @@ def test_only_main_entry_point_opts_in():
     hits = [p.relative_to(root).as_posix() for p in root.rglob("*.py")
             if "tests" not in p.parts and not any(part.startswith(("archive", "phase")) for part in p.parts)
             and "paper_confidence_experiment=True" in p.read_text(encoding="utf-8", errors="ignore")]
-    # EXP-001 was stopped by the owner on 2026-09-29 (registry v5.71): nothing opts in
-    assert hits == []
-    assert "paper_confidence_experiment=False" in (root / "main.py").read_text(encoding="utf-8")
+    # EXP-001 was stopped by the owner on 2026-09-29 (registry v5.71).
+    # Test policy change 2026-10-01: the owner switched on EXP-002 - still only
+    # main.py may opt in, and only for EXP-002 (EXP-001 stays stopped).
+    assert hits == ["main.py"]
+    text = (root / "main.py").read_text(encoding="utf-8")
+    assert 'paper_confidence_experiment_id="EXP-002"' in text and '"EXP-001"' not in text
 
 
 # =====================================================================

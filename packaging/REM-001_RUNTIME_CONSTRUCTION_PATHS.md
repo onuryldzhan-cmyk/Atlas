@@ -20,10 +20,10 @@ Command: `python -m tools.build_rem001_gate1_maps construction --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `c7def609f85f0b7ceae0f5372509596a040c297d` |
-| generated_from_tree | `677d8f5a6d6a3f0e27bb6ae7def2c185f24f1cbb` |
+| generated_from_commit | `637da41546ca6e6481f3c2817095f2a06d1da83a` |
+| generated_from_tree | `69caf2db3690e35847f5aaa510764fbca5ebe244` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['ackaging/atlas_architecture_map.json', 'packaging/atlas_runtime_closure.json'] |
+| modified_tracked_paths_at_generation | ['ests/test_exp001_paper_confidence_experiment.py'] |
 
 ## Analysis
 
@@ -383,7 +383,7 @@ classes and their observed constructors:
 | `exchange/market_feed.py` | `BinancePublicDataProvider` | `atlas_finance/market_data/binance_public_provider.py` | 117 | `MarketFeed::__init__` |
 | `exchange/market_feed.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 369 | `MarketFeed::_require_metadata` |
 | `exchange/market_feed.py` | `MarketFeedService` | `atlas_finance/market_data/market_feed_service.py` | 120 | `MarketFeed::__init__` |
-| `main.py` | `AtlasApplication` | `core/application.py` | 513 | `AtlasProcess::start` |
+| `main.py` | `AtlasApplication` | `core/application.py` | 517 | `AtlasProcess::start` |
 | `observability/governance_records.py` | `ProposalLogError` | `atlas_org/proposals.py` | 27 | `_load` |
 | `observability/governance_records.py` | `ProposalLogError` | `atlas_org/proposals.py` | 30 | `_load` |
 | `observability/governance_records.py` | `ProposalLogError` | `atlas_org/proposals.py` | 34 | `_load` |

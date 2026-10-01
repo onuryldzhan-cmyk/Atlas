@@ -19,10 +19,10 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `c7def609f85f0b7ceae0f5372509596a040c297d` |
-| generated_from_tree | `677d8f5a6d6a3f0e27bb6ae7def2c185f24f1cbb` |
+| generated_from_commit | `637da41546ca6e6481f3c2817095f2a06d1da83a` |
+| generated_from_tree | `69caf2db3690e35847f5aaa510764fbca5ebe244` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['ackaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/atlas_architecture_map.json', 'packaging/atlas_runtime_closure.json'] |
+| modified_tracked_paths_at_generation | ['ackaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'tests/test_exp001_paper_confidence_experiment.py'] |
 
 ## What this artifact is, and what it is not
 
@@ -208,7 +208,7 @@ nothing is inferred from an absence.
 | `data_layer/migrations.py` | ATOMIC_REPLACE | 146 | `apply_migrations` |
 | `data_layer/models.py` | ATOMIC_REPLACE | 54 | `utc_text` |
 | `data_layer/models.py` | ATOMIC_REPLACE | 61 | `utc_text` |
-| `main.py` | PATH_WRITE_TEXT | 580 | `AtlasProcess::_write_heartbeat` |
+| `main.py` | PATH_WRITE_TEXT | 585 | `AtlasProcess::_write_heartbeat` |
 | `observability/agent_states.py` | ATOMIC_REPLACE | 58 | `_age_s` |
 | `observability/agent_states.py` | ATOMIC_REPLACE | 61 | `_age_s` |
 | `observability/command_center.py` | ATOMIC_REPLACE | 88 | `_money` |
