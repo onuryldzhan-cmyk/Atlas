@@ -96,7 +96,7 @@
 
         <div class="pane mb-3">
             <h2>What changed <a href="/hq" class="small">Command Center →</a></h2>
-            <div class="small na">N/A — karşılaştırılacak kayıtlı bir önceki durum anlık görüntüsü henüz yok. Web katmanı salt okunurdur ve snapshot yazmaz; bu panel, ajan döngüsü OV-* kaydı yazmaya başladığında dolacak. Değer uydurulmaz.</div>
+            <div id="changed" class="small"><span class="na">Yükleniyor...</span></div>
         </div>
     </div>
 </main>
@@ -243,6 +243,14 @@
     }
     async function slow() {
         [memory, security] = await Promise.all([getJSON('/api/memory'), getJSON('/api/security')]);
+        // What changed: the latest OV-* record written by the agent cycle (web stays read-only).
+        const ov = (memory && memory.available ? memory.records : []).filter((r) => r.author === 'overview_snapshot')
+            .sort((a, b) => b.seq - a.seq)[0];
+        let changes = null;
+        try { changes = ov ? JSON.parse(ov.body).changes : null; } catch (e) { changes = null; }
+        set('changed', !ov ? '<span class="na">N/A — ajan döngüsü henüz ilk durum özetini yazmadı.</span>'
+            : (changes && changes.length ? changes.map((c) => `<div>• ${esc(c)}</div>`).join('') : '<span class="text-body-secondary">İlk kayıt alındı; bir sonraki değişiklikte burada görünecek.</span>')
+              + `<div class="na mt-1">${esc(new Date(ov.created_at).toLocaleString('tr-TR'))} itibarıyla</div>`);
         renderRegimes(); renderIncidents();
         dot('d-security', !security.available ? '' : security.overall === 'PASS' ? 'ok' : security.overall === 'FAIL' ? 'bad' : 'warn', security.available ? security.overall : 'okunamadı');
     }

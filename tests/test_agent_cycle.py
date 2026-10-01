@@ -137,3 +137,23 @@ def test_strategy_research_launches_in_background_then_records_result(tmp_path):
     assert len(sc) == 1
     assert "24 saatten yeni" in ac.strategy_research(rec, research_dir=rd, launch=launched.append)["summary"]
     assert len(launched) == 1
+
+
+def test_overview_snapshot_records_only_on_change(tmp_path, monkeypatch):
+    archive = tmp_path / "closed.jsonl"
+    archive.write_text("", encoding="utf-8")
+    monkeypatch.setattr(ac, "_archive_path", lambda: archive)
+    records = tmp_path / "records"
+    ac.overview_snapshot(records)
+    ov = lambda: [r for r in memory_records.replay(cli.read_log(records / cli.MEMORY_LOG)).values()
+                  if r.get("author") == "overview_snapshot"]
+    assert len(ov()) == 1
+    ac.overview_snapshot(records)
+    assert len(ov()) == 1  # nothing changed -> no new record
+    row = {"symbol": "BTCUSDT", "cost_quote": "1000", "gross_pnl": "5",
+           "opened_at": "2026-09-29T10:00:00+00:00", "closed_at": "2026-09-29T10:30:00+00:00"}
+    archive.write_text(json.dumps(row) + "\n", encoding="utf-8")
+    ac.overview_snapshot(records)
+    latest = ov()
+    assert len(latest) == 2
+    assert json.loads(sorted(latest, key=lambda r: r["id"])[-1]["body"])["changes"]

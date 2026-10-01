@@ -26,6 +26,7 @@ import argparse
 import json
 import sys
 import time
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, Callable
 
@@ -198,6 +199,69 @@ def strategy_research(records_dir: Path, research_dir: Path | None = None, launc
     return {"verdict": "OK", "summary": "karşılaştırma arka planda başlatıldı (paralel); sonuç bir sonraki döngülerde hafızaya yazılacak"}
 
 
+def _snapshot(records_dir: Path, mem: list[dict[str, Any]]) -> dict[str, Any]:
+    """The few facts the Overview's "What changed" compares (all from recorded sources)."""
+    from atlas_org import proposals as P, tasks as T
+    from ai.core.intelligence.trade_evidence import net_pnl
+    from tools.exp001_report import load_closed
+
+    regimes: dict[str, int] = {}
+    mr = [r for r in mem if r.get("author") == "market_regime"]
+    if mr:
+        try:
+            regimes = json.loads(max(mr, key=lambda r: r["seq"])["body"]).get("counts", {})
+        except (ValueError, KeyError):
+            regimes = {}
+    try:
+        closed = load_closed(_archive_path())
+        trades, net = len(closed), round(float(sum((net_pnl(r) for r in closed), Decimal("0"))), 2)
+    except Exception:
+        trades, net = None, None
+    plog, tlog = records_dir / cli.PROPOSALS_LOG, records_dir / cli.TASKS_LOG
+    ready = sum(1 for p in P.replay(cli.read_log(plog)).values() if p.status.value == "READY_FOR_OWNER") if plog.exists() else 0
+    blocked = sum(1 for t in T.replay(cli.read_log(tlog)).values() if t["status"] == "BLOCKED") if tlog.exists() else 0
+    incidents = sum(1 for r in mem if r.get("type") == "INCIDENTS" and not r.get("superseded_by")
+                    and (r.get("incident") or {}).get("status") != "RESOLVED")
+    return {"regimes": regimes, "closed_trades": trades, "realized_net": net, "awaiting_owner": ready,
+            "blocked_tasks": blocked, "open_incidents": incidents}
+
+
+def overview_snapshot(records_dir: Path) -> dict[str, Any]:
+    """Owner Dashboard v1 "What changed": compares the current facts with the last OV record.
+
+    Writes one OV-NNNN record only when something changed, with the list of
+    changes; the web layer just displays the latest one (it stays read-only).
+    """
+    from atlas_org import memory_records
+
+    log = records_dir / cli.MEMORY_LOG
+    mem = memory_records.public_view(memory_records.replay(cli.read_log(log))) if log.exists() else []
+    now = _snapshot(records_dir, mem)
+    prev_recs = [r for r in mem if r.get("author") == "overview_snapshot"]
+    prev = {}
+    if prev_recs:
+        try:
+            prev = json.loads(max(prev_recs, key=lambda r: r["seq"])["body"]).get("snapshot", {})
+        except (ValueError, KeyError):
+            prev = {}
+    if now == prev:
+        return {"verdict": "OK", "summary": "değişiklik yok"}
+    labels = {"closed_trades": "Kapanan işlem", "realized_net": "Gerçekleşen net P/L ($)", "awaiting_owner": "Onayınızı bekleyen öneri",
+              "blocked_tasks": "Engelli görev", "open_incidents": "Açık olay"}
+    changes = [f"{labels[k]}: {prev.get(k, '—')} → {now[k]}" for k in labels if prev and prev.get(k) != now[k]]
+    for reg in sorted(set(now["regimes"]) | set(prev.get("regimes", {}))):
+        a, b = prev.get("regimes", {}).get(reg, 0), now["regimes"].get(reg, 0)
+        if prev and a != b:
+            changes.append(f"Rejim {reg}: {a} → {b} coin")
+    existing = {r["record_id"] for r in cli.read_log(log)} if log.exists() else set()
+    cli.add_memory_record(records_dir, {
+        "record_id": f"OV-{len(existing) + 1:04d}", "type": "OPERATIONS", "authority": "TEMPORARY",
+        "title": f"Durum özeti: {len(changes)} değişiklik" if prev else "Durum özeti: ilk kayıt",
+        "body": json.dumps({"snapshot": now, "changes": changes}, ensure_ascii=False),
+        "author": "overview_snapshot", "source": "tools/agent_cycle.py (overview_snapshot)"})
+    return {"verdict": "OK", "summary": f"{len(changes)} değişiklik kaydedildi" if prev else "ilk durum özeti kaydedildi"}
+
+
 def _security_step(records_dir: Path) -> tuple[str, str]:
     out = security(records_dir)
     return ({"OK": "PASS", "WARN": "REVIEW_REQUIRED"}.get(out["verdict"], "FAIL"), out["summary"])
@@ -325,6 +389,7 @@ AGENTS: tuple[tuple[str, str, Callable[[Path], dict[str, Any]]], ...] = (
     ("market_regime", "Piyasa rejimi", market_regime),
     ("knowledge_manager", "Ders defteri", knowledge_manager),
     ("task_runner", "Görev yürütücü", task_runner),
+    ("overview_snapshot", "Durum özeti", overview_snapshot),
     ("red_team", "Karşı görüş", red_team),
     ("executive_assistant", "Öz-değerlendirme", executive_assistant),
     ("data_quality", "Veri sağlığı", data_quality),
