@@ -46,3 +46,15 @@ NB-5 rightly divides by the expected 5 agents, so an abstention never counts as 
 2. Register the host, write the provider with tests, then wire it behind a flag that defaults OFF.
 3. An independent audit (CRITICAL: decision intelligence).
 4. The owner switches it on. Then, separately, the owner decides on EXP-002.
+
+## Successor note after the audit (2026-10-01, audit F-4 / F-1)
+**What the code does now:**
+- Funding is **not** a sixth evidence item. It is consulted only when Fear & Greed is NEUTRAL.
+- It may only produce an agreeing **BUY**: CROWDED_SHORT with a BULLISH trend.
+- Every other reading abstains.
+
+**Why the design changed:** the audit's F-1 showed that `AgentFusion.fuse()` turns a dissenting HOLD/SELL into *more* confidence for the winner than an abstention gives.
+
+**Order of switch-on:**
+1. EXP-002 alone, with funding OFF, is approved.
+2. Funding, after the owner accepts F-2. A single funding BUY can lift a typical BUY past MEDIUM 0.70.

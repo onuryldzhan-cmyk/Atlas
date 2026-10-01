@@ -850,9 +850,13 @@ class WorldAnalysisEngine:
             if (isinstance(funding, dict) and funding.get("available") is True
                     and funding.get("band") in ("CROWDED_SHORT", "CROWDED_LONG")):
                 mapped = cls.SENTIMENT_BAND_FEAR if funding["band"] == "CROWDED_SHORT" else cls.SENTIMENT_BAND_GREED
-            if mapped is not None:
+            # Audit 2026-10-01 F-1 (HIGH): AgentFusion's NB-5 denominator makes a
+            # dissenting HOLD/SELL vote RAISE the winner's confidence versus an
+            # abstention. Until fuse() is fixed (separate governed change), funding
+            # may only add agreeing BUY evidence; any other funding read abstains.
+            vote = cls.sentiment_vote(mapped, cls._sentiment_trend(analysis, technical_status)) if mapped else None
+            if vote == "BUY":
                 trend = cls._sentiment_trend(analysis, technical_status)
-                vote = cls.sentiment_vote(mapped, trend)
                 return (
                     MarketDataEvidenceStatus.AVAILABLE,
                     cls.SENTIMENT_VOTE_SCORES[vote],

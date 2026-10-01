@@ -85,13 +85,32 @@ def test_missing_neutral_or_malformed_funding_keeps_the_abstention(f):
     assert status is S.UNAVAILABLE_NO_PROVIDER and score is None
 
 
-def test_crowded_funding_votes_through_the_owner_rule():
+def test_crowded_short_with_bullish_trend_is_the_only_funding_vote():
     s, score, e = ev(funding("CROWDED_SHORT"))
     assert s is S.AVAILABLE and e["vote"] == "BUY" and e["reason"] == "FUNDING_RATE_CROWDED"
-    s, score, e = ev(funding("CROWDED_LONG"))
-    assert e["vote"] == "SELL"
-    s, score, e = ev(funding("CROWDED_SHORT"), analysis={"trend": "NEUTRAL"})
-    assert e["vote"] == "SELL"  # ambiguous trend -> conservative branch, as for FEAR
+    # Audit F-1: dissenting reads (SELL/HOLD) abstain, because fuse() would turn them into MORE confidence.
+    for f, a in ((funding("CROWDED_LONG"), BULL), (funding("CROWDED_SHORT"), {"trend": "NEUTRAL"}),
+                 (funding("CROWDED_LONG"), {"trend": "BEARISH"})):
+        s, score, e = ev(f, analysis=a)
+        assert s is S.UNAVAILABLE_NO_PROVIDER and score is None
+
+
+
+
+def test_fusion_never_gets_a_dissenting_funding_vote_and_roster_stays_five():
+    # Audit F-3: whatever the funding read, the sentiment evidence is either a BUY or an abstention,
+    # and the engine still reports exactly one sentiment evidence slot (NB-5 roster of five).
+    for band in ("CROWDED_SHORT", "CROWDED_LONG", "NEUTRAL"):
+        for a in (BULL, {"trend": "BEARISH"}, {"trend": "NEUTRAL"}):
+            s, score, e = ev(funding(band), analysis=a)
+            assert (s is S.AVAILABLE and e["vote"] == "BUY") or (s is S.UNAVAILABLE_NO_PROVIDER and score is None)
+
+
+def test_fear_greed_and_funding_disagreeing_follows_fear_greed():
+    greed = {"provider_status": "AVAILABLE", "value": 90, "band": "GREED", "reason": "OK",
+             "funding": {"available": True, "rate": "-0.001", "band": "CROWDED_SHORT"}}
+    s, score, e = ev(greed)
+    assert e["vote"] == "SELL" and "funding_band" not in e
 
 
 def test_fear_or_greed_band_ignores_funding():
