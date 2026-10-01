@@ -104,5 +104,6 @@ All ACCEPTs remain subject to owner approval and registry entry; every risk-path
 | **#3 Realistic fills for any verdict** | DONE | A variant gets a verdict only with both `slippage_bps` and `next_open_fill`. Tested. |
 | **#7 Multiple testing** | PARTLY DONE | `compare()` now reports `multiple_testing.variants_judged` with a caution note. A full deflated Sharpe is DEFERRED until per-window return series are long enough. |
 | **#4 and #5 protections** | DEFERRED | Waiting for the cooldown evidence that `/postmortem` now measures. CRITICAL: refuse-only, default OFF, audit and owner required. |
-| **#6, #8** | DEFERRED | Next STANDARD/CRITICAL items. |
+| **#6 Look-ahead check** | DONE (research) | `tools/lookahead_check.py`: replays a truncated and a full dataset; trades closed before the cut must be identical. A test confirms a strategy that peeks at future data is caught. Warm-up-length sensitivity is still open. |
+| **#8** | DEFERRED | CRITICAL; next. |
 | **#9, #10** | DEFERRED | As in the proposal. |
