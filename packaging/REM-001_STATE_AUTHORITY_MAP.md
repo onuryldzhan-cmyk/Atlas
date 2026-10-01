@@ -19,8 +19,8 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `1b2074950dbbae98d925302169b9f659d27725ae` |
-| generated_from_tree | `7f62b847c779828c907e0971483a05aaaa1e0d30` |
+| generated_from_commit | `0e517f036a79305d7f8bc02de96654c8041fd29d` |
+| generated_from_tree | `d2026e3167539fb0062c1c0c6aa10b66ba8cc3e3` |
 | tracked_working_tree_clean | False |
 | modified_tracked_paths_at_generation | ['ackaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md'] |
 
@@ -176,7 +176,7 @@ nothing is inferred from an absence.
 | `core/durable_append_log.py` | ATOMIC_REPLACE | 349 | `DurableAppendLog::rewrite` |
 | `core/durable_append_log.py` | UNLINK | 356 | `DurableAppendLog::rewrite` |
 | `core/execution_idempotency_store.py` | UNLINK | 863 | `ExecutionIdempotencyStore::reset` |
-| `core/execution_manager.py` | ATOMIC_REPLACE | 6482 | `ExecutionManager::_normalize_confidence` |
+| `core/execution_manager.py` | ATOMIC_REPLACE | 6493 | `ExecutionManager::_normalize_confidence` |
 | `core/execution_models.py` | ATOMIC_REPLACE | 96 | `normalize_timestamp` |
 | `core/execution_portfolio_foundation.py` | ATOMIC_REPLACE | 64 | `_utc` |
 | `core/execution_portfolio_foundation.py` | FSYNC | 183 | `FinancialStateStore::save` |
