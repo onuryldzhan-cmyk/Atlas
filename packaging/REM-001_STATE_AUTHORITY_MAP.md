@@ -19,10 +19,10 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `3ffb5b7c906bfb1aa805bee82a5f4113351dd8fa` |
-| generated_from_tree | `eaa2870057c5bb20de0eceec9d941fb2eb1be1ee` |
+| generated_from_commit | `82254ffc0bee3a7eaa4efd6049b6b6ae93d295e0` |
+| generated_from_tree | `5b3814dc6c101ad5f56c8f5abf9a4c1f5692c084` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['ackaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md'] |
+| modified_tracked_paths_at_generation | ['ackaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/atlas_architecture_map.json', 'packaging/atlas_runtime_closure.json'] |
 
 ## What this artifact is, and what it is not
 
@@ -60,11 +60,11 @@ observation.
 | field | value |
 | --- | --- |
 | entry_points | `main.py`, `web_app.py`, `atlas_service.py`, `atlas_supervisor.py` |
-| modules_in_runtime_closure | 129 |
+| modules_in_runtime_closure | 130 |
 | declared_state_file_constants | 10 |
-| persistence_sites | 87 |
-| modules_with_persistence_sites | 37 |
-| distinct_state_file_literals | 34 |
+| persistence_sites | 88 |
+| modules_with_persistence_sites | 38 |
+| distinct_state_file_literals | 35 |
 | parse_failures | 0 |
 
 ## Declared durable state surface
@@ -123,6 +123,7 @@ nothing is inferred from an absence.
 | `memory_data/execution_transaction_journal.jsonl` | `core/execution_transaction_journal.py` |
 | `packaging/atlas_architecture_map.json` | `atlas_org/proposals.py`, `observability/organization.py` |
 | `paper_trades.json` | `core/application.py`, `core/paper_trader.py` |
+| `position_risk_buckets.jsonl` | `core/position_risk_buckets.py` |
 | `proposals.jsonl` | `observability/governance_records.py` |
 | `reports/observability/telemetry_summary.json` | `observability/panel_sources.py` |
 | `reports/observability/test_results.meta.json` | `observability/panel_sources.py` |
@@ -174,7 +175,7 @@ nothing is inferred from an absence.
 | `core/durable_append_log.py` | ATOMIC_REPLACE | 349 | `DurableAppendLog::rewrite` |
 | `core/durable_append_log.py` | UNLINK | 356 | `DurableAppendLog::rewrite` |
 | `core/execution_idempotency_store.py` | UNLINK | 863 | `ExecutionIdempotencyStore::reset` |
-| `core/execution_manager.py` | ATOMIC_REPLACE | 6425 | `ExecutionManager::_normalize_confidence` |
+| `core/execution_manager.py` | ATOMIC_REPLACE | 6448 | `ExecutionManager::_normalize_confidence` |
 | `core/execution_models.py` | ATOMIC_REPLACE | 96 | `normalize_timestamp` |
 | `core/execution_portfolio_foundation.py` | ATOMIC_REPLACE | 64 | `_utc` |
 | `core/execution_portfolio_foundation.py` | FSYNC | 183 | `FinancialStateStore::save` |
@@ -194,6 +195,7 @@ nothing is inferred from an absence.
 | `core/paper_trader.py` | JSON_DUMP | 852 | `PaperTrader::save` |
 | `core/paper_trader.py` | FSYNC | 874 | `PaperTrader::save` |
 | `core/paper_trader.py` | ATOMIC_REPLACE | 879 | `PaperTrader::save` |
+| `core/position_risk_buckets.py` | FSYNC | 76 | `PositionRiskBucketStore::record` |
 | `core/risk_state_store.py` | JSON_DUMP | 98 | `JsonRiskStateStore::save` |
 | `core/risk_state_store.py` | FSYNC | 99 | `JsonRiskStateStore::save` |
 | `core/risk_state_store.py` | ATOMIC_REPLACE | 100 | `JsonRiskStateStore::save` |

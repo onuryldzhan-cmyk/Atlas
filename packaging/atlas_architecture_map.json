@@ -534,6 +534,7 @@
     "core/operational_contracts.py": "L1",
     "core/paper_trader.py": "L3",
     "core/position_controller.py": "L3",
+    "core/position_risk_buckets.py": "L3",
     "core/position_sizing.py": "L1",
     "core/risk_engine.py": "L1",
     "core/risk_state_store.py": "L3",
