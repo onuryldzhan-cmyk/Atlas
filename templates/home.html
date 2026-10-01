@@ -1,140 +1,255 @@
 <!DOCTYPE html>
 {#
-  Atlas start page (registry v5.40). Loopback-only, read-only.
-  Owner: "başlangıç Dashboard'ı çok ayrıntılı olmasın, ayrıntılar başka
-  sayfalara aktarılsın". Only the essentials; every value comes from
-  /api/portfolio (real PAPER book + real prices) and /api/command-center.
-  Unavailable data is shown as unavailable, never filled in.
+  Atlas Overview — Dashboard v1 (owner design 2026-10-01; previously the
+  v5.40 start page). Loopback-only, read-only: every value comes from an
+  existing read-only API. Unknown data is shown as N/A, never filled in.
+  No fake confidence: the signal is shown as a low / medium / high strength
+  band with a calibration note, never as a raw percentage. Atlas has no
+  funding, OI, order book, correlation, stress or AI-cost source, so none
+  is shown.
 #}
+{% set atlas_active = "overview" %}
 <html lang="tr" data-bs-theme="dark" data-lte-color-mode="off">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Atlas — Başlangıç</title>
+    <title>Atlas — Overview</title>
     <link rel="stylesheet" href="/assets/adminlte.min.css">
-    <style>
-        body { background: #0b0f17; }
-        .atlas-nav a { color: var(--bs-secondary-color); text-decoration: none; padding: .35rem .7rem; border-radius: .4rem; white-space: nowrap; }
-        .atlas-nav a.active, .atlas-nav a:hover { color: var(--bs-body-color); background: var(--bs-tertiary-bg); }
-        .wrap { max-width: 1100px; margin: 0 auto; padding: 16px; }
-        .kpi { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 16px; height: 100%; }
-        .kpi .label { font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; color: var(--bs-secondary-color); }
-        .kpi .value { font-size: 1.7rem; font-weight: 700; line-height: 1.2; }
-        .kpi .sub { font-size: .8rem; color: var(--bs-secondary-color); }
-        .up { color: #22c55e; } .down { color: #ef4444; }
-        .card-link { display: block; text-decoration: none; color: inherit; }
-        .card-link:hover .kpi { border-color: var(--bs-primary); }
-        table.coins td, table.coins th { padding: .35rem .5rem; font-size: .9rem; }
-    </style>
     {% include "_atlas_theme.html" %}
+    <style>
+        .wrap { max-width: 1320px; margin: 0 auto; padding: 16px; }
+        .topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 10px 16px; border-bottom: 1px solid var(--atlas-line); background: var(--atlas-panel); }
+        .topbar .tag { font-size: 12px; font-weight: 700; letter-spacing: .06em; padding: 3px 8px; border-radius: 6px; border: 1px solid var(--atlas-line); }
+        .dot { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--atlas-muted); }
+        .dot::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--atlas-muted); }
+        .dot.ok::before { background: var(--atlas-up); } .dot.warn::before { background: var(--atlas-warn); } .dot.bad::before { background: var(--atlas-down); }
+        .kpi { padding: 14px 16px; height: 100%; }
+        .kpi .value { font-family: var(--atlas-mono); }
+        .kpi .sub { font-size: 12px; color: var(--atlas-muted); margin-top: 2px; }
+        .pane { padding: 14px 16px; height: 100%; }
+        .pane h2 { margin: 0 0 10px; display: flex; justify-content: space-between; }
+        .pane h2 a { font-weight: 400; }
+        .na { color: var(--atlas-muted); }
+        .bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--atlas-panel-2); }
+        .bar span { display: block; height: 100%; }
+        .row-line { display: flex; justify-content: space-between; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--atlas-line); font-size: 13px; }
+        .row-line:last-child { border-bottom: 0; }
+        .strength { font-size: 20px; font-weight: 600; }
+        svg.curve { width: 100%; height: 170px; display: block; }
+        .form-select-sm { width: auto; display: inline-block; }
+    </style>
 </head>
 <body>
-<nav class="navbar bg-body border-bottom px-3 flex-wrap gap-2">
-    <span class="navbar-brand fw-bold"><span class="text-primary">ATLAS</span></span>
-    <div class="atlas-nav d-flex flex-wrap gap-1">
-        <a href="/home" class="active" aria-current="page">Başlangıç</a>
-        <a href="/trading">Trading</a>
-        <a href="/agents">Ajanlar</a>
-        <a href="/governance">Hafıza</a>
-        <a href="/system">Sistem</a>
-        <a href="/hq">Atlas HQ</a>
+<div class="atlas-shell">
+{% include "_atlas_sidebar.html" %}
+<main class="atlas-main">
+    <div class="topbar">
+        <span id="t-state" class="tag">…</span>
+        <span class="tag" style="color: var(--atlas-warn)">PAPER</span>
+        <span id="d-data" class="dot">DATA</span>
+        <span id="d-engine" class="dot">ENGINE</span>
+        <span id="d-risk" class="dot">RISK</span>
+        <span id="d-security" class="dot">SECURITY</span>
+        <span id="t-asof" class="ms-auto small na"></span>
     </div>
-    <span id="status-pill" class="small">…</span>
-</nav>
-
-<div class="wrap">
-    <div class="row g-3 mb-3">
-        <div class="col-6 col-lg-3"><a class="card-link" href="/trading"><div class="kpi">
-            <div class="label">Toplam sermaye</div><div id="k-equity" class="value">…</div><div id="k-start" class="sub"></div></div></a></div>
-        <div class="col-6 col-lg-3"><a class="card-link" href="/trading"><div class="kpi">
-            <div class="label">Toplam kâr / zarar</div><div id="k-pnl" class="value">…</div><div id="k-pnl-sub" class="sub"></div></div></a></div>
-        <div class="col-6 col-lg-3"><a class="card-link" href="/trading"><div class="kpi">
-            <div class="label">Kullanılabilir nakit</div><div id="k-cash" class="value">…</div><div id="k-exposure" class="sub"></div></div></a></div>
-        <div class="col-6 col-lg-3"><a class="card-link" href="/dashboard#section-proposals-title"><div class="kpi">
-            <div class="label">Kararınızı bekleyen</div><div id="k-decisions" class="value">…</div><div class="sub">öneri</div></div></a></div>
-    </div>
-
-    <div class="row g-3">
-        <div class="col-lg-7"><div class="kpi">
-            <div class="d-flex justify-content-between"><div class="label">Coinler (gerçek zamanlı)</div><a href="/trading" class="small">Ayrıntı →</a></div>
-            <div id="coins" class="mt-2">Yükleniyor...</div>
-        </div></div>
-        <div class="col-lg-5"><div class="kpi">
-            <div class="label mb-2">Durum</div>
-            <div id="status-list" class="small">Yükleniyor...</div>
-            <div class="mt-3 small text-body-secondary">PAPER modu: gerçek piyasa verisi, sanal para. Canlı para KAPALI.</div>
-            <div class="mt-2 small">Hızlı erişim: <a href="/decisions">neden bu karar?</a> · <a href="/governance">öneriler</a> · <a href="/agents">ajan döngüsü</a> · <a href="/dashboard">operasyon paneli</a></div>
-        </div></div>
-    </div>
-    <div id="price-note" class="small text-body-secondary mt-2"></div>
-    <div class="kpi mt-3">
-        <div class="label mb-2">Atlas'a sor</div>
-        <div class="input-group input-group-sm">
-            <input id="chat-input" type="text" autocomplete="off" maxlength="500" class="form-control" placeholder="Toplam kâr ne kadar? · BTC ne durumda? · Pozisyonlarım · Bekleyen öneriler" aria-label="Atlas'a sor">
-            <button id="chat-send" class="btn btn-primary" type="button">Sor</button>
+    <div class="wrap">
+        <div class="row g-3 mb-3">
+            <div class="col-6 col-xl-3"><div class="kpi"><div class="label">Equity</div><div id="k-equity" class="value">…</div><div id="k-equity-sub" class="sub"></div></div></div>
+            <div class="col-6 col-xl-3"><div class="kpi"><div class="label">Today (realized, UTC day)</div><div id="k-today" class="value">…</div><div id="k-today-sub" class="sub"></div></div></div>
+            <div class="col-6 col-xl-3"><div class="kpi"><div class="label">Total return</div><div id="k-return" class="value">…</div><div id="k-return-sub" class="sub"></div></div></div>
+            <div class="col-6 col-xl-3"><div class="kpi"><div class="label">Risk</div><div id="k-risk" class="value">…</div><div id="k-risk-sub" class="sub"></div></div></div>
         </div>
-        <div id="chat-log" class="small mt-2"></div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-xl-8"><div class="pane">
+                <h2>Equity curve <a href="/trading" class="small">Ayrıntı →</a></h2>
+                <div id="curve">Yükleniyor...</div>
+                <div class="small na mt-1">Kapanan işlemlerin kümülatif brüt P/L'i (son 50 işlem, ücretler hariç). Tik geçmişi yok; ara değer tahmin edilmez.</div>
+            </div></div>
+            <div class="col-xl-4"><div class="pane">
+                <h2>Market regime</h2>
+                <div id="regimes" class="small">Yükleniyor...</div>
+            </div></div>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-xl-5"><div class="pane">
+                <h2><span>Atlas View</span><select id="sym" class="form-select form-select-sm" aria-label="Coin"></select></h2>
+                <div id="view">Yükleniyor...</div>
+            </div></div>
+            <div class="col-xl-7"><div class="pane">
+                <h2>Why / Why-not <a href="/decisions" class="small">Neden bu karar? →</a></h2>
+                <div id="why" class="small">Yükleniyor...</div>
+            </div></div>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-xl-7"><div class="pane">
+                <h2>Open positions <a href="/dashboard" class="small">Portfolio →</a></h2>
+                <div id="positions" class="small">Yükleniyor...</div>
+            </div></div>
+            <div class="col-xl-5"><div class="pane">
+                <h2>Attention center <a href="/agents" class="small">Ajanlar →</a></h2>
+                <div id="attention" class="small">Yükleniyor...</div>
+            </div></div>
+        </div>
+
+        <div class="pane mb-3">
+            <h2>What changed <a href="/hq" class="small">Command Center →</a></h2>
+            <div class="small na">N/A — karşılaştırılacak kayıtlı bir önceki durum anlık görüntüsü henüz yok. Web katmanı salt okunurdur ve snapshot yazmaz; bu panel, ajan döngüsü OV-* kaydı yazmaya başladığında dolacak. Değer uydurulmaz.</div>
+        </div>
     </div>
+</main>
 </div>
 
 <script>
 (() => {
     const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const getJSON = async (url) => { try { const r = await fetch(url); return await r.json(); } catch (e) { return { available: false, reason: 'network error' }; } };
-    const money = (v) => (v === null || v === undefined) ? '—' : Number(v).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' $';
-    const signed = (v, suffix = '') => (v === null || v === undefined) ? '—' : (Number(v) > 0 ? '+' : '') + Number(v).toLocaleString('tr-TR', { maximumFractionDigits: 2 }) + suffix;
-    const tone = (v) => (v === null || v === undefined || Number(v) === 0) ? '' : (Number(v) > 0 ? 'up' : 'down');
+    const NA = '<span class="na">N/A</span>';
+    const isNum = (v) => v !== null && v !== undefined && v !== '' && Number.isFinite(Number(v));
+    const money = (v) => isNum(v) ? Number(v).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' $' : NA;
+    const signed = (v, suffix = '') => isNum(v) ? (Number(v) > 0 ? '+' : '') + Number(v).toLocaleString('tr-TR', { maximumFractionDigits: 2 }) + suffix : NA;
+    const tone = (v) => !isNum(v) || Number(v) === 0 ? '' : (Number(v) > 0 ? 'up' : 'down');
     const set = (id, html) => { document.getElementById(id).innerHTML = html; };
+    const dot = (id, cls, title) => { const el = document.getElementById(id); el.className = 'dot ' + cls; el.title = title; };
+    const line = (k, v) => `<div class="row-line"><span>${k}</span><span>${v}</span></div>`;
+    const ROSTER = 5; // expected agent roster: the denominator is always the full roster (NB-5)
+    let signals = {}, gates = null;
+
+    // Display bands only; confidence is NOT calibrated (sample too small), so no raw % is shown.
+    const strength = (c) => !isNum(c) ? null : Number(c) >= 70 ? 'high' : Number(c) >= 40 ? 'medium' : 'low';
+
+    function renderView() {
+        const sym = document.getElementById('sym').value, s = signals[sym];
+        if (!s) { set('view', '<span class="na">N/A — bu coin için sinyal yok.</span>'); return; }
+        const agents = Object.values(s.agents || {});
+        const votes = { BUY: 0, SELL: 0, HOLD: 0 };
+        let evaluated = 0;
+        agents.forEach((a) => { if (a.status === 'EVALUATED') { evaluated += 1; if (a.action in votes) votes[a.action] += 1; } });
+        const missing = ROSTER - evaluated;
+        const top = Math.max(votes.BUY, votes.SELL, votes.HOLD);
+        const band = strength(s.confidence);
+        const uncertainty = evaluated === 0 ? 'high' : (missing > 0 || top < ROSTER) ? (top / ROSTER >= 0.6 && missing <= 1 ? 'medium' : 'high') : 'low';
+        const seg = (n, c) => n ? `<span style="width:${(n / ROSTER) * 100}%;background:${c}"></span>` : '';
+        set('view',
+            line('Sinyal', `<span class="badge text-bg-${s.action === 'BUY' ? 'success' : s.action === 'SELL' ? 'danger' : 'secondary'}">${esc(s.action || 'N/A')}</span>`) +
+            line('Signal strength', band ? `<span class="strength">${band}</span>` : NA) +
+            `<div class="mt-2 mb-1 small na">Oy dağılımı (${evaluated}/${ROSTER} ajan değerlendirdi)</div>` +
+            `<div class="bar">${seg(votes.BUY, 'var(--atlas-up)')}${seg(votes.HOLD, 'var(--atlas-muted)')}${seg(votes.SELL, 'var(--atlas-down)')}${seg(missing, 'var(--atlas-line)')}</div>` +
+            `<div class="small mt-1">BUY ${votes.BUY} · HOLD ${votes.HOLD} · SELL ${votes.SELL} · eksik ${missing}</div>` +
+            line('Belirsizlik', uncertainty) +
+            `<div class="small na mt-2">Güven kalibre edilmedi (örneklem küçük); bantlar yalnızca gösterim içindir, olasılık değildir. Eksik ajan uzlaşı sayılmaz.</div>`);
+        const rd = gates && gates.latest_risk_decisions && gates.latest_risk_decisions.available ? (gates.latest_risk_decisions.by_symbol || {})[sym] : null;
+        const why = [];
+        if (s.memory && s.memory.reason) why.push(line('Hafıza etkisi', esc(s.memory.reason)));
+        agents.forEach((a, i) => { if (a.status === 'EXCLUDED') why.push(line(`Ajan dışlandı: ${esc(Object.keys(s.agents)[i])}`, esc(a.reason))); });
+        if (gates && gates.available) why.push(line('Yürütme güven eşiği', isNum(gates.execution_minimum_confidence) ? esc(gates.execution_minimum_confidence) : NA));
+        why.push(line('Son risk kararı', rd ? `${esc(rd.outcome)}${rd.reason ? ' · ' + esc(rd.reason) : ''} · ${esc(rd.decided_at || '?')}` : NA));
+        if (s.action !== 'BUY' && s.action !== 'SELL') why.push(line('Neden işlem yok', 'Sinyal HOLD; karar → risk → sermaye → yürütme zinciri başlamadı.'));
+        set('why', why.join(''));
+    }
+
+    function renderCurve(t) {
+        if (!t.available) { set('curve', `<span class="na">N/A — işlem geçmişi okunamadı (${esc(t.reason)}). Değer uydurulmaz.</span>`); return; }
+        const rows = (t.recent_trades || []).filter((r) => r.closed_at && isNum(r.gross_pnl)).sort((a, b) => String(a.closed_at).localeCompare(String(b.closed_at)));
+        if (rows.length < 2) { set('curve', '<span class="na">N/A — eğri için en az 2 kapanmış işlem gerekir.</span>'); return; }
+        let acc = 0; const pts = [0, ...rows.map((r) => (acc += Number(r.gross_pnl)))];
+        const lo = Math.min(...pts), hi = Math.max(...pts), span = hi - lo || 1, W = 600, H = 160;
+        const xy = pts.map((v, i) => `${(i / (pts.length - 1)) * W},${H - ((v - lo) / span) * (H - 10) - 5}`).join(' ');
+        const zero = H - ((0 - lo) / span) * (H - 10) - 5, last = pts[pts.length - 1];
+        set('curve', `<svg class="curve" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Equity curve">` +
+            `<line x1="0" x2="${W}" y1="${zero}" y2="${zero}" stroke="var(--atlas-line)" stroke-dasharray="4 4"/>` +
+            `<polyline fill="none" stroke="var(--atlas-${last >= 0 ? 'up' : 'down'})" stroke-width="2" vector-effect="non-scaling-stroke" points="${xy}"/></svg>` +
+            `<div class="small">${rows.length} işlem · kümülatif brüt <span class="num ${tone(last)}">${signed(last, ' $')}</span></div>`);
+    }
 
     async function refresh() {
-        const [p, cc] = await Promise.all([getJSON('/api/portfolio'), getJSON('/api/command-center')]);
+        const [p, cc, t, sg, g, rd] = await Promise.all([getJSON('/api/portfolio'), getJSON('/api/command-center'), getJSON('/api/trades'),
+            getJSON('/api/signals'), getJSON('/api/execution-gates'), getJSON('/api/readiness')]);
+        const L = p.available && p.limits && p.limits.available ? p.limits : null;
         if (p.available) {
             set('k-equity', money(p.equity));
-            set('k-start', `başlangıç ${money(p.starting_capital)}`);
-            set('k-pnl', `<span class="${tone(p.total_pnl)}">${signed(p.total_pnl, ' $')}</span>`);
-            set('k-pnl-sub', `<span class="${tone(p.total_pnl_pct)}">${signed(p.total_pnl_pct, ' %')}</span> · ücretler ${money(p.fees)}`);
-            set('k-cash', money(p.available_capital));
-            set('k-exposure', p.exposure_pct === null ? '' : `piyasada %${Number(p.exposure_pct).toFixed(1)} · ${p.positions.length} açık pozisyon`);
-            const held = new Set(p.positions.map((x) => x.symbol));
-            set('coins', (p.market || []).length
-                ? '<table class="table table-sm coins mb-0"><thead><tr><th>Coin</th><th class="text-end">Fiyat</th><th>Sinyal</th><th></th></tr></thead><tbody>' +
-                  p.market.map((m) => `<tr><td>${esc(m.symbol.replace('USDT', ''))}</td><td class="text-end">${esc(Number(m.price).toLocaleString('tr-TR', { maximumFractionDigits: 6 }))}</td>` +
-                    `<td><span class="badge text-bg-${m.action === 'BUY' ? 'success' : m.action === 'SELL' ? 'danger' : 'secondary'}">${esc(m.action || '—')}</span> <span class="text-body-secondary">${m.confidence == null ? '' : esc(Number(m.confidence).toFixed(0))}</span></td>` +
-                    `<td>${held.has(m.symbol) ? '<span class="badge text-bg-primary">pozisyonda</span>' : ''}</td></tr>`).join('') + '</tbody></table>'
-                : '<span class="text-body-secondary">Piyasa döngüsü henüz fiyat üretmedi.</span>');
-            set('price-note', p.prices_as_of ? `Fiyatlar: ${esc(p.prices_as_of)}${p.prices_stale ? ' — ESKİ, piyasa döngüsünü kontrol edin' : ''}` +
-                (p.incomplete_reason ? ` · Eksik: ${esc(p.incomplete_reason)}` : '') : '');
+            set('k-equity-sub', `başlangıç ${money(p.starting_capital)} · nakit ${money(p.available_capital)}`);
+            set('k-return', `<span class="${tone(p.total_pnl_pct)}">${signed(p.total_pnl_pct, ' %')}</span>`);
+            set('k-return-sub', `${signed(p.total_pnl, ' $')} · ücretler ${money(p.fees)}`);
+            const pos = p.positions || [];
+            set('positions', pos.length
+                ? '<table class="table table-sm mb-0"><thead><tr><th>Coin</th><th class="text-end">Miktar</th><th class="text-end">Değer</th><th class="text-end">P/L</th></tr></thead><tbody>' +
+                  pos.map((x) => `<tr><td>${esc(x.symbol)}</td><td class="text-end">${isNum(x.quantity) ? esc(x.quantity) : NA}</td><td class="text-end">${money(x.market_value)}</td>` +
+                    `<td class="text-end ${tone(x.unrealized_pnl)}">${signed(x.unrealized_pnl, ' $')}</td></tr>`).join('') + '</tbody></table>' +
+                  `<div class="na mt-1">Piyasada %${isNum(p.exposure_pct) ? Number(p.exposure_pct).toFixed(1) : 'N/A'} · en büyük yoğunlaşma %${isNum(p.largest_concentration_pct) ? Number(p.largest_concentration_pct).toFixed(1) : 'N/A'}</div>`
+                : '<span class="na">Açık pozisyon yok. Atlas şu an piyasada değil.</span>');
         } else {
-            ['k-equity', 'k-pnl', 'k-cash'].forEach((id) => set(id, '—'));
-            set('k-start', `veri yok: ${esc(p.reason)}`);
-            set('coins', `<span class="text-body-secondary">Atlas çalışma zamanı bağlı değil (${esc(p.reason)}). Değer uydurulmaz.</span>`);
+            ['k-equity', 'k-return'].forEach((id) => set(id, NA));
+            set('k-equity-sub', `veri yok: ${esc(p.reason)}`);
+            set('positions', `<span class="na">Atlas çalışma zamanı bağlı değil (${esc(p.reason)}). Değer uydurulmaz.</span>`);
         }
+        if (L) {
+            set('k-today', `<span class="${isNum(L.realized_loss_today) && Number(L.realized_loss_today) > 0 ? 'down' : ''}">${isNum(L.realized_loss_today) ? '-' + money(L.realized_loss_today) : NA}</span>`);
+            set('k-today-sub', `günlük limitin %${isNum(L.realized_used_pct) ? esc(L.realized_used_pct) : 'N/A'}'i kullanıldı`);
+            set('k-risk', isNum(L.drawdown_pct) ? `DD %${Number(L.drawdown_pct).toFixed(2)}` : NA);
+            const lv = L.drawdown_levels_pct || {};
+            set('k-risk-sub', `eşikler: uyarı %${esc(lv.warning ?? 'N/A')} · kısıt %${esc(lv.restrict ?? 'N/A')} · durdur %${esc(lv.halt ?? 'N/A')}`);
+            const dd = Number(L.drawdown_pct);
+            dot('d-risk', isNum(lv.restrict) && dd >= Number(lv.restrict) ? 'bad' : isNum(lv.warning) && dd >= Number(lv.warning) ? 'warn' : 'ok', `drawdown %${L.drawdown_pct}`);
+        } else {
+            ['k-today', 'k-risk'].forEach((id) => set(id, NA));
+            set('k-risk-sub', 'risk durumu okunamadı'); dot('d-risk', '', 'risk durumu okunamadı');
+        }
+        dot('d-data', !p.available || !p.prices_as_of ? '' : p.prices_stale ? 'bad' : 'ok', p.prices_as_of ? `fiyatlar ${p.prices_as_of}${p.prices_stale ? ' (ESKİ)' : ''}` : 'fiyat yok');
+        set('t-asof', p.prices_as_of ? `fiyatlar: ${esc(p.prices_as_of)}${p.prices_stale ? ' — ESKİ' : ''}` : '');
+        const healthy = cc.available && cc.health && cc.health.healthy === true;
+        set('t-state', cc.available ? (healthy ? '<span style="color:var(--atlas-up)">OPERATIONAL</span>' : `<span style="color:var(--atlas-down)">${esc(cc.health.state || 'UNKNOWN')}</span>`) : '<span class="na">UNKNOWN</span>');
+        dot('d-engine', rd.ready === true ? 'ok' : rd.ready === false ? 'bad' : '', rd.ready === true ? 'hazır' : 'hazır değil');
+        renderCurve(t);
+
+        signals = sg.status === 'SUCCESS' ? (sg.signals || {}) : {};
+        gates = g;
+        const sel = document.getElementById('sym'), keep = sel.value;
+        const syms = Object.keys(signals).sort();
+        if (sel.options.length !== syms.length) sel.innerHTML = syms.map((x) => `<option>${esc(x)}</option>`).join('');
+        if (keep && syms.includes(keep)) sel.value = keep;
+        if (syms.length) renderView(); else { set('view', `<span class="na">N/A — piyasa döngüsü sinyal üretmedi (${esc(sg.reason || '')}).</span>`); set('why', NA); }
+
+        const attn = [];
         if (cc.available) {
-            const healthy = cc.health.healthy === true;
-            set('status-pill', `<span class="badge text-bg-${healthy ? 'success' : 'danger'}">${healthy ? 'ÇALIŞIYOR' : esc(cc.health.state || 'BİLİNMİYOR')}</span>`);
-            set('k-decisions', cc.proposals.available ? cc.proposals.awaiting_owner.length : '—');
-            const tc = cc.tasks.counts || {};
-            set('status-list', [
-                ['Sistem', healthy ? 'sağlıklı' : `sorun: ${esc(cc.health.reason || cc.health.state)}`],
-                ['Çalışan ajan', cc.agents.working.length ? esc(cc.agents.working.join(', ')) : 'yok'],
-                ['Görevler', cc.tasks.available ? `${tc.IN_PROGRESS || 0} sürüyor · ${tc.BLOCKED || 0} engelli` : 'okunamadı'],
-                ['Hafıza', cc.memory.available ? `${cc.memory.records} kayıt` : 'okunamadı'],
-            ].map(([k, v]) => `<div class="d-flex justify-content-between border-bottom border-secondary-subtle py-1"><span>${k}</span><span>${v}</span></div>`).join(''));
-        }
+            if (cc.proposals && cc.proposals.available) cc.proposals.awaiting_owner.forEach((x) => attn.push(line('Onayınızı bekliyor', `<a href="/governance">${esc(x)}</a>`)));
+            const blocked = (cc.tasks && cc.tasks.counts && cc.tasks.counts.BLOCKED) || 0;
+            if (blocked) attn.push(line('Engelli görev', `<a href="/agents">${blocked}</a>`));
+            if (!healthy) attn.push(line('Sistem', `<span class="down">${esc(cc.health.reason || cc.health.state)}</span>`));
+        } else attn.push(line('Komuta merkezi', `<span class="na">Okunamadı (${esc(cc.reason)})</span>`));
+        if (p.prices_stale) attn.push(line('Veri', '<span class="down">Fiyatlar eski</span>'));
+        set('attention', (attn.length ? attn.join('') : '<span class="na">Dikkat gerektiren bir şey yok.</span>') + '<div id="incidents"></div>');
+        renderIncidents();
     }
-    async function ask() {
-        const input = document.getElementById('chat-input'), q = input.value.trim();
-        if (!q) return;
-        const data = await getJSON('/api/chat?q=' + encodeURIComponent(q));
-        document.getElementById('chat-log').insertAdjacentHTML('afterbegin',
-            `<div class="mb-2"><div><b>Sen:</b> ${esc(q)}</div><div><b>Atlas:</b> ${esc(data.answer || data.reason || 'cevap yok')}` +
-            `${data.navigate && data.navigate.startsWith('/') ? ` <a href="${esc(data.navigate)}">ayrıntı →</a>` : ''}</div></div>`);
-        input.value = '';
+
+    let memory = null, security = null;
+    function renderIncidents() {
+        const el = document.getElementById('incidents');
+        if (!el || !memory) return;
+        const open = memory.available ? memory.records.filter((r) => r.type === 'INCIDENTS' && r.status === 'CURRENT') : [];
+        el.innerHTML = open.map((r) => line('Olay kaydı', esc(r.title))).join('');
     }
-    document.getElementById('chat-send').addEventListener('click', ask);
-    document.getElementById('chat-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') ask(); });
-    refresh();
+    function renderRegimes() {
+        if (!memory || !memory.available) { set('regimes', `<span class="na">N/A — hafıza okunamadı. Değer uydurulmaz.</span>`); return; }
+        const mr = memory.records.find((r) => String(r.record_id).startsWith('MR-'));
+        let coins = null;
+        try { coins = mr ? JSON.parse(mr.body).coins : null; } catch (e) { coins = null; }
+        set('regimes', coins && Object.keys(coins).length
+            ? Object.keys(coins).sort().map((k) => line(esc(k.replace('USDT', '')), esc(coins[k].regime || 'UNKNOWN'))).join('') +
+              `<div class="na mt-1">${esc(mr.record_id)} · ${esc(mr.at)} · yalnızca gözlem, karar anında okunmaz</div>`
+            : '<span class="na">N/A — henüz piyasa rejimi kaydı (MR-*) yok.</span>');
+    }
+    async function slow() {
+        [memory, security] = await Promise.all([getJSON('/api/memory'), getJSON('/api/security')]);
+        renderRegimes(); renderIncidents();
+        dot('d-security', !security.available ? '' : security.overall === 'PASS' ? 'ok' : security.overall === 'FAIL' ? 'bad' : 'warn', security.available ? security.overall : 'okunamadı');
+    }
+    document.getElementById('sym').addEventListener('change', renderView);
+    refresh(); slow();
     setInterval(refresh, 5000);
+    setInterval(slow, 60000);
 })();
 </script>
 </body>

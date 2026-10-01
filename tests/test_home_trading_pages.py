@@ -80,3 +80,38 @@ def test_decisions_page_explains_from_recorded_sources_only():
     assert set(re.findall(r"getJSON\('([^']+)'", html)) == {"/api/signals", "/api/execution-gates"}
     for part in ("Ajan oyları", "Güven eşikleri", "Risk motorunun son sonucu", "NB-5", "gates.experiment", "elde olmayan coin için SAT"):
         assert part in html
+
+
+def test_dashboard_v1_overview_layout_and_honesty():
+    """Dashboard v1 (owner 2026-10-01): sidebar, status dots, 4 KPIs, no fake confidence, no invented data sources."""
+    html = web_app.TEMPLATE_DIR.joinpath("home.html").read_text(encoding="utf-8")
+    assert html.count('class="kpi"') == 4
+    for part in ("OPERATIONAL", "PAPER", "DATA", "ENGINE", "RISK", "SECURITY", "Equity curve", "Market regime",
+                 "Atlas View", "Signal strength", "Why / Why-not", "Open positions", "Attention center", "What changed",
+                 "Güven kalibre edilmedi", "Açık pozisyon yok"):
+        assert part in html
+    assert "const ROSTER = 5" in html  # NB-5: votes are read against the full roster, missing agents shown as missing
+    script = html.split("<script>", 1)[1]
+    assert "toFixed(0))}%" not in script and "confidence).toFixed" not in script  # no raw confidence % on the overview
+    rendered = TestClient(web_app.create_app()).get("/home").text.lower()  # Jinja comments are not rendered
+    for absent in ("funding", "open interest", "order book", "orderbook", "correlation", "stress", "ai cost"):
+        assert absent not in rendered
+
+
+def test_dashboard_v1_sidebar_maps_only_to_existing_pages():
+    client = TestClient(web_app.create_app())
+    text = client.get("/home").text
+    hrefs = re.findall(r'class="atlas-side".*?</aside>', text, re.S)[0]
+    links = re.findall(r'href="([^"]+)"', hrefs)
+    assert len(links) == 11  # 10 items + Command Center
+    for link in links:
+        assert client.get(link.split("#")[0]).status_code == 200
+    assert 'href="/home" class="active"' in text
+
+
+def test_theme_drops_glass_and_purple_and_uses_v1_palette():
+    css = web_app.TEMPLATE_DIR.joinpath("_atlas_theme.html").read_text(encoding="utf-8").lower()
+    assert "backdrop-filter" not in css and "#8b5cf6" not in css and "#a78bfa" not in css
+    for colour in ("#0b0d10", "#11151a", "#171c22", "#242a31", "#f1f3f5", "#8b949e", "#5b8cff", "#35c98b", "#e5b95c", "#e56b6f", "#6ea8fe"):
+        assert colour in css
+    assert "http" not in css  # no CDN fonts

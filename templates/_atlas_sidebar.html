@@ -1,0 +1,40 @@
+{#
+  Dashboard v1 left sidebar (owner design 2026-10-01). 10 items in three
+  groups; every item links to an EXISTING page, no new data pages. The
+  including template sets `atlas_active` to the item key it renders.
+  Atlas HQ stays a separate experience, linked as "Command Center".
+#}
+<style>
+    .atlas-shell { display: flex; min-height: 100vh; }
+    .atlas-side { width: 208px; flex: 0 0 208px; background: var(--atlas-panel); border-right: 1px solid var(--atlas-line); padding: 14px 10px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+    .atlas-side .brand { font-weight: 700; letter-spacing: .08em; color: var(--atlas-text); padding: 2px 8px 12px; }
+    .atlas-side .brand span { color: var(--atlas-accent); }
+    .atlas-side .grp { font-size: 11px; font-weight: 600; letter-spacing: .08em; color: var(--atlas-muted); padding: 12px 8px 4px; }
+    .atlas-side a { display: block; color: var(--atlas-muted); text-decoration: none; padding: 6px 8px; border-radius: 6px; font-size: 13px; }
+    .atlas-side a:hover { color: var(--atlas-text); background: var(--atlas-panel-2); }
+    .atlas-side a.active { color: var(--atlas-text); background: var(--atlas-panel-2); box-shadow: inset 2px 0 0 var(--atlas-accent); }
+    .atlas-side .cc { margin-top: 16px; border: 1px solid var(--atlas-line); }
+    .atlas-main { flex: 1 1 auto; min-width: 0; }
+    @media (max-width: 860px) {
+        .atlas-shell { display: block; }
+        .atlas-side { width: auto; height: auto; position: static; display: flex; flex-wrap: wrap; gap: 2px; padding: 8px; border-right: 0; border-bottom: 1px solid var(--atlas-line); }
+        .atlas-side .grp { display: none; }
+        .atlas-side .brand { padding: 6px 8px; }
+        .atlas-side .cc { margin-top: 0; }
+    }
+</style>
+<aside class="atlas-side" aria-label="Atlas gezinme">
+    <div class="brand"><span>ATLAS</span></div>
+    {% set _items = [
+        ("CORE", [("overview", "/home", "Overview"), ("markets", "/trading", "Markets"), ("portfolio", "/dashboard", "Portfolio"), ("strategies", "/governance", "Strategies")]),
+        ("INTELLIGENCE", [("intelligence", "/decisions", "Intelligence"), ("agents", "/agents", "Agents"), ("research", "/research", "Research")]),
+        ("CONTROL", [("risk", "/trading#limits", "Risk"), ("proposals", "/governance#proposals", "Proposals"), ("system", "/system", "System")]),
+    ] %}
+    {% for group, entries in _items %}
+    <div class="grp">{{ group }}</div>
+    {% for key, href, label in entries %}
+    <a href="{{ href }}"{% if atlas_active == key %} class="active" aria-current="page"{% endif %}>{{ label }}</a>
+    {% endfor %}
+    {% endfor %}
+    <a class="cc" href="/hq">Command Center ↗</a>
+</aside>
