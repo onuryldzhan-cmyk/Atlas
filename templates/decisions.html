@@ -57,12 +57,12 @@
         const lines = [];
         const agents = Object.entries(sig.agents || {});
         const evaluated = agents.filter(([, a]) => a.status === 'EVALUATED');
-        lines.push(`<div class="svc"><span>Karar</span><span><b>${esc(sig.action || 'bilinmiyor')}</b> · güven ${num(sig.confidence)} · risk ${esc(sig.risk_level || 'bilinmiyor')}</span></div>`);
-        lines.push(`<div class="svc"><span>Ajan oyları (${evaluated.length}/${agents.length || 5} değerlendirdi)</span><span class="text-end">${agents.map(([n, a]) =>
+        lines.push(`<div class="svc"><span>1 · Karar</span><span><b>${esc(sig.action || 'bilinmiyor')}</b> · güven ${num(sig.confidence)} · risk ${esc(sig.risk_level || 'bilinmiyor')}</span></div>`);
+        lines.push(`<div class="svc"><span>2 · Ajan oyları (${evaluated.length}/${agents.length || 5} değerlendirdi)</span><span class="text-end">${agents.map(([n, a]) =>
             a.status === 'EVALUATED' ? `<span class="sym">${esc(n)}: ${esc(a.action ?? '?')} ${a.score != null ? num(a.score, 2) : ''}</span>`
                 : `<span class="sym" title="${esc(a.reason)}">${esc(n)}: ${n === 'sentiment' && a.reason === 'UNAVAILABLE_NO_PROVIDER' ? 'çekimser (Fear &amp; Greed nötr bölgede ya da okunamadı)' : 'dışarıda (' + esc(a.reason) + ')'}</span>`).join('')}</span></div>`);
         const mem = sig.memory;
-        lines.push(`<div class="svc"><span>Geçmiş deneyim (hafıza)</span><span class="text-end">${mem
+        lines.push(`<div class="svc"><span>3 · Geçmiş deneyim (hafıza)</span><span class="text-end">${mem
             ? `kayıp defteri: ${esc(mem.trades)} işlem, beklenti ${esc(mem.net_expectancy)} → güven ${esc(mem.confidence_before)} → ${esc(mem.confidence_after)}`
             : 'bu karara etkisi yok (en az 10 işlemlik kayıp defteri gerekir; kazanç güveni asla artırmaz)'}</span></div>`);
         if (evaluated.length < (agents.length || 5)) lines.push('<div class="muted">Eksik ajan güveni yükseltmez: payda beklenen ajan sayısıdır (NB-5).</div>');
@@ -75,12 +75,13 @@
         const expApplies = exp.available && exp.attached && exp.active && sig.action === 'BUY' && (exp.buckets || []).includes(sig.risk_level);
         const bucketNeed = expApplies ? exp.required_confidence_pct : (bucket ? bucket.required_confidence_pct : null);
         const bucketLabel = expApplies ? `Risk kovası (${exp.experiment_id} deneyi, PAPER; politika ${num(bucket ? bucket.required_confidence_pct : null)})` : 'Risk kovası';
-        lines.push(`<div class="svc"><span>Güven eşikleri</span><span class="text-end">${esc(gate('İşlem motoru', exMin))} · ${esc(gate(bucketLabel, bucketNeed))}</span></div>`);
+        lines.push(`<div class="svc"><span>4 · Güven eşikleri</span><span class="text-end">${esc(gate('İşlem motoru', exMin))} · ${esc(gate(bucketLabel, bucketNeed))}</span></div>`);
         const ld = gates.latest_risk_decisions || {};
         const rd = ld.available ? (ld.by_symbol || {})[sym] : null;
-        lines.push(`<div class="svc"><span>Risk motorunun son sonucu (bu döngünün değil, son kaydedilenin)</span><span class="text-end">${!ld.available ? 'bilinmiyor (' + esc(ld.reason || 'denetim kaydı okunamadı') + ')'
+        lines.push(`<div class="svc"><span>5 · Risk motorunun son sonucu (bu döngünün değil, son kaydedilenin)</span><span class="text-end">${!ld.available ? 'bilinmiyor (' + esc(ld.reason || 'denetim kaydı okunamadı') + ')'
             : rd ? `${esc(rd.outcome)}${rd.reason ? ' · ' + esc(rd.reason) : ''} · ${esc(rd.action)} güven ${num(rd.confidence)} · ${esc(rd.decided_at || '?')}`
             : 'son denetim penceresinde risk kararı yok: BEKLE, düşük güven veya elde olmayan coin için SAT risk motoruna hiç gitmez'}</span></div>`);
+        lines.push('<div class="svc"><span>6 · Sermaye → İşlem yöneticisi → Borsa</span><span class="text-end">bu sayfada gösterilmez; PAPER, gerçek emir yok (canlı yetki KAPALI)</span></div>');
         return `<div class="pane"><h2>${esc(sym)}</h2>${lines.join('')}</div>`;
     }
 
