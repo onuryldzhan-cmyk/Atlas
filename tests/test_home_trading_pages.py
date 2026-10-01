@@ -139,3 +139,9 @@ def test_postmortem_shows_hindsight_as_evidence_and_unmeasured_as_such():
 def test_ctrl_k_palette_only_navigates():
     html = web_app.TEMPLATE_DIR.joinpath("_atlas_sidebar.html").read_text(encoding="utf-8")
     assert "atlas-pal" in html and "fetch(" not in html and "<form" not in html and "innerHTML = ''" in html
+
+
+def test_density_toggle_is_a_local_view_preference_only():
+    html = web_app.TEMPLATE_DIR.joinpath("_atlas_sidebar.html").read_text(encoding="utf-8")
+    assert 'id="atlas-density"' in html and "atlas-compact" in html
+    assert "try { localStorage" in html and "fetch(" not in html
