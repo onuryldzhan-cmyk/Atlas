@@ -106,6 +106,7 @@ WEB_APP_GUARDED_ROUTES = [
     "/api/roadmap",
     "/research",
     "/decisions",
+    "/postmortem",  # Dashboard v2 post-mortem page (2026-10-01), read-only
     "/api/agent-states",
     "/api/learning",
     "/api/candles",

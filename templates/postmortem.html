@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+{#
+  Dashboard v2: trade post-mortem (owner design 2026-10-01). Loopback-only,
+  read-only. Every figure comes from /api/learning (closed-position archive,
+  recomputed on each read by observability/learning_view.py). Hindsight is
+  evidence only: nothing here can change a decision. Unmeasured items are
+  listed as such, never estimated.
+#}
+<html lang="tr" data-bs-theme="dark" data-lte-color-mode="off">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Atlas — İşlem sonrası analiz</title>
+    <link rel="stylesheet" href="/assets/adminlte.min.css">
+    <style>
+        .wrap { max-width: 1200px; margin: 0 auto; padding: 16px; }
+        .pane { padding: 14px; margin-bottom: 14px; }
+        .num { font-family: "JetBrains Mono", ui-monospace, monospace; }
+        .win { color: var(--atlas-up); } .loss { color: var(--atlas-down); }
+        .muted { color: var(--atlas-muted); }
+        .table-wrap { overflow-x: auto; }
+        td, th { padding: 4px 8px; white-space: nowrap; }
+    </style>
+    {% include "_atlas_theme.html" %}
+</head>
+<body>
+{% set atlas_active = "portfolio" %}
+<div class="atlas-shell">
+{% include "_atlas_sidebar.html" %}
+<main class="atlas-main">
+<div class="wrap">
+    <h1 class="h4">İşlem sonrası analiz</h1>
+    <p class="muted">Kapanan her işlem için geriye dönük gerçekler. Bunlar sadece kanıttır, hiçbir kararı değiştirmez. Ortam: PAPER.</p>
+    <div id="book" class="pane"></div>
+    <div id="trades" class="pane table-wrap"></div>
+</div>
+</main>
+</div>
+<script>
+(() => {
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+    const na = (v) => v == null ? 'N/A' : esc(v);
+    const getJSON = async (url) => { try { const r = await fetch(url); return await r.json(); } catch (e) { return { available: false, reason: 'network error' }; } };
+    const local = (s) => { const d = new Date(s); return isNaN(d) ? na(s) : esc(d.toLocaleString()); };
+    async function refresh() {
+        const l = await getJSON('/api/learning');
+        const book = document.getElementById('book'), trades = document.getElementById('trades');
+        if (!l.available) { book.innerHTML = `<span class="muted">Okunamadı: ${esc(l.reason || 'bilinmiyor')}</span>`; trades.innerHTML = ''; return; }
+        const m = l.book_metrics || {};
+        book.innerHTML = m.trades ? `<b>Defter (${esc(m.trades)} işlem, ${esc(m.verdict === 'MEASURED' ? 'ölçüldü' : 'örnek az, sonuç sayılmaz')})</b><br>
+            <span class="num">net ${na(m.net_total)} · beklenti ${na(m.expectancy)} · kazanma oranı ${m.win_rate == null ? 'N/A' : esc((m.win_rate * 100).toFixed(1)) + '%'} · profit factor ${na(m.profit_factor)} · max düşüş ${na(m.max_drawdown)}</span>`
+            : '<span class="muted">Henüz kapanan işlem yok.</span>';
+        const rows = (l.experiences || []).slice().reverse();
+        if (!rows.length) { trades.innerHTML = ''; return; }
+        trades.innerHTML = `<table><thead><tr><th>Kapanış</th><th>Coin</th><th>Rejim</th><th>Süre (dk)</th><th>Brüt %</th><th>Net</th><th>Komisyon</th><th>Yön doğru?</th><th>Komisyon kazancı sildi?</th><th>İşlem yapmasaydı fark</th></tr></thead><tbody>${rows.map((e) => {
+            const a = e.analysis || {}, cf = a.counterfactual || {};
+            return `<tr><td>${local(e.closed_at)}</td><td>${esc(e.symbol)}</td><td>${esc(e.regime)}</td><td class="num">${na(a.holding_minutes)}</td><td class="num">${na(a.gross_return_pct)}</td>
+                <td class="num ${e.outcome === 'WIN' ? 'win' : 'loss'}">${na(e.net_pnl)}</td><td class="num">${na(a.fee_impact)}</td><td>${a.direction_right ? 'evet' : 'hayır'}</td>
+                <td>${a.fees_turned_win_into_loss ? 'evet' : 'hayır'}</td><td class="num" title="${esc(cf.label)}">${na(cf.no_trade_vs_actual)}</td></tr>`;
+        }).join('')}</tbody></table>
+        <p class="muted mt-2">Ölçülmeyenler: ${esc(((rows[0].analysis || {}).not_measured || []).join(' · '))}. Son ${rows.length} / ${esc(l.experience_count)} işlem gösteriliyor.</p>`;
+    }
+    refresh();
+    setInterval(refresh, 30000);
+})();
+</script>
+</body>
+</html>

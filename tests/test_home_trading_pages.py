@@ -14,7 +14,7 @@ READ_ONLY_APIS = {"/api/portfolio", "/api/command-center", "/api/trades", "/api/
                   "/api/chat?q=", "/api/security", "/api/roadmap", "/api/research", "/api/execution-gates", "/api/readiness", "/api/signals", "/api/candles?symbol=", "/api/learning"}
 
 
-@pytest.mark.parametrize("name", ["home.html", "trading.html", "governance.html", "system.html", "security.html", "roadmap.html", "research.html", "decisions.html"])
+@pytest.mark.parametrize("name", ["home.html", "trading.html", "governance.html", "system.html", "security.html", "roadmap.html", "research.html", "decisions.html", "postmortem.html"])
 def test_pages_only_read_and_never_write(name):
     html = web_app.TEMPLATE_DIR.joinpath(name).read_text(encoding="utf-8")
     assert set(re.findall(r"getJSON\('([^']+)'", html)) <= READ_ONLY_APIS
@@ -32,7 +32,7 @@ def test_start_page_stays_simple():
         assert f'href="{link}"' in html
 
 
-@pytest.mark.parametrize("path", ["/home", "/trading", "/governance", "/system", "/security", "/roadmap", "/research", "/decisions"])
+@pytest.mark.parametrize("path", ["/home", "/trading", "/governance", "/system", "/security", "/roadmap", "/research", "/decisions", "/postmortem"])
 def test_pages_are_served_and_loopback_guarded(path):
     assert TestClient(web_app.create_app()).get(path).status_code == 200
     assert TestClient(web_app.create_app(), base_url="http://evil.example").get(path).status_code == 403
@@ -120,10 +120,17 @@ def test_theme_drops_glass_and_purple_and_uses_v1_palette():
 @pytest.mark.parametrize("path,active", [("/home", "/home"), ("/agents", "/agents"), ("/dashboard", "/dashboard"),
                                          ("/decisions", "/decisions"), ("/governance", "/governance#proposals"),
                                          ("/research", "/research"), ("/roadmap", "/system"), ("/security", "/system"),
-                                         ("/system", "/system"), ("/trading", "/trading")])
+                                         ("/system", "/system"), ("/trading", "/trading"),
+                                         ("/postmortem", "/dashboard")])
 def test_every_page_shares_the_sidebar_with_one_active_item(path, active):
     text = TestClient(web_app.create_app()).get(path).text
     assert 'class="atlas-side"' in text and 'href="/hq"' in text
     side = text[text.index('class="atlas-side"'):text.index("</aside>")]
     assert side.count('aria-current="page"') == 1
     assert f'<a href="{active}" class="active"' in text
+
+
+def test_postmortem_shows_hindsight_as_evidence_and_unmeasured_as_such():
+    html = web_app.TEMPLATE_DIR.joinpath("postmortem.html").read_text(encoding="utf-8")
+    assert "hiçbir kararı değiştirmez" in html and "Ölçülmeyenler" in html and "N/A" in html
+    assert 'href="/postmortem"' in web_app.TEMPLATE_DIR.joinpath("trading.html").read_text(encoding="utf-8")
