@@ -19,8 +19,8 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `a97a4f6b4307748b54fc4aa34a6833345a28ea7b` |
-| generated_from_tree | `d3929ab5606958588598f58a7389e91ec0c5ffab` |
+| generated_from_commit | `3ffb5b7c906bfb1aa805bee82a5f4113351dd8fa` |
+| generated_from_tree | `eaa2870057c5bb20de0eceec9d941fb2eb1be1ee` |
 | tracked_working_tree_clean | False |
 | modified_tracked_paths_at_generation | ['ackaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md'] |
 
@@ -204,17 +204,17 @@ nothing is inferred from an absence.
 | `data_layer/models.py` | ATOMIC_REPLACE | 54 | `utc_text` |
 | `data_layer/models.py` | ATOMIC_REPLACE | 61 | `utc_text` |
 | `main.py` | PATH_WRITE_TEXT | 570 | `AtlasProcess::_write_heartbeat` |
-| `observability/agent_states.py` | ATOMIC_REPLACE | 56 | `_age_s` |
-| `observability/agent_states.py` | ATOMIC_REPLACE | 59 | `_age_s` |
-| `observability/command_center.py` | ATOMIC_REPLACE | 77 | `_money` |
-| `observability/command_center.py` | ATOMIC_REPLACE | 77 | `_money` |
-| `observability/command_center.py` | ATOMIC_REPLACE | 77 | `_money` |
-| `observability/command_center.py` | ATOMIC_REPLACE | 81 | `classify` |
-| `observability/command_center.py` | ATOMIC_REPLACE | 81 | `classify` |
-| `observability/command_center.py` | ATOMIC_REPLACE | 81 | `classify` |
-| `observability/command_center.py` | ATOMIC_REPLACE | 96 | `answer` |
-| `observability/command_center.py` | ATOMIC_REPLACE | 96 | `answer` |
-| `observability/command_center.py` | ATOMIC_REPLACE | 96 | `answer` |
+| `observability/agent_states.py` | ATOMIC_REPLACE | 58 | `_age_s` |
+| `observability/agent_states.py` | ATOMIC_REPLACE | 61 | `_age_s` |
+| `observability/command_center.py` | ATOMIC_REPLACE | 88 | `_money` |
+| `observability/command_center.py` | ATOMIC_REPLACE | 88 | `_money` |
+| `observability/command_center.py` | ATOMIC_REPLACE | 88 | `_money` |
+| `observability/command_center.py` | ATOMIC_REPLACE | 92 | `classify` |
+| `observability/command_center.py` | ATOMIC_REPLACE | 92 | `classify` |
+| `observability/command_center.py` | ATOMIC_REPLACE | 92 | `classify` |
+| `observability/command_center.py` | ATOMIC_REPLACE | 107 | `answer` |
+| `observability/command_center.py` | ATOMIC_REPLACE | 107 | `answer` |
+| `observability/command_center.py` | ATOMIC_REPLACE | 107 | `answer` |
 | `observability/panel_sources.py` | ATOMIC_REPLACE | 377 | `_supersedes_name` |
 | `observability/portfolio_view.py` | ATOMIC_REPLACE | 41 | `_age_seconds` |
 | `observability/portfolio_view.py` | ATOMIC_REPLACE | 45 | `_age_seconds` |
