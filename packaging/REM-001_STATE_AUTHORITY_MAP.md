@@ -19,8 +19,8 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `82254ffc0bee3a7eaa4efd6049b6b6ae93d295e0` |
-| generated_from_tree | `5b3814dc6c101ad5f56c8f5abf9a4c1f5692c084` |
+| generated_from_commit | `f83939b9424ece86025311716c6ecdcb237f4826` |
+| generated_from_tree | `a805138511d1f9894c39b6774766553429113208` |
 | tracked_working_tree_clean | False |
 | modified_tracked_paths_at_generation | ['ackaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/atlas_architecture_map.json', 'packaging/atlas_runtime_closure.json'] |
 
@@ -60,7 +60,7 @@ observation.
 | field | value |
 | --- | --- |
 | entry_points | `main.py`, `web_app.py`, `atlas_service.py`, `atlas_supervisor.py` |
-| modules_in_runtime_closure | 130 |
+| modules_in_runtime_closure | 131 |
 | declared_state_file_constants | 10 |
 | persistence_sites | 88 |
 | modules_with_persistence_sites | 38 |
@@ -175,7 +175,7 @@ nothing is inferred from an absence.
 | `core/durable_append_log.py` | ATOMIC_REPLACE | 349 | `DurableAppendLog::rewrite` |
 | `core/durable_append_log.py` | UNLINK | 356 | `DurableAppendLog::rewrite` |
 | `core/execution_idempotency_store.py` | UNLINK | 863 | `ExecutionIdempotencyStore::reset` |
-| `core/execution_manager.py` | ATOMIC_REPLACE | 6448 | `ExecutionManager::_normalize_confidence` |
+| `core/execution_manager.py` | ATOMIC_REPLACE | 6476 | `ExecutionManager::_normalize_confidence` |
 | `core/execution_models.py` | ATOMIC_REPLACE | 96 | `normalize_timestamp` |
 | `core/execution_portfolio_foundation.py` | ATOMIC_REPLACE | 64 | `_utc` |
 | `core/execution_portfolio_foundation.py` | FSYNC | 183 | `FinancialStateStore::save` |

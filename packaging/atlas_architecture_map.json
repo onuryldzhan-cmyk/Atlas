@@ -532,6 +532,7 @@
     "core/market_risk_regime.py": "L3",
     "core/model_provider_contracts.py": "L1",
     "core/operational_contracts.py": "L1",
+    "core/order_lifecycle.py": "L3",
     "core/paper_trader.py": "L3",
     "core/position_controller.py": "L3",
     "core/position_risk_buckets.py": "L3",

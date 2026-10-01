@@ -98,6 +98,7 @@
     "core/market_risk_regime.py",
     "core/model_provider_contracts.py",
     "core/operational_contracts.py",
+    "core/order_lifecycle.py",
     "core/paper_trader.py",
     "core/position_controller.py",
     "core/position_risk_buckets.py",
