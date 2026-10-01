@@ -98,6 +98,7 @@ from core.paper_trader import PaperTrader
 
 from core.risk_engine import (
     EXP001_PAPER_CONFIDENCE_EXPERIMENT,
+    PAPER_CONFIDENCE_EXPERIMENTS,
     RiskEngine,
     RiskPolicy,
 )
@@ -544,6 +545,7 @@ class AtlasApplication:
         venue_rule_freshness_policy: VenueRuleFreshnessPolicy | None = None,
         log_directory: str | Path | None = None,
         paper_confidence_experiment: bool = False,
+        paper_confidence_experiment_id: str = "EXP-001",
         paper_fee_rate: Decimal | str = "0",
         count_unrealized_in_daily_loss: bool = False,
         sleeves_enabled: bool = False,
@@ -575,6 +577,7 @@ class AtlasApplication:
         # for it, so a bare or test-built application keeps default floors
         # regardless of the calendar date. Honoured in PAPER only.
         self.paper_confidence_experiment = paper_confidence_experiment is True
+        self.paper_confidence_experiment_id = str(paper_confidence_experiment_id)
         self.symbols = list(symbols) if symbols else None
         self.market_interval = float(market_interval)
         # None means "resolve from the environment now", which is the
@@ -1032,7 +1035,12 @@ class AtlasApplication:
         if not self.paper_confidence_experiment or self.execution_mode != "PAPER":
             return
 
-        experiment = EXP001_PAPER_CONFIDENCE_EXPERIMENT
+        experiment_id = getattr(self, "paper_confidence_experiment_id", "EXP-001")
+        experiment = PAPER_CONFIDENCE_EXPERIMENTS.get(experiment_id)
+        if experiment is None:
+            logger.error("unknown experiment %r not attached; default confidence floors remain",
+                         experiment_id)
+            return
 
         try:
             audited = count_experiment_admissions(

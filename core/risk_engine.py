@@ -215,6 +215,23 @@ EXP001_PAPER_CONFIDENCE_EXPERIMENT = ConfidenceFloorExperiment(
 )
 
 
+# Owner choice 2026-10-01 ("B ve C birlikte"): a second, smaller and stricter
+# experiment than EXP-001. MEDIUM bucket only (HIGH stays at 0.80), floor
+# 0.62 (above EXP-001's 0.60), 30 admissions, two weeks. Pinned like EXP-001;
+# it is attached only when main.py names it, in PAPER only, and admissions are
+# sized with the HIGH bucket's limits (EXPERIMENT_SIZING_BUCKET).
+EXP002_PAPER_CONFIDENCE_EXPERIMENT = ConfidenceFloorExperiment(
+    experiment_id="EXP-002",
+    minimum_confidence=Decimal("0.62"),
+    buckets=frozenset({RiskBucket.MEDIUM}),
+    starts_at=datetime(2026, 10, 2, 0, 0, tzinfo=UTC),
+    ends_at=datetime(2026, 10, 16, 0, 0, tzinfo=UTC),
+    max_admissions=30,
+)
+PAPER_CONFIDENCE_EXPERIMENTS = {e.experiment_id: e for e in (EXP001_PAPER_CONFIDENCE_EXPERIMENT,
+                                                             EXP002_PAPER_CONFIDENCE_EXPERIMENT)}
+
+
 @dataclass(frozen=True)
 class RiskPolicy:
     total_capital: Decimal
