@@ -50,3 +50,11 @@ def test_saved_dataset_replays_and_corruption_is_refused(tmp_path, monkeypatch):
     bad["data"]["BTCUSDT"][0][4] = "1"
     saved.write_text(json.dumps(bad), encoding="utf-8")
     assert sc.main(["--dataset", str(saved), "--symbols", "BTCUSDT"]) == 2
+
+
+def test_parallel_gives_the_same_table_as_serial():
+    data = {"BTCUSDT": _rows(1500)}
+    small = {k: sc.VARIANTS[k] for k in (sc.REFERENCE, "min tutma 60 dk")}
+    serial = sc.compare(data, windows=2, step=10, exp001=False, variants=small, jobs=1)
+    parallel = sc.compare(data, windows=2, step=10, exp001=False, variants=small, jobs=2)
+    assert serial["table"] == parallel["table"] and serial["verdicts"] == parallel["verdicts"]

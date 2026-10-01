@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import logging
 import sys
 from decimal import Decimal
@@ -68,17 +69,34 @@ def split(data: dict[str, list[list]], windows: int) -> list[dict[str, list[list
     return [{s: rows[i * size:(i + 1) * size] for s, rows in data.items()} for i in range(windows)]
 
 
+def _one(job: tuple) -> dict[str, Any]:
+    part, step, exp001, brain_factory, kw = job
+    logging.getLogger("AtlasAI.MarketLoop").setLevel(logging.ERROR)
+    return bt.summarize(bt.replay(part, step=step, exp001=exp001, brain_factory=brain_factory, **kw))
+
+
 def compare(data: dict[str, list[list]], windows: int, step: int, exp001: bool,
-            brain_factory=None, variants: dict[str, dict[str, Any]] = VARIANTS) -> dict[str, Any]:
+            brain_factory=None, variants: dict[str, dict[str, Any]] = VARIANTS, jobs: int = 1) -> dict[str, Any]:
+    """Every variant on every window. jobs > 1 runs the independent replays in parallel
+    processes (same inputs, same deterministic results, just faster)."""
     parts = split(data, windows)
-    table: dict[str, list[dict[str, Any]]] = {}
-    total, done = len(variants) * len(parts), 0
-    for name, kw in variants.items():
-        table[name] = []
-        for part in parts:
-            table[name].append(bt.summarize(bt.replay(part, step=step, exp001=exp001, brain_factory=brain_factory, **kw)))
-            done += 1
-            print(f"  {done}/{total} bitti ({name}) - Ctrl+C'ye basma", file=sys.stderr, flush=True)
+    work = [(name, i, (part, step, exp001, brain_factory, kw))
+            for name, kw in variants.items() for i, part in enumerate(parts)]
+    results: dict[tuple[str, int], dict[str, Any]] = {}
+    total = len(work)
+    if jobs > 1:
+        from concurrent.futures import ProcessPoolExecutor, as_completed
+
+        with ProcessPoolExecutor(max_workers=jobs) as pool:
+            futures = {pool.submit(_one, job): (name, i) for name, i, job in work}
+            for n, fut in enumerate(as_completed(futures), 1):
+                results[futures[fut]] = fut.result()
+                print(f"  {n}/{total} bitti ({futures[fut][0]}) - paralel {jobs}", file=sys.stderr, flush=True)
+    else:
+        for n, (name, i, job) in enumerate(work, 1):
+            results[(name, i)] = _one(job)
+            print(f"  {n}/{total} bitti ({name}) - Ctrl+C'ye basma", file=sys.stderr, flush=True)
+    table = {name: [results[(name, i)] for i in range(len(parts))] for name in variants}
     ref = table[REFERENCE]
     verdicts = {}
     for name, rows in table.items():
@@ -96,6 +114,10 @@ def main(argv: list[str] | None = None, fetch=None) -> int:
     parser.add_argument("--days", type=int, default=21)
     parser.add_argument("--windows", type=int, default=3)
     parser.add_argument("--step", type=int, default=15)
+    parser.add_argument("--jobs", type=int, default=max(1, (os.cpu_count() or 2) - 1),
+                        help="parallel processes (default: all cores but one)")
+    parser.add_argument("--output", default=None, help="also write the JSON result here atomically (used by the research agent)")
+    parser.add_argument("--quick", action="store_true", help="fast check: 14 days, 2 windows, step 30")
     parser.add_argument("--symbols", default=",".join(bt.DEFAULT_SYMBOLS))
     parser.add_argument("--symbols-file", default=None, help="JSON with a 'symbols' list (config/universe_selection.json)")
     parser.add_argument("--no-exp001", action="store_true", help="replay without the EXP-001 floor")
@@ -104,6 +126,8 @@ def main(argv: list[str] | None = None, fetch=None) -> int:
     parser.add_argument("--dataset", default=None, help="replay a saved dataset instead of downloading (reproducible)")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
+    if args.quick:
+        args.days, args.windows, args.step = 14, 2, 30
     variants = VARIANTS
     if args.only:
         words = [w.strip().lower() for w in args.only.split(",") if w.strip()]
@@ -129,8 +153,14 @@ def main(argv: list[str] | None = None, fetch=None) -> int:
     if args.save_dataset:
         Path(args.save_dataset).write_text(json.dumps({"manifest": manifest, "data": data}, default=str), encoding="utf-8")
     print(f"replaying {len(variants)} variants x {args.windows} windows (this takes a while)...", file=sys.stderr, flush=True)
-    result = compare(data, args.windows, args.step, not args.no_exp001, variants=variants)
+    result = compare(data, args.windows, args.step, not args.no_exp001, variants=variants, jobs=args.jobs)
     result["dataset"] = manifest
+    if args.output:
+        out = Path(args.output)
+        tmp = out.with_suffix(".tmp")
+        tmp.write_text(json.dumps({**result, "finished_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()},
+                                  default=str, ensure_ascii=False), encoding="utf-8")
+        os.replace(tmp, out)
     result["parameters"] = {"windows": args.windows, "step": args.step, "exp001": not args.no_exp001,
                             "variants": sorted(variants)}
     if args.json:

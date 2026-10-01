@@ -146,6 +146,58 @@ def knowledge_manager(records_dir: Path) -> dict[str, Any]:
     return {"verdict": "OK", "summary": f"{len(changed)} dersin durumu değişti; çelişkili: {len(out['contradictions'])}"}
 
 
+RESEARCH_EVERY_H = 24
+RESEARCH_TIMEOUT_H = 6
+
+
+def _research_dir() -> Path:
+    from core.application import resolve_state_directory
+
+    d = resolve_state_directory() / "research"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def strategy_research(records_dir: Path, research_dir: Path | None = None, launch=None, now: float | None = None) -> dict[str, Any]:
+    """Owner 2026-10-01: nobody waits for strategy comparisons.
+
+    Once a day this agent starts tools.strategy_compare in a separate
+    background process (all cores but one) and returns immediately. When the
+    result file appears, the next cycle records it in memory (one SC-NNNN
+    record per finished run). Research only; it never changes the runtime.
+    """
+    import subprocess
+
+    d = research_dir or _research_dir()
+    result, marker, seen = d / "strategy_compare_latest.json", d / "strategy_compare.running", d / "strategy_compare.recorded"
+    now = now if now is not None else time.time()
+    if result.exists() and (not seen.exists() or seen.read_text(encoding="utf-8") != str(result.stat().st_mtime_ns)):
+        data = json.loads(result.read_text(encoding="utf-8"))
+        nets = {name: [r.get("net_pnl") for r in rows] for name, rows in data.get("table", {}).items()}
+        existing = {r["record_id"] for r in cli.read_log(records_dir / cli.MEMORY_LOG)} if (records_dir / cli.MEMORY_LOG).exists() else set()
+        better = [k for k, v in data.get("verdicts", {}).items() if v == "BETTER"]
+        cli.add_memory_record(records_dir, {
+            "record_id": f"SC-{len(existing) + 1:04d}", "type": "EXPERIMENTS", "authority": "RESEARCH",
+            "title": f"Strateji karşılaştırması: BETTER = {', '.join(better) or 'yok'}",
+            "body": json.dumps({"verdicts": data.get("verdicts"), "net_by_window": nets,
+                                "dataset": (data.get("dataset") or {}).get("dataset_sha256"), "finished_at": data.get("finished_at")},
+                               ensure_ascii=False, default=str),
+            "author": "strategy_lab", "source": "tools/agent_cycle.py (strategy_research, background tools.strategy_compare)"})
+        seen.write_text(str(result.stat().st_mtime_ns), encoding="utf-8")
+        marker.unlink(missing_ok=True)
+        return {"verdict": "OK", "summary": f"karşılaştırma bitti ve hafızaya yazıldı; BETTER: {', '.join(better) or 'yok'}"}
+    if marker.exists() and now - marker.stat().st_mtime < RESEARCH_TIMEOUT_H * 3600:
+        return {"verdict": "OK", "summary": "karşılaştırma arka planda sürüyor"}
+    if result.exists() and now - result.stat().st_mtime < RESEARCH_EVERY_H * 3600:
+        return {"verdict": "OK", "summary": "son karşılaştırma 24 saatten yeni; yeniden başlatılmadı"}
+    cmd = [sys.executable, "-m", "tools.strategy_compare", "--days", "30", "--windows", "3",
+           "--symbols-file", "config/universe_selection.json", "--json", "--output", str(result)]
+    (launch or (lambda c: subprocess.Popen(c, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                           cwd=str(Path(__file__).resolve().parents[1]))))(cmd)
+    marker.write_text(str(now), encoding="utf-8")
+    return {"verdict": "OK", "summary": "karşılaştırma arka planda başlatıldı (paralel); sonuç bir sonraki döngülerde hafızaya yazılacak"}
+
+
 def _security_step(records_dir: Path) -> tuple[str, str]:
     out = security(records_dir)
     return ({"OK": "PASS", "WARN": "REVIEW_REQUIRED"}.get(out["verdict"], "FAIL"), out["summary"])
@@ -269,6 +321,7 @@ def red_team(records_dir: Path) -> dict[str, Any]:
 AGENTS: tuple[tuple[str, str, Callable[[Path], dict[str, Any]]], ...] = (
     ("quant_research", "Performans analizi", quant_research),
     ("strategy_lab", "Strateji önerileri", strategy_lab),
+    ("strategy_research", "Strateji karşılaştırma (arka plan)", strategy_research),
     ("market_regime", "Piyasa rejimi", market_regime),
     ("knowledge_manager", "Ders defteri", knowledge_manager),
     ("task_runner", "Görev yürütücü", task_runner),

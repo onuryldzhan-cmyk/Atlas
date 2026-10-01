@@ -121,3 +121,19 @@ def test_task_runner_executes_rule_based_steps_and_flags_llm_steps(tmp_path, mon
         ac.task_runner(tmp_path)
     again = ac.task_runner(tmp_path)  # once settled, nothing is re-run or re-blocked
     assert again["summary"] == "yürütülen adım: yok; AI-001 bekleyen: yok"
+
+
+def test_strategy_research_launches_in_background_then_records_result(tmp_path):
+    rd, rec, launched = tmp_path / "research", tmp_path / "records", []
+    rd.mkdir()
+    first = ac.strategy_research(rec, research_dir=rd, launch=launched.append, now=1000.0)
+    assert "başlatıldı" in first["summary"] and len(launched) == 1 and "--output" in launched[0]
+    assert "sürüyor" in ac.strategy_research(rec, research_dir=rd, launch=launched.append, now=1100.0)["summary"]
+    (rd / "strategy_compare_latest.json").write_text(json.dumps({
+        "table": {"ref": [{"net_pnl": "1"}]}, "verdicts": {"ref": "-", "x": "BETTER"}, "dataset": {"dataset_sha256": "abc"}}), encoding="utf-8")
+    done = ac.strategy_research(rec, research_dir=rd, launch=launched.append, now=1200.0)
+    assert "hafızaya yazıldı" in done["summary"] and "x" in done["summary"]
+    sc = [r for r in memory_records.replay(cli.read_log(rec / cli.MEMORY_LOG)).values() if r["id"].startswith("SC-")]
+    assert len(sc) == 1
+    assert "24 saatten yeni" in ac.strategy_research(rec, research_dir=rd, launch=launched.append)["summary"]
+    assert len(launched) == 1
