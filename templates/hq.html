@@ -44,7 +44,7 @@
         <a href="/system">Sistem</a>
         <a href="/hq" class="active" aria-current="page">Atlas HQ</a>
     </div>
-    <span class="small"><span id="hq-health">…</span> · <span id="hq-clock"></span>
+    <span class="small"><span id="hq-health">…</span> · <span id="hq-clock"></span> · <span id="hq-fresh" class="text-body-secondary">veri: bekleniyor</span>
         <button id="toggle-3d" class="btn btn-sm btn-outline-secondary ms-2" type="button">3D: açık</button></span>
 </nav>
 
@@ -107,6 +107,14 @@
     let agents = [], flows = [], rooms = {}, perms = {}, selected = null, show3d = true;
     // Atlas Event Contract v1 (/api/events): every event is backed by a governance record.
     let contractEvents = [], contractSkipped = 0;
+    let lastOk = null;
+    setInterval(() => {
+        const el = document.getElementById('hq-fresh');
+        if (!el) return;
+        const age = lastOk == null ? null : Math.round((Date.now() - lastOk) / 1000);
+        el.textContent = (age == null ? 'veri: henüz okunamadı' : `veri ${age} sn önce`) + (contractSkipped ? ` · ${contractSkipped} kayıt sözleşmeye uymadı` : '');
+        el.style.color = age == null || age > 30 ? 'var(--atlas-warn, #E5B95C)' : '';
+    }, 1000);
 
     function renderOrg() {
         const order = ['WAITING_FOR_HUMAN', 'ERROR', 'BLOCKED', 'WORKING', 'REVIEWING', 'WAITING', 'IDLE', 'OFFLINE'];
@@ -256,6 +264,9 @@
             getJSON('/api/agent-states'), getJSON('/api/permissions'), getJSON('/api/command-center'), getJSON('/api/trades')]);
         const ev = await getJSON('/api/events');
         contractEvents = ev.available ? (ev.events || []) : []; contractSkipped = ev.available ? (ev.skipped || 0) : 0;
+        // Stale indicator (reference-repo pattern P2/P4, ideas only): when the data was last read, and how many
+        // records did not fit the event contract (skipped, never coerced).
+        if (st.available) lastOk = Date.now();
         agents = st.available ? st.agents : []; flows = st.available ? st.flows : []; rooms = st.available ? st.rooms : {};
         perms = {}; (permissions.units || []).forEach((p) => { perms[p.id] = p; });
         if (!selected && agents.length) selected = (agents.find((a) => a.state === 'WAITING_FOR_HUMAN') || agents[0]).id;

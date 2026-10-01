@@ -40,3 +40,8 @@ def test_hq_route_is_loopback_guarded():
 def test_hq_reads_contract_events_and_never_invents_activity():
     html = web_app.TEMPLATE_DIR.joinpath("hq.html").read_text(encoding="utf-8")
     assert "getJSON('/api/events')" in html and "hareket uydurulmaz" in html
+
+
+def test_hq_shows_data_age_and_skipped_records():
+    html = web_app.TEMPLATE_DIR.joinpath("hq.html").read_text(encoding="utf-8")
+    assert 'id="hq-fresh"' in html and "sözleşmeye uymadı" in html and "henüz okunamadı" in html
