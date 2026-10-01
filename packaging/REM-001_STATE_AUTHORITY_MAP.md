@@ -19,8 +19,8 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `0e517f036a79305d7f8bc02de96654c8041fd29d` |
-| generated_from_tree | `d2026e3167539fb0062c1c0c6aa10b66ba8cc3e3` |
+| generated_from_commit | `d8cda6c0eadc1c6ca8de4e52d5b471873760066d` |
+| generated_from_tree | `9f800cd037b22e2210f5a104410a8395cc801639` |
 | tracked_working_tree_clean | False |
 | modified_tracked_paths_at_generation | ['ackaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md'] |
 
@@ -154,7 +154,7 @@ nothing is inferred from an absence.
 | `atlas_org/security_review.py` | ATOMIC_REPLACE | 203 | `_requirements::parse` |
 | `atlas_org/security_review.py` | ATOMIC_REPLACE | 216 | `files_digest` |
 | `atlas_org/security_review.py` | ATOMIC_REPLACE | 226 | `review_change` |
-| `atlas_org/tasks.py` | ATOMIC_REPLACE | 222 | `agent_scorecards::when` |
+| `atlas_org/tasks.py` | ATOMIC_REPLACE | 223 | `agent_scorecards::when` |
 | `atlas_os/audit/audit_log.py` | FSYNC | 607 | `AuditLogService::_persist_record` |
 | `atlas_os/audit/audit_log.py` | ATOMIC_REPLACE | 741 | `AuditLogService::rotate` |
 | `atlas_supervisor.py` | UNLINK | 454 | `_discard_heartbeat_file` |
