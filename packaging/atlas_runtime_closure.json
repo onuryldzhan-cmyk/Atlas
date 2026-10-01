@@ -27,6 +27,7 @@
     "atlas_finance/market_data/contracts.py",
     "atlas_finance/market_data/exceptions.py",
     "atlas_finance/market_data/fear_greed_provider.py",
+    "atlas_finance/market_data/funding_rate_provider.py",
     "atlas_finance/market_data/market_feed_service.py",
     "atlas_finance/market_data/models.py",
     "atlas_finance/market_data/temporal.py",

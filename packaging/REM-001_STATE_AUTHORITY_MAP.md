@@ -19,10 +19,10 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `a22cd8e558e685f53c9dca200b210c3d4797298d` |
-| generated_from_tree | `f166e9a7da85b6234cc125b4b50b27ee8ba7ddbd` |
+| generated_from_commit | `c7def609f85f0b7ceae0f5372509596a040c297d` |
+| generated_from_tree | `677d8f5a6d6a3f0e27bb6ae7def2c185f24f1cbb` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['ackaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md'] |
+| modified_tracked_paths_at_generation | ['ackaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/atlas_architecture_map.json', 'packaging/atlas_runtime_closure.json'] |
 
 ## What this artifact is, and what it is not
 
@@ -60,7 +60,7 @@ observation.
 | field | value |
 | --- | --- |
 | entry_points | `main.py`, `web_app.py`, `atlas_service.py`, `atlas_supervisor.py` |
-| modules_in_runtime_closure | 132 |
+| modules_in_runtime_closure | 133 |
 | declared_state_file_constants | 10 |
 | persistence_sites | 91 |
 | modules_with_persistence_sites | 39 |
