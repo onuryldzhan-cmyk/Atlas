@@ -40,3 +40,19 @@ def test_unrealized_must_be_finite_decimal():
         replace(state(), unrealized_pnl=D("NaN"))
     with pytest.raises(ValueError):
         replace(state(), unrealized_pnl=-1.5)
+
+
+def test_unrealized_gain_never_offsets_a_realized_loss():
+    # Independent audit 2026-10-01 F-A (HIGH): F-3 ON must never be looser than OFF.
+    off, on = RiskEngine(policy()), RiskEngine(policy(count_unrealized_in_daily_loss=True))
+    breached = with_unrealized(state(position(), pnl="-60"), "+40")   # realized 60 >= 50 limit, paper gain 40
+    assert off.evaluate(request(), breached).reason_code == "DAILY_LOSS_LIMIT_BREACHED"
+    assert on.evaluate(request(), breached).reason_code == "DAILY_LOSS_LIMIT_BREACHED"
+
+
+@pytest.mark.parametrize("realized,unrealized", [("-60", "40"), ("-60", "-1"), ("-10", "500"), ("0", "-49"), ("-49", "0")])
+def test_flag_on_is_never_looser_than_off(realized, unrealized):
+    off, on = RiskEngine(policy()), RiskEngine(policy(count_unrealized_in_daily_loss=True))
+    s = with_unrealized(state(position(), pnl=realized), unrealized)
+    if off.evaluate(request(), s).reason_code == "DAILY_LOSS_LIMIT_BREACHED":
+        assert on.evaluate(request(), s).reason_code == "DAILY_LOSS_LIMIT_BREACHED"

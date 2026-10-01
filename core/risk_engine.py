@@ -699,7 +699,10 @@ class RiskEngine:
             if self.policy.count_unrealized_in_daily_loss:
                 if state.unrealized_pnl is None:
                     return reject("UNREALIZED_PNL_UNKNOWN")
-                loss = max(-(state.realized_daily_pnl + state.unrealized_pnl), ZERO)
+                # Audit 2026-10-01 F-A (HIGH): only unrealized LOSSES count. A paper
+                # gain on an open position must never offset a realized loss, or
+                # F-3 ON would be looser than OFF.
+                loss = max(-(state.realized_daily_pnl + min(state.unrealized_pnl, ZERO)), ZERO)
             daily_loss_ceiling = (
                 self.policy.total_capital * self.policy.max_daily_loss_pct
                 if self.policy.max_daily_loss_pct is not None else None

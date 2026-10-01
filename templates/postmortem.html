@@ -66,7 +66,8 @@
     document.getElementById('csv').addEventListener('click', () => {
         // Export (Dashboard "later" item): the rows already on screen, built in the browser. Nothing is sent anywhere.
         const cols = ['closed_at', 'symbol', 'regime', 'environment', 'notional', 'gross_pnl', 'net_pnl', 'outcome', 'fingerprint'];
-        const cell = (v) => '"' + String(v ?? 'N/A').replace(/"/g, '""') + '"';
+        // Audit F-F: a cell starting with = + - @ would run as a spreadsheet formula; prefix it with '.
+        const cell = (v) => { let t = String(v ?? 'N/A'); if (/^[=+\-@\t\r]/.test(t) && !/^-?\d/.test(t)) t = "'" + t; return '"' + t.replace(/"/g, '""') + '"'; };
         const csv = [cols.join(',')].concat(last.map((e) => cols.map((c) => cell(e[c])).join(','))).join('\n');
         const a = document.createElement('a');
         a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));

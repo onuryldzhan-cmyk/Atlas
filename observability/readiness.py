@@ -75,6 +75,12 @@ def evaluate(status: dict[str, Any], now: datetime | None = None) -> dict[str, A
         check("position_risk_buckets", False, "risk-bucket sidecar unreadable: every position counts against every sleeve; "
               "repair: python -m tools.position_risk_buckets_repair <state>/position_risk_buckets.jsonl")
 
+    unpriced = execution.get("unpriced_held_symbols")
+    if isinstance(unpriced, list) and unpriced:
+        # Audit F-B: F-3 refuses all new buys while any held coin has no fresh price.
+        check("held_position_prices", False, f"no fresh price for held {', '.join(map(str, unpriced))}: new buys are refused "
+              "(UNREALIZED_PNL_UNKNOWN) until it is priced again or the position is closed")
+
     lifecycle = execution.get("order_lifecycle")
     if isinstance(lifecycle, dict) and lifecycle.get("violations"):
         # Stage 1 is observe-only: a violation is reported here, never acted on.

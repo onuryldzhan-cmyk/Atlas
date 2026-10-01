@@ -80,3 +80,27 @@ def test_observed_violation_shows_in_readiness():
     assert any(c["check"] == "order_lifecycle" and c["state"] == "FAIL" for c in bad["checks"])
     ok = readiness.evaluate({"runtime": {"healthy": True}, "execution": {"order_lifecycle": {"observe": True, "violations": 0}}})
     assert not any(c["check"] == "order_lifecycle" for c in ok["checks"])
+
+
+def test_unpriced_held_coin_is_named_in_status_and_readiness(tmp_path):
+    # Independent audit 2026-10-01 F-B: the reason new buys stop must be visible.
+    from observability import readiness
+
+    app = AtlasApplication(state_directory=seed_state(tmp_path / "state", positions=[("BTCUSDT", "10", "10")]),
+                           count_unrealized_in_daily_loss=True)
+    m = app.execution
+    m.mark_price_provider = lambda: {}
+    m.start()
+    assert m._mark_to_market(m._derived_position_exposures()) is None
+    assert m.status()["unpriced_held_symbols"] == ["BTCUSDT"]
+    r = readiness.evaluate({"runtime": {"healthy": True}, "execution": {"unpriced_held_symbols": ["BTCUSDT"]}})
+    assert any(c["check"] == "held_position_prices" and c["state"] == "FAIL" for c in r["checks"])
+    m.mark_price_provider = lambda: {"BTCUSDT": Decimal("11")}
+    assert m._mark_to_market(m._derived_position_exposures()) is not None
+    assert m.status()["unpriced_held_symbols"] == []
+
+
+def test_csv_export_neutralises_formulas():
+    import web_app
+    html = web_app.TEMPLATE_DIR.joinpath("postmortem.html").read_text(encoding="utf-8")
+    assert "Audit F-F" in html and "t = \"'\" + t" in html

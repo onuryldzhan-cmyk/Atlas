@@ -286,6 +286,8 @@ class ExecutionManager:
         # Order state machine stage 1 (observe only), default OFF.
         self.order_lifecycle_observe: bool = False
         self.order_lifecycle_violations: list[dict[str, str]] = []
+        # Audit F-B: held coins with no fresh price (F-3 then refuses new risk).
+        self.unpriced_held_symbols: list[str] = []
 
         # Block 5D: the sole venue instrument-precision authority. This
         # manager consumes it but never constructs, mutates, or invents an
@@ -1314,10 +1316,11 @@ class ExecutionManager:
                 from core.order_lifecycle import observe_outcome
 
                 order_id = str(result.get("request_id") or getattr(decision, "get", lambda *_: None)("request_id") or "?")
-                for problem in observe_outcome(order_id, result):
-                    self.order_lifecycle_violations.append({"request_id": order_id, "violation": problem})
-                    logger.warning("Order lifecycle violation (observe only) request_id=%s %s", order_id, problem)
-                del self.order_lifecycle_violations[:-100]
+                with self._lock:  # audit F-D: mutate under the same lock status() reads with
+                    for problem in observe_outcome(order_id, result):
+                        self.order_lifecycle_violations.append({"request_id": order_id, "violation": problem})
+                        logger.warning("Order lifecycle violation (observe only) request_id=%s %s", order_id, problem)
+                    del self.order_lifecycle_violations[:-100]
             except Exception:
                 logger.warning("Order lifecycle observer failed; execution unaffected", exc_info=True)
         return result
@@ -3021,10 +3024,13 @@ class ExecutionManager:
             return None
         try:
             prices = provider() or {}
+            self.unpriced_held_symbols = []
             total = Decimal("0")
             for p in positions:
                 price = prices.get(p.symbol)
                 if price is None:
+                    # Audit F-B: name the coin, so readiness can say why new buys stop.
+                    self.unpriced_held_symbols = sorted({q.symbol for q in positions if prices.get(q.symbol) is None})
                     return None
                 total += Decimal(str(price)) * p.base_quantity - p.quote_exposure
             return total if total.is_finite() else None
@@ -7479,6 +7485,7 @@ class ExecutionManager:
                     "attached": self.position_risk_buckets is not None,
                     "corrupt": bool(getattr(self.position_risk_buckets, "corrupt", False)),
                 },
+                "unpriced_held_symbols": list(self.unpriced_held_symbols),
                 "order_lifecycle": {
                     "observe": self.order_lifecycle_observe,
                     "violations": len(self.order_lifecycle_violations),
