@@ -52,3 +52,20 @@ def test_missing_or_extra_file_and_nonempty_target_are_refused(tmp_path):
     (live / "x").write_text("in use", encoding="utf-8")
     with pytest.raises(sb.BackupError, match="REFUSED"):
         sb.restore(dest, live)
+
+
+def test_backup_is_refused_while_atlas_runs(tmp_path):
+    import socket
+    import time
+
+    hb = tmp_path / "supervisor_heartbeat.json"
+    hb.write_text("{}", encoding="utf-8")
+    assert "heartbeat" in sb.atlas_running(hb, port=1, now=time.time())
+    assert sb.atlas_running(hb, port=1, now=time.time() + 3600) is None  # stale heartbeat, nothing listening
+    srv = socket.socket()
+    srv.bind(("127.0.0.1", 0))
+    srv.listen()
+    try:
+        assert "answering" in sb.atlas_running(None, port=srv.getsockname()[1])
+    finally:
+        srv.close()

@@ -134,6 +134,26 @@ def restore(backup_dir: Path, target: Path) -> dict[str, Any]:
     return {"restored_files": len(manifest["files"]), "from": manifest["created_at"], "target": str(target)}
 
 
+def atlas_running(heartbeat: Path | None, port: int = 8000, now: float | None = None) -> str | None:
+    """Why Atlas looks alive (so a backup now could copy half-written state), or None.
+
+    Two independent signals: a supervisor heartbeat written in the last 60 s,
+    or the loopback operator surface answering on its port.
+    """
+    import socket
+    import time
+
+    if heartbeat is not None and heartbeat.exists():
+        age = (now if now is not None else time.time()) - heartbeat.stat().st_mtime
+        if age < 60:
+            return f"supervisor heartbeat {age:.0f}s old"
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=0.5):
+            return f"Atlas web surface answering on 127.0.0.1:{port}"
+    except OSError:
+        return None
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -143,7 +163,13 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         if args.cmd == "backup":
-            from core.application import resolve_state_directory
+            from core.application import resolve_log_directory, resolve_state_directory
+
+            log_dir = resolve_log_directory()
+            alive = atlas_running(log_dir / "supervisor_heartbeat.json" if log_dir else None)
+            if alive:
+                raise BackupError(f"REFUSED: Atlas is running ({alive}). Stop it with Ctrl+C, then back up - "
+                                  "a copy taken while it writes can mix journal and financial state from different moments.")
 
             root = Path(__file__).resolve().parents[1]
             dest = backup({"state": resolve_state_directory(), "governance_records": root / "governance" / "records"},
