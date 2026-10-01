@@ -551,6 +551,7 @@ class AtlasApplication:
         sleeves_enabled: bool = False,
         paper_slippage_bps: Decimal | str = "0",
         order_lifecycle_observe: bool = False,
+        funding_sentiment: bool = False,
     ) -> None:
         logger.info(
             "Initializing %s v%s",
@@ -571,6 +572,7 @@ class AtlasApplication:
         self.sleeves_enabled = bool(sleeves_enabled)
         self.paper_slippage_bps = Decimal(str(paper_slippage_bps))
         self.order_lifecycle_observe = bool(order_lifecycle_observe)
+        self.funding_sentiment = bool(funding_sentiment)
         if not self.paper_slippage_bps.is_finite() or not Decimal("0") <= self.paper_slippage_bps <= Decimal("100"):
             raise ValueError("paper_slippage_bps must be within [0, 100]")
         # registry v5.01 EXP-001. Off unless the production entry point asks
@@ -842,6 +844,11 @@ class AtlasApplication:
         self.execution.paper_slippage_bps = self.paper_slippage_bps
         # Order state machine stage 1: observe only (owner approved 2026-10-01).
         self.execution.order_lifecycle_observe = self.order_lifecycle_observe
+        # Design C: Binance funding rate as sentiment evidence when Fear & Greed is
+        # neutral. OFF unless main.py turns it on (after audit + owner).
+        if self.funding_sentiment:
+            from atlas_finance.market_data.funding_rate_provider import FundingRateProvider
+            self.market_loop.funding_provider = FundingRateProvider()
         # S1 step 2: record each position's risk bucket in a sidecar (decisions
         # are unchanged while sleeves_enabled stays False).
         from core.position_risk_buckets import POSITION_RISK_BUCKETS_FILE, PositionRiskBucketStore

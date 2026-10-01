@@ -838,6 +838,35 @@ class WorldAnalysisEngine:
 
         if band == cls.SENTIMENT_BAND_NEUTRAL:
 
+            # Design C (owner choice 2026-10-01): with Fear & Greed neutral, a
+            # crowded perpetual funding rate for this coin may give the one
+            # sentiment vote, through the SAME owner-confirmed rule: crowded
+            # short reads like FEAR, crowded long like GREED. Anything else
+            # (absent, unavailable, malformed, neutral) keeps the abstention,
+            # so missing evidence can never raise confidence (NB-4) and the
+            # roster stays five agents (NB-5).
+            funding = sentiment_input.get("funding")
+            mapped = None
+            if (isinstance(funding, dict) and funding.get("available") is True
+                    and funding.get("band") in ("CROWDED_SHORT", "CROWDED_LONG")):
+                mapped = cls.SENTIMENT_BAND_FEAR if funding["band"] == "CROWDED_SHORT" else cls.SENTIMENT_BAND_GREED
+            if mapped is not None:
+                trend = cls._sentiment_trend(analysis, technical_status)
+                vote = cls.sentiment_vote(mapped, trend)
+                return (
+                    MarketDataEvidenceStatus.AVAILABLE,
+                    cls.SENTIMENT_VOTE_SCORES[vote],
+                    {
+                        "fear_greed_index": value,
+                        "band": band,
+                        "funding_rate": funding.get("rate"),
+                        "funding_band": funding.get("band"),
+                        "trend_basis": trend or "AMBIGUOUS",
+                        "vote": vote,
+                        "reason": "FUNDING_RATE_CROWDED",
+                    },
+                )
+
             return (
                 MarketDataEvidenceStatus.UNAVAILABLE_NO_PROVIDER,
                 None,

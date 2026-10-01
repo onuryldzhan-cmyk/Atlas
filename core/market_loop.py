@@ -771,7 +771,7 @@ class MarketLoop:
                 price,
                 analysis,
                 score,
-                sentiment_input=self._sentiment_input(),
+                sentiment_input=self._with_funding(self._sentiment_input(), symbol),
                 macro_input=self._macro_input(),
                 market_risk_input=self._market_risk_input(
                     closed_candles
@@ -2066,6 +2066,18 @@ class MarketLoop:
     # =========================================================
     # SENTIMENT INPUT (registry v4.66)
     # =========================================================
+
+    def _with_funding(self, sentiment: dict[str, Any] | None, symbol: str) -> dict[str, Any] | None:
+        """Add this coin's funding-rate reading (design C) when a provider is attached. Never raises."""
+        provider = getattr(self, "funding_provider", None)
+        if provider is None or not isinstance(sentiment, dict):
+            return sentiment
+        try:
+            reading = provider.rate(symbol)
+        except Exception:
+            logger.debug("funding rate unavailable for %s", symbol, exc_info=True)
+            return sentiment
+        return {**sentiment, "funding": dict(reading) if isinstance(reading, dict) else None}
 
     def _sentiment_input(self) -> dict[str, Any] | None:
         """
