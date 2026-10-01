@@ -29,12 +29,13 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any, Iterable
 
 MIN_PROVISIONAL = 10
 MIN_HALF = 5
+COOLDOWN_MIN = 60  # reference: freqtrade CooldownPeriod protection (idea only)
 EXPIRE_DAYS = 30  # a lesson not observed for this long (relative to the newest trade) is EXPIRED, not deleted
 FEE_RATE_PER_SIDE = Decimal("0.001")  # same estimate as ai/core/intelligence/trade_evidence.py
 ENVIRONMENT = "PAPER"
@@ -105,6 +106,13 @@ def fingerprint(record: dict[str, Any]) -> str:
     return hashlib.sha256(json.dumps({k: str(record.get(k)) for k in keys}, sort_keys=True).encode()).hexdigest()[:16]
 
 
+def _ts_or_none(value: Any) -> datetime | None:
+    try:
+        return datetime.fromisoformat(str(value))
+    except ValueError:
+        return None
+
+
 def _minutes(a: Any, b: Any) -> float | None:
     try:
         return round((datetime.fromisoformat(str(b)) - datetime.fromisoformat(str(a))).total_seconds() / 60, 1)
@@ -161,6 +169,63 @@ def metrics(nets: list[Decimal]) -> dict[str, Any]:
             "verdict": "MEASURED" if n >= MIN_PROVISIONAL else "INSUFFICIENT"}
 
 
+def book_extras(exps: list[dict[str, Any]]) -> dict[str, Any]:
+    """Extra book views (reference: freqtrade backtest report tables; ideas only, no code).
+
+    Per-coin table, winners' vs losers' holding time, longest winning streak,
+    SQN, and a realised-only daily P&L (UTC). Below MIN_PROVISIONAL trades the
+    ratios are None and the verdict says INSUFFICIENT. Exit reasons are not
+    recorded in the closed archive, so that table is N/A, never inferred.
+    """
+    nets = [Decimal(e["net_pnl"]) for e in exps]
+    n = len(nets)
+    coins: dict[str, list[Decimal]] = {}
+    days: dict[str, list[Decimal]] = {}
+    for e, x in zip(exps, nets):
+        coins.setdefault(str(e["symbol"]), []).append(x)
+        days.setdefault(str(e.get("closed_at") or "")[:10] or "?", []).append(x)
+    q = lambda d: str(d.quantize(Decimal("0.0001")))
+    per_coin = [{"symbol": c, "trades": len(v), "net": q(sum(v, Decimal("0"))),
+                 "win_rate": round(sum(1 for x in v if x > 0) / len(v), 4)} for c, v in sorted(coins.items())]
+    daily = [{"day_utc": d, "trades": len(v), "net_realised": q(sum(v, Decimal("0")))} for d, v in sorted(days.items())]
+    hold = lambda want: [e["analysis"]["holding_minutes"] for e, x in zip(exps, nets)
+                         if (x > 0) == want and e["analysis"].get("holding_minutes") is not None]
+    avg = lambda xs: round(sum(xs) / len(xs), 1) if xs else None
+    streak = longest = 0
+    for x in nets:
+        streak = streak + 1 if x > 0 else 0
+        longest = max(longest, streak)
+    sqn = None
+    if n >= MIN_PROVISIONAL:
+        f = [float(x) for x in nets]
+        mean = sum(f) / n
+        sd = math.sqrt(sum((x - mean) ** 2 for x in f) / (n - 1))
+        sqn = round(math.sqrt(n) * mean / sd, 3) if sd > 0 else None
+    # "Would-have-locked" evidence for a freqtrade-style cooldown protection
+    # (DEFERRED as a runtime rule): trades opened within COOLDOWN_MIN after a
+    # losing close on the same coin. Display only; it changes nothing.
+    after_loss = []
+    for e, x in zip(exps, nets):
+        opened = _ts_or_none(e.get("opened_at"))
+        for prev, px in zip(exps, nets):
+            closed = _ts_or_none(prev.get("closed_at"))
+            if (prev is not e and px <= 0 and prev["symbol"] == e["symbol"] and opened and closed
+                    and closed <= opened <= closed + timedelta(minutes=COOLDOWN_MIN)):
+                after_loss.append(x)
+                break
+    cooldown = {"window_min": COOLDOWN_MIN, "trades": len(after_loss), "net": q(sum(after_loss, Decimal("0"))),
+                "verdict": "MEASURED" if len(after_loss) >= MIN_PROVISIONAL else "INSUFFICIENT",
+                "effect": "none: evidence for a possible protection rule, not a rule"}
+    return {"per_coin": per_coin, "daily_realised": daily,
+            "cooldown_evidence": cooldown,
+            "avg_minutes_winners": avg(hold(True)), "avg_minutes_losers": avg(hold(False)),
+            "longest_winning_streak": longest, "sqn": sqn,
+            "per_exit_reason": "N/A (exit reason is not recorded in the closed-position archive)",
+            "notes": {"recovery_factor": "net / max drawdown over the whole book, not annualised",
+                      "sqn": "sqrt(n) * mean / stdev of net per trade; None below the minimum sample",
+                      "daily_realised": "realised P&L only (UTC days with closed trades); open positions are not included"}}
+
+
 def _lesson(lid: str, subject: str, exps: list[dict[str, Any]], validated: set[str]) -> dict[str, Any]:
     nets = [Decimal(e["net_pnl"]) for e in exps]
     n = len(nets)
@@ -206,6 +271,7 @@ def build(closed: Iterable[dict[str, Any]], memory_records: Iterable[dict[str, A
         counts[lesson["status"]] = counts.get(lesson["status"], 0) + 1
     return {"available": True, "environment": ENVIRONMENT, "experiences": exps[-50:], "experience_count": len(exps),
             "book_metrics": metrics([Decimal(e["net_pnl"]) for e in exps]),
+            "book_extras": book_extras(exps),
             "lessons": lessons, "lesson_status_counts": counts,
             "contradictions": [x for x in lessons if x["status"] == "CONTESTED"],
             "rules": {"min_provisional": MIN_PROVISIONAL, "min_half": MIN_HALF,

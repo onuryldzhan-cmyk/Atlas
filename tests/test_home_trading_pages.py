@@ -145,3 +145,8 @@ def test_density_toggle_is_a_local_view_preference_only():
     html = web_app.TEMPLATE_DIR.joinpath("_atlas_sidebar.html").read_text(encoding="utf-8")
     assert 'id="atlas-density"' in html and "atlas-compact" in html
     assert "try { localStorage" in html and "fetch(" not in html
+
+
+def test_postmortem_shows_book_extras_with_na():
+    html = web_app.TEMPLATE_DIR.joinpath("postmortem.html").read_text(encoding="utf-8")
+    assert "book_extras" in html and "Coin bazında" in html and "Günlük gerçekleşen" in html and "per_exit_reason" in html

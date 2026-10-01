@@ -33,6 +33,7 @@
     <p class="muted">Kapanan her işlem için geriye dönük gerçekler. Bunlar sadece kanıttır, hiçbir kararı değiştirmez. Ortam: PAPER.</p>
     <div id="book" class="pane"></div>
     <button id="csv" type="button" class="btn btn-sm btn-outline-secondary mb-2">CSV indir</button>
+    <div id="extras" class="pane table-wrap"></div>
     <div id="trades" class="pane table-wrap"></div>
 </div>
 </main>
@@ -51,6 +52,16 @@
         book.innerHTML = m.trades ? `<b>Defter (${esc(m.trades)} işlem, ${esc(m.verdict === 'MEASURED' ? 'ölçüldü' : 'örnek az, sonuç sayılmaz')})</b><br>
             <span class="num">net ${na(m.net_total)} · beklenti ${na(m.expectancy)} · kazanma oranı ${m.win_rate == null ? 'N/A' : esc((m.win_rate * 100).toFixed(1)) + '%'} · profit factor ${na(m.profit_factor)} · max düşüş ${na(m.max_drawdown)}</span>`
             : '<span class="muted">Henüz kapanan işlem yok.</span>';
+        const x = l.book_extras || {};
+        const tbl = (head, rows) => rows.length ? `<table><thead><tr>${head.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>` : '<span class="muted">N/A</span>';
+        document.getElementById('extras').innerHTML = m.trades ? `
+            <div class="num">kazananlar ort. ${na(x.avg_minutes_winners)} dk · kaybedenler ort. ${na(x.avg_minutes_losers)} dk · en uzun kazanç serisi ${na(x.longest_winning_streak)} · SQN ${na(x.sqn)}</div>
+            <div class="row mt-2"><div class="col-md-6"><b>Coin bazında</b>${tbl(['Coin', 'İşlem', 'Net', 'Kazanma'], (x.per_coin || []).map((c) =>
+                `<tr><td>${esc(c.symbol)}</td><td class="num">${esc(c.trades)}</td><td class="num ${Number(c.net) > 0 ? 'win' : 'loss'}">${esc(c.net)}</td><td class="num">${esc((c.win_rate * 100).toFixed(0))}%</td></tr>`))}</div>
+            <div class="col-md-6"><b>Günlük gerçekleşen (UTC)</b>${tbl(['Gün', 'İşlem', 'Net'], (x.daily_realised || []).slice(-14).reverse().map((d) =>
+                `<tr><td>${esc(d.day_utc)}</td><td class="num">${esc(d.trades)}</td><td class="num ${Number(d.net_realised) > 0 ? 'win' : 'loss'}">${esc(d.net_realised)}</td></tr>`))}</div></div>
+            <div class="mt-2"><b>Zarardan sonra aceleyle girmek</b> (aynı coinde zararla kapanıştan sonraki ${esc((x.cooldown_evidence || {}).window_min)} dk): ${esc((x.cooldown_evidence || {}).trades)} işlem, net <span class="num">${na((x.cooldown_evidence || {}).net)}</span> (${esc((x.cooldown_evidence || {}).verdict === 'MEASURED' ? 'ölçüldü' : 'örnek az')}). <span class="muted">Sadece kanıt; bir kural değil.</span></div>
+            <p class="muted mt-2">Çıkış nedeni: ${esc(x.per_exit_reason)}. ${esc((x.notes || {}).daily_realised || '')}. SQN: ${esc((x.notes || {}).sqn || '')}.</p>` : '';
         const rows = (l.experiences || []).slice().reverse();
         last = rows;
         if (!rows.length) { trades.innerHTML = ''; return; }
