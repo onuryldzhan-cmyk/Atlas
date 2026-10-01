@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 
 import web_app
 
-ALLOWED_APIS = {"/api/agent-states", "/api/organization", "/api/tasks", "/api/permissions", "/api/command-center", "/api/chat?q=", "/api/trades"}  # /api/trades added v5.82 (timeline)
+ALLOWED_APIS = {"/api/agent-states", "/api/organization", "/api/tasks", "/api/permissions", "/api/command-center", "/api/chat?q=", "/api/trades", "/api/events"}  # /api/trades added v5.82 (timeline); /api/events 2026-10-01 (event contract, read-only)
 
 
 def _page() -> str:
@@ -35,3 +35,8 @@ def test_hq_has_a_non_3d_mode_and_names_no_invented_values():
 def test_hq_route_is_loopback_guarded():
     client = TestClient(web_app.create_app(), base_url="http://evil.example")
     assert client.get("/hq").status_code == 403
+
+
+def test_hq_reads_contract_events_and_never_invents_activity():
+    html = web_app.TEMPLATE_DIR.joinpath("hq.html").read_text(encoding="utf-8")
+    assert "getJSON('/api/events')" in html and "hareket uydurulmaz" in html

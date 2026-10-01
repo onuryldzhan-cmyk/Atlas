@@ -105,6 +105,8 @@
     const ROOM_POS = { command: [0, 0], research: [-4, -2.6], memory: [-4, 2.6], dev: [4, -2.6], security: [4, 2.6],
         quant: [0, 4.2], review: [2.2, -4.2], governance: [-2.2, -4.2], system: [0, -5.4] };
     let agents = [], flows = [], rooms = {}, perms = {}, selected = null, show3d = true;
+    // Atlas Event Contract v1 (/api/events): every event is backed by a governance record.
+    let contractEvents = [], contractSkipped = 0;
 
     function renderOrg() {
         const order = ['WAITING_FOR_HUMAN', 'ERROR', 'BLOCKED', 'WORKING', 'REVIEWING', 'WAITING', 'IDLE', 'OFFLINE'];
@@ -146,6 +148,9 @@
             `<div>İş akışı: ${[...inn, ...out].join(' · ') || 'yok'}</div>` +
             `<div>Yetkiler: ${caps.length ? caps.map((c) => `<span class="badge text-bg-secondary">${esc(c)}</span>`).join(' ') : 'kayıtlı yetki yok'}</div>` +
             `<div class="mt-1"><b>Geçmiş</b>${(a.history || []).length ? (a.history || []).map((e) => `<div>${esc(localTime(e.at, 16))} · ${esc(e.category)} · ${esc(e.text)}</div>`).join('') : ' <span class="text-body-secondary">kayıtlı olay yok</span>'}</div>` +
+            `<div class="mt-1"><b>Olaylar (atlas.event.v1)</b>${(() => { const mine = contractEvents.filter((e) => e.agent.id === a.id).slice(-5).reverse();
+                return mine.length ? mine.map((e) => `<div>${esc(localTime(e.timestamp, 19))} · ${esc(e.event_type)} · kayıt ${esc(e.payload.source || '?')}</div>`).join('')
+                    : ' <span class="text-body-secondary">bu ajan için olay yok (hareket uydurulmaz)</span>'; })()}</div>` +
             `<div class="text-body-secondary">Token / maliyet / gecikme: N/A (ajanlar kural tabanlı, dil modeli yok).</div>` +
             `<div class="text-body-secondary">Hiçbir ajan para harcayamaz, yayına alamaz ya da kendi kararını onaylayamaz.</div>`;
     }
@@ -249,6 +254,8 @@
     async function refresh() {
         const [st, permissions, cc, tr] = await Promise.all([
             getJSON('/api/agent-states'), getJSON('/api/permissions'), getJSON('/api/command-center'), getJSON('/api/trades')]);
+        const ev = await getJSON('/api/events');
+        contractEvents = ev.available ? (ev.events || []) : []; contractSkipped = ev.available ? (ev.skipped || 0) : 0;
         agents = st.available ? st.agents : []; flows = st.available ? st.flows : []; rooms = st.available ? st.rooms : {};
         perms = {}; (permissions.units || []).forEach((p) => { perms[p.id] = p; });
         if (!selected && agents.length) selected = (agents.find((a) => a.state === 'WAITING_FOR_HUMAN') || agents[0]).id;
