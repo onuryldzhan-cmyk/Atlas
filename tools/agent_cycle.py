@@ -86,6 +86,47 @@ def quant_research(records_dir: Path) -> dict[str, Any]:
     return {"verdict": "OK", "summary": f"{n} işlem analiz edildi, hafızaya yazıldı; {report['lessons'][0]}{edge}"}
 
 
+OVERCONFIDENCE_GAP = -0.10  # win rate this far below the stated confidence, in a MEASURED band
+
+
+def model_validation(records_dir: Path) -> dict[str, Any]:
+    """Model Validation Department (org unit, owner 2026-10-02): does Atlas's confidence match reality?
+
+    Rule-based: per confidence band, win rate after fees vs mean stated confidence and the
+    Brier score (tools/reality_check.calibration; ideas from proper-scoring practice). A band
+    with enough trades (MEASURED) whose win rate is >10 points below its confidence is flagged
+    OVERCONFIDENT. Evidence only - it never changes a confidence or a threshold (NB-4); one
+    MV record per change of findings.
+    """
+    from tools.exp001_report import load_closed
+    from tools.reality_check import calibration
+
+    rows = calibration(load_closed(_archive_path()), _approvals())
+    measured = [r for r in rows if r.get("verdict") == "MEASURED"]
+    flagged = [r["band"] for r in measured if (r.get("calibration_gap") or 0) <= OVERCONFIDENCE_GAP]
+    findings = {"bands": [{k: r.get(k) for k in ("band", "trades", "mean_confidence", "win_rate_after_fees",
+                                                 "brier", "calibration_gap", "verdict")} for r in rows],
+                "overconfident_bands": flagged}
+    log = records_dir / cli.MEMORY_LOG
+    previous = None
+    if log.exists():
+        from atlas_org import memory_records
+        mine = [r for r in memory_records.replay(cli.read_log(log)).values() if r.get("author") == "model_validation"]
+        if mine:
+            previous = json.loads(sorted(mine, key=lambda r: r.get("created_at") or "")[-1].get("body") or "{}")
+    if previous == findings:
+        return {"verdict": "OK", "summary": "kalibrasyon değişmedi; yeni kayıt yok"}
+    existing = {r["record_id"] for r in cli.read_log(log)} if log.exists() else set()
+    title = (f"Model doğrulama: AŞIRI GÜVEN {', '.join(flagged)} bandında" if flagged
+             else f"Model doğrulama: {len(measured)} bant ölçüldü, aşırı güven yok" if measured
+             else "Model doğrulama: ölçecek kadar işlem yok (bant başına en az 10)")
+    cli.add_memory_record(records_dir, {
+        "record_id": f"MV-{len(existing) + 1:04d}", "type": "EXPERIMENTS", "authority": "RESEARCH",
+        "title": title, "body": json.dumps(findings, ensure_ascii=False, default=str),
+        "author": "model_validation", "source": "tools/agent_cycle.py (model_validation, tools/reality_check.calibration)"})
+    return {"verdict": "OK", "summary": title}
+
+
 def strategy_lab(records_dir: Path) -> dict[str, Any]:
     from tools.exp001_report import load_closed
     from tools.performance_report import analyse
@@ -393,6 +434,7 @@ AGENTS: tuple[tuple[str, str, Callable[[Path], dict[str, Any]]], ...] = (
     ("knowledge_manager", "Ders defteri", knowledge_manager),
     ("task_runner", "Görev yürütücü", task_runner),
     ("overview_snapshot", "Durum özeti", overview_snapshot),
+    ("model_validation", "Model doğrulama", model_validation),
     ("red_team", "Karşı görüş", red_team),
     ("executive_assistant", "Öz-değerlendirme", executive_assistant),
     ("data_quality", "Veri sağlığı", data_quality),
