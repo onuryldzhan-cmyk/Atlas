@@ -150,3 +150,9 @@ def test_density_toggle_is_a_local_view_preference_only():
 def test_postmortem_shows_book_extras_with_na():
     html = web_app.TEMPLATE_DIR.joinpath("postmortem.html").read_text(encoding="utf-8")
     assert "book_extras" in html and "Coin bazında" in html and "Günlük gerçekleşen" in html and "per_exit_reason" in html
+
+
+def test_home_reads_regime_records_by_their_real_id_field():
+    # /api/memory returns replayed records keyed "id" (not "record_id"); the old lookup always showed N/A.
+    html = web_app.TEMPLATE_DIR.joinpath("home.html").read_text(encoding="utf-8")
+    assert "r.author === 'market_regime'" in html and "r.id || r.record_id" in html and "localTime" not in html

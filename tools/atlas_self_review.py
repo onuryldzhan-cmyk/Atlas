@@ -119,7 +119,11 @@ def agent_findings(records: Path) -> list[dict[str, Any]]:
     state = task_log.replay(cli.read_log(records / cli.TASKS_LOG))
     out = []
     for task in state.values():
-        blocked = [s for s in task["steps"] if s["status"] == "BLOCKED"]
+        # A step waiting for the AI-001 decision is waiting by design, not stuck; and a
+        # self-review task is never reviewed again (that loop filed T-0004..T-0012).
+        if str(task.get("request") or "").startswith("araştır:"):
+            continue
+        blocked = [s for s in task["steps"] if s["status"] == "BLOCKED" and "AI-001" not in str(s.get("block_reason") or "")]
         failed = [s for s in task["steps"] if (s["result"] or {}).get("verdict") == "FAIL"]
         if task["status"] not in ("DONE", "CANCELLED") and (blocked or failed):
             out.append({"source": "agent_performance", "evidence": {"task": task["id"], "blocked": len(blocked),

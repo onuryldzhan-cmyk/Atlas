@@ -157,3 +157,27 @@ def test_overview_snapshot_records_only_on_change(tmp_path, monkeypatch):
     latest = ov()
     assert len(latest) == 2
     assert json.loads(sorted(latest, key=lambda r: r["id"])[-1]["body"])["changes"]
+
+
+def test_self_review_does_not_loop_on_ai001_waits_or_its_own_tasks(tmp_path):
+    from tools import atlas_self_review as sr
+
+    state = {
+        "T-1": {"id": "T-1", "status": "BLOCKED", "request": "refactor x",
+                "steps": [{"status": "BLOCKED", "result": None, "block_reason": "needs AI-001 decision"}]},
+        "T-2": {"id": "T-2", "status": "BLOCKED", "request": "araştır: T-1 görevinde ajan işi takıldı",
+                "steps": [{"status": "BLOCKED", "result": None, "block_reason": "x"}]},
+        "T-3": {"id": "T-3", "status": "BLOCKED", "request": "fix y",
+                "steps": [{"status": "BLOCKED", "result": None, "block_reason": "disk full"}]},
+    }
+    import types
+    orig = sr.task_log
+    sr.task_log = types.SimpleNamespace(replay=lambda _: state, agent_scorecards=lambda _: {})
+    try:
+        orig_read = sr.cli.read_log
+        sr.cli.read_log = lambda _: []
+        out = sr.agent_findings(tmp_path)
+    finally:
+        sr.task_log = orig
+        sr.cli.read_log = orig_read
+    assert [f["evidence"]["task"] for f in out] == ["T-3"]

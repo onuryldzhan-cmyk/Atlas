@@ -233,12 +233,13 @@
     }
     function renderRegimes() {
         if (!memory || !memory.available) { set('regimes', `<span class="na">N/A — hafıza okunamadı. Değer uydurulmaz.</span>`); return; }
-        const mr = memory.records.find((r) => String(r.record_id).startsWith('MR-'));
+        const mr = memory.records.filter((r) => r.author === 'market_regime' && String(r.id || r.record_id || '').startsWith('MR-'))
+            .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))[0];
         let coins = null;
         try { coins = mr ? JSON.parse(mr.body).coins : null; } catch (e) { coins = null; }
         set('regimes', coins && Object.keys(coins).length
             ? Object.keys(coins).sort().map((k) => line(esc(k.replace('USDT', '')), esc(coins[k].regime || 'UNKNOWN'))).join('') +
-              `<div class="na mt-1">${esc(mr.record_id)} · ${esc(mr.at)} · yalnızca gözlem, karar anında okunmaz</div>`
+              `<div class="na mt-1">${esc(mr.id || mr.record_id)} · ${esc(new Date(mr.created_at || mr.at).toLocaleString())} · yalnızca gözlem, karar anında okunmaz</div>`
             : '<span class="na">N/A — henüz piyasa rejimi kaydı (MR-*) yok.</span>');
     }
     async function slow() {

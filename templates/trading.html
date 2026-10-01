@@ -170,7 +170,7 @@
         if (!l || !l.available) { el.textContent = 'Risk durumu okunamadı: ' + ((l && l.reason) || 'bilinmiyor'); return; }
         const lv = l.drawdown_levels_pct || {};
         el.innerHTML = bar(`Bugünkü gerçekleşen zarar / günlük limit ${l.daily_limit} $`, l.realized_loss_today + ' $', l.realized_used_pct)
-            + bar('Açık pozisyonlar dahil zarar (risk motoru bunu henüz saymıyor)', l.loss_with_open_positions == null ? null : l.loss_with_open_positions + ' $', l.with_open_used_pct)
+            + bar('Açık pozisyonlar dahil zarar (F-3: risk motoru açık zararları da sayar)', l.loss_with_open_positions == null ? null : l.loss_with_open_positions + ' $', l.with_open_used_pct)
             + `<div>Zirveden düşüş: <b>%${esc(l.drawdown_pct)}</b> · uyarı %${esc(lv.warning)} · kısıtlama %${esc(lv.restrict)} · yeni risk durur %${esc(lv.halt)}</div>`
             + `<div class="text-body-secondary">Muhasebe günü (UTC): ${esc(l.accounting_day_utc)}. Kararı risk motoru verir; bu kart sadece gösterir.</div>`;
     }

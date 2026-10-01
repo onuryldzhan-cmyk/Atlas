@@ -148,6 +148,7 @@ def _apply(tasks: dict[str, dict[str, Any]], ev: dict[str, Any]) -> None:
             _check(actor in (step["unit"], MANAGER, ASSISTANT), f"seq {seq}: not allowed to block")
             _check(bool(payload.get("reason")), f"seq {seq}: block needs a reason")
             step["status"] = StepStatus.BLOCKED.value
+            step["block_reason"] = str(payload["reason"])  # replay-only view; the log format is unchanged
             t["status"] = TaskStatus.BLOCKED.value
         elif kind is TaskEvent.LINK_PROPOSAL:
             _check(actor == ASSISTANT, f"seq {seq}: the Assistant Manager packages proposals")
