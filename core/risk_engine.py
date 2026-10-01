@@ -232,6 +232,14 @@ class RiskPolicy:
     # Unknown unrealized P&L then blocks new risk (fail closed). Default False
     # keeps the historical, realized-only behaviour byte-identical.
     count_unrealized_in_daily_loss: bool = False
+    # S1 capital sleeves (owner "S1 onay" 2026-10-01; plan in
+    # proposals/2026-09-29_staged_entries_and_sleeves_runtime_plan.md). When
+    # True, a BUY is refused with SLEEVE_FULL if its bucket's open cost plus the
+    # new allocation would exceed the bucket's share of equity. Default False
+    # keeps today's behaviour byte-identical. Exits are never affected.
+    sleeves_enabled: bool = False
+    sleeve_shares: Mapping[str, Decimal] = field(default_factory=lambda: {
+        "LOW": Decimal("0.50"), "MEDIUM": Decimal("0.35"), "HIGH": Decimal("0.15")})
     drawdown_warning_pct: Decimal = Decimal("0.05")
     drawdown_restrict_pct: Decimal = Decimal("0.10")
     drawdown_halt_pct: Decimal = Decimal("0.15")
@@ -356,6 +364,10 @@ class PositionExposure:
     base_quantity: Decimal
     execution_price: Decimal
     quote_exposure: Decimal
+    # S1 capital sleeves: the bucket the position was opened under. None means
+    # UNKNOWN (positions opened before the bucket was recorded); UNKNOWN counts
+    # against the smallest sleeve (HIGH), so it can only refuse more.
+    risk_bucket: str | None = None
 
     def __post_init__(self) -> None:
         symbol = str(self.symbol).strip().upper()
@@ -557,6 +569,26 @@ class RiskEngine:
             "max_admissions": experiment.max_admissions,
         }
 
+    def _sleeve_check(self, bucket: str, allocation: Decimal, state: RiskState) -> str | None:
+        """S1: per-bucket share of equity. Unknown inputs refuse (fail closed)."""
+        share = self.policy.sleeve_shares.get(bucket)
+        if share is None:
+            return "SLEEVE_UNKNOWN_BUCKET"
+        equity = state.current_equity if state.current_equity > ZERO else ZERO
+        if equity <= ZERO:
+            return "SLEEVE_EQUITY_UNKNOWN"
+        smallest = min(self.policy.sleeve_shares, key=lambda b: self.policy.sleeve_shares[b])
+        used = ZERO
+        for p in state.positions:
+            pb = (p.risk_bucket or "").upper() or None
+            if pb == bucket or (pb not in self.policy.sleeve_shares and bucket == smallest):
+                used += p.quote_exposure
+        with localcontext() as context:
+            context.prec = RISK_CONTEXT_PRECISION
+            if used + allocation > equity * share:
+                return "SLEEVE_FULL"
+        return None
+
     def _decision(self, status: RiskDecisionStatus, reason: str, state: RiskState,
                   *, allocation: Decimal = ZERO, experiment_id: str = "") -> RiskDecision:
         with localcontext() as context:
@@ -647,6 +679,10 @@ class RiskEngine:
 
         bucket = RiskBucket(risk_level)
         bucket_policy = self.policy.buckets[bucket]
+        if self.policy.sleeves_enabled:
+            sleeve_reject = self._sleeve_check(bucket.value, allocation, state)
+            if sleeve_reject:
+                return reject(sleeve_reject)
         experiment_id = ""
         default_floor = max(self.policy.global_minimum_confidence, bucket_policy.minimum_confidence)
         if confidence < default_floor:
