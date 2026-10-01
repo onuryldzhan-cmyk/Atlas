@@ -75,6 +75,11 @@ def evaluate(status: dict[str, Any], now: datetime | None = None) -> dict[str, A
         check("position_risk_buckets", False, "risk-bucket sidecar unreadable: every position counts against every sleeve; "
               "repair: python -m tools.position_risk_buckets_repair <state>/position_risk_buckets.jsonl")
 
+    lifecycle = execution.get("order_lifecycle")
+    if isinstance(lifecycle, dict) and lifecycle.get("violations"):
+        # Stage 1 is observe-only: a violation is reported here, never acted on.
+        check("order_lifecycle", False, f"{lifecycle['violations']} order state-machine violation(s) observed; latest {lifecycle.get('latest')}")
+
     rules = (execution.get("venue_rules") or {}).get("status")
     check("venue_rules", None if rules is None else rules == "FRESH", f"status {rules}")
 

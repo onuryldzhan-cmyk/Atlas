@@ -7479,6 +7479,11 @@ class ExecutionManager:
                     "attached": self.position_risk_buckets is not None,
                     "corrupt": bool(getattr(self.position_risk_buckets, "corrupt", False)),
                 },
+                "order_lifecycle": {
+                    "observe": self.order_lifecycle_observe,
+                    "violations": len(self.order_lifecycle_violations),
+                    "latest": list(self.order_lifecycle_violations[-3:]),
+                },
                 "name": self.NAME,
                 "version": self.VERSION,
                 "mode": self.mode,

@@ -548,6 +548,7 @@ class AtlasApplication:
         count_unrealized_in_daily_loss: bool = False,
         sleeves_enabled: bool = False,
         paper_slippage_bps: Decimal | str = "0",
+        order_lifecycle_observe: bool = False,
     ) -> None:
         logger.info(
             "Initializing %s v%s",
@@ -567,6 +568,7 @@ class AtlasApplication:
         self.count_unrealized_in_daily_loss = bool(count_unrealized_in_daily_loss)
         self.sleeves_enabled = bool(sleeves_enabled)
         self.paper_slippage_bps = Decimal(str(paper_slippage_bps))
+        self.order_lifecycle_observe = bool(order_lifecycle_observe)
         if not self.paper_slippage_bps.is_finite() or not Decimal("0") <= self.paper_slippage_bps <= Decimal("100"):
             raise ValueError("paper_slippage_bps must be within [0, 100]")
         # registry v5.01 EXP-001. Off unless the production entry point asks
@@ -835,6 +837,8 @@ class AtlasApplication:
         # unrealized daily-loss check (read-only; unused while the flag is off).
         self.execution.mark_price_provider = self.market_loop.mark_prices
         self.execution.paper_slippage_bps = self.paper_slippage_bps
+        # Order state machine stage 1: observe only (owner approved 2026-10-01).
+        self.execution.order_lifecycle_observe = self.order_lifecycle_observe
         # S1 step 2: record each position's risk bucket in a sidecar (decisions
         # are unchanged while sleeves_enabled stays False).
         from core.position_risk_buckets import POSITION_RISK_BUCKETS_FILE, PositionRiskBucketStore

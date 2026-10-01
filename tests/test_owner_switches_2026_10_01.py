@@ -64,3 +64,19 @@ def test_a_paper_round_trip_still_works_with_all_switches_on(tmp_path):
                       "confidence": 90.0, "risk": "MEDIUM", "request_id": "s1"})
     assert sell["status"] == "PAPER_EXECUTED", sell
     assert "BTCUSDT" not in app.portfolio_foundation.snapshot()["positions"]
+
+
+def test_main_turns_order_lifecycle_observe_on_and_it_reaches_execution(tmp_path):
+    assert ast.literal_eval(_main_call_kwargs()["order_lifecycle_observe"]) is True
+    app = AtlasApplication(state_directory=seed_state(tmp_path / "state"), order_lifecycle_observe=True)
+    assert app.execution.order_lifecycle_observe is True
+    assert app.execution.status()["order_lifecycle"] == {"observe": True, "violations": 0, "latest": []}
+
+
+def test_observed_violation_shows_in_readiness():
+    from observability import readiness
+    bad = readiness.evaluate({"runtime": {"healthy": True}, "execution": {
+        "order_lifecycle": {"observe": True, "violations": 1, "latest": [{"violation": "EXECUTED_WITHOUT_DURABLE_COMMIT"}]}}})
+    assert any(c["check"] == "order_lifecycle" and c["state"] == "FAIL" for c in bad["checks"])
+    ok = readiness.evaluate({"runtime": {"healthy": True}, "execution": {"order_lifecycle": {"observe": True, "violations": 0}}})
+    assert not any(c["check"] == "order_lifecycle" for c in ok["checks"])

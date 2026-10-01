@@ -523,6 +523,9 @@ class AtlasProcess:
             count_unrealized_in_daily_loss=True,
             sleeves_enabled=True,
             paper_slippage_bps="5",
+            # Order state machine stage 1 (owner approved 2026-10-01): observe and
+            # report illegal transitions; never changes a result.
+            order_lifecycle_observe=True,
             symbols=trade_universe(),
         )
 
