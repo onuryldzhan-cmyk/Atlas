@@ -45,10 +45,16 @@ def test_truncated_file_makes_everything_unknown_and_blocks_appends(tmp_path):
     assert path.read_text() == before
 
 
-def test_unknown_bucket_counts_against_the_strictest_sleeve():
-    from core import risk_engine as re_mod
+def test_corrupt_file_is_logged_once(tmp_path, caplog):
+    path = tmp_path / "b.jsonl"
+    path.write_text('{"position_id": "P', encoding="utf-8")
+    s = PositionRiskBucketStore(path)
+    s.lookup("P1"); s.lookup("P1")
+    assert sum("POSITION_RISK_BUCKETS_CORRUPT" in r.message for r in caplog.records) == 1
+
+
+def test_exposure_default_is_unknown():
     assert PositionExposure("BTCUSDT", Decimal("1"), Decimal("1"), Decimal("1")).risk_bucket is None
-    assert hasattr(re_mod.RiskEngine, "_sleeve_check")  # UNKNOWN -> smallest sleeve, see test_s1 sleeve tests
 
 
 def test_paper_buy_records_its_bucket_and_risk_state_sees_it(tmp_path):
@@ -76,3 +82,49 @@ def test_without_a_store_exposures_stay_unknown(tmp_path):
     m.execute({"symbol": "BTCUSDT", "action": "BUY", "price": 10.0, "amount": 1000,
                "confidence": 90.0, "risk": "MEDIUM", "request_id": "b1"})
     assert [e.risk_bucket for e in m._derived_position_exposures()] == [None]
+
+
+def test_a_second_buy_on_an_open_position_is_refused_and_keeps_its_bucket(tmp_path):
+    # audit F-2: verified 2026-10-01 that the runtime refuses an add-on
+    # (DUPLICATE_OPEN_POSITION), so no second bucket is recorded for a position.
+    # Disagreeing records (if ever written) read UNKNOWN: see test_conflicting_records_read_as_unknown.
+    from tests.test_block5e_fee_settlement_accounting import application
+
+    app = application(tmp_path)
+    m = app.execution
+    m.position_risk_buckets = PositionRiskBucketStore(tmp_path / "sidecar.jsonl")
+    m.start()
+    m.execute({"symbol": "BTCUSDT", "action": "BUY", "price": 10.0, "amount": 100,
+               "confidence": 90.0, "risk": "LOW", "request_id": "b1"})
+    second = m.execute({"symbol": "BTCUSDT", "action": "BUY", "price": 10.0, "amount": 100,
+                        "confidence": 90.0, "risk": "MEDIUM", "request_id": "b2"})
+    assert second["status"] == "REJECTED" and second["reason"] == "DUPLICATE_OPEN_POSITION"
+    assert [e.risk_bucket for e in m._derived_position_exposures()] == ["LOW"]
+
+
+def test_a_failing_sidecar_never_blocks_or_changes_the_trade(tmp_path):
+    from tests.test_block5e_fee_settlement_accounting import application
+
+    class Broken:
+        def record(self, *a):
+            raise OSError("disk full")
+
+        def lookup(self, *a):
+            raise OSError("disk full")
+
+    ok, broken = application(tmp_path / "a"), application(tmp_path / "b")
+    broken.execution.position_risk_buckets = Broken()
+    ok.execution.position_risk_buckets = None
+    ok.execution.start(); broken.execution.start()
+    d = {"symbol": "BTCUSDT", "action": "BUY", "price": 10.0, "amount": 1000,
+         "confidence": 90.0, "risk": "MEDIUM", "request_id": "b1"}
+    r1, r2 = ok.execution.execute(dict(d)), broken.execution.execute(dict(d))
+    assert r1["status"] == r2["status"] == "PAPER_EXECUTED" and r2["commit_outcome"] == "COMMITTED"
+    assert [e.risk_bucket for e in broken.execution._derived_position_exposures()] == [None]
+
+
+def test_application_wires_the_sidecar_into_the_state_directory():
+    import inspect
+    from core import application as app_mod
+    src = inspect.getsource(app_mod)
+    assert "PositionRiskBucketStore(self.state_directory / POSITION_RISK_BUCKETS_FILE)" in src

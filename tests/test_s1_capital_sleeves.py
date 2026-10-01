@@ -24,11 +24,26 @@ def test_bucket_at_limit_refuses_and_empty_bucket_allows():
     assert engine.evaluate(request(bucket="LOW", amount="100"), full).reason_code != "SLEEVE_FULL"
 
 
-def test_unknown_bucket_positions_count_against_the_smallest_sleeve():
+# Test policy change 2026-10-01 (independent audit S1 step 2, F-1 HIGH): the old
+# test asserted that an UNKNOWN position counts only against the smallest sleeve,
+# which let losing the bucket free up the sleeve it was really admitted under
+# (NB-4). The new rule is stricter: UNKNOWN counts against every sleeve.
+def test_unknown_bucket_positions_count_against_every_sleeve():
     engine = RiskEngine(policy(sleeves_enabled=True))
     legacy = state(pos("BTCUSDT", "140", None))           # HIGH sleeve = 150
     assert engine.evaluate(request(bucket="HIGH", amount="20"), legacy).reason_code == "SLEEVE_FULL"
+    # MEDIUM sleeve = 350: 140 UNKNOWN + 220 > 350 is refused; it was approved under the old rule
+    assert engine.evaluate(request(bucket="MEDIUM", amount="220"), legacy).reason_code == "SLEEVE_FULL"
     assert engine.evaluate(request(bucket="MEDIUM", amount="20"), legacy).reason_code != "SLEEVE_FULL"
+
+
+def test_losing_a_bucket_never_loosens_a_sleeve():
+    # NB-4: removing evidence (MEDIUM -> UNKNOWN) must not turn a refusal into an approval.
+    engine = RiskEngine(policy(sleeves_enabled=True))
+    known = state(pos("BTCUSDT", "300", "MEDIUM"))
+    unknown = state(pos("BTCUSDT", "300", None))
+    assert engine.evaluate(request(bucket="MEDIUM", amount="100"), known).reason_code == "SLEEVE_FULL"
+    assert engine.evaluate(request(bucket="MEDIUM", amount="100"), unknown).reason_code == "SLEEVE_FULL"
 
 
 def test_sell_is_never_blocked_by_a_sleeve():

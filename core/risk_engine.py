@@ -366,7 +366,7 @@ class PositionExposure:
     quote_exposure: Decimal
     # S1 capital sleeves: the bucket the position was opened under. None means
     # UNKNOWN (positions opened before the bucket was recorded); UNKNOWN counts
-    # against the smallest sleeve (HIGH), so it can only refuse more.
+    # against every sleeve (audit F-1), so it can only refuse more.
     risk_bucket: str | None = None
 
     def __post_init__(self) -> None:
@@ -577,11 +577,13 @@ class RiskEngine:
         equity = state.current_equity if state.current_equity > ZERO else ZERO
         if equity <= ZERO:
             return "SLEEVE_EQUITY_UNKNOWN"
-        smallest = min(self.policy.sleeve_shares, key=lambda b: self.policy.sleeve_shares[b])
         used = ZERO
         for p in state.positions:
             pb = (p.risk_bucket or "").upper() or None
-            if pb == bucket or (pb not in self.policy.sleeve_shares and bucket == smallest):
+            # Audit 2026-10-01 F-1 (HIGH, NB-4): an UNKNOWN position counts against
+            # EVERY sleeve. Counting it only against the smallest one freed the
+            # sleeve it was really admitted under, so losing evidence loosened limits.
+            if pb == bucket or pb not in self.policy.sleeve_shares:
                 used += p.quote_exposure
         with localcontext() as context:
             context.prec = RISK_CONTEXT_PRECISION

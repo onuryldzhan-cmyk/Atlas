@@ -21,7 +21,7 @@ S1 sleeves (`core/risk_engine.py`, `sleeves_enabled`, default OFF) need each ope
 **Recommendation: B.** The financial truth file and its schema stay unchanged. A missing or contradictory entry is always treated as `UNKNOWN`, and with sleeves ON the most conservative bucket limit applies to `UNKNOWN`. That way, missing evidence can never loosen a limit (the same principle as NB-4).
 
 ## Migration checklist (for option B)
-- **Idempotency:** the record key is `position_id`. A repeat of an identical record is a no-op; a different bucket for the same id is a CONFLICT, which halts and is reported.
+- **Idempotency:** the record key is `position_id`. A repeat of an identical record is a no-op; a different bucket for the same id makes that position UNKNOWN (see audit changes below).
 - **Resume / retry:** written only after the open has been committed. On restart, open positions with no record get `UNKNOWN`. Nothing is backfilled by guessing.
 - **Sequence / ordering:** append-only; one record per position.
 - **Duplicates:** identical lines are tolerated; contradictory ones mean halt.
@@ -40,3 +40,11 @@ S1 sleeves (`core/risk_engine.py`, `sleeves_enabled`, default OFF) need each ope
 
 ## Decision required
 Owner: approve A or B (recommended B), or reject. Then an independent audit, then the switch-on.
+
+## Changes after the independent audit (2026-10-01, `docs/audits/INDEPENDENT_AUDIT_S1_STEP2_2026-10-01.md`)
+- **F-1 (HIGH), fixed.** UNKNOWN now counts against **every** sleeve, not only the smallest one. The old rule let a lost bucket free up its real sleeve (NB-4).
+- **F-2, checked.** The runtime refuses a second BUY on an open position (`DUPLICATE_OPEN_POSITION`, verified by a test), so a position never gets a second bucket. If records ever disagree, the position reads UNKNOWN, which is now the strictest outcome.
+- **F-3, partly fixed.** A corrupt file is logged once at ERROR level. Repair stays with the owner; deleting the file is safe.
+- **F-4, design text corrected.** The record is written **before** the durable commit, not after. This is harmless: position ids are deterministic per `request_id`, and an id whose open never commits is never looked up.
+- **F-5, fixed.** The weak `hasattr` test was replaced. Tests were added for: an add-on under a different bucket, a failing sidecar not changing the trade, the wiring, and NB-4 evidence removal.
+- **F-6 / F-7 deferred:** file growth and reading cost; a lock between read and append, and Windows behaviour (UNKNOWN).

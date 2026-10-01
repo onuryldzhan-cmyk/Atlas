@@ -12,12 +12,14 @@ more, never less (NB-4 principle). Nothing is ever guessed or backfilled.
 from __future__ import annotations
 
 import json
+import logging
 import os
 from datetime import datetime, timezone
 from pathlib import Path
 
 POSITION_RISK_BUCKETS_FILE = "position_risk_buckets.jsonl"
 VALID_BUCKETS = frozenset({"LOW", "MEDIUM", "HIGH"})
+logger = logging.getLogger(__name__)
 
 
 class PositionRiskBucketStore:
@@ -43,6 +45,9 @@ class PositionRiskBucketStore:
         try:
             rows = self._read()
         except (OSError, ValueError):
+            if not self.corrupt:  # audit F-3: say it once, loudly; never repair silently
+                logger.error("POSITION_RISK_BUCKETS_CORRUPT %s: every bucket reads UNKNOWN and appends stop "
+                             "until the owner inspects or removes the file (removing it is safe)", self.path)
             self.corrupt = True
             return {}
         self.corrupt = False
