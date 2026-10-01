@@ -40,6 +40,7 @@ def calibration(records: list[dict], approvals: dict[str, list[dict]]) -> list[d
     from tools.paper_position_report import entry_approval
 
     rows: dict[tuple[int, int], list[Decimal]] = {b: [] for b in BANDS}
+    confs: dict[tuple[int, int], list[float]] = {b: [] for b in BANDS}
     unattributed = 0
     for r in records:
         appr = entry_approval(approvals.get(r.get("symbol", ""), []), r.get("opened_at"))
@@ -49,10 +50,19 @@ def calibration(records: list[dict], approvals: dict[str, list[dict]]) -> list[d
             continue
         band = next(b for b in BANDS if b[0] <= conf < b[1])
         rows[band].append(net_pnl(r))
+        confs[band].append(float(conf) / 100)
     out = []
     for (lo, hi), nets in rows.items():
         n = len(nets)
+        cs = confs[(lo, hi)]
+        wins = [1.0 if x > 0 else 0.0 for x in nets]
+        # Reference: proper scoring (Brier) + reliability gap per band. Research only: it can
+        # show that confidence is overstated, never raise it (NB-4).
+        mean_conf = sum(cs) / n if n else None
         out.append({"band": f"{lo}-{min(hi, 100)}", "trades": n,
+                    "mean_confidence": None if not n else round(mean_conf, 3),
+                    "brier": None if not n else round(sum((c - w) ** 2 for c, w in zip(cs, wins)) / n, 4),
+                    "calibration_gap": None if not n else round(sum(wins) / n - mean_conf, 3),
                     "win_rate_after_fees": None if not n else round(sum(1 for x in nets if x > 0) / n, 3),
                     "net_expectancy": None if not n else round(float(sum(nets) / n), 4),
                     "win_rate_95ci": None if not n else wilson(sum(1 for x in nets if x > 0), n),

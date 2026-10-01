@@ -29,3 +29,9 @@ def test_embargo_that_leaves_too_little_data_is_refused():
         split(data(), 3, embargo=1000 - sc.bt.WINDOW - 60)
     with pytest.raises(ValueError):
         split(data(), 3, embargo=-1)
+
+
+def test_every_verdict_variant_uses_realistic_fills():
+    for name, kw in sc.VARIANTS.items():
+        if name != sc.REFERENCE and kw.get("slippage_bps"):
+            assert kw.get("next_open_fill") is True, name

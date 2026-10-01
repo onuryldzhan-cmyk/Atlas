@@ -53,3 +53,15 @@ def test_calibration_uses_owner_buckets_and_shows_uncertainty():
     top = next(r for r in rows if r["band"] == "90-100")
     lo, hi = top["win_rate_95ci"]
     assert top["win_rate_after_fees"] == 1.0 and lo < 0.5 and hi == 1.0  # 3/3 wins is NOT near-certainty
+
+
+def test_calibration_reports_brier_and_gap_without_changing_anything():
+    # Idea from proper-scoring practice (research only): overstated confidence shows as a negative gap.
+    approvals = {"BTCUSDT": [{"timestamp": "2026-09-29T10:00:00+00:00", "confidence": 65.0}]}
+    rows = rc.calibration([trade(5), trade(-5), trade(-5), trade(-5)], approvals)
+    band = next(r for r in rows if r["band"] == "60-70")
+    assert band["mean_confidence"] == 0.65
+    assert band["calibration_gap"] == round(0.25 - 0.65, 3)
+    assert band["brier"] == round((0.35 ** 2 + 3 * 0.65 ** 2) / 4, 4)
+    empty = next(r for r in rows if r["band"] == "0-50")
+    assert empty["brier"] is None and empty["calibration_gap"] is None

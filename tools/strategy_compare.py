@@ -111,13 +111,21 @@ def compare(data: dict[str, list[list]], windows: int, step: int, exp001: bool,
     ref = table[REFERENCE]
     verdicts = {}
     for name, rows in table.items():
-        if name == REFERENCE or name not in variants or not variants[name].get("slippage_bps"):
+        # A verdict needs realistic fills: slippage AND next-candle-open fills (idea: freqtrade
+        # lookahead-analysis / backtesting realism). Same-candle-close variants get no verdict.
+        if (name == REFERENCE or name not in variants or not variants[name].get("slippage_bps")
+                or not variants[name].get("next_open_fill")):
             verdicts[name] = "-"
             continue
         beats = all(r["net_pnl"] > b["net_pnl"] for r, b in zip(rows, ref))
         no_worse_dd = max(r["max_drawdown"] for r in rows) <= max(b["max_drawdown"] for b in ref)
         verdicts[name] = "BETTER" if beats and no_worse_dd else "NOT PROVEN"
-    return {"windows": windows, "table": table, "verdicts": verdicts}
+    tried = sum(1 for v in verdicts.values() if v != "-")
+    # Multiple testing (Bailey & López de Prado 2014, deflated Sharpe idea): the more variants
+    # are compared, the likelier one "wins" by luck. Reported, never used to pick a winner.
+    return {"windows": windows, "table": table, "verdicts": verdicts,
+            "multiple_testing": {"variants_judged": tried,
+                                 "note": "a BETTER verdict among many variants can be luck; confirm on a second, non-overlapping period"}}
 
 
 def main(argv: list[str] | None = None, fetch=None) -> int:
