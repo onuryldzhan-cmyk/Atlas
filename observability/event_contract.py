@@ -131,6 +131,7 @@ def events_from_records(memory_records: list[dict[str, Any]], proposals: list[di
     """
     out: list[dict[str, Any]] = []
     skipped = 0
+    authors = {str(p.get("id")): str(p.get("author") or "").lower() for p in proposals or []}
 
     def add(raw: dict[str, Any]) -> None:
         nonlocal skipped
@@ -157,6 +158,13 @@ def events_from_records(memory_records: list[dict[str, Any]], proposals: list[di
                      "event_type": "agent.failed" if failed else "agent.cycle.completed", "run": {"id": rid},
                      "payload": {"verdict": res.get("verdict"), "summary": str(res.get("summary") or "")[:300], "source": r.get("id")}})
             continue
+        # collaboration.handoff (owner approved 2026-10-01): only from a REAL link in
+        # the record (related_proposal naming an existing proposal). No link, no line.
+        related = str(r.get("related_proposal") or "")
+        if related and related in authors and authors[related] and authors[related] != author:
+            add({"event_id": f"{rid}:handoff", "timestamp": at, "agent": {"id": authors[related]},
+                 "event_type": "collaboration.handoff",
+                 "payload": {"to": author, "label": "inceleme", "proposal": related, "source": r.get("id")}})
         etype = "incident.opened" if r.get("type") == "INCIDENTS" else "memory.record.added"
         add({"event_id": rid, "timestamp": at, "agent": {"id": author}, "event_type": etype,
              "payload": {"title": str(r.get("title") or "")[:200], "source": r.get("id")}})

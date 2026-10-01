@@ -45,3 +45,8 @@ def test_hq_reads_contract_events_and_never_invents_activity():
 def test_hq_shows_data_age_and_skipped_records():
     html = web_app.TEMPLATE_DIR.joinpath("hq.html").read_text(encoding="utf-8")
     assert 'id="hq-fresh"' in html and "sözleşmeye uymadı" in html and "henüz okunamadı" in html
+
+
+def test_hq_draws_collaboration_lines_only_from_handoff_events():
+    html = web_app.TEMPLATE_DIR.joinpath("hq.html").read_text(encoding="utf-8")
+    assert "e.event_type === 'collaboration.handoff'" in html and "e.payload.source" in html

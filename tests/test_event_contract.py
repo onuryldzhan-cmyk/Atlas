@@ -100,3 +100,18 @@ def test_events_api_is_read_only_and_loopback_guarded():
     assert r.status_code == 200 and r.json()["schema"] == "atlas.event.v1"
     assert TestClient(web_app.create_app(), base_url="http://evil.example").get("/api/events").status_code == 403
     assert TestClient(web_app.create_app()).post("/api/events").status_code in (403, 405)
+
+
+def test_handoff_only_from_a_real_record_link():
+    from observability.event_contract import events_from_records
+
+    proposals = [{"id": "SA-1", "status": "OPEN", "author": "strategy_lab", "created_at": "2026-10-01T18:00:00+00:00"}]
+    records = [
+        {"id": "RT-1", "created_at": "2026-10-01T19:00:00+00:00", "author": "red_team", "title": "itiraz", "related_proposal": "SA-1"},
+        {"id": "RT-2", "created_at": "2026-10-01T19:01:00+00:00", "author": "red_team", "title": "itiraz", "related_proposal": "SA-404"},
+        {"id": "M-3", "created_at": "2026-10-01T19:02:00+00:00", "author": "quant_research", "title": "rapor"},
+    ]
+    hand = [e for e in events_from_records(records, proposals)["events"] if e["event_type"] == "collaboration.handoff"]
+    assert len(hand) == 1
+    assert hand[0]["agent"]["id"] == "strategy_lab" and hand[0]["payload"]["to"] == "red_team"
+    assert hand[0]["payload"]["source"] == "RT-1"
