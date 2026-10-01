@@ -11,7 +11,9 @@ PRINT_CALLS_CEILING = 36  # v5.50: AI-module diagnostics moved to logging (was 1
 LONG_FUNCTIONS_BASELINE = {
     "ai/core/intelligence/agent_fusion.py::fuse",
     "atlas_os/scheduling/scheduler.py::_execute_task",
-    "core/execution_manager.py::execute",
+    # 2026-10-01: the same pre-existing long body was renamed execute -> _execute_decision so a
+    # short execute() can wrap it with the observe-only order lifecycle check. Not a new long function.
+    "core/execution_manager.py::_execute_decision",
     "core/execution_manager.py::risk_check",
     "core/execution_manager.py::_execute_paper_buy",
     "core/market_loop.py::process_symbol",

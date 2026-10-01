@@ -283,6 +283,9 @@ class ExecutionManager:
         # the bucket each position was opened under. None keeps every
         # exposure at risk_bucket=None (UNKNOWN), exactly as before.
         self.position_risk_buckets: Any | None = None
+        # Order state machine stage 1 (observe only), default OFF.
+        self.order_lifecycle_observe: bool = False
+        self.order_lifecycle_violations: list[dict[str, str]] = []
 
         # Block 5D: the sole venue instrument-precision authority. This
         # manager consumes it but never constructs, mutates, or invents an
@@ -1295,6 +1298,31 @@ class ExecutionManager:
         }
 
     def execute(
+        self,
+        decision: Any,
+        market_state: Any | None = None,
+    ) -> dict[str, Any]:
+        """Run one decision; with order_lifecycle_observe on, also check it against the order state machine.
+
+        Stage 1 of proposals/2026-10-01_order_lifecycle_enforcement_DESIGN.md:
+        observe only. The result is returned unchanged; a violation is logged
+        and kept in order_lifecycle_violations, never acted on.
+        """
+        result = self._execute_decision(decision, market_state)
+        if self.order_lifecycle_observe and isinstance(result, dict):
+            try:
+                from core.order_lifecycle import observe_outcome
+
+                order_id = str(result.get("request_id") or getattr(decision, "get", lambda *_: None)("request_id") or "?")
+                for problem in observe_outcome(order_id, result):
+                    self.order_lifecycle_violations.append({"request_id": order_id, "violation": problem})
+                    logger.warning("Order lifecycle violation (observe only) request_id=%s %s", order_id, problem)
+                del self.order_lifecycle_violations[:-100]
+            except Exception:
+                logger.warning("Order lifecycle observer failed; execution unaffected", exc_info=True)
+        return result
+
+    def _execute_decision(
         self,
         decision: Any,
         market_state: Any | None = None,

@@ -89,3 +89,42 @@ class Order:
         finally:
             self._applying_fill = False
         return True
+
+
+def observe_outcome(order_id: str, result: dict) -> list[str]:
+    """Stage 1 (observe only, proposals/2026-10-01_order_lifecycle_enforcement_DESIGN.md).
+
+    Replays one ExecutionManager result through the canonical machine and returns
+    the violations found. It never changes the result. Outcomes it does not map
+    (duplicates, skips, recovery states) return no violation and no guess.
+    """
+    status = str(result.get("status") or "")
+    order = Order(str(order_id or "?"), Decimal("1"))
+    problems: list[str] = []
+    try:
+        if status == "PAPER_EXECUTED":
+            order.transition("VALIDATED", "observe")
+            if result.get("success") is not True:
+                problems.append("EXECUTED_WITHOUT_SUCCESS")
+            if result.get("commit_outcome") != "COMMITTED":
+                problems.append("EXECUTED_WITHOUT_DURABLE_COMMIT")
+            try:
+                price = Decimal(str(result.get("filled_price")))
+                if not price.is_finite() or price <= 0:
+                    problems.append("EXECUTED_WITHOUT_VALID_FILL_PRICE")
+            except ArithmeticError:
+                problems.append("EXECUTED_WITHOUT_VALID_FILL_PRICE")
+            order.transition("SUBMITTED", "paper")
+            order.apply_fill("paper-fill", Decimal("1"))
+        elif status in ("REJECTED", "REJECT"):
+            order.transition("DENIED", str(result.get("reason") or ""))
+            if result.get("success") is True or result.get("filled_price") is not None or result.get("commit_outcome"):
+                problems.append("DENIED_ORDER_HAS_EXECUTION")
+            try:  # the NautilusTrader rule: a DENIED order can never be submitted
+                order.transition("SUBMITTED", "must fail")
+                problems.append("DENIED_ORDER_SUBMITTABLE")
+            except OrderLifecycleError:
+                pass
+    except OrderLifecycleError as exc:
+        problems.append(f"ILLEGAL_TRANSITION: {exc}")
+    return problems
