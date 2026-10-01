@@ -823,6 +823,10 @@ class AtlasApplication:
         # Audit F-3: fresh closed-candle marks for the risk engine's optional
         # unrealized daily-loss check (read-only; unused while the flag is off).
         self.execution.mark_price_provider = self.market_loop.mark_prices
+        # S1 step 2: record each position's risk bucket in a sidecar (decisions
+        # are unchanged while sleeves_enabled stays False).
+        from core.position_risk_buckets import POSITION_RISK_BUCKETS_FILE, PositionRiskBucketStore
+        self.execution.position_risk_buckets = PositionRiskBucketStore(self.state_directory / POSITION_RISK_BUCKETS_FILE)
 
         # -----------------------------------------------------
         # Controller

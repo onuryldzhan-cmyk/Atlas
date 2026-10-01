@@ -279,6 +279,10 @@ class ExecutionManager:
         self.reservation_ledger = reservation_ledger
         self.risk_state_store = risk_state_store
         self.portfolio_foundation = portfolio_foundation
+        # S1 step 2 (owner approved option B, 2026-10-01): optional sidecar of
+        # the bucket each position was opened under. None keeps every
+        # exposure at risk_bucket=None (UNKNOWN), exactly as before.
+        self.position_risk_buckets: Any | None = None
 
         # Block 5D: the sole venue instrument-precision authority. This
         # manager consumes it but never constructs, mutates, or invents an
@@ -2849,10 +2853,21 @@ class ExecutionManager:
             base = Decimal(str(position["base_quantity"]))
             mark = Decimal(str(position["mark_price"]))
             exposures.append(
-                PositionExposure(symbol, base, mark, base * mark)
+                PositionExposure(symbol, base, mark, base * mark,
+                                 risk_bucket=self._recorded_risk_bucket(position.get("position_id")))
             )
 
         return tuple(exposures)
+
+    def _recorded_risk_bucket(self, position_id: Any) -> str | None:
+        store = self.position_risk_buckets
+        if store is None:
+            return None
+        try:
+            return store.lookup(position_id)
+        except Exception:
+            logger.warning("Position risk bucket unreadable; treated as UNKNOWN", exc_info=True)
+            return None
 
     def _derive_risk_state(
         self,
@@ -4844,6 +4859,14 @@ class ExecutionManager:
                 else mint_long_position_id(request.symbol, request.request_id)
             )
             position = None
+            if self.position_risk_buckets is not None:
+                # Recorded before the durable commit: an id whose open never
+                # commits is simply never looked up. A failure here never
+                # blocks the trade; the position then reads as UNKNOWN.
+                try:
+                    self.position_risk_buckets.record(result.position_id, str(request.risk or ""))
+                except Exception:
+                    logger.warning("Position risk bucket not recorded; position reads as UNKNOWN", exc_info=True)
         else:
             # Side-effect boundary for the foundation-less configuration:
             # PositionController is mutated here and there is no durable
