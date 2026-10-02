@@ -25,12 +25,16 @@ from __future__ import annotations
 
 import json
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from decimal import Decimal, InvalidOperation
 from typing import Any, Callable, Final
 
 DEPTH_URL: Final[str] = "https://api.binance.com/api/v3/depth?symbol={symbol}&limit=100"
 MAX_BODY_BYTES: Final[int] = 2_000_000
 TIMEOUT_SECONDS: Final[float] = 5.0
+# Audit 2026-10-02 (MEDIUM): the socket timeout does not bound DNS or a slowly
+# trickling body, so the whole lookup also has a hard wall-clock deadline.
+TOTAL_DEADLINE_SECONDS: Final[float] = 6.0
 
 
 def _fetch_depth(symbol: str) -> dict:
@@ -82,11 +86,17 @@ def book_fill_price(depth: Any, side: str, notional: Decimal) -> Decimal | None:
 class OrderBookFillProvider:
     """Callable ``(symbol, side, quote_notional) -> Decimal | None``; never raises."""
 
-    def __init__(self, fetch: Callable[[str], dict] = _fetch_depth) -> None:
+    def __init__(self, fetch: Callable[[str], dict] = _fetch_depth,
+                 deadline_seconds: float = TOTAL_DEADLINE_SECONDS) -> None:
         self._fetch = fetch
+        self._deadline = float(deadline_seconds)
+        self._pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="atlas-book")
 
     def __call__(self, symbol: str, side: str, notional: Decimal) -> Decimal | None:
         try:
-            return book_fill_price(self._fetch(str(symbol)), str(side).upper(), notional)
+            depth = self._pool.submit(self._fetch, str(symbol)).result(timeout=self._deadline)
+            return book_fill_price(depth, str(side).upper(), notional)
+        except FutureTimeout:  # a hung lookup is abandoned; the order is rejected
+            return None
         except Exception:  # fail closed: any failure is "no price", the order is rejected
             return None

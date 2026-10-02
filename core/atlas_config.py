@@ -153,11 +153,11 @@ def load_config(
         if not str(environ.get(STATE_DIRECTORY_ENV, "")).strip():
             errors.append(f"{FILL_MODEL_ENV}=BOOK (Shadow) needs its own {STATE_DIRECTORY_ENV}; "
                           "it never shares the Paper state")
-        elif state is not None and not any("shadow" in part.lower() for part in Path(state).parts):
+        elif state is not None and not any(part.lower() == "shadow" for part in Path(state).parts):
             # The Paper state may itself be a non-default directory, so "not the default" is not
             # enough: a Shadow state directory must say so in its path (e.g. C:\AtlasState\shadow).
-            errors.append(f"{FILL_MODEL_ENV}=BOOK (Shadow) needs a state directory whose path names it "
-                          f"'shadow' (got {state}); the Paper state is never reused")
+            errors.append(f"{FILL_MODEL_ENV}=BOOK (Shadow) needs a state directory with a folder named "
+                          f"'shadow' in its path (got {state}); the Paper state is never reused")
 
     if errors:
         raise AtlasConfigError(errors)

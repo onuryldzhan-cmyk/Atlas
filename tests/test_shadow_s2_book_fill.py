@@ -114,3 +114,54 @@ def test_config_refuses_unknown_model_and_book_without_explicit_state(tmp_path, 
         load_config({"ATLAS_FILL_MODEL": "BOOK"}, execution_mode="PAPER", paper_confidence_experiment=False)
     with pytest.raises(AtlasConfigError, match="only PAPER"):
         load_config({}, execution_mode="LIVE", paper_confidence_experiment=False)  # unchanged invariant
+
+
+def test_a_hung_book_lookup_is_abandoned_at_the_deadline():
+    import threading
+    import time
+
+    gate = threading.Event()
+
+    def hang(symbol):
+        gate.wait(5)
+        return BOOK
+
+    started = time.monotonic()
+    assert OrderBookFillProvider(hang, deadline_seconds=0.2)("BTCUSDT", "BUY", D("100")) is None
+    assert time.monotonic() - started < 2
+    gate.set()
+
+
+def test_config_requires_a_folder_named_exactly_shadow(tmp_path, monkeypatch):
+    (tmp_path / "old_shadowpaper").mkdir()
+    env = {"ATLAS_STATE_DIRECTORY": str(tmp_path / "old_shadowpaper"), "ATLAS_FILL_MODEL": "BOOK"}
+    monkeypatch.setenv("ATLAS_STATE_DIRECTORY", env["ATLAS_STATE_DIRECTORY"])
+    with pytest.raises(AtlasConfigError, match="named 'shadow'"):
+        load_config(env, execution_mode="PAPER", paper_confidence_experiment=False)
+
+
+def test_book_price_far_above_the_request_never_settles_above_the_allocation(tmp_path):
+    app, _, buy = _run(tmp_path, lambda symbol, side, notional: D("12.5") if side == "BUY" else D("9"))
+    if buy["status"] == "PAPER_EXECUTED":
+        reservation = app.execution.reservation_ledger.get("b1")
+        assert reservation.amount <= D("1000")
+        pos = app.portfolio_foundation.snapshot()["positions"]["BTCUSDT"]
+        assert D(str(pos["base_quantity"])) * D("12.5") <= D("1000")
+    else:
+        assert buy.get("commit_outcome") == "NOT_COMMITTED"
+
+
+def test_partial_sell_is_priced_for_the_amount_sold_not_the_whole_holding(tmp_path):
+    seen = []
+
+    def provider(symbol, side, notional):
+        seen.append((side, notional))
+        return D("10")
+
+    app, m, buy = _run(tmp_path, provider)
+    assert buy["status"] == "PAPER_EXECUTED", buy
+    held = D(str(app.portfolio_foundation.snapshot()["positions"]["BTCUSDT"]["base_quantity"]))
+    m.execute({"symbol": "BTCUSDT", "action": "SELL", "price": 10.0, "amount": 300,
+               "confidence": 90.0, "risk": "MEDIUM", "request_id": "s1"})
+    sells = [n for side, n in seen if side == "SELL"]
+    assert sells and sells[0] < held * D("10")  # less than the whole position's notional

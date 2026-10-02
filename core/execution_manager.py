@@ -3013,8 +3013,9 @@ class ExecutionManager:
     def _shadow_book_fill_price(self, request: Any) -> float | None:
         """Live order book VWAP for this order (S2), rounded to the tick against Atlas; None = reject.
 
-        BUY notional is the risk-approved quote allocation; SELL notional is the held
-        base quantity at the request price. An unknown notional is never guessed.
+        BUY notional is the risk-approved quote allocation; SELL notional is the base
+        quantity being sold (a partial reduction: approved / mark, capped at the holding)
+        at the request price. An unknown notional is never guessed.
         """
         side = "BUY" if str(request.action).upper().endswith("BUY") else "SELL"
         try:
@@ -3024,7 +3025,14 @@ class ExecutionManager:
                 foundation = getattr(self, "portfolio_foundation", None)
                 held = ((foundation.snapshot().get("positions") or {}).get(request.symbol) or {}) if foundation else {}
                 quantity = held.get("base_quantity")
-                notional = None if quantity is None else Decimal(str(quantity)) * Decimal(str(request.price))
+                if quantity is not None:
+                    quantity = Decimal(str(quantity))
+                    # Audit 2026-10-02 (MEDIUM): a partial reduction sells about approved / mark
+                    # base units (_resolve_reduction_quantity), not the whole holding.
+                    approved, mark = request.approved_quote_allocation, held.get("mark_price")
+                    if approved is not None and mark is not None and Decimal(str(mark)) > 0:
+                        quantity = min(quantity, Decimal(str(approved)) / Decimal(str(mark)))
+                notional = None if quantity is None else quantity * Decimal(str(request.price))
             if notional is None or not Decimal(str(notional)).is_finite() or Decimal(str(notional)) <= 0:
                 return None
             price = self.paper_fill_provider(request.symbol, side, Decimal(str(notional)))
