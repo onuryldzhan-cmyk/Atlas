@@ -1,16 +1,72 @@
 {
   "schema_version": "1",
   "note": "Task 8 (model orchestration). Atlas has NO model in its runtime today (tests/architecture/test_runtime_has_no_ai_provider_dependency.py). This file fixes the contract any future model must satisfy; AI-001 decides when one is added.",
-  "active_models": [],
-  "required_fields": ["provider", "model_id", "version", "capabilities", "context_tokens", "cost_per_1k_tokens", "status", "supported_tasks"],
+  "active_models": [
+    {
+      "provider": "Anthropic (Claude API, owner choice 2026-10-02)",
+      "version": "pinned id",
+      "context_tokens": 1000000,
+      "status": "ADVISORY_ONLY (abstains without the owner's key; daily budget cap)",
+      "supported_tasks": [
+        "ceo_brief",
+        "model_council"
+      ],
+      "capabilities": [
+        "structured_output",
+        "adaptive_thinking"
+      ],
+      "model_id": "claude-opus-5-5",
+      "cost_per_1k_tokens": {
+        "input": 0.004,
+        "output": 0.02
+      }
+    },
+    {
+      "provider": "Anthropic (Claude API, owner choice 2026-10-02)",
+      "version": "pinned id",
+      "context_tokens": 1000000,
+      "status": "ADVISORY_ONLY (abstains without the owner's key; daily budget cap)",
+      "supported_tasks": [
+        "model_council"
+      ],
+      "capabilities": [
+        "structured_output",
+        "adaptive_thinking"
+      ],
+      "model_id": "claude-sonnet-5-5",
+      "cost_per_1k_tokens": {
+        "input": 0.002,
+        "output": 0.01
+      }
+    }
+  ],
+  "required_fields": [
+    "provider",
+    "model_id",
+    "version",
+    "capabilities",
+    "context_tokens",
+    "cost_per_1k_tokens",
+    "status",
+    "supported_tasks"
+  ],
   "routing_policy": {
     "simple_classification": "lightest capable model",
     "research_reasoning": "stronger model",
     "architecture_or_audit": "strongest model; audit must use a model/session independent of the author",
     "trading_decision": "NONE: no model output is a trading decision"
   },
-  "output_pipeline": ["schema_validation", "identity_validation", "evidence_validation", "freshness_validation", "consistency_validation", "authority_validation", "canonical_adapter"],
+  "output_pipeline": [
+    "schema_validation",
+    "identity_validation",
+    "evidence_validation",
+    "freshness_validation",
+    "consistency_validation",
+    "authority_validation",
+    "canonical_adapter"
+  ],
   "confidence_rule": "a model's self-reported confidence is never Atlas confidence; only historically calibrated evidence can inform it",
   "disagreement_rule": "model A vs model B disagreement is recorded as DISAGREEMENT, never forced into consensus",
-  "failure_rule": "timeout / malformed / unavailable / rate-limited / contradictory -> ABSTAIN; never a default action"
+  "failure_rule": "timeout / malformed / unavailable / rate-limited / contradictory -> ABSTAIN; never a default action",
+  "gateway": "tools/ai_gateway.py (outside the trading runtime; ADR-0011)"
 }

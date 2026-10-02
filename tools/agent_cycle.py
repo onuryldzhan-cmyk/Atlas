@@ -86,6 +86,107 @@ def quant_research(records_dir: Path) -> dict[str, Any]:
     return {"verdict": "OK", "summary": f"{n} işlem analiz edildi, hafızaya yazıldı; {report['lessons'][0]}{edge}"}
 
 
+# ---------------------------------------------------------------- AI-001 agents (Claude API)
+# Owner choice 2026-10-02. They only ADVISE: a brief or a review is a memory record, never a
+# decision. Without a key on the owner's machine they abstain and say so - they never pretend.
+
+_CEO_SCHEMA = {"type": "object", "additionalProperties": False, "required": ["priorities", "cited_records"],
+               "properties": {"priorities": {"type": "array", "items": {"type": "string"}},
+                              "cited_records": {"type": "array", "items": {"type": "string"}}}}
+_COUNCIL_SCHEMA = {"type": "object", "additionalProperties": False, "required": ["verdict", "reasons"],
+                   "properties": {"verdict": {"type": "string", "enum": ["SUPPORT", "OPPOSE", "UNSURE"]},
+                                  "reasons": {"type": "array", "items": {"type": "string"}}}}
+_AI_SYSTEM = ("You advise Atlas, a PAPER-only crypto research system. You have no authority: you cannot trade, "
+              "deploy, approve or change any threshold. Use only the records given; cite their ids. If the "
+              "evidence is insufficient, say so. Never invent numbers.")
+
+
+def _ai_ledger():
+    from tools.ai_gateway import USAGE_FILE, UsageLedger
+
+    return UsageLedger(_research_dir() / USAGE_FILE)
+
+
+def _recent_records(records_dir: Path, n: int = 25) -> list[dict[str, Any]]:
+    log = records_dir / cli.MEMORY_LOG
+    if not log.exists():
+        return []
+    from atlas_org import memory_records
+
+    recs = sorted(memory_records.replay(cli.read_log(log)).values(), key=lambda r: r.get("created_at") or "")
+    return recs[-n:]
+
+
+def ceo_brief(records_dir: Path, ask=None) -> dict[str, Any]:
+    """CEO AI (org unit): up to 5 priorities for the owner, each grounded in cited memory records."""
+    from tools import ai_gateway as ai
+
+    recent = _recent_records(records_dir)
+    if not recent:
+        return {"verdict": "OK", "summary": "kayıt yok; özet çıkarılmadı"}
+    ids = {str(r.get("id")) for r in recent}
+    prompt = "Recent Atlas records (id | author | title):\n" + "\n".join(
+        f"{r.get('id')} | {r.get('author')} | {str(r.get('title') or '')[:160]}" for r in recent) + (
+        "\n\nGive at most 5 priorities for the owner today, most important first, in Turkish. "
+        "Cite the record ids each priority rests on in cited_records.")
+    res = (ask or ai.ask)(_AI_SYSTEM, prompt, _CEO_SCHEMA, ledger=_ai_ledger())
+    if res.status != "OK":
+        return {"verdict": "OK", "summary": f"AI-001 çekimser: {res.reason}"}
+    cited = [c for c in res.data.get("cited_records", []) if isinstance(c, str)]
+    if not cited or any(c not in ids for c in cited):
+        return {"verdict": "OK", "summary": "AI-001 cevabı reddedildi: var olmayan ya da hiç kayıt gösterilmedi (kanıt doğrulaması)"}
+    priorities = [str(p)[:300] for p in res.data.get("priorities", [])][:5]
+    existing = {r["record_id"] for r in cli.read_log(records_dir / cli.MEMORY_LOG)}
+    cli.add_memory_record(records_dir, {
+        "record_id": f"CEO-{len(existing) + 1:04d}", "type": "OPERATIONS", "authority": "TEMPORARY",
+        "title": f"CEO özeti: {len(priorities)} öncelik (öneri, karar değil)",
+        "body": json.dumps({"priorities": priorities, "cited_records": cited, "model": res.model,
+                            "cost_usd": str(res.cost_usd)}, ensure_ascii=False),
+        "author": "ceo_ai", "source": "tools/agent_cycle.py (ceo_brief, tools/ai_gateway.py)"})
+    return {"verdict": "OK", "summary": f"{len(priorities)} öncelik yazıldı ({res.model}, {res.cost_usd:.4f} $)"}
+
+
+def model_council(records_dir: Path, ask=None) -> dict[str, Any]:
+    """Multi-Model Council (org unit): two models review the newest open proposal independently.
+
+    Disagreement is recorded as DISAGREEMENT, never forced into consensus (model_registry.json).
+    Each proposal is reviewed once.
+    """
+    from tools import ai_gateway as ai
+
+    from atlas_org import proposals as P
+
+    plog = records_dir / cli.PROPOSALS_LOG
+    state = P.replay(cli.read_log(plog)) if plog.exists() else {}
+    open_ids = [pid for pid, prop in state.items() if prop.status not in P.TERMINAL and prop.status != P.S.APPLIED]
+    reviewed = {str(r.get("related_proposal")) for r in _recent_records(records_dir, 500) if r.get("author") == "model_council"}
+    todo = [pid for pid in sorted(open_ids) if pid not in reviewed]
+    if not todo:
+        return {"verdict": "OK", "summary": "incelenecek yeni öneri yok"}
+    pid = todo[0]
+    fields = state[pid].fields or {}
+    prompt = (f"Proposal {pid}: {fields.get('title')}\nRisk: {fields.get('risk')}\n"
+              f"Body: {json.dumps(fields, ensure_ascii=False, default=str)[:3000]}"
+              "\n\nShould the owner approve it? Answer SUPPORT, OPPOSE or UNSURE with short reasons in Turkish.")
+    votes = {}
+    for model in ai.COUNCIL_MODELS:
+        res = (ask or ai.ask)(_AI_SYSTEM, prompt, _COUNCIL_SCHEMA, model=model, ledger=_ai_ledger())
+        votes[model] = {"verdict": res.data["verdict"], "reasons": [str(x)[:300] for x in res.data["reasons"]][:5]} \
+            if res.status == "OK" else {"verdict": "ABSTAIN", "reason": res.reason}
+    verdicts = {v["verdict"] for v in votes.values() if v["verdict"] != "ABSTAIN"}
+    if not verdicts:
+        return {"verdict": "OK", "summary": f"AI-001 çekimser: {next(iter(votes.values())).get('reason')}"}
+    outcome = verdicts.pop() if len(verdicts) == 1 else "DISAGREEMENT"
+    existing = {r["record_id"] for r in cli.read_log(records_dir / cli.MEMORY_LOG)}
+    cli.add_memory_record(records_dir, {
+        "record_id": f"MC-{len(existing) + 1:04d}", "type": "OPERATIONS", "authority": "TEMPORARY",
+        "title": f"Model konseyi {pid}: {outcome} (tavsiye, onay değil)",
+        "body": json.dumps({"votes": votes, "outcome": outcome}, ensure_ascii=False),
+        "author": "model_council", "related_proposal": pid,
+        "source": "tools/agent_cycle.py (model_council, tools/ai_gateway.py)"})
+    return {"verdict": "OK", "summary": f"{pid}: {outcome}"}
+
+
 OVERCONFIDENCE_GAP = -0.10  # win rate this far below the stated confidence, in a MEASURED band
 
 
@@ -435,6 +536,8 @@ AGENTS: tuple[tuple[str, str, Callable[[Path], dict[str, Any]]], ...] = (
     ("task_runner", "Görev yürütücü", task_runner),
     ("overview_snapshot", "Durum özeti", overview_snapshot),
     ("model_validation", "Model doğrulama", model_validation),
+    ("ceo_ai", "CEO özeti (AI-001)", ceo_brief),
+    ("model_council", "Model konseyi (AI-001)", model_council),
     ("red_team", "Karşı görüş", red_team),
     ("executive_assistant", "Öz-değerlendirme", executive_assistant),
     ("data_quality", "Veri sağlığı", data_quality),
