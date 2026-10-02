@@ -192,7 +192,7 @@ def model_council(records_dir: Path, ask=None) -> dict[str, Any]:
         return {"verdict": "OK", "summary": "incelenecek yeni öneri yok"}
     pid = todo[0]
     fields = state[pid].fields or {}
-    prompt = (f"Proposal {pid}: {fields.get('title')}\nRisk: {fields.get('risk')}\n"
+    prompt = (f"Proposal {pid}: {fields.get('title')}\nRisk: {fields.get('risk_level') or fields.get('risk')}\n"
               f"Body: {json.dumps(fields, ensure_ascii=False, default=str)[:3000]}"
               "\n\nShould the owner approve it? Answer SUPPORT, OPPOSE or UNSURE with short reasons in Turkish.")
     votes = {}

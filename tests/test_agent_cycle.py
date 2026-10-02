@@ -232,3 +232,23 @@ def test_ceo_does_not_call_the_model_on_thin_evidence(tmp_path):
 
     out = ac.ceo_brief(tmp_path, ask=never)
     assert "özet çıkarılmadı" in out["summary"]
+
+
+def test_council_prompt_carries_the_proposal_risk_level(tmp_path):
+    from tools import ai_gateway as ai
+    from tools import experience_agent as xa
+
+    lesson = {"action": "BUY", "regime": "TREND_UP", "confidence": "60-65", "n_older": 40, "n_newer": 35,
+              "avg240_older_pct": 0.2, "avg240_newer_pct": 0.3, "win240_older": 0.6, "win240_newer": 0.6}
+    xa.draft_proposals(tmp_path, [lesson], {xa._lesson_key(lesson): xa.STABLE_RUNS})
+    prompts = []
+
+    def ask(system, prompt, schema, **kw):
+        prompts.append(prompt)
+        return ai.AIResult(status="ABSTAIN", reason="test") if hasattr(ai, "AIResult") else None
+
+    try:
+        ac.model_council(tmp_path, ask=ask)
+    except Exception:
+        pass
+    assert prompts and "Risk: HIGH" in prompts[0]
