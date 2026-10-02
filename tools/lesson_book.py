@@ -78,9 +78,74 @@ def build(rows: list[dict], by: str = "regime", slippage_bps: int = 5, fee_bps: 
     return out
 
 
+def live_rows(closed: list[dict], approvals: dict[str, list[dict]], regime_records: list[dict]) -> list[dict]:
+    """Owner option 5: Atlas's real closed PAPER trades as lesson rows (net_live = after-fee result / cost).
+
+    Confidence comes from the entry approval in the audit log; the regime from the newest
+    market_regime memory record written before the trade opened. Unknown stays unknown.
+    """
+    import json
+
+    from ai.core.intelligence.trade_evidence import net_pnl
+    from tools.paper_position_report import entry_approval
+
+    regimes = sorted(((str(r.get("created_at") or ""), r) for r in regime_records), key=lambda x: x[0])
+    out = []
+    for rec in closed:
+        appr = entry_approval(approvals.get(rec.get("symbol", ""), []), rec.get("opened_at"))
+        conf = appr.get("confidence") if appr else None
+        try:
+            cost = Decimal(str(rec["cost_quote"]))
+            net = net_pnl(rec) / cost if cost > 0 else None
+        except (KeyError, ValueError, ArithmeticError):
+            net = None
+        if not isinstance(conf, (int, float)) or net is None:
+            continue
+        opened = str(rec.get("opened_at") or "")
+        regime = "UNKNOWN"
+        for created, r in regimes:
+            if created > opened.replace("+00:00", "Z"):
+                break
+            try:
+                regime = json.loads(r.get("body") or "{}").get("coins", {}).get(rec["symbol"], {}).get("regime", "UNKNOWN")
+            except (TypeError, ValueError):
+                regime = "UNKNOWN"
+        out.append({"action": "BUY", "symbol": rec["symbol"], "time": opened, "confidence": str(conf),
+                    "regime": regime, "bucket": str(rec.get("bucket") or ""), "net_live": format(net, "f")})
+    return out
+
+
+def live_table(rows: list[dict], by: str = "regime") -> list[dict]:
+    groups: dict[tuple, list[Decimal]] = defaultdict(list)
+    for r in rows:
+        groups[(r.get(by) or "UNKNOWN", band(r["confidence"]))].append(Decimal(r["net_live"]))
+    return [{by: k, "confidence": c, "n": len(v), "win": round(sum(1 for x in v if x > 0) / len(v), 3),
+             "avg_pct": round(float(sum(v) / len(v)) * 100, 3),
+             "verdict": "MEASURED" if len(v) >= MIN_SAMPLES else "INSUFFICIENT"}
+            for (k, c), v in sorted(groups.items())]
+
+
+def _live_main(by: str) -> int:
+    from atlas_org import memory_records
+    from tools import agent_cycle as ac
+    from tools import atlas_org_cli as cli
+    from tools.exp001_report import load_closed
+
+    mem = memory_records.replay(cli.read_log(cli.RECORDS_DIR / cli.MEMORY_LOG)) if (cli.RECORDS_DIR / cli.MEMORY_LOG).exists() else {}
+    regime_records = [r for r in mem.values() if r.get("author") == "market_regime"]
+    rows = live_rows(load_closed(ac._archive_path()), ac._approvals(), regime_records)
+    print(f"{len(rows)} closed PAPER trades with a known entry confidence (live, after fees)")
+    print(f"{by:12} {'conf':7} {'n':>4} {'win':>6} {'avg%':>7}  verdict")
+    for g in live_table(rows, by):
+        print(f"{g[by]:12} {g['confidence']:7} {g['n']:>4} {g['win']:>6} {g['avg_pct']:>7}  {g['verdict']}")
+    print("Live trades are few: compare with the replay table only where both are MEASURED.")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("path")
+    ap.add_argument("path", nargs="?", default=None, help="replay/experience signals CSV (omit with --live)")
+    ap.add_argument("--live", action="store_true", help="lesson table from Atlas's real closed PAPER trades")
     ap.add_argument("--fee-bps", type=int, default=None,
                     help="re-price BUY at this fee per side (10 = 0.1%%; 7 = 0.075%% with BNB); needs ret_* columns")
     ap.add_argument("--slippage-bps", type=int, default=5, help="the slippage the replay used")
@@ -88,6 +153,10 @@ def main(argv: list[str] | None = None) -> int:
                     help="long = 1h/4h/1d table; short = 5/10-min and take-profit/stop-loss table")
     ap.add_argument("--by", default="regime", choices=["regime", "symbol", "bucket"])
     args = ap.parse_args(argv)
+    if args.live:
+        return _live_main(args.by if args.by != "bucket" else "regime")
+    if not args.path:
+        ap.error("give a signals CSV path, or --live")
     with open(args.path, encoding="utf-8") as f:
         rows = list(csv.DictReader(f))
     print(f"{len(rows)} decisions; win = BUY beat fees+slippage; SELL win = price fell (SELL avg = raw move); "

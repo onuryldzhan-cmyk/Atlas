@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from tools import lesson_book as lb
 
 
@@ -35,3 +37,23 @@ def test_barrier_stats_for_buy_groups():
            [{**_row("BUY", "61", "0.001"), "tb_10m": "SL", "tbnet_10m": "-0.007"}] * 2
     g = lb.build(rows)[0]
     assert g["tb10_tp"] == 0.5 and g["tb10_avg_pct"] == -0.2 and g["tb5_tp"] is None
+
+
+def test_live_rows_use_entry_confidence_and_regime_known_before_the_trade():
+    import json
+    closed = [{"symbol": "BTCUSDT", "opened_at": "2026-10-02T08:00:00+00:00", "cost_quote": "100", "gross_pnl": "1"},
+              {"symbol": "ETHUSDT", "opened_at": "2026-10-02T08:00:00+00:00", "cost_quote": "100", "gross_pnl": "1"}]
+    approvals = {"BTCUSDT": [{"confidence": 62.5, "at": "2026-10-02T07:59:00+00:00"}]}
+    regimes = [{"created_at": "2026-10-02T07:50:00Z", "body": json.dumps({"coins": {"BTCUSDT": {"regime": "SIDEWAYS"}}})},
+               {"created_at": "2026-10-02T09:00:00Z", "body": json.dumps({"coins": {"BTCUSDT": {"regime": "PANIC"}}})}]
+    import tools.paper_position_report as ppr
+    real = ppr.entry_approval
+    ppr.entry_approval = lambda items, opened: items[0] if items else None
+    try:
+        rows = lb.live_rows(closed, approvals, regimes)
+    finally:
+        ppr.entry_approval = real
+    assert len(rows) == 1 and rows[0]["regime"] == "SIDEWAYS"  # not PANIC: that came after the entry
+    assert rows[0]["confidence"] == "62.5" and Decimal(rows[0]["net_live"]) > 0  # +1 gross beats ~0.2 fees
+    t = lb.live_table(rows)
+    assert t[0]["n"] == 1 and t[0]["verdict"] == "INSUFFICIENT"

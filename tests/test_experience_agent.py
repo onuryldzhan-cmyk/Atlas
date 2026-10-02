@@ -22,7 +22,7 @@ def test_next_day_first_then_forward_then_backward_then_done():
 
 def _fake_replay(n_per_day=4, net="0.002"):
     def replay(data, **kw):
-        assert kw["record_signals"] is True and set(data) == set(xp.SYMBOLS)
+        assert kw["record_signals"] is True and set(data) <= set(xp.symbols()) and "BTCUSDT" in data
         first = min(int(r[0]) for rows in data.values() for r in rows)
         day = first + xp_window_ms()
         from datetime import UTC, datetime
@@ -82,3 +82,19 @@ def test_candidate_needs_both_halves_measured_and_agreeing():
     flip = rows("0.01", 40, "a") + rows("-0.02", 40, "b")
     assert xp.candidate_lessons(flip) == []           # direction changed between halves: no lesson
     assert xp.candidate_lessons(rows("0.01", 40, "a")) == []  # one half under MIN_SAMPLES
+
+
+def test_all_watched_coins_and_a_coin_without_history_does_not_erase_the_day(tmp_path):
+    assert len(xp.symbols()) == 20 and "BTCUSDT" in xp.symbols()  # config/universe_selection.json
+    seen = {}
+
+    def replay(data, **kw):
+        seen.update(data)
+        return SimpleNamespace(signals=[])
+
+    def fetch(symbol, start):
+        if symbol == "0GUSDT":  # not listed yet in this window
+            return []
+        return _fetch(symbol, start)
+    xp.replay_day(98 * D, fetch, replay=replay)
+    assert "0GUSDT" not in seen and "BTCUSDT" in seen and len(seen) == 19

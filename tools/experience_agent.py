@@ -30,7 +30,18 @@ from typing import Any, Callable
 DAY_MS = 24 * 60 * 60_000
 MAX_DAYS_BACK = 730
 HORIZON_PAD_MIN = 1440  # longest outcome horizon (1 day) after the day ends
-SYMBOLS = ("BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT")
+CORE_SYMBOLS = ("BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT")
+MIN_COVERAGE = 0.95  # a coin without (nearly) every minute of the window is left out of that day
+
+
+def symbols() -> tuple[str, ...]:
+    """Owner 2026-10-02: all coins Atlas watches (config/universe_selection.json), else the core five."""
+    try:
+        from tools.regime_engine import load_symbols
+
+        return tuple(load_symbols()) or CORE_SYMBOLS
+    except (OSError, ValueError, KeyError):
+        return CORE_SYMBOLS
 SLIPPAGE_BPS = 5
 
 Fetcher = Callable[[str, int], list[list]]
@@ -86,14 +97,21 @@ def _download(symbol: str, start_ms: int, end_ms: int, fetch: Fetcher) -> list[l
     return rows
 
 
-def replay_day(day_ms: int, fetch: Fetcher, symbols=SYMBOLS, replay=None) -> list[dict]:
+def replay_day(day_ms: int, fetch: Fetcher, symbols=None, replay=None) -> list[dict]:
     """Every BUY/SELL decision Atlas would have made on that UTC day, with outcomes."""
     from tools import backtest_replay as bt
 
     replay = replay or bt.replay
     start = day_ms - bt.WINDOW * 60_000  # warm-up candles the decision chain needs
     end = day_ms + DAY_MS + HORIZON_PAD_MIN * 60_000
+    symbols = symbols or globals()["symbols"]()
+    expected = (end - start) // 60_000
     data = {s: _download(s, start, end, fetch) for s in symbols}
+    # The replay keeps only minutes EVERY coin has: one coin missing (listed later, delisted, a gap)
+    # would erase the whole day, so such a coin is left out of this day instead.
+    data = {s: rows for s, rows in data.items() if len(rows) >= MIN_COVERAGE * expected}
+    if not data:
+        return []
     result = replay(data, step=15, sleeves=True, slippage_bps=SLIPPAGE_BPS, record_signals=True)
     lo = datetime.fromtimestamp(day_ms / 1000, UTC).isoformat()
     hi = datetime.fromtimestamp((day_ms + DAY_MS) / 1000, UTC).isoformat()
