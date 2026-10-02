@@ -224,3 +224,39 @@ def test_non_overlapping_count_keeps_outcomes_240_minutes_apart():
     assert xp._non_overlapping({5}) == 1
     assert xp._non_overlapping({1, 2, 3, 4}) == 2  # neighbours may be 15 minutes apart: every other one
     assert xp._non_overlapping({1, 3, 5}) == 3
+
+
+def test_binomial_and_bh_match_scipy_and_statsmodels_reference_values():
+    """Reference values from scipy.stats.binomtest and statsmodels multipletests(method="fdr_bh")."""
+    import pytest as _pytest
+
+    for k, n, ref in ((7, 10, 0.34375), (20, 30, 0.09873714670538905), (60, 100, 0.05688793364098089), (0, 5, 0.0625)):
+        assert xp.binom_two_sided_p(k, n) == _pytest.approx(ref, rel=1e-9)
+    assert xp.bh_qvalues([0.01, 0.04, 0.03, 0.2, 0.5]) == _pytest.approx(
+        [0.05, 0.06666666666666667, 0.06666666666666667, 0.25, 0.5], rel=1e-12)
+
+
+def test_lucky_groups_do_not_survive_the_false_discovery_filter():
+    """200 coin-flip groups: a few look consistent in both halves by luck; none may become a lesson."""
+    import random
+
+    rng = random.Random(11)
+    older, newer = {}, {}
+    for i in range(200):
+        for half in (older, newer):
+            n = 60
+            wins = sum(rng.random() < 0.5 for _ in range(n))
+            half[("BUY", f"R{i}", "60-65")] = {"n": n, "n_eff": n, "verdict": "MEASURED", "net_240m_win": wins / n,
+                                               "net_240m_avg_pct": (wins / n - 0.5) or 0.001}
+    agreeing = [k for k in older if (older[k]["net_240m_avg_pct"] > 0) == (newer[k]["net_240m_avg_pct"] > 0)]
+    assert len(agreeing) > 50  # without the filter, luck alone would hand over this many "lessons"
+    assert xp._compare(older, newer) == []
+
+
+def test_strong_consistent_group_survives_and_reports_q():
+    g = {"n": 80, "n_eff": 80, "verdict": "MEASURED", "net_240m_win": 0.75, "net_240m_avg_pct": 0.4}
+    noise = {("BUY", f"R{i}", "60-65"): {"n": 80, "n_eff": 80, "verdict": "MEASURED", "net_240m_win": 0.5,
+                                          "net_240m_avg_pct": 0.01} for i in range(20)}
+    older = {**noise, ("BUY", "TREND_UP", "60-65"): g}
+    [lesson] = [c for c in xp._compare(older, dict(older)) if c["regime"] == "TREND_UP"]
+    assert lesson["q_newer"] < xp.FDR_Q and lesson["tested_groups"] == 21

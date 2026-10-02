@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import csv
 import json
+import math
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -45,6 +46,7 @@ def symbols() -> tuple[str, ...]:
 SLIPPAGE_BPS = 5
 STABLE_RUNS = 14  # a candidate present (same direction) in this many consecutive replayed days is drafted as a proposal
 PROPOSAL_PREFIX = "XL-"
+FDR_Q = 0.10  # Benjamini-Hochberg false-discovery level for candidate lessons
 MIN_EFF = 30  # independent (non-overlapping 240m) outcomes a candidate needs in EACH half (= lesson_book.MIN_SAMPLES)
 
 Fetcher = Callable[[str, int], list[list]]
@@ -149,8 +151,44 @@ def candidate_lessons(rows: list[dict]) -> list[dict]:
     return _compare(older, newer)
 
 
+def binom_two_sided_p(k: int, n: int) -> float:
+    """Exact two-sided binomial test against a 50 % win rate (sum of outcomes no likelier than k)."""
+    if n <= 0:
+        return 1.0
+    logp = [math.lgamma(n + 1) - math.lgamma(i + 1) - math.lgamma(n - i + 1) - n * math.log(2) for i in range(n + 1)]
+    cut = logp[k] + 1e-9
+    return min(1.0, math.fsum(math.exp(x) for x in logp if x <= cut))
+
+
+def bh_qvalues(pvalues: list[float]) -> list[float]:
+    """Benjamini-Hochberg adjusted p-values (same as statsmodels multipletests(method="fdr_bh"))."""
+    m = len(pvalues)
+    order = sorted(range(m), key=lambda i: pvalues[i])
+    q = [0.0] * m
+    running = 1.0
+    for rank in range(m, 0, -1):
+        i = order[rank - 1]
+        running = min(running, pvalues[i] * m / rank)
+        q[i] = running
+    return q
+
+
+def _newer_p(b: dict) -> float:
+    """Out-of-sample (newer half) win-rate p-value on INDEPENDENT outcomes when known."""
+    if b.get("net_240m_win") is None:
+        return 1.0
+    n = int(b.get("n_eff") or b["n"])
+    return binom_two_sided_p(round(b["net_240m_win"] * n), n)
+
+
 def _compare(older: dict, newer: dict) -> list[dict]:
-    out = []
+    """Walk-forward candidates, then a false-discovery filter across EVERY group tested.
+
+    Many (action, regime, band) groups are tested at once; some look consistent by luck.
+    Each group's newer-half win rate gets a binomial p-value and all of them a
+    Benjamini-Hochberg correction; a candidate must have q <= FDR_Q.
+    """
+    tested, out = [], []
     for key, a in sorted(older.items()):
         b = newer.get(key)
         if not b or a["verdict"] != "MEASURED" or b["verdict"] != "MEASURED":
@@ -159,12 +197,16 @@ def _compare(older: dict, newer: dict) -> list[dict]:
             continue
         if min(a.get("n_eff", MIN_EFF), b.get("n_eff", MIN_EFF)) < MIN_EFF:
             continue  # overlapping decisions: too few independent outcomes in a half
-        if (a["net_240m_avg_pct"] > 0) != (b["net_240m_avg_pct"] > 0):
+        tested.append((key, a, b))
+    qs = bh_qvalues([_newer_p(b) for _, _, b in tested])
+    for (key, a, b), q in zip(tested, qs):
+        if (a["net_240m_avg_pct"] > 0) != (b["net_240m_avg_pct"] > 0) or q > FDR_Q:
             continue
         out.append({"action": key[0], "regime": key[1], "confidence": key[2], "n_older": a["n"], "n_newer": b["n"],
                     "avg240_older_pct": a["net_240m_avg_pct"], "avg240_newer_pct": b["net_240m_avg_pct"],
                     "win240_older": a["net_240m_win"], "win240_newer": b["net_240m_win"],
-                    "n_eff_older": a.get("n_eff"), "n_eff_newer": b.get("n_eff")})
+                    "n_eff_older": a.get("n_eff"), "n_eff_newer": b.get("n_eff"),
+                    "q_newer": round(q, 4), "tested_groups": len(tested)})
     return out
 
 
