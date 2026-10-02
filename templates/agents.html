@@ -279,7 +279,10 @@
         let results = [];
         try { results = JSON.parse(last.body).agent_cycle || []; } catch (e) { results = []; }
         const tone = (v) => v === 'OK' ? 'success' : v === 'WARN' ? 'warning' : 'danger';
-        el.innerHTML = `<div class="mb-1"><b>Son ajan döngüsü</b> ${esc(last.id)} · ${esc(last.created_at)}</div>` +
+        let res = {};
+        try { res = JSON.parse(last.body).resources || {}; } catch (e) { res = {}; }
+        const ai = res.ai_calls === undefined ? '' : ` · yapay zekâ: ${esc(res.ai_calls)} çağrı, ${esc(res.ai_cost_usd)} USD`;
+        el.innerHTML = `<div class="mb-1"><b>Son ajan döngüsü</b> ${esc(last.id)} · ${esc(last.created_at)}${ai}</div>` +
             `<table class="table table-sm mb-0"><thead><tr><th>Ajan</th><th>Görev</th><th>Sonuç</th><th>Ne yaptı</th></tr></thead><tbody>` +
             results.map((r) => `<tr><td>${esc(r.unit)}</td><td>${esc(r.name)}</td><td><span class="badge text-bg-${tone(r.verdict)}">${esc(r.verdict)}</span></td><td>${esc(r.summary)}</td></tr>`).join('') +
             '</tbody></table>';

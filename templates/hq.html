@@ -159,7 +159,7 @@
             `<div class="mt-1"><b>Olaylar (atlas.event.v1)</b>${(() => { const mine = contractEvents.filter((e) => e.agent.id === a.id).slice(-5).reverse();
                 return mine.length ? mine.map((e) => `<div>${esc(localTime(e.timestamp, 19))} · ${esc(e.event_type)} · kayıt ${esc(e.payload.source || '?')}</div>`).join('')
                     : ' <span class="text-body-secondary">bu ajan için olay yok (hareket uydurulmaz)</span>'; })()}</div>` +
-            `<div class="text-body-secondary">Token / maliyet / gecikme: N/A (ajanlar kural tabanlı, dil modeli yok).</div>` +
+            `<div class="text-body-secondary">Maliyet: kural tabanlı ajanlar model çağırmaz; yapay zekâ danışmanlarının (CEO, model konseyi) çağrı sayısı ve harcaması her ajan döngüsü kaydında (AC-…) ve <a href="/agents">Ajanlar</a> sayfasında.</div>` +
             `<div class="text-body-secondary">Hiçbir ajan para harcayamaz, yayına alamaz ya da kendi kararını onaylayamaz.</div>`;
     }
 
@@ -185,8 +185,11 @@
 
     function draw(t) {
         const d = devicePixelRatio;
-        const w = canvas.width = canvas.clientWidth * d;
-        const h = canvas.height = canvas.clientHeight * d;
+        // Resize the backing store only when the element changed size: assigning width/height
+        // reallocates and clears it, which every-frame assignment did 60 times a second.
+        const w = Math.round(canvas.clientWidth * d), h = Math.round(canvas.clientHeight * d);
+        if (canvas.width !== w) canvas.width = w;
+        if (canvas.height !== h) canvas.height = h;
         ctx.clearRect(0, 0, w, h);
         // floor grid
         ctx.strokeStyle = 'rgba(148,163,184,.07)'; ctx.lineWidth = 1;
@@ -238,8 +241,19 @@
             if (a.state !== 'OFFLINE' || a.id === selected) ctx.fillText(a.name, head.x, head.y - r - 4 * d);
             ctx.globalAlpha = 1;
         });
-        if (show3d) { angle += 0.0008; requestAnimationFrame(draw); }
     }
+
+    // One animation loop at most (toggling quickly used to start a second one), and none at all when
+    // the operator's system asks for reduced motion: then a still frame is drawn on each data refresh.
+    const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let frame = null;
+    function loop(t) {
+        frame = null;
+        if (!show3d) return;
+        draw(t);
+        if (!reduceMotion) { angle += 0.0008; frame = requestAnimationFrame(loop); }
+    }
+    function startLoop() { if (frame == null && show3d) frame = requestAnimationFrame(loop); }
 
     canvas.addEventListener('click', (e) => {
         const r = canvas.getBoundingClientRect();
@@ -255,7 +269,7 @@
         show3d = !show3d;
         canvas.hidden = !show3d; document.getElementById('hq-3d-off').hidden = show3d;
         e.target.textContent = '3D: ' + (show3d ? 'açık' : 'kapalı');
-        if (show3d) requestAnimationFrame(draw);
+        startLoop();
     });
 
     // ------------------------------------------------------------ data
@@ -267,13 +281,15 @@
         // Stale indicator (reference-repo pattern P2/P4, ideas only): when the data was last read, and how many
         // records did not fit the event contract (skipped, never coerced).
         if (st.available) lastOk = Date.now();
+        agents = st.available ? st.agents : []; flows = st.available ? [...(st.flows || [])] : []; rooms = st.available ? st.rooms : {};
         // Collaboration lines from real handoffs only (collaboration.handoff, each backed by a record).
+        // 2026-10-02: added after the reassignment above; before, they were pushed into the previous
+        // array and discarded on every refresh, so no handoff line was ever drawn.
         contractEvents.filter((e) => e.event_type === 'collaboration.handoff').forEach((e) => {
             const from = e.agent.id, to = e.payload.to;
             if (agents.some((x) => x.id === from) && agents.some((x) => x.id === to)
                 && !flows.some((f) => f.from === from && f.to === to)) flows.push({ from, to, label: `${e.payload.label} (${e.payload.source})` });
         });
-        agents = st.available ? st.agents : []; flows = st.available ? st.flows : []; rooms = st.available ? st.rooms : {};
         perms = {}; (permissions.units || []).forEach((p) => { perms[p.id] = p; });
         if (!selected && agents.length) selected = (agents.find((a) => a.state === 'WAITING_FOR_HUMAN') || agents[0]).id;
         document.getElementById('hq-conn').hidden = !!st.available;
@@ -285,6 +301,7 @@
         });
         activity.sort((a, b) => String(b.at).localeCompare(String(a.at)));
         renderOrg(); renderDetail(); renderActivity(); renderOps();
+        if (reduceMotion) startLoop();  // still frame with the fresh data
         if (cc.available) {
             const healthy = cc.health.healthy === true;
             document.getElementById('hq-health').innerHTML = `<span class="badge text-bg-${healthy ? 'success' : 'danger'}">SYSTEM ${esc(healthy ? 'ONLINE' : (cc.health.state || 'UNKNOWN'))}</span>`;
@@ -313,7 +330,7 @@
 
     setInterval(() => { document.getElementById('hq-clock').textContent = new Date().toLocaleTimeString('tr-TR'); }, 1000);
     refresh(); atlasPoll(refresh, 10000);
-    requestAnimationFrame(draw);
+    startLoop();
 })();
 </script>
 </body>

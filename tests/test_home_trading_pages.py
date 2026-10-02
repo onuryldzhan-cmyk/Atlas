@@ -167,3 +167,16 @@ def test_data_refresh_uses_shared_poll_not_bare_intervals():
         html = web_app.TEMPLATE_DIR.joinpath(f"{name}.html").read_text(encoding="utf-8")
         assert not re.search(r"setInterval\((refresh\w*|slow|update\w+),", html), name
         assert "atlasPoll(" in html, name
+
+
+def test_hq_3d_view_keeps_its_2026_10_02_fixes():
+    """Verified in Chromium: handoff lines were never drawn, same-tick 3D toggles stacked up to 4 loops
+    (240 frames/s) and reduced motion was ignored. Guard the fixes against regression."""
+    html = web_app.TEMPLATE_DIR.joinpath("hq.html").read_text(encoding="utf-8")
+    assign = html.index("flows = st.available ? [...(st.flows || [])] : []")
+    handoff = html.index("e.event_type === 'collaboration.handoff'")
+    assert assign < handoff  # handoffs are added to the fresh array, not the discarded one
+    assert "prefers-reduced-motion: reduce" in html
+    assert "if (frame == null && show3d)" in html  # at most one animation loop
+    assert "canvas.width = canvas.clientWidth" not in html  # no backing-store reallocation every frame
+    assert "dil modeli yok" not in html  # AI-001 advisors do call models now
