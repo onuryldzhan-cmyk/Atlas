@@ -1,0 +1,2169 @@
+{
+ "brain_raises": {
+  "errors": [
+   [
+    "symbol:BTCUSDT",
+    "RuntimeError",
+    "brain boom"
+   ]
+  ],
+  "memory": {
+   "agent_evidence": [],
+   "executions": {},
+   "fetch_success": [
+    "BTCUSDT"
+   ],
+   "processed": {},
+   "signals": []
+  },
+  "metrics": {
+   "backfill_gap_exceeded": 0,
+   "buy_stale_data_skipped": 0,
+   "closed_candles_processed": 0,
+   "cycles": 0,
+   "decisions_normalized": 0,
+   "decisions_received": 0,
+   "decisions_rejected": 0,
+   "duplicate_candles_skipped": 0,
+   "duplicate_decisions_skipped": 0,
+   "duplicate_executions_skipped": 0,
+   "errors": 1,
+   "execution_failures": 0,
+   "execution_requests": 0,
+   "executions_completed": 0,
+   "executions_rejected": 0,
+   "hold_decisions": 0,
+   "latency": 0.0,
+   "market_data_contract_violations": 0,
+   "open_candles_excluded": 0,
+   "sell_without_position_skipped": 0,
+   "symbols_scanned": 0,
+   "symbols_skipped": 0
+  },
+  "positions": {},
+  "published": [],
+  "results": [
+   null
+  ]
+ },
+ "buy_routed": {
+  "errors": [],
+  "memory": {
+   "agent_evidence": [
+    "BTCUSDT"
+   ],
+   "executions": {
+    "BTCUSDT": {
+     "action": "BUY",
+     "commit_outcome": "COMMITTED",
+     "data": {
+      "allocation": 2499.9979125,
+      "approved_quote_allocation": "2500.00",
+      "confidence": 90.0,
+      "executed_quote_notional": "2499.9979125000",
+      "instrument_rules_digest": "eef0e1808a3b2a3fe33b55cc25425a1d2eb430145fa5696cbda19d66fb821352",
+      "instrument_rules_source": "https://api.binance.com/api/v3/exchangeInfo",
+      "instrument_rules_source_version": "1790687644597",
+      "order_type": "MARKET",
+      "paper_mirror": "OK",
+      "request_id": "BTCUSDT|open:1700011940000|BUY",
+      "risk": "MEDIUM",
+      "source": "ATLAS",
+      "strategy": "BLOCK5C_UPSTREAM_SIZING_AUTHORITY",
+      "unallocated_quote_remainder": "0.0020875000"
+     },
+     "durable_financial_state": {
+      "position_id": "long:BTCUSDT:bae42bf18140d1a2792f683e7ffa7e9a8b654bc968dcabaf22fd7c3ce0e56482",
+      "replayed": false
+     },
+     "error_code": null,
+     "error_details": null,
+     "execution_fingerprint": "BTCUSDT|open:1700011940000|BUY",
+     "execution_id": "<v>",
+     "fee": 0.0,
+     "fee_amount": "0",
+     "fee_currency": "USDT",
+     "filled_amount": 2499.9979125,
+     "filled_base_quantity": "9.56937000",
+     "filled_price": 261.25,
+     "filled_quote_notional": "2499.9979125000",
+     "idempotency_key": "BTCUSDT|open:1700011940000|BUY",
+     "latency_ms": "<v>",
+     "message": "Paper execution completed",
+     "metadata": {
+      "adapter_name": "DecisionAdapter",
+      "adapter_version": "5.2",
+      "candle_identity": "open:1700011940000",
+      "closed_candle_only": true,
+      "execution_fingerprint": "BTCUSDT|open:1700011940000|BUY",
+      "idempotency_key": "BTCUSDT|open:1700011940000|BUY",
+      "market_loop_version": "8.2",
+      "normalized_action": "BUY",
+      "normalized_at": "<ts>",
+      "normalized_confidence": 90.0,
+      "raw_decision_type": "dict",
+      "request_mode": "PAPER",
+      "sizing": {
+       "authority": "PositionSizingService",
+       "basis_pct": "0.25",
+       "committed_quote": "0",
+       "durable_free_quote_capital": "10000",
+       "inputs_digest": "4388e8e52701ccf2f8eaab9b2a5b3fadae8b9ec12b346cd00e588a98d88b2056",
+       "policy_version": "phase3-risk-v1",
+       "proposed_quote_allocation": "2500.00",
+       "remaining_allocatable_capital_capacity": "8000.000",
+       "remaining_bucket_allocation_capacity": "2500.000",
+       "remaining_bucket_exposure_ceiling_capacity": "4000.000",
+       "remaining_concentration_capacity": "4000.000",
+       "remaining_portfolio_capacity": "8000.000",
+       "remaining_position_capacity": "4000.000",
+       "remaining_symbol_capacity": "4000.000",
+       "risk_bucket": "MEDIUM",
+       "symbol_exposure": "0"
+      },
+      "source_fields": [
+       "action",
+       "confidence",
+       "market_state",
+       "price",
+       "reason",
+       "risk",
+       "strategy",
+       "symbol"
+      ]
+     },
+     "mode": "PAPER",
+     "order_id": "paper-order:<uuid>",
+     "pnl": 0.0,
+     "position_id": "long:BTCUSDT:bae42bf18140d1a2792f683e7ffa7e9a8b654bc968dcabaf22fd7c3ce0e56482",
+     "price": 261.25,
+     "provenance_ref": "transaction-journal:BTCUSDT|open:1700011940000|BUY",
+     "quantity": 2499.9979125,
+     "request_id": "BTCUSDT|open:1700011940000|BUY",
+     "requested_amount": 0.0,
+     "requested_base_quantity": null,
+     "requested_price": 261.25,
+     "requested_quote_allocation": "2500.00",
+     "risk_level": "UNKNOWN",
+     "slippage": 0.0,
+     "status": "PAPER_EXECUTED",
+     "success": true,
+     "symbol": "BTCUSDT",
+     "timestamp": "<v>",
+     "trade_id": null
+    }
+   },
+   "fetch_success": [
+    "BTCUSDT"
+   ],
+   "processed": {
+    "BTCUSDT": "open:1700011940000"
+   },
+   "signals": [
+    "BTCUSDT"
+   ]
+  },
+  "metrics": {
+   "backfill_gap_exceeded": 0,
+   "buy_stale_data_skipped": 0,
+   "closed_candles_processed": 1,
+   "cycles": 0,
+   "decisions_normalized": 1,
+   "decisions_received": 1,
+   "decisions_rejected": 0,
+   "duplicate_candles_skipped": 0,
+   "duplicate_decisions_skipped": 0,
+   "duplicate_executions_skipped": 0,
+   "errors": 0,
+   "execution_failures": 0,
+   "execution_requests": 1,
+   "executions_completed": 1,
+   "executions_rejected": 0,
+   "hold_decisions": 0,
+   "latency": 0.0,
+   "market_data_contract_violations": 0,
+   "open_candles_excluded": 0,
+   "sell_without_position_skipped": 0,
+   "symbols_scanned": 1,
+   "symbols_skipped": 0
+  },
+  "positions": {
+   "BTCUSDT": {
+    "average_entry_price": "261.25",
+    "base_quantity": "9.56937000",
+    "cost_quote": "2499.9979125000",
+    "entry_fees": "0",
+    "mark_price": "261.25",
+    "opened_at": "<ts>",
+    "position_id": "long:BTCUSDT:bae42bf18140d1a2792f683e7ffa7e9a8b654bc968dcabaf22fd7c3ce0e56482",
+    "symbol": "BTCUSDT",
+    "version": 1
+   }
+  },
+  "published": [
+   [
+    "ATLAS_DECISION",
+    {
+     "action": "BUY",
+     "confidence": 90.0,
+     "created_at": "<v>",
+     "metadata": {
+      "adapter_name": "DecisionAdapter",
+      "adapter_version": "5.2",
+      "candle_identity": "open:1700011940000",
+      "closed_candle_only": true,
+      "market_loop_version": "8.2",
+      "normalized_action": "BUY",
+      "normalized_at": "<ts>",
+      "normalized_confidence": 90.0,
+      "raw_decision_type": "dict",
+      "source_fields": [
+       "action",
+       "confidence",
+       "market_state",
+       "price",
+       "reason",
+       "risk",
+       "strategy",
+       "symbol"
+      ]
+     },
+     "price": 261.25,
+     "risk_level": "MEDIUM",
+     "strategy": "BLOCK5C_UPSTREAM_SIZING_AUTHORITY",
+     "symbol": "BTCUSDT"
+    }
+   ]
+  ],
+  "results": [
+   {
+    "action": "BUY",
+    "commit_outcome": "COMMITTED",
+    "data": {
+     "allocation": 2499.9979125,
+     "approved_quote_allocation": "2500.00",
+     "confidence": 90.0,
+     "executed_quote_notional": "2499.9979125000",
+     "instrument_rules_digest": "eef0e1808a3b2a3fe33b55cc25425a1d2eb430145fa5696cbda19d66fb821352",
+     "instrument_rules_source": "https://api.binance.com/api/v3/exchangeInfo",
+     "instrument_rules_source_version": "1790687644597",
+     "order_type": "MARKET",
+     "paper_mirror": "OK",
+     "request_id": "BTCUSDT|open:1700011940000|BUY",
+     "risk": "MEDIUM",
+     "source": "ATLAS",
+     "strategy": "BLOCK5C_UPSTREAM_SIZING_AUTHORITY",
+     "unallocated_quote_remainder": "0.0020875000"
+    },
+    "durable_financial_state": {
+     "position_id": "long:BTCUSDT:bae42bf18140d1a2792f683e7ffa7e9a8b654bc968dcabaf22fd7c3ce0e56482",
+     "replayed": false
+    },
+    "error_code": null,
+    "error_details": null,
+    "execution_fingerprint": "BTCUSDT|open:1700011940000|BUY",
+    "execution_id": "<v>",
+    "fee": 0.0,
+    "fee_amount": "0",
+    "fee_currency": "USDT",
+    "filled_amount": 2499.9979125,
+    "filled_base_quantity": "9.56937000",
+    "filled_price": 261.25,
+    "filled_quote_notional": "2499.9979125000",
+    "idempotency_key": "BTCUSDT|open:1700011940000|BUY",
+    "latency_ms": "<v>",
+    "message": "Paper execution completed",
+    "metadata": {
+     "adapter_name": "DecisionAdapter",
+     "adapter_version": "5.2",
+     "candle_identity": "open:1700011940000",
+     "closed_candle_only": true,
+     "execution_fingerprint": "BTCUSDT|open:1700011940000|BUY",
+     "idempotency_key": "BTCUSDT|open:1700011940000|BUY",
+     "market_loop_version": "8.2",
+     "normalized_action": "BUY",
+     "normalized_at": "<ts>",
+     "normalized_confidence": 90.0,
+     "raw_decision_type": "dict",
+     "request_mode": "PAPER",
+     "sizing": {
+      "authority": "PositionSizingService",
+      "basis_pct": "0.25",
+      "committed_quote": "0",
+      "durable_free_quote_capital": "10000",
+      "inputs_digest": "4388e8e52701ccf2f8eaab9b2a5b3fadae8b9ec12b346cd00e588a98d88b2056",
+      "policy_version": "phase3-risk-v1",
+      "proposed_quote_allocation": "2500.00",
+      "remaining_allocatable_capital_capacity": "8000.000",
+      "remaining_bucket_allocation_capacity": "2500.000",
+      "remaining_bucket_exposure_ceiling_capacity": "4000.000",
+      "remaining_concentration_capacity": "4000.000",
+      "remaining_portfolio_capacity": "8000.000",
+      "remaining_position_capacity": "4000.000",
+      "remaining_symbol_capacity": "4000.000",
+      "risk_bucket": "MEDIUM",
+      "symbol_exposure": "0"
+     },
+     "source_fields": [
+      "action",
+      "confidence",
+      "market_state",
+      "price",
+      "reason",
+      "risk",
+      "strategy",
+      "symbol"
+     ]
+    },
+    "mode": "PAPER",
+    "order_id": "paper-order:<uuid>",
+    "pnl": 0.0,
+    "position_id": "long:BTCUSDT:bae42bf18140d1a2792f683e7ffa7e9a8b654bc968dcabaf22fd7c3ce0e56482",
+    "price": 261.25,
+    "provenance_ref": "transaction-journal:BTCUSDT|open:1700011940000|BUY",
+    "quantity": 2499.9979125,
+    "request_id": "BTCUSDT|open:1700011940000|BUY",
+    "requested_amount": 0.0,
+    "requested_base_quantity": null,
+    "requested_price": 261.25,
+    "requested_quote_allocation": "2500.00",
+    "risk_level": "UNKNOWN",
+    "slippage": 0.0,
+    "status": "PAPER_EXECUTED",
+    "success": true,
+    "symbol": "BTCUSDT",
+    "timestamp": "<v>",
+    "trade_id": null
+   }
+  ]
+ },
+ "contract_error": {
+  "errors": [],
+  "memory": {
+   "agent_evidence": [],
+   "executions": {},
+   "fetch_success": [],
+   "processed": {},
+   "signals": []
+  },
+  "metrics": {
+   "backfill_gap_exceeded": 0,
+   "buy_stale_data_skipped": 0,
+   "closed_candles_processed": 0,
+   "cycles": 0,
+   "decisions_normalized": 0,
+   "decisions_received": 0,
+   "decisions_rejected": 0,
+   "duplicate_candles_skipped": 0,
+   "duplicate_decisions_skipped": 0,
+   "duplicate_executions_skipped": 0,
+   "errors": 0,
+   "execution_failures": 0,
+   "execution_requests": 0,
+   "executions_completed": 0,
+   "executions_rejected": 0,
+   "hold_decisions": 0,
+   "latency": 0.0,
+   "market_data_contract_violations": 1,
+   "open_candles_excluded": 0,
+   "sell_without_position_skipped": 0,
+   "symbols_scanned": 0,
+   "symbols_skipped": 1
+  },
+  "positions": {},
+  "published": [],
+  "results": [
+   {
+    "detail": "unordered bars",
+    "reason": "MARKET_DATA_CONTRACT",
+    "status": "SKIPPED",
+    "symbol": "BTCUSDT"
+   }
+  ]
+ },
+ "duplicate_candle": {
+  "errors": [],
+  "memory": {
+   "agent_evidence": [
+    "BTCUSDT"
+   ],
+   "executions": {
+    "BTCUSDT": {
+     "action": "BUY",
+     "commit_outcome": "COMMITTED",
+     "data": {
+      "allocation": 2499.9979125,
+      "approved_quote_allocation": "2500.00",
+      "confidence": 90.0,
+      "executed_quote_notional": "2499.9979125000",
+      "instrument_rules_digest": "eef0e1808a3b2a3fe33b55cc25425a1d2eb430145fa5696cbda19d66fb821352",
+      "instrument_rules_source": "https://api.binance.com/api/v3/exchangeInfo",
+      "instrument_rules_source_version": "1790687644597",
+      "order_type": "MARKET",
+      "paper_mirror": "OK",
+      "request_id": "BTCUSDT|open:1700011940000|BUY",
+      "risk": "MEDIUM",
+      "source": "ATLAS",
+      "strategy": "BLOCK5C_UPSTREAM_SIZING_AUTHORITY",
+      "unallocated_quote_remainder": "0.0020875000"
+     },
+     "durable_financial_state": {
+      "position_id": "long:BTCUSDT:bae42bf18140d1a2792f683e7ffa7e9a8b654bc968dcabaf22fd7c3ce0e56482",
+      "replayed": false
+     },
+     "error_code": null,
+     "error_details": null,
+     "execution_fingerprint": "BTCUSDT|open:1700011940000|BUY",
+     "execution_id": "<v>",
+     "fee": 0.0,
+     "fee_amount": "0",
+     "fee_currency": "USDT",
+     "filled_amount": 2499.9979125,
+     "filled_base_quantity": "9.56937000",
+     "filled_price": 261.25,
+     "filled_quote_notional": "2499.9979125000",
+     "idempotency_key": "BTCUSDT|open:1700011940000|BUY",
+     "latency_ms": "<v>",
+     "message": "Paper execution completed",
+     "metadata": {
+      "adapter_name": "DecisionAdapter",
+      "adapter_version": "5.2",
+      "candle_identity": "open:1700011940000",
+      "closed_candle_only": true,
+      "execution_fingerprint": "BTCUSDT|open:1700011940000|BUY",
+      "idempotency_key": "BTCUSDT|open:1700011940000|BUY",
+      "market_loop_version": "8.2",
+      "normalized_action": "BUY",
+      "normalized_at": "<ts>",
+      "normalized_confidence": 90.0,
+      "raw_decision_type": "dict",
+      "request_mode": "PAPER",
+      "sizing": {
+       "authority": "PositionSizingService",
+       "basis_pct": "0.25",
+       "committed_quote": "0",
+       "durable_free_quote_capital": "10000",
+       "inputs_digest": "4388e8e52701ccf2f8eaab9b2a5b3fadae8b9ec12b346cd00e588a98d88b2056",
+       "policy_version": "phase3-risk-v1",
+       "proposed_quote_allocation": "2500.00",
+       "remaining_allocatable_capital_capacity": "8000.000",
+       "remaining_bucket_allocation_capacity": "2500.000",
+       "remaining_bucket_exposure_ceiling_capacity": "4000.000",
+       "remaining_concentration_capacity": "4000.000",
+       "remaining_portfolio_capacity": "8000.000",
+       "remaining_position_capacity": "4000.000",
+       "remaining_symbol_capacity": "4000.000",
+       "risk_bucket": "MEDIUM",
+       "symbol_exposure": "0"
+      },
+      "source_fields": [
+       "action",
+       "confidence",
+       "market_state",
+       "price",
+       "reason",
+       "risk",
+       "strategy",
+       "symbol"
+      ]
+     },
+     "mode": "PAPER",
+     "order_id": "paper-order:<uuid>",
+     "pnl": 0.0,
+     "position_id": "long:BTCUSDT:bae42bf18140d1a2792f683e7ffa7e9a8b654bc968dcabaf22fd7c3ce0e56482",
+     "price": 261.25,
+     "provenance_ref": "transaction-journal:BTCUSDT|open:1700011940000|BUY",
+     "quantity": 2499.9979125,
+     "request_id": "BTCUSDT|open:1700011940000|BUY",
+     "requested_amount": 0.0,
+     "requested_base_quantity": null,
+     "requested_price": 261.25,
+     "requested_quote_allocation": "2500.00",
+     "risk_level": "UNKNOWN",
+     "slippage": 0.0,
+     "status": "PAPER_EXECUTED",
+     "success": true,
+     "symbol": "BTCUSDT",
+     "timestamp": "<v>",
+     "trade_id": null
+    }
+   },
+   "fetch_success": [
+    "BTCUSDT"
+   ],
+   "processed": {
+    "BTCUSDT": "open:1700011940000"
+   },
+   "signals": [
+    "BTCUSDT"
+   ]
+  },
+  "metrics": {
+   "backfill_gap_exceeded": 0,
+   "buy_stale_data_skipped": 0,
+   "closed_candles_processed": 1,
+   "cycles": 0,
+   "decisions_normalized": 1,
+   "decisions_received": 1,
+   "decisions_rejected": 0,
+   "duplicate_candles_skipped": 1,
+   "duplicate_decisions_skipped": 0,
+   "duplicate_executions_skipped": 0,
+   "errors": 0,
+   "execution_failures": 0,
+   "execution_requests": 1,
+   "executions_completed": 1,
+   "executions_rejected": 0,
+   "hold_decisions": 0,
+   "latency": 0.0,
+   "market_data_contract_violations": 0,
+   "open_candles_excluded": 0,
+   "sell_without_position_skipped": 0,
+   "symbols_scanned": 1,
+   "symbols_skipped": 0
+  },
+  "positions": {
+   "BTCUSDT": {
+    "average_entry_price": "261.25",
+    "base_quantity": "9.56937000",
+    "cost_quote": "2499.9979125000",
+    "entry_fees": "0",
+    "mark_price": "261.25",
+    "opened_at": "<ts>",
+    "position_id": "long:BTCUSDT:bae42bf18140d1a2792f683e7ffa7e9a8b654bc968dcabaf22fd7c3ce0e56482",
+    "symbol": "BTCUSDT",
+    "version": 1
+   }
+  },
+  "published": [
+   [
+    "ATLAS_DECISION",
+    {
+     "action": "BUY",
+     "confidence": 90.0,
+     "created_at": "<v>",
+     "metadata": {
+      "adapter_name": "DecisionAdapter",
+      "adapter_version": "5.2",
+      "candle_identity": "open:1700011940000",
+      "closed_candle_only": true,
+      "market_loop_version": "8.2",
+      "normalized_action": "BUY",
+      "normalized_at": "<ts>",
+      "normalized_confidence": 90.0,
+      "raw_decision_type": "dict",
+      "source_fields": [
+       "action",
+       "confidence",
+       "market_state",
+       "price",
+       "reason",
+       "risk",
+       "strategy",
+       "symbol"
+      ]
+     },
+     "price": 261.25,
+     "risk_level": "MEDIUM",
+     "strategy": "BLOCK5C_UPSTREAM_SIZING_AUTHORITY",
+     "symbol": "BTCUSDT"
+    }
+   ]
+  ],
+  "results": [
+   {
+    "action": "BUY",
+    "commit_outcome": "COMMITTED",
+    "data": {
+     "allocation": 2499.9979125,
+     "approved_quote_allocation": "2500.00",
+     "confidence": 90.0,
+     "executed_quote_notional": "2499.9979125000",
+     "instrument_rules_digest": "eef0e1808a3b2a3fe33b55cc25425a1d2eb430145fa5696cbda19d66fb821352",
+     "instrument_rules_source": "https://api.binance.com/api/v3/exchangeInfo",
+     "instrument_rules_source_version": "1790687644597",
+     "order_type": "MARKET",
+     "paper_mirror": "OK",
+     "request_id": "BTCUSDT|open:1700011940000|BUY",
+     "risk": "MEDIUM",
+     "source": "ATLAS",
+     "strategy": "BLOCK5C_UPSTREAM_SIZING_AUTHORITY",
+     "unallocated_quote_remainder": "0.0020875000"
+    },
+    "durable_financial_state": {
+     "position_id": "long:BTCUSDT:bae42bf18140d1a2792f683e7ffa7e9a8b654bc968dcabaf22fd7c3ce0e56482",
+     "replayed": false
+    },
+    "error_code": null,
+    "error_details": null,
+    "execution_fingerprint": "BTCUSDT|open:1700011940000|BUY",
+    "execution_id": "<v>",
+    "fee": 0.0,
+    "fee_amount": "0",
+    "fee_currency": "USDT",
+    "filled_amount": 2499.9979125,
+    "filled_base_quantity": "9.56937000",
+    "filled_price": 261.25,
+    "filled_quote_notional": "2499.9979125000",
+    "idempotency_key": "BTCUSDT|open:1700011940000|BUY",
+    "latency_ms": "<v>",
+    "message": "Paper execution completed",
+    "metadata": {
+     "adapter_name": "DecisionAdapter",
+     "adapter_version": "5.2",
+     "candle_identity": "open:1700011940000",
+     "closed_candle_only": true,
+     "execution_fingerprint": "BTCUSDT|open:1700011940000|BUY",
+     "idempotency_key": "BTCUSDT|open:1700011940000|BUY",
+     "market_loop_version": "8.2",
+     "normalized_action": "BUY",
+     "normalized_at": "<ts>",
+     "normalized_confidence": 90.0,
+     "raw_decision_type": "dict",
+     "request_mode": "PAPER",
+     "sizing": {
+      "authority": "PositionSizingService",
+      "basis_pct": "0.25",
+      "committed_quote": "0",
+      "durable_free_quote_capital": "10000",
+      "inputs_digest": "4388e8e52701ccf2f8eaab9b2a5b3fadae8b9ec12b346cd00e588a98d88b2056",
+      "policy_version": "phase3-risk-v1",
+      "proposed_quote_allocation": "2500.00",
+      "remaining_allocatable_capital_capacity": "8000.000",
+      "remaining_bucket_allocation_capacity": "2500.000",
+      "remaining_bucket_exposure_ceiling_capacity": "4000.000",
+      "remaining_concentration_capacity": "4000.000",
+      "remaining_portfolio_capacity": "8000.000",
+      "remaining_position_capacity": "4000.000",
+      "remaining_symbol_capacity": "4000.000",
+      "risk_bucket": "MEDIUM",
+      "symbol_exposure": "0"
+     },
+     "source_fields": [
+      "action",
+      "confidence",
+      "market_state",
+      "price",
+      "reason",
+      "risk",
+      "strategy",
+      "symbol"
+     ]
+    },
+    "mode": "PAPER",
+    "order_id": "paper-order:<uuid>",
+    "pnl": 0.0,
+    "position_id": "long:BTCUSDT:bae42bf18140d1a2792f683e7ffa7e9a8b654bc968dcabaf22fd7c3ce0e56482",
+    "price": 261.25,
+    "provenance_ref": "transaction-journal:BTCUSDT|open:1700011940000|BUY",
+    "quantity": 2499.9979125,
+    "request_id": "BTCUSDT|open:1700011940000|BUY",
+    "requested_amount": 0.0,
+    "requested_base_quantity": null,
+    "requested_price": 261.25,
+    "requested_quote_allocation": "2500.00",
+    "risk_level": "UNKNOWN",
+    "slippage": 0.0,
+    "status": "PAPER_EXECUTED",
+    "success": true,
+    "symbol": "BTCUSDT",
+    "timestamp": "<v>",
+    "trade_id": null
+   },
+   {
+    "candle_identity": "open:1700011940000",
+    "reason": "DUPLICATE_CLOSED_CANDLE",
+    "status": "SKIPPED",
+    "symbol": "BTCUSDT"
+   }
+  ]
+ },
+ "execution_unavailable": {
+  "errors": [],
+  "memory": {
+   "agent_evidence": [
+    "BTCUSDT"
+   ],
+   "executions": {},
+   "fetch_success": [
+    "BTCUSDT"
+   ],
+   "processed": {
+    "BTCUSDT": "open:1700011940000"
+   },
+   "signals": [
+    "BTCUSDT"
+   ]
+  },
+  "metrics": {
+   "backfill_gap_exceeded": 0,
+   "buy_stale_data_skipped": 0,
+   "closed_candles_processed": 1,
+   "cycles": 0,
+   "decisions_normalized": 1,
+   "decisions_received": 1,
+   "decisions_rejected": 0,
+   "duplicate_candles_skipped": 0,
+   "duplicate_decisions_skipped": 0,
+   "duplicate_executions_skipped": 0,
+   "errors": 0,
+   "execution_failures": 0,
+   "execution_requests": 0,
+   "executions_completed": 0,
+   "executions_rejected": 0,
+   "hold_decisions": 0,
+   "latency": 0.0,
+   "market_data_contract_violations": 0,
+   "open_candles_excluded": 0,
+   "sell_without_position_skipped": 0,
+   "symbols_scanned": 0,
+   "symbols_skipped": 0
+  },
+  "positions": {},
+  "published": [
+   [
+    "ATLAS_DECISION",
+    {
+     "action": "BUY",
+     "confidence": 90.0,
+     "created_at": "<v>",
+     "metadata": {
+      "adapter_name": "DecisionAdapter",
+      "adapter_version": "5.2",
+      "candle_identity": "open:1700011940000",
+      "closed_candle_only": true,
+      "market_loop_version": "8.2",
+      "normalized_action": "BUY",
+      "normalized_at": "<ts>",
+      "normalized_confidence": 90.0,
+      "raw_decision_type": "dict",
+      "source_fields": [
+       "action",
+       "confidence",
+       "market_state",
+       "price",
+       "reason",
+       "risk",
+       "strategy",
+       "symbol"
+      ]
+     },
+     "price": 261.25,
+     "risk_level": "MEDIUM",
+     "strategy": "BLOCK5C_UPSTREAM_SIZING_AUTHORITY",
+     "symbol": "BTCUSDT"
+    }
+   ]
+  ],
+  "results": [
+   {
+    "action": "BUY",
+    "reason": "EXECUTION_MANAGER_UNAVAILABLE",
+    "status": "SKIPPED",
+    "symbol": "BTCUSDT"
+   }
+  ]
+ },
+ "hold": {
+  "errors": [],
+  "memory": {
+   "agent_evidence": [
+    "BTCUSDT"
+   ],
+   "executions": {
+    "BTCUSDT": {
+     "action": "HOLD",
+     "reason": "NON_EXECUTION_ACTION",
+     "status": "SKIPPED",
+     "symbol": "BTCUSDT",
+     "timestamp": "<v>"
+    }
+   },
+   "fetch_success": [
+    "BTCUSDT"
+   ],
+   "processed": {
+    "BTCUSDT": "open:1700011940000"
+   },
+   "signals": [
+    "BTCUSDT"
+   ]
+  },
+  "metrics": {
+   "backfill_gap_exceeded": 0,
+   "buy_stale_data_skipped": 0,
+   "closed_candles_processed": 1,
+   "cycles": 0,
+   "decisions_normalized": 1,
+   "decisions_received": 1,
+   "decisions_rejected": 0,
+   "duplicate_candles_skipped": 0,
+   "duplicate_decisions_skipped": 0,
+   "duplicate_executions_skipped": 0,
+   "errors": 0,
+   "execution_failures": 0,
+   "execution_requests": 0,
+   "executions_completed": 0,
+   "executions_rejected": 0,
+   "hold_decisions": 1,
+   "latency": 0.0,
+   "market_data_contract_violations": 0,
+   "open_candles_excluded": 0,
+   "sell_without_position_skipped": 0,
+   "symbols_scanned": 0,
+   "symbols_skipped": 0
+  },
+  "positions": {},
+  "published": [
+   [
+    "ATLAS_DECISION",
+    {
+     "action": "HOLD",
+     "confidence": 90.0,
+     "created_at": "<v>",
+     "metadata": {
+      "adapter_name": "DecisionAdapter",
+      "adapter_version": "5.2",
+      "candle_identity": "open:1700011940000",
+      "closed_candle_only": true,
+      "market_loop_version": "8.2",
+      "normalized_action": "HOLD",
+      "normalized_at": "<ts>",
+      "normalized_confidence": 90.0,
+      "raw_decision_type": "dict",
+      "source_fields": [
+       "action",
+       "confidence",
+       "market_state",
+       "price",
+       "reason",
+       "risk",
+       "strategy",
+       "symbol"
+      ]
+     },
+     "price": 261.25,
+     "risk_level": "MEDIUM",
+     "strategy": "BLOCK5C_UPSTREAM_SIZING_AUTHORITY",
+     "symbol": "BTCUSDT"
+    }
+   ]
+  ],
+  "results": [
+   {
+    "action": "HOLD",
+    "reason": "NON_EXECUTION_ACTION",
+    "status": "SKIPPED",
+    "symbol": "BTCUSDT",
+    "timestamp": "<v>"
+   }
+  ]
+ },
+ "identity_none": {
+  "errors": [],
+  "memory": {
+   "agent_evidence": [],
+   "executions": {},
+   "fetch_success": [
+    "BTCUSDT"
+   ],
+   "processed": {},
+   "signals": []
+  },
+  "metrics": {
+   "backfill_gap_exceeded": 0,
+   "buy_stale_data_skipped": 0,
+   "closed_candles_processed": 0,
+   "cycles": 0,
+   "decisions_normalized": 0,
+   "decisions_received": 0,
+   "decisions_rejected": 0,
+   "duplicate_candles_skipped": 0,
+   "duplicate_decisions_skipped": 0,
+   "duplicate_executions_skipped": 0,
+   "errors": 0,
+   "execution_failures": 0,
+   "execution_requests": 0,
+   "executions_completed": 0,
+   "executions_rejected": 0,
+   "hold_decisions": 0,
+   "latency": 0.0,
+   "market_data_contract_violations": 0,
+   "open_candles_excluded": 0,
+   "sell_without_position_skipped": 0,
+   "symbols_scanned": 0,
+   "symbols_skipped": 1
+  },
+  "positions": {},
+  "published": [],
+  "results": [
+   {
+    "reason": "CANDLE_IDENTITY_UNAVAILABLE",
+    "status": "SKIPPED",
+    "symbol": "BTCUSDT"
+   }
+  ]
+ },
+ "insufficient_closed": {
+  "errors": [],
+  "memory": {
+   "agent_evidence": [],
+   "executions": {},
+   "fetch_success": [
+    "BTCUSDT"
+   ],
+   "processed": {},
+   "signals": []
+  },
+  "metrics": {
+   "backfill_gap_exceeded": 0,
+   "buy_stale_data_skipped": 0,
+   "closed_candles_processed": 0,
+   "cycles": 0,
+   "decisions_normalized": 0,
+   "decisions_received": 0,
+   "decisions_rejected": 0,
+   "duplicate_candles_skipped": 0,
+   "duplicate_decisions_skipped": 0,
+   "duplicate_executions_skipped": 0,
+   "errors": 0,
+   "execution_failures": 0,
+   "execution_requests": 0,
+   "executions_completed": 0,
+   "executions_rejected": 0,
+   "hold_decisions": 0,
+   "latency": 0.0,
+   "market_data_contract_violations": 0,
+   "open_candles_excluded": 190,
+   "sell_without_position_skipped": 0,
+   "symbols_scanned": 0,
+   "symbols_skipped": 1
+  },
+  "positions": {},
+  "published": [],
+  "results": [
+   {
+    "candle_count": 10,
+    "reason": "INSUFFICIENT_CLOSED_CANDLES",
+    "status": "SKIPPED",
+    "symbol": "BTCUSDT"
+   }
+  ]
+ },
+ "invalid_action": {
+  "errors": [],
+  "memory": {
+   "agent_evidence": [
+    "BTCUSDT"
+   ],
+   "executions": {},
+   "fetch_success": [
+    "BTCUSDT"
+   ],
+   "processed": {
+    "BTCUSDT": "open:1700011940000"
+   },
+   "signals": [
+    "BTCUSDT"
+   ]
+  },
+  "metrics": {
+   "backfill_gap_exceeded": 0,
+   "buy_stale_data_skipped": 0,
+   "closed_candles_processed": 1,
+   "cycles": 0,
+   "decisions_normalized": 1,
+   "decisions_received": 1,
+   "decisions_rejected": 1,
+   "duplicate_candles_skipped": 0,
+   "duplicate_decisions_skipped": 0,
+   "duplicate_executions_skipped": 0,
+   "errors": 0,
+   "execution_failures": 0,
+   "execution_requests": 0,
+   "executions_completed": 0,
+   "executions_rejected": 0,
+   "hold_decisions": 0,
+   "latency": 0.0,
+   "market_data_contract_violations": 0,
+   "open_candles_excluded": 0,
+   "sell_without_position_skipped": 0,
+   "symbols_scanned": 0,
+   "symbols_skipped": 0
+  },
+  "positions": {},
+  "published": [
+   [
+    "ATLAS_DECISION",
+    {
+     "action": "TELEPORT",
+     "confidence": 90.0,
+     "created_at": "<v>",
+     "metadata": {
+      "adapter_name": "DecisionAdapter",
+      "adapter_version": "5.2",
+      "candle_identity": "open:1700011940000",
+      "closed_candle_only": true,
+      "market_loop_version": "8.2",
+      "normalized_action": "BUY",
+      "normalized_at": "<ts>",
+      "normalized_confidence": 90.0,
+      "raw_decision_type": "dict",
+      "source_fields": [
+       "action",
+       "confidence",
+       "market_state",
+       "price",
+       "reason",
+       "risk",
+       "strategy",
+       "symbol"
+      ]
+     },
+     "price": 261.25,
+     "risk_level": "MEDIUM",
+     "strategy": "BLOCK5C_UPSTREAM_SIZING_AUTHORITY",
+     "symbol": "BTCUSDT"
+    }
+   ]
+  ],
+  "results": [
+   {
+    "action": "TELEPORT",
+    "reason": "INVALID_NORMALIZED_ACTION",
+    "status": "REJECTED",
+    "symbol": "BTCUSDT"
+   }
+  ]
+ },
+ "invalid_analysis": {
+  "errors": [],
+  "memory": {
+   "agent_evidence": [],
+   "executions": {},
+   "fetch_success": [
+    "BTCUSDT"
+   ],
+   "processed": {},
+   "signals": []
+  },
+  "metrics": {
+   "backfill_gap_exceeded": 0,
+   "buy_stale_data_skipped": 0,
+   "closed_candles_processed": 0,
+   "cycles": 0,
+   "decisions_normalized": 0,
+   "decisions_received": 0,
+   "decisions_rejected": 0,
+   "duplicate_candles_skipped": 0,
+   "duplicate_decisions_skipped": 0,
+   "duplicate_executions_skipped": 0,
+   "errors": 0,
+   "execution_failures": 0,
+   "execution_requests": 0,
+   "executions_completed": 0,
+   "executions_rejected": 0,
+   "hold_decisions": 0,
+   "latency": 0.0,
+   "market_data_contract_violations": 0,
+   "open_candles_excluded": 0,
+   "sell_without_position_skipped": 0,
+   "symbols_scanned": 0,
+   "symbols_skipped": 1
+  },
+  "positions": {},
+  "published": [],
+  "results": [
+   null
+  ]
+ },
+ "invalid_price": {
+  "errors": [],
+  "memory": {
+   "agent_evidence": [],
+   "executions": {},
+   "fetch_success": [
+    "BTCUSDT"
+   ],
+   "processed": {},
+   "signals": []
+  },
+  "metrics": {
+   "backfill_gap_exceeded": 0,
+   "buy_stale_data_skipped": 0,
+   "closed_candles_processed": 0,
+   "cycles": 0,
+   "decisions_normalized": 0,
+   "decisions_received": 0,
+   "decisions_rejected": 0,
+   "duplicate_candles_skipped": 0,
+   "duplicate_decisions_skipped": 0,
+   "duplicate_executions_skipped": 0,
+   "errors": 0,
+   "execution_failures": 0,
+   "execution_requests": 0,
+   "executions_completed": 0,
+   "executions_rejected": 0,
+   "hold_decisions": 0,
+   "latency": 0.0,
+   "market_data_contract_violations": 0,
+   "open_candles_excluded": 0,
+   "sell_without_position_skipped": 0,
+   "symbols_scanned": 0,
+   "symbols_skipped": 1
+  },
+  "positions": {},
+  "published": [],
+  "results": [
+   null
+  ]
+ },
+ "lowercase_symbol": {
+  "errors": [],
+  "memory": {
+   "agent_evidence": [
+    "BTCUSDT"
+   ],
+   "executions": {
+    "BTCUSDT": {
+     "action": "BUY",
+     "commit_outcome": "COMMITTED",
+     "data": {
+      "allocation": 2499.9979125,
+      "approved_quote_allocation": "2500.00",
+      "confidence": 90.0,
+      "executed_quote_notional": "2499.9979125000",
+      "instrument_rules_digest": "eef0e1808a3b2a3fe33b55cc25425a1d2eb430145fa5696cbda19d66fb821352",
+      "instrument_rules_source": "https://api.binance.com/api/v3/exchangeInfo",
+      "instrument_rules_source_version": "1790687644597",
+      "order_type": "MARKET",
+      "paper_mirror": "OK",
+      "request_id": "BTCUSDT|open:1700011940000|BUY",
+      "risk": "MEDIUM",
+      "source": "ATLAS",
+      "strategy": "BLOCK5C_UPSTREAM_SIZING_AUTHORITY",
+      "unallocated_quote_remainder": "0.0020875000"
+     },
+     "durable_financial_state": {
+      "position_id": "long:BTCUSDT:bae42bf18140d1a2792f683e7ffa7e9a8b654bc968dcabaf22fd7c3ce0e56482",
+      "replayed": false
+     },
+     "error_code": null,
+     "error_details": null,
+     "execution_fingerprint": "BTCUSDT|open:1700011940000|BUY",
+     "execution_id": "<v>",
+     "fee": 0.0,
+     "fee_amount": "0",
+     "fee_currency": "USDT",
+     "filled_amount": 2499.9979125,
+     "filled_base_quantity": "9.56937000",
+     "filled_price": 261.25,
+     "filled_quote_notional": "2499.9979125000",
+     "idempotency_key": "BTCUSDT|open:1700011940000|BUY",
+     "latency_ms": "<v>",
+     "message": "Paper execution completed",
+     "metadata": {
+      "adapter_name": "DecisionAdapter",
+      "adapter_version": "5.2",
+      "candle_identity": "open:1700011940000",
+      "closed_candle_only": true,
+      "execution_fingerprint": "BTCUSDT|open:1700011940000|BUY",
+      "idempotency_key": "BTCUSDT|open:1700011940000|BUY",
+      "market_loop_version": "8.2",
+      "normalized_action": "BUY",
+      "normalized_at": "<ts>",
+      "normalized_confidence": 90.0,
+      "raw_decision_type": "dict",
+      "request_mode": "PAPER",
+      "sizing": {
+       "authority": "PositionSizingService",
+       "basis_pct": "0.25",
+       "committed_quote": "0",
+       "durable_free_quote_capital": "10000",
+       "inputs_digest": "4388e8e52701ccf2f8eaab9b2a5b3fadae8b9ec12b346cd00e588a98d88b2056",
+       "policy_version": "phase3-risk-v1",
+       "proposed_quote_allocation": "2500.00",
+       "remaining_allocatable_capital_capacity": "8000.000",
+       "remaining_bucket_allocation_capacity": "2500.000",
+       "remaining_bucket_exposure_ceiling_capacity": "4000.000",
+       "remaining_concentration_capacity": "4000.000",
+       "remaining_portfolio_capacity": "8000.000",
+       "remaining_position_capacity": "4000.000",
+       "remaining_symbol_capacity": "4000.000",
+       "risk_bucket": "MEDIUM",
+       "symbol_exposure": "0"
+      },
+      "source_fields": [
+       "action",
+       "confidence",
+       "market_state",
+       "price",
+       "reason",
+       "risk",
+       "strategy",
+       "symbol"
+      ]
+     },
+     "mode": "PAPER",
+     "order_id": "paper-order:<uuid>",
+     "pnl": 0.0,
+     "position_id": "long:BTCUSDT:bae42bf18140d1a2792f683e7ffa7e9a8b654bc968dcabaf22fd7c3ce0e56482",
+     "price": 261.25,
+     "provenance_ref": "transaction-journal:BTCUSDT|open:1700011940000|BUY",
+     "quantity": 2499.9979125,
+     "request_id": "BTCUSDT|open:1700011940000|BUY",
+     "requested_amount": 0.0,
+     "requested_base_quantity": null,
+     "requested_price": 261.25,
+     "requested_quote_allocation": "2500.00",
+     "risk_level": "UNKNOWN",
+     "slippage": 0.0,
+     "status": "PAPER_EXECUTED",
+     "success": true,
+     "symbol": "BTCUSDT",
+     "timestamp": "<v>",
+     "trade_id": null
+    }
+   },
+   "fetch_success": [
+    "BTCUSDT"
+   ],
+   "processed": {
+    "BTCUSDT": "open:1700011940000"
+   },
+   "signals": [
+    "BTCUSDT"
+   ]
+  },
+  "metrics": {
+   "backfill_gap_exceeded": 0,
+   "buy_stale_data_skipped": 0,
+   "closed_candles_processed": 1,
+   "cycles": 0,
+   "decisions_normalized": 1,
+   "decisions_received": 1,
+   "decisions_rejected": 0,
+   "duplicate_candles_skipped": 0,
+   "duplicate_decisions_skipped": 0,
+   "duplicate_executions_skipped": 0,
+   "errors": 0,
+   "execution_failures": 0,
+   "execution_requests": 1,
+   "executions_completed": 1,
+   "executions_rejected": 0,
+   "hold_decisions": 0,
+   "latency": 0.0,
+   "market_data_contract_violations": 0,
+   "open_candles_excluded": 0,
+   "sell_without_position_skipped": 0,
+   "symbols_scanned": 1,
+   "symbols_skipped": 0
+  },
+  "positions": {
+   "BTCUSDT": {
+    "average_entry_price": "261.25",
+    "base_quantity": "9.56937000",
+    "cost_quote": "2499.9979125000",
+    "entry_fees": "0",
+    "mark_price": "261.25",
+    "opened_at": "<ts>",
+    "position_id": "long:BTCUSDT:bae42bf18140d1a2792f683e7ffa7e9a8b654bc968dcabaf22fd7c3ce0e56482",
+    "symbol": "BTCUSDT",
+    "version": 1
+   }
+  },
+  "published": [
+   [
+    "ATLAS_DECISION",
+    {
+     "action": "BUY",
+     "confidence": 90.0,
+     "created_at": "<v>",
+     "metadata": {
+      "adapter_name": "DecisionAdapter",
+      "adapter_version": "5.2",
+      "candle_identity": "open:1700011940000",
+      "closed_candle_only": true,
+      "market_loop_version": "8.2",
+      "normalized_action": "BUY",
+      "normalized_at": "<ts>",
+      "normalized_confidence": 90.0,
+      "raw_decision_type": "dict",
+      "source_fields": [
+       "action",
+       "confidence",
+       "market_state",
+       "price",
+       "reason",
+       "risk",
+       "strategy",
+       "symbol"
+      ]
+     },
+     "price": 261.25,
+     "risk_level": "MEDIUM",
+     "strategy": "BLOCK5C_UPSTREAM_SIZING_AUTHORITY",
+     "symbol": "BTCUSDT"
+    }
+   ]
+  ],
+  "results": [
+   {
+    "action": "BUY",
+    "commit_outcome": "COMMITTED",
+    "data": {
+     "allocation": 2499.9979125,
+     "approved_quote_allocation": "2500.00",
+     "confidence": 90.0,
+     "executed_quote_notional": "2499.9979125000",
+     "instrument_rules_digest": "eef0e1808a3b2a3fe33b55cc25425a1d2eb430145fa5696cbda19d66fb821352",
+     "instrument_rules_source": "https://api.binance.com/api/v3/exchangeInfo",
+     "instrument_rules_source_version": "1790687644597",
+     "order_type": "MARKET",
+     "paper_mirror": "OK",
+     "request_id": "BTCUSDT|open:1700011940000|BUY",
+     "risk": "MEDIUM",
+     "source": "ATLAS",
+     "strategy": "BLOCK5C_UPSTREAM_SIZING_AUTHORITY",
+     "unallocated_quote_remainder": "0.0020875000"
+    },
+    "durable_financial_state": {
+     "position_id": "long:BTCUSDT:bae42bf18140d1a2792f683e7ffa7e9a8b654bc968dcabaf22fd7c3ce0e56482",
+     "replayed": false
+    },
+    "error_code": null,
+    "error_details": null,
+    "execution_fingerprint": "BTCUSDT|open:1700011940000|BUY",
+    "execution_id": "<v>",
+    "fee": 0.0,
+    "fee_amount": "0",
+    "fee_currency": "USDT",
+    "filled_amount": 2499.9979125,
+    "filled_base_quantity": "9.56937000",
+    "filled_price": 261.25,
+    "filled_quote_notional": "2499.9979125000",
+    "idempotency_key": "BTCUSDT|open:1700011940000|BUY",
+    "latency_ms": "<v>",
+    "message": "Paper execution completed",
+    "metadata": {
+     "adapter_name": "DecisionAdapter",
+     "adapter_version": "5.2",
+     "candle_identity": "open:1700011940000",
+     "closed_candle_only": true,
+     "execution_fingerprint": "BTCUSDT|open:1700011940000|BUY",
+     "idempotency_key": "BTCUSDT|open:1700011940000|BUY",
+     "market_loop_version": "8.2",
+     "normalized_action": "BUY",
+     "normalized_at": "<ts>",
+     "normalized_confidence": 90.0,
+     "raw_decision_type": "dict",
+     "request_mode": "PAPER",
+     "sizing": {
+      "authority": "PositionSizingService",
+      "basis_pct": "0.25",
+      "committed_quote": "0",
+      "durable_free_quote_capital": "10000",
+      "inputs_digest": "4388e8e52701ccf2f8eaab9b2a5b3fadae8b9ec12b346cd00e588a98d88b2056",
+      "policy_version": "phase3-risk-v1",
+      "proposed_quote_allocation": "2500.00",
+      "remaining_allocatable_capital_capacity": "8000.000",
+      "remaining_bucket_allocation_capacity": "2500.000",
+      "remaining_bucket_exposure_ceiling_capacity": "4000.000",
+      "remaining_concentration_capacity": "4000.000",
+      "remaining_portfolio_capacity": "8000.000",
+      "remaining_position_capacity": "4000.000",
+      "remaining_symbol_capacity": "4000.000",
+      "risk_bucket": "MEDIUM",
+      "symbol_exposure": "0"
+     },
+     "source_fields": [
+      "action",
+      "confidence",
+      "market_state",
+      "price",
+      "reason",
+      "risk",
+      "strategy",
+      "symbol"
+     ]
+    },
+    "mode": "PAPER",
+    "order_id": "paper-order:<uuid>",
+    "pnl": 0.0,
+    "position_id": "long:BTCUSDT:bae42bf18140d1a2792f683e7ffa7e9a8b654bc968dcabaf22fd7c3ce0e56482",
+    "price": 261.25,
+    "provenance_ref": "transaction-journal:BTCUSDT|open:1700011940000|BUY",
+    "quantity": 2499.9979125,
+    "request_id": "BTCUSDT|open:1700011940000|BUY",
+    "requested_amount": 0.0,
+    "requested_base_quantity": null,
+    "requested_price": 261.25,
+    "requested_quote_allocation": "2500.00",
+    "risk_level": "UNKNOWN",
+    "slippage": 0.0,
+    "status": "PAPER_EXECUTED",
+    "success": true,
+    "symbol": "BTCUSDT",
+    "timestamp": "<v>",
+    "trade_id": null
+   }
+  ]
+ },
+ "no_candles": {
+  "errors": [],
+  "memory": {
+   "agent_evidence": [],
+   "executions": {},
+   "fetch_success": [],
+   "processed": {},
+   "signals": []
+  },
+  "metrics": {
+   "backfill_gap_exceeded": 0,
+   "buy_stale_data_skipped": 0,
+   "closed_candles_processed": 0,
+   "cycles": 0,
+   "decisions_normalized": 0,
+   "decisions_received": 0,
+   "decisions_rejected": 0,
+   "duplicate_candles_skipped": 0,
+   "duplicate_decisions_skipped": 0,
+   "duplicate_executions_skipped": 0,
+   "errors": 0,
+   "execution_failures": 0,
+   "execution_requests": 0,
+   "executions_completed": 0,
+   "executions_rejected": 0,
+   "hold_decisions": 0,
+   "latency": 0.0,
+   "market_data_contract_violations": 0,
+   "open_candles_excluded": 0,
+   "sell_without_position_skipped": 0,
+   "symbols_scanned": 0,
+   "symbols_skipped": 1
+  },
+  "positions": {},
+  "published": [],
+  "results": [
+   null
+  ]
+ },
+ "no_closed": {
+  "errors": [],
+  "memory": {
+   "agent_evidence": [],
+   "executions": {},
+   "fetch_success": [
+    "BTCUSDT"
+   ],
+   "processed": {},
+   "signals": []
+  },
+  "metrics": {
+   "backfill_gap_exceeded": 0,
+   "buy_stale_data_skipped": 0,
+   "closed_candles_processed": 0,
+   "cycles": 0,
+   "decisions_normalized": 0,
+   "decisions_received": 0,
+   "decisions_rejected": 0,
+   "duplicate_candles_skipped": 0,
+   "duplicate_decisions_skipped": 0,
+   "duplicate_executions_skipped": 0,
+   "errors": 0,
+   "execution_failures": 0,
+   "execution_requests": 0,
+   "executions_completed": 0,
+   "executions_rejected": 0,
+   "hold_decisions": 0,
+   "latency": 0.0,
+   "market_data_contract_violations": 0,
+   "open_candles_excluded": 200,
+   "sell_without_position_skipped": 0,
+   "symbols_scanned": 0,
+   "symbols_skipped": 1
+  },
+  "positions": {},
+  "published": [],
+  "results": [
+   {
+    "reason": "NO_CLOSED_CANDLES",
+    "status": "SKIPPED",
+    "symbol": "BTCUSDT"
+   }
+  ]
+ },
+ "normalization_failed": {
+  "errors": [],
+  "memory": {
+   "agent_evidence": [],
+   "executions": {},
+   "fetch_success": [
+    "BTCUSDT"
+   ],
+   "processed": {},
+   "signals": []
+  },
+  "metrics": {
+   "backfill_gap_exceeded": 0,
+   "buy_stale_data_skipped": 0,
+   "closed_candles_processed": 0,
+   "cycles": 0,
+   "decisions_normalized": 0,
+   "decisions_received": 1,
+   "decisions_rejected": 1,
+   "duplicate_candles_skipped": 0,
+   "duplicate_decisions_skipped": 0,
+   "duplicate_executions_skipped": 0,
+   "errors": 0,
+   "execution_failures": 0,
+   "execution_requests": 0,
+   "executions_completed": 0,
+   "executions_rejected": 0,
+   "hold_decisions": 0,
+   "latency": 0.0,
+   "market_data_contract_violations": 0,
+   "open_candles_excluded": 0,
+   "sell_without_position_skipped": 0,
+   "symbols_scanned": 0,
+   "symbols_skipped": 0
+  },
+  "positions": {},
+  "published": [
+   [
+    "DECISION_NORMALIZATION_FAILED",
+    {
+     "raw_decision": {
+      "action": "BUY",
+      "confidence": 90.0,
+      "reason": "Sizing authority contract.",
+      "risk": "MEDIUM",
+      "strategy": "BLOCK5C_UPSTREAM_SIZING_AUTHORITY",
+      "symbol": "BTCUSDT"
+     },
+     "symbol": "BTCUSDT",
+     "timestamp": "<v>"
+    }
+   ]
+  ],
+  "results": [
+   null
+  ]
+ },
+ "normalize_empty": {
+  "errors": [],
+  "memory": {
+   "agent_evidence": [],
+   "executions": {},
+   "fetch_success": [
+    "BTCUSDT"
+   ],
+   "processed": {},
+   "signals": []
+  },
+  "metrics": {
+   "backfill_gap_exceeded": 0,
+   "buy_stale_data_skipped": 0,
+   "closed_candles_processed": 0,
+   "cycles": 0,
+   "decisions_normalized": 0,
+   "decisions_received": 0,
+   "decisions_rejected": 0,
+   "duplicate_candles_skipped": 0,
+   "duplicate_decisions_skipped": 0,
+   "duplicate_executions_skipped": 0,
+   "errors": 0,
+   "execution_failures": 0,
+   "execution_requests": 0,
+   "executions_completed": 0,
+   "executions_rejected": 0,
+   "hold_decisions": 0,
+   "latency": 0.0,
+   "market_data_contract_violations": 0,
+   "open_candles_excluded": 0,
+   "sell_without_position_skipped": 0,
+   "symbols_scanned": 0,
+   "symbols_skipped": 1
+  },
+  "positions": {},
+  "published": [],
+  "results": [
+   null
+  ]
+ },
+ "route_raises": {
+  "errors": [
+   [
+    "symbol:BTCUSDT",
+    "RuntimeError",
+    "route boom"
+   ]
+  ],
+  "memory": {
+   "agent_evidence": [
+    "BTCUSDT"
+   ],
+   "executions": {},
+   "fetch_success": [
+    "BTCUSDT"
+   ],
+   "processed": {
+    "BTCUSDT": "open:1700011940000"
+   },
+   "signals": [
+    "BTCUSDT"
+   ]
+  },
+  "metrics": {
+   "backfill_gap_exceeded": 0,
+   "buy_stale_data_skipped": 0,
+   "closed_candles_processed": 1,
+   "cycles": 0,
+   "decisions_normalized": 1,
+   "decisions_received": 1,
+   "decisions_rejected": 0,
+   "duplicate_candles_skipped": 0,
+   "duplicate_decisions_skipped": 0,
+   "duplicate_executions_skipped": 0,
+   "errors": 1,
+   "execution_failures": 0,
+   "execution_requests": 0,
+   "executions_completed": 0,
+   "executions_rejected": 0,
+   "hold_decisions": 0,
+   "latency": 0.0,
+   "market_data_contract_violations": 0,
+   "open_candles_excluded": 0,
+   "sell_without_position_skipped": 0,
+   "symbols_scanned": 0,
+   "symbols_skipped": 0
+  },
+  "positions": {},
+  "published": [
+   [
+    "ATLAS_DECISION",
+    {
+     "action": "BUY",
+     "confidence": 90.0,
+     "created_at": "<v>",
+     "metadata": {
+      "adapter_name": "DecisionAdapter",
+      "adapter_version": "5.2",
+      "candle_identity": "open:1700011940000",
+      "closed_candle_only": true,
+      "market_loop_version": "8.2",
+      "normalized_action": "BUY",
+      "normalized_at": "<ts>",
+      "normalized_confidence": 90.0,
+      "raw_decision_type": "dict",
+      "source_fields": [
+       "action",
+       "confidence",
+       "market_state",
+       "price",
+       "reason",
+       "risk",
+       "strategy",
+       "symbol"
+      ]
+     },
+     "price": 261.25,
+     "risk_level": "MEDIUM",
+     "strategy": "BLOCK5C_UPSTREAM_SIZING_AUTHORITY",
+     "symbol": "BTCUSDT"
+    }
+   ]
+  ],
+  "results": [
+   null
+  ]
+ },
+ "sell_flat": {
+  "errors": [],
+  "memory": {
+   "agent_evidence": [
+    "BTCUSDT"
+   ],
+   "executions": {
+    "BTCUSDT": {
+     "action": "SELL",
+     "reason": "NO_POSITION_TO_SELL",
+     "status": "SKIPPED",
+     "symbol": "BTCUSDT",
+     "timestamp": "<v>"
+    }
+   },
+   "fetch_success": [
+    "BTCUSDT"
+   ],
+   "processed": {
+    "BTCUSDT": "open:1700011940000"
+   },
+   "signals": [
+    "BTCUSDT"
+   ]
+  },
+  "metrics": {
+   "backfill_gap_exceeded": 0,
+   "buy_stale_data_skipped": 0,
+   "closed_candles_processed": 1,
+   "cycles": 0,
+   "decisions_normalized": 1,
+   "decisions_received": 1,
+   "decisions_rejected": 0,
+   "duplicate_candles_skipped": 0,
+   "duplicate_decisions_skipped": 0,
+   "duplicate_executions_skipped": 0,
+   "errors": 0,
+   "execution_failures": 0,
+   "execution_requests": 0,
+   "executions_completed": 0,
+   "executions_rejected": 0,
+   "hold_decisions": 0,
+   "latency": 0.0,
+   "market_data_contract_violations": 0,
+   "open_candles_excluded": 0,
+   "sell_without_position_skipped": 1,
+   "symbols_scanned": 0,
+   "symbols_skipped": 0
+  },
+  "positions": {},
+  "published": [
+   [
+    "ATLAS_DECISION",
+    {
+     "action": "SELL",
+     "confidence": 90.0,
+     "created_at": "<v>",
+     "metadata": {
+      "adapter_name": "DecisionAdapter",
+      "adapter_version": "5.2",
+      "candle_identity": "open:1700011940000",
+      "closed_candle_only": true,
+      "market_loop_version": "8.2",
+      "normalized_action": "SELL",
+      "normalized_at": "<ts>",
+      "normalized_confidence": 90.0,
+      "raw_decision_type": "dict",
+      "source_fields": [
+       "action",
+       "confidence",
+       "market_state",
+       "price",
+       "reason",
+       "risk",
+       "strategy",
+       "symbol"
+      ]
+     },
+     "price": 261.25,
+     "risk_level": "MEDIUM",
+     "strategy": "BLOCK5C_UPSTREAM_SIZING_AUTHORITY",
+     "symbol": "BTCUSDT"
+    }
+   ]
+  ],
+  "results": [
+   {
+    "action": "SELL",
+    "reason": "NO_POSITION_TO_SELL",
+    "status": "SKIPPED",
+    "symbol": "BTCUSDT",
+    "timestamp": "<v>"
+   }
+  ]
+ },
+ "sell_held": {
+  "errors": [],
+  "memory": {
+   "agent_evidence": [
+    "BTCUSDT"
+   ],
+   "executions": {
+    "BTCUSDT": {
+     "action": "SELL",
+     "commit_outcome": "COMMITTED",
+     "data": {
+      "approved_quote_reduction": "100",
+      "confidence": 90.0,
+      "executed_quote_reduction": "100",
+      "held_base_quantity": "10",
+      "instrument_rules_digest": "eef0e1808a3b2a3fe33b55cc25425a1d2eb430145fa5696cbda19d66fb821352",
+      "instrument_rules_source": "https://api.binance.com/api/v3/exchangeInfo",
+      "instrument_rules_source_version": "1790687644597",
+      "order_type": "MARKET",
+      "paper_mirror": "OK",
+      "partial_reduction": false,
+      "request_id": "BTCUSDT|open:1700011940000|SELL",
+      "risk": "MEDIUM",
+      "risk_basis_price": "10",
+      "source": "ATLAS",
+      "strategy": "BLOCK5C_UPSTREAM_SIZING_AUTHORITY",
+      "unreduced_quote_remainder": "0"
+     },
+     "durable_financial_state": {
+      "position_id": "long:BTCUSDT",
+      "replayed": false
+     },
+     "error_code": null,
+     "error_details": null,
+     "execution_fingerprint": "BTCUSDT|open:1700011940000|SELL",
+     "execution_id": "<v>",
+     "fee": 0.0,
+     "fee_amount": "0",
+     "fee_currency": "USDT",
+     "filled_amount": 2612.5,
+     "filled_base_quantity": "10",
+     "filled_price": 261.25,
+     "filled_quote_notional": "2612.50",
+     "idempotency_key": "BTCUSDT|open:1700011940000|SELL",
+     "latency_ms": "<v>",
+     "message": "Paper execution completed",
+     "metadata": {
+      "adapter_name": "DecisionAdapter",
+      "adapter_version": "5.2",
+      "candle_identity": "open:1700011940000",
+      "closed_candle_only": true,
+      "execution_fingerprint": "BTCUSDT|open:1700011940000|SELL",
+      "idempotency_key": "BTCUSDT|open:1700011940000|SELL",
+      "market_loop_version": "8.2",
+      "normalized_action": "SELL",
+      "normalized_at": "<ts>",
+      "normalized_confidence": 90.0,
+      "raw_decision_type": "dict",
+      "request_mode": "PAPER",
+      "source_fields": [
+       "action",
+       "confidence",
+       "market_state",
+       "price",
+       "reason",
+       "risk",
+       "strategy",
+       "symbol"
+      ]
+     },
+     "mode": "PAPER",
+     "order_id": null,
+     "pnl": 0.0,
+     "position_id": "long:BTCUSDT",
+     "price": 261.25,
+     "provenance_ref": "transaction-journal:BTCUSDT|open:1700011940000|SELL",
+     "quantity": 2612.5,
+     "request_id": "BTCUSDT|open:1700011940000|SELL",
+     "requested_amount": 0.0,
+     "requested_base_quantity": null,
+     "requested_price": 261.25,
+     "requested_quote_allocation": null,
+     "risk_level": "UNKNOWN",
+     "slippage": 0.0,
+     "status": "PAPER_EXECUTED",
+     "success": true,
+     "symbol": "BTCUSDT",
+     "timestamp": "<v>",
+     "trade_id": null
+    }
+   },
+   "fetch_success": [
+    "BTCUSDT"
+   ],
+   "processed": {
+    "BTCUSDT": "open:1700011940000"
+   },
+   "signals": [
+    "BTCUSDT"
+   ]
+  },
+  "metrics": {
+   "backfill_gap_exceeded": 0,
+   "buy_stale_data_skipped": 0,
+   "closed_candles_processed": 1,
+   "cycles": 0,
+   "decisions_normalized": 1,
+   "decisions_received": 1,
+   "decisions_rejected": 0,
+   "duplicate_candles_skipped": 0,
+   "duplicate_decisions_skipped": 0,
+   "duplicate_executions_skipped": 0,
+   "errors": 0,
+   "execution_failures": 0,
+   "execution_requests": 1,
+   "executions_completed": 1,
+   "executions_rejected": 0,
+   "hold_decisions": 0,
+   "latency": 0.0,
+   "market_data_contract_violations": 0,
+   "open_candles_excluded": 0,
+   "sell_without_position_skipped": 0,
+   "symbols_scanned": 1,
+   "symbols_skipped": 0
+  },
+  "positions": {},
+  "published": [
+   [
+    "ATLAS_DECISION",
+    {
+     "action": "SELL",
+     "confidence": 90.0,
+     "created_at": "<v>",
+     "metadata": {
+      "adapter_name": "DecisionAdapter",
+      "adapter_version": "5.2",
+      "candle_identity": "open:1700011940000",
+      "closed_candle_only": true,
+      "market_loop_version": "8.2",
+      "normalized_action": "SELL",
+      "normalized_at": "<ts>",
+      "normalized_confidence": 90.0,
+      "raw_decision_type": "dict",
+      "source_fields": [
+       "action",
+       "confidence",
+       "market_state",
+       "price",
+       "reason",
+       "risk",
+       "strategy",
+       "symbol"
+      ]
+     },
+     "price": 261.25,
+     "risk_level": "MEDIUM",
+     "strategy": "BLOCK5C_UPSTREAM_SIZING_AUTHORITY",
+     "symbol": "BTCUSDT"
+    }
+   ]
+  ],
+  "results": [
+   {
+    "action": "SELL",
+    "commit_outcome": "COMMITTED",
+    "data": {
+     "approved_quote_reduction": "100",
+     "confidence": 90.0,
+     "executed_quote_reduction": "100",
+     "held_base_quantity": "10",
+     "instrument_rules_digest": "eef0e1808a3b2a3fe33b55cc25425a1d2eb430145fa5696cbda19d66fb821352",
+     "instrument_rules_source": "https://api.binance.com/api/v3/exchangeInfo",
+     "instrument_rules_source_version": "1790687644597",
+     "order_type": "MARKET",
+     "paper_mirror": "OK",
+     "partial_reduction": false,
+     "request_id": "BTCUSDT|open:1700011940000|SELL",
+     "risk": "MEDIUM",
+     "risk_basis_price": "10",
+     "source": "ATLAS",
+     "strategy": "BLOCK5C_UPSTREAM_SIZING_AUTHORITY",
+     "unreduced_quote_remainder": "0"
+    },
+    "durable_financial_state": {
+     "position_id": "long:BTCUSDT",
+     "replayed": false
+    },
+    "error_code": null,
+    "error_details": null,
+    "execution_fingerprint": "BTCUSDT|open:1700011940000|SELL",
+    "execution_id": "<v>",
+    "fee": 0.0,
+    "fee_amount": "0",
+    "fee_currency": "USDT",
+    "filled_amount": 2612.5,
+    "filled_base_quantity": "10",
+    "filled_price": 261.25,
+    "filled_quote_notional": "2612.50",
+    "idempotency_key": "BTCUSDT|open:1700011940000|SELL",
+    "latency_ms": "<v>",
+    "message": "Paper execution completed",
+    "metadata": {
+     "adapter_name": "DecisionAdapter",
+     "adapter_version": "5.2",
+     "candle_identity": "open:1700011940000",
+     "closed_candle_only": true,
+     "execution_fingerprint": "BTCUSDT|open:1700011940000|SELL",
+     "idempotency_key": "BTCUSDT|open:1700011940000|SELL",
+     "market_loop_version": "8.2",
+     "normalized_action": "SELL",
+     "normalized_at": "<ts>",
+     "normalized_confidence": 90.0,
+     "raw_decision_type": "dict",
+     "request_mode": "PAPER",
+     "source_fields": [
+      "action",
+      "confidence",
+      "market_state",
+      "price",
+      "reason",
+      "risk",
+      "strategy",
+      "symbol"
+     ]
+    },
+    "mode": "PAPER",
+    "order_id": null,
+    "pnl": 0.0,
+    "position_id": "long:BTCUSDT",
+    "price": 261.25,
+    "provenance_ref": "transaction-journal:BTCUSDT|open:1700011940000|SELL",
+    "quantity": 2612.5,
+    "request_id": "BTCUSDT|open:1700011940000|SELL",
+    "requested_amount": 0.0,
+    "requested_base_quantity": null,
+    "requested_price": 261.25,
+    "requested_quote_allocation": null,
+    "risk_level": "UNKNOWN",
+    "slippage": 0.0,
+    "status": "PAPER_EXECUTED",
+    "success": true,
+    "symbol": "BTCUSDT",
+    "timestamp": "<v>",
+    "trade_id": null
+   }
+  ]
+ },
+ "stale_buy": {
+  "errors": [],
+  "memory": {
+   "agent_evidence": [
+    "BTCUSDT"
+   ],
+   "executions": {
+    "BTCUSDT": {
+     "action": "BUY",
+     "candle_age_seconds": 600.0,
+     "candle_age_status": "MEASURED",
+     "reason": "STALE_MARKET_DATA",
+     "status": "SKIPPED",
+     "symbol": "BTCUSDT",
+     "timestamp": "<v>"
+    }
+   },
+   "fetch_success": [
+    "BTCUSDT"
+   ],
+   "processed": {
+    "BTCUSDT": "open:1700011940000"
+   },
+   "signals": [
+    "BTCUSDT"
+   ]
+  },
+  "metrics": {
+   "backfill_gap_exceeded": 0,
+   "buy_stale_data_skipped": 1,
+   "closed_candles_processed": 1,
+   "cycles": 0,
+   "decisions_normalized": 1,
+   "decisions_received": 1,
+   "decisions_rejected": 0,
+   "duplicate_candles_skipped": 0,
+   "duplicate_decisions_skipped": 0,
+   "duplicate_executions_skipped": 0,
+   "errors": 0,
+   "execution_failures": 0,
+   "execution_requests": 0,
+   "executions_completed": 0,
+   "executions_rejected": 0,
+   "hold_decisions": 0,
+   "latency": 0.0,
+   "market_data_contract_violations": 0,
+   "open_candles_excluded": 0,
+   "sell_without_position_skipped": 0,
+   "symbols_scanned": 0,
+   "symbols_skipped": 0
+  },
+  "positions": {},
+  "published": [
+   [
+    "ATLAS_DECISION",
+    {
+     "action": "BUY",
+     "confidence": 90.0,
+     "created_at": "<v>",
+     "metadata": {
+      "adapter_name": "DecisionAdapter",
+      "adapter_version": "5.2",
+      "candle_identity": "open:1700011940000",
+      "closed_candle_only": true,
+      "market_loop_version": "8.2",
+      "normalized_action": "BUY",
+      "normalized_at": "<ts>",
+      "normalized_confidence": 90.0,
+      "raw_decision_type": "dict",
+      "source_fields": [
+       "action",
+       "confidence",
+       "market_state",
+       "price",
+       "reason",
+       "risk",
+       "strategy",
+       "symbol"
+      ]
+     },
+     "price": 261.25,
+     "risk_level": "MEDIUM",
+     "strategy": "BLOCK5C_UPSTREAM_SIZING_AUTHORITY",
+     "symbol": "BTCUSDT"
+    }
+   ]
+  ],
+  "results": [
+   {
+    "action": "BUY",
+    "candle_age_seconds": 600.0,
+    "candle_age_status": "MEASURED",
+    "reason": "STALE_MARKET_DATA",
+    "status": "SKIPPED",
+    "symbol": "BTCUSDT",
+    "timestamp": "<v>"
+   }
+  ]
+ },
+ "world_raises": {
+  "errors": [
+   [
+    "symbol:BTCUSDT",
+    "RuntimeError",
+    "world boom"
+   ]
+  ],
+  "memory": {
+   "agent_evidence": [],
+   "executions": {},
+   "fetch_success": [
+    "BTCUSDT"
+   ],
+   "processed": {},
+   "signals": []
+  },
+  "metrics": {
+   "backfill_gap_exceeded": 0,
+   "buy_stale_data_skipped": 0,
+   "closed_candles_processed": 0,
+   "cycles": 0,
+   "decisions_normalized": 0,
+   "decisions_received": 0,
+   "decisions_rejected": 0,
+   "duplicate_candles_skipped": 0,
+   "duplicate_decisions_skipped": 0,
+   "duplicate_executions_skipped": 0,
+   "errors": 1,
+   "execution_failures": 0,
+   "execution_requests": 0,
+   "executions_completed": 0,
+   "executions_rejected": 0,
+   "hold_decisions": 0,
+   "latency": 0.0,
+   "market_data_contract_violations": 0,
+   "open_candles_excluded": 0,
+   "sell_without_position_skipped": 0,
+   "symbols_scanned": 0,
+   "symbols_skipped": 0
+  },
+  "positions": {},
+  "published": [],
+  "results": [
+   null
+  ]
+ }
+}
