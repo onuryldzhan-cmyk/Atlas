@@ -260,3 +260,14 @@ def test_strong_consistent_group_survives_and_reports_q():
     older = {**noise, ("BUY", "TREND_UP", "60-65"): g}
     [lesson] = [c for c in xp._compare(older, dict(older)) if c["regime"] == "TREND_UP"]
     assert lesson["q_newer"] < xp.FDR_Q and lesson["tested_groups"] == 21
+
+
+def test_daily_history_feeds_the_research_chart(tmp_path):
+    rec, res = tmp_path / "records", tmp_path / "research"
+    for _ in range(3):
+        xp.run(rec, res, fetch=_fetch, now_ms=NOW, replay=_fake_replay())
+    from observability import experience_view as ev
+
+    out = ev.read_experience(xp._paths(res)[0])
+    assert [d["decisions"] for d in out["daily"]] == [4, 4, 4]
+    assert [d["day"] for d in out["daily"]] == sorted(d["day"] for d in out["daily"])

@@ -22,6 +22,7 @@
         .table-wrap { overflow-x: auto; }
     </style>
     {% include "_atlas_theme.html" %}
+    <script src="/assets/lightweight-charts.js"></script>
 </head>
 <body>
 {% set atlas_active = "research" %}
@@ -40,7 +41,7 @@
         <div class="col-lg-5"><div class="pane"><h2>Deney: <span id="exp-id">-</span></h2><div id="exp">Yükleniyor...</div></div></div>
         <div class="col-lg-7"><div class="pane"><h2>İşlem analitiği (son kapanan işlemler, brüt)</h2><div id="analytics" class="table-wrap">Yükleniyor...</div></div></div>
     </div>
-    <div class="pane"><h2>Deneyim (geçmiş günlerin tekrar oynatılması)</h2><div id="experience">Yükleniyor...</div></div>
+    <div class="pane"><h2>Deneyim (geçmiş günlerin tekrar oynatılması)</h2><div id="experience-chart" style="height:180px" aria-label="tekrar oynatılan gün başına karar sayısı"></div><div id="experience">Yükleniyor...</div></div>
     <div class="pane"><h2>Araştırma belgeleri</h2><div id="docs">Yükleniyor...</div></div>
     <div class="pane"><h2>Hafızadaki araştırma ve deney kayıtları</h2><div id="records">Yükleniyor...</div></div>
     <div class="small muted">Araştırma kanıt ve öneridir, politika değildir: bir bulgu ancak sahibin onayladığı bir öneriyle davranışa dönüşür. Ücretler düşülmüş tam rapor: <code>python -m tools.performance_report</code>.</div>
@@ -55,6 +56,16 @@
     (async () => {
         const [gates, trades, docs, mem] = await Promise.all([getJSON('/api/execution-gates'), getJSON('/api/trades'), getJSON('/api/research'), getJSON('/api/memory')]);
         const xp = await getJSON('/api/experience');
+        // Decisions per replayed day (TradingView lightweight-charts, vendored). No data: no chart, nothing invented.
+        const daily = (xp && xp.available === true && Array.isArray(xp.daily)) ? xp.daily : [];
+        const box = document.getElementById('experience-chart');
+        if (!daily.length || typeof LightweightCharts === 'undefined') box.style.display = 'none';
+        else {
+            const ch = LightweightCharts.createChart(box, { autoSize: true, layout: { background: { color: 'transparent' }, textColor: '#94a3b8', attributionLogo: true },
+                grid: { vertLines: { visible: false }, horzLines: { color: 'rgba(148,163,184,.08)' } }, rightPriceScale: { borderColor: 'rgba(148,163,184,.2)' } });
+            ch.addHistogramSeries({ color: '#5B8CFF', priceFormat: { type: 'volume' } }).setData(daily.map((d) => ({ time: d.day, value: d.decisions })));
+            ch.timeScale().fitContent();
+        }
         if (!xp || xp.available !== true) set('experience', `<span class="muted">Veri yok: ${esc((xp && xp.reason) || 'bilinmiyor')}</span>`);
         else {
             const ls = xp.candidate_lessons;

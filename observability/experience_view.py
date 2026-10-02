@@ -37,6 +37,9 @@ def read_experience(state_path: Path | None) -> dict[str, Any]:
     if not isinstance(state, dict):
         return {"available": False, "reason": "state.json biçimi geçersiz"}
     lessons = state.get("candidate_lessons")
+    daily = state.get("daily")
+    daily = [{"day": d, "decisions": n} for d, n in sorted(daily.items())
+             if isinstance(d, str) and isinstance(n, int)] if isinstance(daily, dict) else []
     return {
         "available": True,
         "days": state.get("days"),
@@ -45,4 +48,5 @@ def read_experience(state_path: Path | None) -> dict[str, Any]:
         "newest_day": _day(state.get("newest_day_ms")),
         "updated_at": state.get("updated_at"),
         "candidate_lessons": lessons if isinstance(lessons, list) else None,
+        "daily": daily,
     }
