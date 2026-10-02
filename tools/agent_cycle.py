@@ -26,6 +26,7 @@ import argparse
 import json
 import sys
 import time
+from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Callable
@@ -117,13 +118,34 @@ def _recent_records(records_dir: Path, n: int = 25) -> list[dict[str, Any]]:
     return recs[-n:]
 
 
-def ceo_brief(records_dir: Path, ask=None) -> dict[str, Any]:
-    """CEO AI (org unit): up to 5 priorities for the owner, each grounded in cited memory records."""
+CEO_MIN_GAP_H = 2.5  # spaces the CEO's 5-hour call share instead of spending it in the first cycles
+
+
+def ceo_brief(records_dir: Path, ask=None, *, min_gap_h: float = CEO_MIN_GAP_H,
+              now: datetime | None = None) -> dict[str, Any]:
+    """CEO AI (org unit): up to 5 priorities for the owner, each grounded in cited memory records.
+
+    Asks only when the last brief is at least min_gap_h old AND newer evidence exists since it
+    (owner 2026-10-02: use the quota where it adds value, not on repeats).
+    """
     from tools import ai_gateway as ai
 
     recent = _recent_records(records_dir)
     if not recent:
         return {"verdict": "OK", "summary": "kayıt yok; özet çıkarılmadı"}
+    last_ceo = max((str(r.get("created_at") or "") for r in _recent_records(records_dir, 500)
+                    if r.get("author") == "ceo_ai"), default="")
+    if last_ceo:
+        try:
+            last_at = datetime.strptime(last_ceo, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+        except ValueError:
+            # unreadable timestamp: fail closed, do not spend quota
+            return {"verdict": "OK", "summary": "son CEO özetinin zamanı okunamadı; çağrı yapılmadı"}
+        age_h = ((now or datetime.now(timezone.utc)) - last_at).total_seconds() / 3600
+        if age_h < min_gap_h:
+            return {"verdict": "OK", "summary": f"son özet {age_h:.1f} saat önce; {min_gap_h} saat beklenir"}
+        if not any(str(r.get("created_at") or "") > last_ceo and r.get("author") != "ceo_ai" for r in recent):
+            return {"verdict": "OK", "summary": "son özetten beri yeni kayıt yok; çağrı yapılmadı"}
     ids = {str(r.get("id")) for r in recent}
     prompt = "Recent Atlas records (id | author | title):\n" + "\n".join(
         f"{r.get('id')} | {r.get('author')} | {str(r.get('title') or '')[:160]}" for r in recent) + (

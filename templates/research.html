@@ -37,7 +37,7 @@
 </nav>
 <div class="wrap">
     <div class="row g-3">
-        <div class="col-lg-5"><div class="pane"><h2>Deney: EXP-001</h2><div id="exp">Yükleniyor...</div></div></div>
+        <div class="col-lg-5"><div class="pane"><h2>Deney: <span id="exp-id">-</span></h2><div id="exp">Yükleniyor...</div></div></div>
         <div class="col-lg-7"><div class="pane"><h2>İşlem analitiği (son kapanan işlemler, brüt)</h2><div id="analytics" class="table-wrap">Yükleniyor...</div></div></div>
     </div>
     <div class="pane"><h2>Araştırma belgeleri</h2><div id="docs">Yükleniyor...</div></div>
@@ -57,6 +57,7 @@
         if (!e || e.available !== true) set('exp', `<span class="muted">Okunamadı: ${esc((e && e.reason) || (gates && gates.reason) || 'çalışma zamanı bağlı değil')}</span>`);
         else if (!e.attached) set('exp', '<span class="muted">Bağlı deney yok.</span>');
         else {
+            set('exp-id', esc(e.experiment_id || 'N/A'));
             const pct = e.max_admissions ? Math.min(100, 100 * e.admissions / e.max_admissions) : 0;
             set('exp', `<div class="kv"><span>Durum</span><b>${e.active ? 'AKTİF' : 'KAPALI (' + esc(e.closed_reason || '-') + ')'}</b></div>` +
                 `<div class="kv"><span>Kabul</span><b>${esc(e.admissions)} / ${esc(e.max_admissions)}</b></div><div class="bar mb-2"><span style="width:${pct}%"></span></div>` +

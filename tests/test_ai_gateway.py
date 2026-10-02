@@ -82,7 +82,25 @@ def test_ceo_brief_rejects_invented_citations_and_records_grounded_ones(tmp_path
     good = lambda *a, **k: ai.AIResult("OK", data={"priorities": ["rejimi izle"], "cited_records": ["MR-0001"]}, model="m")
     assert "1 öncelik" in ac.ceo_brief(d, ask=good)["summary"]
     abstain = lambda *a, **k: ai.AIResult("ABSTAIN", reason="NO_CREDENTIALS")
-    assert "çekimser" in ac.ceo_brief(d, ask=abstain)["summary"]
+    # min_gap_h=0 + a newer record: since 2026-10-02 the CEO waits CEO_MIN_GAP_H after a brief (tested below)
+    monkeypatch.setattr(cli, "now", lambda: "2999-01-01T00:00:00Z")
+    cli.add_memory_record(d, {"record_id": "MR-0002", "type": "EXPERIMENTS", "authority": "RESEARCH",
+                              "title": "Yeni kanıt", "body": "{}", "author": "market_regime", "source": "t"})
+    assert "çekimser" in ac.ceo_brief(d, ask=abstain, min_gap_h=0)["summary"]
+
+
+def test_ceo_spaces_calls_and_skips_without_new_evidence(tmp_path, monkeypatch):
+    monkeypatch.setattr(ac, "_research_dir", lambda: tmp_path)
+    d = _records(tmp_path)
+    calls = []
+    good = lambda *a, **k: calls.append(1) or ai.AIResult(
+        "OK", data={"priorities": ["rejimi izle"], "cited_records": ["MR-0001"]}, model="m")
+    assert "1 öncelik" in ac.ceo_brief(d, ask=good)["summary"]
+    later = datetime.now(timezone.utc).replace(microsecond=0)
+    from datetime import timedelta
+    assert "beklenir" in ac.ceo_brief(d, ask=good, now=later + timedelta(hours=1))["summary"]
+    assert "yeni kayıt yok" in ac.ceo_brief(d, ask=good, now=later + timedelta(hours=3))["summary"]
+    assert len(calls) == 1  # neither skip spent quota
 
 
 def test_council_records_disagreement_and_reviews_once(tmp_path, monkeypatch):
