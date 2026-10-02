@@ -85,7 +85,8 @@ window.atlasPoll = function (fn, ms) {
     const tick = async () => {
         if (busy || document.hidden) return;
         busy = true;
-        try { await fn(); } catch (e) { /* the page renders its own error state */ } finally { busy = false; }
+        const cap = new Promise((r) => setTimeout(r, Math.max(3 * ms, 15000)));  // a hung request must not stop polling
+        try { await Promise.race([fn(), cap]); } catch (e) { /* the page renders its own error state */ } finally { busy = false; }
     };
     document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
     return setInterval(tick, ms);
