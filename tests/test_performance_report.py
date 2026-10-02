@@ -38,3 +38,28 @@ def test_reads_a_real_archive(tmp_path):
     path = tmp_path / "closed.jsonl"
     path.write_text("".join(json.dumps({"sequence": i, **_trade("BTCUSDT", 1, 30)}) + "\n" for i in range(3)))
     assert pr.main(["--archive", str(path), "--json"]) == 0
+
+
+def test_lucky_groups_lose_their_verdict_under_the_false_discovery_filter():
+    """2026-10-02: 24 coins of coin-flip trades: per-group 95 % intervals call a few WEAK/STRONG by luck."""
+    import random
+
+    rng = random.Random(5)
+    trades = [_trade(f"C{c:02d}USDT", rng.choice([2, -2]), 30) for c in range(24) for _ in range(24)]
+    filter_ = pr._false_discovery_filter
+    try:
+        pr._false_discovery_filter = lambda tables: None
+        unfiltered = [s["verdict"] for s in pr.analyse(trades)["by"]["coin"].values()]
+    finally:
+        pr._false_discovery_filter = filter_
+    assert sum(v in ("WEAK", "STRONG") for v in unfiltered) >= 1  # luck alone produced a "lesson" (C06, C07)
+    report = pr.analyse(trades)
+    verdicts = [s["verdict"] for s in report["by"]["coin"].values()]
+    assert not any(v in ("WEAK", "STRONG") for v in verdicts), verdicts
+    assert all("q_fdr" in s for s in report["by"]["coin"].values())
+
+
+def test_strong_signal_keeps_its_verdict_and_reports_q():
+    losers = [_trade("DOGEUSDT", -0.5, 5) for _ in range(20)]
+    report = pr.analyse(losers + [_trade("BTCUSDT", 3, 120) for _ in range(20)])
+    assert report["by"]["coin"]["DOGEUSDT"]["verdict"] == "WEAK" and report["by"]["coin"]["DOGEUSDT"]["q_fdr"] < 0.001

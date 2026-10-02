@@ -67,7 +67,7 @@ def _group_stats(records: list[dict]) -> dict[str, Any]:
         verdict = "STRONG"
     else:
         verdict = "INCONCLUSIVE"
-    return {"trades": n, "win_rate_after_fees": round(wins / n, 3) if n else None,
+    return {"trades": n, "wins_after_fees": wins, "win_rate_after_fees": round(wins / n, 3) if n else None,
             "win_rate_ci95": [round(low, 3), round(high, 3)], "est_net_pnl": str(net.quantize(Decimal("0.01"))),
             "gross_pnl": str(gross.quantize(Decimal("0.01"))), "est_fees": str(fees.quantize(Decimal("0.01"))),
             "verdict": verdict}
@@ -81,6 +81,20 @@ def trader_book(records: list[dict]) -> dict[str, Any]:
     return {s: symbol_evidence(records, s) for s in sorted({r.get("symbol", "?") for r in records})}
 
 
+def _false_discovery_filter(tables: dict[str, dict[str, dict[str, Any]]]) -> None:
+    """2026-10-02: ~30 groups (coins x holding times x hours) are tested at once, so a per-group 95 % interval
+    alone calls some of them WEAK or STRONG by luck. Every group with a full sample gets a binomial p-value on
+    its after-fee win count and all of them one Benjamini-Hochberg correction; a WEAK/STRONG verdict whose
+    q exceeds FDR_Q becomes INCONCLUSIVE. Only ever removes claims (never adds one)."""
+    from tools.fdr import FDR_Q, bh_qvalues, binom_two_sided_p
+
+    tested = [stats for table in tables.values() for stats in table.values() if stats["trades"] >= MIN_SAMPLE]
+    for stats, q in zip(tested, bh_qvalues([binom_two_sided_p(s["wins_after_fees"], s["trades"]) for s in tested])):
+        stats["q_fdr"] = round(q, 4)
+        if stats["verdict"] in ("WEAK", "STRONG") and q > FDR_Q:
+            stats["verdict"] = f"INCONCLUSIVE (FDR q={q:.2f})"
+
+
 def analyse(records: list[dict]) -> dict[str, Any]:
     groups: dict[str, dict[str, list[dict]]] = {"coin": defaultdict(list), "holding_time": defaultdict(list),
                                                  "hour_utc": defaultdict(list)}
@@ -90,6 +104,7 @@ def analyse(records: list[dict]) -> dict[str, Any]:
         groups["hour_utc"][_hour_block(r)].append(r)
     report = {"total": _group_stats(records) if records else {"trades": 0},
               "by": {name: {key: _group_stats(rs) for key, rs in sorted(g.items())} for name, g in groups.items()}}
+    _false_discovery_filter(report["by"])
     lessons = []
     for name, table in report["by"].items():
         for key, stats in table.items():

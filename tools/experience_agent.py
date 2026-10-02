@@ -22,11 +22,12 @@ from __future__ import annotations
 
 import csv
 import json
-import math
 import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Callable
+
+from tools.fdr import bh_qvalues, binom_two_sided_p  # noqa: F401 - re-exported (tests, sentiment_lessons)
 
 DAY_MS = 24 * 60 * 60_000
 MAX_DAYS_BACK = 730
@@ -149,28 +150,6 @@ def candidate_lessons(rows: list[dict]) -> list[dict]:
     older = {(g["action"], g["regime"], g["confidence"]): g for g in lb.build(rows[:half])}
     newer = {(g["action"], g["regime"], g["confidence"]): g for g in lb.build(rows[half:])}
     return _compare(older, newer)
-
-
-def binom_two_sided_p(k: int, n: int) -> float:
-    """Exact two-sided binomial test against a 50 % win rate (sum of outcomes no likelier than k)."""
-    if n <= 0:
-        return 1.0
-    logp = [math.lgamma(n + 1) - math.lgamma(i + 1) - math.lgamma(n - i + 1) - n * math.log(2) for i in range(n + 1)]
-    cut = logp[k] + 1e-9
-    return min(1.0, math.fsum(math.exp(x) for x in logp if x <= cut))
-
-
-def bh_qvalues(pvalues: list[float]) -> list[float]:
-    """Benjamini-Hochberg adjusted p-values (same as statsmodels multipletests(method="fdr_bh"))."""
-    m = len(pvalues)
-    order = sorted(range(m), key=lambda i: pvalues[i])
-    q = [0.0] * m
-    running = 1.0
-    for rank in range(m, 0, -1):
-        i = order[rank - 1]
-        running = min(running, pvalues[i] * m / rank)
-        q[i] = running
-    return q
 
 
 def _newer_p(b: dict) -> float:
