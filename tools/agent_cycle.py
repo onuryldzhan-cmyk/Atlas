@@ -557,6 +557,13 @@ def red_team(records_dir: Path) -> dict[str, Any]:
     return {"verdict": "OK", "summary": "; ".join(reviewed) or "yeni öneri yok (hepsi zaten incelendi)"}
 
 
+def experience(records_dir: Path) -> dict[str, Any]:
+    """Experience agent (owner 2026-10-02): one more replayed day per cycle; research evidence only."""
+    from tools import experience_agent
+
+    return experience_agent.run(records_dir, _research_dir())
+
+
 AGENTS: tuple[tuple[str, str, Callable[[Path], dict[str, Any]]], ...] = (
     ("quant_research", "Performans analizi", quant_research),
     ("strategy_lab", "Strateji önerileri", strategy_lab),
@@ -566,6 +573,7 @@ AGENTS: tuple[tuple[str, str, Callable[[Path], dict[str, Any]]], ...] = (
     ("task_runner", "Görev yürütücü", task_runner),
     ("overview_snapshot", "Durum özeti", overview_snapshot),
     ("model_validation", "Model doğrulama", model_validation),
+    ("experiment_manager", "Deneyim ajanı", experience),
     ("ceo_ai", "CEO özeti (AI-001)", ceo_brief),
     ("model_council", "Model konseyi (AI-001)", model_council),
     ("red_team", "Karşı görüş", red_team),

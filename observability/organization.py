@@ -165,7 +165,7 @@ ORGANIZATION: tuple[OrgUnit, ...] = (
             "Runs bounded PAPER experiments with a durable cap (EXP-001: floor 0.60, 50 admissions, HIGH-sized).",
             ("run a time- and count-bounded paper experiment",),
             (_NO_LIVE, "extend an experiment without the owner"),
-            ("core/risk_engine.py", "core/experiment_ledger.py")),
+            ("core/risk_engine.py", "core/experiment_ledger.py", "tools/experience_agent.py")),
     OrgUnit("knowledge_manager", "Knowledge Manager", "DEPARTMENT", PARTIAL, 7,
             "Keeps decisions and state recoverable: checkpoints, ADRs, registries (development process today).",
             ("record decisions", "write checkpoints"),
