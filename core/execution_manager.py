@@ -4643,6 +4643,67 @@ class ExecutionManager:
         never exceed what risk approved. See ``_resolve_base_fill``.
         """
 
+        prepared = self._paper_buy_preflight(
+            request=request,
+            result=result,
+        )
+
+        if prepared is None:
+            return
+
+        approved, instrument_rules = prepared
+
+        # Fill-evidence seam. No paper execution adapter is configured in
+        # this runtime, so this reports nothing and the fill is derived
+        # from the request price below. PaperTrader is NOT consulted here:
+        # it is a passive mirror of the durable authority (see
+        # _mirror_paper_book) and can neither report a fill nor refuse one.
+        paper_trade = self._paper_open_trade(
+            request=request,
+            allocation=float(approved),
+        )
+
+        if paper_trade is not None:
+            result.data["paper_trade"] = paper_trade
+
+            self._hydrate_result_from_component(
+                result=result,
+                payload=paper_trade,
+            )
+
+        if not result.order_id:
+            result.order_id = "paper-order:" + str(
+                uuid.uuid5(uuid.NAMESPACE_URL, str(request.request_id))
+            )
+
+        quote_notional = self._paper_buy_settle_fill(
+            result=result,
+            approved=approved,
+            instrument_rules=instrument_rules,
+        )
+
+        if quote_notional is None:
+            return
+
+        self._paper_buy_register_position(
+            request=request,
+            result=result,
+            approved=approved,
+            quote_notional=quote_notional,
+        )
+
+    def _paper_buy_preflight(
+        self,
+        *,
+        request: ExecutionRequest,
+        result: ExecutionResult,
+    ) -> tuple[Decimal, Any] | None:
+        """Checks before the side-effect boundary (T-0003 split of _execute_paper_buy).
+
+        Returns (approved allocation, instrument rules), or None after marking
+        the result failed - exactly where the original body returned.
+        """
+
         approved = self._admitted_quote_allocation(
             request
         )
@@ -4657,7 +4718,7 @@ class ExecutionManager:
                 message="Request carries no canonical approved allocation",
                 error_code="CANONICAL_ALLOCATION_MISSING",
             )
-            return
+            return None
 
         result.requested_quote_allocation = approved
         result.data["approved_quote_allocation"] = format(approved, "f")
@@ -4680,7 +4741,7 @@ class ExecutionManager:
                 message="No instrument rules for symbol",
                 error_code="INSTRUMENT_RULES_UNAVAILABLE",
             )
-            return
+            return None
 
         result.data["instrument_rules_digest"] = instrument_rules.digest
         result.data["instrument_rules_source"] = instrument_rules.source
@@ -4715,30 +4776,22 @@ class ExecutionManager:
                         message="symbol/request_id do not produce a valid composite position identity",
                         error_code="INVALID_POSITION_IDENTITY",
                     )
-                    return
+                    return None
 
-        # Fill-evidence seam. No paper execution adapter is configured in
-        # this runtime, so this reports nothing and the fill is derived
-        # from the request price below. PaperTrader is NOT consulted here:
-        # it is a passive mirror of the durable authority (see
-        # _mirror_paper_book) and can neither report a fill nor refuse one.
-        paper_trade = self._paper_open_trade(
-            request=request,
-            allocation=float(approved),
-        )
+        return approved, instrument_rules
 
-        if paper_trade is not None:
-            result.data["paper_trade"] = paper_trade
+    def _paper_buy_settle_fill(
+        self,
+        *,
+        result: ExecutionResult,
+        approved: Decimal,
+        instrument_rules: Any,
+    ) -> Decimal | None:
+        """Size the fill, settle the fee and re-assert venue minimums (T-0003 split).
 
-            self._hydrate_result_from_component(
-                result=result,
-                payload=paper_trade,
-            )
-
-        if not result.order_id:
-            result.order_id = "paper-order:" + str(
-                uuid.uuid5(uuid.NAMESPACE_URL, str(request.request_id))
-            )
+        Returns the executed quote notional, or None after marking the result
+        failed - exactly where the original body returned.
+        """
 
         # Sized after hydration, so the price and fee the executing component
         # actually reported are the ones the fill is derived from - not the
@@ -4754,7 +4807,7 @@ class ExecutionManager:
                 message="Paper fill quantity semantics are invalid",
                 error_code="INVALID_FINANCIAL_QUANTITY",
             )
-            return
+            return None
 
         # Registry v5.23: with no component-reported fee, paper charges the
         # governed PAPER_FEE_RATE_PER_SIDE. The fee is sized from the
@@ -4791,7 +4844,7 @@ class ExecutionManager:
                     "base_asset": instrument_rules.base_asset,
                 },
             )
-            return
+            return None
 
         fee_amount = normalized_fee.quote_amount
 
@@ -4814,7 +4867,7 @@ class ExecutionManager:
                     "quantity_step": format(instrument_rules.quantity_step, "f"),
                 },
             )
-            return
+            return None
 
         base_quantity, quote_notional = fill
 
@@ -4840,7 +4893,7 @@ class ExecutionManager:
                     "min_quantity": format(instrument_rules.min_quantity, "f"),
                 },
             )
-            return
+            return None
 
         if quote_notional < instrument_rules.min_notional:
             self._mark_result_failure(
@@ -4853,7 +4906,7 @@ class ExecutionManager:
                     "min_notional": format(instrument_rules.min_notional, "f"),
                 },
             )
-            return
+            return None
 
         result.filled_base_quantity = base_quantity
         result.filled_quote_notional = quote_notional
@@ -4871,6 +4924,18 @@ class ExecutionManager:
         result.data["unallocated_quote_remainder"] = format(
             approved - quote_notional - fee_amount, "f"
         )
+
+        return quote_notional
+
+    def _paper_buy_register_position(
+        self,
+        *,
+        request: ExecutionRequest,
+        result: ExecutionResult,
+        approved: Decimal,
+        quote_notional: Decimal,
+    ) -> None:
+        """Register the executed position and publish TRADE_OPENED (T-0003 split)."""
 
         # The compatibility position path is told what was executed, not what
         # was approved. They differ by the sub-quantum remainder, and a
