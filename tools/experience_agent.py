@@ -43,6 +43,8 @@ def symbols() -> tuple[str, ...]:
     except (OSError, ValueError, KeyError):
         return CORE_SYMBOLS
 SLIPPAGE_BPS = 5
+STABLE_RUNS = 14  # a candidate present (same direction) in this many consecutive replayed days is drafted as a proposal
+PROPOSAL_PREFIX = "XL-"
 
 Fetcher = Callable[[str, int], list[list]]
 
@@ -199,6 +201,66 @@ def stream_candidates(path: Path, split_iso: str) -> tuple[list[dict], int]:
     return _compare(older, newer), total
 
 
+def _lesson_key(c: dict) -> str:
+    sign = "POS" if c["avg240_newer_pct"] > 0 else "NEG"
+    return "-".join(str(x).replace("-", "_").replace(" ", "_") for x in (c["action"], c["regime"], c["confidence"], sign))
+
+
+def update_streaks(previous: dict[str, int], lessons: list[dict]) -> dict[str, int]:
+    """Consecutive replayed days each candidate (same direction) has held; a missing day resets it."""
+    return {k: previous.get(k, 0) + 1 for k in {_lesson_key(c) for c in lessons}}
+
+
+def _open_draft_keys(records_dir: Path) -> set[str]:
+    from atlas_org import proposals as P
+    from tools import atlas_org_cli as cli
+
+    path = records_dir / cli.PROPOSALS_LOG
+    if not path.exists():
+        return set()
+    state = P.replay(cli.read_log(path))
+    return {pid.split(".")[0].removeprefix(PROPOSAL_PREFIX) for pid, p in state.items()
+            if pid.startswith(PROPOSAL_PREFIX) and p.status not in P.TERMINAL}
+
+
+def draft_proposals(records_dir: Path, lessons: list[dict], streaks: dict[str, int]) -> list[str]:
+    """Owner 2026-10-02 option 3: a lesson stable for STABLE_RUNS days becomes a proposal DRAFT (CREATE only).
+
+    Nothing is applied: the owner reviews, approves or rejects it through the normal proposal flow.
+    """
+    from tools import atlas_org_cli as cli
+
+    ready = [c for c in lessons if streaks.get(_lesson_key(c), 0) >= STABLE_RUNS]
+    if not ready:
+        return []
+    open_keys = _open_draft_keys(records_dir)
+    filed = []
+    for c in ready:
+        key = _lesson_key(c)
+        if key in open_keys:
+            continue
+        direction = "kazandırdı" if c["avg240_newer_pct"] > 0 else "kaybettirdi"
+        pid = f"{PROPOSAL_PREFIX}{key}.1"
+        cli.add_proposal_event(records_dir, proposal_id=pid, event="CREATE", actor="experiment_manager", payload={
+            "title": f"Deneyim dersi: {c['action']} / {c['regime']} / güven {c['confidence']} 4 saatte tutarlı biçimde {direction}",
+            "problem": f"{streaks[key]} ardışık günde iki yarıda da ölçüldü (n {c['n_older']}/{c['n_newer']}); "
+                       f"4s ortalama %{c['avg240_older_pct']} / %{c['avg240_newer_pct']}.",
+            "motivation": "Geçmişin tekrar oynatılmasından çıkan, iki zaman yarısında da aynı yönü gösteren ders.",
+            "proposed_changes": "Adım 1 (çalışma zamanı değişikliği yok): sahip dersi inceler; gerekirse ayrı bir "
+                                "öneriyle eşik veya kova değişikliği tasarlanır, test ve denetimden geçer.",
+            "affected_components": ["tools/experience_agent.py (kanıt)", "değişiklik yok (adım 1)"],
+            "risk_level": "HIGH",
+            "rollback_plan": "Adım 1 hiçbir şeyi değiştirmez; öneri reddedilerek kapatılır.",
+            "claims": [{"claim": f"{c['action']} kararları bu rejim ve güven bandında 4 saatte tutarlı biçimde {direction}.",
+                        "evidence": f"walk-forward iki yarı: n {c['n_older']}/{c['n_newer']}, "
+                                    f"kazanma {c['win240_older']}/{c['win240_newer']}",
+                        "counter_evidence": "makro/duygu verisi çevrimdışı yok; 15 dakikalık kararlar örtüşür "
+                                            "(bağımsız değil); geçmiş başarı geleceği garanti etmez."}],
+        })
+        filed.append(pid)
+    return filed
+
+
 def run(records_dir: Path, research_dir: Path, *, fetch: Fetcher | None = None, now_ms: int | None = None,
         replay=None) -> dict[str, Any]:
     from tools import atlas_org_cli as cli
@@ -227,6 +289,7 @@ def run(records_dir: Path, research_dir: Path, *, fetch: Fetcher | None = None, 
     state["lesson_fingerprint"] = fingerprint
     state["decisions"] = n_rows  # read by observability/experience_view.py (the panel never parses the CSV)
     state["candidate_lessons"] = lessons[:40]
+    state["lesson_streaks"] = update_streaks(state.get("lesson_streaks", {}), lessons)
     state["updated_at"] = datetime.fromtimestamp(now_ms / 1000, UTC).isoformat()
     state_path.write_text(json.dumps(state), encoding="utf-8")
     day = datetime.fromtimestamp(day_ms / 1000, UTC).date().isoformat()
@@ -241,4 +304,7 @@ def run(records_dir: Path, research_dir: Path, *, fetch: Fetcher | None = None, 
                                 "caveat": "macro/sentiment excluded offline; overlapping 15-min decisions"},
                                ensure_ascii=False),
             "author": "experiment_manager", "source": "tools/experience_agent.py (backtest_replay + lesson_book)"})
+    drafted = draft_proposals(records_dir, lessons, state["lesson_streaks"])
+    if drafted:
+        summary += f"; öneri taslağı (sahip onayı gerekir): {', '.join(drafted)}"
     return {"verdict": "OK", "summary": summary}

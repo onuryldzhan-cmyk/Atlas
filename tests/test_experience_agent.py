@@ -157,3 +157,35 @@ def test_experience_view_without_runtime_is_unavailable():
     assert ev.state_path_for(None) is None
     assert ev.read_experience(None)["available"] is False
     assert str(ev.state_path_for("/s")).replace("\\", "/") == "/s/research/experience/state.json"
+
+
+def _lesson(sign=1.0):
+    return {"action": "BUY", "regime": "TREND_UP", "confidence": "60-65", "n_older": 40, "n_newer": 35,
+            "avg240_older_pct": 0.2 * sign, "avg240_newer_pct": 0.3 * sign, "win240_older": 0.6, "win240_newer": 0.6}
+
+
+def test_streaks_count_consecutive_days_and_reset():
+    from tools import experience_agent as xa
+
+    s = {}
+    for _ in range(3):
+        s = xa.update_streaks(s, [_lesson()])
+    assert list(s.values()) == [3]
+    assert xa.update_streaks(s, [_lesson(-1)]) == {"BUY-TREND_UP-60_65-NEG": 1}  # direction flip is a new lesson
+    assert xa.update_streaks(s, []) == {}
+
+
+def test_stable_lesson_is_drafted_once_and_never_applied(tmp_path):
+    from atlas_org import proposals as P
+    from tools import atlas_org_cli as cli
+    from tools import experience_agent as xa
+
+    lessons = [_lesson()]
+    key = xa._lesson_key(lessons[0])
+    assert xa.draft_proposals(tmp_path, lessons, {key: xa.STABLE_RUNS - 1}) == []
+    assert xa.draft_proposals(tmp_path, lessons, {key: xa.STABLE_RUNS}) == [f"XL-{key}.1"]
+    assert xa.draft_proposals(tmp_path, lessons, {key: xa.STABLE_RUNS + 5}) == []  # already open: no duplicate
+    events = cli.read_log(tmp_path / cli.PROPOSALS_LOG)
+    assert [e["event"] for e in events] == ["CREATE"] and events[0]["actor"] == "experiment_manager"
+    state = P.replay(events)[f"XL-{key}.1"]
+    assert state.status not in P.TERMINAL and state.owner_decision is None
