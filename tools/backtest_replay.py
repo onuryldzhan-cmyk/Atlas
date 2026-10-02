@@ -143,6 +143,7 @@ class Result:
     tranche_adds: int = 0
     partial_sells: int = 0
     exit_reasons: dict[str, int] = field(default_factory=dict)
+    signals: list[dict] = field(default_factory=list)  # record_signals=True: every BUY/SELL decision and its outcome
 
 
 # Owner-approved parameters (registry v5.32, governance/ATLAS_STAGED_ENTRY_EXIT_PROPOSAL_v1.0.md)
@@ -195,6 +196,41 @@ def _entry_regime(bars: list[tuple[Decimal, Decimal, Decimal]]) -> str:
         return "UNKNOWN"
 
 
+SIGNAL_HORIZONS_MIN = (60, 240)  # outcome horizons for the lesson book
+REGIME_LOOKBACK_MIN = 30 * 24 * 60  # regime from the last 30 days of closed hourly bars
+
+
+def _signal_outcome(rows: list[list], end: int, price: Decimal, slip: Decimal, fee: Decimal) -> dict:
+    """Net return after both fees and slippage of buying at this close and selling h minutes later.
+
+    The outcome is a LABEL computed after the fact for research; the decision itself only ever saw
+    rows[:end] (MarketLoop's cutoff). None when the series ends before the horizon.
+    """
+    out = {}
+    for h in SIGNAL_HORIZONS_MIN:
+        idx = end - 1 + h
+        if idx >= len(rows):
+            out[f"net_{h}m"] = None
+            continue
+        exit_px = Decimal(str(rows[idx][4]))
+        gross_in = price * (1 + slip)
+        out[f"net_{h}m"] = (exit_px * (1 - slip) * (1 - fee)) / (gross_in * (1 + fee)) - 1
+    return out
+
+
+def write_signals_csv(path: str, signals: list[dict]) -> int:
+    import csv
+
+    cols = ["symbol", "time", "action", "confidence", "bucket", "regime"] + [f"net_{h}m" for h in SIGNAL_HORIZONS_MIN]
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(cols)
+        for sig in signals:
+            w.writerow(["" if sig.get(c) is None else (format(sig[c], "f") if isinstance(sig[c], Decimal) else sig[c])
+                        for c in cols])
+    return len(signals)
+
+
 def write_trades_csv(path: str, trades: list[Trade]) -> int:
     """One row per closed replay trade for the lesson book (net is after both fees)."""
     import csv
@@ -244,7 +280,7 @@ def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: 
            min_hold_min: int = 0, sell_confirm: int = 1,
            trend_ema_hours: int = 0, atr_stop: Decimal | float = 0, risk_per_trade: Decimal | float = 0,
            cost_gate: Decimal | float = 0, regime_filter: bool = False,
-           fusion_fix: bool = False) -> Result:
+           fusion_fix: bool = False, record_signals: bool = False) -> Result:
     """Baseline (staged=False, sleeves=False) = today's runtime behaviour.
     staged=True adds the approved tranche entries, take-profit ladder, trailing
     stop and confirmed hard stop; sleeves=True caps each risk bucket's total
@@ -292,6 +328,7 @@ def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: 
     holdings: dict[str, Position] = {}
     sell_streak: dict[str, int] = {}
     slip = Decimal(slippage_bps) / Decimal(10000)
+    regime_cache: dict[tuple[str, int], str] = {}
     atr_stop, risk_per_trade = Decimal(str(atr_stop)), Decimal(str(risk_per_trade))
     # cost_gate > 0 (research, strategy framework layer 1): a new BUY needs the
     # expected move - 2 x ATR(14, 1-hour) / price, a ~2-4 h horizon - to be at
@@ -403,6 +440,15 @@ def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: 
                     bucket = normalize_risk(decision.get("risk", decision.get("risk_level")))
                     pos = holdings.get(symbol)
 
+                    if record_signals and action in ("BUY", "SELL"):
+                        hour_key = (symbol, close_ms // 3_600_000)
+                        if hour_key not in regime_cache:
+                            lo = max(0, end - REGIME_LOOKBACK_MIN)
+                            regime_cache[hour_key] = _entry_regime(_hourly_bars(data[symbol][lo:end], end - lo))
+                        result.signals.append({"symbol": symbol, "time": when, "action": action,
+                                               "confidence": confidence, "bucket": bucket,
+                                               "regime": regime_cache[hour_key],
+                                               **_signal_outcome(data[symbol], end, price, slip, fee_rate)})
                     sell_streak[symbol] = sell_streak.get(symbol, 0) + 1 if action == "SELL" else 0
                     if action == "SELL" and pos is not None and confidence >= EXECUTION_GATE:
                         held_min = (close_ms - pos.entry_ms) / 60_000
@@ -555,6 +601,8 @@ def main(argv: list[str] | None = None, fetch: Fetcher | None = None) -> int:
     parser.add_argument("--sell-confirm", type=int, default=1, help="consecutive SELL decisions required to close")
     parser.add_argument("--trend-ema", type=int, default=0, help="BUY only above the EMA of this many 1-hour closes")
     parser.add_argument("--atr-stop", type=float, default=0, help="protective stop at entry - K x ATR(14, 1h)")
+    parser.add_argument("--signals-out", default=None,
+                        help="write every BUY/SELL decision with its 60m/240m net outcome to this CSV (lesson book)")
     parser.add_argument("--trades-out", default=None, help="write every closed trade (confidence, regime, net) to this CSV")
     parser.add_argument("--risk-per-trade", type=float, default=0, help="max equity fraction lost at the ATR stop (needs --atr-stop)")
     args = parser.parse_args(argv)
@@ -576,8 +624,12 @@ def main(argv: list[str] | None = None, fetch: Fetcher | None = None) -> int:
     result = replay(data, step=args.step, exp001=args.exp001, staged=args.staged, sleeves=args.sleeves,
                     slippage_bps=args.slippage_bps, next_open_fill=args.next_open_fill,
                     min_hold_min=args.min_hold, sell_confirm=args.sell_confirm,
-                    trend_ema_hours=args.trend_ema, atr_stop=args.atr_stop, risk_per_trade=args.risk_per_trade)
+                    trend_ema_hours=args.trend_ema, atr_stop=args.atr_stop, risk_per_trade=args.risk_per_trade,
+                    record_signals=bool(args.signals_out))
     s = summarize(result)
+    if args.signals_out:
+        n = write_signals_csv(args.signals_out, result.signals)
+        print(f"wrote {n} signals to {args.signals_out}", file=sys.stderr)
     if args.trades_out:
         n = write_trades_csv(args.trades_out, result.trades)
         print(f"wrote {n} closed trades to {args.trades_out}", file=sys.stderr)

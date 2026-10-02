@@ -323,3 +323,31 @@ def test_trades_carry_entry_confidence_and_regime_and_export_to_csv(tmp_path):
     rows = list(csv.DictReader(path.open(encoding="utf-8")))
     assert len(rows) == len(result.trades) and Decimal(rows[0]["entry_confidence"]) == Decimal("95")
     assert Decimal(rows[0]["net"]) == result.trades[0].net
+
+
+def test_record_signals_labels_every_buy_sell_with_net_outcomes(tmp_path):
+    """Lesson book (2026-10-02): the 30-day owner run opened 0 trades (every BUY gated), so the
+    learning signal is each decision's after-fee outcome, recorded without changing any gate."""
+    import csv
+
+    class Alternating:
+        def __init__(self):
+            self.n = 0
+
+        def analyze_and_decide(self, symbol, market_data):
+            self.n += 1
+            return {"symbol": symbol, "action": "BUY" if self.n % 2 else "SELL", "confidence": 55.0,
+                    "risk_level": "MEDIUM"}
+
+    rows = _rows(700, drift=0.001, wobble=0.0)
+    plain = bt.replay({"BTCUSDT": rows}, step=20, brain_factory=Alternating)
+    result = bt.replay({"BTCUSDT": rows}, step=20, brain_factory=Alternating, record_signals=True)
+    assert plain.signals == [] and bt.summarize(plain) == bt.summarize(result)  # recording changes nothing else
+    assert result.signals and {s["action"] for s in result.signals} == {"BUY", "SELL"}
+    rising = [s for s in result.signals if s["net_60m"] is not None]
+    assert rising and all(s["net_60m"] > 0 for s in rising)        # steady 0.1%/min rise beats fees
+    assert any(s["net_240m"] is None for s in result.signals)      # horizon past the data -> None, not guessed
+    path = tmp_path / "signals.csv"
+    assert bt.write_signals_csv(str(path), result.signals) == len(result.signals)
+    first = next(csv.DictReader(path.open(encoding="utf-8")))
+    assert first["confidence"] == "55.0" and first["regime"]
