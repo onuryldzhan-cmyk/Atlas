@@ -188,7 +188,7 @@ ORGANIZATION: tuple[OrgUnit, ...] = (
             "Shadow copy of Atlas: live data, virtual orders, no capital - the required gate before small live.",
             ("simulate in parallel",),
             (_NO_TRADE, _NO_LIVE),
-            ("tools/digital_trial.py", "tools/lookahead_check.py", "tools/backtest_replay.py")),
+            ("tools/digital_trial.py", "tools/lookahead_check.py", "tools/backtest_replay.py", "tools/shadow_costs.py")),
     OrgUnit("incident_response", "Incident Response Team", "DEPARTMENT", ACTIVE, 3,
             "Supervisor restarts and halts, integrity exit codes, recovery runbook and reconciliation tool.",
             ("restart a hung process", "halt on corrupt state"),

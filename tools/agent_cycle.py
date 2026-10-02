@@ -592,6 +592,19 @@ def experience(records_dir: Path) -> dict[str, Any]:
     return experience_agent.run(records_dir, _research_dir())
 
 
+def shadow_costs(records_dir: Path) -> dict[str, Any]:
+    """Shadow stage S1 (owner 2026-10-02): live order-book cost per coin for the typical Paper size; evidence only."""
+    from tools import shadow_costs as sc
+    from tools.experience_agent import symbols
+    from tools.exp001_report import load_closed
+
+    notional, measured = sc.typical_notional(load_closed(_archive_path()))
+    out = sc.run(_research_dir(), list(symbols()), notional)
+    if not measured:
+        out["summary"] += f" (işlem büyüklüğü varsayılan {notional} USDT: henüz kapanan işlem yok)"
+    return out
+
+
 AGENTS: tuple[tuple[str, str, Callable[[Path], dict[str, Any]]], ...] = (
     ("quant_research", "Performans analizi", quant_research),
     ("strategy_lab", "Strateji önerileri", strategy_lab),
@@ -602,6 +615,7 @@ AGENTS: tuple[tuple[str, str, Callable[[Path], dict[str, Any]]], ...] = (
     ("overview_snapshot", "Durum özeti", overview_snapshot),
     ("model_validation", "Model doğrulama", model_validation),
     ("experiment_manager", "Deneyim ajanı", experience),
+    ("digital_twin", "Shadow maliyet ölçümü", shadow_costs),
     ("ceo_ai", "CEO özeti (AI-001)", ceo_brief),
     ("model_council", "Model konseyi (AI-001)", model_council),
     ("red_team", "Karşı görüş", red_team),
