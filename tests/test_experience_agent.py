@@ -189,3 +189,19 @@ def test_stable_lesson_is_drafted_once_and_never_applied(tmp_path):
     assert [e["event"] for e in events] == ["CREATE"] and events[0]["actor"] == "experiment_manager"
     state = P.replay(events)[f"XL-{key}.1"]
     assert state.status not in P.TERMINAL and state.owner_decision is None
+
+
+def test_red_team_reviews_experience_drafts(tmp_path):
+    import json as _json
+
+    from tools import agent_cycle as ac
+    from tools import atlas_org_cli as cli
+    from tools import experience_agent as xa
+
+    lesson = _lesson()
+    [pid] = xa.draft_proposals(tmp_path, [lesson], {xa._lesson_key(lesson): xa.STABLE_RUNS})
+    out = ac.red_team(tmp_path)
+    assert pid in out["summary"]
+    [rec] = [r for r in cli.read_log(tmp_path / cli.MEMORY_LOG) if r.get("related_proposal") == pid]
+    assert "shadow" in _json.loads(rec["body"])["challenge"]
+    assert pid not in ac.red_team(tmp_path)["summary"]  # reviewed once

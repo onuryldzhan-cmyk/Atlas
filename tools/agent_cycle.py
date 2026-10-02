@@ -555,14 +555,17 @@ def red_team(records_dir: Path) -> dict[str, Any]:
     done = {r["related_proposal"] for r in mem.values() if r["author"] == "red_team"}
     reviewed = []
     for pid, prop in sorted(state.items()):
-        if not pid.startswith("SA-") or prop.status in P.TERMINAL or prop.status == P.S.APPLIED or pid in done:
+        if not pid.startswith(("SA-", "XL-")) or prop.status in P.TERMINAL or prop.status == P.S.APPLIED or pid in done:
             continue
         claims = prop.fields.get("claims") or []
         text = " ".join(str(c.get("evidence", "")) + " " + str(c.get("counter_evidence", "")) for c in claims)
         thin = "INCONCLUSIVE" in text or "below the" in text or "Only " in text
         verdict = "KANIT YETERSİZ" if thin else "KANIT KABUL EDİLEBİLİR"
         body = {"proposal": pid, "verdict": verdict, "min_sample": MIN_SAMPLE,
-                "challenge": ("Örnek küçük: önce geçmiş veriyle (replay) test edilmeden çalışma zamanına alınmamalı. "
+                "challenge": ("Geçmiş tekrar oynatması: makro/duygu verisi yok, 15 dakikalık kararlar örtüşür (gerçek örnek "
+                              "sayısı görünenden az). Çalışma zamanına alınmadan önce paper ve shadow aşamasında "
+                              "doğrulanmalı." if pid.startswith("XL-") else
+                              "Örnek küçük: önce geçmiş veriyle (replay) test edilmeden çalışma zamanına alınmamalı. "
                               "Kayma ve piyasa rejimi değişimi sonucu tersine çevirebilir." if thin else
                               "Örnek eşiği aşıyor; yine de ücret tahmini (%0,1/taraf) ve PAPER dolumları gerçeği iyimser gösterebilir.")}
         existing = {r["record_id"] for r in cli.read_log(records_dir / cli.MEMORY_LOG)} if (records_dir / cli.MEMORY_LOG).exists() else set()
