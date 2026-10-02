@@ -197,10 +197,23 @@ def test_model_validation_flags_overconfidence_once_and_never_changes_anything(t
     records = tmp_path / "records"
     first = ac.model_validation(records)
     assert "AŞIRI GÜVEN 70-80" in first["summary"]  # 0 % wins at 75 % stated confidence
+    assert "kesin: 70-80" in first["summary"]  # 0/12: even the top of the 95 % interval (~24 %) is below 75 %
     assert "değişmedi" in ac.model_validation(records)["summary"]
     mv = [r for r in memory_records.replay(cli.read_log(records / cli.MEMORY_LOG)).values() if r["author"] == "model_validation"]
     assert len(mv) == 1 and mv[0]["authority"] == "RESEARCH"
     assert "model_validation" in [name for name, _, _ in ac.AGENTS]
+
+
+def test_model_validation_marks_small_sample_overconfidence_as_suspected(tmp_path, monkeypatch):
+    archive = tmp_path / "closed.jsonl"
+    rows = [{"position_id": f"p{i}", "symbol": "BTCUSDT", "cost_quote": "1000", "gross_pnl": "50" if i < 7 else "-5",
+             "opened_at": f"2026-10-01T{10 + i:02d}:00:00+00:00", "closed_at": f"2026-10-01T{10 + i:02d}:30:00+00:00"}
+            for i in range(12)]
+    archive.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    monkeypatch.setattr(ac, "_archive_path", lambda: archive)
+    monkeypatch.setattr(ac, "_approvals", lambda: {"BTCUSDT": [{"timestamp": r["opened_at"], "confidence": 75.0} for r in rows]})
+    out = ac.model_validation(tmp_path / "records")["summary"]
+    assert "AŞIRI GÜVEN 70-80" in out and "şüpheli" in out  # 7/12 = 58 %: flagged, interval still reaches 75 %
 
 
 def test_formerly_planned_units_now_point_to_real_code():

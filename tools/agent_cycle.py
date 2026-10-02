@@ -234,9 +234,13 @@ def model_validation(records_dir: Path) -> dict[str, Any]:
     rows = calibration(load_closed(_archive_path()), _approvals())
     measured = [r for r in rows if r.get("verdict") == "MEASURED"]
     flagged = [r["band"] for r in measured if (r.get("calibration_gap") or 0) <= OVERCONFIDENCE_GAP]
+    # 2026-10-02: a flag is CONFIRMED when even the top of the 95 % Wilson interval of the win rate is
+    # below the stated confidence; otherwise it stays flagged but only SUSPECTED (small sample).
+    confirmed = [r["band"] for r in measured if r["band"] in flagged and r.get("win_rate_95ci")
+                 and r["win_rate_95ci"][1] < r["mean_confidence"]]
     findings = {"bands": [{k: r.get(k) for k in ("band", "trades", "mean_confidence", "win_rate_after_fees",
-                                                 "brier", "calibration_gap", "verdict")} for r in rows],
-                "overconfident_bands": flagged}
+                                                 "win_rate_95ci", "brier", "calibration_gap", "verdict")} for r in rows],
+                "overconfident_bands": flagged, "overconfidence_confirmed": confirmed}
     log = records_dir / cli.MEMORY_LOG
     previous = None
     if log.exists():
@@ -247,7 +251,8 @@ def model_validation(records_dir: Path) -> dict[str, Any]:
     if previous == findings:
         return {"verdict": "OK", "summary": "kalibrasyon değişmedi; yeni kayıt yok"}
     existing = {r["record_id"] for r in cli.read_log(log)} if log.exists() else set()
-    title = (f"Model doğrulama: AŞIRI GÜVEN {', '.join(flagged)} bandında" if flagged
+    title = (f"Model doğrulama: AŞIRI GÜVEN {', '.join(flagged)} bandında "
+             f"({'kesin: ' + ', '.join(confirmed) if confirmed else 'şüpheli; örnek henüz kesin değil'})" if flagged
              else f"Model doğrulama: {len(measured)} bant ölçüldü, aşırı güven yok" if measured
              else "Model doğrulama: ölçecek kadar işlem yok (bant başına en az 10)")
     cli.add_memory_record(records_dir, {
