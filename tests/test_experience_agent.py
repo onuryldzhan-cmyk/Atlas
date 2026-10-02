@@ -20,7 +20,9 @@ def test_next_day_first_then_forward_then_backward_then_done():
     assert xp.next_day(full, NOW) is None
 
 
-def _fake_replay(n_per_day=4, net="0.002"):
+def _fake_replay(n_per_day=4, net="0.002", spacing_ms=21_600_000):
+    # 2026-10-02: decisions 6 h apart by default, so each is an independent 240m outcome
+    # (candidate lessons now count non-overlapping outcomes; see test_overlapping_decisions_are_not_independent_evidence)
     def replay(data, **kw):
         assert kw["record_signals"] is True and set(data) <= set(xp.symbols()) and "BTCUSDT" in data
         first = min(int(r[0]) for rows in data.values() for r in rows)
@@ -28,7 +30,7 @@ def _fake_replay(n_per_day=4, net="0.002"):
         from datetime import UTC, datetime
         sigs = []
         for i in range(n_per_day):
-            t = datetime.fromtimestamp((day + i * 900_000) / 1000, UTC).isoformat()
+            t = datetime.fromtimestamp((day + i * spacing_ms) / 1000, UTC).isoformat()
             sigs.append({"symbol": "BTCUSDT", "time": t, "action": "BUY", "confidence": Decimal("61"),
                          "bucket": "MEDIUM", "regime": "TREND_UP", "net_60m": Decimal(net), "net_240m": Decimal(net)})
         before = datetime.fromtimestamp((first) / 1000, UTC).isoformat()  # warm-up decision: must be dropped
@@ -205,3 +207,20 @@ def test_red_team_reviews_experience_drafts(tmp_path):
     [rec] = [r for r in cli.read_log(tmp_path / cli.MEMORY_LOG) if r.get("related_proposal") == pid]
     assert "shadow" in _json.loads(rec["body"])["challenge"]
     assert pid not in ac.red_team(tmp_path)["summary"]  # reviewed once
+
+
+def test_overlapping_decisions_are_not_independent_evidence(tmp_path):
+    """40 days x 4 BUY decisions 15 minutes apart = 40 independent 240m outcomes, 20 per half: no lesson."""
+    rec, res = tmp_path / "records", tmp_path / "research"
+    for _ in range(40):
+        xp.run(rec, res, fetch=_fetch, now_ms=NOW, replay=_fake_replay(spacing_ms=900_000))
+    import json
+    state = json.loads(xp._paths(res)[0].read_text())
+    assert state["decisions"] == 160 and state["candidate_lessons"] == []
+
+
+def test_non_overlapping_count_keeps_outcomes_240_minutes_apart():
+    assert xp._non_overlapping(set()) == 0
+    assert xp._non_overlapping({5}) == 1
+    assert xp._non_overlapping({1, 2, 3, 4}) == 2  # neighbours may be 15 minutes apart: every other one
+    assert xp._non_overlapping({1, 3, 5}) == 3

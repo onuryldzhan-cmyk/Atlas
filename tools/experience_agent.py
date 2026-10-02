@@ -45,6 +45,7 @@ def symbols() -> tuple[str, ...]:
 SLIPPAGE_BPS = 5
 STABLE_RUNS = 14  # a candidate present (same direction) in this many consecutive replayed days is drafted as a proposal
 PROPOSAL_PREFIX = "XL-"
+MIN_EFF = 30  # independent (non-overlapping 240m) outcomes a candidate needs in EACH half (= lesson_book.MIN_SAMPLES)
 
 Fetcher = Callable[[str, int], list[list]]
 
@@ -156,11 +157,14 @@ def _compare(older: dict, newer: dict) -> list[dict]:
             continue
         if a["net_240m_avg_pct"] is None or b["net_240m_avg_pct"] is None:
             continue
+        if min(a.get("n_eff", MIN_EFF), b.get("n_eff", MIN_EFF)) < MIN_EFF:
+            continue  # overlapping decisions: too few independent outcomes in a half
         if (a["net_240m_avg_pct"] > 0) != (b["net_240m_avg_pct"] > 0):
             continue
         out.append({"action": key[0], "regime": key[1], "confidence": key[2], "n_older": a["n"], "n_newer": b["n"],
                     "avg240_older_pct": a["net_240m_avg_pct"], "avg240_newer_pct": b["net_240m_avg_pct"],
-                    "win240_older": a["net_240m_win"], "win240_newer": b["net_240m_win"]})
+                    "win240_older": a["net_240m_win"], "win240_newer": b["net_240m_win"],
+                    "n_eff_older": a.get("n_eff"), "n_eff_newer": b.get("n_eff")})
     return out
 
 
@@ -176,13 +180,16 @@ def stream_groups(path: Path, split_iso: str) -> tuple[dict, dict, int]:
 
     slip = Decimal(SLIPPAGE_BPS) / Decimal(10000)
     acc: tuple[dict, dict] = ({}, {})
+    buckets: tuple[dict, dict] = ({}, {})  # (key, symbol) -> 240-minute buckets with a decision
     total = 0
     with path.open(encoding="utf-8") as f:
         for r in csv.DictReader(f):
             total += 1
             key = (r["action"], r.get("regime") or "UNKNOWN", lb.band(r["confidence"]))
-            g = acc[0 if r["time"] < split_iso else 1].setdefault(key, [0, 0, 0, Decimal(0)])  # n, k, wins, sum
+            side = 0 if r["time"] < split_iso else 1
+            g = acc[side].setdefault(key, [0, 0, 0, Decimal(0)])  # n, k, wins, sum
             g[0] += 1
+            buckets[side].setdefault((key, r.get("symbol", "")), set()).add(_bucket240(r["time"]))
             v = lb._value(r, 240, r["action"], slip, None)
             if v is not None:
                 g[1] += 1
@@ -192,7 +199,28 @@ def stream_groups(path: Path, split_iso: str) -> tuple[dict, dict, int]:
                        "net_240m_win": round(w / k, 3) if k else None,
                        "net_240m_avg_pct": round(float(s / k) * 100, 3) if k else None}
                  for key, (n, k, w, s) in half.items()} for half in acc)
+    for side in (0, 1):
+        for (key, _symbol), seen in buckets[side].items():
+            out[side][key]["n_eff"] = out[side][key].get("n_eff", 0) + _non_overlapping(seen)
     return out[0], out[1], total
+
+
+def _bucket240(iso: str) -> int:
+    return int(datetime.fromisoformat(iso).timestamp()) // (240 * 60)
+
+
+def _non_overlapping(buckets: set[int]) -> int:
+    """Effective sample size (mlfinlab's sample-uniqueness idea, conservative form).
+
+    Decisions 15 minutes apart share most of their 240-minute outcome, so they are not
+    independent evidence. Greedily keep buckets at least two apart: kept decisions are
+    then >= 240 minutes apart and their outcome windows never overlap.
+    """
+    kept, last = 0, None
+    for b in sorted(buckets):
+        if last is None or b - last >= 2:
+            kept, last = kept + 1, b
+    return kept
 
 
 def stream_candidates(path: Path, split_iso: str) -> tuple[list[dict], int]:
