@@ -74,7 +74,9 @@ def losing_coins(report: dict[str, Any]) -> list[dict[str, Any]]:
             continue
         out.append({
             "key": f"LOSING-BOOK-{sym}",
-            "title": f"Review {sym}: proven losing book after fees",
+            # 2026-10-02: "proven" overclaimed - the trigger is negative expectancy over a minimum trade count,
+            # not a significance test (red_team and the owner weigh the sample).
+            "title": f"Review {sym}: losing book after fees ({book['trades']} trades, not a significance test)",
             "problem": f"{sym}: {book['trades']} closed trades, net expectancy {book['net_expectancy']:.2f} per trade "
                        f"after estimated fees, longest losing streak {book['longest_losing_streak']}.",
             "motivation": "The runtime already lowers BUY confidence here (BRAIN-MEM-001); the owner decides "
