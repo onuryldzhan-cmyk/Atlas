@@ -1790,6 +1790,17 @@ def create_app(
 
         return response
 
+    _register_page_routes(application, templates)
+    api_signals = _register_status_routes(application)
+    _register_evidence_routes(application)
+    _register_runtime_routes(application, api_signals)
+    _register_panel_routes(application)
+
+    return application
+
+
+def _register_page_routes(application: FastAPI, templates: Jinja2Templates) -> None:
+    """T-0016: part of create_app, moved verbatim; routes register in the original order."""
     @application.get("/openapi.json", include_in_schema=False)
     async def openapi_schema(request: Request) -> Response:
         if not is_loopback_request(request):
@@ -1956,6 +1967,9 @@ def create_app(
             },
         )
 
+
+def _register_status_routes(application: FastAPI) -> Callable[[Request], Any]:
+    """T-0016: part of create_app, moved verbatim; routes register in the original order."""
     @application.get(
         "/api/health",
         response_class=JSONResponse,
@@ -2205,6 +2219,11 @@ def create_app(
                 },
             )
 
+    return api_signals
+
+
+def _register_evidence_routes(application: FastAPI) -> None:
+    """T-0016: part of create_app, moved verbatim; routes register in the original order."""
     @application.get(
         "/api/trades",
         response_class=JSONResponse,
@@ -2427,6 +2446,9 @@ def create_app(
         application.add_api_route(path, _governance_route, methods=["GET"],
                                   response_class=JSONResponse)
 
+
+def _register_runtime_routes(application: FastAPI, api_signals: Callable[[Request], Any]) -> None:
+    """T-0016: part of create_app, moved verbatim; routes register in the original order."""
     # Experience agent summary (2026-10-02): reads only the state.json the
     # agent writes under the running runtime's state directory (read-only).
     @application.get("/api/experience", response_class=JSONResponse)
@@ -2580,6 +2602,9 @@ def create_app(
         brief = await run_in_threadpool(_command_center_brief, signals)
         return JSONResponse(status_code=200, content=command_center.answer(q[:500], brief))
 
+
+def _register_panel_routes(application: FastAPI) -> None:
+    """T-0016: part of create_app, moved verbatim; routes register in the original order."""
     @application.get(
         "/api/agent-evidence",
         response_class=JSONResponse,
@@ -2794,8 +2819,6 @@ def create_app(
             url="/dashboard",
             status_code=303,
         )
-
-    return application
 
 
 app = create_app()

@@ -16,9 +16,9 @@ PRINT_CALLS_CEILING = 36  # v5.50: AI-module diagnostics moved to logging (was 1
 # tests/test_risk_check_golden.py (36 scenarios), removed from the baseline.
 # 2026-10-03 T-0015: market_loop.process_symbol (513 lines) split into _symbol_* phases, pinned by
 # tests/test_process_symbol_golden.py (21 scenarios), removed from the baseline.
-LONG_FUNCTIONS_BASELINE = {
-    "web_app.py::create_app",
-}
+# 2026-10-02 T-0016: web_app.create_app (1051 lines) split into _register_*_routes groups (moved verbatim, same
+# registration order), pinned by tests/test_create_app_golden.py; removed. The baseline is now empty.
+LONG_FUNCTIONS_BASELINE: set[str] = set()
 
 REPORT = measure()
 
