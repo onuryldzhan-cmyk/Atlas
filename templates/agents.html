@@ -62,6 +62,10 @@
                     <div class="card-body">
                         <div id="cycle" class="small mb-3">Yükleniyor...</div>
                         <div id="work" class="small">Yükleniyor...</div>
+                        <div class="row g-3 mt-1">
+                            <div class="col-lg-7"><div class="fw-bold small mb-1">Canlı kararlar (ajanların son kayıtları)</div><div id="verdicts" class="small">Yükleniyor...</div></div>
+                            <div class="col-lg-5"><div class="fw-bold small mb-1">Ajan sonuç sayacı (öneriler)</div><div id="scoreboard" class="small">Yükleniyor...</div></div>
+                        </div>
                         <div class="small text-body-secondary mt-2">Oy veren 5 ajan her döngüde otomatik çalışır. Organizasyon ajanları (araştırma, kod, inceleme, güvenlik)
                             görev <b>adımı</b> ile çalışır: bir adım ancak bir çalıştırıcı onu alıp sonucunu kaydedince ilerler. Kural tabanlı çalıştırıcılar
                             (performans raporu, öz-değerlendirme, strateji ajanı, güvenlik muhafızı) sahip makinesinde komutla çalışır; dil modeli
@@ -281,6 +285,42 @@
             '</tbody></table>';
     }
 
+    // Live verdicts (2026-10-02, idea from an "agents office" live-verdict feed): each agent's
+    // newest memory records, newest first. Routine cycle/overview records are left out.
+    function renderVerdicts(memory) {
+        const el = document.getElementById('verdicts');
+        if (!memory || memory.available !== true) { el.innerHTML = '<span class="badge text-bg-secondary">hafıza okunamadı</span>'; return; }
+        const routine = new Set(['executive_assistant', 'overview_snapshot']);
+        const recs = (memory.records || []).filter((r) => !routine.has(r.author)).sort((a, b) => b.seq - a.seq).slice(0, 12);
+        el.innerHTML = recs.length ? '<ul class="list-unstyled mb-0">' + recs.map((r) =>
+            `<li class="mb-1"><span class="badge text-bg-secondary">${esc(r.author)}</span> ${esc(r.title)} <span class="text-body-secondary">· ${esc(r.created_at)}</span></li>`).join('') + '</ul>'
+            : '<div class="text-body-secondary">Henüz ajan kaydı yok.</div>';
+    }
+
+    // Outcome counter: per proposing agent, how many proposals are open, accepted or rejected.
+    // Counts only what the proposal log says; nothing is estimated.
+    function renderScoreboard(proposals) {
+        const el = document.getElementById('scoreboard');
+        if (!proposals || proposals.available !== true) { el.innerHTML = '<span class="badge text-bg-secondary">öneri kaydı okunamadı</span>'; return; }
+        const by = {};
+        (proposals.proposals || []).forEach((p) => {
+            const b = by[p.author || 'bilinmiyor'] = by[p.author || 'bilinmiyor'] || { open: 0, accepted: 0, rejected: 0 };
+            if (p.status === 'APPLIED' || String(p.status).includes('APPROVED')) b.accepted += 1;
+            else if (['REJECTED', 'ROLLED_BACK', 'SUPERSEDED'].includes(p.status)) b.rejected += 1;
+            else b.open += 1;
+        });
+        const rows = Object.entries(by).sort((a, b) => (b[1].open + b[1].accepted + b[1].rejected) - (a[1].open + a[1].accepted + a[1].rejected));
+        el.innerHTML = rows.length ? '<table class="table table-sm mb-0"><thead><tr><th>Ajan</th><th class="text-end">Açık</th><th class="text-end">Kabul</th><th class="text-end">Ret</th></tr></thead><tbody>' +
+            rows.map(([a, c]) => `<tr><td>${esc(a)}</td><td class="text-end">${c.open}</td><td class="text-end">${c.accepted}</td><td class="text-end">${c.rejected}</td></tr>`).join('') + '</tbody></table>'
+            : '<div class="text-body-secondary">Henüz öneri yok.</div>';
+    }
+
+    async function refreshRecords() {
+        const [memory, proposals] = await Promise.all([getJson('/api/memory'), getJson('/api/proposals')]);
+        renderVerdicts(memory);
+        renderScoreboard(proposals);
+    }
+
     async function refreshLive() {
         renderLiveAgents(await getJson('/api/signals'));
     }
@@ -306,6 +346,8 @@
         const [tasks, proposals] = await Promise.all([getJson('/api/tasks'), getJson('/api/proposals')]);
         renderWork(tasks, proposals);
         renderCycle(await getJson('/api/memory'));
+        refreshRecords();
+        atlasPoll(refreshRecords, 30000);
     }
 
     if (typeof window !== 'undefined' && typeof document !== 'undefined' && document.addEventListener && !window.__ATLAS_TEST__) {
