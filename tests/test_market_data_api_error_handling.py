@@ -574,3 +574,42 @@ def test_a_feed_error_does_not_leak_out_of_process_symbol() -> None:
         "symbol:BTCUSDT",
         "symbol:ETHUSDT",
     }
+
+
+# ---------------------------------------------------------------------------
+# Rate-limit back-off (2026-10-02; hummingbot AsyncThrottler idea)
+# ---------------------------------------------------------------------------
+
+
+def test_after_429_no_request_is_sent_until_retry_after_passes(monkeypatch) -> None:
+    """Hitting the limit again during Retry-After escalates to a 418 IP ban; Atlas must not."""
+
+    clock = {"now": 1000.0}
+    monkeypatch.setattr(
+        "atlas_finance.market_data.binance_public_provider.time.monotonic", lambda: clock["now"]
+    )
+    provider, session = build_provider(StubResponse(status_code=429, headers={"Retry-After": "30"}, text=""))
+
+    with pytest.raises(MarketDataRateLimitError):
+        provider.get_candles("BTCUSDT", "1m", 100)
+    assert len(session.calls) == 1
+
+    clock["now"] += 29
+    with pytest.raises(MarketDataRateLimitError, match="no request sent"):
+        provider.get_candles("ETHUSDT", "1m", 100)  # every symbol waits, not just the one that hit it
+    assert len(session.calls) == 1
+
+    clock["now"] += 2
+    with pytest.raises(MarketDataRateLimitError, match="status=429"):
+        provider.get_candles("BTCUSDT", "1m", 100)  # back-off over: the request goes out again
+    assert len(session.calls) == 2
+
+
+@pytest.mark.parametrize("header, expected", [(None, 60.0), ("garbage", 60.0), ("-5", 60.0), ("99999", 3600.0)])
+def test_backoff_defaults_and_caps(monkeypatch, header, expected) -> None:
+    monkeypatch.setattr("atlas_finance.market_data.binance_public_provider.time.monotonic", lambda: 0.0)
+    headers = {} if header is None else {"Retry-After": header}
+    provider, _ = build_provider(StubResponse(status_code=418, headers=headers, text=""))
+    with pytest.raises(MarketDataRateLimitError):
+        provider.get_candles("BTCUSDT", "1m", 100)
+    assert provider._rate_limited_until == expected

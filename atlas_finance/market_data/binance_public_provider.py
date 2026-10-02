@@ -241,6 +241,10 @@ class BinancePublicDataProvider(
         self._closed = False
 
         self._lock = threading.RLock()
+        # Rate-limit back-off (2026-10-02; hummingbot's AsyncThrottler idea): after a
+        # 418/429 every request is refused locally until Retry-After has passed, so
+        # Atlas never keeps hitting a limit that escalates to an IP ban.
+        self._rate_limited_until = 0.0
 
         logger.info(
             "%s v%s initialized.",
@@ -598,6 +602,14 @@ class BinancePublicDataProvider(
     ) -> Any:
         self._ensure_available()
 
+        with self._lock:
+            wait = self._rate_limited_until - time.monotonic()
+        if wait > 0:
+            raise MarketDataRateLimitError(
+                "Binance public API rate limit back-off active; "
+                f"no request sent. retry_in={wait:.1f}s"
+            )
+
         url = (
             f"{self._base_url}"
             f"{endpoint}"
@@ -614,6 +626,11 @@ class BinancePublicDataProvider(
                     url=url,
                     params=params,
                 )
+
+                if response.status_code in (418, 429):
+                    self._start_rate_limit_backoff(
+                        response.headers.get("Retry-After")
+                    )
 
                 self._validate_response(
                     response
@@ -725,6 +742,22 @@ class BinancePublicDataProvider(
             raise MarketDataRequestError(
                 "Binance public HTTP request failed."
             ) from error
+
+    RATE_LIMIT_DEFAULT_BACKOFF_SECONDS: Final[float] = 60.0
+    RATE_LIMIT_MAX_BACKOFF_SECONDS: Final[float] = 3600.0
+
+    def _start_rate_limit_backoff(self, retry_after: Any) -> None:
+        """Hold every request until Retry-After (seconds) passes; 60 s when absent or unreadable."""
+        try:
+            seconds = float(retry_after)
+            if not math.isfinite(seconds) or seconds <= 0:
+                raise ValueError
+        except (TypeError, ValueError):
+            seconds = self.RATE_LIMIT_DEFAULT_BACKOFF_SECONDS
+        seconds = min(seconds, self.RATE_LIMIT_MAX_BACKOFF_SECONDS)
+        with self._lock:
+            self._rate_limited_until = max(self._rate_limited_until, time.monotonic() + seconds)
+        logger.warning("Binance rate limit: all public requests paused for %.0f s", seconds)
 
     @classmethod
     def _validate_response(
