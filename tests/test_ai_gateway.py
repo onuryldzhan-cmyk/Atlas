@@ -50,7 +50,7 @@ def test_every_failure_abstains(tmp_path):
 def test_budget_and_unreadable_ledger_stop_spending(tmp_path, monkeypatch):
     monkeypatch.setenv("ATLAS_AI_DAILY_BUDGET_USD", "0.01")
     ledger = ai.UsageLedger(tmp_path / "u.json")
-    ledger.add("2026-10-02", Decimal("0.01"))
+    ledger.add("2026-10-02", Decimal("0.006"))  # 60 % of 0.01 already used
     assert "DAILY_BUDGET" in ai.ask("s", "q", SCHEMA, ledger=ledger, client_factory=fake('{"a":"x"}'), now=NOW).reason
     (tmp_path / "bad.json").write_text("{", encoding="utf-8")
     assert "UNREADABLE" in ai.ask("s", "q", SCHEMA, ledger=ai.UsageLedger(tmp_path / "bad.json"),
@@ -106,3 +106,23 @@ def test_gateway_stays_out_of_the_trading_runtime():
     from pathlib import Path
     closure = _j.loads((Path(__file__).resolve().parents[1] / "packaging" / "atlas_runtime_closure.json").read_text())
     assert "tools/ai_gateway.py" not in _j.dumps(closure)
+
+
+def test_owner_quota_rule_60_percent_total_split_by_task_size(monkeypatch):
+    # Owner 2026-10-02: all agents together max 60 % of the daily budget, split by task size.
+    monkeypatch.setenv("ATLAS_AI_DAILY_BUDGET_USD", "3.00")
+    assert ai.agent_cap(None) == Decimal("1.80")
+    assert ai.agent_cap("ceo_ai") == Decimal("0.60")        # weight 1 of 3
+    assert ai.agent_cap("model_council") == Decimal("1.20")  # weight 2 of 3 (two models per run)
+    assert sum(ai.agent_cap(a) for a in ai.AGENT_WEIGHTS) <= ai.agent_cap(None)
+    assert ai.agent_cap("unknown_agent") == 0                # an unlisted agent cannot spend
+
+
+def test_an_agent_stops_at_its_own_share_while_others_continue(tmp_path, monkeypatch):
+    monkeypatch.setenv("ATLAS_AI_DAILY_BUDGET_USD", "3.00")
+    ledger = ai.UsageLedger(tmp_path / "u.json")
+    ledger.add("2026-10-02", Decimal("0.60"), "ceo_ai")
+    blocked = ai.ask("s", "q", SCHEMA, ledger=ledger, client_factory=fake('{"a":"x"}'), now=NOW, agent="ceo_ai")
+    assert blocked.status == "ABSTAIN" and "AGENT_QUOTA_REACHED" in blocked.reason
+    ok = ai.ask("s", "q", SCHEMA, ledger=ledger, client_factory=fake('{"a":"x"}'), now=NOW, agent="model_council")
+    assert ok.status == "OK" and ledger.spent_today("2026-10-02", "model_council") == Decimal("0.014")

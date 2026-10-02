@@ -27,6 +27,10 @@ COUNCIL_MODELS = ("claude-opus-5-5", "claude-sonnet-5-5")
 # USD per 1M tokens (input, output), Anthropic first-party rates, cached 2026-09-25.
 PRICES = {"claude-opus-5-5": (Decimal("4"), Decimal("20")), "claude-sonnet-5-5": (Decimal("2"), Decimal("10"))}
 DEFAULT_DAILY_BUDGET_USD = Decimal("1.00")
+# Owner rule 2026-10-02: all AI agents together may use at most 60 % of the daily budget, and
+# that share is split between the agents by task size (weight = expected model calls per run).
+TOTAL_SHARE = Decimal("0.60")
+AGENT_WEIGHTS = {"ceo_ai": 1, "model_council": 2}
 TIMEOUT_S = 120.0
 MAX_TOKENS = 16000
 USAGE_FILE = "ai_usage.json"
@@ -70,22 +74,36 @@ class UsageLedger:
         except (OSError, ValueError):
             return None
 
-    def spent_today(self, today: str) -> Decimal | None:
+    def spent_today(self, today: str, agent: str | None = None) -> Decimal | None:
         data = self._load()
         if data is None:
             return None
+        key = f"{today}:{agent}" if agent else today
         try:
-            return Decimal(str(data.get(today, "0")))
+            return Decimal(str(data.get(key, "0")))
         except ArithmeticError:
             return None
 
-    def add(self, today: str, cost: Decimal) -> None:
+    def add(self, today: str, cost: Decimal, agent: str | None = None) -> None:
         data = self._load() or {}
         data[today] = str(Decimal(str(data.get(today, "0"))) + cost)
+        if agent:
+            data[f"{today}:{agent}"] = str(Decimal(str(data.get(f"{today}:{agent}", "0"))) + cost)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         tmp = self.path.with_suffix(".tmp")
         tmp.write_text(json.dumps(data, sort_keys=True), encoding="utf-8")
         tmp.replace(self.path)
+
+
+def agent_cap(agent: str | None) -> Decimal:
+    """This agent's daily USD cap: budget x 60 % x its weight share. Unknown agent -> 0 (no spend)."""
+    usable = daily_budget() * TOTAL_SHARE
+    if agent is None:
+        return usable
+    weight = AGENT_WEIGHTS.get(agent)
+    if not weight:
+        return Decimal("0")
+    return usable * Decimal(weight) / Decimal(sum(AGENT_WEIGHTS.values()))
 
 
 def _cost(model: str, usage: Any) -> Decimal:
@@ -116,7 +134,7 @@ def _validate(data: Any, schema: dict[str, Any]) -> str | None:
 
 def ask(system: str, prompt: str, schema: dict[str, Any], *, model: str = DEFAULT_MODEL, ledger: UsageLedger,
         client_factory: Callable[[], Any] | None = None, now: datetime | None = None,
-        effort: str = "medium") -> AIResult:
+        effort: str = "medium", agent: str | None = None) -> AIResult:
     """One structured question. Never raises; every failure is an ABSTAIN with a reason."""
     from atlas_security import sanitize_sensitive_data
 
@@ -126,8 +144,11 @@ def ask(system: str, prompt: str, schema: dict[str, Any], *, model: str = DEFAUL
     spent = ledger.spent_today(today)
     if spent is None:
         return AIResult("ABSTAIN", reason="USAGE_LEDGER_UNREADABLE")
-    if spent >= daily_budget():
-        return AIResult("ABSTAIN", reason=f"DAILY_BUDGET_REACHED ({spent} USD)")
+    if spent >= daily_budget() * TOTAL_SHARE:
+        return AIResult("ABSTAIN", reason=f"DAILY_BUDGET_REACHED ({spent} USD, all agents max 60 %)")
+    mine = ledger.spent_today(today, agent) if agent else spent
+    if mine is None or mine >= agent_cap(agent):
+        return AIResult("ABSTAIN", reason=f"AGENT_QUOTA_REACHED ({agent}: {mine} / {agent_cap(agent):.4f} USD)")
     safe_prompt = sanitize_sensitive_data(prompt)
     try:
         client = (client_factory or _default_client)()
@@ -140,7 +161,7 @@ def ask(system: str, prompt: str, schema: dict[str, Any], *, model: str = DEFAUL
     except Exception as exc:  # SDK missing, network, rate limit, 4xx/5xx: abstain
         return AIResult("ABSTAIN", reason=f"UNAVAILABLE ({type(exc).__name__})", model=model)
     cost = _cost(getattr(response, "model", model) or model, getattr(response, "usage", None))
-    ledger.add(today, cost)
+    ledger.add(today, cost, agent)
     if getattr(response, "stop_reason", None) == "refusal":
         return AIResult("ABSTAIN", reason="REFUSAL", model=model, cost_usd=cost)
     if getattr(response, "stop_reason", None) == "max_tokens":

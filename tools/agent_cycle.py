@@ -129,7 +129,7 @@ def ceo_brief(records_dir: Path, ask=None) -> dict[str, Any]:
         f"{r.get('id')} | {r.get('author')} | {str(r.get('title') or '')[:160]}" for r in recent) + (
         "\n\nGive at most 5 priorities for the owner today, most important first, in Turkish. "
         "Cite the record ids each priority rests on in cited_records.")
-    res = (ask or ai.ask)(_AI_SYSTEM, prompt, _CEO_SCHEMA, ledger=_ai_ledger())
+    res = (ask or ai.ask)(_AI_SYSTEM, prompt, _CEO_SCHEMA, ledger=_ai_ledger(), agent="ceo_ai")
     if res.status != "OK":
         return {"verdict": "OK", "summary": f"AI-001 çekimser: {res.reason}"}
     cited = [c for c in res.data.get("cited_records", []) if isinstance(c, str)]
@@ -170,7 +170,7 @@ def model_council(records_dir: Path, ask=None) -> dict[str, Any]:
               "\n\nShould the owner approve it? Answer SUPPORT, OPPOSE or UNSURE with short reasons in Turkish.")
     votes = {}
     for model in ai.COUNCIL_MODELS:
-        res = (ask or ai.ask)(_AI_SYSTEM, prompt, _COUNCIL_SCHEMA, model=model, ledger=_ai_ledger())
+        res = (ask or ai.ask)(_AI_SYSTEM, prompt, _COUNCIL_SCHEMA, model=model, ledger=_ai_ledger(), agent="model_council")
         votes[model] = {"verdict": res.data["verdict"], "reasons": [str(x)[:300] for x in res.data["reasons"]][:5]} \
             if res.status == "OK" else {"verdict": "ABSTAIN", "reason": res.reason}
     verdicts = {v["verdict"] for v in votes.values() if v["verdict"] != "ABSTAIN"}
