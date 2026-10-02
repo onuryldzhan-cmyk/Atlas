@@ -98,3 +98,36 @@ def test_all_watched_coins_and_a_coin_without_history_does_not_erase_the_day(tmp
         return _fetch(symbol, start)
     xp.replay_day(98 * D, fetch, replay=replay)
     assert "0GUSDT" not in seen and "BTCUSDT" in seen and len(seen) == 19
+
+
+def test_stream_groups_match_lesson_book_build(tmp_path):
+    import csv as _csv
+    import random
+
+    from tools import experience_agent as xa
+    from tools import lesson_book as lb
+
+    rng = random.Random(7)
+    cols = ["time", "action", "regime", "confidence", "net_240m", "ret_240m"]
+    rows = []
+    for i in range(400):
+        rows.append({"time": f"2026-01-{1 + i % 28:02d}T00:00:00+00:00", "action": rng.choice(["BUY", "SELL"]),
+                     "regime": rng.choice(["TREND_UP", "RANGE", ""]), "confidence": str(rng.randint(50, 64)),
+                     "net_240m": "" if i % 17 == 0 else f"{rng.uniform(-0.02, 0.02):.6f}",
+                     "ret_240m": "" if i % 5 else f"{rng.uniform(-0.02, 0.02):.6f}"})
+    path = tmp_path / "s.csv"
+    with path.open("w", newline="", encoding="utf-8") as f:
+        w = _csv.DictWriter(f, fieldnames=cols)
+        w.writeheader()
+        w.writerows(rows)
+    split = "2026-01-15T00:00:00+00:00"
+    older, newer, total = xa.stream_groups(path, split)
+    assert total == 400
+    for part, got in (([r for r in rows if r["time"] < split], older), ([r for r in rows if r["time"] >= split], newer)):
+        want = {(g["action"], g["regime"], g["confidence"]): g for g in lb.build(part)}
+        assert set(want) == set(got)
+        for k, g in want.items():
+            for field in ("n", "verdict", "net_240m_win", "net_240m_avg_pct"):
+                assert got[k][field] == g[field], (k, field)
+    lessons, n = xa.stream_candidates(path, split)
+    assert n == 400 and lessons == xa._compare(older, newer)

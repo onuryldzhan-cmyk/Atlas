@@ -143,6 +143,10 @@ def candidate_lessons(rows: list[dict]) -> list[dict]:
     half = len(rows) // 2
     older = {(g["action"], g["regime"], g["confidence"]): g for g in lb.build(rows[:half])}
     newer = {(g["action"], g["regime"], g["confidence"]): g for g in lb.build(rows[half:])}
+    return _compare(older, newer)
+
+
+def _compare(older: dict, newer: dict) -> list[dict]:
     out = []
     for key, a in sorted(older.items()):
         b = newer.get(key)
@@ -156,6 +160,43 @@ def candidate_lessons(rows: list[dict]) -> list[dict]:
                     "avg240_older_pct": a["net_240m_avg_pct"], "avg240_newer_pct": b["net_240m_avg_pct"],
                     "win240_older": a["net_240m_win"], "win240_newer": b["net_240m_win"]})
     return out
+
+
+def stream_groups(path: Path, split_iso: str) -> tuple[dict, dict, int]:
+    """Row-by-row 240m aggregates per (action, regime, band) for rows before / from split_iso.
+
+    The experience file grows to millions of rows (20 coins x 730 days); it is never loaded whole.
+    Group fields match tools.lesson_book.build (n, verdict, net_240m_win, net_240m_avg_pct).
+    """
+    from decimal import Decimal
+
+    from tools import lesson_book as lb
+
+    slip = Decimal(SLIPPAGE_BPS) / Decimal(10000)
+    acc: tuple[dict, dict] = ({}, {})
+    total = 0
+    with path.open(encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            total += 1
+            key = (r["action"], r.get("regime") or "UNKNOWN", lb.band(r["confidence"]))
+            g = acc[0 if r["time"] < split_iso else 1].setdefault(key, [0, 0, 0, Decimal(0)])  # n, k, wins, sum
+            g[0] += 1
+            v = lb._value(r, 240, r["action"], slip, None)
+            if v is not None:
+                g[1] += 1
+                g[2] += (v > 0) == (r["action"] == "BUY")
+                g[3] += v
+    out = tuple({key: {"n": n, "verdict": "MEASURED" if n >= lb.MIN_SAMPLES else "INSUFFICIENT",
+                       "net_240m_win": round(w / k, 3) if k else None,
+                       "net_240m_avg_pct": round(float(s / k) * 100, 3) if k else None}
+                 for key, (n, k, w, s) in half.items()} for half in acc)
+    return out[0], out[1], total
+
+
+def stream_candidates(path: Path, split_iso: str) -> tuple[list[dict], int]:
+    """Walk-forward candidates split at a point in time, streamed; also the total decision count."""
+    older, newer, total = stream_groups(path, split_iso)
+    return _compare(older, newer), total
 
 
 def run(records_dir: Path, research_dir: Path, *, fetch: Fetcher | None = None, now_ms: int | None = None,
@@ -179,21 +220,20 @@ def run(records_dir: Path, research_dir: Path, *, fetch: Fetcher | None = None, 
     state["newest_day_ms"] = max(day_ms, state.get("newest_day_ms", day_ms))
     state["oldest_day_ms"] = min(day_ms, state.get("oldest_day_ms", day_ms))
     state["days"] = int(state.get("days", 0)) + 1
-    with signals_path.open(encoding="utf-8") as f:
-        rows = list(csv.DictReader(f))
-    lessons = candidate_lessons(rows)
+    mid_ms = (state["oldest_day_ms"] + state["newest_day_ms"] + DAY_MS) // 2  # time midpoint of the experience
+    lessons, n_rows = stream_candidates(signals_path, datetime.fromtimestamp(mid_ms / 1000, UTC).isoformat())
     fingerprint = sorted([c["action"], c["regime"], c["confidence"], c["avg240_newer_pct"] > 0] for c in lessons)  # lists: JSON round-trips them
     changed = fingerprint != state.get("lesson_fingerprint", [])
     state["lesson_fingerprint"] = fingerprint
     state_path.write_text(json.dumps(state), encoding="utf-8")
     day = datetime.fromtimestamp(day_ms / 1000, UTC).date().isoformat()
-    summary = f"{day} ({direction}) işlendi: {len(signals)} karar; toplam {state['days']} gün, {len(rows)} karar; aday ders {len(lessons)}"
+    summary = f"{day} ({direction}) işlendi: {len(signals)} karar; toplam {state['days']} gün, {n_rows} karar; aday ders {len(lessons)}"
     if changed:
         existing = {r["record_id"] for r in cli.read_log(records_dir / cli.MEMORY_LOG)} if (records_dir / cli.MEMORY_LOG).exists() else set()
         cli.add_memory_record(records_dir, {
             "record_id": f"XP-{len(existing) + 1:04d}", "type": "EXPERIMENTS", "authority": "RESEARCH",
-            "title": f"Deneyim: {state['days']} gün, {len(rows)} karar, {len(lessons)} aday ders (kural değil)",
-            "body": json.dumps({"days": state["days"], "decisions": len(rows), "candidate_lessons": lessons[:40],
+            "title": f"Deneyim: {state['days']} gün, {n_rows} karar, {len(lessons)} aday ders (kural değil)",
+            "body": json.dumps({"days": state["days"], "decisions": n_rows, "candidate_lessons": lessons[:40],
                                 "method": "walk-forward halves; MEASURED in both; same 240m direction",
                                 "caveat": "macro/sentiment excluded offline; overlapping 15-min decisions"},
                                ensure_ascii=False),
