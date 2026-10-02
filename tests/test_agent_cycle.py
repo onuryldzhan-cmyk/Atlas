@@ -117,6 +117,8 @@ def test_task_runner_executes_rule_based_steps_and_flags_llm_steps(tmp_path, mon
     state = T.replay(cli.read_log(tmp_path / cli.TASKS_LOG))
     assert any(s["status"] == "DONE" and s["result"]["verdict"] == "PASS" for s in state[sec]["steps"])
     assert state[res]["status"] == "BLOCKED" and "AI-001" in out["summary"]
+    reason = next(st["block_reason"] for st in state[res]["steps"] if st["status"] == "BLOCKED")
+    assert "AI-001" in reason and "onay" in reason  # marker atlas_self_review skips on; owner-approval wording
     for _ in range(5):  # one step per task per cycle; the log settles
         ac.task_runner(tmp_path)
     again = ac.task_runner(tmp_path)  # once settled, nothing is re-run or re-blocked

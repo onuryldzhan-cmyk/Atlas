@@ -450,8 +450,10 @@ def task_runner(records_dir: Path) -> dict[str, Any]:
 
     Every ASSIGNED step whose unit has a rule-based executor is started and
     finished now with a real result. A step whose unit needs a language model
-    (research, code, review) is BLOCKED once with the reason "needs AI-001",
-    so it is visible instead of silently waiting. Nothing here can approve,
+    (research, code, review) is BLOCKED once: AI-001 agents are advisory only
+    (no tools), so such a step is done in a development session with the
+    owner's approval. The reason keeps the "AI-001" marker that
+    atlas_self_review uses to skip it. Nothing here can approve,
     deploy or touch money.
     """
     from atlas_org import tasks as T
@@ -470,7 +472,7 @@ def task_runner(records_dir: Path) -> dict[str, Any]:
             runner = STEP_EXECUTORS.get(unit)
             if runner is None:
                 cli.add_task_event(records_dir, task_id=tid, event="BLOCK", actor=T.ASSISTANT,
-                                   payload={"step": idx, "reason": f"{unit} için yürütücü yok: dil modeli gerekiyor (AI-001 kararı bekleniyor)"})
+                                   payload={"step": idx, "reason": f"{unit}: yapay zekâ ajanları yalnız danışman (AI-001); bu adım sahibin onayıyla geliştirme oturumunda yapılır"})
                 blocked.append(f"{tid}#{idx}")
                 break  # a BLOCK changes the task status; re-read on the next cycle
             cli.add_task_event(records_dir, task_id=tid, event="START", actor=unit, payload={"step": idx})
