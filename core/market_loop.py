@@ -117,6 +117,18 @@ _EPOCH = datetime(
 )
 
 
+class _Continue:
+    """Marker a MarketLoop ``_symbol_*`` phase returns to let process_symbol go on (T-0015).
+
+    None cannot be the marker: process_symbol returns None as a real result ("skip this symbol").
+    """
+
+    __slots__ = ()
+
+
+_CONTINUE = _Continue()
+
+
 class MarketLoop:
     """
     Continuous Atlas market intelligence and execution loop.
@@ -574,256 +586,31 @@ class MarketLoop:
             processing_cutoff = self._processing_cutoff()
 
         try:
-            candles = self._load_candles(
-                symbol
-            )
-
-            if not candles:
-                self._increment_metric(
-                    "symbols_skipped"
-                )
-                return None
-
-            # Recorded only once real bars are in hand, never merely
-            # because the provider call did not raise. A provider that
-            # keeps returning [] - a delisted symbol, a silently failing
-            # API, empty-response rate limiting - must not refresh
-            # freshness, or staleness reporting would render the absence
-            # of data as positive evidence of data (NB-4).
-            with self.lock:
-                self.last_symbol_fetch_success_at[
-                    symbol
-                ] = datetime.now(
-                    UTC
-                )
-
-            normalized_candles = self.processor.normalize(
-                candles,
-                processing_cutoff=processing_cutoff,
-            )
-
-            if not normalized_candles:
-                self._increment_metric(
-                    "symbols_skipped"
-                )
-                return None
-
-            closed_candles = self.processor.closed_candles(
-                normalized_candles
-            )
-
-            # Measured before any skip below, so a duplicate or
-            # insufficient-history cycle still records how old the
-            # newest closed candle is. Never raises.
-            self._record_candle_age(
+            # T-0015: the phases are _symbol_* helpers; each returns its
+            # terminal result (None is a real 'skip' result here) or _CONTINUE.
+            closed_candles, terminal = self._symbol_closed_candles(
                 symbol,
-                closed_candles,
                 processing_cutoff,
             )
 
-            open_candle_count = (
-                len(normalized_candles)
-                - len(closed_candles)
-            )
+            if not isinstance(terminal, _Continue):
+                return terminal
 
-            if open_candle_count > 0:
-                self._increment_metric(
-                    "open_candles_excluded",
-                    open_candle_count,
-                )
-
-            if not closed_candles:
-                logger.info(
-                    "%s skipped: no closed candles available",
-                    symbol,
-                )
-
-                self._increment_metric(
-                    "symbols_skipped"
-                )
-
-                return {
-                    "status": "SKIPPED",
-                    "reason": "NO_CLOSED_CANDLES",
-                    "symbol": symbol,
-                }
-
-            if len(closed_candles) < 50:
-                logger.warning(
-                    "%s skipped: insufficient closed candles=%s",
-                    symbol,
-                    len(closed_candles),
-                )
-
-                self._increment_metric(
-                    "symbols_skipped"
-                )
-
-                return {
-                    "status": "SKIPPED",
-                    "reason": "INSUFFICIENT_CLOSED_CANDLES",
-                    "symbol": symbol,
-                    "candle_count": len(
-                        closed_candles
-                    ),
-                }
-
-            self._remember_candles(symbol, closed_candles)
-            candle_identity = (
-                self.processor.latest_closed_identity(
-                    closed_candles
-                )
-            )
-
-            if candle_identity is None:
-                logger.warning(
-                    "%s skipped: closed candle identity unavailable",
-                    symbol,
-                )
-
-                self._increment_metric(
-                    "symbols_skipped"
-                )
-
-                return {
-                    "status": "SKIPPED",
-                    "reason": "CANDLE_IDENTITY_UNAVAILABLE",
-                    "symbol": symbol,
-                }
-
-            with self.lock:
-                previous_identity = (
-                    self.last_processed_candles.get(
-                        symbol
-                    )
-                )
-
-            self._check_backfill_gap(
+            candle_identity, terminal = self._symbol_new_candle_identity(
                 symbol,
-                previous_identity=previous_identity,
-                closed_candles=closed_candles,
+                closed_candles,
             )
 
-            if previous_identity == candle_identity:
-                self._increment_metric(
-                    "duplicate_candles_skipped"
-                )
+            if not isinstance(terminal, _Continue):
+                return terminal
 
-                logger.debug(
-                    "%s duplicate closed candle skipped | %s",
-                    symbol,
-                    candle_identity,
-                )
-
-                return {
-                    "status": "SKIPPED",
-                    "reason": "DUPLICATE_CLOSED_CANDLE",
-                    "symbol": symbol,
-                    "candle_identity": candle_identity,
-                }
-
-            analysis = self.technical.analyze(
-                closed_candles
-            )
-
-            if not isinstance(
-                analysis,
-                dict,
-            ):
-                logger.warning(
-                    "%s skipped: invalid technical analysis",
-                    symbol,
-                )
-
-                self._increment_metric(
-                    "symbols_skipped"
-                )
-
-                return None
-
-            price = self.processor.latest_closed_price(
-                closed_candles
-            )
-
-            price = self._safe_float(
-                price
-            )
-
-            if price <= 0:
-                logger.warning(
-                    "%s skipped: invalid price=%s",
-                    symbol,
-                    price,
-                )
-
-                self._increment_metric(
-                    "symbols_skipped"
-                )
-
-                return None
-
-            score = self.calculate_score(
-                analysis
-            )
-
-            market_data = self.world.build_market_data(
+            normalized_decision, market_data, terminal = self._symbol_decide(
                 symbol,
-                price,
-                analysis,
-                score,
-                sentiment_input=self._with_funding(self._sentiment_input(), symbol),
-                macro_input=self._macro_input(),
-                market_risk_input=self._market_risk_input(
-                    closed_candles
-                ),
+                closed_candles,
             )
 
-            raw_decision = self.brain.analyze_and_decide(
-                symbol,
-                market_data,
-            )
-
-            self._increment_metric(
-                "decisions_received"
-            )
-
-            normalized_decision = (
-                self.normalize_decision(
-                    raw_decision=raw_decision,
-                    symbol=symbol,
-                    price=price,
-                    market_data=market_data,
-                )
-            )
-
-            if normalized_decision is None:
-                self._increment_metric(
-                    "decisions_rejected"
-                )
-
-                logger.warning(
-                    "%s decision normalization failed",
-                    symbol,
-                )
-
-                self.publish(
-                    "DECISION_NORMALIZATION_FAILED",
-                    {
-                        "symbol": symbol,
-                        "raw_decision": self._safe_payload(
-                            raw_decision
-                        ),
-                        "timestamp": datetime.now(
-                            UTC
-                        ).isoformat(),
-                    },
-                )
-
-                return None
-
-            self._increment_metric(
-                "decisions_normalized"
-            )
+            if not isinstance(terminal, _Continue):
+                return terminal
 
             # Mark the candle only after Brain output has been
             # normalized successfully. Failed cycles may retry.
@@ -864,142 +651,15 @@ class MarketLoop:
                 normalized_decision,
             )
 
-            action = normalized_decision.get(
-                "action",
-                "HOLD",
+            terminal = self._symbol_execution_gate(
+                symbol,
+                normalized_decision,
+                closed_candles,
+                processing_cutoff,
             )
 
-            if action in self.NON_EXECUTION_ACTIONS:
-                self._increment_metric(
-                    "hold_decisions"
-                )
-
-                logger.info(
-                    "%s decision HOLD | execution skipped",
-                    symbol,
-                )
-
-                result = {
-                    "status": "SKIPPED",
-                    "reason": "NON_EXECUTION_ACTION",
-                    "symbol": symbol,
-                    "action": action,
-                    "timestamp": datetime.now(
-                        UTC
-                    ).isoformat(),
-                }
-
-                with self.lock:
-                    self.last_executions[
-                        symbol
-                    ] = result
-
-                return result
-
-            if action not in self.VALID_EXECUTION_ACTIONS:
-                self._increment_metric(
-                    "decisions_rejected"
-                )
-
-                logger.warning(
-                    "%s invalid normalized action: %s",
-                    symbol,
-                    action,
-                )
-
-                return {
-                    "status": "REJECTED",
-                    "reason": "INVALID_NORMALIZED_ACTION",
-                    "symbol": symbol,
-                    "action": action,
-                }
-
-            if self.execution is None:
-                logger.warning(
-                    "%s execution skipped: manager unavailable",
-                    symbol,
-                )
-
-                return {
-                    "status": "SKIPPED",
-                    "reason": "EXECUTION_MANAGER_UNAVAILABLE",
-                    "symbol": symbol,
-                    "action": action,
-                }
-
-            if action == "SELL" and self._sell_symbol_known_flat(symbol):
-                # Registry v5.04: Atlas is LONG-only, so a SELL of a symbol the
-                # durable book shows as not held has nothing to act on. It is
-                # treated as HOLD instead of being routed into a rejection.
-                self._increment_metric(
-                    "sell_without_position_skipped"
-                )
-
-                logger.info(
-                    "%s decision SELL with no held position | treated as HOLD, "
-                    "execution skipped",
-                    symbol,
-                )
-
-                result = {
-                    "status": "SKIPPED",
-                    "reason": "NO_POSITION_TO_SELL",
-                    "symbol": symbol,
-                    "action": action,
-                    "timestamp": datetime.now(
-                        UTC
-                    ).isoformat(),
-                }
-
-                with self.lock:
-                    self.last_executions[
-                        symbol
-                    ] = result
-
-                return result
-
-            if action == "BUY":
-                age, age_status = self._candle_age(
-                    closed_candles[-1] if closed_candles else None,
-                    processing_cutoff,
-                )
-
-                if (
-                    age_status != self.CANDLE_AGE_MEASURED
-                    or age is None
-                    or age > self.BUY_MAX_CANDLE_AGE_SECONDS
-                ):
-                    self._increment_metric(
-                        "buy_stale_data_skipped"
-                    )
-
-                    logger.warning(
-                        "%s BUY not routed: market data not fresh "
-                        "(candle_age=%s status=%s limit=%ss)",
-                        symbol,
-                        age,
-                        age_status,
-                        self.BUY_MAX_CANDLE_AGE_SECONDS,
-                    )
-
-                    result = {
-                        "status": "SKIPPED",
-                        "reason": "STALE_MARKET_DATA",
-                        "symbol": symbol,
-                        "action": action,
-                        "candle_age_seconds": age,
-                        "candle_age_status": age_status,
-                        "timestamp": datetime.now(
-                            UTC
-                        ).isoformat(),
-                    }
-
-                    with self.lock:
-                        self.last_executions[
-                            symbol
-                        ] = result
-
-                    return result
+            if not isinstance(terminal, _Continue):
+                return terminal
 
             market_state = self.world.build_market_state(
                 market_data
@@ -1060,6 +720,432 @@ class MarketLoop:
             )
 
             return None
+
+    def _symbol_closed_candles(
+        self,
+        symbol: str,
+        processing_cutoff: datetime,
+    ) -> tuple[Any, Any]:
+        """Load, normalize and keep only closed candles; at least 50 are required."""
+
+        candles = self._load_candles(
+            symbol
+        )
+
+        if not candles:
+            self._increment_metric(
+                "symbols_skipped"
+            )
+            return None, None
+
+        # Recorded only once real bars are in hand, never merely
+        # because the provider call did not raise. A provider that
+        # keeps returning [] - a delisted symbol, a silently failing
+        # API, empty-response rate limiting - must not refresh
+        # freshness, or staleness reporting would render the absence
+        # of data as positive evidence of data (NB-4).
+        with self.lock:
+            self.last_symbol_fetch_success_at[
+                symbol
+            ] = datetime.now(
+                UTC
+            )
+
+        normalized_candles = self.processor.normalize(
+            candles,
+            processing_cutoff=processing_cutoff,
+        )
+
+        if not normalized_candles:
+            self._increment_metric(
+                "symbols_skipped"
+            )
+            return None, None
+
+        closed_candles = self.processor.closed_candles(
+            normalized_candles
+        )
+
+        # Measured before any skip below, so a duplicate or
+        # insufficient-history cycle still records how old the
+        # newest closed candle is. Never raises.
+        self._record_candle_age(
+            symbol,
+            closed_candles,
+            processing_cutoff,
+        )
+
+        open_candle_count = (
+            len(normalized_candles)
+            - len(closed_candles)
+        )
+
+        if open_candle_count > 0:
+            self._increment_metric(
+                "open_candles_excluded",
+                open_candle_count,
+            )
+
+        if not closed_candles:
+            logger.info(
+                "%s skipped: no closed candles available",
+                symbol,
+            )
+
+            self._increment_metric(
+                "symbols_skipped"
+            )
+
+            return None, {
+                "status": "SKIPPED",
+                "reason": "NO_CLOSED_CANDLES",
+                "symbol": symbol,
+            }
+
+        if len(closed_candles) < 50:
+            logger.warning(
+                "%s skipped: insufficient closed candles=%s",
+                symbol,
+                len(closed_candles),
+            )
+
+            self._increment_metric(
+                "symbols_skipped"
+            )
+
+            return None, {
+                "status": "SKIPPED",
+                "reason": "INSUFFICIENT_CLOSED_CANDLES",
+                "symbol": symbol,
+                "candle_count": len(
+                    closed_candles
+                ),
+            }
+
+        return closed_candles, _CONTINUE
+
+    def _symbol_new_candle_identity(
+        self,
+        symbol: str,
+        closed_candles: Any,
+    ) -> tuple[Any, Any]:
+        """Remember the bars, identify the newest closed candle and skip one already processed."""
+
+        self._remember_candles(symbol, closed_candles)
+        candle_identity = (
+            self.processor.latest_closed_identity(
+                closed_candles
+            )
+        )
+
+        if candle_identity is None:
+            logger.warning(
+                "%s skipped: closed candle identity unavailable",
+                symbol,
+            )
+
+            self._increment_metric(
+                "symbols_skipped"
+            )
+
+            return None, {
+                "status": "SKIPPED",
+                "reason": "CANDLE_IDENTITY_UNAVAILABLE",
+                "symbol": symbol,
+            }
+
+        with self.lock:
+            previous_identity = (
+                self.last_processed_candles.get(
+                    symbol
+                )
+            )
+
+        self._check_backfill_gap(
+            symbol,
+            previous_identity=previous_identity,
+            closed_candles=closed_candles,
+        )
+
+        if previous_identity == candle_identity:
+            self._increment_metric(
+                "duplicate_candles_skipped"
+            )
+
+            logger.debug(
+                "%s duplicate closed candle skipped | %s",
+                symbol,
+                candle_identity,
+            )
+
+            return None, {
+                "status": "SKIPPED",
+                "reason": "DUPLICATE_CLOSED_CANDLE",
+                "symbol": symbol,
+                "candle_identity": candle_identity,
+            }
+
+        return candle_identity, _CONTINUE
+
+    def _symbol_decide(
+        self,
+        symbol: str,
+        closed_candles: Any,
+    ) -> tuple[Any, Any, Any]:
+        """Technical analysis, world market data and the Brain's decision, normalized."""
+
+        analysis = self.technical.analyze(
+            closed_candles
+        )
+
+        if not isinstance(
+            analysis,
+            dict,
+        ):
+            logger.warning(
+                "%s skipped: invalid technical analysis",
+                symbol,
+            )
+
+            self._increment_metric(
+                "symbols_skipped"
+            )
+
+            return None, None, None
+
+        price = self.processor.latest_closed_price(
+            closed_candles
+        )
+
+        price = self._safe_float(
+            price
+        )
+
+        if price <= 0:
+            logger.warning(
+                "%s skipped: invalid price=%s",
+                symbol,
+                price,
+            )
+
+            self._increment_metric(
+                "symbols_skipped"
+            )
+
+            return None, None, None
+
+        score = self.calculate_score(
+            analysis
+        )
+
+        market_data = self.world.build_market_data(
+            symbol,
+            price,
+            analysis,
+            score,
+            sentiment_input=self._with_funding(self._sentiment_input(), symbol),
+            macro_input=self._macro_input(),
+            market_risk_input=self._market_risk_input(
+                closed_candles
+            ),
+        )
+
+        raw_decision = self.brain.analyze_and_decide(
+            symbol,
+            market_data,
+        )
+
+        self._increment_metric(
+            "decisions_received"
+        )
+
+        normalized_decision = (
+            self.normalize_decision(
+                raw_decision=raw_decision,
+                symbol=symbol,
+                price=price,
+                market_data=market_data,
+            )
+        )
+
+        if normalized_decision is None:
+            self._increment_metric(
+                "decisions_rejected"
+            )
+
+            logger.warning(
+                "%s decision normalization failed",
+                symbol,
+            )
+
+            self.publish(
+                "DECISION_NORMALIZATION_FAILED",
+                {
+                    "symbol": symbol,
+                    "raw_decision": self._safe_payload(
+                        raw_decision
+                    ),
+                    "timestamp": datetime.now(
+                        UTC
+                    ).isoformat(),
+                },
+            )
+
+            return None, None, None
+
+        self._increment_metric(
+            "decisions_normalized"
+        )
+
+        return normalized_decision, market_data, _CONTINUE
+
+    def _symbol_execution_gate(
+        self,
+        symbol: str,
+        normalized_decision: dict[str, Any],
+        closed_candles: Any,
+        processing_cutoff: datetime,
+    ) -> Any:
+        """HOLD, invalid action, missing manager, SELL of a flat symbol and stale-data BUY end the cycle here."""
+
+        action = normalized_decision.get(
+            "action",
+            "HOLD",
+        )
+
+        if action in self.NON_EXECUTION_ACTIONS:
+            self._increment_metric(
+                "hold_decisions"
+            )
+
+            logger.info(
+                "%s decision HOLD | execution skipped",
+                symbol,
+            )
+
+            result = {
+                "status": "SKIPPED",
+                "reason": "NON_EXECUTION_ACTION",
+                "symbol": symbol,
+                "action": action,
+                "timestamp": datetime.now(
+                    UTC
+                ).isoformat(),
+            }
+
+            with self.lock:
+                self.last_executions[
+                    symbol
+                ] = result
+
+            return result
+
+        if action not in self.VALID_EXECUTION_ACTIONS:
+            self._increment_metric(
+                "decisions_rejected"
+            )
+
+            logger.warning(
+                "%s invalid normalized action: %s",
+                symbol,
+                action,
+            )
+
+            return {
+                "status": "REJECTED",
+                "reason": "INVALID_NORMALIZED_ACTION",
+                "symbol": symbol,
+                "action": action,
+            }
+
+        if self.execution is None:
+            logger.warning(
+                "%s execution skipped: manager unavailable",
+                symbol,
+            )
+
+            return {
+                "status": "SKIPPED",
+                "reason": "EXECUTION_MANAGER_UNAVAILABLE",
+                "symbol": symbol,
+                "action": action,
+            }
+
+        if action == "SELL" and self._sell_symbol_known_flat(symbol):
+            # Registry v5.04: Atlas is LONG-only, so a SELL of a symbol the
+            # durable book shows as not held has nothing to act on. It is
+            # treated as HOLD instead of being routed into a rejection.
+            self._increment_metric(
+                "sell_without_position_skipped"
+            )
+
+            logger.info(
+                "%s decision SELL with no held position | treated as HOLD, "
+                "execution skipped",
+                symbol,
+            )
+
+            result = {
+                "status": "SKIPPED",
+                "reason": "NO_POSITION_TO_SELL",
+                "symbol": symbol,
+                "action": action,
+                "timestamp": datetime.now(
+                    UTC
+                ).isoformat(),
+            }
+
+            with self.lock:
+                self.last_executions[
+                    symbol
+                ] = result
+
+            return result
+
+        if action == "BUY":
+            age, age_status = self._candle_age(
+                closed_candles[-1] if closed_candles else None,
+                processing_cutoff,
+            )
+
+            if (
+                age_status != self.CANDLE_AGE_MEASURED
+                or age is None
+                or age > self.BUY_MAX_CANDLE_AGE_SECONDS
+            ):
+                self._increment_metric(
+                    "buy_stale_data_skipped"
+                )
+
+                logger.warning(
+                    "%s BUY not routed: market data not fresh "
+                    "(candle_age=%s status=%s limit=%ss)",
+                    symbol,
+                    age,
+                    age_status,
+                    self.BUY_MAX_CANDLE_AGE_SECONDS,
+                )
+
+                result = {
+                    "status": "SKIPPED",
+                    "reason": "STALE_MARKET_DATA",
+                    "symbol": symbol,
+                    "action": action,
+                    "candle_age_seconds": age,
+                    "candle_age_status": age_status,
+                    "timestamp": datetime.now(
+                        UTC
+                    ).isoformat(),
+                }
+
+                with self.lock:
+                    self.last_executions[
+                        symbol
+                    ] = result
+
+                return result
+
+        return _CONTINUE
 
     # =========================================================
     # CANDLE LOADING

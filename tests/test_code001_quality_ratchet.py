@@ -14,8 +14,9 @@ PRINT_CALLS_CEILING = 36  # v5.50: AI-module diagnostics moved to logging (was 1
 # phases, behaviour pinned by tests/test_execute_decision_golden.py (37 scenarios), removed from the baseline.
 # 2026-10-03 T-0014: execution_manager.risk_check (432 lines) split into _risk_* gates, behaviour pinned by
 # tests/test_risk_check_golden.py (36 scenarios), removed from the baseline.
+# 2026-10-03 T-0015: market_loop.process_symbol (513 lines) split into _symbol_* phases, pinned by
+# tests/test_process_symbol_golden.py (21 scenarios), removed from the baseline.
 LONG_FUNCTIONS_BASELINE = {
-    "core/market_loop.py::process_symbol",
     "web_app.py::create_app",
 }
 
