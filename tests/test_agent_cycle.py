@@ -219,3 +219,16 @@ def test_market_regime_downloads_in_parallel(tmp_path):
     started = _t.monotonic()
     out = ac.market_regime(tmp_path, [f"C{i}USDT" for i in range(5)], fetch_closes=slow)
     assert out["verdict"] == "OK" and _t.monotonic() - started < 1.2  # sequential would be >= 1.5 s
+
+
+def test_ceo_does_not_call_the_model_on_thin_evidence(tmp_path):
+    from tools import agent_cycle as ac
+
+    cli.add_memory_record(tmp_path, {"record_id": "Q-0001", "type": "OPERATIONS", "authority": "TEMPORARY",
+                                     "title": "0 trades", "body": "{}", "author": "quant_research", "source": "t"})
+
+    def never(*a, **k):
+        raise AssertionError("model must not be called")
+
+    out = ac.ceo_brief(tmp_path, ask=never)
+    assert "özet çıkarılmadı" in out["summary"]

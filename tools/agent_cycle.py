@@ -120,6 +120,7 @@ def _recent_records(records_dir: Path, n: int = 25) -> list[dict[str, Any]]:
 
 CEO_IGNORED_AUTHORS = frozenset({"ceo_ai", "executive_assistant", "overview_snapshot"})
 CEO_MIN_GAP_H = 2.5  # spaces the CEO's 5-hour call share instead of spending it in the first cycles
+CEO_MIN_EVIDENCE = 3  # fewer evidence records than this: no call (2026-10-02, a 1-record brief invented 5 priorities)
 
 
 def ceo_brief(records_dir: Path, ask=None, *, min_gap_h: float = CEO_MIN_GAP_H,
@@ -135,8 +136,8 @@ def ceo_brief(records_dir: Path, ask=None, *, min_gap_h: float = CEO_MIN_GAP_H,
     # cycle/self-review/overview records. The CEO now reads evidence only, and only evidence
     # counts as "new" for the spacing gate below.
     recent = [r for r in _recent_records(records_dir, 200) if r.get("author") not in CEO_IGNORED_AUTHORS][-25:]
-    if not recent:
-        return {"verdict": "OK", "summary": "kayıt yok; özet çıkarılmadı"}
+    if len(recent) < CEO_MIN_EVIDENCE:
+        return {"verdict": "OK", "summary": f"{len(recent)} kanıt kaydı (en az {CEO_MIN_EVIDENCE} gerekir); özet çıkarılmadı"}
     last_ceo = max((str(r.get("created_at") or "") for r in _recent_records(records_dir, 500)
                     if r.get("author") == "ceo_ai"), default="")
     if last_ceo:
