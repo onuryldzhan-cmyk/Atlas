@@ -1,30 +1,35 @@
-# AI-001: Claude API setup for the advisory agents (owner choice 2026-10-02)
+# AI-001: advisory agents on the owner's Claude Pro subscription (owner choice 2026-10-02)
 
 ## What runs
-| Agent | Model | What it writes |
+| Agent | How | Output |
 |---|---|---|
-| `ceo_ai` | `claude-sonnet-5-5`, effort high | Up to 5 priorities for the owner, grounded in cited memory record ids, as a `CEO-*` record. An answer that cites a non-existent record is rejected. |
-| `model_council` | `claude-sonnet-5-5`, effort high, two independent perspectives (risk-focused and evidence-focused); recorded as one model, not two | A review of the newest open proposal: SUPPORT, OPPOSE, UNSURE or DISAGREEMENT, as an `MC-*` record. |
+| `ceo_ai` | Claude Code (`claude -p`), Sonnet, effort high | Up to 5 priorities grounded in cited memory record ids, as a `CEO-*` record. An answer citing a non-existent record is rejected. |
+| `model_council` | Same, two independent perspectives (risk-focused and evidence-focused) | SUPPORT / OPPOSE / UNSURE / DISAGREEMENT on the newest open proposal, as an `MC-*` record. |
 
-Both are **advice**. They cannot trade, deploy, approve or change a threshold. The trading runtime never imports the gateway (ADR-0011; architecture test).
+Both give **advice only**. They cannot trade, deploy, approve or change a threshold. The trading runtime never imports the gateway (ADR-0011).
 
-## Safety in `tools/ai_gateway.py`
-- **Credentials** come from the environment only. Nothing is stored in the repository.
-- **Prompts** pass the SensitiveDataGuard before they are sent.
-- **Answers** must match a JSON schema and are validated twice.
-- **Failures abstain:** a refusal, timeout, malformed answer or truncated answer gives ABSTAIN.
-- **Cost cap per rolling 5-hour window:** `ATLAS_AI_WINDOW_BUDGET_USD`, default **1.00 USD**. Spend older than 5 hours stops counting; the ledger is `<state>/research/ai_usage.json` (unreadable = nothing is spent).
-- **Owner quota rule (2026-10-02):** all AI agents together may use at most **60 %** of the 5-hour window budget. That share is split by task size (weight = model calls per run): `ceo_ai` weight 1, `model_council` weight 2. With a 3.00 USD budget, the CEO gets 0.60 USD and the council 1.20 USD. An agent stops at its own share; an agent not in the list cannot spend at all. Adding an agent re-splits the shares automatically.
-- **Second lock, outside Atlas:** set a monthly spend limit on the API key in the Anthropic Console. The spend ledger is `<state>/research/ai_usage.json`; if it is unreadable, nothing is spent.
+## How `tools/ai_gateway.py` calls Claude Code
+- **Command:** `claude -p --output-format json --json-schema … --model sonnet --effort high --tools "" --max-turns 3 --setting-sources user --strict-mcp-config`.
+- **Prompt:** sent via stdin, after the SensitiveDataGuard.
+- **Working directory:** a temporary empty folder. Claude Code sees no repository file and no project `CLAUDE.md`. It has no tools at all.
+- **Credentials:** `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` are removed from the child process, so your logged-in Pro subscription is used.
+- **Failures:** CLI missing, not logged in, usage limit reached, timeout or malformed answer → ABSTAIN.
 
-## Owner steps (Windows PowerShell, once)
-1. Install the SDK:
-   `python -m pip install -r requirements-ai.txt`
-2. Set the key **for your user only**. Never put it in a file in the repository:
-   `setx ANTHROPIC_API_KEY "<your key>"`
-3. Optional, change the 5-hour window cap:
-   `setx ATLAS_AI_WINDOW_BUDGET_USD "1.00"`
-4. Close and reopen PowerShell, then start Atlas as usual:
-   `python -m tools.start_atlas`
+## Quota (owner rule)
+Atlas cannot see your Pro usage percentage, so the quota counts **calls per rolling 5-hour window**:
+- `ATLAS_AI_WINDOW_CALLS`, default **10**.
+- All agents together may use at most **60 %** of it (6 calls).
+- That share is split by task size: CEO **2** calls, council **4** calls (two perspectives per proposal).
+- An agent stops at its share. An agent not in the list cannot call at all.
 
-**Without a key:** the two agents show "AI-001 çekimser: NO_CREDENTIALS" and do nothing else.
+Every call uses part of **your own** Pro 5-hour allowance.
+
+## Owner steps (Windows PowerShell)
+1. Remove the placeholder key set earlier, so it can never shadow the subscription:
+   `[Environment]::SetEnvironmentVariable("ANTHROPIC_API_KEY", $null, "User")`
+2. Close and reopen PowerShell.
+3. Check that Claude Code is installed and logged in: `claude --version`, then `claude` (type `/login` if asked; exit with `/exit`).
+4. Optional, change the call quota: `setx ATLAS_AI_WINDOW_CALLS "10"`
+5. Start Atlas: `python -m tools.start_atlas`
+
+`ATLAS_AI_BACKEND=api` switches back to the paid API-key path.

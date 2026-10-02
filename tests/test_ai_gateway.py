@@ -63,7 +63,7 @@ def test_budget_and_unreadable_ledger_stop_spending(tmp_path, monkeypatch):
 def test_without_credentials_agents_abstain_honestly(tmp_path, monkeypatch):
     for k in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_PROFILE"):
         monkeypatch.delenv(k, raising=False)
-    r = ai.ask("s", "q", SCHEMA, ledger=ai.UsageLedger(tmp_path / "u.json"), now=NOW)
+    r = ai.ask("s", "q", SCHEMA, ledger=ai.UsageLedger(tmp_path / "u.json"), now=NOW, backend="api")
     assert r.status == "ABSTAIN" and "NO_CREDENTIALS" in r.reason
 
 
@@ -138,3 +138,68 @@ def test_quota_is_a_rolling_five_hour_window(tmp_path, monkeypatch):
     assert ai.ask("s", "q", SCHEMA, ledger=ledger, client_factory=fake('{"a":"x"}'), now=NOW).status == "OK"
     ledger.add(NOW.timestamp() - 4 * 3600, Decimal("0.60"))       # inside the window
     assert "WINDOW_BUDGET" in ai.ask("s", "q", SCHEMA, ledger=ledger, client_factory=fake('{"a":"x"}'), now=NOW).reason
+
+
+
+# ---------------- Claude Code backend (owner choice 2026-10-02: use the Pro subscription)
+
+def cc(out=None, exc=None, seen=None):
+    def run(prompt, system, schema, model, effort):
+        if seen is not None:
+            seen.append((prompt, system, model, effort))
+        if exc:
+            raise exc
+        return out
+    return run
+
+
+def test_claude_code_default_backend_returns_structured_output(tmp_path, monkeypatch):
+    monkeypatch.setenv("ATLAS_AI_WINDOW_CALLS", "10")
+    seen, ledger = [], ai.UsageLedger(tmp_path / "u.json")
+    r = ai.ask("sys", "q api_key=sk-abc123456789abcdef", SCHEMA, ledger=ledger, now=NOW, agent="ceo_ai",
+               runner=cc({"structured_output": {"a": "x"}, "total_cost_usd": 0.01, "is_error": False}, seen=seen))
+    assert ai.BACKEND == "claude_code" and r.status == "OK" and r.data == {"a": "x"}
+    assert "sk-abc123456789abcdef" not in seen[0][0]                 # SensitiveDataGuard before the CLI
+    assert seen[0][2] == "claude-sonnet-5-5" and seen[0][3] == "high"  # owner: Sonnet, effort high
+    assert ledger.calls(NOW.timestamp(), "ceo_ai") == 1
+
+
+def test_claude_code_failures_abstain(tmp_path, monkeypatch):
+    monkeypatch.setenv("ATLAS_AI_WINDOW_CALLS", "100")
+    ledger = ai.UsageLedger(tmp_path / "u.json")
+    for runner, reason in ((cc(exc=FileNotFoundError()), "UNAVAILABLE"), (cc({"is_error": True}), "CLAUDE_CODE_ERROR"),
+                           (cc({"structured_output": {"b": 1}}), "MALFORMED"), (cc({"result": "text only"}), "MALFORMED")):
+        r = ai.ask("s", "q", SCHEMA, ledger=ledger, now=NOW, agent="model_council", runner=runner)
+        assert r.status == "ABSTAIN" and reason in r.reason
+
+
+def test_claude_code_quota_is_calls_per_5h_60_percent_split_by_task_size(tmp_path, monkeypatch):
+    monkeypatch.setenv("ATLAS_AI_WINDOW_CALLS", "10")   # 60 % -> 6 calls: ceo 2, council 4
+    assert ai.agent_call_cap(None) == 6 and ai.agent_call_cap("ceo_ai") == 2 and ai.agent_call_cap("model_council") == 4
+    assert ai.agent_call_cap("unknown") == 0
+    ledger = ai.UsageLedger(tmp_path / "u.json")
+    ok = cc({"structured_output": {"a": "x"}})
+    assert [ai.ask("s", "q", SCHEMA, ledger=ledger, now=NOW, agent="ceo_ai", runner=ok).status for _ in range(3)] == ["OK", "OK", "ABSTAIN"]
+    later = datetime.fromtimestamp(NOW.timestamp() + 5 * 3600 + 1, tz=timezone.utc)
+    assert ai.ask("s", "q", SCHEMA, ledger=ledger, now=later, agent="ceo_ai", runner=ok).status == "OK"  # window rolled
+    monkeypatch.setenv("ATLAS_AI_WINDOW_CALLS", "x")
+    assert ai.window_calls() == 0
+
+
+def test_claude_code_runner_drops_api_keys_and_disables_tools(monkeypatch):
+    import subprocess
+    captured = {}
+
+    def fake_run(cmd, **kw):
+        captured.update(cmd=cmd, **kw)
+        return SimpleNamespace(returncode=0, stdout='{"structured_output": {"a": "x"}}')
+
+    monkeypatch.setattr("shutil.which", lambda name: "claude")
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "<anahtarın>")
+    out = ai._claude_code_runner("prompt", "sys", SCHEMA, "claude-sonnet-5-5", "high")
+    assert out == {"structured_output": {"a": "x"}}
+    cmd = captured["cmd"]
+    assert cmd[cmd.index("--tools") + 1] == "" and cmd[cmd.index("--model") + 1] == "sonnet"
+    assert cmd[cmd.index("--effort") + 1] == "high" and "--json-schema" in cmd and "--bare" not in cmd
+    assert "ANTHROPIC_API_KEY" not in captured["env"] and captured["input"] == "prompt"

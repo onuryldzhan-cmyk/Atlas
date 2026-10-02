@@ -30,6 +30,11 @@ COUNCIL_PERSPECTIVES = ("risk-focused reviewer", "evidence-focused reviewer")
 # USD per 1M tokens (input, output), Anthropic first-party rates, cached 2026-09-25.
 PRICES = {"claude-opus-5-5": (Decimal("4"), Decimal("20")), "claude-sonnet-5-5": (Decimal("2"), Decimal("10"))}
 DEFAULT_DAILY_BUDGET_USD = Decimal("1.00")
+# Owner choice 2026-10-02: run the agents through Claude Code on the owner's Pro subscription
+# (`claude -p`), not a paid API key. ATLAS_AI_BACKEND=api switches back to the API path.
+BACKEND = os.environ.get("ATLAS_AI_BACKEND", "claude_code")
+# Pro usage is not visible to Atlas, so the quota there is CALLS per rolling 5-hour window.
+DEFAULT_WINDOW_CALLS = 10
 # Owner rule 2026-10-02: all AI agents together may use at most 60 % of the daily budget, and
 # that share is split between the agents by task size (weight = expected model calls per run).
 TOTAL_SHARE = Decimal("0.60")
@@ -100,6 +105,16 @@ class UsageLedger:
             return None
         return total
 
+    def calls(self, now_s: float, agent: str | None = None) -> int | None:
+        data = self._load()
+        if data is None:
+            return None
+        try:
+            return sum(1 for ts, who, _ in data
+                       if now_s - float(ts) < WINDOW_HOURS * 3600 and (agent is None or who == agent))
+        except (TypeError, ValueError):
+            return None
+
     def add(self, now_s: float, cost: Decimal, agent: str | None = None) -> None:
         data = [e for e in (self._load() or []) if now_s - float(e[0]) < 86400]
         data.append([now_s, agent, str(cost)])
@@ -118,6 +133,70 @@ def agent_cap(agent: str | None) -> Decimal:
     if not weight:
         return Decimal("0")
     return usable * Decimal(weight) / Decimal(sum(AGENT_WEIGHTS.values()))
+
+
+def window_calls() -> int:
+    try:
+        return max(0, int(os.environ.get("ATLAS_AI_WINDOW_CALLS", DEFAULT_WINDOW_CALLS)))
+    except ValueError:
+        return 0  # unreadable -> no calls, never unlimited
+
+
+def agent_call_cap(agent: str | None) -> int:
+    """Calls per 5 h: all agents together max 60 % of ATLAS_AI_WINDOW_CALLS, split by task size (floor)."""
+    usable = int(window_calls() * TOTAL_SHARE)
+    if agent is None:
+        return usable
+    weight = AGENT_WEIGHTS.get(agent)
+    if not weight:
+        return 0
+    return usable * weight // sum(AGENT_WEIGHTS.values())
+
+
+def _claude_code_runner(prompt: str, system: str, schema: dict[str, Any], model: str, effort: str) -> dict[str, Any]:
+    """`claude -p` on the owner's logged-in subscription: no tools, no project config, prompt via stdin."""
+    import shutil
+    import subprocess
+    import tempfile
+
+    exe = shutil.which("claude")
+    if not exe:
+        raise FileNotFoundError("claude CLI not found")
+    env = {k: v for k, v in os.environ.items() if k not in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")}
+    alias = "sonnet" if "sonnet" in model else model
+    with tempfile.TemporaryDirectory() as empty:  # empty cwd: no CLAUDE.md, no repository access
+        proc = subprocess.run(
+            [exe, "-p", "--output-format", "json", "--json-schema", json.dumps(schema), "--model", alias,
+             "--effort", effort, "--tools", "", "--max-turns", "3", "--setting-sources", "user",
+             "--strict-mcp-config", "--append-system-prompt", system],
+            input=prompt, capture_output=True, text=True, encoding="utf-8", timeout=TIMEOUT_S * 3, cwd=empty, env=env)
+    if proc.returncode != 0:
+        raise RuntimeError(f"claude exit {proc.returncode}")
+    return json.loads(proc.stdout)
+
+
+def _ask_claude_code(system, prompt, schema, model, effort, agent, ledger, now_s, runner) -> AIResult:
+    used = ledger.calls(now_s)
+    if used is None:
+        return AIResult("ABSTAIN", reason="USAGE_LEDGER_UNREADABLE")
+    if used >= agent_call_cap(None):
+        return AIResult("ABSTAIN", reason=f"WINDOW_CALLS_REACHED ({used} calls in {WINDOW_HOURS} h, all agents max 60 %)")
+    mine = ledger.calls(now_s, agent)
+    if mine is None or mine >= agent_call_cap(agent):
+        return AIResult("ABSTAIN", reason=f"AGENT_QUOTA_REACHED ({agent}: {mine}/{agent_call_cap(agent)} calls in {WINDOW_HOURS} h)")
+    try:
+        out = (runner or _claude_code_runner)(prompt, system, schema, model, effort)
+    except Exception as exc:  # CLI missing, not logged in, usage limit hit, timeout: abstain
+        return AIResult("ABSTAIN", reason=f"UNAVAILABLE ({type(exc).__name__})", model=model)
+    cost = Decimal(str(out.get("total_cost_usd") or "0")) if isinstance(out, dict) else Decimal("0")
+    ledger.add(now_s, cost, agent)  # one entry = one call, also when the answer is rejected below
+    if not isinstance(out, dict) or out.get("is_error"):
+        return AIResult("ABSTAIN", reason="CLAUDE_CODE_ERROR", model=model)
+    data = out.get("structured_output")
+    problem = _validate(data, schema)
+    if problem:
+        return AIResult("ABSTAIN", reason=f"MALFORMED ({problem})", model=model)
+    return AIResult("OK", data=data, model=model, cost_usd=cost, extra={"backend": "claude_code"})
 
 
 def _cost(model: str, usage: Any) -> Decimal:
@@ -148,10 +227,15 @@ def _validate(data: Any, schema: dict[str, Any]) -> str | None:
 
 def ask(system: str, prompt: str, schema: dict[str, Any], *, model: str = DEFAULT_MODEL, ledger: UsageLedger,
         client_factory: Callable[[], Any] | None = None, now: datetime | None = None,
-        effort: str = DEFAULT_EFFORT, agent: str | None = None) -> AIResult:
+        effort: str = DEFAULT_EFFORT, agent: str | None = None, runner: Callable | None = None,
+        backend: str | None = None) -> AIResult:
     """One structured question. Never raises; every failure is an ABSTAIN with a reason."""
     from atlas_security import sanitize_sensitive_data
 
+    if (backend or BACKEND) == "claude_code" and client_factory is None:
+        from atlas_security import sanitize_sensitive_data as _clean
+        return _ask_claude_code(system, _clean(prompt), schema, model, effort, agent, ledger,
+                                (now or datetime.now(timezone.utc)).timestamp(), runner)
     if not key_available() and client_factory is None:
         return AIResult("ABSTAIN", reason="NO_CREDENTIALS (AI-001: owner sets ANTHROPIC_API_KEY on his machine)")
     now_s = (now or datetime.now(timezone.utc)).timestamp()
