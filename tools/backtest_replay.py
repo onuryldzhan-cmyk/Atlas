@@ -90,6 +90,8 @@ class Trade:
     exit_price: Decimal = Decimal("0")   # average exit (proceeds / quantity)
     exit_fee: Decimal = Decimal("0")
     exit_reason: str = ""
+    entry_confidence: Decimal = Decimal("0")  # lesson book (2026-10-02): what Atlas believed at entry
+    entry_regime: str = "UNKNOWN"             # tools.regime_engine on the hourly closes known at entry
 
     @property
     def net(self) -> Decimal:
@@ -117,6 +119,8 @@ class Position:
     tp1: bool = False
     tp2: bool = False
     entry_ms: int = 0
+    entry_confidence: Decimal = Decimal("0")
+    entry_regime: str = "UNKNOWN"
 
     @property
     def avg_entry(self) -> Decimal:
@@ -126,7 +130,7 @@ class Position:
         exit_price = self.proceeds / self.qty_bought if self.qty_bought > 0 and exit_time else Decimal("0")
         return Trade(self.symbol, self.entry_time, self.cost_total / self.qty_bought if self.qty_bought else Decimal("0"),
                      self.qty_bought, self.cost_total, self.fees_in, self.bucket, self.experiment,
-                     exit_time, exit_price, self.fees_out, reason)
+                     exit_time, exit_price, self.fees_out, reason, self.entry_confidence, self.entry_regime)
 
 
 @dataclass
@@ -179,6 +183,30 @@ def _hourly_bars(rows: list[list], end: int) -> list[tuple[Decimal, Decimal, Dec
         bars.append((max(Decimal(str(r[2])) for r in chunk), min(Decimal(str(r[3])) for r in chunk),
                      Decimal(str(chunk[-1][4]))))
     return list(reversed(bars))
+
+
+def _entry_regime(bars: list[tuple[Decimal, Decimal, Decimal]]) -> str:
+    """Regime label from closed hourly bars only (no lookahead); UNKNOWN when it cannot be classified."""
+    from tools.regime_engine import classify
+
+    try:
+        return str(classify([float(b[2]) for b in bars]).get("regime", "UNKNOWN"))
+    except Exception:  # noqa: BLE001 - a label failure must never stop the replay
+        return "UNKNOWN"
+
+
+def write_trades_csv(path: str, trades: list[Trade]) -> int:
+    """One row per closed replay trade for the lesson book (net is after both fees)."""
+    import csv
+
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["symbol", "entry_time", "exit_time", "bucket", "entry_confidence", "entry_regime",
+                    "exit_reason", "cost", "fees", "net"])
+        for t in trades:
+            w.writerow([t.symbol, t.entry_time, t.exit_time, t.bucket, format(t.entry_confidence, "f"), t.entry_regime,
+                        t.exit_reason, format(t.cost, "f"), format(t.entry_fee + t.exit_fee, "f"), format(t.net, "f")])
+    return len(trades)
 
 
 def _ema(values: list[Decimal], period: int) -> Decimal | None:
@@ -465,7 +493,8 @@ def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: 
                     cost = amount - fee
                     if not is_add:
                         pos = Position(symbol, sizing_name, bool(verdict.experiment_id), when, target, peak=price,
-                                       entry_ms=close_ms)
+                                       entry_ms=close_ms, entry_confidence=confidence,
+                                       entry_regime=_entry_regime(bars or _hourly_bars(data[symbol], end)))
                         holdings[symbol] = pos
                     else:
                         result.tranche_adds += 1
@@ -526,6 +555,7 @@ def main(argv: list[str] | None = None, fetch: Fetcher | None = None) -> int:
     parser.add_argument("--sell-confirm", type=int, default=1, help="consecutive SELL decisions required to close")
     parser.add_argument("--trend-ema", type=int, default=0, help="BUY only above the EMA of this many 1-hour closes")
     parser.add_argument("--atr-stop", type=float, default=0, help="protective stop at entry - K x ATR(14, 1h)")
+    parser.add_argument("--trades-out", default=None, help="write every closed trade (confidence, regime, net) to this CSV")
     parser.add_argument("--risk-per-trade", type=float, default=0, help="max equity fraction lost at the ATR stop (needs --atr-stop)")
     args = parser.parse_args(argv)
 
@@ -543,10 +573,14 @@ def main(argv: list[str] | None = None, fetch: Fetcher | None = None) -> int:
         print(f"downloading {symbol} ({args.days} days)...", file=sys.stderr, flush=True)
         data[symbol] = _history(symbol, args.days, fetch)
     print("replaying the real decision chain (this takes a few minutes)...", file=sys.stderr, flush=True)
-    s = summarize(replay(data, step=args.step, exp001=args.exp001, staged=args.staged, sleeves=args.sleeves,
-                         slippage_bps=args.slippage_bps, next_open_fill=args.next_open_fill,
-                         min_hold_min=args.min_hold, sell_confirm=args.sell_confirm,
-                         trend_ema_hours=args.trend_ema, atr_stop=args.atr_stop, risk_per_trade=args.risk_per_trade))
+    result = replay(data, step=args.step, exp001=args.exp001, staged=args.staged, sleeves=args.sleeves,
+                    slippage_bps=args.slippage_bps, next_open_fill=args.next_open_fill,
+                    min_hold_min=args.min_hold, sell_confirm=args.sell_confirm,
+                    trend_ema_hours=args.trend_ema, atr_stop=args.atr_stop, risk_per_trade=args.risk_per_trade)
+    s = summarize(result)
+    if args.trades_out:
+        n = write_trades_csv(args.trades_out, result.trades)
+        print(f"wrote {n} closed trades to {args.trades_out}", file=sys.stderr)
 
     print("MACRO-NEUTRAL REPLAY - macro and sentiment EXCLUDED; fills at candle close; "
           f"fee {PAPER_FEE_RATE_PER_SIDE:.1%}/side; slippage {args.slippage_bps} bps; "

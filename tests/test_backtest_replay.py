@@ -300,3 +300,26 @@ def test_regime_filter_buys_only_in_an_uptrend():
     s = bt.summarize(bt.replay(chop, step=30, brain_factory=_AlwaysBuy, regime_filter=True))
     assert s["buy_rejections"].get("REGIME_NOT_TREND_UP", 0) > 0
     assert bt.summarize(bt.replay(chop, step=30, brain_factory=_AlwaysBuy))["buy_rejections"].get("REGIME_NOT_TREND_UP", 0) == 0
+
+
+def test_trades_carry_entry_confidence_and_regime_and_export_to_csv(tmp_path):
+    """Lesson book (2026-10-02): every closed replay trade says what Atlas believed at entry."""
+    import csv
+
+    class Alternating:
+        def __init__(self):
+            self.n = 0
+
+        def analyze_and_decide(self, symbol, market_data):
+            self.n += 1
+            return {"symbol": symbol, "action": "BUY" if self.n % 2 else "SELL", "confidence": 95.0,
+                    "risk_level": "MEDIUM"}
+
+    result = bt.replay({"BTCUSDT": _rows(400, drift=0.001, wobble=0.0)}, step=20, brain_factory=Alternating)
+    assert result.trades and all(t.entry_confidence == Decimal("95") for t in result.trades)
+    assert all(isinstance(t.entry_regime, str) and t.entry_regime for t in result.trades)
+    path = tmp_path / "trades.csv"
+    assert bt.write_trades_csv(str(path), result.trades) == len(result.trades)
+    rows = list(csv.DictReader(path.open(encoding="utf-8")))
+    assert len(rows) == len(result.trades) and Decimal(rows[0]["entry_confidence"]) == Decimal("95")
+    assert Decimal(rows[0]["net"]) == result.trades[0].net
