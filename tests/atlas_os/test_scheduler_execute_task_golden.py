@@ -142,3 +142,19 @@ def test_cancelled_during_run_keeps_cancelled_state(svc):
 def test_unknown_task_raises(svc):
     with pytest.raises(sched_mod.TaskNotFoundError):
         svc._execute_task("nope")
+
+
+
+def test_unexpected_error_releases_the_execution_slot(svc, monkeypatch):
+    """Option 6 (2026-10-02): an error escaping mid-execution must not leave the task busy forever."""
+    tid = svc.register_manual("probe", lambda: "ok")
+
+    def boom(*a, **k):
+        raise RuntimeError("publisher down")
+
+    monkeypatch.setattr(svc, "_publish_scheduler_event", boom)
+    with pytest.raises(RuntimeError):
+        svc._execute_task(tid)
+    assert svc._tasks[tid].active_executions == 0
+    monkeypatch.undo()
+    assert svc._execute_task(tid).status == TaskExecutionStatus.SUCCESS  # runs again, not skipped as busy

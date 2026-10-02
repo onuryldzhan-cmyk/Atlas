@@ -1472,56 +1472,68 @@ class SchedulerService(BaseAtlasService):
             uuid.uuid4()
         )
 
-        self._publish_scheduler_event(
-            SchedulerEventType.TASK_STARTED,
-            payload={
-                "execution_id": execution_id,
-                "task_id": task_id,
-                "task_name": task_name,
-            },
-            correlation_id=resolved_correlation_id,
-        )
+        try:
+            self._publish_scheduler_event(
+                SchedulerEventType.TASK_STARTED,
+                payload={
+                    "execution_id": execution_id,
+                    "task_id": task_id,
+                    "task_name": task_name,
+                },
+                correlation_id=resolved_correlation_id,
+            )
 
-        (
-            final_status,
-            attempt_count,
-            result,
-            error,
-            timed_out,
-        ) = self._run_attempts(
-            task,
-            execution_id=execution_id,
-            task_id=task_id,
-            task_name=task_name,
-            retry_policy=retry_policy,
-            timeout_seconds=timeout_seconds,
-            correlation_id=resolved_correlation_id,
-        )
-
-        finished_at = datetime.now(UTC)
-
-        duration_seconds = max(
-            0.0,
             (
-                finished_at
-                - started_at
-            ).total_seconds(),
-        )
+                final_status,
+                attempt_count,
+                result,
+                error,
+                timed_out,
+            ) = self._run_attempts(
+                task,
+                execution_id=execution_id,
+                task_id=task_id,
+                task_name=task_name,
+                retry_policy=retry_policy,
+                timeout_seconds=timeout_seconds,
+                correlation_id=resolved_correlation_id,
+            )
 
-        record = TaskExecutionRecord(
-            execution_id=execution_id,
-            task_id=task_id,
-            task_name=task_name,
-            status=final_status,
-            attempt_count=attempt_count,
-            started_at=started_at,
-            finished_at=finished_at,
-            duration_seconds=duration_seconds,
-            result=result,
-            error=error,
-            correlation_id=resolved_correlation_id,
-            timed_out=timed_out,
-        )
+            finished_at = datetime.now(UTC)
+
+            duration_seconds = max(
+                0.0,
+                (
+                    finished_at
+                    - started_at
+                ).total_seconds(),
+            )
+
+            record = TaskExecutionRecord(
+                execution_id=execution_id,
+                task_id=task_id,
+                task_name=task_name,
+                status=final_status,
+                attempt_count=attempt_count,
+                started_at=started_at,
+                finished_at=finished_at,
+                duration_seconds=duration_seconds,
+                result=result,
+                error=error,
+                correlation_id=resolved_correlation_id,
+                timed_out=timed_out,
+            )
+
+        except BaseException:
+            # Release the slot _begin_execution took: an unexpected error
+            # (an event publisher raising, an interrupt during a retry delay)
+            # must not leave the task looking busy and skipped forever.
+            with self._scheduler_lock:
+                task.active_executions = max(
+                    0,
+                    task.active_executions - 1,
+                )
+            raise
 
         self._finish_execution(
             task,
