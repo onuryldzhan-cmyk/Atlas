@@ -30,6 +30,7 @@
     "atlas_finance/market_data/funding_rate_provider.py",
     "atlas_finance/market_data/market_feed_service.py",
     "atlas_finance/market_data/models.py",
+    "atlas_finance/market_data/order_book_provider.py",
     "atlas_finance/market_data/temporal.py",
     "atlas_finance/market_data/treasury_yield_provider.py",
     "atlas_org/__init__.py",

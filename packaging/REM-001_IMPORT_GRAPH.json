@@ -16,26 +16,24 @@
     "analysis": "Static AST import resolution over git-tracked Python files, excluding imports guarded by if TYPE_CHECKING:. Third-party and stdlib targets resolve to nothing and carry no edge."
   },
   "source_identity": {
-    "generated_from_commit": "f83e472f357b877b605c81b0020a6cf662eace36",
-    "generated_from_tree": "1d32373ad4966177592edf7a930b24286aa30e4b",
+    "generated_from_commit": "a542183009696ee14ed03edb83b88e3de982ca4a",
+    "generated_from_tree": "611ae9b6b9439f02a4ee19ac5560a2f6ddb71f1e",
     "tracked_working_tree_clean": false,
     "modified_tracked_paths_at_generation": [
-      "core/atlas_config.py",
-      "core/execution_manager.py",
-      "main.py",
-      "ore/application.py"
+      "ackaging/atlas_architecture_map.json",
+      "packaging/atlas_runtime_closure.json"
     ]
   },
   "scope": {
     "universe": "ALL_GIT_TRACKED_PYTHON_FILES",
     "universe_note": "The tool's existing tracked-file definition, used unchanged. No source-scope classification (ACTIVE_CANDIDATE / TEST / TOOL / ARCHIVE / BACKUP / QUARANTINE / REPORT_COPY) is applied or implied: that classification requires the human review gate ARCH-001.2.1 reserves and belongs to Gate 1 deliverable 1.",
-    "modules_total": 1087,
-    "modules_runtime_reachable": 134,
-    "modules_outside_runtime_closure": 953,
-    "edges_total": 2318,
-    "edges_import": 1662,
-    "edges_package_init": 656,
-    "edges_distinct_module_pairs": 2253,
+    "modules_total": 1089,
+    "modules_runtime_reachable": 135,
+    "modules_outside_runtime_closure": 954,
+    "edges_total": 2326,
+    "edges_import": 1666,
+    "edges_package_init": 660,
+    "edges_distinct_module_pairs": 2261,
     "edges_count_note": "edges_total counts (from, to, kind) triples. A pair can carry both kinds when a file both imports a package directly and references one of its submodules, so edges_distinct_module_pairs is the figure to use when counting dependencies between modules.",
     "parse_failures": 3
   },
@@ -47,7 +45,7 @@
   ],
   "runtime_closure_reference": {
     "artifact": "packaging/atlas_runtime_closure.json",
-    "modules": 134,
+    "modules": 135,
     "regression_gate": "BFS from entry_points over edges reproduces the referenced artifact exactly",
     "regression_gate_result": "PASS"
   },
@@ -1611,6 +1609,10 @@
     },
     {
       "module": "atlas_finance/market_data/models.py",
+      "runtime_reachable": true
+    },
+    {
+      "module": "atlas_finance/market_data/order_book_provider.py",
       "runtime_reachable": true
     },
     {
@@ -4018,6 +4020,10 @@
       "runtime_reachable": false
     },
     {
+      "module": "tests/test_shadow_s2_book_fill.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/test_single_instance_and_integrity_exit.py",
       "runtime_reachable": false
     },
@@ -6114,6 +6120,11 @@
     {
       "from": "core/application.py",
       "to": "atlas_finance/market_data/funding_rate_provider.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/application.py",
+      "to": "atlas_finance/market_data/order_book_provider.py",
       "kind": "import"
     },
     {
@@ -14474,6 +14485,41 @@
     {
       "from": "tests/test_shadow_costs.py",
       "to": "tools/shadow_costs.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_shadow_s2_book_fill.py",
+      "to": "atlas_finance/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_shadow_s2_book_fill.py",
+      "to": "atlas_finance/market_data/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_shadow_s2_book_fill.py",
+      "to": "atlas_finance/market_data/order_book_provider.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_shadow_s2_book_fill.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_shadow_s2_book_fill.py",
+      "to": "core/atlas_config.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_shadow_s2_book_fill.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_shadow_s2_book_fill.py",
+      "to": "tests/test_block5e_fee_settlement_accounting.py",
       "kind": "import"
     },
     {

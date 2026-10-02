@@ -464,6 +464,7 @@
     "atlas_finance/market_data/funding_rate_provider.py": "L2",
     "atlas_finance/market_data/market_feed_service.py": "L2",
     "atlas_finance/market_data/models.py": "L1",
+    "atlas_finance/market_data/order_book_provider.py": "L2",
     "atlas_finance/market_data/temporal.py": "L1",
     "atlas_finance/market_data/treasury_yield_provider.py": "L2",
     "atlas_org/__init__.py": "L1",
