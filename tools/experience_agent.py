@@ -225,6 +225,9 @@ def run(records_dir: Path, research_dir: Path, *, fetch: Fetcher | None = None, 
     fingerprint = sorted([c["action"], c["regime"], c["confidence"], c["avg240_newer_pct"] > 0] for c in lessons)  # lists: JSON round-trips them
     changed = fingerprint != state.get("lesson_fingerprint", [])
     state["lesson_fingerprint"] = fingerprint
+    state["decisions"] = n_rows  # read by observability/experience_view.py (the panel never parses the CSV)
+    state["candidate_lessons"] = lessons[:40]
+    state["updated_at"] = datetime.fromtimestamp(now_ms / 1000, UTC).isoformat()
     state_path.write_text(json.dumps(state), encoding="utf-8")
     day = datetime.fromtimestamp(day_ms / 1000, UTC).date().isoformat()
     summary = f"{day} ({direction}) işlendi: {len(signals)} karar; toplam {state['days']} gün, {n_rows} karar; aday ders {len(lessons)}"

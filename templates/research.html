@@ -40,6 +40,7 @@
         <div class="col-lg-5"><div class="pane"><h2>Deney: <span id="exp-id">-</span></h2><div id="exp">Yükleniyor...</div></div></div>
         <div class="col-lg-7"><div class="pane"><h2>İşlem analitiği (son kapanan işlemler, brüt)</h2><div id="analytics" class="table-wrap">Yükleniyor...</div></div></div>
     </div>
+    <div class="pane"><h2>Deneyim (geçmiş günlerin tekrar oynatılması)</h2><div id="experience">Yükleniyor...</div></div>
     <div class="pane"><h2>Araştırma belgeleri</h2><div id="docs">Yükleniyor...</div></div>
     <div class="pane"><h2>Hafızadaki araştırma ve deney kayıtları</h2><div id="records">Yükleniyor...</div></div>
     <div class="small muted">Araştırma kanıt ve öneridir, politika değildir: bir bulgu ancak sahibin onayladığı bir öneriyle davranışa dönüşür. Ücretler düşülmüş tam rapor: <code>python -m tools.performance_report</code>.</div>
@@ -53,6 +54,19 @@
     const tone = (v) => (Number(v) > 0 ? 'up' : Number(v) < 0 ? 'down' : '');
     (async () => {
         const [gates, trades, docs, mem] = await Promise.all([getJSON('/api/execution-gates'), getJSON('/api/trades'), getJSON('/api/research'), getJSON('/api/memory')]);
+        const xp = await getJSON('/api/experience');
+        if (!xp || xp.available !== true) set('experience', `<span class="muted">Veri yok: ${esc((xp && xp.reason) || 'bilinmiyor')}</span>`);
+        else {
+            const ls = xp.candidate_lessons;
+            set('experience', `<div class="kv"><span>İşlenen gün</span><b>${esc(xp.days ?? 'N/A')} (${esc(xp.oldest_day ?? '-')} → ${esc(xp.newest_day ?? '-')})</b></div>` +
+                `<div class="kv"><span>Karar</span><b>${esc(xp.decisions ?? 'N/A')}</b></div>` +
+                `<div class="kv"><span>Son güncelleme</span><b>${esc(xp.updated_at ?? 'N/A')}</b></div>` +
+                (ls == null ? '<div class="muted small mt-2">Aday ders bilgisi henüz yok.</div>' : ls.length
+                    ? '<table class="table table-sm mt-2 mb-0"><thead><tr><th>Yön</th><th>Rejim</th><th>Güven</th><th class="text-end">n eski/yeni</th><th class="text-end">4s ort % eski/yeni</th></tr></thead><tbody>' +
+                        ls.map((c) => `<tr><td>${esc(c.action)}</td><td>${esc(c.regime)}</td><td>${esc(c.confidence)}</td><td class="text-end">${esc(c.n_older)}/${esc(c.n_newer)}</td><td class="text-end ${tone(c.avg240_newer_pct)}">${esc(c.avg240_older_pct)} / ${esc(c.avg240_newer_pct)}</td></tr>`).join('') + '</tbody></table>'
+                    : '<div class="muted small mt-2">Henüz iki yarıda da tutarlı aday ders yok.</div>') +
+                '<div class="small muted mt-2">Aday ders kural değildir; davranışa ancak sahibin onayladığı bir öneriyle dönüşür.</div>');
+        }
         const e = gates && gates.experiment;
         if (!e || e.available !== true) set('exp', `<span class="muted">Okunamadı: ${esc((e && e.reason) || (gates && gates.reason) || 'çalışma zamanı bağlı değil')}</span>`);
         else if (!e.attached) set('exp', '<span class="muted">Bağlı deney yok.</span>');

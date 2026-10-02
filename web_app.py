@@ -36,7 +36,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 
 from observability.organization import organization_public
-from observability import agent_states, command_center, governance_records, learning_view, panel_sources, portfolio_view, readiness, research_view, roadmap_view, security_view
+from observability import agent_states, command_center, experience_view, governance_records, learning_view, panel_sources, portfolio_view, readiness, research_view, roadmap_view, security_view
 from observability.panel_router import (
     build_observability_router,
     is_loopback_request,
@@ -2418,6 +2418,7 @@ def create_app(
         ("/api/security", security_view.read_security),
         ("/api/roadmap", roadmap_view.read_roadmap),
         ("/api/research", research_view.read_research),
+        ("/api/experience", experience_view.read_experience),
     ):
         async def _governance_route(request: Request, _reader=reader) -> JSONResponse:
             if not is_loopback_request(request):

@@ -131,3 +131,21 @@ def test_stream_groups_match_lesson_book_build(tmp_path):
                 assert got[k][field] == g[field], (k, field)
     lessons, n = xa.stream_candidates(path, split)
     assert n == 400 and lessons == xa._compare(older, newer)
+
+
+def test_experience_view_reads_state_and_reports_missing(tmp_path):
+    import json as _json
+
+    from observability import experience_view as ev
+
+    missing = ev.read_experience(tmp_path / "none.json")
+    assert missing["available"] is False
+    bad = tmp_path / "bad.json"
+    bad.write_text("{", encoding="utf-8")
+    assert ev.read_experience(bad)["available"] is False
+    good = tmp_path / "state.json"
+    good.write_text(_json.dumps({"days": 3, "decisions": 120, "oldest_day_ms": 0, "newest_day_ms": 2 * 86_400_000,
+                                 "candidate_lessons": [{"action": "BUY"}]}), encoding="utf-8")
+    out = ev.read_experience(good)
+    assert out["available"] and out["days"] == 3 and out["oldest_day"] == "1970-01-01" and out["newest_day"] == "1970-01-03"
+    assert out["updated_at"] is None and out["candidate_lessons"] == [{"action": "BUY"}]
