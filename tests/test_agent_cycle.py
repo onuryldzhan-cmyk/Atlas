@@ -208,3 +208,14 @@ def test_formerly_planned_units_now_point_to_real_code():
     units = {u.unit_id: u for u in ORGANIZATION}
     for uid in ("strategy_lab", "digital_twin", "model_validation", "red_team"):
         assert units[uid].status == PARTIAL and units[uid].implemented_by and not units[uid].can_execute
+
+
+def test_market_regime_downloads_in_parallel(tmp_path):
+    import time as _t
+
+    def slow(sym):
+        _t.sleep(0.3)
+        return [100.0 + i * 0.1 for i in range(200)]
+    started = _t.monotonic()
+    out = ac.market_regime(tmp_path, [f"C{i}USDT" for i in range(5)], fetch_closes=slow)
+    assert out["verdict"] == "OK" and _t.monotonic() - started < 1.2  # sequential would be >= 1.5 s

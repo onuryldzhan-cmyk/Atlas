@@ -41,3 +41,14 @@ def test_history_counts_regimes():
     closes = series(lambda i: 100 * (1.002 ** i))
     hist = re_.history(closes)
     assert sum(hist.values()) > 0 and "UNKNOWN" not in hist
+
+
+def test_float_pstdev_matches_statistics_and_labels_are_unchanged():
+    """2026-10-02 speed fix: _pstdev replaces the exact-Fraction statistics.pstdev (329 s cycle)."""
+    import random
+    import statistics
+
+    rng = random.Random(11)
+    for _ in range(200):
+        xs = [rng.gauss(0, rng.choice([1e-4, 1e-2, 0.05])) for _ in range(rng.randint(2, 60))]
+        assert abs(re_._pstdev(xs) - statistics.pstdev(xs)) <= 1e-12 * max(1.0, statistics.pstdev(xs))

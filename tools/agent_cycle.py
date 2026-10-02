@@ -270,7 +270,26 @@ def market_regime(records_dir: Path, symbols=None, fetch_closes=None) -> dict[st
     """Observation only: how many coins are trending right now. Nothing reads this at decision time."""
     from tools import regime_engine as R
 
-    snap = R.snapshot(symbols or R.load_symbols(), fetch_closes or R.binance_closes)
+    symbols = symbols or R.load_symbols()
+    fetch = fetch_closes or R.binance_closes
+    # 2026-10-02: 20 sequential downloads took 329 s once (> AGENT_BUDGET_S). Download in parallel;
+    # a failed download is stored as the exception and snapshot() still records that coin UNKNOWN.
+    from concurrent.futures import ThreadPoolExecutor
+
+    def _get(sym):
+        try:
+            return sym, fetch(sym)
+        except Exception as exc:  # noqa: BLE001 - re-raised per symbol inside snapshot()
+            return sym, exc
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        got = dict(pool.map(_get, symbols))
+
+    def _prefetched(sym):
+        value = got[sym]
+        if isinstance(value, Exception):
+            raise value
+        return value
+    snap = R.snapshot(symbols, _prefetched)
     counts: dict[str, int] = {}
     for r in snap.values():
         counts[r["regime"]] = counts.get(r["regime"], 0) + 1

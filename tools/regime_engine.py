@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import statistics
+import math
 import sys
 from typing import Any
 
@@ -53,7 +53,16 @@ def ema(values: list[float], span: int) -> list[float]:
 
 def rolling_vol(closes: list[float], window: int = VOL_WINDOW) -> list[float]:
     rets = [b / a - 1 for a, b in zip(closes, closes[1:]) if a > 0]
-    return [statistics.pstdev(rets[i - window:i]) for i in range(window, len(rets) + 1)]
+    return [_pstdev(rets[i - window:i]) for i in range(window, len(rets) + 1)]
+
+
+def _pstdev(xs: list[float]) -> float:
+    """Population stdev in floats (two-pass, fsum). statistics.pstdev computes with exact
+    Fractions and made one market_regime cycle take 329 s (2026-10-02); labels are unchanged
+    (tests/test_regime_engine.py compares both on random series)."""
+    n = len(xs)
+    m = math.fsum(xs) / n
+    return math.sqrt(math.fsum((x - m) ** 2 for x in xs) / n)
 
 
 def classify(closes: list[float]) -> dict[str, Any]:
