@@ -62,8 +62,8 @@
                 `<div class="kv"><span>Karar</span><b>${esc(xp.decisions ?? 'N/A')}</b></div>` +
                 `<div class="kv"><span>Son güncelleme</span><b>${esc(xp.updated_at ?? 'N/A')}</b></div>` +
                 (ls == null ? '<div class="muted small mt-2">Aday ders bilgisi henüz yok.</div>' : ls.length
-                    ? '<table class="table table-sm mt-2 mb-0"><thead><tr><th>Yön</th><th>Rejim</th><th>Güven</th><th class="text-end">n eski/yeni</th><th class="text-end">4s ort % eski/yeni</th></tr></thead><tbody>' +
-                        ls.map((c) => `<tr><td>${esc(c.action)}</td><td>${esc(c.regime)}</td><td>${esc(c.confidence)}</td><td class="text-end">${esc(c.n_older)}/${esc(c.n_newer)}</td><td class="text-end ${tone(c.avg240_newer_pct)}">${esc(c.avg240_older_pct)} / ${esc(c.avg240_newer_pct)}</td></tr>`).join('') + '</tbody></table>'
+                    ? '<table class="table table-sm mt-2 mb-0"><thead><tr><th>Yön</th><th>Rejim</th><th>Güven</th><th class="text-end">n eski/yeni (bağımsız)</th><th class="text-end">4s ort % eski/yeni</th></tr></thead><tbody>' +
+                        ls.map((c) => `<tr><td>${esc(c.action)}</td><td>${esc(c.regime)}</td><td>${esc(c.confidence)}</td><td class="text-end">${esc(c.n_older)}/${esc(c.n_newer)} (${esc(c.n_eff_older ?? '-')}/${esc(c.n_eff_newer ?? '-')})</td><td class="text-end ${tone(c.avg240_newer_pct)}">${esc(c.avg240_older_pct)} / ${esc(c.avg240_newer_pct)}</td></tr>`).join('') + '</tbody></table>'
                     : '<div class="muted small mt-2">Henüz iki yarıda da tutarlı aday ders yok.</div>') +
                 '<div class="small muted mt-2">Aday ders kural değildir; davranışa ancak sahibin onayladığı bir öneriyle dönüşür.</div>');
         }
