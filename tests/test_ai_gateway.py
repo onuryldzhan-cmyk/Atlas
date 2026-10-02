@@ -31,7 +31,7 @@ def test_ok_answer_is_schema_validated_costed_and_ledgered(tmp_path):
     r = ai.ask("sys", "q api_key=sk-abc123456789abcdef", SCHEMA, ledger=ledger, client_factory=fake('{"a": "x"}', calls=calls), now=NOW)
     assert r.status == "OK" and r.data == {"a": "x"}
     assert r.cost_usd == Decimal("0.014")  # 1000*4 + 500*20 per 1M
-    assert ledger.spent_today("2026-10-02") == Decimal("0.014")
+    assert ledger.spent(NOW.timestamp()) == Decimal("0.014")
     sent = calls[0]
     assert "sk-abc123456789abcdef" not in json.dumps(sent["messages"])          # SensitiveDataGuard
     assert sent["output_config"]["format"]["schema"] == SCHEMA and sent["fallbacks"] == "default"
@@ -50,8 +50,8 @@ def test_every_failure_abstains(tmp_path):
 def test_budget_and_unreadable_ledger_stop_spending(tmp_path, monkeypatch):
     monkeypatch.setenv("ATLAS_AI_DAILY_BUDGET_USD", "0.01")
     ledger = ai.UsageLedger(tmp_path / "u.json")
-    ledger.add("2026-10-02", Decimal("0.006"))  # 60 % of 0.01 already used
-    assert "DAILY_BUDGET" in ai.ask("s", "q", SCHEMA, ledger=ledger, client_factory=fake('{"a":"x"}'), now=NOW).reason
+    ledger.add(NOW.timestamp() - 3600, Decimal("0.006"))  # 60 % of 0.01 used one hour ago
+    assert "WINDOW_BUDGET" in ai.ask("s", "q", SCHEMA, ledger=ledger, client_factory=fake('{"a":"x"}'), now=NOW).reason
     (tmp_path / "bad.json").write_text("{", encoding="utf-8")
     assert "UNREADABLE" in ai.ask("s", "q", SCHEMA, ledger=ai.UsageLedger(tmp_path / "bad.json"),
                                   client_factory=fake('{"a":"x"}'), now=NOW).reason
@@ -121,8 +121,19 @@ def test_owner_quota_rule_60_percent_total_split_by_task_size(monkeypatch):
 def test_an_agent_stops_at_its_own_share_while_others_continue(tmp_path, monkeypatch):
     monkeypatch.setenv("ATLAS_AI_DAILY_BUDGET_USD", "3.00")
     ledger = ai.UsageLedger(tmp_path / "u.json")
-    ledger.add("2026-10-02", Decimal("0.60"), "ceo_ai")
+    ledger.add(NOW.timestamp(), Decimal("0.60"), "ceo_ai")
     blocked = ai.ask("s", "q", SCHEMA, ledger=ledger, client_factory=fake('{"a":"x"}'), now=NOW, agent="ceo_ai")
     assert blocked.status == "ABSTAIN" and "AGENT_QUOTA_REACHED" in blocked.reason
     ok = ai.ask("s", "q", SCHEMA, ledger=ledger, client_factory=fake('{"a":"x"}'), now=NOW, agent="model_council")
-    assert ok.status == "OK" and ledger.spent_today("2026-10-02", "model_council") == Decimal("0.014")
+    assert ok.status == "OK" and ledger.spent(NOW.timestamp(), "model_council") == Decimal("0.014")
+
+
+def test_quota_is_a_rolling_five_hour_window(tmp_path, monkeypatch):
+    # Owner 2026-10-02: "5 saatlik" - spend older than 5 hours no longer counts.
+    monkeypatch.setenv("ATLAS_AI_WINDOW_BUDGET_USD", "1.00")
+    ledger = ai.UsageLedger(tmp_path / "u.json")
+    ledger.add(NOW.timestamp() - 5 * 3600 - 1, Decimal("0.60"))   # just outside the window
+    assert ledger.spent(NOW.timestamp()) == 0
+    assert ai.ask("s", "q", SCHEMA, ledger=ledger, client_factory=fake('{"a":"x"}'), now=NOW).status == "OK"
+    ledger.add(NOW.timestamp() - 4 * 3600, Decimal("0.60"))       # inside the window
+    assert "WINDOW_BUDGET" in ai.ask("s", "q", SCHEMA, ledger=ledger, client_factory=fake('{"a":"x"}'), now=NOW).reason

@@ -8,7 +8,8 @@ Contract: config/model_registry.json and ADR-0011.
 * Every prompt passes the SensitiveDataGuard first.
 * Output is constrained by a JSON schema (output_config.format) and validated again here.
 * timeout / malformed / refusal / unavailable / over budget -> ABSTAIN, never a default action.
-* A daily spend cap (ATLAS_AI_DAILY_BUDGET_USD, default 1.00) is enforced from a usage ledger.
+* A spend cap per rolling 5-hour window (ATLAS_AI_WINDOW_BUDGET_USD, default 1.00); all agents together
+  max 60 %, split by task size (AGENT_WEIGHTS).
 * A model's answer is advice: no output here can trade, deploy, approve or change a threshold.
 """
 
@@ -52,46 +53,57 @@ def key_available() -> bool:
 
 
 def daily_budget() -> Decimal:
+    """Budget per rolling 5-hour window (ATLAS_AI_WINDOW_BUDGET_USD; the older ..._DAILY_... name is still read)."""
+    raw = os.environ.get("ATLAS_AI_WINDOW_BUDGET_USD") or os.environ.get("ATLAS_AI_DAILY_BUDGET_USD") or str(DEFAULT_DAILY_BUDGET_USD)
     try:
-        value = Decimal(os.environ.get("ATLAS_AI_DAILY_BUDGET_USD", str(DEFAULT_DAILY_BUDGET_USD)))
+        value = Decimal(raw)
     except ArithmeticError:
         return Decimal("0")  # an unreadable budget means no spend, never unlimited
     return value if value.is_finite() and value >= 0 else Decimal("0")
 
 
+WINDOW_HOURS = 5  # owner rule 2026-10-02: quotas apply to a rolling 5-hour window, not a day or a week
+
+
 class UsageLedger:
-    """Per-UTC-day spend. Unreadable ledger -> treated as budget exhausted (fail closed)."""
+    """Spend entries [(epoch_s, agent, usd)] summed over the last WINDOW_HOURS (rolling).
+
+    Unreadable ledger -> treated as quota exhausted (fail closed). Entries older than a day are pruned.
+    """
 
     def __init__(self, path: Path) -> None:
         self.path = Path(path)
 
-    def _load(self) -> dict[str, str] | None:
+    def _load(self) -> list | None:
         if not self.path.exists():
-            return {}
+            return []
         try:
             data = json.loads(self.path.read_text(encoding="utf-8"))
-            return data if isinstance(data, dict) else None
         except (OSError, ValueError):
             return None
+        if isinstance(data, dict):  # pre-5h ledger format: start fresh rather than misread it
+            return []
+        return data if isinstance(data, list) else None
 
-    def spent_today(self, today: str, agent: str | None = None) -> Decimal | None:
+    def spent(self, now_s: float, agent: str | None = None) -> Decimal | None:
         data = self._load()
         if data is None:
             return None
-        key = f"{today}:{agent}" if agent else today
+        total = Decimal("0")
         try:
-            return Decimal(str(data.get(key, "0")))
-        except ArithmeticError:
+            for ts, who, usd in data:
+                if now_s - float(ts) < WINDOW_HOURS * 3600 and (agent is None or who == agent):
+                    total += Decimal(str(usd))
+        except (TypeError, ValueError, ArithmeticError):
             return None
+        return total
 
-    def add(self, today: str, cost: Decimal, agent: str | None = None) -> None:
-        data = self._load() or {}
-        data[today] = str(Decimal(str(data.get(today, "0"))) + cost)
-        if agent:
-            data[f"{today}:{agent}"] = str(Decimal(str(data.get(f"{today}:{agent}", "0"))) + cost)
+    def add(self, now_s: float, cost: Decimal, agent: str | None = None) -> None:
+        data = [e for e in (self._load() or []) if now_s - float(e[0]) < 86400]
+        data.append([now_s, agent, str(cost)])
         self.path.parent.mkdir(parents=True, exist_ok=True)
         tmp = self.path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(data, sort_keys=True), encoding="utf-8")
+        tmp.write_text(json.dumps(data), encoding="utf-8")
         tmp.replace(self.path)
 
 
@@ -140,13 +152,13 @@ def ask(system: str, prompt: str, schema: dict[str, Any], *, model: str = DEFAUL
 
     if not key_available() and client_factory is None:
         return AIResult("ABSTAIN", reason="NO_CREDENTIALS (AI-001: owner sets ANTHROPIC_API_KEY on his machine)")
-    today = (now or datetime.now(timezone.utc)).date().isoformat()
-    spent = ledger.spent_today(today)
+    now_s = (now or datetime.now(timezone.utc)).timestamp()
+    spent = ledger.spent(now_s)
     if spent is None:
         return AIResult("ABSTAIN", reason="USAGE_LEDGER_UNREADABLE")
     if spent >= daily_budget() * TOTAL_SHARE:
-        return AIResult("ABSTAIN", reason=f"DAILY_BUDGET_REACHED ({spent} USD, all agents max 60 %)")
-    mine = ledger.spent_today(today, agent) if agent else spent
+        return AIResult("ABSTAIN", reason=f"WINDOW_BUDGET_REACHED ({spent} USD in the last {WINDOW_HOURS} h, all agents max 60 %)")
+    mine = ledger.spent(now_s, agent) if agent else spent
     if mine is None or mine >= agent_cap(agent):
         return AIResult("ABSTAIN", reason=f"AGENT_QUOTA_REACHED ({agent}: {mine} / {agent_cap(agent):.4f} USD)")
     safe_prompt = sanitize_sensitive_data(prompt)
@@ -161,7 +173,7 @@ def ask(system: str, prompt: str, schema: dict[str, Any], *, model: str = DEFAUL
     except Exception as exc:  # SDK missing, network, rate limit, 4xx/5xx: abstain
         return AIResult("ABSTAIN", reason=f"UNAVAILABLE ({type(exc).__name__})", model=model)
     cost = _cost(getattr(response, "model", model) or model, getattr(response, "usage", None))
-    ledger.add(today, cost, agent)
+    ledger.add(now_s, cost, agent)
     if getattr(response, "stop_reason", None) == "refusal":
         return AIResult("ABSTAIN", reason="REFUSAL", model=model, cost_usd=cost)
     if getattr(response, "stop_reason", None) == "max_tokens":
