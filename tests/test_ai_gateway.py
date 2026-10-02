@@ -71,6 +71,10 @@ def _records(tmp_path):
     d = tmp_path / "records"
     cli.add_memory_record(d, {"record_id": "MR-0001", "type": "EXPERIMENTS", "authority": "RESEARCH",
                               "title": "Piyasa rejimi", "body": "{}", "author": "market_regime", "source": "t"})
+    # 2026-10-02: the CEO needs ac.CEO_MIN_EVIDENCE evidence records before it calls a model
+    for n in (101, 102):
+        cli.add_memory_record(d, {"record_id": f"MR-0{n}", "type": "EXPERIMENTS", "authority": "RESEARCH",
+                                  "title": f"Kanıt {n}", "body": "{}", "author": "quant_research", "source": "t"})
     return d
 
 
