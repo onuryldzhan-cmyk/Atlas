@@ -20,3 +20,11 @@ def test_sell_is_judged_on_the_price_move_not_on_fees():
     # -0.2% net after a round trip of 0.2% fees + 0.1% slippage is a price RISE: SELL was wrong.
     out = lb.build([_row("SELL", "72", "-0.002")] * 3)
     assert out[0]["net_60m_win"] == 0.0 and out[0]["net_60m_avg_pct"] > 0
+
+
+def test_fee_repricing_uses_raw_moves_bnb_fee_beats_standard():
+    row = {**_row("BUY", "61", "-0.0001"), "ret_60m": "0.0025"}  # +0.25% raw move
+    std = lb.build([row] * 3, slippage_bps=5, fee_bps=10)[0]["net_60m_avg_pct"]
+    bnb = lb.build([row] * 3, slippage_bps=5, fee_bps=7)[0]["net_60m_avg_pct"]
+    assert bnb > 0 > std  # +0.25% move: a loss at 0.10%/side, a small gain at 0.07% (BNB)
+    assert lb.build([row] * 3)[0]["net_60m_avg_pct"] == -0.01  # without --fee-bps the recorded net is used

@@ -29,10 +29,9 @@ from typing import Any, Callable
 
 DAY_MS = 24 * 60 * 60_000
 MAX_DAYS_BACK = 730
-HORIZON_PAD_MIN = 240  # outcome horizon after the day ends
+HORIZON_PAD_MIN = 1440  # longest outcome horizon (1 day) after the day ends
 SYMBOLS = ("BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT")
 SLIPPAGE_BPS = 5
-COLUMNS = ["symbol", "time", "action", "confidence", "bucket", "regime", "net_60m", "net_240m"]
 
 Fetcher = Callable[[str, int], list[list]]
 
@@ -40,7 +39,7 @@ Fetcher = Callable[[str, int], list[list]]
 def _paths(base: Path) -> tuple[Path, Path]:
     d = base / "experience"
     d.mkdir(parents=True, exist_ok=True)
-    return d / "state.json", d / "signals.csv"
+    return d / "state.json", d / "signals_v2.csv"  # v2: raw moves + 1-day horizon
 
 
 def _load_state(path: Path) -> dict[str, Any]:
@@ -103,6 +102,8 @@ def replay_day(day_ms: int, fetch: Fetcher, symbols=SYMBOLS, replay=None) -> lis
 
 def _append(path: Path, signals: list[dict]) -> None:
     from decimal import Decimal
+
+    from tools.backtest_replay import SIGNAL_COLUMNS as COLUMNS
 
     new = not path.exists()
     with path.open("a", newline="", encoding="utf-8") as f:

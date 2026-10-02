@@ -11,12 +11,12 @@ NOW = 100 * D + 6 * 3_600_000  # day 100, 06:00 UTC
 
 
 def test_next_day_first_then_forward_then_backward_then_done():
-    assert xp.next_day({}, NOW) == (99 * D, "first")
-    assert xp.next_day({"newest_day_ms": 98 * D, "oldest_day_ms": 98 * D}, NOW) == (99 * D, "forward")
-    assert xp.next_day({"newest_day_ms": 99 * D, "oldest_day_ms": 99 * D}, NOW) == (98 * D, "backward")
-    early = 100 * D + 60_000  # 00:01: yesterday's last 240m outcomes are not in yet
-    assert xp.next_day({}, early) == (98 * D, "first")
-    full = {"newest_day_ms": 99 * D, "oldest_day_ms": 99 * D - xp.MAX_DAYS_BACK * D}
+    # 2026-10-02 option C: the longest outcome is 1 day, so a day is complete only when the
+    # whole following day has passed (was 240 minutes; expectations moved one day back).
+    assert xp.next_day({}, NOW) == (98 * D, "first")
+    assert xp.next_day({"newest_day_ms": 97 * D, "oldest_day_ms": 97 * D}, NOW) == (98 * D, "forward")
+    assert xp.next_day({"newest_day_ms": 98 * D, "oldest_day_ms": 98 * D}, NOW) == (97 * D, "backward")
+    full = {"newest_day_ms": 98 * D, "oldest_day_ms": 98 * D - xp.MAX_DAYS_BACK * D}
     assert xp.next_day(full, NOW) is None
 
 
@@ -56,13 +56,13 @@ def test_run_walks_days_records_lessons_once_and_touches_nothing_else(tmp_path):
     state_path, signals_path = xp._paths(res)
     import json
     state = json.loads(state_path.read_text())
-    assert state["days"] == 40 and state["newest_day_ms"] == 99 * D and state["oldest_day_ms"] == 60 * D
+    assert state["days"] == 40 and state["newest_day_ms"] == 98 * D and state["oldest_day_ms"] == 59 * D
     rows = signals_path.read_text().splitlines()
     assert len(rows) == 1 + 40 * 4  # warm-up decisions outside the day were dropped
     xps = [r for r in memory_records.replay(cli.read_log(rec / cli.MEMORY_LOG)).values() if r["author"] == "experiment_manager"]
     assert len(xps) == 1 and "aday ders" in xps[0]["title"]  # written once, when the candidate set appeared
     assert sorted(p.name for p in tmp_path.rglob("*") if p.is_file()) == sorted(
-        [cli.MEMORY_LOG, "state.json", "signals.csv"] + [p.name for p in rec.iterdir() if p.name != cli.MEMORY_LOG])
+        [cli.MEMORY_LOG, "state.json", "signals_v2.csv"] + [p.name for p in rec.iterdir() if p.name != cli.MEMORY_LOG])
 
 
 def test_network_failure_records_nothing_and_retries_the_same_day(tmp_path):

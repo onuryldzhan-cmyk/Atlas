@@ -196,7 +196,7 @@ def _entry_regime(bars: list[tuple[Decimal, Decimal, Decimal]]) -> str:
         return "UNKNOWN"
 
 
-SIGNAL_HORIZONS_MIN = (60, 240)  # outcome horizons for the lesson book
+SIGNAL_HORIZONS_MIN = (60, 240, 1440)  # outcome horizons for the lesson book (1 day: owner option C, hold longer)
 REGIME_LOOKBACK_MIN = 30 * 24 * 60  # regime from the last 30 days of closed hourly bars
 
 
@@ -211,17 +211,23 @@ def _signal_outcome(rows: list[list], end: int, price: Decimal, slip: Decimal, f
         idx = end - 1 + h
         if idx >= len(rows):
             out[f"net_{h}m"] = None
+            out[f"ret_{h}m"] = None
             continue
         exit_px = Decimal(str(rows[idx][4]))
+        out[f"ret_{h}m"] = exit_px / price - 1  # raw move: the lesson book can re-price any fee (owner option A)
         gross_in = price * (1 + slip)
         out[f"net_{h}m"] = (exit_px * (1 - slip) * (1 - fee)) / (gross_in * (1 + fee)) - 1
     return out
 
 
+SIGNAL_COLUMNS = (["symbol", "time", "action", "confidence", "bucket", "regime"]
+                  + [f"net_{h}m" for h in SIGNAL_HORIZONS_MIN] + [f"ret_{h}m" for h in SIGNAL_HORIZONS_MIN])
+
+
 def write_signals_csv(path: str, signals: list[dict]) -> int:
     import csv
 
-    cols = ["symbol", "time", "action", "confidence", "bucket", "regime"] + [f"net_{h}m" for h in SIGNAL_HORIZONS_MIN]
+    cols = SIGNAL_COLUMNS
     with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(cols)
