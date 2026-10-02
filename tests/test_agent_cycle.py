@@ -312,3 +312,21 @@ def test_cycle_reports_ai_calls_and_cost_from_the_usage_ledger(tmp_path, monkeyp
     monkeypatch.setattr(ac, "_cycle_ai_usage", lambda start, end: None)
     out = ac.run_cycle(tmp_path, (("x", "X", lambda _: {"verdict": "OK", "summary": "x"}),))
     assert out["resources"]["ai_cost_usd"].startswith("UNKNOWN")  # never reported as zero
+
+
+def test_protections_watch_records_on_change_only_and_never_locks_anything(tmp_path, monkeypatch):
+    archive = tmp_path / "closed.jsonl"
+    rows = [{"position_id": f"p{i}", "symbol": "BTCUSDT", "cost_quote": "1000", "gross_pnl": "-5",
+             "opened_at": f"2026-10-01T{10 + i:02d}:00:00+00:00", "closed_at": f"2026-10-01T{10 + i:02d}:30:00+00:00"}
+            for i in range(3)]
+    archive.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    monkeypatch.setattr(ac, "_archive_path", lambda: archive)
+    records = tmp_path / "records"
+    first = ac.protections_watch(records)
+    assert "Koruma gözlemi: 3 işlem" in first["summary"] and "kaçınılırdı" in first["summary"]
+    assert "değişmedi" in ac.protections_watch(records)["summary"]
+    recs = [r for r in memory_records.replay(cli.read_log(records / cli.MEMORY_LOG)).values() if r["author"] == "performance_audit"]
+    assert len(recs) == 1 and recs[0]["authority"] == "RESEARCH"
+    body = json.loads(recs[0]["body"])
+    assert body["rules"]["COOLDOWN"]["blocked"] == 2  # re-entries 30 min after each exit
+    assert "performance_audit" in [name for name, _, _ in ac.AGENTS]

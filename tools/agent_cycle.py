@@ -592,6 +592,41 @@ def experience(records_dir: Path) -> dict[str, Any]:
     return experience_agent.run(records_dir, _research_dir())
 
 
+def protections_watch(records_dir: Path) -> dict[str, Any]:
+    """Would freqtrade-style protections have helped? Observe-only (2026-10-02, tools/protections_report.py).
+
+    Replays the closed PAPER trades through CooldownPeriod / StoplossGuard / LowProfitPairs and records
+    one memory record when the finding changes. It never locks a coin or changes a gate: turning a
+    protection on is a risk-gate change that needs an owner-approved proposal.
+    """
+    from tools.exp001_report import load_closed
+    from tools.protections_report import replay
+
+    out = replay(load_closed(_archive_path()))
+    finding = {"trades": out["trades"],
+               "rules": {name: {"blocked": s["blocked"], "blocked_winners": s["blocked_wins"],
+                                "net_avoided_usdt": str(round(s["avoided_net"], 2))}
+                         for name, s in out["rules"].items()},
+               "any_rule": {"blocked": out["combined"]["blocked"],
+                            "net_avoided_usdt": str(round(out["combined"]["avoided_net"], 2))}}
+    log = records_dir / cli.MEMORY_LOG
+    if log.exists():
+        from atlas_org import memory_records
+
+        mine = [r for r in memory_records.replay(cli.read_log(log)).values() if r.get("author") == "performance_audit"]
+        if mine and json.loads(sorted(mine, key=lambda r: r.get("created_at") or "")[-1].get("body") or "{}") == finding:
+            return {"verdict": "OK", "summary": "koruma gözlemi değişmedi; yeni kayıt yok"}
+    blocked, avoided = finding["any_rule"]["blocked"], finding["any_rule"]["net_avoided_usdt"]
+    title = (f"Koruma gözlemi: {out['trades']} işlem; kurallar {blocked} girişi engellerdi, net {avoided} USDT "
+             f"{'kaçınılırdı' if Decimal(avoided) > 0 else 'kaybedilirdi' if Decimal(avoided) < 0 else 'fark'} (kural değil)")
+    existing = {r["record_id"] for r in cli.read_log(log)} if log.exists() else set()
+    cli.add_memory_record(records_dir, {
+        "record_id": f"PA-{len(existing) + 1:04d}", "type": "EXPERIMENTS", "authority": "RESEARCH",
+        "title": title, "body": json.dumps(finding, ensure_ascii=False),
+        "author": "performance_audit", "source": "tools/agent_cycle.py (protections_watch, tools/protections_report.py)"})
+    return {"verdict": "OK", "summary": title}
+
+
 def shadow_costs(records_dir: Path) -> dict[str, Any]:
     """Shadow stage S1 (owner 2026-10-02): live order-book cost per coin for the typical Paper size; evidence only."""
     from tools import shadow_costs as sc
@@ -616,6 +651,7 @@ AGENTS: tuple[tuple[str, str, Callable[[Path], dict[str, Any]]], ...] = (
     ("model_validation", "Model doğrulama", model_validation),
     ("experiment_manager", "Deneyim ajanı", experience),
     ("digital_twin", "Shadow maliyet ölçümü", shadow_costs),
+    ("performance_audit", "Koruma gözlemi", protections_watch),
     ("ceo_ai", "CEO özeti (AI-001)", ceo_brief),
     ("model_council", "Model konseyi (AI-001)", model_council),
     ("red_team", "Karşı görüş", red_team),

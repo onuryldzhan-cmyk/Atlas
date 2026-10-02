@@ -130,7 +130,7 @@ ORGANIZATION: tuple[OrgUnit, ...] = (
             "Reports closed trades, win rate with a 95% range, net after fees; never claims significance it lacks.",
             ("read the durable book", "report results"),
             (_NO_TRADE, _NO_LIVE, "edit financial records"),
-            ("tools/exp001_report.py", "web_app.py")),
+            ("tools/exp001_report.py", "web_app.py", "tools/protections_report.py")),
     OrgUnit("security", "Security Department", "DEPARTMENT", PARTIAL, 5,
             "Loopback-only panel, host/origin guards, CSP, sensitive-data redaction, no secrets in code.",
             ("block non-loopback access", "redact sensitive data"),

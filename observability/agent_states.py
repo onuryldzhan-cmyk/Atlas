@@ -45,6 +45,7 @@ AGENTS: dict[str, tuple[str, str]] = {  # unit id -> (display name, room)
     "model_validation": ("Model doğrulama", "review"),
     "experiment_manager": ("Deneyim ajanı", "research"),
     "digital_twin": ("Shadow maliyet ölçümü", "research"),
+    "performance_audit": ("Koruma gözlemi", "quant"),
     "ceo_ai": ("CEO AI (AI-001)", "command"),
     "model_council": ("Model konseyi (AI-001)", "review"),
     "overview_snapshot": ("Durum özeti", "system"),
