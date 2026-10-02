@@ -555,7 +555,112 @@ class AgentFusion:
         self,
         signals
     ):
+        """Fuse agent votes into one action and an availability-adjusted confidence.
 
+        T-0001 (2026-10-02): split into the helpers below with no behaviour
+        change (pinned by tests/test_agent_fusion_refactor_golden.py).
+        """
+
+        signals = self._usable_signals(
+            signals
+        )
+
+        available_weight, total_configured_weight, sufficient = (
+            self._evidence_coverage(
+                signals
+            )
+        )
+
+        if not sufficient:
+
+            return AgentFusionResult(
+
+                action="HOLD",
+
+                confidence=0.0,
+
+                scores={},
+
+                reason="INSUFFICIENT_EVIDENCE",
+
+            )
+
+        buy, sell, hold = self._bucket_masses(
+            signals
+        )
+
+        total = (
+
+            buy +
+
+            sell +
+
+            hold
+
+        )
+
+        if total == 0:
+
+            return AgentFusionResult(
+
+                action="HOLD",
+
+                confidence=0.0,
+
+                scores={}
+
+            )
+
+        scores = {
+
+            "BUY":
+                round(
+                    buy/total,
+                    3
+                ),
+
+            "SELL":
+                round(
+                    sell/total,
+                    3
+                ),
+
+            "HOLD":
+                round(
+                    hold/total,
+                    3
+                )
+
+        }
+
+        action, winning_mass = self._select_winner(
+            buy,
+            sell,
+            hold,
+        )
+
+        confidence = self._availability_confidence(
+            winning_mass,
+            total,
+            available_weight,
+            total_configured_weight,
+        )
+
+        return AgentFusionResult(
+
+            action=action,
+
+            confidence=confidence,
+
+            scores=scores
+
+        )
+
+
+    def _usable_signals(
+        self,
+        signals
+    ):
 
         # -------------------------------------------------
         # SCORE RANGE GUARD (Package 4 red team)
@@ -582,7 +687,7 @@ class AgentFusion:
         # so the reported confidence is now bounded to [0, 1] by the
         # arithmetic itself rather than by a downstream clamp.
 
-        signals = {
+        return {
 
             name: data
 
@@ -601,6 +706,12 @@ class AgentFusion:
 
         }
 
+
+    def _evidence_coverage(
+        self,
+        signals
+    ):
+        """(available_weight, total_configured_weight, passes the floor)."""
 
         # -------------------------------------------------
         # MINIMUM-EVIDENCE FLOOR (Step 2B)
@@ -644,27 +755,22 @@ class AgentFusion:
 
         )
 
-        if (
+        sufficient = not (
 
             participating_count < self.MIN_PARTICIPATING_AGENTS
 
             or weight_coverage < self.MIN_WEIGHT_COVERAGE
 
-        ):
+        )
 
-            return AgentFusionResult(
-
-                action="HOLD",
-
-                confidence=0.0,
-
-                scores={},
-
-                reason="INSUFFICIENT_EVIDENCE",
-
-            )
+        return available_weight, total_configured_weight, sufficient
 
 
+    def _bucket_masses(
+        self,
+        signals
+    ):
+        """Weighted BUY / SELL / HOLD mass of the usable signals."""
 
         buy = 0
 
@@ -672,110 +778,39 @@ class AgentFusion:
 
         hold = 0
 
-
-
-
         for name, data in signals.items():
-
 
             weight = self.WEIGHTS.get(
                 name,
                 0
             )
 
-
             score = data["score"]
-
 
             action = data["action"]
 
-
-
-
             if action == "BUY":
-
 
                 buy += score * weight
 
-
-
             elif action == "SELL":
-
 
                 sell += (1-score) * weight
 
-
-
             else:
-
 
                 hold += 0.5 * weight
 
+        return buy, sell, hold
 
 
-
-
-
-        total = (
-
-            buy +
-
-            sell +
-
-            hold
-
-        )
-
-
-
-        if total == 0:
-
-
-            return AgentFusionResult(
-
-                action="HOLD",
-
-                confidence=0.0,
-
-                scores={}
-
-            )
-
-
-
-
-
-        scores = {
-
-
-            "BUY":
-
-                round(
-                    buy/total,
-                    3
-                ),
-
-
-
-            "SELL":
-
-                round(
-                    sell/total,
-                    3
-                ),
-
-
-
-            "HOLD":
-
-                round(
-                    hold/total,
-                    3
-                )
-
-        }
-
-
+    def _select_winner(
+        self,
+        buy,
+        sell,
+        hold,
+    ):
+        """(winning action, its quantized mass)."""
 
         # -------------------------------------------------
         # WINNER-SELECTION AUTHORITY (M-2)
@@ -841,7 +876,22 @@ class AgentFusion:
 
         )
 
+        # The same quantized mass that selected `action` above is
+        # returned as the confidence numerator. Reading it from `quantized_mass` rather than
+        # re-quantizing a second copy is what makes "the winner" and
+        # "the numerator" one value by construction instead of two
+        # values that happen to agree.
 
+        return action, quantized_mass[action]
+
+
+    def _availability_confidence(
+        self,
+        winning_mass,
+        total,
+        available_weight,
+        total_configured_weight,
+    ):
 
         # -------------------------------------------------
         # AVAILABILITY-ADJUSTED CONFIDENCE (M-2, supersedes Step 2C)
@@ -918,14 +968,6 @@ class AgentFusion:
 
         )
 
-        # The same quantized mass that selected `action` above is the
-        # numerator here. Reading it from `quantized_mass` rather than
-        # re-quantizing a second copy is what makes "the winner" and
-        # "the numerator" one value by construction instead of two
-        # values that happen to agree.
-
-        winning_mass = quantized_mass[action]
-
         # proposals/2026-10-01_fusion_dissent_confidence_DESIGN.md (audit F-1):
         # with FULL_WEIGHT_DENOMINATOR every expected agent is charged its full
         # configured weight, so a dissenting or neutral vote counts exactly like
@@ -939,7 +981,7 @@ class AgentFusion:
             else total + missing_weight
         )
 
-        confidence = round(
+        return round(
 
             winning_mass
             / round(
@@ -948,18 +990,6 @@ class AgentFusion:
             ),
 
             4,
-
-        )
-
-
-
-        return AgentFusionResult(
-
-            action=action,
-
-            confidence=confidence,
-
-            scores=scores
 
         )
 
