@@ -20,8 +20,8 @@ Command: `python -m tools.build_rem001_gate1_maps construction --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `8195bf22a888041dfe8bbde7c60781b73639ad74` |
-| generated_from_tree | `4017224e082340053a66e572efce2d6d303160af` |
+| generated_from_commit | `e566c69f2bce8e35e46a51f6a73d73da1db9fc3f` |
+| generated_from_tree | `2d5cf66d0b7e4ae544ac791a3b4e126ebefd9507` |
 | tracked_working_tree_clean | True |
 | modified_tracked_paths_at_generation | none |
 
@@ -59,7 +59,7 @@ below: it counted pattern hits, these count resolved call sites.
 | composition_root_canonical | `core/application.py` (ADR-0001) |
 | modules_in_runtime_closure | 135 |
 | classes_defined_in_closure | 420 |
-| construction_sites | 294 |
+| construction_sites | 295 |
 | modules_constructing | 35 |
 | classes_constructed | 127 |
 | construction_edges | 97 |
@@ -109,53 +109,54 @@ classes and their observed constructors:
 | `ai/core/atlas_brain.py` | `ReasoningAdapter` | `ai/core/intelligence/reasoning_adapter.py` | 250 | `AtlasBrain::initialize_modules` |
 | `ai/core/atlas_brain.py` | `SignalFusion` | `core/decision_intelligence.py` | 809 | `AtlasBrain::_build_phase5_shadow_proposal` |
 | `ai/core/intelligence/decision_builder.py` | `Decision` | `UNKNOWN` | 89 | `DecisionBuilder::create` |
-| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 569 | `BinancePublicDataProvider::get_candles` |
-| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 893 | `BinancePublicDataProvider::_parse_candle` |
-| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 902 | `BinancePublicDataProvider::_parse_candle` |
-| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 911 | `BinancePublicDataProvider::_parse_candle` |
-| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 917 | `BinancePublicDataProvider::_parse_candle` |
-| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 1361 | `BinancePublicDataProvider::_milliseconds_to_datetime` |
-| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 1367 | `BinancePublicDataProvider::_milliseconds_to_datetime` |
-| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 1382 | `BinancePublicDataProvider::_milliseconds_to_datetime` |
-| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleLimitError` | `atlas_finance/market_data/exceptions.py` | 1083 | `BinancePublicDataProvider::_validate_candle_limit` |
-| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleLimitError` | `atlas_finance/market_data/exceptions.py` | 1093 | `BinancePublicDataProvider::_validate_candle_limit` |
-| `atlas_finance/market_data/binance_public_provider.py` | `InvalidSymbolError` | `atlas_finance/market_data/exceptions.py` | 1006 | `BinancePublicDataProvider::_normalize_symbol` |
-| `atlas_finance/market_data/binance_public_provider.py` | `InvalidSymbolError` | `atlas_finance/market_data/exceptions.py` | 1028 | `BinancePublicDataProvider::_normalize_symbol` |
-| `atlas_finance/market_data/binance_public_provider.py` | `InvalidSymbolError` | `atlas_finance/market_data/exceptions.py` | 1035 | `BinancePublicDataProvider::_normalize_symbol` |
-| `atlas_finance/market_data/binance_public_provider.py` | `InvalidTimeframeError` | `atlas_finance/market_data/exceptions.py` | 1051 | `BinancePublicDataProvider::_normalize_timeframe` |
-| `atlas_finance/market_data/binance_public_provider.py` | `InvalidTimeframeError` | `atlas_finance/market_data/exceptions.py` | 1061 | `BinancePublicDataProvider::_normalize_timeframe` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketCandle` | `atlas_finance/market_data/models.py` | 927 | `BinancePublicDataProvider::_parse_candle` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1109 | `BinancePublicDataProvider::_validate_base_url` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1123 | `BinancePublicDataProvider::_validate_base_url` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1144 | `BinancePublicDataProvider::_validate_retry_attempts` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1149 | `BinancePublicDataProvider::_validate_retry_attempts` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1170 | `BinancePublicDataProvider::_validate_maximum_candle_limit` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1176 | `BinancePublicDataProvider::_validate_maximum_candle_limit` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1198 | `BinancePublicDataProvider::_validate_positive_float` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1208 | `BinancePublicDataProvider::_validate_positive_float` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1230 | `BinancePublicDataProvider::_validate_non_negative_float` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1240 | `BinancePublicDataProvider::_validate_non_negative_float` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConnectionError` | `atlas_finance/market_data/exceptions.py` | 323 | `BinancePublicDataProvider::connect` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConnectionError` | `atlas_finance/market_data/exceptions.py` | 345 | `BinancePublicDataProvider::connect` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConnectionError` | `atlas_finance/market_data/exceptions.py` | 719 | `BinancePublicDataProvider::_perform_get` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConnectionError` | `atlas_finance/market_data/exceptions.py` | 992 | `BinancePublicDataProvider::_ensure_available` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRateLimitError` | `atlas_finance/market_data/exceptions.py` | 754 | `BinancePublicDataProvider::_validate_response` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 528 | `BinancePublicDataProvider::get_candles` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 677 | `BinancePublicDataProvider::_request_json` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 725 | `BinancePublicDataProvider::_perform_get` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 761 | `BinancePublicDataProvider::_validate_response` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 778 | `BinancePublicDataProvider::_validate_response` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 1323 | `BinancePublicDataProvider::_datetime_to_milliseconds` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 1328 | `BinancePublicDataProvider::_datetime_to_milliseconds` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 1339 | `BinancePublicDataProvider::_datetime_to_milliseconds` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataResponseError` | `atlas_finance/market_data/exceptions.py` | 410 | `BinancePublicDataProvider::get_price` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataResponseError` | `atlas_finance/market_data/exceptions.py` | 430 | `BinancePublicDataProvider::get_price` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataResponseError` | `atlas_finance/market_data/exceptions.py` | 541 | `BinancePublicDataProvider::get_candles` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataResponseError` | `atlas_finance/market_data/exceptions.py` | 626 | `BinancePublicDataProvider::_request_json` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataResponseError` | `atlas_finance/market_data/exceptions.py` | 813 | `BinancePublicDataProvider::_parse_candle` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataResponseError` | `atlas_finance/market_data/exceptions.py` | 820 | `BinancePublicDataProvider::_parse_candle` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataTimeoutError` | `atlas_finance/market_data/exceptions.py` | 712 | `BinancePublicDataProvider::_perform_get` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketPrice` | `atlas_finance/market_data/models.py` | 446 | `BinancePublicDataProvider::get_price` |
+| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 573 | `BinancePublicDataProvider::get_candles` |
+| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 926 | `BinancePublicDataProvider::_parse_candle` |
+| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 935 | `BinancePublicDataProvider::_parse_candle` |
+| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 944 | `BinancePublicDataProvider::_parse_candle` |
+| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 950 | `BinancePublicDataProvider::_parse_candle` |
+| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 1394 | `BinancePublicDataProvider::_milliseconds_to_datetime` |
+| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 1400 | `BinancePublicDataProvider::_milliseconds_to_datetime` |
+| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 1415 | `BinancePublicDataProvider::_milliseconds_to_datetime` |
+| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleLimitError` | `atlas_finance/market_data/exceptions.py` | 1116 | `BinancePublicDataProvider::_validate_candle_limit` |
+| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleLimitError` | `atlas_finance/market_data/exceptions.py` | 1126 | `BinancePublicDataProvider::_validate_candle_limit` |
+| `atlas_finance/market_data/binance_public_provider.py` | `InvalidSymbolError` | `atlas_finance/market_data/exceptions.py` | 1039 | `BinancePublicDataProvider::_normalize_symbol` |
+| `atlas_finance/market_data/binance_public_provider.py` | `InvalidSymbolError` | `atlas_finance/market_data/exceptions.py` | 1061 | `BinancePublicDataProvider::_normalize_symbol` |
+| `atlas_finance/market_data/binance_public_provider.py` | `InvalidSymbolError` | `atlas_finance/market_data/exceptions.py` | 1068 | `BinancePublicDataProvider::_normalize_symbol` |
+| `atlas_finance/market_data/binance_public_provider.py` | `InvalidTimeframeError` | `atlas_finance/market_data/exceptions.py` | 1084 | `BinancePublicDataProvider::_normalize_timeframe` |
+| `atlas_finance/market_data/binance_public_provider.py` | `InvalidTimeframeError` | `atlas_finance/market_data/exceptions.py` | 1094 | `BinancePublicDataProvider::_normalize_timeframe` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketCandle` | `atlas_finance/market_data/models.py` | 960 | `BinancePublicDataProvider::_parse_candle` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1142 | `BinancePublicDataProvider::_validate_base_url` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1156 | `BinancePublicDataProvider::_validate_base_url` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1177 | `BinancePublicDataProvider::_validate_retry_attempts` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1182 | `BinancePublicDataProvider::_validate_retry_attempts` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1203 | `BinancePublicDataProvider::_validate_maximum_candle_limit` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1209 | `BinancePublicDataProvider::_validate_maximum_candle_limit` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1231 | `BinancePublicDataProvider::_validate_positive_float` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1241 | `BinancePublicDataProvider::_validate_positive_float` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1263 | `BinancePublicDataProvider::_validate_non_negative_float` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1273 | `BinancePublicDataProvider::_validate_non_negative_float` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConnectionError` | `atlas_finance/market_data/exceptions.py` | 327 | `BinancePublicDataProvider::connect` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConnectionError` | `atlas_finance/market_data/exceptions.py` | 349 | `BinancePublicDataProvider::connect` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConnectionError` | `atlas_finance/market_data/exceptions.py` | 736 | `BinancePublicDataProvider::_perform_get` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConnectionError` | `atlas_finance/market_data/exceptions.py` | 1025 | `BinancePublicDataProvider::_ensure_available` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRateLimitError` | `atlas_finance/market_data/exceptions.py` | 608 | `BinancePublicDataProvider::_request_json` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRateLimitError` | `atlas_finance/market_data/exceptions.py` | 787 | `BinancePublicDataProvider::_validate_response` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 532 | `BinancePublicDataProvider::get_candles` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 694 | `BinancePublicDataProvider::_request_json` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 742 | `BinancePublicDataProvider::_perform_get` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 794 | `BinancePublicDataProvider::_validate_response` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 811 | `BinancePublicDataProvider::_validate_response` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 1356 | `BinancePublicDataProvider::_datetime_to_milliseconds` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 1361 | `BinancePublicDataProvider::_datetime_to_milliseconds` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 1372 | `BinancePublicDataProvider::_datetime_to_milliseconds` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataResponseError` | `atlas_finance/market_data/exceptions.py` | 414 | `BinancePublicDataProvider::get_price` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataResponseError` | `atlas_finance/market_data/exceptions.py` | 434 | `BinancePublicDataProvider::get_price` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataResponseError` | `atlas_finance/market_data/exceptions.py` | 545 | `BinancePublicDataProvider::get_candles` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataResponseError` | `atlas_finance/market_data/exceptions.py` | 643 | `BinancePublicDataProvider::_request_json` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataResponseError` | `atlas_finance/market_data/exceptions.py` | 846 | `BinancePublicDataProvider::_parse_candle` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataResponseError` | `atlas_finance/market_data/exceptions.py` | 853 | `BinancePublicDataProvider::_parse_candle` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataTimeoutError` | `atlas_finance/market_data/exceptions.py` | 729 | `BinancePublicDataProvider::_perform_get` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketPrice` | `atlas_finance/market_data/models.py` | 450 | `BinancePublicDataProvider::get_price` |
 | `atlas_finance/market_data/market_feed_service.py` | `InvalidCandleLimitError` | `atlas_finance/market_data/exceptions.py` | 1795 | `MarketFeedService::_validate_limit` |
 | `atlas_finance/market_data/market_feed_service.py` | `InvalidCandleLimitError` | `atlas_finance/market_data/exceptions.py` | 1808 | `MarketFeedService::_validate_limit` |
 | `atlas_finance/market_data/market_feed_service.py` | `InvalidSymbolError` | `atlas_finance/market_data/exceptions.py` | 1714 | `MarketFeedService::_normalize_symbol` |

@@ -19,8 +19,8 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `8195bf22a888041dfe8bbde7c60781b73639ad74` |
-| generated_from_tree | `4017224e082340053a66e572efce2d6d303160af` |
+| generated_from_commit | `e566c69f2bce8e35e46a51f6a73d73da1db9fc3f` |
+| generated_from_tree | `2d5cf66d0b7e4ae544ac791a3b4e126ebefd9507` |
 | tracked_working_tree_clean | False |
 | modified_tracked_paths_at_generation | ['ackaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md'] |
 
@@ -145,9 +145,9 @@ nothing is inferred from an absence.
 | `ai/core/atlas_reasoning_engine.py` | JSON_DUMP | 787 | `AtlasReasoningEngine::save` |
 | `ai/core/atlas_world_model.py` | OPEN_WRITE_MODE | 228 | `AtlasWorldModel::save` |
 | `ai/core/atlas_world_model.py` | JSON_DUMP | 229 | `AtlasWorldModel::save` |
-| `atlas_finance/market_data/binance_public_provider.py` | ATOMIC_REPLACE | 1011 | `BinancePublicDataProvider::_normalize_symbol` |
-| `atlas_finance/market_data/binance_public_provider.py` | ATOMIC_REPLACE | 1011 | `BinancePublicDataProvider::_normalize_symbol` |
-| `atlas_finance/market_data/binance_public_provider.py` | ATOMIC_REPLACE | 1011 | `BinancePublicDataProvider::_normalize_symbol` |
+| `atlas_finance/market_data/binance_public_provider.py` | ATOMIC_REPLACE | 1044 | `BinancePublicDataProvider::_normalize_symbol` |
+| `atlas_finance/market_data/binance_public_provider.py` | ATOMIC_REPLACE | 1044 | `BinancePublicDataProvider::_normalize_symbol` |
+| `atlas_finance/market_data/binance_public_provider.py` | ATOMIC_REPLACE | 1044 | `BinancePublicDataProvider::_normalize_symbol` |
 | `atlas_finance/market_data/market_feed_service.py` | ATOMIC_REPLACE | 1719 | `MarketFeedService::_normalize_symbol` |
 | `atlas_finance/market_data/market_feed_service.py` | ATOMIC_REPLACE | 1719 | `MarketFeedService::_normalize_symbol` |
 | `atlas_finance/market_data/market_feed_service.py` | ATOMIC_REPLACE | 1719 | `MarketFeedService::_normalize_symbol` |
