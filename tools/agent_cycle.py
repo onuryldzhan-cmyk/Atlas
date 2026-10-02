@@ -671,31 +671,52 @@ def _open_incidents(records_dir: Path, results: list[dict[str, Any]]) -> None:
         open_units.add(r["unit"])
 
 
+def _cycle_ai_usage(start_s: float, end_s: float) -> tuple[int, Any] | None:
+    """(calls, USD) the usage ledger recorded during one cycle; None when it cannot be read. Creates nothing."""
+    try:
+        from core.application import resolve_state_directory
+        from tools.ai_gateway import USAGE_FILE, UsageLedger
+
+        return UsageLedger(resolve_state_directory() / "research" / USAGE_FILE).between(start_s, end_s)
+    except Exception:  # noqa: BLE001 - an unreadable ledger is reported as unknown, never as zero
+        return None
+
+
 def run_cycle(records_dir: Path = cli.RECORDS_DIR, agents=AGENTS) -> dict[str, Any]:
     results = []
+    cycle_started = time.time()
     for unit, name, fn in agents:
         started = time.monotonic()
         try:
             outcome = validate_outcome(fn(records_dir))
-        except Exception as exc:  # one agent failing never stops the others
+        except (Exception, cli.RecordLockBusy) as exc:  # one agent failing never stops the others
+            # RecordLockBusy is a SystemExit for the CLI; here a busy log fails this agent only.
             outcome = {"verdict": "FAIL", "summary": f"{type(exc).__name__}: {exc}"[:300]}
         seconds = round(time.monotonic() - started, 2)
         if seconds > AGENT_BUDGET_S and outcome.get("verdict") == "OK":
             outcome = {**outcome, "verdict": "WARN", "summary": f"süre bütçesi aşıldı ({seconds}s > {AGENT_BUDGET_S:g}s); " + str(outcome.get("summary", ""))}
         results.append({"unit": unit, "name": name, **outcome, "seconds": seconds})
-    _open_incidents(records_dir, results)
-    existing = {r["record_id"] for r in cli.read_log(records_dir / cli.MEMORY_LOG)} if (records_dir / cli.MEMORY_LOG).exists() else set()
-    rid = f"AC-{len(existing) + 1:04d}"
-    ok = sum(1 for r in results if r["verdict"] == "OK")
-    cli.add_memory_record(records_dir, {
-        "record_id": rid, "type": "OPERATIONS", "authority": "TEMPORARY",
-        "title": f"Ajan döngüsü: {ok}/{len(results)} ajan sorunsuz",
-        "body": json.dumps({"agent_cycle": results,
-                            "resources": {"total_seconds": round(sum(r["seconds"] for r in results), 2),
-                                          "llm_tokens": "N/A (rule-based agents, no model calls)",
-                                          "cost": "N/A", "budget_per_agent_s": AGENT_BUDGET_S}}, ensure_ascii=False),
-        "author": "executive_assistant", "source": "tools/agent_cycle.py"})
-    return {"record_id": rid, "results": results}
+    # 2026-10-02: the AI-001 advisors (CEO, council) make paid model calls, so the cycle reports what
+    # the usage ledger recorded during it instead of the old "no model calls" text.
+    usage = _cycle_ai_usage(cycle_started, time.time())
+    resources = {"total_seconds": round(sum(r["seconds"] for r in results), 2),
+                 "ai_calls": usage[0] if usage else "UNKNOWN (usage ledger unreadable)",
+                 "ai_cost_usd": str(usage[1]) if usage else "UNKNOWN (usage ledger unreadable)",
+                 "llm_tokens": "N/A (the usage ledger records calls and cost, not tokens)",
+                 "budget_per_agent_s": AGENT_BUDGET_S}
+    try:
+        _open_incidents(records_dir, results)
+        existing = {r["record_id"] for r in cli.read_log(records_dir / cli.MEMORY_LOG)} if (records_dir / cli.MEMORY_LOG).exists() else set()
+        rid = f"AC-{len(existing) + 1:04d}"
+        ok = sum(1 for r in results if r["verdict"] == "OK")
+        cli.add_memory_record(records_dir, {
+            "record_id": rid, "type": "OPERATIONS", "authority": "TEMPORARY",
+            "title": f"Ajan döngüsü: {ok}/{len(results)} ajan sorunsuz",
+            "body": json.dumps({"agent_cycle": results, "resources": resources}, ensure_ascii=False),
+            "author": "executive_assistant", "source": "tools/agent_cycle.py"})
+    except cli.RecordLockBusy as exc:  # the next cycle records again; the loop must not die on a busy log
+        return {"record_id": None, "results": results, "resources": resources, "warning": str(exc)}
+    return {"record_id": rid, "results": results, "resources": resources}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -704,7 +725,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     while True:
         out = run_cycle()
-        print(f"\n{out['record_id']}  {time.strftime('%Y-%m-%d %H:%M')}")
+        print(f"\n{out['record_id'] or 'kayıt yazılamadı (kilit meşgul)'}  {time.strftime('%Y-%m-%d %H:%M')}")
         for r in out["results"]:
             print(f"  {r['verdict']:<4} {r['name']:<20} {r['summary']}")
         if not args.every:

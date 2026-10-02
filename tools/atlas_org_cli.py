@@ -24,6 +24,7 @@ import argparse
 import json
 import os
 import sys
+import time
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
@@ -53,13 +54,26 @@ def read_log(path: Path) -> list[dict[str, Any]]:
     return events
 
 
+class RecordLockBusy(SystemExit):
+    """The log's lock is held by another writer. Still a SystemExit for the CLI (same message and
+    exit), but the agent cycle catches it so one busy log fails one agent, not the whole process."""
+
+
+LOCK_WAIT_S = 2.0  # a concurrent writer (CLI, another agent) usually finishes within milliseconds
+
+
 @contextmanager
 def _lock(path: Path) -> Iterator[None]:
     lock = path.with_suffix(path.suffix + ".lock")
-    try:
-        fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-    except FileExistsError:
-        raise SystemExit(f"{lock.name} exists: another writer is active (or crashed; remove it after checking)")
+    deadline = time.monotonic() + LOCK_WAIT_S
+    while True:
+        try:
+            fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            break
+        except FileExistsError:
+            if time.monotonic() >= deadline:
+                raise RecordLockBusy(f"{lock.name} exists: another writer is active (or crashed; remove it after checking)")
+            time.sleep(0.05)
     try:
         yield
     finally:

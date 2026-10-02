@@ -115,6 +115,21 @@ class UsageLedger:
         except (TypeError, ValueError):
             return None
 
+    def between(self, start_s: float, end_s: float) -> tuple[int, Decimal] | None:
+        """Calls and USD recorded in [start_s, end_s] (one agent cycle); None when the ledger is unreadable."""
+        data = self._load()
+        if data is None:
+            return None
+        calls, total = 0, Decimal("0")
+        try:
+            for ts, _who, usd in data:
+                if start_s <= float(ts) <= end_s:
+                    calls += 1
+                    total += Decimal(str(usd))
+        except (TypeError, ValueError, ArithmeticError):
+            return None
+        return calls, total
+
     def add(self, now_s: float, cost: Decimal, agent: str | None = None) -> None:
         data = [e for e in (self._load() or []) if now_s - float(e[0]) < 86400]
         data.append([now_s, agent, str(cost)])

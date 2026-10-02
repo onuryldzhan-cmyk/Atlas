@@ -265,3 +265,50 @@ def test_council_prompt_carries_the_proposal_risk_level(tmp_path):
     except Exception:
         pass
     assert prompts and "Risk: HIGH" in prompts[0]
+
+
+def test_busy_record_lock_waits_briefly_then_fails_only_that_agent(tmp_path, monkeypatch):
+    """2026-10-02: a held log lock used to raise SystemExit straight through run_cycle and end the process."""
+    import threading
+
+    monkeypatch.setattr(cli, "LOCK_WAIT_S", 0.2)
+    lock = tmp_path / (cli.MEMORY_LOG + ".lock")
+    lock.write_text("held")
+
+    def writer(_):
+        cli.add_memory_record(tmp_path, {"record_id": "X-0001", "type": "OPERATIONS", "authority": "TEMPORARY",
+                                         "title": "t", "body": "{}", "author": "quant_research", "source": "t"})
+        return {"verdict": "OK", "summary": "wrote"}
+
+    agents = (("a", "A", writer), ("b", "B", lambda _: {"verdict": "OK", "summary": "still runs"}))
+    out = ac.run_cycle(tmp_path, agents)
+    assert out["results"][0]["verdict"] == "FAIL" and "RecordLockBusy" in out["results"][0]["summary"]
+    assert out["results"][1]["verdict"] == "OK"  # the next agent still ran
+    assert out["record_id"] is None and "exists" in out["warning"]  # the cycle record waits for the next cycle
+    assert issubclass(cli.RecordLockBusy, SystemExit)  # the CLI still exits with the same message
+
+    # a lock released within the wait is simply taken
+    monkeypatch.setattr(cli, "LOCK_WAIT_S", 2.0)
+    threading.Timer(0.2, lock.unlink).start()
+    assert writer(None)["verdict"] == "OK"
+
+
+def test_cycle_reports_ai_calls_and_cost_from_the_usage_ledger(tmp_path, monkeypatch):
+    from decimal import Decimal
+
+    from tools.ai_gateway import UsageLedger
+
+    ledger = UsageLedger(tmp_path / "usage.json")
+    monkeypatch.setattr(ac, "_cycle_ai_usage", lambda start, end: ledger.between(start, end))
+
+    def paid_agent(_):
+        import time as _time
+        ledger.add(_time.time(), Decimal("0.0206"), agent="ceo_ai")
+        return {"verdict": "OK", "summary": "brief"}
+
+    ledger.add(1.0, Decimal("5"), agent="old")  # outside the cycle: not counted
+    out = ac.run_cycle(tmp_path, (("ceo_ai", "CEO", paid_agent),))
+    assert out["resources"]["ai_calls"] == 1 and out["resources"]["ai_cost_usd"] == "0.0206"
+    monkeypatch.setattr(ac, "_cycle_ai_usage", lambda start, end: None)
+    out = ac.run_cycle(tmp_path, (("x", "X", lambda _: {"verdict": "OK", "summary": "x"}),))
+    assert out["resources"]["ai_cost_usd"].startswith("UNKNOWN")  # never reported as zero
