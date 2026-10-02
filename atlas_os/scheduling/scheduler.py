@@ -1445,6 +1445,103 @@ class SchedulerService(BaseAtlasService):
         """
         Execute one task using its retry and timeout policy.
         """
+        begun = self._begin_execution(
+            task_id
+        )
+
+        if isinstance(
+            begun,
+            TaskExecutionRecord,
+        ):
+            return begun
+
+        (
+            task,
+            started_at,
+            task_name,
+            retry_policy,
+            timeout_seconds,
+        ) = begun
+
+        resolved_correlation_id = (
+            correlation_id
+            or f"task-execution-{uuid.uuid4()}"
+        )
+
+        execution_id = str(
+            uuid.uuid4()
+        )
+
+        self._publish_scheduler_event(
+            SchedulerEventType.TASK_STARTED,
+            payload={
+                "execution_id": execution_id,
+                "task_id": task_id,
+                "task_name": task_name,
+            },
+            correlation_id=resolved_correlation_id,
+        )
+
+        (
+            final_status,
+            attempt_count,
+            result,
+            error,
+            timed_out,
+        ) = self._run_attempts(
+            task,
+            execution_id=execution_id,
+            task_id=task_id,
+            task_name=task_name,
+            retry_policy=retry_policy,
+            timeout_seconds=timeout_seconds,
+            correlation_id=resolved_correlation_id,
+        )
+
+        finished_at = datetime.now(UTC)
+
+        duration_seconds = max(
+            0.0,
+            (
+                finished_at
+                - started_at
+            ).total_seconds(),
+        )
+
+        record = TaskExecutionRecord(
+            execution_id=execution_id,
+            task_id=task_id,
+            task_name=task_name,
+            status=final_status,
+            attempt_count=attempt_count,
+            started_at=started_at,
+            finished_at=finished_at,
+            duration_seconds=duration_seconds,
+            result=result,
+            error=error,
+            correlation_id=resolved_correlation_id,
+            timed_out=timed_out,
+        )
+
+        self._finish_execution(
+            task,
+            record,
+        )
+
+        self._publish_execution_outcome(
+            record,
+            timeout_seconds,
+        )
+
+        return record
+
+    def _begin_execution(
+        self,
+        task_id: str,
+    ) -> TaskExecutionRecord | tuple[Any, ...]:
+        """
+        Claim the task for one execution, or return the skipped record.
+        """
 
         with self._scheduler_lock:
 
@@ -1486,24 +1583,30 @@ class SchedulerService(BaseAtlasService):
             retry_policy = task.configuration.retry_policy
             timeout_seconds = task.configuration.timeout_seconds
 
-        resolved_correlation_id = (
-            correlation_id
-            or f"task-execution-{uuid.uuid4()}"
-        )
+            return (
+                task,
+                started_at,
+                task_name,
+                retry_policy,
+                timeout_seconds,
+            )
 
-        execution_id = str(
-            uuid.uuid4()
-        )
+    def _run_attempts(
+        self,
+        task: Any,
+        *,
+        execution_id: str,
+        task_id: str,
+        task_name: str,
+        retry_policy: RetryPolicy,
+        timeout_seconds: float | None,
+        correlation_id: str,
+    ) -> tuple[TaskExecutionStatus, int, Any, str | None, bool]:
+        """
+        Run the task's attempts under its retry and timeout policy.
+        """
 
-        self._publish_scheduler_event(
-            SchedulerEventType.TASK_STARTED,
-            payload={
-                "execution_id": execution_id,
-                "task_id": task_id,
-                "task_name": task_name,
-            },
-            correlation_id=resolved_correlation_id,
-        )
+        resolved_correlation_id = correlation_id
 
         attempt_count = 0
         result: Any = None
@@ -1587,30 +1690,27 @@ class SchedulerService(BaseAtlasService):
 
                 error = execution_error
 
-        finished_at = datetime.now(UTC)
-
-        duration_seconds = max(
-            0.0,
-            (
-                finished_at
-                - started_at
-            ).total_seconds(),
+        return (
+            final_status,
+            attempt_count,
+            result,
+            error,
+            timed_out,
         )
 
-        record = TaskExecutionRecord(
-            execution_id=execution_id,
-            task_id=task_id,
-            task_name=task_name,
-            status=final_status,
-            attempt_count=attempt_count,
-            started_at=started_at,
-            finished_at=finished_at,
-            duration_seconds=duration_seconds,
-            result=result,
-            error=error,
-            correlation_id=resolved_correlation_id,
-            timed_out=timed_out,
-        )
+    def _finish_execution(
+        self,
+        task: Any,
+        record: TaskExecutionRecord,
+    ) -> None:
+        """
+        Apply one finished execution to the task and scheduler counters.
+        """
+
+        finished_at = record.finished_at
+        final_status = record.status
+        error = record.error
+        task_name = record.task_name
 
         with self._scheduler_lock:
 
@@ -1690,6 +1790,24 @@ class SchedulerService(BaseAtlasService):
                 record
             )
 
+    def _publish_execution_outcome(
+        self,
+        record: TaskExecutionRecord,
+        timeout_seconds: float | None,
+    ) -> None:
+        """
+        Publish the completed / timed-out / failed event for one execution.
+        """
+
+        final_status = record.status
+        execution_id = record.execution_id
+        task_id = record.task_id
+        task_name = record.task_name
+        attempt_count = record.attempt_count
+        duration_seconds = record.duration_seconds
+        error = record.error
+        resolved_correlation_id = record.correlation_id
+
         if final_status == TaskExecutionStatus.SUCCESS:
 
             self._publish_scheduler_event(
@@ -1744,8 +1862,6 @@ class SchedulerService(BaseAtlasService):
                     resolved_correlation_id
                 ),
             )
-
-        return record
 
     @staticmethod
     def _run_callable_with_timeout(

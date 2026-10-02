@@ -8,9 +8,9 @@ ratchet); raising a ceiling needs a successor registry record.
 from tools.code_health_report import measure
 
 PRINT_CALLS_CEILING = 36  # v5.50: AI-module diagnostics moved to logging (was 128)
-# 2026-10-02 T-0001: agent_fusion.py::fuse split into helpers (golden-pinned), removed from the baseline.
+# 2026-10-02 T-0001/T-0002: agent_fusion.py::fuse and scheduler.py::_execute_task split into helpers
+# (behaviour pinned by golden/characterization tests), removed from the baseline.
 LONG_FUNCTIONS_BASELINE = {
-    "atlas_os/scheduling/scheduler.py::_execute_task",
     # 2026-10-01: the same pre-existing long body was renamed execute -> _execute_decision so a
     # short execute() can wrap it with the observe-only order lifecycle check. Not a new long function.
     "core/execution_manager.py::_execute_decision",
