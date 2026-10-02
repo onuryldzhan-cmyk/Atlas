@@ -1,0 +1,4407 @@
+{
+ "calls": {
+  "127.0.0.1 GET /": {
+   "body": "html",
+   "content_type": "text/html; charset=utf-8",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /agents": {
+   "body": "html",
+   "content_type": "text/html; charset=utf-8",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /api/agent-evidence": {
+   "body": {
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 503
+  },
+  "127.0.0.1 GET /api/agent-states": {
+   "body": {
+    "activity": [
+     "{\"agent\": \"str\", \"at\": \"str\", \"category\": \"str\", \"source\": \"str\", \"text\": \"str\"}"
+    ],
+    "agents": [
+     "{\"doing\": \"str\", \"history\": [\"{\\\"agent\\\": \\\"str\\\", \\\"at\\\": \\\"str\\\", \\\"category\\\": \\\"str\\\", \\\"source\\\": \\\"str\\\", \\\"text\\\": \\\"str\\\"}\"], \"id\": \"str\", \"name\": \"str\", \"room\": \"str\", \"room_name\": \"str\", \"source\": \"NoneType\", \"state\": \"str\"}",
+     "{\"doing\": \"str\", \"history\": [\"{\\\"agent\\\": \\\"str\\\", \\\"at\\\": \\\"str\\\", \\\"category\\\": \\\"str\\\", \\\"source\\\": \\\"str\\\", \\\"text\\\": \\\"str\\\"}\"], \"id\": \"str\", \"name\": \"str\", \"room\": \"str\", \"room_name\": \"str\", \"source\": \"str\", \"state\": \"str\"}",
+     "{\"doing\": \"str\", \"history\": [], \"id\": \"str\", \"name\": \"str\", \"room\": \"str\", \"room_name\": \"str\", \"source\": \"NoneType\", \"state\": \"str\"}",
+     "{\"doing\": \"str\", \"history\": [], \"id\": \"str\", \"name\": \"str\", \"room\": \"str\", \"room_name\": \"str\", \"source\": \"str\", \"state\": \"str\"}"
+    ],
+    "available": "bool",
+    "counts": {
+     "IDLE": "int",
+     "OFFLINE": "int",
+     "REVIEWING": "int",
+     "WAITING": "int"
+    },
+    "flows": [
+     "{\"from\": \"str\", \"kind\": \"str\", \"label\": \"str\", \"to\": \"str\"}"
+    ],
+    "generated_at": "str",
+    "rooms": {
+     "command": "str",
+     "dev": "str",
+     "governance": "str",
+     "memory": "str",
+     "quant": "str",
+     "research": "str",
+     "review": "str",
+     "security": "str",
+     "system": "str"
+    }
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /api/analysis": {
+   "body": {
+    "reason": "str",
+    "status": "str",
+    "symbol": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 503
+  },
+  "127.0.0.1 GET /api/candles": {
+   "body": {
+    "available": "bool",
+    "reason": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /api/chat": {
+   "body": {
+    "answer": "str",
+    "available": "bool",
+    "engine": "str",
+    "intent": "str",
+    "navigate": "NoneType"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /api/command-center": {
+   "body": {
+    "agents": {
+     "source": "str",
+     "statuses": {
+      "agent_macro": "str",
+      "agent_momentum": "str",
+      "agent_risk": "str",
+      "agent_sentiment": "str",
+      "agent_technical": "str",
+      "atlas_manager": "str",
+      "ceo_ai": "str",
+      "code_engineering": "str",
+      "code_review": "str",
+      "data_quality": "str",
+      "digital_twin": "str",
+      "executive_assistant": "str",
+      "experiment_manager": "str",
+      "knowledge_manager": "str",
+      "market_regime": "str",
+      "model_council": "str",
+      "model_validation": "str",
+      "open_source_research": "str",
+      "overview_snapshot": "str",
+      "owner": "str",
+      "performance_audit": "str",
+      "quant_research": "str",
+      "red_team": "str",
+      "security": "str",
+      "strategy_lab": "str",
+      "strategy_research": "str",
+      "task_runner": "str"
+     },
+     "working": [
+      "\"str\""
+     ]
+    },
+    "available": "bool",
+    "health": {
+     "healthy": "bool",
+     "reason": "str",
+     "state": "str"
+    },
+    "memory": {
+     "available": "bool",
+     "records": "int"
+    },
+    "proposals": {
+     "available": "bool",
+     "awaiting_owner": [],
+     "counts": {
+      "DRAFT": "int"
+     },
+     "reason": "NoneType"
+    },
+    "tasks": {
+     "available": "bool",
+     "counts": {
+      "IN_PROGRESS": "int"
+     },
+     "reason": "NoneType"
+    },
+    "trading": {
+     "available": "bool",
+     "live_authority": "str",
+     "mode": "str",
+     "reason": "str"
+    }
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /api/events": {
+   "body": {
+    "available": "bool",
+    "events": [
+     "{\"agent\": {\"id\": \"str\", \"role\": \"NoneType\"}, \"event_id\": \"str\", \"event_type\": \"str\", \"payload\": {\"label\": \"str\", \"proposal\": \"str\", \"source\": \"str\", \"to\": \"str\"}, \"run\": {\"id\": \"NoneType\", \"task_id\": \"NoneType\"}, \"schema\": \"str\", \"timestamp\": \"str\"}",
+     "{\"agent\": {\"id\": \"str\", \"role\": \"NoneType\"}, \"event_id\": \"str\", \"event_type\": \"str\", \"payload\": {\"source\": \"str\", \"status\": \"str\", \"title\": \"str\"}, \"run\": {\"id\": \"NoneType\", \"task_id\": \"NoneType\"}, \"schema\": \"str\", \"timestamp\": \"str\"}",
+     "{\"agent\": {\"id\": \"str\", \"role\": \"NoneType\"}, \"event_id\": \"str\", \"event_type\": \"str\", \"payload\": {\"source\": \"str\", \"summary\": \"str\", \"verdict\": \"str\"}, \"run\": {\"id\": \"str\", \"task_id\": \"NoneType\"}, \"schema\": \"str\", \"timestamp\": \"str\"}",
+     "{\"agent\": {\"id\": \"str\", \"role\": \"NoneType\"}, \"event_id\": \"str\", \"event_type\": \"str\", \"payload\": {\"source\": \"str\", \"title\": \"str\"}, \"run\": {\"id\": \"NoneType\", \"task_id\": \"NoneType\"}, \"schema\": \"str\", \"timestamp\": \"str\"}"
+    ],
+    "schema": "str",
+    "skipped": "int"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /api/execution-gates": {
+   "body": {
+    "available": "bool",
+    "reason": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 503
+  },
+  "127.0.0.1 GET /api/experience": {
+   "body": {
+    "available": "bool",
+    "reason": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /api/health": {
+   "body": {
+    "healthy": "bool",
+    "reason": "str",
+    "state": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 503
+  },
+  "127.0.0.1 GET /api/learning": {
+   "body": {
+    "available": "bool",
+    "reason": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /api/liveness": {
+   "body": {
+    "alive": "bool",
+    "at": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /api/memory": {
+   "body": {
+    "available": "bool",
+    "records": [
+     "{\"author\": \"str\", \"authority\": \"str\", \"body\": \"str\", \"claims\": \"NoneType\", \"created_at\": \"str\", \"evaluation\": \"NoneType\", \"id\": \"str\", \"incident\": \"NoneType\", \"owner_verified\": \"NoneType\", \"related_decision\": \"NoneType\", \"related_proposal\": \"NoneType\", \"related_task\": \"NoneType\", \"seq\": \"int\", \"source\": \"str\", \"status\": \"str\", \"superseded_by\": \"NoneType\", \"supersedes\": \"NoneType\", \"title\": \"str\", \"type\": \"str\"}",
+     "{\"author\": \"str\", \"authority\": \"str\", \"body\": \"str\", \"claims\": [\"{\\\"claim\\\": \\\"str\\\", \\\"counter_evidence\\\": \\\"str\\\", \\\"evidence\\\": \\\"str\\\"}\"], \"created_at\": \"str\", \"evaluation\": \"NoneType\", \"id\": \"str\", \"incident\": \"NoneType\", \"owner_verified\": \"NoneType\", \"related_decision\": \"NoneType\", \"related_proposal\": \"str\", \"related_task\": \"NoneType\", \"seq\": \"int\", \"source\": \"str\", \"status\": \"str\", \"superseded_by\": \"NoneType\", \"supersedes\": \"NoneType\", \"title\": \"str\", \"type\": \"str\"}"
+    ],
+    "types": [
+     "\"str\""
+    ]
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /api/observability/governance": {
+   "body": {
+    "available": "bool",
+    "chain_depth": "int",
+    "reconciliation": {
+     "alignment_decision": "str",
+     "alignment_record": "str",
+     "compatibility_mode": "str",
+     "historical_registry": "str",
+     "historical_registry_policy": "str",
+     "historical_state_preserved": "bool",
+     "historical_state_rewritten": "bool",
+     "id": "str",
+     "severity": "str",
+     "status": "str"
+    },
+    "registry_directory": "str",
+    "registry_file": "str",
+    "registry_status": "str",
+    "schema_version": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /api/observability/telemetry-summary": {
+   "body": {
+    "artifact_path": "str",
+    "available": "bool",
+    "generate_command": "str",
+    "reason": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 503
+  },
+  "127.0.0.1 GET /api/observability/test-results": {
+   "body": {
+    "artifact_path": "str",
+    "available": "bool",
+    "commit_alignment": {
+     "artifact_commit": "str",
+     "head_commit": "str",
+     "state": "str"
+    },
+    "duration_seconds": "float",
+    "meta_path": "str",
+    "provenance": {
+     "artifact": "str",
+     "available": "bool",
+     "command": [
+      "\"str\""
+     ],
+     "commit": "str",
+     "generated_at": "str",
+     "pytest_exit_code": "int",
+     "started_at": "<v>",
+     "target": "str"
+    },
+    "suite_timestamp": "str",
+    "totals": {
+     "errors": "int",
+     "failed": "int",
+     "passed": "int",
+     "skipped": "int",
+     "tests": "int"
+    }
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /api/organization": {
+   "body": {
+    "available": "bool",
+    "counts": {
+     "ACTIVE": "int",
+     "PARTIAL": "int",
+     "PLANNED": "int"
+    },
+    "source": "str",
+    "tiers": [
+     "\"str\""
+    ],
+    "units": [
+     "{\"can\": [\"\\\"str\\\"\"], \"can_execute\": \"bool\", \"cannot\": [\"\\\"str\\\"\"], \"id\": \"str\", \"implemented_by\": [\"\\\"str\\\"\"], \"mission\": \"str\", \"name\": \"str\", \"phase\": \"int\", \"status\": \"str\", \"tier\": \"str\"}",
+     "{\"can\": [\"\\\"str\\\"\"], \"can_execute\": \"bool\", \"cannot\": [\"\\\"str\\\"\"], \"id\": \"str\", \"implemented_by\": [], \"mission\": \"str\", \"name\": \"str\", \"phase\": \"NoneType\", \"status\": \"str\", \"tier\": \"str\"}",
+     "{\"can\": [\"\\\"str\\\"\"], \"can_execute\": \"bool\", \"cannot\": [\"\\\"str\\\"\"], \"id\": \"str\", \"implemented_by\": [], \"mission\": \"str\", \"name\": \"str\", \"phase\": \"int\", \"status\": \"str\", \"tier\": \"str\"}"
+    ]
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /api/permissions": {
+   "body": {
+    "available": "bool",
+    "never_granted_to_ai": [
+     "\"str\""
+    ],
+    "units": [
+     "{\"capabilities\": [\"\\\"str\\\"\"], \"id\": \"str\", \"risk_level\": \"str\"}"
+    ]
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /api/portfolio": {
+   "body": {
+    "available": "bool",
+    "reason": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /api/proposals": {
+   "body": {
+    "available": "bool",
+    "awaiting_owner": [],
+    "counts": {
+     "DRAFT": "int"
+    },
+    "head": {
+     "hash": "str",
+     "seq": "int"
+    },
+    "owner_signatures": "str",
+    "proposals": [
+     "{\"affected_components\": [\"\\\"str\\\"\"], \"author\": \"str\", \"claims\": [\"{\\\"claim\\\": \\\"str\\\", \\\"counter_evidence\\\": \\\"str\\\", \\\"evidence\\\": \\\"str\\\"}\"], \"created_at\": \"str\", \"history\": [\"{\\\"actor\\\": \\\"str\\\", \\\"at\\\": \\\"str\\\", \\\"event\\\": \\\"str\\\", \\\"seq\\\": \\\"int\\\", \\\"status\\\": \\\"str\\\"}\"], \"id\": \"str\", \"motivation\": \"str\", \"owner_decision\": \"NoneType\", \"problem\": \"str\", \"proposed_changes\": \"str\", \"reviews\": [], \"revision\": \"int\", \"risk_level\": \"str\", \"rollback_plan\": \"str\", \"status\": \"str\", \"tests\": \"NoneType\", \"title\": \"str\"}"
+    ]
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /api/readiness": {
+   "body": {
+    "checks": [
+     "{\"check\": \"str\", \"detail\": \"str\", \"ok\": \"bool\", \"state\": \"str\"}"
+    ],
+    "evaluated_at": "str",
+    "ready": "bool"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 503
+  },
+  "127.0.0.1 GET /api/research": {
+   "body": {
+    "available": "bool",
+    "documents": [
+     "{\"bytes\": \"int\", \"file\": \"str\", \"title\": \"str\"}"
+    ]
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /api/risk-accounting": {
+   "body": {
+    "available": "bool",
+    "reason": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 503
+  },
+  "127.0.0.1 GET /api/roadmap": {
+   "body": {
+    "available": "bool",
+    "current_focus": "str",
+    "ladder": "str",
+    "phases": [
+     "{\"evidence\": [\"\\\"str\\\"\"], \"name\": \"str\", \"phase\": \"int\", \"scope\": \"str\", \"status\": \"str\"}",
+     "{\"evidence\": [], \"name\": \"str\", \"phase\": \"int\", \"scope\": \"str\", \"status\": \"str\"}"
+    ],
+    "source": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /api/security": {
+   "body": {
+    "authority": {
+     "autonomous_deployment_authority": "str",
+     "live_authority": "str",
+     "never_granted_to_ai": [
+      "\"str\""
+     ],
+     "production_authority": "str"
+    },
+    "available": "bool",
+    "checks": {
+     "DEPENDENCIES": "str",
+     "EXTERNAL_CODE": "str",
+     "FILESYSTEM": "str",
+     "NETWORK": "str",
+     "PRIVILEGE": "str",
+     "PROMPT_INJECTION": "str",
+     "SECRETS": "str",
+     "SUBPROCESS": "str"
+    },
+    "commit": "str",
+    "files_reviewed": "int",
+    "findings": [
+     "{\"category\": \"str\", \"detail\": \"str\", \"level\": \"str\", \"line\": \"int\", \"path\": \"str\"}"
+    ],
+    "method": "str",
+    "overall": "str",
+    "scope": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /api/signals": {
+   "body": {
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 503
+  },
+  "127.0.0.1 GET /api/status": {
+   "body": {
+    "available": "bool",
+    "reason": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /api/system-integrity": {
+   "body": {
+    "available": "bool",
+    "known_limitations": [
+     "{\"id\": \"str\", \"registry_reference\": \"str\", \"status\": \"str\", \"summary\": \"str\"}"
+    ],
+    "registry": {
+     "available": "bool",
+     "file": "str",
+     "version": "str"
+    },
+    "venue_rules": {
+     "available": "bool",
+     "reason": "str"
+    }
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /api/tasks": {
+   "body": {
+    "agents": {
+     "code_engineering": {
+      "current_task": "str",
+      "recent": [
+       "{\"status\": \"str\", \"step\": \"int\", \"task\": \"str\"}"
+      ],
+      "status": "str"
+     },
+     "code_review": {
+      "current_task": "str",
+      "recent": [
+       "{\"status\": \"str\", \"step\": \"int\", \"task\": \"str\"}"
+      ],
+      "status": "str"
+     },
+     "open_source_research": {
+      "current_task": "str",
+      "recent": [
+       "{\"status\": \"str\", \"step\": \"int\", \"task\": \"str\"}"
+      ],
+      "status": "str"
+     },
+     "security": {
+      "current_task": "str",
+      "recent": [
+       "{\"status\": \"str\", \"step\": \"int\", \"task\": \"str\"}"
+      ],
+      "status": "str"
+     }
+    },
+    "available": "bool",
+    "counts": {
+     "IN_PROGRESS": "int"
+    },
+    "manager": "str",
+    "scorecards": {},
+    "tasks": [
+     "{\"category\": \"str\", \"classification\": {\"matched\": [\"\\\"str\\\"\"], \"method\": \"str\", \"result\": \"str\"}, \"completeness\": {\"complete\": \"bool\", \"conflicts\": [], \"failed_steps\": [], \"missing_steps\": [\"\\\"int\\\"\"]}, \"created_at\": \"str\", \"created_by\": \"str\", \"history\": [\"{\\\"actor\\\": \\\"str\\\", \\\"at\\\": \\\"str\\\", \\\"event\\\": \\\"str\\\", \\\"note\\\": \\\"str\\\", \\\"seq\\\": \\\"int\\\", \\\"step\\\": \\\"NoneType\\\"}\", \"{\\\"actor\\\": \\\"str\\\", \\\"at\\\": \\\"str\\\", \\\"event\\\": \\\"str\\\", \\\"note\\\": \\\"str\\\", \\\"seq\\\": \\\"int\\\", \\\"step\\\": \\\"int\\\"}\"], \"id\": \"str\", \"proposal_id\": \"NoneType\", \"request\": \"str\", \"status\": \"str\", \"steps\": [\"{\\\"capability\\\": \\\"str\\\", \\\"goal\\\": \\\"str\\\", \\\"index\\\": \\\"int\\\", \\\"result\\\": \\\"NoneType\\\", \\\"role\\\": \\\"str\\\", \\\"status\\\": \\\"str\\\", \\\"unit\\\": \\\"str\\\"}\"]}"
+    ]
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /api/trades": {
+   "body": {
+    "available": "bool",
+    "reason": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 503
+  },
+  "127.0.0.1 GET /assets/BTCUSDT": {
+   "body": {
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 404
+  },
+  "127.0.0.1 GET /dashboard": {
+   "body": "html",
+   "content_type": "text/html; charset=utf-8",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /decisions": {
+   "body": "html",
+   "content_type": "text/html; charset=utf-8",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /docs": {
+   "body": "html",
+   "content_type": "text/html; charset=utf-8",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /governance": {
+   "body": "html",
+   "content_type": "text/html; charset=utf-8",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /home": {
+   "body": "html",
+   "content_type": "text/html; charset=utf-8",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /hq": {
+   "body": "html",
+   "content_type": "text/html; charset=utf-8",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /openapi.json": {
+   "body": {
+    "components": {
+     "schemas": {
+      "HTTPValidationError": {
+       "properties": {
+        "detail": {
+         "items": {
+          "$ref": "str"
+         },
+         "title": "str",
+         "type": "str"
+        }
+       },
+       "title": "str",
+       "type": "str"
+      },
+      "ValidationError": {
+       "properties": {
+        "ctx": {
+         "title": "str",
+         "type": "str"
+        },
+        "input": {
+         "title": "str"
+        },
+        "loc": {
+         "items": {
+          "anyOf": [
+           "{\"type\": \"str\"}"
+          ]
+         },
+         "title": "str",
+         "type": "str"
+        },
+        "msg": {
+         "title": "str",
+         "type": "str"
+        },
+        "type": {
+         "title": "str",
+         "type": "str"
+        }
+       },
+       "required": [
+        "\"str\""
+       ],
+       "title": "str",
+       "type": "str"
+      }
+     }
+    },
+    "info": {
+     "description": "str",
+     "title": "str",
+     "version": "str"
+    },
+    "openapi": "str",
+    "paths": {
+     "/": {
+      "get": {
+       "operationId": "str",
+       "responses": {
+        "200": {
+         "content": {
+          "text/html": {
+           "schema": {
+            "type": "str"
+           }
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/agents": {
+      "get": {
+       "operationId": "str",
+       "responses": {
+        "200": {
+         "content": {
+          "text/html": {
+           "schema": {
+            "type": "str"
+           }
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/api/agent-evidence": {
+      "get": {
+       "operationId": "str",
+       "responses": {
+        "200": {
+         "content": {
+          "application/json": {
+           "schema": {}
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/api/agent-states": {
+      "get": {
+       "operationId": "str",
+       "responses": {
+        "200": {
+         "content": {
+          "application/json": {
+           "schema": {}
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/api/analysis": {
+      "get": {
+       "operationId": "str",
+       "parameters": [
+        "{\"in\": \"str\", \"name\": \"str\", \"required\": \"bool\", \"schema\": {\"default\": \"str\", \"title\": \"str\", \"type\": \"str\"}}"
+       ],
+       "responses": {
+        "200": {
+         "content": {
+          "application/json": {
+           "schema": {}
+          }
+         },
+         "description": "str"
+        },
+        "422": {
+         "content": {
+          "application/json": {
+           "schema": {
+            "$ref": "str"
+           }
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/api/candles": {
+      "get": {
+       "operationId": "str",
+       "parameters": [
+        "{\"in\": \"str\", \"name\": \"str\", \"required\": \"bool\", \"schema\": {\"default\": \"str\", \"title\": \"str\", \"type\": \"str\"}}"
+       ],
+       "responses": {
+        "200": {
+         "content": {
+          "application/json": {
+           "schema": {}
+          }
+         },
+         "description": "str"
+        },
+        "422": {
+         "content": {
+          "application/json": {
+           "schema": {
+            "$ref": "str"
+           }
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/api/chat": {
+      "get": {
+       "operationId": "str",
+       "parameters": [
+        "{\"in\": \"str\", \"name\": \"str\", \"required\": \"bool\", \"schema\": {\"default\": \"str\", \"title\": \"str\", \"type\": \"str\"}}"
+       ],
+       "responses": {
+        "200": {
+         "content": {
+          "application/json": {
+           "schema": {}
+          }
+         },
+         "description": "str"
+        },
+        "422": {
+         "content": {
+          "application/json": {
+           "schema": {
+            "$ref": "str"
+           }
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/api/command-center": {
+      "get": {
+       "operationId": "str",
+       "responses": {
+        "200": {
+         "content": {
+          "application/json": {
+           "schema": {}
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/api/events": {
+      "get": {
+       "operationId": "str",
+       "responses": {
+        "200": {
+         "content": {
+          "application/json": {
+           "schema": {}
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/api/execution-gates": {
+      "get": {
+       "operationId": "str",
+       "responses": {
+        "200": {
+         "content": {
+          "application/json": {
+           "schema": {}
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/api/experience": {
+      "get": {
+       "operationId": "str",
+       "responses": {
+        "200": {
+         "content": {
+          "application/json": {
+           "schema": {}
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/api/health": {
+      "get": {
+       "operationId": "str",
+       "responses": {
+        "200": {
+         "content": {
+          "application/json": {
+           "schema": {}
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/api/learning": {
+      "get": {
+       "operationId": "str",
+       "responses": {
+        "200": {
+         "content": {
+          "application/json": {
+           "schema": {}
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/api/liveness": {
+      "get": {
+       "operationId": "str",
+       "responses": {
+        "200": {
+         "content": {
+          "application/json": {
+           "schema": {}
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/api/memory": {
+      "get": {
+       "operationId": "str",
+       "parameters": [
+        "{\"in\": \"str\", \"name\": \"str\", \"required\": \"bool\", \"schema\": {\"title\": \"str\"}}"
+       ],
+       "responses": {
+        "200": {
+         "content": {
+          "application/json": {
+           "schema": {}
+          }
+         },
+         "description": "str"
+        },
+        "422": {
+         "content": {
+          "application/json": {
+           "schema": {
+            "$ref": "str"
+           }
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/api/observability/governance": {
+      "get": {
+       "operationId": "str",
+       "responses": {
+        "200": {
+         "content": {
+          "application/json": {
+           "schema": {}
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str",
+       "tags": [
+        "\"str\""
+       ]
+      }
+     },
+     "/api/observability/telemetry-summary": {
+      "get": {
+       "operationId": "str",
+       "responses": {
+        "200": {
+         "content": {
+          "application/json": {
+           "schema": {}
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str",
+       "tags": [
+        "\"str\""
+       ]
+      }
+     },
+     "/api/observability/test-results": {
+      "get": {
+       "operationId": "str",
+       "responses": {
+        "200": {
+         "content": {
+          "application/json": {
+           "schema": {}
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str",
+       "tags": [
+        "\"str\""
+       ]
+      }
+     },
+     "/api/organization": {
+      "get": {
+       "operationId": "str",
+       "responses": {
+        "200": {
+         "content": {
+          "application/json": {
+           "schema": {}
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/api/permissions": {
+      "get": {
+       "operationId": "str",
+       "parameters": [
+        "{\"in\": \"str\", \"name\": \"str\", \"required\": \"bool\", \"schema\": {\"title\": \"str\"}}"
+       ],
+       "responses": {
+        "200": {
+         "content": {
+          "application/json": {
+           "schema": {}
+          }
+         },
+         "description": "str"
+        },
+        "422": {
+         "content": {
+          "application/json": {
+           "schema": {
+            "$ref": "str"
+           }
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/api/portfolio": {
+      "get": {
+       "operationId": "str",
+       "responses": {
+        "200": {
+         "content": {
+          "application/json": {
+           "schema": {}
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/api/proposals": {
+      "get": {
+       "operationId": "str",
+       "parameters": [
+        "{\"in\": \"str\", \"name\": \"str\", \"required\": \"bool\", \"schema\": {\"title\": \"str\"}}"
+       ],
+       "responses": {
+        "200": {
+         "content": {
+          "application/json": {
+           "schema": {}
+          }
+         },
+         "description": "str"
+        },
+        "422": {
+         "content": {
+          "application/json": {
+           "schema": {
+            "$ref": "str"
+           }
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/api/readiness": {
+      "get": {
+       "operationId": "str",
+       "responses": {
+        "200": {
+         "content": {
+          "application/json": {
+           "schema": {}
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/api/research": {
+      "get": {
+       "operationId": "str",
+       "parameters": [
+        "{\"in\": \"str\", \"name\": \"str\", \"required\": \"bool\", \"schema\": {\"title\": \"str\"}}"
+       ],
+       "responses": {
+        "200": {
+         "content": {
+          "application/json": {
+           "schema": {}
+          }
+         },
+         "description": "str"
+        },
+        "422": {
+         "content": {
+          "application/json": {
+           "schema": {
+            "$ref": "str"
+           }
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/api/risk-accounting": {
+      "get": {
+       "operationId": "str",
+       "responses": {
+        "200": {
+         "content": {
+          "application/json": {
+           "schema": {}
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/api/roadmap": {
+      "get": {
+       "operationId": "str",
+       "parameters": [
+        "{\"in\": \"str\", \"name\": \"str\", \"required\": \"bool\", \"schema\": {\"title\": \"str\"}}"
+       ],
+       "responses": {
+        "200": {
+         "content": {
+          "application/json": {
+           "schema": {}
+          }
+         },
+         "description": "str"
+        },
+        "422": {
+         "content": {
+          "application/json": {
+           "schema": {
+            "$ref": "str"
+           }
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/api/security": {
+      "get": {
+       "operationId": "str",
+       "parameters": [
+        "{\"in\": \"str\", \"name\": \"str\", \"required\": \"bool\", \"schema\": {\"title\": \"str\"}}"
+       ],
+       "responses": {
+        "200": {
+         "content": {
+          "application/json": {
+           "schema": {}
+          }
+         },
+         "description": "str"
+        },
+        "422": {
+         "content": {
+          "application/json": {
+           "schema": {
+            "$ref": "str"
+           }
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/api/signals": {
+      "get": {
+       "operationId": "str",
+       "responses": {
+        "200": {
+         "content": {
+          "application/json": {
+           "schema": {}
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/api/status": {
+      "get": {
+       "operationId": "str",
+       "responses": {
+        "200": {
+         "content": {
+          "application/json": {
+           "schema": {}
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/api/system-integrity": {
+      "get": {
+       "operationId": "str",
+       "responses": {
+        "200": {
+         "content": {
+          "application/json": {
+           "schema": {}
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/api/tasks": {
+      "get": {
+       "operationId": "str",
+       "parameters": [
+        "{\"in\": \"str\", \"name\": \"str\", \"required\": \"bool\", \"schema\": {\"title\": \"str\"}}"
+       ],
+       "responses": {
+        "200": {
+         "content": {
+          "application/json": {
+           "schema": {}
+          }
+         },
+         "description": "str"
+        },
+        "422": {
+         "content": {
+          "application/json": {
+           "schema": {
+            "$ref": "str"
+           }
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/api/trades": {
+      "get": {
+       "operationId": "str",
+       "responses": {
+        "200": {
+         "content": {
+          "application/json": {
+           "schema": {}
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/assets/{asset_name}": {
+      "get": {
+       "operationId": "str",
+       "parameters": [
+        "{\"in\": \"str\", \"name\": \"str\", \"required\": \"bool\", \"schema\": {\"title\": \"str\", \"type\": \"str\"}}"
+       ],
+       "responses": {
+        "200": {
+         "content": {
+          "application/json": {
+           "schema": {}
+          }
+         },
+         "description": "str"
+        },
+        "422": {
+         "content": {
+          "application/json": {
+           "schema": {
+            "$ref": "str"
+           }
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/dashboard": {
+      "get": {
+       "operationId": "str",
+       "responses": {
+        "200": {
+         "content": {
+          "text/html": {
+           "schema": {
+            "type": "str"
+           }
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/decisions": {
+      "get": {
+       "operationId": "str",
+       "parameters": [
+        "{\"in\": \"str\", \"name\": \"str\", \"required\": \"bool\", \"schema\": {\"default\": \"str\", \"title\": \"str\"}}"
+       ],
+       "responses": {
+        "200": {
+         "content": {
+          "text/html": {
+           "schema": {
+            "type": "str"
+           }
+          }
+         },
+         "description": "str"
+        },
+        "422": {
+         "content": {
+          "application/json": {
+           "schema": {
+            "$ref": "str"
+           }
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/governance": {
+      "get": {
+       "operationId": "str",
+       "parameters": [
+        "{\"in\": \"str\", \"name\": \"str\", \"required\": \"bool\", \"schema\": {\"default\": \"str\", \"title\": \"str\"}}"
+       ],
+       "responses": {
+        "200": {
+         "content": {
+          "text/html": {
+           "schema": {
+            "type": "str"
+           }
+          }
+         },
+         "description": "str"
+        },
+        "422": {
+         "content": {
+          "application/json": {
+           "schema": {
+            "$ref": "str"
+           }
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/home": {
+      "get": {
+       "operationId": "str",
+       "parameters": [
+        "{\"in\": \"str\", \"name\": \"str\", \"required\": \"bool\", \"schema\": {\"default\": \"str\", \"title\": \"str\"}}"
+       ],
+       "responses": {
+        "200": {
+         "content": {
+          "text/html": {
+           "schema": {
+            "type": "str"
+           }
+          }
+         },
+         "description": "str"
+        },
+        "422": {
+         "content": {
+          "application/json": {
+           "schema": {
+            "$ref": "str"
+           }
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/hq": {
+      "get": {
+       "operationId": "str",
+       "responses": {
+        "200": {
+         "content": {
+          "text/html": {
+           "schema": {
+            "type": "str"
+           }
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/login": {
+      "post": {
+       "description": "str",
+       "operationId": "str",
+       "responses": {
+        "307": {
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/postmortem": {
+      "get": {
+       "operationId": "str",
+       "parameters": [
+        "{\"in\": \"str\", \"name\": \"str\", \"required\": \"bool\", \"schema\": {\"default\": \"str\", \"title\": \"str\"}}"
+       ],
+       "responses": {
+        "200": {
+         "content": {
+          "text/html": {
+           "schema": {
+            "type": "str"
+           }
+          }
+         },
+         "description": "str"
+        },
+        "422": {
+         "content": {
+          "application/json": {
+           "schema": {
+            "$ref": "str"
+           }
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/research": {
+      "get": {
+       "operationId": "str",
+       "parameters": [
+        "{\"in\": \"str\", \"name\": \"str\", \"required\": \"bool\", \"schema\": {\"default\": \"str\", \"title\": \"str\"}}"
+       ],
+       "responses": {
+        "200": {
+         "content": {
+          "text/html": {
+           "schema": {
+            "type": "str"
+           }
+          }
+         },
+         "description": "str"
+        },
+        "422": {
+         "content": {
+          "application/json": {
+           "schema": {
+            "$ref": "str"
+           }
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/roadmap": {
+      "get": {
+       "operationId": "str",
+       "parameters": [
+        "{\"in\": \"str\", \"name\": \"str\", \"required\": \"bool\", \"schema\": {\"default\": \"str\", \"title\": \"str\"}}"
+       ],
+       "responses": {
+        "200": {
+         "content": {
+          "text/html": {
+           "schema": {
+            "type": "str"
+           }
+          }
+         },
+         "description": "str"
+        },
+        "422": {
+         "content": {
+          "application/json": {
+           "schema": {
+            "$ref": "str"
+           }
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/security": {
+      "get": {
+       "operationId": "str",
+       "parameters": [
+        "{\"in\": \"str\", \"name\": \"str\", \"required\": \"bool\", \"schema\": {\"default\": \"str\", \"title\": \"str\"}}"
+       ],
+       "responses": {
+        "200": {
+         "content": {
+          "text/html": {
+           "schema": {
+            "type": "str"
+           }
+          }
+         },
+         "description": "str"
+        },
+        "422": {
+         "content": {
+          "application/json": {
+           "schema": {
+            "$ref": "str"
+           }
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/system": {
+      "get": {
+       "operationId": "str",
+       "parameters": [
+        "{\"in\": \"str\", \"name\": \"str\", \"required\": \"bool\", \"schema\": {\"default\": \"str\", \"title\": \"str\"}}"
+       ],
+       "responses": {
+        "200": {
+         "content": {
+          "text/html": {
+           "schema": {
+            "type": "str"
+           }
+          }
+         },
+         "description": "str"
+        },
+        "422": {
+         "content": {
+          "application/json": {
+           "schema": {
+            "$ref": "str"
+           }
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     },
+     "/trading": {
+      "get": {
+       "operationId": "str",
+       "parameters": [
+        "{\"in\": \"str\", \"name\": \"str\", \"required\": \"bool\", \"schema\": {\"default\": \"str\", \"title\": \"str\"}}"
+       ],
+       "responses": {
+        "200": {
+         "content": {
+          "text/html": {
+           "schema": {
+            "type": "str"
+           }
+          }
+         },
+         "description": "str"
+        },
+        "422": {
+         "content": {
+          "application/json": {
+           "schema": {
+            "$ref": "str"
+           }
+          }
+         },
+         "description": "str"
+        }
+       },
+       "summary": "str"
+      }
+     }
+    }
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /postmortem": {
+   "body": "html",
+   "content_type": "text/html; charset=utf-8",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /redoc": {
+   "body": "html",
+   "content_type": "text/html; charset=utf-8",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /research": {
+   "body": "html",
+   "content_type": "text/html; charset=utf-8",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /roadmap": {
+   "body": "html",
+   "content_type": "text/html; charset=utf-8",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /security": {
+   "body": "html",
+   "content_type": "text/html; charset=utf-8",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /system": {
+   "body": "html",
+   "content_type": "text/html; charset=utf-8",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 GET /trading": {
+   "body": "html",
+   "content_type": "text/html; charset=utf-8",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 200
+  },
+  "127.0.0.1 POST /login": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /agents": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /api/agent-evidence": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /api/agent-states": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /api/analysis": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /api/candles": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /api/chat": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /api/command-center": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /api/events": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /api/execution-gates": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /api/experience": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /api/health": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /api/learning": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /api/liveness": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /api/memory": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /api/observability/governance": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /api/observability/telemetry-summary": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /api/observability/test-results": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /api/organization": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /api/permissions": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /api/portfolio": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /api/proposals": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /api/readiness": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /api/research": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /api/risk-accounting": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /api/roadmap": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /api/security": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /api/signals": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /api/status": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /api/system-integrity": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /api/tasks": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /api/trades": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /assets/BTCUSDT": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /dashboard": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /decisions": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /docs": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /governance": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /home": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /hq": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /openapi.json": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /postmortem": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /redoc": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /research": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /roadmap": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /security": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /system": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 GET /trading": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  },
+  "203.0.113.9 POST /login": {
+   "body": {
+    "detail": "str",
+    "reason": "str",
+    "status": "str"
+   },
+   "content_type": "application/json",
+   "security_headers": [
+    "content-security-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+   ],
+   "status": 403
+  }
+ },
+ "middleware": [
+  "BaseHTTPMiddleware"
+ ],
+ "openapi": {
+  "components": {
+   "schemas": {
+    "HTTPValidationError": {
+     "properties": {
+      "detail": {
+       "items": {
+        "$ref": "#/components/schemas/ValidationError"
+       },
+       "title": "Detail",
+       "type": "array"
+      }
+     },
+     "title": "HTTPValidationError",
+     "type": "object"
+    },
+    "ValidationError": {
+     "properties": {
+      "ctx": {
+       "title": "Context",
+       "type": "object"
+      },
+      "input": {
+       "title": "Input"
+      },
+      "loc": {
+       "items": {
+        "anyOf": [
+         {
+          "type": "string"
+         },
+         {
+          "type": "integer"
+         }
+        ]
+       },
+       "title": "Location",
+       "type": "array"
+      },
+      "msg": {
+       "title": "Message",
+       "type": "string"
+      },
+      "type": {
+       "title": "Error Type",
+       "type": "string"
+      }
+     },
+     "required": [
+      "loc",
+      "msg",
+      "type"
+     ],
+     "title": "ValidationError",
+     "type": "object"
+    }
+   }
+  },
+  "info": {
+   "description": "Lifecycle-safe Atlas monitoring and control interface",
+   "title": "Project Atlas AI",
+   "version": "2.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+   "/": {
+    "get": {
+     "operationId": "root__get",
+     "responses": {
+      "200": {
+       "content": {
+        "text/html": {
+         "schema": {
+          "type": "string"
+         }
+        }
+       },
+       "description": "Successful Response"
+      }
+     },
+     "summary": "Root"
+    }
+   },
+   "/agents": {
+    "get": {
+     "operationId": "agents_page_agents_get",
+     "responses": {
+      "200": {
+       "content": {
+        "text/html": {
+         "schema": {
+          "type": "string"
+         }
+        }
+       },
+       "description": "Successful Response"
+      }
+     },
+     "summary": "Agents Page"
+    }
+   },
+   "/api/agent-evidence": {
+    "get": {
+     "operationId": "api_agent_evidence_api_agent_evidence_get",
+     "responses": {
+      "200": {
+       "content": {
+        "application/json": {
+         "schema": {}
+        }
+       },
+       "description": "Successful Response"
+      }
+     },
+     "summary": "Api Agent Evidence"
+    }
+   },
+   "/api/agent-states": {
+    "get": {
+     "operationId": "api_agent_states_api_agent_states_get",
+     "responses": {
+      "200": {
+       "content": {
+        "application/json": {
+         "schema": {}
+        }
+       },
+       "description": "Successful Response"
+      }
+     },
+     "summary": "Api Agent States"
+    }
+   },
+   "/api/analysis": {
+    "get": {
+     "operationId": "api_analysis_api_analysis_get",
+     "parameters": [
+      {
+       "in": "query",
+       "name": "symbol",
+       "required": false,
+       "schema": {
+        "default": "BTCUSDT",
+        "title": "Symbol",
+        "type": "string"
+       }
+      }
+     ],
+     "responses": {
+      "200": {
+       "content": {
+        "application/json": {
+         "schema": {}
+        }
+       },
+       "description": "Successful Response"
+      },
+      "422": {
+       "content": {
+        "application/json": {
+         "schema": {
+          "$ref": "#/components/schemas/HTTPValidationError"
+         }
+        }
+       },
+       "description": "Validation Error"
+      }
+     },
+     "summary": "Api Analysis"
+    }
+   },
+   "/api/candles": {
+    "get": {
+     "operationId": "api_candles_api_candles_get",
+     "parameters": [
+      {
+       "in": "query",
+       "name": "symbol",
+       "required": false,
+       "schema": {
+        "default": "",
+        "title": "Symbol",
+        "type": "string"
+       }
+      }
+     ],
+     "responses": {
+      "200": {
+       "content": {
+        "application/json": {
+         "schema": {}
+        }
+       },
+       "description": "Successful Response"
+      },
+      "422": {
+       "content": {
+        "application/json": {
+         "schema": {
+          "$ref": "#/components/schemas/HTTPValidationError"
+         }
+        }
+       },
+       "description": "Validation Error"
+      }
+     },
+     "summary": "Api Candles"
+    }
+   },
+   "/api/chat": {
+    "get": {
+     "operationId": "api_chat_api_chat_get",
+     "parameters": [
+      {
+       "in": "query",
+       "name": "q",
+       "required": false,
+       "schema": {
+        "default": "",
+        "title": "Q",
+        "type": "string"
+       }
+      }
+     ],
+     "responses": {
+      "200": {
+       "content": {
+        "application/json": {
+         "schema": {}
+        }
+       },
+       "description": "Successful Response"
+      },
+      "422": {
+       "content": {
+        "application/json": {
+         "schema": {
+          "$ref": "#/components/schemas/HTTPValidationError"
+         }
+        }
+       },
+       "description": "Validation Error"
+      }
+     },
+     "summary": "Api Chat"
+    }
+   },
+   "/api/command-center": {
+    "get": {
+     "operationId": "api_command_center_api_command_center_get",
+     "responses": {
+      "200": {
+       "content": {
+        "application/json": {
+         "schema": {}
+        }
+       },
+       "description": "Successful Response"
+      }
+     },
+     "summary": "Api Command Center"
+    }
+   },
+   "/api/events": {
+    "get": {
+     "operationId": "api_events_api_events_get",
+     "responses": {
+      "200": {
+       "content": {
+        "application/json": {
+         "schema": {}
+        }
+       },
+       "description": "Successful Response"
+      }
+     },
+     "summary": "Api Events"
+    }
+   },
+   "/api/execution-gates": {
+    "get": {
+     "operationId": "api_execution_gates_api_execution_gates_get",
+     "responses": {
+      "200": {
+       "content": {
+        "application/json": {
+         "schema": {}
+        }
+       },
+       "description": "Successful Response"
+      }
+     },
+     "summary": "Api Execution Gates"
+    }
+   },
+   "/api/experience": {
+    "get": {
+     "operationId": "api_experience_api_experience_get",
+     "responses": {
+      "200": {
+       "content": {
+        "application/json": {
+         "schema": {}
+        }
+       },
+       "description": "Successful Response"
+      }
+     },
+     "summary": "Api Experience"
+    }
+   },
+   "/api/health": {
+    "get": {
+     "operationId": "api_health_api_health_get",
+     "responses": {
+      "200": {
+       "content": {
+        "application/json": {
+         "schema": {}
+        }
+       },
+       "description": "Successful Response"
+      }
+     },
+     "summary": "Api Health"
+    }
+   },
+   "/api/learning": {
+    "get": {
+     "operationId": "api_learning_api_learning_get",
+     "responses": {
+      "200": {
+       "content": {
+        "application/json": {
+         "schema": {}
+        }
+       },
+       "description": "Successful Response"
+      }
+     },
+     "summary": "Api Learning"
+    }
+   },
+   "/api/liveness": {
+    "get": {
+     "operationId": "api_liveness_api_liveness_get",
+     "responses": {
+      "200": {
+       "content": {
+        "application/json": {
+         "schema": {}
+        }
+       },
+       "description": "Successful Response"
+      }
+     },
+     "summary": "Api Liveness"
+    }
+   },
+   "/api/memory": {
+    "get": {
+     "operationId": "_governance_route_api_memory_get",
+     "parameters": [
+      {
+       "in": "query",
+       "name": "_reader",
+       "required": false,
+       "schema": {
+        "title": " Reader"
+       }
+      }
+     ],
+     "responses": {
+      "200": {
+       "content": {
+        "application/json": {
+         "schema": {}
+        }
+       },
+       "description": "Successful Response"
+      },
+      "422": {
+       "content": {
+        "application/json": {
+         "schema": {
+          "$ref": "#/components/schemas/HTTPValidationError"
+         }
+        }
+       },
+       "description": "Validation Error"
+      }
+     },
+     "summary": " Governance Route"
+    }
+   },
+   "/api/observability/governance": {
+    "get": {
+     "operationId": "governance_api_observability_governance_get",
+     "responses": {
+      "200": {
+       "content": {
+        "application/json": {
+         "schema": {}
+        }
+       },
+       "description": "Successful Response"
+      }
+     },
+     "summary": "Governance",
+     "tags": [
+      "observability"
+     ]
+    }
+   },
+   "/api/observability/telemetry-summary": {
+    "get": {
+     "operationId": "telemetry_summary_api_observability_telemetry_summary_get",
+     "responses": {
+      "200": {
+       "content": {
+        "application/json": {
+         "schema": {}
+        }
+       },
+       "description": "Successful Response"
+      }
+     },
+     "summary": "Telemetry Summary",
+     "tags": [
+      "observability"
+     ]
+    }
+   },
+   "/api/observability/test-results": {
+    "get": {
+     "operationId": "test_results_api_observability_test_results_get",
+     "responses": {
+      "200": {
+       "content": {
+        "application/json": {
+         "schema": {}
+        }
+       },
+       "description": "Successful Response"
+      }
+     },
+     "summary": "Test Results",
+     "tags": [
+      "observability"
+     ]
+    }
+   },
+   "/api/organization": {
+    "get": {
+     "operationId": "api_organization_api_organization_get",
+     "responses": {
+      "200": {
+       "content": {
+        "application/json": {
+         "schema": {}
+        }
+       },
+       "description": "Successful Response"
+      }
+     },
+     "summary": "Api Organization"
+    }
+   },
+   "/api/permissions": {
+    "get": {
+     "operationId": "_governance_route_api_permissions_get",
+     "parameters": [
+      {
+       "in": "query",
+       "name": "_reader",
+       "required": false,
+       "schema": {
+        "title": " Reader"
+       }
+      }
+     ],
+     "responses": {
+      "200": {
+       "content": {
+        "application/json": {
+         "schema": {}
+        }
+       },
+       "description": "Successful Response"
+      },
+      "422": {
+       "content": {
+        "application/json": {
+         "schema": {
+          "$ref": "#/components/schemas/HTTPValidationError"
+         }
+        }
+       },
+       "description": "Validation Error"
+      }
+     },
+     "summary": " Governance Route"
+    }
+   },
+   "/api/portfolio": {
+    "get": {
+     "operationId": "api_portfolio_api_portfolio_get",
+     "responses": {
+      "200": {
+       "content": {
+        "application/json": {
+         "schema": {}
+        }
+       },
+       "description": "Successful Response"
+      }
+     },
+     "summary": "Api Portfolio"
+    }
+   },
+   "/api/proposals": {
+    "get": {
+     "operationId": "_governance_route_api_proposals_get",
+     "parameters": [
+      {
+       "in": "query",
+       "name": "_reader",
+       "required": false,
+       "schema": {
+        "title": " Reader"
+       }
+      }
+     ],
+     "responses": {
+      "200": {
+       "content": {
+        "application/json": {
+         "schema": {}
+        }
+       },
+       "description": "Successful Response"
+      },
+      "422": {
+       "content": {
+        "application/json": {
+         "schema": {
+          "$ref": "#/components/schemas/HTTPValidationError"
+         }
+        }
+       },
+       "description": "Validation Error"
+      }
+     },
+     "summary": " Governance Route"
+    }
+   },
+   "/api/readiness": {
+    "get": {
+     "operationId": "api_readiness_api_readiness_get",
+     "responses": {
+      "200": {
+       "content": {
+        "application/json": {
+         "schema": {}
+        }
+       },
+       "description": "Successful Response"
+      }
+     },
+     "summary": "Api Readiness"
+    }
+   },
+   "/api/research": {
+    "get": {
+     "operationId": "_governance_route_api_research_get",
+     "parameters": [
+      {
+       "in": "query",
+       "name": "_reader",
+       "required": false,
+       "schema": {
+        "title": " Reader"
+       }
+      }
+     ],
+     "responses": {
+      "200": {
+       "content": {
+        "application/json": {
+         "schema": {}
+        }
+       },
+       "description": "Successful Response"
+      },
+      "422": {
+       "content": {
+        "application/json": {
+         "schema": {
+          "$ref": "#/components/schemas/HTTPValidationError"
+         }
+        }
+       },
+       "description": "Validation Error"
+      }
+     },
+     "summary": " Governance Route"
+    }
+   },
+   "/api/risk-accounting": {
+    "get": {
+     "operationId": "api_risk_accounting_api_risk_accounting_get",
+     "responses": {
+      "200": {
+       "content": {
+        "application/json": {
+         "schema": {}
+        }
+       },
+       "description": "Successful Response"
+      }
+     },
+     "summary": "Api Risk Accounting"
+    }
+   },
+   "/api/roadmap": {
+    "get": {
+     "operationId": "_governance_route_api_roadmap_get",
+     "parameters": [
+      {
+       "in": "query",
+       "name": "_reader",
+       "required": false,
+       "schema": {
+        "title": " Reader"
+       }
+      }
+     ],
+     "responses": {
+      "200": {
+       "content": {
+        "application/json": {
+         "schema": {}
+        }
+       },
+       "description": "Successful Response"
+      },
+      "422": {
+       "content": {
+        "application/json": {
+         "schema": {
+          "$ref": "#/components/schemas/HTTPValidationError"
+         }
+        }
+       },
+       "description": "Validation Error"
+      }
+     },
+     "summary": " Governance Route"
+    }
+   },
+   "/api/security": {
+    "get": {
+     "operationId": "_governance_route_api_security_get",
+     "parameters": [
+      {
+       "in": "query",
+       "name": "_reader",
+       "required": false,
+       "schema": {
+        "title": " Reader"
+       }
+      }
+     ],
+     "responses": {
+      "200": {
+       "content": {
+        "application/json": {
+         "schema": {}
+        }
+       },
+       "description": "Successful Response"
+      },
+      "422": {
+       "content": {
+        "application/json": {
+         "schema": {
+          "$ref": "#/components/schemas/HTTPValidationError"
+         }
+        }
+       },
+       "description": "Validation Error"
+      }
+     },
+     "summary": " Governance Route"
+    }
+   },
+   "/api/signals": {
+    "get": {
+     "operationId": "api_signals_api_signals_get",
+     "responses": {
+      "200": {
+       "content": {
+        "application/json": {
+         "schema": {}
+        }
+       },
+       "description": "Successful Response"
+      }
+     },
+     "summary": "Api Signals"
+    }
+   },
+   "/api/status": {
+    "get": {
+     "operationId": "api_status_api_status_get",
+     "responses": {
+      "200": {
+       "content": {
+        "application/json": {
+         "schema": {}
+        }
+       },
+       "description": "Successful Response"
+      }
+     },
+     "summary": "Api Status"
+    }
+   },
+   "/api/system-integrity": {
+    "get": {
+     "operationId": "api_system_integrity_api_system_integrity_get",
+     "responses": {
+      "200": {
+       "content": {
+        "application/json": {
+         "schema": {}
+        }
+       },
+       "description": "Successful Response"
+      }
+     },
+     "summary": "Api System Integrity"
+    }
+   },
+   "/api/tasks": {
+    "get": {
+     "operationId": "_governance_route_api_tasks_get",
+     "parameters": [
+      {
+       "in": "query",
+       "name": "_reader",
+       "required": false,
+       "schema": {
+        "title": " Reader"
+       }
+      }
+     ],
+     "responses": {
+      "200": {
+       "content": {
+        "application/json": {
+         "schema": {}
+        }
+       },
+       "description": "Successful Response"
+      },
+      "422": {
+       "content": {
+        "application/json": {
+         "schema": {
+          "$ref": "#/components/schemas/HTTPValidationError"
+         }
+        }
+       },
+       "description": "Validation Error"
+      }
+     },
+     "summary": " Governance Route"
+    }
+   },
+   "/api/trades": {
+    "get": {
+     "operationId": "api_trades_api_trades_get",
+     "responses": {
+      "200": {
+       "content": {
+        "application/json": {
+         "schema": {}
+        }
+       },
+       "description": "Successful Response"
+      }
+     },
+     "summary": "Api Trades"
+    }
+   },
+   "/assets/{asset_name}": {
+    "get": {
+     "operationId": "vendored_asset_assets__asset_name__get",
+     "parameters": [
+      {
+       "in": "path",
+       "name": "asset_name",
+       "required": true,
+       "schema": {
+        "title": "Asset Name",
+        "type": "string"
+       }
+      }
+     ],
+     "responses": {
+      "200": {
+       "content": {
+        "application/json": {
+         "schema": {}
+        }
+       },
+       "description": "Successful Response"
+      },
+      "422": {
+       "content": {
+        "application/json": {
+         "schema": {
+          "$ref": "#/components/schemas/HTTPValidationError"
+         }
+        }
+       },
+       "description": "Validation Error"
+      }
+     },
+     "summary": "Vendored Asset"
+    }
+   },
+   "/dashboard": {
+    "get": {
+     "operationId": "dashboard_dashboard_get",
+     "responses": {
+      "200": {
+       "content": {
+        "text/html": {
+         "schema": {
+          "type": "string"
+         }
+        }
+       },
+       "description": "Successful Response"
+      }
+     },
+     "summary": "Dashboard"
+    }
+   },
+   "/decisions": {
+    "get": {
+     "operationId": "_static_page_decisions_get",
+     "parameters": [
+      {
+       "in": "query",
+       "name": "_template",
+       "required": false,
+       "schema": {
+        "default": "decisions.html",
+        "title": " Template"
+       }
+      }
+     ],
+     "responses": {
+      "200": {
+       "content": {
+        "text/html": {
+         "schema": {
+          "type": "string"
+         }
+        }
+       },
+       "description": "Successful Response"
+      },
+      "422": {
+       "content": {
+        "application/json": {
+         "schema": {
+          "$ref": "#/components/schemas/HTTPValidationError"
+         }
+        }
+       },
+       "description": "Validation Error"
+      }
+     },
+     "summary": " Static Page"
+    }
+   },
+   "/governance": {
+    "get": {
+     "operationId": "_static_page_governance_get",
+     "parameters": [
+      {
+       "in": "query",
+       "name": "_template",
+       "required": false,
+       "schema": {
+        "default": "governance.html",
+        "title": " Template"
+       }
+      }
+     ],
+     "responses": {
+      "200": {
+       "content": {
+        "text/html": {
+         "schema": {
+          "type": "string"
+         }
+        }
+       },
+       "description": "Successful Response"
+      },
+      "422": {
+       "content": {
+        "application/json": {
+         "schema": {
+          "$ref": "#/components/schemas/HTTPValidationError"
+         }
+        }
+       },
+       "description": "Validation Error"
+      }
+     },
+     "summary": " Static Page"
+    }
+   },
+   "/home": {
+    "get": {
+     "operationId": "_static_page_home_get",
+     "parameters": [
+      {
+       "in": "query",
+       "name": "_template",
+       "required": false,
+       "schema": {
+        "default": "home.html",
+        "title": " Template"
+       }
+      }
+     ],
+     "responses": {
+      "200": {
+       "content": {
+        "text/html": {
+         "schema": {
+          "type": "string"
+         }
+        }
+       },
+       "description": "Successful Response"
+      },
+      "422": {
+       "content": {
+        "application/json": {
+         "schema": {
+          "$ref": "#/components/schemas/HTTPValidationError"
+         }
+        }
+       },
+       "description": "Validation Error"
+      }
+     },
+     "summary": " Static Page"
+    }
+   },
+   "/hq": {
+    "get": {
+     "operationId": "hq_page_hq_get",
+     "responses": {
+      "200": {
+       "content": {
+        "text/html": {
+         "schema": {
+          "type": "string"
+         }
+        }
+       },
+       "description": "Successful Response"
+      }
+     },
+     "summary": "Hq Page"
+    }
+   },
+   "/login": {
+    "post": {
+     "description": "Temporary dashboard redirect.\n\nAuthentication must be implemented before external exposure. Guarded\nlike every other route here, plus an Origin check: POST is the one\nstate-changing method this application exposes, so it is the one\nroute where a mismatched Origin - not just a mismatched Host - must\nbe refused.",
+     "operationId": "login_login_post",
+     "responses": {
+      "307": {
+       "description": "Successful Response"
+      }
+     },
+     "summary": "Login"
+    }
+   },
+   "/postmortem": {
+    "get": {
+     "operationId": "_static_page_postmortem_get",
+     "parameters": [
+      {
+       "in": "query",
+       "name": "_template",
+       "required": false,
+       "schema": {
+        "default": "postmortem.html",
+        "title": " Template"
+       }
+      }
+     ],
+     "responses": {
+      "200": {
+       "content": {
+        "text/html": {
+         "schema": {
+          "type": "string"
+         }
+        }
+       },
+       "description": "Successful Response"
+      },
+      "422": {
+       "content": {
+        "application/json": {
+         "schema": {
+          "$ref": "#/components/schemas/HTTPValidationError"
+         }
+        }
+       },
+       "description": "Validation Error"
+      }
+     },
+     "summary": " Static Page"
+    }
+   },
+   "/research": {
+    "get": {
+     "operationId": "_static_page_research_get",
+     "parameters": [
+      {
+       "in": "query",
+       "name": "_template",
+       "required": false,
+       "schema": {
+        "default": "research.html",
+        "title": " Template"
+       }
+      }
+     ],
+     "responses": {
+      "200": {
+       "content": {
+        "text/html": {
+         "schema": {
+          "type": "string"
+         }
+        }
+       },
+       "description": "Successful Response"
+      },
+      "422": {
+       "content": {
+        "application/json": {
+         "schema": {
+          "$ref": "#/components/schemas/HTTPValidationError"
+         }
+        }
+       },
+       "description": "Validation Error"
+      }
+     },
+     "summary": " Static Page"
+    }
+   },
+   "/roadmap": {
+    "get": {
+     "operationId": "_static_page_roadmap_get",
+     "parameters": [
+      {
+       "in": "query",
+       "name": "_template",
+       "required": false,
+       "schema": {
+        "default": "roadmap.html",
+        "title": " Template"
+       }
+      }
+     ],
+     "responses": {
+      "200": {
+       "content": {
+        "text/html": {
+         "schema": {
+          "type": "string"
+         }
+        }
+       },
+       "description": "Successful Response"
+      },
+      "422": {
+       "content": {
+        "application/json": {
+         "schema": {
+          "$ref": "#/components/schemas/HTTPValidationError"
+         }
+        }
+       },
+       "description": "Validation Error"
+      }
+     },
+     "summary": " Static Page"
+    }
+   },
+   "/security": {
+    "get": {
+     "operationId": "_static_page_security_get",
+     "parameters": [
+      {
+       "in": "query",
+       "name": "_template",
+       "required": false,
+       "schema": {
+        "default": "security.html",
+        "title": " Template"
+       }
+      }
+     ],
+     "responses": {
+      "200": {
+       "content": {
+        "text/html": {
+         "schema": {
+          "type": "string"
+         }
+        }
+       },
+       "description": "Successful Response"
+      },
+      "422": {
+       "content": {
+        "application/json": {
+         "schema": {
+          "$ref": "#/components/schemas/HTTPValidationError"
+         }
+        }
+       },
+       "description": "Validation Error"
+      }
+     },
+     "summary": " Static Page"
+    }
+   },
+   "/system": {
+    "get": {
+     "operationId": "_static_page_system_get",
+     "parameters": [
+      {
+       "in": "query",
+       "name": "_template",
+       "required": false,
+       "schema": {
+        "default": "system.html",
+        "title": " Template"
+       }
+      }
+     ],
+     "responses": {
+      "200": {
+       "content": {
+        "text/html": {
+         "schema": {
+          "type": "string"
+         }
+        }
+       },
+       "description": "Successful Response"
+      },
+      "422": {
+       "content": {
+        "application/json": {
+         "schema": {
+          "$ref": "#/components/schemas/HTTPValidationError"
+         }
+        }
+       },
+       "description": "Validation Error"
+      }
+     },
+     "summary": " Static Page"
+    }
+   },
+   "/trading": {
+    "get": {
+     "operationId": "_static_page_trading_get",
+     "parameters": [
+      {
+       "in": "query",
+       "name": "_template",
+       "required": false,
+       "schema": {
+        "default": "trading.html",
+        "title": " Template"
+       }
+      }
+     ],
+     "responses": {
+      "200": {
+       "content": {
+        "text/html": {
+         "schema": {
+          "type": "string"
+         }
+        }
+       },
+       "description": "Successful Response"
+      },
+      "422": {
+       "content": {
+        "application/json": {
+         "schema": {
+          "$ref": "#/components/schemas/HTTPValidationError"
+         }
+        }
+       },
+       "description": "Validation Error"
+      }
+     },
+     "summary": " Static Page"
+    }
+   }
+  }
+ },
+ "routes": [
+  {
+   "api": true,
+   "in_schema": false,
+   "methods": [
+    "GET"
+   ],
+   "name": "openapi_schema",
+   "path": "/openapi.json",
+   "response_class": null
+  },
+  {
+   "api": true,
+   "in_schema": false,
+   "methods": [
+    "GET"
+   ],
+   "name": "swagger_docs",
+   "path": "/docs",
+   "response_class": "HTMLResponse"
+  },
+  {
+   "api": true,
+   "in_schema": false,
+   "methods": [
+    "GET"
+   ],
+   "name": "redoc_docs",
+   "path": "/redoc",
+   "response_class": "HTMLResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "test_results",
+   "path": "/api/observability/test-results",
+   "response_class": "JSONResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "governance",
+   "path": "/api/observability/governance",
+   "response_class": "JSONResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "telemetry_summary",
+   "path": "/api/observability/telemetry-summary",
+   "response_class": "JSONResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "root",
+   "path": "/",
+   "response_class": "HTMLResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "agents_page",
+   "path": "/agents",
+   "response_class": "HTMLResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "_static_page",
+   "path": "/home",
+   "response_class": "HTMLResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "_static_page",
+   "path": "/trading",
+   "response_class": "HTMLResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "_static_page",
+   "path": "/governance",
+   "response_class": "HTMLResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "_static_page",
+   "path": "/system",
+   "response_class": "HTMLResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "_static_page",
+   "path": "/security",
+   "response_class": "HTMLResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "_static_page",
+   "path": "/roadmap",
+   "response_class": "HTMLResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "_static_page",
+   "path": "/research",
+   "response_class": "HTMLResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "_static_page",
+   "path": "/decisions",
+   "response_class": "HTMLResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "_static_page",
+   "path": "/postmortem",
+   "response_class": "HTMLResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "hq_page",
+   "path": "/hq",
+   "response_class": "HTMLResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "dashboard",
+   "path": "/dashboard",
+   "response_class": "HTMLResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "api_health",
+   "path": "/api/health",
+   "response_class": "JSONResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "api_status",
+   "path": "/api/status",
+   "response_class": "JSONResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "api_analysis",
+   "path": "/api/analysis",
+   "response_class": "JSONResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "api_signals",
+   "path": "/api/signals",
+   "response_class": "JSONResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "api_trades",
+   "path": "/api/trades",
+   "response_class": "JSONResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "api_organization",
+   "path": "/api/organization",
+   "response_class": "JSONResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "_governance_route",
+   "path": "/api/proposals",
+   "response_class": "JSONResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "_governance_route",
+   "path": "/api/memory",
+   "response_class": "JSONResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "_governance_route",
+   "path": "/api/permissions",
+   "response_class": "JSONResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "_governance_route",
+   "path": "/api/tasks",
+   "response_class": "JSONResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "_governance_route",
+   "path": "/api/security",
+   "response_class": "JSONResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "_governance_route",
+   "path": "/api/roadmap",
+   "response_class": "JSONResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "_governance_route",
+   "path": "/api/research",
+   "response_class": "JSONResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "api_experience",
+   "path": "/api/experience",
+   "response_class": "JSONResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "api_candles",
+   "path": "/api/candles",
+   "response_class": "JSONResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "api_agent_states",
+   "path": "/api/agent-states",
+   "response_class": "JSONResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "api_events",
+   "path": "/api/events",
+   "response_class": "JSONResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "api_learning",
+   "path": "/api/learning",
+   "response_class": "JSONResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "api_liveness",
+   "path": "/api/liveness",
+   "response_class": "JSONResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "api_readiness",
+   "path": "/api/readiness",
+   "response_class": "JSONResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "api_portfolio",
+   "path": "/api/portfolio",
+   "response_class": "JSONResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "api_command_center",
+   "path": "/api/command-center",
+   "response_class": "JSONResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "api_chat",
+   "path": "/api/chat",
+   "response_class": "JSONResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "api_agent_evidence",
+   "path": "/api/agent-evidence",
+   "response_class": "JSONResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "api_risk_accounting",
+   "path": "/api/risk-accounting",
+   "response_class": "JSONResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "api_system_integrity",
+   "path": "/api/system-integrity",
+   "response_class": "JSONResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "api_execution_gates",
+   "path": "/api/execution-gates",
+   "response_class": "JSONResponse"
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "GET"
+   ],
+   "name": "vendored_asset",
+   "path": "/assets/{asset_name}",
+   "response_class": null
+  },
+  {
+   "api": true,
+   "in_schema": true,
+   "methods": [
+    "POST"
+   ],
+   "name": "login",
+   "path": "/login",
+   "response_class": "RedirectResponse"
+  }
+ ]
+}
