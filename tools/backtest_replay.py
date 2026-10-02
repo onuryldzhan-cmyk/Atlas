@@ -196,7 +196,12 @@ def _entry_regime(bars: list[tuple[Decimal, Decimal, Decimal]]) -> str:
         return "UNKNOWN"
 
 
-SIGNAL_HORIZONS_MIN = (60, 240, 1440)  # outcome horizons for the lesson book (1 day: owner option C, hold longer)
+SIGNAL_HORIZONS_MIN = (5, 10, 60, 240, 1440)  # outcome horizons (5/10 min: owner short trades; 1 day: option C)
+# Triple barrier (owner 2026-10-02: "short trades that act on the gain or loss rate"): after a BUY,
+# exit at +take-profit, at -stop-loss, or at the time limit, whichever comes first.
+# (take_profit, stop_loss, minutes). Research labels only; no runtime exit rule is changed.
+BARRIERS = ((Decimal("0.004"), Decimal("0.003"), 5), (Decimal("0.006"), Decimal("0.004"), 10),
+            (Decimal("0.01"), Decimal("0.006"), 30))
 REGIME_LOOKBACK_MIN = 30 * 24 * 60  # regime from the last 30 days of closed hourly bars
 
 
@@ -217,11 +222,37 @@ def _signal_outcome(rows: list[list], end: int, price: Decimal, slip: Decimal, f
         out[f"ret_{h}m"] = exit_px / price - 1  # raw move: the lesson book can re-price any fee (owner option A)
         gross_in = price * (1 + slip)
         out[f"net_{h}m"] = (exit_px * (1 - slip) * (1 - fee)) / (gross_in * (1 + fee)) - 1
+    for tp, sl, minutes in BARRIERS:
+        hit, exit_px = _first_barrier(rows, end, price, tp, sl, minutes)
+        out[f"tb_{minutes}m"] = hit
+        out[f"tbnet_{minutes}m"] = (None if exit_px is None else
+                                    (exit_px * (1 - slip) * (1 - fee)) / (price * (1 + slip) * (1 + fee)) - 1)
     return out
 
 
+def _first_barrier(rows: list[list], end: int, price: Decimal, tp: Decimal, sl: Decimal,
+                   minutes: int) -> tuple[str | None, Decimal | None]:
+    """Which barrier a BUY at `price` (close of rows[end-1]) hits first in the next `minutes` candles.
+
+    TP / SL use each candle's high / low; a candle that touches both counts as SL (conservative:
+    the order inside a 1-minute candle is unknown). TIME exits at the last candle's close.
+    (None, None) when the series ends before the time limit.
+    """
+    if end - 1 + minutes >= len(rows):
+        return None, None
+    up, down = price * (1 + tp), price * (1 - sl)
+    for i in range(end, end + minutes):
+        high, low = Decimal(str(rows[i][2])), Decimal(str(rows[i][3]))
+        if low <= down:
+            return "SL", down
+        if high >= up:
+            return "TP", up
+    return "TIME", Decimal(str(rows[end - 1 + minutes][4]))
+
+
 SIGNAL_COLUMNS = (["symbol", "time", "action", "confidence", "bucket", "regime"]
-                  + [f"net_{h}m" for h in SIGNAL_HORIZONS_MIN] + [f"ret_{h}m" for h in SIGNAL_HORIZONS_MIN])
+                  + [f"net_{h}m" for h in SIGNAL_HORIZONS_MIN] + [f"ret_{h}m" for h in SIGNAL_HORIZONS_MIN]
+                  + [f"{k}_{m}m" for _, _, m in BARRIERS for k in ("tb", "tbnet")])
 
 
 def write_signals_csv(path: str, signals: list[dict]) -> int:

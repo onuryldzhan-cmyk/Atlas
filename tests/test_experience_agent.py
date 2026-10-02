@@ -62,7 +62,7 @@ def test_run_walks_days_records_lessons_once_and_touches_nothing_else(tmp_path):
     xps = [r for r in memory_records.replay(cli.read_log(rec / cli.MEMORY_LOG)).values() if r["author"] == "experiment_manager"]
     assert len(xps) == 1 and "aday ders" in xps[0]["title"]  # written once, when the candidate set appeared
     assert sorted(p.name for p in tmp_path.rglob("*") if p.is_file()) == sorted(
-        [cli.MEMORY_LOG, "state.json", "signals_v2.csv"] + [p.name for p in rec.iterdir() if p.name != cli.MEMORY_LOG])
+        [cli.MEMORY_LOG, "state.json", "signals_v3.csv"] + [p.name for p in rec.iterdir() if p.name != cli.MEMORY_LOG])
 
 
 def test_network_failure_records_nothing_and_retries_the_same_day(tmp_path):

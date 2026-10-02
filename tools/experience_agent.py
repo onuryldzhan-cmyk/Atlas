@@ -39,7 +39,7 @@ Fetcher = Callable[[str, int], list[list]]
 def _paths(base: Path) -> tuple[Path, Path]:
     d = base / "experience"
     d.mkdir(parents=True, exist_ok=True)
-    return d / "state.json", d / "signals_v2.csv"  # v2: raw moves + 1-day horizon
+    return d / "state.json", d / "signals_v3.csv"  # v3: 5/10-min horizons + take-profit/stop-loss barriers
 
 
 def _load_state(path: Path) -> dict[str, Any]:

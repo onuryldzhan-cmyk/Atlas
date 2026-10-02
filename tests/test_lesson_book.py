@@ -28,3 +28,10 @@ def test_fee_repricing_uses_raw_moves_bnb_fee_beats_standard():
     bnb = lb.build([row] * 3, slippage_bps=5, fee_bps=7)[0]["net_60m_avg_pct"]
     assert bnb > 0 > std  # +0.25% move: a loss at 0.10%/side, a small gain at 0.07% (BNB)
     assert lb.build([row] * 3)[0]["net_60m_avg_pct"] == -0.01  # without --fee-bps the recorded net is used
+
+
+def test_barrier_stats_for_buy_groups():
+    rows = [{**_row("BUY", "61", "0.001"), "tb_10m": "TP", "tbnet_10m": "0.003"}] * 2 + \
+           [{**_row("BUY", "61", "0.001"), "tb_10m": "SL", "tbnet_10m": "-0.007"}] * 2
+    g = lb.build(rows)[0]
+    assert g["tb10_tp"] == 0.5 and g["tb10_avg_pct"] == -0.2 and g["tb5_tp"] is None

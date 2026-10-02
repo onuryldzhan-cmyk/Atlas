@@ -351,3 +351,24 @@ def test_record_signals_labels_every_buy_sell_with_net_outcomes(tmp_path):
     assert bt.write_signals_csv(str(path), result.signals) == len(result.signals)
     first = next(csv.DictReader(path.open(encoding="utf-8")))
     assert first["confidence"] == "55.0" and first["regime"]
+
+
+def test_first_barrier_take_profit_stop_loss_both_time_and_missing():
+    def row(o, h, l, c):
+        return [0, str(o), str(h), str(l), str(c), "1", 0]
+    p = Decimal("100")
+    tp, sl = Decimal("0.006"), Decimal("0.004")
+    base = [row(100, 100, 100, 100)]
+    assert bt._first_barrier(base + [row(100, 100.7, 99.9, 100.5)] * 10, 1, p, tp, sl, 10) == ("TP", Decimal("100.600"))
+    assert bt._first_barrier(base + [row(100, 100.1, 99.5, 99.7)] * 10, 1, p, tp, sl, 10) == ("SL", Decimal("99.600"))
+    # one candle touching both: the order inside it is unknown -> stop-loss (conservative)
+    assert bt._first_barrier(base + [row(100, 101, 99, 100)] * 10, 1, p, tp, sl, 10)[0] == "SL"
+    assert bt._first_barrier(base + [row(100, 100.2, 99.8, 100.1)] * 10, 1, p, tp, sl, 10) == ("TIME", Decimal("100.1"))
+    assert bt._first_barrier(base + [row(100, 100, 100, 100)] * 3, 1, p, tp, sl, 10) == (None, None)
+
+
+def test_signal_outcome_has_short_horizons_and_barrier_columns():
+    rows = _rows(1700, drift=0.001, wobble=0.0)
+    out = bt._signal_outcome(rows, 210, Decimal(str(rows[209][4])), Decimal("0"), Decimal("0.001"))
+    assert {"net_5m", "net_10m", "tb_10m", "tbnet_10m", "tb_30m"} <= set(out)
+    assert out["tb_5m"] in ("TP", "SL", "TIME") and set(bt.SIGNAL_COLUMNS) >= set(out)
