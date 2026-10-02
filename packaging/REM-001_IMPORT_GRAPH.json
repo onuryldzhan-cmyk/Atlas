@@ -16,8 +16,8 @@
     "analysis": "Static AST import resolution over git-tracked Python files, excluding imports guarded by if TYPE_CHECKING:. Third-party and stdlib targets resolve to nothing and carry no edge."
   },
   "source_identity": {
-    "generated_from_commit": "3d506bae051ae912899d35fe9be14fdacc667700",
-    "generated_from_tree": "db23966bd6d2c26dc0202cb40c364ca493230438",
+    "generated_from_commit": "5bf5df91c9a852e15c451482efb79d6bb869b1c7",
+    "generated_from_tree": "4fd848982745fcea457c8521c6eda4fe4e3fb793",
     "tracked_working_tree_clean": false,
     "modified_tracked_paths_at_generation": [
       "ackaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md",
@@ -27,13 +27,13 @@
   "scope": {
     "universe": "ALL_GIT_TRACKED_PYTHON_FILES",
     "universe_note": "The tool's existing tracked-file definition, used unchanged. No source-scope classification (ACTIVE_CANDIDATE / TEST / TOOL / ARCHIVE / BACKUP / QUARANTINE / REPORT_COPY) is applied or implied: that classification requires the human review gate ARCH-001.2.1 reserves and belongs to Gate 1 deliverable 1.",
-    "modules_total": 1095,
+    "modules_total": 1096,
     "modules_runtime_reachable": 135,
-    "modules_outside_runtime_closure": 960,
-    "edges_total": 2339,
-    "edges_import": 1677,
-    "edges_package_init": 662,
-    "edges_distinct_module_pairs": 2274,
+    "modules_outside_runtime_closure": 961,
+    "edges_total": 2344,
+    "edges_import": 1680,
+    "edges_package_init": 664,
+    "edges_distinct_module_pairs": 2279,
     "edges_count_note": "edges_total counts (from, to, kind) triples. A pair can carry both kinds when a file both imports a package directly and references one of its submodules, so edges_distinct_module_pairs is the figure to use when counting dependencies between modules.",
     "parse_failures": 3
   },
@@ -3985,6 +3985,10 @@
     },
     {
       "module": "tests/test_risk_accounting_realized_pnl_wiring.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_risk_check_golden.py",
       "runtime_reachable": false
     },
     {
@@ -14349,6 +14353,31 @@
     {
       "from": "tests/test_risk_accounting_realized_pnl_wiring.py",
       "to": "tests/test_execution_crash_recovery_f1_f6.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_risk_check_golden.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_risk_check_golden.py",
+      "to": "core/execution_models.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_risk_check_golden.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_risk_check_golden.py",
+      "to": "tests/test_block5e_fee_settlement_accounting.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_risk_check_golden.py",
+      "to": "tests/test_execute_decision_golden.py",
       "kind": "import"
     },
     {
