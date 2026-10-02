@@ -3,8 +3,8 @@
 ## What runs
 | Agent | Model | What it writes |
 |---|---|---|
-| `ceo_ai` | `claude-opus-5-5` | Up to 5 priorities for the owner, grounded in cited memory record ids, as a `CEO-*` record. An answer that cites a non-existent record is rejected. |
-| `model_council` | `claude-opus-5-5` and `claude-sonnet-5-5`, independently | A review of the newest open proposal: SUPPORT, OPPOSE, UNSURE or DISAGREEMENT, as an `MC-*` record. |
+| `ceo_ai` | `claude-sonnet-5-5`, effort high | Up to 5 priorities for the owner, grounded in cited memory record ids, as a `CEO-*` record. An answer that cites a non-existent record is rejected. |
+| `model_council` | `claude-sonnet-5-5`, effort high, two independent perspectives (risk-focused and evidence-focused); recorded as one model, not two | A review of the newest open proposal: SUPPORT, OPPOSE, UNSURE or DISAGREEMENT, as an `MC-*` record. |
 
 Both are **advice**. They cannot trade, deploy, approve or change a threshold. The trading runtime never imports the gateway (ADR-0011; architecture test).
 

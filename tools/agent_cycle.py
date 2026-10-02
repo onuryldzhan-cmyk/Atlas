@@ -169,9 +169,10 @@ def model_council(records_dir: Path, ask=None) -> dict[str, Any]:
               f"Body: {json.dumps(fields, ensure_ascii=False, default=str)[:3000]}"
               "\n\nShould the owner approve it? Answer SUPPORT, OPPOSE or UNSURE with short reasons in Turkish.")
     votes = {}
-    for model in ai.COUNCIL_MODELS:
-        res = (ask or ai.ask)(_AI_SYSTEM, prompt, _COUNCIL_SCHEMA, model=model, ledger=_ai_ledger(), agent="model_council")
-        votes[model] = {"verdict": res.data["verdict"], "reasons": [str(x)[:300] for x in res.data["reasons"]][:5]} \
+    for perspective in ai.COUNCIL_PERSPECTIVES:
+        system = f"{_AI_SYSTEM} Review independently as a {perspective}."
+        res = (ask or ai.ask)(system, prompt, _COUNCIL_SCHEMA, ledger=_ai_ledger(), agent="model_council")
+        votes[perspective] = {"verdict": res.data["verdict"], "reasons": [str(x)[:300] for x in res.data["reasons"]][:5]} \
             if res.status == "OK" else {"verdict": "ABSTAIN", "reason": res.reason}
     verdicts = {v["verdict"] for v in votes.values() if v["verdict"] != "ABSTAIN"}
     if not verdicts:
@@ -181,7 +182,8 @@ def model_council(records_dir: Path, ask=None) -> dict[str, Any]:
     cli.add_memory_record(records_dir, {
         "record_id": f"MC-{len(existing) + 1:04d}", "type": "OPERATIONS", "authority": "TEMPORARY",
         "title": f"Model konseyi {pid}: {outcome} (tavsiye, onay değil)",
-        "body": json.dumps({"votes": votes, "outcome": outcome}, ensure_ascii=False),
+        "body": json.dumps({"votes": votes, "outcome": outcome, "model": ai.DEFAULT_MODEL,
+                            "note": "one model, two independent perspectives - not two models"}, ensure_ascii=False),
         "author": "model_council", "related_proposal": pid,
         "source": "tools/agent_cycle.py (model_council, tools/ai_gateway.py)"})
     return {"verdict": "OK", "summary": f"{pid}: {outcome}"}

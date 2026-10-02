@@ -23,8 +23,10 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any, Callable
 
-DEFAULT_MODEL = "claude-opus-5-5"
-COUNCIL_MODELS = ("claude-opus-5-5", "claude-sonnet-5-5")
+DEFAULT_MODEL = "claude-sonnet-5-5"  # owner choice 2026-10-02: agents run on Sonnet 5.5 at effort high
+DEFAULT_EFFORT = "high"
+# Council: one model, two independent reviewer perspectives (recorded as such - not two models).
+COUNCIL_PERSPECTIVES = ("risk-focused reviewer", "evidence-focused reviewer")
 # USD per 1M tokens (input, output), Anthropic first-party rates, cached 2026-09-25.
 PRICES = {"claude-opus-5-5": (Decimal("4"), Decimal("20")), "claude-sonnet-5-5": (Decimal("2"), Decimal("10"))}
 DEFAULT_DAILY_BUDGET_USD = Decimal("1.00")
@@ -146,7 +148,7 @@ def _validate(data: Any, schema: dict[str, Any]) -> str | None:
 
 def ask(system: str, prompt: str, schema: dict[str, Any], *, model: str = DEFAULT_MODEL, ledger: UsageLedger,
         client_factory: Callable[[], Any] | None = None, now: datetime | None = None,
-        effort: str = "medium", agent: str | None = None) -> AIResult:
+        effort: str = DEFAULT_EFFORT, agent: str | None = None) -> AIResult:
     """One structured question. Never raises; every failure is an ABSTAIN with a reason."""
     from atlas_security import sanitize_sensitive_data
 

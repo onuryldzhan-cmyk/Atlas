@@ -15,7 +15,7 @@ NOW = datetime(2026, 10, 2, 12, 0, tzinfo=timezone.utc)
 SCHEMA = {"type": "object", "additionalProperties": False, "required": ["a"], "properties": {"a": {"type": "string"}}}
 
 
-def fake(text, stop="end_turn", model="claude-opus-5-5", calls=None, raise_exc=None):
+def fake(text, stop="end_turn", model="claude-sonnet-5-5", calls=None, raise_exc=None):
     def create(**kw):
         if calls is not None:
             calls.append(kw)
@@ -30,11 +30,12 @@ def test_ok_answer_is_schema_validated_costed_and_ledgered(tmp_path):
     calls, ledger = [], ai.UsageLedger(tmp_path / "u.json")
     r = ai.ask("sys", "q api_key=sk-abc123456789abcdef", SCHEMA, ledger=ledger, client_factory=fake('{"a": "x"}', calls=calls), now=NOW)
     assert r.status == "OK" and r.data == {"a": "x"}
-    assert r.cost_usd == Decimal("0.014")  # 1000*4 + 500*20 per 1M
-    assert ledger.spent(NOW.timestamp()) == Decimal("0.014")
+    assert r.cost_usd == Decimal("0.007")  # Sonnet 5.5: 1000*2 + 500*10 per 1M
+    assert ledger.spent(NOW.timestamp()) == Decimal("0.007")
     sent = calls[0]
     assert "sk-abc123456789abcdef" not in json.dumps(sent["messages"])          # SensitiveDataGuard
     assert sent["output_config"]["format"]["schema"] == SCHEMA and sent["fallbacks"] == "default"
+    assert sent["model"] == "claude-sonnet-5-5" and sent["output_config"]["effort"] == "high"  # owner choice
 
 
 def test_every_failure_abstains(tmp_path):
@@ -125,7 +126,7 @@ def test_an_agent_stops_at_its_own_share_while_others_continue(tmp_path, monkeyp
     blocked = ai.ask("s", "q", SCHEMA, ledger=ledger, client_factory=fake('{"a":"x"}'), now=NOW, agent="ceo_ai")
     assert blocked.status == "ABSTAIN" and "AGENT_QUOTA_REACHED" in blocked.reason
     ok = ai.ask("s", "q", SCHEMA, ledger=ledger, client_factory=fake('{"a":"x"}'), now=NOW, agent="model_council")
-    assert ok.status == "OK" and ledger.spent(NOW.timestamp(), "model_council") == Decimal("0.014")
+    assert ok.status == "OK" and ledger.spent(NOW.timestamp(), "model_council") == Decimal("0.007")
 
 
 def test_quota_is_a_rolling_five_hour_window(tmp_path, monkeypatch):

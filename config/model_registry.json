@@ -6,27 +6,9 @@
       "provider": "Anthropic (Claude API, owner choice 2026-10-02)",
       "version": "pinned id",
       "context_tokens": 1000000,
-      "status": "ADVISORY_ONLY (abstains without the owner's key; daily budget cap)",
+      "status": "ADVISORY_ONLY (effort high; abstains without the owner's key; 5-hour quota)",
       "supported_tasks": [
         "ceo_brief",
-        "model_council"
-      ],
-      "capabilities": [
-        "structured_output",
-        "adaptive_thinking"
-      ],
-      "model_id": "claude-opus-5-5",
-      "cost_per_1k_tokens": {
-        "input": 0.004,
-        "output": 0.02
-      }
-    },
-    {
-      "provider": "Anthropic (Claude API, owner choice 2026-10-02)",
-      "version": "pinned id",
-      "context_tokens": 1000000,
-      "status": "ADVISORY_ONLY (abstains without the owner's key; daily budget cap)",
-      "supported_tasks": [
         "model_council"
       ],
       "capabilities": [
