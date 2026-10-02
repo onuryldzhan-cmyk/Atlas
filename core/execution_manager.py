@@ -3589,6 +3589,88 @@ class ExecutionManager:
         execution can commit. CapitalManager takes no part in any of this.
         """
 
+        # T-0014: each gate is one _risk_* helper, called in the order below; a
+        # helper returns the refusal that ends the evaluation or _CONTINUE.
+        terminal = self._risk_preconditions(
+            request,
+        )
+
+        if not isinstance(terminal, _Continue):
+            return terminal
+
+        canonical, terminal = self._risk_canonical_verdict(
+            request,
+            market_state,
+        )
+
+        if not isinstance(terminal, _Continue):
+            return terminal
+
+        instrument_rules, request_price, terminal = self._risk_instrument_gates(
+            request,
+        )
+
+        if not isinstance(terminal, _Continue):
+            return terminal
+
+        # CapitalManager is not consulted here. It holds no admission
+        # authority over a canonical RiskDecision: it cannot veto one, cannot
+        # resize one, and cannot reinterpret one. The reject-capable gates
+        # that remain are the canonical engine itself, the position-limit
+        # check above, and the executable-quantum and durable-capital checks
+        # below - all of which run before any capital is reserved.
+
+        if request.action == "BUY" and not request.reduce_only:
+            terminal = self._risk_buy_fill_bounds(
+                request,
+                canonical,
+                instrument_rules,
+                cast(Decimal, request_price),  # set whenever the gates continue
+            )
+
+            if not isinstance(terminal, _Continue):
+                return terminal
+
+            terminal = self._risk_buy_reserve(
+                request,
+                canonical,
+            )
+
+            if not isinstance(terminal, _Continue):
+                return terminal
+
+        # The single write of the canonical allocation, made only once every
+        # reject-capable gate has passed. It is the engine's own Decimal, not
+        # a re-derived one, and the admission token is sealed around it below.
+        request.approved_quote_allocation = canonical.approved_allocation
+        self._risk_admissions[request.request_id] = self._risk_admission_key(request)
+
+        return {
+            "approved": True,
+            "reason": "RISK_APPROVED",
+            # Block 5D: recorded here so it reaches the RISK_APPROVED audit
+            # event through the existing details pass-through, alongside the
+            # fill-time evidence _execute_paper_buy/_execute_paper_sell write
+            # onto result.data.
+            "details": {
+                "instrument_rules_digest": instrument_rules.digest,
+                "instrument_rules_source_version": instrument_rules.source_version,
+                # registry v5.01 EXP-001: present only when the admission needed
+                # the experiment's lowered floor; counted at startup for the cap.
+                **({"experiment_id": canonical.experiment_id} if canonical.experiment_id else {}),
+                # registry v5.23: the paper fee rate this execution charges,
+                # so recovery re-derives the fill exactly (absent -> 0, the
+                # historical fee-free contract). Recorded only when nonzero.
+                **({"paper_fee_rate": format(self.paper_fee_rate, "f")} if self.paper_fee_rate else {}),
+            },
+        }
+
+    def _risk_preconditions(
+        self,
+        request: ExecutionRequest,
+    ) -> dict[str, Any] | _Continue:
+        """Void any carried approval; require the risk services; roll the accounting day (failure is recorded, not fatal)."""
+
         # Any approval this request may be carrying from an earlier evaluation
         # is void the moment it is re-evaluated. Clearing first means a
         # refusal below can never leave a stale approval that a later stage
@@ -3613,6 +3695,16 @@ class ExecutionManager:
             self._auto_rollover_risk_accounting_day()
         except Exception as exc:
             self._record_error(phase="risk_day_rollover", error=exc, request=request)
+
+        return _CONTINUE
+
+    def _risk_canonical_verdict(
+        self,
+        request: ExecutionRequest,
+        market_state: Any | None,
+    ) -> tuple[Any, dict[str, Any] | _Continue]:
+        """Derive the risk state and reduce-only intent, resolve the size and take RiskEngine's canonical verdict."""
+
         if self.risk_engine is not None:
             try:
                 risk_state = self._derive_risk_state(market_state)
@@ -3639,7 +3731,7 @@ class ExecutionManager:
                 requested = self._requested_quote_allocation(request, risk_state)
             except Exception as exc:
                 self._record_error(phase="canonical_risk", error=exc, request=request)
-                return {"approved": False, "reason": "RISK_STATE_RESTORATION_FAILED",
+                return None, {"approved": False, "reason": "RISK_STATE_RESTORATION_FAILED",
                         "status": "BLOCK_RECOVERY_REQUIRED"}
 
             if requested is None:
@@ -3655,7 +3747,7 @@ class ExecutionManager:
                     request.action,
                     request.request_id,
                 )
-                return {
+                return None, {
                     "approved": False,
                     "reason": "UNSIZED_REQUEST_REJECTED",
                     "details": {
@@ -3675,7 +3767,7 @@ class ExecutionManager:
                     request.symbol,
                     request.request_id,
                 )
-                return {
+                return None, {
                     "approved": False,
                     "reason": "NO_POSITION_TO_SELL",
                     "status": "REJECT",
@@ -3710,10 +3802,10 @@ class ExecutionManager:
                 self.last_risk_decision = canonical.to_dict()
             except Exception as exc:
                 self._record_error(phase="canonical_risk", error=exc, request=request)
-                return {"approved": False, "reason": "RISK_STATE_RESTORATION_FAILED",
+                return None, {"approved": False, "reason": "RISK_STATE_RESTORATION_FAILED",
                         "status": "BLOCK_RECOVERY_REQUIRED"}
             if not canonical.approved:
-                return {
+                return None, {
                     "approved": False,
                     "reason": canonical.reason_code,
                     "status": canonical.status.value,
@@ -3724,7 +3816,15 @@ class ExecutionManager:
             # the two Decimals directly - routing either side through the float
             # mirror would be the very round-trip this field exists to avoid.
             if canonical.approved_allocation != requested:
-                return {"approved": False, "reason": "RISK_ALLOCATION_MISMATCH"}
+                return None, {"approved": False, "reason": "RISK_ALLOCATION_MISMATCH"}
+
+        return canonical, _CONTINUE
+
+    def _risk_instrument_gates(
+        self,
+        request: ExecutionRequest,
+    ) -> tuple[Any, Decimal | None, dict[str, Any] | _Continue]:
+        """Fail-closed venue instrument gates for every action, plus the BUY position limit."""
 
         # Block 5D owner decisions 2/3/7: venue instrument precision is a
         # fail-closed admission gate for every action, not only BUY. A
@@ -3741,7 +3841,7 @@ class ExecutionManager:
         )
 
         if instrument_rules is None:
-            return {
+            return None, None, {
                 "approved": False,
                 "reason": "INSTRUMENT_RULES_UNAVAILABLE",
                 "details": {"symbol": request.symbol},
@@ -3750,7 +3850,7 @@ class ExecutionManager:
         request_price = Decimal(str(request.price))
 
         if not is_aligned_to_step(request_price, instrument_rules.price_tick):
-            return {
+            return None, None, {
                 "approved": False,
                 "reason": "PRICE_TICK_MISALIGNED",
                 "details": {
@@ -3769,7 +3869,7 @@ class ExecutionManager:
             )
 
             if not allowed:
-                return {
+                return None, None, {
                     "approved": False,
                     "reason": "POSITION_LIMIT",
                     "details": {
@@ -3777,230 +3877,219 @@ class ExecutionManager:
                     },
                 }
 
-        # CapitalManager is not consulted here. It holds no admission
-        # authority over a canonical RiskDecision: it cannot veto one, cannot
-        # resize one, and cannot reinterpret one. The reject-capable gates
-        # that remain are the canonical engine itself, the position-limit
-        # check above, and the executable-quantum and durable-capital checks
-        # below - all of which run before any capital is reserved.
+        return instrument_rules, request_price, _CONTINUE
 
-        if request.action == "BUY" and not request.reduce_only:
-            # An approval that cannot fund one whole venue quantity_step, or
-            # that floors to less than the venue's min_quantity/min_notional,
-            # can never produce a valid fill, so it is refused here rather
-            # than discovered after the paper book has already been mutated.
-            # `_resolve_base_fill` is the same pure derivation the
-            # post-component defense-in-depth check in `_execute_paper_buy`
-            # uses, so the two can never drift apart on how a fill is sized -
-            # only on the fee, which is not yet known at admission and is
-            # taken as zero here (Block 5D owner decision: reuse the same
-            # fill/step derivation for both).
-            #
-            # Reaching this condition past admission turns an unexecutable
-            # request into EXECUTION_INTERRUPTED_AFTER_SIDE_EFFECT -
-            # INDETERMINATE capital, an unresolved journal entry, a paper
-            # position the durable book never receives, and a halted runtime
-            # awaiting operator recovery. Refusing at admission leaves none
-            # of that behind.
-            #
-            # This sizes nothing. It is a pure feasibility bound on the
-            # amount the caller already asked for and the engine already
-            # approved: no allocation is raised, lowered, or manufactured
-            # (Block 5D owner decision: never raise allocation to satisfy a
-            # minimum), and a request below the bound is refused rather than
-            # rounded up to it.
-            # Registry v5.23: the paper fee the fill will charge is known here
-            # (a pure function of the allocation), so the bound uses it - a
-            # fee must never push a fill below a venue minimum after the
-            # side-effect boundary, which would halt the runtime.
-            admission_fill = self._resolve_base_fill(
-                allocation=canonical.approved_allocation,
-                price=request_price,
-                fee=self._paper_buy_fee(canonical.approved_allocation),
-                quantity_step=instrument_rules.quantity_step,
+    def _risk_buy_fill_bounds(
+        self,
+        request: ExecutionRequest,
+        canonical: Any,
+        instrument_rules: Any,
+        request_price: Decimal,
+    ) -> dict[str, Any] | _Continue:
+        """New-risk BUY: the approved allocation must yield a venue-valid fill (quantum, minimums, maximums)."""
+
+        # An approval that cannot fund one whole venue quantity_step, or
+        # that floors to less than the venue's min_quantity/min_notional,
+        # can never produce a valid fill, so it is refused here rather
+        # than discovered after the paper book has already been mutated.
+        # `_resolve_base_fill` is the same pure derivation the
+        # post-component defense-in-depth check in `_execute_paper_buy`
+        # uses, so the two can never drift apart on how a fill is sized -
+        # only on the fee, which is not yet known at admission and is
+        # taken as zero here (Block 5D owner decision: reuse the same
+        # fill/step derivation for both).
+        #
+        # Reaching this condition past admission turns an unexecutable
+        # request into EXECUTION_INTERRUPTED_AFTER_SIDE_EFFECT -
+        # INDETERMINATE capital, an unresolved journal entry, a paper
+        # position the durable book never receives, and a halted runtime
+        # awaiting operator recovery. Refusing at admission leaves none
+        # of that behind.
+        #
+        # This sizes nothing. It is a pure feasibility bound on the
+        # amount the caller already asked for and the engine already
+        # approved: no allocation is raised, lowered, or manufactured
+        # (Block 5D owner decision: never raise allocation to satisfy a
+        # minimum), and a request below the bound is refused rather than
+        # rounded up to it.
+        # Registry v5.23: the paper fee the fill will charge is known here
+        # (a pure function of the allocation), so the bound uses it - a
+        # fee must never push a fill below a venue minimum after the
+        # side-effect boundary, which would halt the runtime.
+        admission_fill = self._resolve_base_fill(
+            allocation=canonical.approved_allocation,
+            price=request_price,
+            fee=self._paper_buy_fee(canonical.approved_allocation),
+            quantity_step=instrument_rules.quantity_step,
+        )
+
+        if admission_fill is None:
+            logger.warning(
+                "Approved allocation cannot fund one whole "
+                "quantity_step symbol=%s request_id=%s approved=%s "
+                "price=%s quantity_step=%s",
+                request.symbol,
+                request.request_id,
+                format(canonical.approved_allocation, "f"),
+                format(request_price, "f"),
+                format(instrument_rules.quantity_step, "f"),
             )
+            return {
+                "approved": False,
+                "reason": "QUANTITY_BELOW_VENUE_MINIMUM",
+                "details": {
+                    "approved_allocation": format(
+                        canonical.approved_allocation, "f"
+                    ),
+                    "execution_price": format(request_price, "f"),
+                    "quantity_step": format(
+                        instrument_rules.quantity_step, "f"
+                    ),
+                },
+            }
 
-            if admission_fill is None:
-                logger.warning(
-                    "Approved allocation cannot fund one whole "
-                    "quantity_step symbol=%s request_id=%s approved=%s "
-                    "price=%s quantity_step=%s",
-                    request.symbol,
-                    request.request_id,
-                    format(canonical.approved_allocation, "f"),
-                    format(request_price, "f"),
-                    format(instrument_rules.quantity_step, "f"),
-                )
-                return {
-                    "approved": False,
-                    "reason": "QUANTITY_BELOW_VENUE_MINIMUM",
-                    "details": {
-                        "approved_allocation": format(
-                            canonical.approved_allocation, "f"
-                        ),
-                        "execution_price": format(request_price, "f"),
-                        "quantity_step": format(
-                            instrument_rules.quantity_step, "f"
-                        ),
-                    },
-                }
+        admission_base_quantity, admission_quote_notional = admission_fill
 
-            admission_base_quantity, admission_quote_notional = admission_fill
+        if admission_base_quantity < instrument_rules.min_quantity:
+            return {
+                "approved": False,
+                "reason": "QUANTITY_BELOW_VENUE_MINIMUM",
+                "details": {
+                    "floored_base_quantity": format(
+                        admission_base_quantity, "f"
+                    ),
+                    "min_quantity": format(
+                        instrument_rules.min_quantity, "f"
+                    ),
+                },
+            }
 
-            if admission_base_quantity < instrument_rules.min_quantity:
-                return {
-                    "approved": False,
-                    "reason": "QUANTITY_BELOW_VENUE_MINIMUM",
-                    "details": {
-                        "floored_base_quantity": format(
-                            admission_base_quantity, "f"
-                        ),
-                        "min_quantity": format(
-                            instrument_rules.min_quantity, "f"
-                        ),
-                    },
-                }
+        if admission_quote_notional < instrument_rules.min_notional:
+            # Terminal for this request/cycle only (Block 5D owner
+            # decision 6): this admission is refused outright, but it
+            # halts nothing - a future independent request (a new
+            # request_id, e.g. the next market-loop tick with an updated
+            # price or allocation) is evaluated fresh against the same
+            # rule.
+            return {
+                "approved": False,
+                "reason": "NOTIONAL_BELOW_VENUE_MINIMUM",
+                "details": {
+                    "floored_quote_notional": format(
+                        admission_quote_notional, "f"
+                    ),
+                    "min_notional": format(
+                        instrument_rules.min_notional, "f"
+                    ),
+                },
+            }
 
-            if admission_quote_notional < instrument_rules.min_notional:
-                # Terminal for this request/cycle only (Block 5D owner
-                # decision 6): this admission is refused outright, but it
-                # halts nothing - a future independent request (a new
-                # request_id, e.g. the next market-loop tick with an updated
-                # price or allocation) is evaluated fresh against the same
-                # rule.
-                return {
-                    "approved": False,
-                    "reason": "NOTIONAL_BELOW_VENUE_MINIMUM",
-                    "details": {
-                        "floored_quote_notional": format(
-                            admission_quote_notional, "f"
-                        ),
-                        "min_notional": format(
-                            instrument_rules.min_notional, "f"
-                        ),
-                    },
-                }
+        # Block 6B (readiness gate V1): the venue's upper bounds, on the
+        # same fill this gate just derived and in the same fail-closed
+        # place its lower bounds are enforced - before any reservation,
+        # before admission is recorded, and before any execution path can
+        # run. An order above ``LOT_SIZE.maxQty``,
+        # ``MARKET_LOT_SIZE.maxQty`` or ``NOTIONAL.maxNotional`` is
+        # refused outright; it is never split, capped, or resized down to
+        # the maximum, exactly as an undersized one is never raised to a
+        # minimum. A bound the config does not model is skipped here and
+        # refused at the live-authority gate instead, so a bounded PAPER
+        # runtime keeps its existing behaviour unchanged.
+        upper_bound = instrument_rules.upper_bound_violation(
+            base_quantity=admission_base_quantity,
+            quote_notional=admission_quote_notional,
+            order_type=request.order_type,
+        )
 
-            # Block 6B (readiness gate V1): the venue's upper bounds, on the
-            # same fill this gate just derived and in the same fail-closed
-            # place its lower bounds are enforced - before any reservation,
-            # before admission is recorded, and before any execution path can
-            # run. An order above ``LOT_SIZE.maxQty``,
-            # ``MARKET_LOT_SIZE.maxQty`` or ``NOTIONAL.maxNotional`` is
-            # refused outright; it is never split, capped, or resized down to
-            # the maximum, exactly as an undersized one is never raised to a
-            # minimum. A bound the config does not model is skipped here and
-            # refused at the live-authority gate instead, so a bounded PAPER
-            # runtime keeps its existing behaviour unchanged.
-            upper_bound = instrument_rules.upper_bound_violation(
-                base_quantity=admission_base_quantity,
-                quote_notional=admission_quote_notional,
-                order_type=request.order_type,
+        if upper_bound is not None:
+            reason, details = upper_bound
+            logger.warning(
+                "Admission refused above venue maximum symbol=%s "
+                "request_id=%s reason=%s",
+                request.symbol,
+                request.request_id,
+                reason,
             )
+            return {
+                "approved": False,
+                "reason": reason,
+                "details": {"symbol": request.symbol, **details},
+            }
 
-            if upper_bound is not None:
-                reason, details = upper_bound
-                logger.warning(
-                    "Admission refused above venue maximum symbol=%s "
-                    "request_id=%s reason=%s",
-                    request.symbol,
-                    request.request_id,
-                    reason,
-                )
-                return {
-                    "approved": False,
-                    "reason": reason,
-                    "details": {"symbol": request.symbol, **details},
-                }
+        return _CONTINUE
 
-            # RiskEngine judges against RiskPolicy.total_capital, which is a
-            # configured policy figure, not the cash the durable book actually
-            # holds. An approved allocation the book cannot fund would reserve
-            # capital, execute, and only then fail inside apply_confirmed as
-            # INSUFFICIENT_CASH - halting the runtime with an unresolved
-            # journal entry and INDETERMINATE capital. Checking it here turns
-            # that into an ordinary admission refusal that leaves no
-            # reservation and no admission behind, and gives capital
-            # exhaustion its own reason code instead of letting it surface as
-            # malformed input.
-            #
-            # The bound is fee-inclusive because the approved allocation is:
-            # settlement debits notional + fee, and the BUY path sizes the
-            # fill so that notional + fee never exceeds the approval. So
-            # reserving the approval reserves the whole economic requirement.
-            #
-            # The request's own reservation is excluded from the funding
-            # measurement, because re-evaluating a request must not be able to
-            # defund it: without the exclusion a request admitted once near the
-            # durable bound would refuse itself on its next evaluation, having
-            # been charged for capital it already holds. It still reserves at
-            # most once - `reserve` returns the identical existing entry rather
-            # than adding a second - and every other request's reservation
-            # continues to encumber this one's capital.
-            try:
-                free_capital = self._durable_free_quote_capital(
-                    exclude=request.request_id
-                )
-            except Exception as exc:
-                self._record_error(phase="durable_capital", error=exc, request=request)
-                return {"approved": False, "reason": "DURABLE_CAPITAL_STATE_UNAVAILABLE",
-                        "status": "BLOCK_RECOVERY_REQUIRED"}
+    def _risk_buy_reserve(
+        self,
+        request: ExecutionRequest,
+        canonical: Any,
+    ) -> dict[str, Any] | _Continue:
+        """New-risk BUY: the durable book must fund the approval; then reserve it (the last reject-capable step)."""
 
-            if (
-                free_capital is not None
-                and canonical.approved_allocation > free_capital
-            ):
-                return {
-                    "approved": False,
-                    "reason": "INSUFFICIENT_DURABLE_CAPITAL",
-                    "details": {
-                        "approved_allocation": format(
-                            canonical.approved_allocation, "f"
-                        ),
-                        "available_quote_capital": format(free_capital, "f"),
-                    },
-                }
+        # RiskEngine judges against RiskPolicy.total_capital, which is a
+        # configured policy figure, not the cash the durable book actually
+        # holds. An approved allocation the book cannot fund would reserve
+        # capital, execute, and only then fail inside apply_confirmed as
+        # INSUFFICIENT_CASH - halting the runtime with an unresolved
+        # journal entry and INDETERMINATE capital. Checking it here turns
+        # that into an ordinary admission refusal that leaves no
+        # reservation and no admission behind, and gives capital
+        # exhaustion its own reason code instead of letting it surface as
+        # malformed input.
+        #
+        # The bound is fee-inclusive because the approved allocation is:
+        # settlement debits notional + fee, and the BUY path sizes the
+        # fill so that notional + fee never exceeds the approval. So
+        # reserving the approval reserves the whole economic requirement.
+        #
+        # The request's own reservation is excluded from the funding
+        # measurement, because re-evaluating a request must not be able to
+        # defund it: without the exclusion a request admitted once near the
+        # durable bound would refuse itself on its next evaluation, having
+        # been charged for capital it already holds. It still reserves at
+        # most once - `reserve` returns the identical existing entry rather
+        # than adding a second - and every other request's reservation
+        # continues to encumber this one's capital.
+        try:
+            free_capital = self._durable_free_quote_capital(
+                exclude=request.request_id
+            )
+        except Exception as exc:
+            self._record_error(phase="durable_capital", error=exc, request=request)
+            return {"approved": False, "reason": "DURABLE_CAPITAL_STATE_UNAVAILABLE",
+                    "status": "BLOCK_RECOVERY_REQUIRED"}
 
-            try:
-                reservation = self.reservation_ledger.reserve(
-                    request.request_id, request.request_id, canonical.approved_allocation,
-                )
-                # F-3: admission is granted only against live encumbrance.
-                # reserve() returns a RESERVED record or raises; this keeps
-                # that contract structurally enforced here rather than
-                # assumed.
-                if reservation.status is not ReservationStatus.RESERVED:
-                    raise ValueError("reservation is not RESERVED")
-            except Exception as exc:
-                self._record_error(phase="capital_reservation", error=exc, request=request)
-                return {"approved": False, "reason": "CAPITAL_RESERVATION_FAILED",
-                        "status": "BLOCK_RECOVERY_REQUIRED"}
+        if (
+            free_capital is not None
+            and canonical.approved_allocation > free_capital
+        ):
+            return {
+                "approved": False,
+                "reason": "INSUFFICIENT_DURABLE_CAPITAL",
+                "details": {
+                    "approved_allocation": format(
+                        canonical.approved_allocation, "f"
+                    ),
+                    "available_quote_capital": format(free_capital, "f"),
+                },
+            }
 
-        # The single write of the canonical allocation, made only once every
-        # reject-capable gate has passed. It is the engine's own Decimal, not
-        # a re-derived one, and the admission token is sealed around it below.
-        request.approved_quote_allocation = canonical.approved_allocation
-        self._risk_admissions[request.request_id] = self._risk_admission_key(request)
+        try:
+            # checked not None/ready by _risk_preconditions (typing only)
+            reservation = cast(Any, self.reservation_ledger).reserve(
+                request.request_id, request.request_id, canonical.approved_allocation,
+            )
+            # F-3: admission is granted only against live encumbrance.
+            # reserve() returns a RESERVED record or raises; this keeps
+            # that contract structurally enforced here rather than
+            # assumed.
+            if reservation.status is not ReservationStatus.RESERVED:
+                raise ValueError("reservation is not RESERVED")
+        except Exception as exc:
+            self._record_error(phase="capital_reservation", error=exc, request=request)
+            return {"approved": False, "reason": "CAPITAL_RESERVATION_FAILED",
+                    "status": "BLOCK_RECOVERY_REQUIRED"}
 
-        return {
-            "approved": True,
-            "reason": "RISK_APPROVED",
-            # Block 5D: recorded here so it reaches the RISK_APPROVED audit
-            # event through the existing details pass-through, alongside the
-            # fill-time evidence _execute_paper_buy/_execute_paper_sell write
-            # onto result.data.
-            "details": {
-                "instrument_rules_digest": instrument_rules.digest,
-                "instrument_rules_source_version": instrument_rules.source_version,
-                # registry v5.01 EXP-001: present only when the admission needed
-                # the experiment's lowered floor; counted at startup for the cap.
-                **({"experiment_id": canonical.experiment_id} if canonical.experiment_id else {}),
-                # registry v5.23: the paper fee rate this execution charges,
-                # so recovery re-derives the fill exactly (absent -> 0, the
-                # historical fee-free contract). Recorded only when nonzero.
-                **({"paper_fee_rate": format(self.paper_fee_rate, "f")} if self.paper_fee_rate else {}),
-            },
-        }
+        return _CONTINUE
 
     def _can_open_position(
         self,

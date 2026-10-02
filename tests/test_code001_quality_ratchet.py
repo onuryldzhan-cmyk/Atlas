@@ -12,8 +12,9 @@ PRINT_CALLS_CEILING = 36  # v5.50: AI-module diagnostics moved to logging (was 1
 # (behaviour pinned by golden/characterization tests), removed from the baseline.
 # 2026-10-02 T-0013 (owner chose "B"): execution_manager._execute_decision (1237 lines) split into _decision_*
 # phases, behaviour pinned by tests/test_execute_decision_golden.py (37 scenarios), removed from the baseline.
+# 2026-10-03 T-0014: execution_manager.risk_check (432 lines) split into _risk_* gates, behaviour pinned by
+# tests/test_risk_check_golden.py (36 scenarios), removed from the baseline.
 LONG_FUNCTIONS_BASELINE = {
-    "core/execution_manager.py::risk_check",
     "core/market_loop.py::process_symbol",
     "web_app.py::create_app",
 }
