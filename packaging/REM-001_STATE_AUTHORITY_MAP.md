@@ -19,8 +19,8 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `da909c534c8ad69fff13d2899ad5bfeb4ac6dc2e` |
-| generated_from_tree | `a23eb39930283307ad1415f979f1dad0deb38ed4` |
+| generated_from_commit | `c7e2848ec90f6e3a7428565cac7b49d487168522` |
+| generated_from_tree | `c7249867c3accd845c6347efe503b36f19536d8a` |
 | tracked_working_tree_clean | False |
 | modified_tracked_paths_at_generation | ['ackaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md'] |
 
@@ -209,8 +209,8 @@ nothing is inferred from an absence.
 | `data_layer/models.py` | ATOMIC_REPLACE | 54 | `utc_text` |
 | `data_layer/models.py` | ATOMIC_REPLACE | 61 | `utc_text` |
 | `main.py` | PATH_WRITE_TEXT | 585 | `AtlasProcess::_write_heartbeat` |
-| `observability/agent_states.py` | ATOMIC_REPLACE | 60 | `_age_s` |
-| `observability/agent_states.py` | ATOMIC_REPLACE | 63 | `_age_s` |
+| `observability/agent_states.py` | ATOMIC_REPLACE | 62 | `_age_s` |
+| `observability/agent_states.py` | ATOMIC_REPLACE | 65 | `_age_s` |
 | `observability/command_center.py` | ATOMIC_REPLACE | 88 | `_money` |
 | `observability/command_center.py` | ATOMIC_REPLACE | 88 | `_money` |
 | `observability/command_center.py` | ATOMIC_REPLACE | 88 | `_money` |
