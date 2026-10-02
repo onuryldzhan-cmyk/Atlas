@@ -16,31 +16,41 @@
     "analysis": "Static AST import resolution over git-tracked Python files, excluding imports guarded by if TYPE_CHECKING:. Third-party and stdlib targets resolve to nothing and carry no edge."
   },
   "source_identity": {
-    "generated_from_commit": "1e8406d7fa2dcf918440c3f4bef6b8b853bdb1f1",
-    "generated_from_tree": "e9d9bfff7af97ac2d4516b3f39606673a1b16f31",
-    "tracked_working_tree_clean": true,
-    "modified_tracked_paths_at_generation": []
+    "generated_from_commit": "e75fa613627c05f86326d25c1cdf9a8f315237c2",
+    "generated_from_tree": "a3ac8a5bb79e094394d61ce8e56216904a4bbb62",
+    "tracked_working_tree_clean": false,
+    "modified_tracked_paths_at_generation": [
+      "bservability/experience_view.py",
+      "packaging/atlas_architecture_map.json",
+      "packaging/atlas_runtime_closure.json",
+      "tests/test_experience_agent.py",
+      "tests/test_home_trading_pages.py",
+      "tests/test_loopback_host_header_guard.py",
+      "web_app.py"
+    ]
   },
   "scope": {
     "universe": "ALL_GIT_TRACKED_PYTHON_FILES",
     "universe_note": "The tool's existing tracked-file definition, used unchanged. No source-scope classification (ACTIVE_CANDIDATE / TEST / TOOL / ARCHIVE / BACKUP / QUARANTINE / REPORT_COPY) is applied or implied: that classification requires the human review gate ARCH-001.2.1 reserves and belongs to Gate 1 deliverable 1.",
-    "modules_total": 861,
-    "modules_runtime_reachable": 105,
-    "modules_outside_runtime_closure": 756,
-    "edges_total": 1437,
-    "edges_import": 1004,
-    "edges_package_init": 433,
-    "edges_distinct_module_pairs": 1426,
+    "modules_total": 1083,
+    "modules_runtime_reachable": 134,
+    "modules_outside_runtime_closure": 949,
+    "edges_total": 2297,
+    "edges_import": 1646,
+    "edges_package_init": 651,
+    "edges_distinct_module_pairs": 2233,
     "edges_count_note": "edges_total counts (from, to, kind) triples. A pair can carry both kinds when a file both imports a package directly and references one of its submodules, so edges_distinct_module_pairs is the figure to use when counting dependencies between modules.",
     "parse_failures": 3
   },
   "entry_points": [
     "main.py",
-    "web_app.py"
+    "web_app.py",
+    "atlas_service.py",
+    "atlas_supervisor.py"
   ],
   "runtime_closure_reference": {
     "artifact": "packaging/atlas_runtime_closure.json",
-    "modules": 105,
+    "modules": 134,
     "regression_gate": "BFS from entry_points over edges reproduces the referenced artifact exactly",
     "regression_gate_result": "PASS"
   },
@@ -59,23 +69,27 @@
     {
       "file_path": "archive_unused_2026-07-22/atlas_memory_core (2).py",
       "error_type": "SyntaxError",
-      "detail": "unterminated string literal (detected at line 216) (archive_unused_2026-07-22/atlas_memory_core (2).py, line 216)"
+      "detail": "unterminated string literal (detected at line 216) (atlas_memory_core (2).py, line 216)"
     },
     {
       "file_path": "archive_unused_2026-07-22/dashboard/app_old.py",
       "error_type": "UnicodeDecodeError",
-      "detail": "'utf-8' codec can't decode byte 0xfe in position 25290: invalid start byte"
+      "detail": "'utf-8' codec can't decode byte 0xfe in position 25289: invalid start byte"
     },
     {
       "file_path": "archive_unused_2026-07-22/risk/position_manager.py",
       "error_type": "IndentationError",
-      "detail": "unexpected indent (archive_unused_2026-07-22/risk/position_manager.py, line 161)"
+      "detail": "unexpected indent (position_manager.py, line 161)"
     }
   ],
   "parse_failure_note": "Retained, not dropped. None is in the runtime closure, so none affects the regression gate. Their edges are absent from this graph.",
   "nodes": [
     {
       "module": ".claude/hooks/atlas_db_read_guard.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": ".claude/hooks/atlas_proposal_write_guard.py",
       "runtime_reachable": false
     },
     {
@@ -215,14 +229,6 @@
       "runtime_reachable": false
     },
     {
-      "module": "ai/chat_assistant.py",
-      "runtime_reachable": false
-    },
-    {
-      "module": "ai/cognition/state.py",
-      "runtime_reachable": false
-    },
-    {
       "module": "ai/core/atlas_brain.py",
       "runtime_reachable": true
     },
@@ -231,24 +237,12 @@
       "runtime_reachable": true
     },
     {
-      "module": "ai/core/atlas_multi_agent.py",
-      "runtime_reachable": false
-    },
-    {
       "module": "ai/core/atlas_reasoning_engine.py",
       "runtime_reachable": true
     },
     {
       "module": "ai/core/atlas_world_model.py",
       "runtime_reachable": true
-    },
-    {
-      "module": "ai/core/decision/decision_builder.py",
-      "runtime_reachable": false
-    },
-    {
-      "module": "ai/core/intelligence/agent_analyzer.py",
-      "runtime_reachable": false
     },
     {
       "module": "ai/core/intelligence/agent_fusion.py",
@@ -263,10 +257,6 @@
       "runtime_reachable": true
     },
     {
-      "module": "ai/core/intelligence/fusion_engine.py",
-      "runtime_reachable": false
-    },
-    {
       "module": "ai/core/intelligence/memory_adapter.py",
       "runtime_reachable": true
     },
@@ -279,12 +269,8 @@
       "runtime_reachable": true
     },
     {
-      "module": "ai/core/intelligence/risk_model.py",
-      "runtime_reachable": false
-    },
-    {
-      "module": "ai/core/intelligence/world_analyzer.py",
-      "runtime_reachable": false
+      "module": "ai/core/intelligence/trade_evidence.py",
+      "runtime_reachable": true
     },
     {
       "module": "ai/core/validation/__init__.py",
@@ -1431,6 +1417,94 @@
       "runtime_reachable": false
     },
     {
+      "module": "archive_unused_2026-09-30/ai/chat_assistant.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "archive_unused_2026-09-30/ai/cognition/state.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "archive_unused_2026-09-30/ai/core/atlas_multi_agent.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "archive_unused_2026-09-30/ai/core/decision/decision_builder.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "archive_unused_2026-09-30/ai/core/intelligence/agent_analyzer.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "archive_unused_2026-09-30/ai/core/intelligence/fusion_engine.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "archive_unused_2026-09-30/ai/core/intelligence/risk_model.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "archive_unused_2026-09-30/ai/core/intelligence/world_analyzer.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "archive_unused_2026-09-30/core/code_cleanup_analyzer.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "archive_unused_2026-09-30/core/execution_bridge.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "archive_unused_2026-09-30/core/execution_controller.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "archive_unused_2026-09-30/core/execution_event.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "archive_unused_2026-09-30/core/market_feed.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "archive_unused_2026-09-30/core/memory.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "archive_unused_2026-09-30/core/module.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "archive_unused_2026-09-30/core/module_classifier.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "archive_unused_2026-09-30/core/module_manager.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "archive_unused_2026-09-30/core/order_validator.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "archive_unused_2026-09-30/core/project_snapshot.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "archive_unused_2026-09-30/core/test_position_manager.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "archive_unused_2026-09-30/core/test_snapshot.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "archive_unused_2026-09-30/data/market_provider.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "assistant/__init__.py",
       "runtime_reachable": false
     },
@@ -1523,6 +1597,14 @@
       "runtime_reachable": true
     },
     {
+      "module": "atlas_finance/market_data/fear_greed_provider.py",
+      "runtime_reachable": true
+    },
+    {
+      "module": "atlas_finance/market_data/funding_rate_provider.py",
+      "runtime_reachable": true
+    },
+    {
       "module": "atlas_finance/market_data/historical_archive.py",
       "runtime_reachable": false
     },
@@ -1536,6 +1618,46 @@
     },
     {
       "module": "atlas_finance/market_data/temporal.py",
+      "runtime_reachable": true
+    },
+    {
+      "module": "atlas_finance/market_data/treasury_yield_provider.py",
+      "runtime_reachable": true
+    },
+    {
+      "module": "atlas_org/__init__.py",
+      "runtime_reachable": true
+    },
+    {
+      "module": "atlas_org/manager.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "atlas_org/memory_records.py",
+      "runtime_reachable": true
+    },
+    {
+      "module": "atlas_org/owner_auth.py",
+      "runtime_reachable": true
+    },
+    {
+      "module": "atlas_org/permissions.py",
+      "runtime_reachable": true
+    },
+    {
+      "module": "atlas_org/proposals.py",
+      "runtime_reachable": true
+    },
+    {
+      "module": "atlas_org/security_review.py",
+      "runtime_reachable": true
+    },
+    {
+      "module": "atlas_org/strategy_registry.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "atlas_org/tasks.py",
       "runtime_reachable": true
     },
     {
@@ -1687,6 +1809,14 @@
       "runtime_reachable": true
     },
     {
+      "module": "atlas_service.py",
+      "runtime_reachable": true
+    },
+    {
+      "module": "atlas_supervisor.py",
+      "runtime_reachable": true
+    },
+    {
       "module": "backtest/backtest_engine.py",
       "runtime_reachable": false
     },
@@ -1723,6 +1853,10 @@
       "runtime_reachable": false
     },
     {
+      "module": "conftest.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "core/__init__.py",
       "runtime_reachable": true
     },
@@ -1740,6 +1874,10 @@
     },
     {
       "module": "core/application.py",
+      "runtime_reachable": true
+    },
+    {
+      "module": "core/atlas_config.py",
       "runtime_reachable": true
     },
     {
@@ -1780,10 +1918,6 @@
     },
     {
       "module": "core/class_registry_scan.py",
-      "runtime_reachable": false
-    },
-    {
-      "module": "core/code_cleanup_analyzer.py",
       "runtime_reachable": false
     },
     {
@@ -1839,19 +1973,7 @@
       "runtime_reachable": false
     },
     {
-      "module": "core/execution_bridge.py",
-      "runtime_reachable": false
-    },
-    {
       "module": "core/execution_contracts.py",
-      "runtime_reachable": false
-    },
-    {
-      "module": "core/execution_controller.py",
-      "runtime_reachable": false
-    },
-    {
-      "module": "core/execution_event.py",
       "runtime_reachable": false
     },
     {
@@ -1887,6 +2009,10 @@
       "runtime_reachable": true
     },
     {
+      "module": "core/experiment_ledger.py",
+      "runtime_reachable": true
+    },
+    {
       "module": "core/fee_accounting.py",
       "runtime_reachable": true
     },
@@ -1901,6 +2027,10 @@
     {
       "module": "core/import_graph_brain.py",
       "runtime_reachable": false
+    },
+    {
+      "module": "core/instance_lock.py",
+      "runtime_reachable": true
     },
     {
       "module": "core/instrument_rules.py",
@@ -1955,10 +2085,6 @@
       "runtime_reachable": true
     },
     {
-      "module": "core/market_feed.py",
-      "runtime_reachable": false
-    },
-    {
       "module": "core/market_intelligence.py",
       "runtime_reachable": false
     },
@@ -1971,28 +2097,16 @@
       "runtime_reachable": false
     },
     {
-      "module": "core/market_scanner.py",
-      "runtime_reachable": false
+      "module": "core/market_risk_regime.py",
+      "runtime_reachable": true
     },
     {
-      "module": "core/memory.py",
+      "module": "core/market_scanner.py",
       "runtime_reachable": false
     },
     {
       "module": "core/model_provider_contracts.py",
       "runtime_reachable": true
-    },
-    {
-      "module": "core/module.py",
-      "runtime_reachable": false
-    },
-    {
-      "module": "core/module_classifier.py",
-      "runtime_reachable": false
-    },
-    {
-      "module": "core/module_manager.py",
-      "runtime_reachable": false
     },
     {
       "module": "core/operational_contracts.py",
@@ -2003,8 +2117,8 @@
       "runtime_reachable": false
     },
     {
-      "module": "core/order_validator.py",
-      "runtime_reachable": false
+      "module": "core/order_lifecycle.py",
+      "runtime_reachable": true
     },
     {
       "module": "core/paper_execution_engine.py",
@@ -2035,6 +2149,10 @@
       "runtime_reachable": false
     },
     {
+      "module": "core/position_risk_buckets.py",
+      "runtime_reachable": true
+    },
+    {
       "module": "core/position_sizing.py",
       "runtime_reachable": true
     },
@@ -2047,11 +2165,19 @@
       "runtime_reachable": false
     },
     {
-      "module": "core/project_snapshot.py",
+      "module": "core/reentry_engine.py",
       "runtime_reachable": false
     },
     {
-      "module": "core/reentry_engine.py",
+      "module": "core/research_evidence_bridge.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "core/research_market_data_bridge.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "core/research_timestamp_split_binding.py",
       "runtime_reachable": false
     },
     {
@@ -2087,14 +2213,6 @@
       "runtime_reachable": true
     },
     {
-      "module": "core/test_position_manager.py",
-      "runtime_reachable": false
-    },
-    {
-      "module": "core/test_snapshot.py",
-      "runtime_reachable": false
-    },
-    {
       "module": "core/tool_gateway_contracts.py",
       "runtime_reachable": true
     },
@@ -2123,10 +2241,6 @@
       "runtime_reachable": false
     },
     {
-      "module": "data/market_provider.py",
-      "runtime_reachable": false
-    },
-    {
       "module": "data_layer/__init__.py",
       "runtime_reachable": true
     },
@@ -2136,10 +2250,14 @@
     },
     {
       "module": "data_layer/config.py",
-      "runtime_reachable": true
+      "runtime_reachable": false
     },
     {
       "module": "data_layer/contracts.py",
+      "runtime_reachable": true
+    },
+    {
+      "module": "data_layer/evidence_store.py",
       "runtime_reachable": true
     },
     {
@@ -2192,11 +2310,11 @@
     },
     {
       "module": "data_layer/semantic_contracts.py",
-      "runtime_reachable": true
+      "runtime_reachable": false
     },
     {
       "module": "data_layer/sqlite.py",
-      "runtime_reachable": true
+      "runtime_reachable": false
     },
     {
       "module": "decision_adapter_v5_1.py",
@@ -2383,11 +2501,59 @@
       "runtime_reachable": true
     },
     {
+      "module": "observability/agent_states.py",
+      "runtime_reachable": true
+    },
+    {
+      "module": "observability/command_center.py",
+      "runtime_reachable": true
+    },
+    {
+      "module": "observability/event_contract.py",
+      "runtime_reachable": true
+    },
+    {
+      "module": "observability/experience_view.py",
+      "runtime_reachable": true
+    },
+    {
+      "module": "observability/governance_records.py",
+      "runtime_reachable": true
+    },
+    {
+      "module": "observability/learning_view.py",
+      "runtime_reachable": true
+    },
+    {
+      "module": "observability/organization.py",
+      "runtime_reachable": true
+    },
+    {
       "module": "observability/panel_router.py",
       "runtime_reachable": true
     },
     {
       "module": "observability/panel_sources.py",
+      "runtime_reachable": true
+    },
+    {
+      "module": "observability/portfolio_view.py",
+      "runtime_reachable": true
+    },
+    {
+      "module": "observability/readiness.py",
+      "runtime_reachable": true
+    },
+    {
+      "module": "observability/research_view.py",
+      "runtime_reachable": true
+    },
+    {
+      "module": "observability/roadmap_view.py",
+      "runtime_reachable": true
+    },
+    {
+      "module": "observability/security_view.py",
       "runtime_reachable": true
     },
     {
@@ -2855,11 +3021,23 @@
       "runtime_reachable": false
     },
     {
+      "module": "tests/_market_clock.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/architecture/__init__.py",
       "runtime_reachable": false
     },
     {
+      "module": "tests/architecture/test_atlas_finance_init_is_lazy.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/architecture/test_authority_guard.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/architecture/test_ci_known_accepted_failures_check.py",
       "runtime_reachable": false
     },
     {
@@ -2868,6 +3046,14 @@
     },
     {
       "module": "tests/architecture/test_composition_root_wires_canonical_risk_services.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/architecture/test_data_layer_init_is_lazy.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/architecture/test_forbidden_edges_ancestor_resolution.py",
       "runtime_reachable": false
     },
     {
@@ -2891,7 +3077,27 @@
       "runtime_reachable": false
     },
     {
+      "module": "tests/architecture/test_rem001_construction_paths.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/architecture/test_rem001_state_authority_map.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/architecture/test_runtime_closure_matches_inventory.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/architecture/test_runtime_has_no_ai_provider_dependency.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/architecture/test_single_execution_authority.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/architecture/test_web_layer_is_read_only.py",
       "runtime_reachable": false
     },
     {
@@ -2939,6 +3145,10 @@
       "runtime_reachable": false
     },
     {
+      "module": "tests/atlas_os/test_scheduler_execute_task_golden.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/atlas_os/test_secrets_manager.py",
       "runtime_reachable": false
     },
@@ -2959,6 +3169,42 @@
       "runtime_reachable": false
     },
     {
+      "module": "tests/test_agent_attribution.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_agent_cycle.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_agent_fusion_refactor_golden.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_agent_report.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_agent_state_single_source.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_agent_states.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_agents_page.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_ai_gateway.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_application_health_market_signals.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/test_application_lifecycle.py",
       "runtime_reachable": false
     },
@@ -2968,6 +3214,42 @@
     },
     {
       "module": "tests/test_atlas_brain_phase5_shadow.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_atlas_config.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_atlas_org_audit_fixes.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_atlas_org_governance.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_atlas_org_tasks.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_atlas_self_review.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_backlog001_fear_greed_provider.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_backlog001_macro_risk_wiring_and_fusion.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_backlog001_sentiment_wiring_and_fusion.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_backtest_replay.py",
       "runtime_reachable": false
     },
     {
@@ -3159,6 +3441,66 @@
       "runtime_reachable": false
     },
     {
+      "module": "tests/test_brain_mem_001.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_buy_stale_data_gate.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_candle_nonfinite.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_chaos_drill.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_check_execution_authority_agreement.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_code001_quality_ratchet.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_command_center.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_corrupt_execution_state_fails_closed.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_corrupt_risk_state_fails_closed.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_dashboard_adminlte_and_integrity_panels.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_dashboard_execution_gates.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_dashboard_gate_js_execution.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_dashboard_performance_js.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_data_health_check.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_data_source_registry.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/test_decision_adapter.py",
       "runtime_reachable": false
     },
@@ -3167,11 +3509,39 @@
       "runtime_reachable": false
     },
     {
+      "module": "tests/test_decision_trace.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_degradation_matrix.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/test_deprecated_execution_state_recovery.py",
       "runtime_reachable": false
     },
     {
+      "module": "tests/test_digital_trial.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/test_durable_transaction_state.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_environments.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_event_contract.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_evidence_store.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_evidence_store_integration.py",
       "runtime_reachable": false
     },
     {
@@ -3211,7 +3581,19 @@
       "runtime_reachable": false
     },
     {
+      "module": "tests/test_execution_audit_trail_completeness.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_execution_crash_recovery_f1_f6.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/test_execution_exposure_guard.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_execution_identifier_preservation.py",
       "runtime_reachable": false
     },
     {
@@ -3223,11 +3605,107 @@
       "runtime_reachable": false
     },
     {
+      "module": "tests/test_exp001_paper_confidence_experiment.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_exp001_report.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_exp002_paper_confidence_experiment.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_experience_agent.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_extract_candle_age_telemetry.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_f3_mark_to_market_wiring.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_f3_unrealized_daily_loss.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_f4_paper_slippage.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_f4_slippage_end_to_end.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/test_financial_quantity_identity_contract.py",
       "runtime_reachable": false
     },
     {
+      "module": "tests/test_funding_rate_sentiment.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_fusion_dissent_confidence.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/test_historical_archive.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_home_trading_pages.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_hq_page.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_incident_report.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_independent_audit_fixes.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_indicator_numeric_accuracy.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_learning_book_extras.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_learning_view.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_lesson_book.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_limits_card.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_lookahead_check.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_loopback_host_header_guard.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_main_process_heartbeat.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_market_data_api_error_handling.py",
       "runtime_reachable": false
     },
     {
@@ -3236,6 +3714,42 @@
     },
     {
       "module": "tests/test_market_feed_restart_lifecycle.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_market_loop_candle_age_telemetry.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_market_loop_reconnect.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_market_risk_regime.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_measure_volatility_ceiling.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_memory_claims.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_merged_process_composition.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_meta_filter.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_migrate_execution_financial_state.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_model_registry_contract.py",
       "runtime_reachable": false
     },
     {
@@ -3279,7 +3793,47 @@
       "runtime_reachable": false
     },
     {
+      "module": "tests/test_observability_artifact_freshness.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/test_observability_panel.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_order_lifecycle.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_order_lifecycle_observe.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_organization_roster.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_owner_switches_2026_10_01.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_panel_decoupling.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_paper_book_mirror_integrity.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_paper_fee_model.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_paper_position_report.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_performance_report.py",
       "runtime_reachable": false
     },
     {
@@ -3327,11 +3881,83 @@
       "runtime_reachable": false
     },
     {
+      "module": "tests/test_portfolio_view.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_position_risk_buckets.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_price_chart.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_process_supervisor.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_pytest_state_root_isolation.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_quarantine_audit_fork.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_readiness.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_reality_check.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_recovery_risk_accounting_booking.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_refresh_venue_instrument_rules.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_regime_bar_check.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_regime_engine.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_regime_risk_level.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_research_evidence_bridge.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_research_hypothesis_checks.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/test_research_hypothesis_registry.py",
       "runtime_reachable": false
     },
     {
+      "module": "tests/test_research_hypothesis_registry_hardening.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_research_isolation.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/test_research_lifecycle.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_research_market_data_bridge.py",
       "runtime_reachable": false
     },
     {
@@ -3343,7 +3969,43 @@
       "runtime_reachable": false
     },
     {
+      "module": "tests/test_research_timestamp_split_binding.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_risk_accounting_day_auto_rollover.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_risk_accounting_realized_pnl_wiring.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/test_runtime_distribution_boundary.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_s1_capital_sleeves.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_sec001_no_secret_literals.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_security_guardian.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_security_headers_and_origin_guard.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_select_universe.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_sell_without_position_routing.py",
       "runtime_reachable": false
     },
     {
@@ -3351,11 +4013,111 @@
       "runtime_reachable": false
     },
     {
+      "module": "tests/test_single_instance_and_integrity_exit.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_start_atlas.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_state_backup.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_state_directory_configuration.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_status_api_read_only_inventory.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_strategy_agent.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_strategy_compare.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_strategy_compare_embargo.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_strategy_registry.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_supervisor_package_gate.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_task_status.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_test001_suite_ratchet.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_trade_universe.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_treasury_yield_provider.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_venue_and_news_contracts.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/test_web_app_contract.py",
       "runtime_reachable": false
     },
     {
+      "module": "tests/test_web_app_runtime_response_safety.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_web_app_signals_and_trades.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_world_model_provenance.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/agent_attribution.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/agent_cycle.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/agent_report.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/ai_gateway.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tools/architecture_audit.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/atlas_org_cli.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/atlas_self_review.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/backtest_replay.py",
       "runtime_reachable": false
     },
     {
@@ -3371,7 +4133,15 @@
       "runtime_reachable": false
     },
     {
+      "module": "tools/build_rem001_gate1_maps.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tools/build_runtime_distribution.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/chaos_drill.py",
       "runtime_reachable": false
     },
     {
@@ -3379,7 +4149,47 @@
       "runtime_reachable": false
     },
     {
+      "module": "tools/check_execution_authority_agreement.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/ci_check_known_accepted_failures.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tools/cleanup_candidate_analyzer.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/code_health_report.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/data_health_check.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/decision_trace.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/diagnose_audit_chain_fork.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/digital_trial.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/exp001_report.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/experience_agent.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/extract_candle_age_telemetry.py",
       "runtime_reachable": false
     },
     {
@@ -3391,7 +4201,31 @@
       "runtime_reachable": false
     },
     {
+      "module": "tools/incident_report.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/inspect_research_market_data_coverage.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/lesson_book.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/lookahead_check.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tools/market_data_source_collector.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/measure_volatility_ceiling.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/meta_filter.py",
       "runtime_reachable": false
     },
     {
@@ -3415,6 +4249,10 @@
       "runtime_reachable": false
     },
     {
+      "module": "tools/paper_position_report.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tools/parse_error_analyzer.py",
       "runtime_reachable": false
     },
@@ -3432,6 +4270,10 @@
     },
     {
       "module": "tools/payload/test_market_loop_integration.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/performance_report.py",
       "runtime_reachable": false
     },
     {
@@ -3479,11 +4321,35 @@
       "runtime_reachable": false
     },
     {
+      "module": "tools/position_risk_buckets_repair.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/quarantine_audit_fork.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tools/quarantine_manifest_builder.py",
       "runtime_reachable": false
     },
     {
+      "module": "tools/reality_check.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tools/reconcile_execution_authorities.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/refresh_venue_instrument_rules.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/regime_bar_check.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/regime_engine.py",
       "runtime_reachable": false
     },
     {
@@ -3507,7 +4373,39 @@
       "runtime_reachable": false
     },
     {
+      "module": "tools/security_guardian.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/select_universe.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tools/semantic_reference_audit.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/show_config.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/start_atlas.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/state_backup.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/strategy_agent.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/strategy_compare.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/task_status.py",
       "runtime_reachable": false
     },
     {
@@ -4011,18 +4909,18 @@
       "kind": "import"
     },
     {
-      "from": "ai/core/atlas_reasoning_engine.py",
-      "to": "atlas_security/__init__.py",
-      "kind": "import"
-    },
-    {
-      "from": "ai/core/decision/decision_builder.py",
-      "to": "core/__init__.py",
+      "from": "ai/core/atlas_brain.py",
+      "to": "data_layer/__init__.py",
       "kind": "package_init"
     },
     {
-      "from": "ai/core/decision/decision_builder.py",
-      "to": "core/decision.py",
+      "from": "ai/core/atlas_brain.py",
+      "to": "data_layer/contracts.py",
+      "kind": "import"
+    },
+    {
+      "from": "ai/core/atlas_reasoning_engine.py",
+      "to": "atlas_security/__init__.py",
       "kind": "import"
     },
     {
@@ -4046,23 +4944,8 @@
       "kind": "import"
     },
     {
-      "from": "ai/core/intelligence/fusion_engine.py",
-      "to": "core/__init__.py",
-      "kind": "package_init"
-    },
-    {
-      "from": "ai/core/intelligence/fusion_engine.py",
-      "to": "core/decision.py",
-      "kind": "import"
-    },
-    {
-      "from": "ai/core/intelligence/risk_model.py",
-      "to": "core/__init__.py",
-      "kind": "package_init"
-    },
-    {
-      "from": "ai/core/intelligence/risk_model.py",
-      "to": "core/decision.py",
+      "from": "ai/core/intelligence/memory_adapter.py",
+      "to": "ai/core/intelligence/trade_evidence.py",
       "kind": "import"
     },
     {
@@ -4102,11 +4985,6 @@
     },
     {
       "from": "archive_unused_2026-07-22/core/engine.py",
-      "to": "core/memory.py",
-      "kind": "import"
-    },
-    {
-      "from": "archive_unused_2026-07-22/core/engine.py",
       "to": "core/paper_trader.py",
       "kind": "import"
     },
@@ -4134,11 +5012,6 @@
       "from": "archive_unused_2026-07-22/core/main_loop_v2.py",
       "to": "core/__init__.py",
       "kind": "package_init"
-    },
-    {
-      "from": "archive_unused_2026-07-22/core/main_loop_v2.py",
-      "to": "core/memory.py",
-      "kind": "import"
     },
     {
       "from": "archive_unused_2026-07-22/core/main_loop_v2.py",
@@ -4228,6 +5101,36 @@
     {
       "from": "archive_unused_2026-07-22/events/trade_events.py",
       "to": "archive_unused_2026-07-22/events/base_event.py",
+      "kind": "import"
+    },
+    {
+      "from": "archive_unused_2026-09-30/ai/core/decision/decision_builder.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "archive_unused_2026-09-30/ai/core/decision/decision_builder.py",
+      "to": "core/decision.py",
+      "kind": "import"
+    },
+    {
+      "from": "archive_unused_2026-09-30/ai/core/intelligence/fusion_engine.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "archive_unused_2026-09-30/ai/core/intelligence/fusion_engine.py",
+      "to": "core/decision.py",
+      "kind": "import"
+    },
+    {
+      "from": "archive_unused_2026-09-30/ai/core/intelligence/risk_model.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "archive_unused_2026-09-30/ai/core/intelligence/risk_model.py",
+      "to": "core/decision.py",
       "kind": "import"
     },
     {
@@ -4346,41 +5249,6 @@
       "kind": "import"
     },
     {
-      "from": "atlas_finance/__init__.py",
-      "to": "atlas_finance/market_data/__init__.py",
-      "kind": "import"
-    },
-    {
-      "from": "atlas_finance/market_data/__init__.py",
-      "to": "atlas_finance/__init__.py",
-      "kind": "package_init"
-    },
-    {
-      "from": "atlas_finance/market_data/__init__.py",
-      "to": "atlas_finance/market_data/binance_public_provider.py",
-      "kind": "import"
-    },
-    {
-      "from": "atlas_finance/market_data/__init__.py",
-      "to": "atlas_finance/market_data/contracts.py",
-      "kind": "import"
-    },
-    {
-      "from": "atlas_finance/market_data/__init__.py",
-      "to": "atlas_finance/market_data/exceptions.py",
-      "kind": "import"
-    },
-    {
-      "from": "atlas_finance/market_data/__init__.py",
-      "to": "atlas_finance/market_data/market_feed_service.py",
-      "kind": "import"
-    },
-    {
-      "from": "atlas_finance/market_data/__init__.py",
-      "to": "atlas_finance/market_data/models.py",
-      "kind": "import"
-    },
-    {
       "from": "atlas_finance/market_data/binance_public_provider.py",
       "to": "atlas_finance/__init__.py",
       "kind": "package_init"
@@ -4478,6 +5346,81 @@
     {
       "from": "atlas_finance/market_data/market_feed_service.py",
       "to": "atlas_os/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "atlas_org/manager.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "atlas_org/manager.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "atlas_org/manager.py",
+      "to": "atlas_org/permissions.py",
+      "kind": "import"
+    },
+    {
+      "from": "atlas_org/memory_records.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "atlas_org/memory_records.py",
+      "to": "atlas_org/proposals.py",
+      "kind": "import"
+    },
+    {
+      "from": "atlas_org/proposals.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "atlas_org/proposals.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "atlas_org/proposals.py",
+      "to": "atlas_org/owner_auth.py",
+      "kind": "import"
+    },
+    {
+      "from": "atlas_org/proposals.py",
+      "to": "atlas_org/security_review.py",
+      "kind": "import"
+    },
+    {
+      "from": "atlas_org/security_review.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "atlas_org/security_review.py",
+      "to": "atlas_org/proposals.py",
+      "kind": "import"
+    },
+    {
+      "from": "atlas_org/tasks.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "atlas_org/tasks.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "atlas_org/tasks.py",
+      "to": "atlas_org/permissions.py",
+      "kind": "import"
+    },
+    {
+      "from": "atlas_org/tasks.py",
+      "to": "atlas_org/proposals.py",
       "kind": "import"
     },
     {
@@ -4986,6 +5929,26 @@
       "kind": "import"
     },
     {
+      "from": "atlas_service.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "atlas_service.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "atlas_service.py",
+      "to": "main.py",
+      "kind": "import"
+    },
+    {
+      "from": "atlas_service.py",
+      "to": "web_app.py",
+      "kind": "import"
+    },
+    {
       "from": "backtest/backtest_engine.py",
       "to": "strategy/strategy_base.py",
       "kind": "import"
@@ -5071,6 +6034,46 @@
       "kind": "import"
     },
     {
+      "from": "conftest.py",
+      "to": "atlas_finance/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "conftest.py",
+      "to": "atlas_finance/market_data/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "conftest.py",
+      "to": "atlas_finance/market_data/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "conftest.py",
+      "to": "atlas_finance/market_data/fear_greed_provider.py",
+      "kind": "import"
+    },
+    {
+      "from": "conftest.py",
+      "to": "atlas_finance/market_data/treasury_yield_provider.py",
+      "kind": "import"
+    },
+    {
+      "from": "conftest.py",
+      "to": "observability/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "conftest.py",
+      "to": "observability/panel_sources.py",
+      "kind": "import"
+    },
+    {
+      "from": "conftest.py",
+      "to": "tools/generate_test_results_artifact.py",
+      "kind": "import"
+    },
+    {
       "from": "core/adapters/market_adapter.py",
       "to": "core/__init__.py",
       "kind": "package_init"
@@ -5078,6 +6081,36 @@
     {
       "from": "core/adapters/market_adapter.py",
       "to": "core/interfaces.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/application.py",
+      "to": "atlas_finance/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "core/application.py",
+      "to": "atlas_finance/market_data/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "core/application.py",
+      "to": "atlas_finance/market_data/fear_greed_provider.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/application.py",
+      "to": "atlas_finance/market_data/funding_rate_provider.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/application.py",
+      "to": "atlas_finance/market_data/treasury_yield_provider.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/application.py",
+      "to": "core/__init__.py",
       "kind": "import"
     },
     {
@@ -5137,6 +6170,16 @@
     },
     {
       "from": "core/application.py",
+      "to": "core/experiment_ledger.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/application.py",
+      "to": "core/instance_lock.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/application.py",
       "to": "core/instrument_rules.py",
       "kind": "import"
     },
@@ -5162,12 +6205,22 @@
     },
     {
       "from": "core/application.py",
+      "to": "core/market_risk_regime.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/application.py",
       "to": "core/paper_trader.py",
       "kind": "import"
     },
     {
       "from": "core/application.py",
       "to": "core/position_controller.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/application.py",
+      "to": "core/position_risk_buckets.py",
       "kind": "import"
     },
     {
@@ -5212,6 +6265,16 @@
     },
     {
       "from": "core/application.py",
+      "to": "data_layer/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "core/application.py",
+      "to": "data_layer/evidence_store.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/application.py",
       "to": "exchange/__init__.py",
       "kind": "package_init"
     },
@@ -5223,6 +6286,16 @@
     {
       "from": "core/application.py",
       "to": "portfolio/capital_manager.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/atlas_config.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "core/atlas_config.py",
+      "to": "core/application.py",
       "kind": "import"
     },
     {
@@ -5397,7 +6470,17 @@
     },
     {
       "from": "core/execution_manager.py",
+      "to": "core/order_lifecycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/execution_manager.py",
       "to": "core/risk_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/execution_manager.py",
+      "to": "core/risk_state_store.py",
       "kind": "import"
     },
     {
@@ -5557,7 +6640,32 @@
     },
     {
       "from": "core/market_loop.py",
+      "to": "analysis/evidence_status.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/market_loop.py",
       "to": "analysis/world_analysis_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/market_loop.py",
+      "to": "atlas_finance/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "core/market_loop.py",
+      "to": "atlas_finance/market_data/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "core/market_loop.py",
+      "to": "atlas_finance/market_data/fear_greed_provider.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/market_loop.py",
+      "to": "atlas_finance/market_data/treasury_yield_provider.py",
       "kind": "import"
     },
     {
@@ -5611,16 +6719,6 @@
       "kind": "import"
     },
     {
-      "from": "core/module_manager.py",
-      "to": "core/__init__.py",
-      "kind": "package_init"
-    },
-    {
-      "from": "core/module_manager.py",
-      "to": "core/module.py",
-      "kind": "import"
-    },
-    {
       "from": "core/operational_contracts.py",
       "to": "atlas_security/__init__.py",
       "kind": "import"
@@ -5648,6 +6746,76 @@
     {
       "from": "core/position_sizing.py",
       "to": "core/risk_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/research_evidence_bridge.py",
+      "to": "data_layer/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "core/research_evidence_bridge.py",
+      "to": "data_layer/contracts.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/research_evidence_bridge.py",
+      "to": "research/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "core/research_evidence_bridge.py",
+      "to": "research/hypothesis_registry.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/research_market_data_bridge.py",
+      "to": "data_layer/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "core/research_market_data_bridge.py",
+      "to": "data_layer/contracts.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/research_market_data_bridge.py",
+      "to": "data_layer/market_data_archive_sqlite.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/research_timestamp_split_binding.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "core/research_timestamp_split_binding.py",
+      "to": "core/research_market_data_bridge.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/research_timestamp_split_binding.py",
+      "to": "data_layer/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "core/research_timestamp_split_binding.py",
+      "to": "data_layer/contracts.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/research_timestamp_split_binding.py",
+      "to": "data_layer/market_data_archive_sqlite.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/research_timestamp_split_binding.py",
+      "to": "research/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "core/research_timestamp_split_binding.py",
+      "to": "research/splitting.py",
       "kind": "import"
     },
     {
@@ -5706,21 +6874,6 @@
       "kind": "import"
     },
     {
-      "from": "data_layer/__init__.py",
-      "to": "data_layer/config.py",
-      "kind": "import"
-    },
-    {
-      "from": "data_layer/__init__.py",
-      "to": "data_layer/models.py",
-      "kind": "import"
-    },
-    {
-      "from": "data_layer/__init__.py",
-      "to": "data_layer/sqlite.py",
-      "kind": "import"
-    },
-    {
       "from": "data_layer/canonical_evidence.py",
       "to": "data_layer/__init__.py",
       "kind": "package_init"
@@ -5748,6 +6901,21 @@
     {
       "from": "data_layer/config.py",
       "to": "data_layer/sqlite.py",
+      "kind": "import"
+    },
+    {
+      "from": "data_layer/evidence_store.py",
+      "to": "data_layer/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "data_layer/evidence_store.py",
+      "to": "data_layer/contracts.py",
+      "kind": "import"
+    },
+    {
+      "from": "data_layer/evidence_store.py",
+      "to": "data_layer/migrations.py",
       "kind": "import"
     },
     {
@@ -6153,6 +7321,11 @@
     {
       "from": "main.py",
       "to": "core/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "main.py",
+      "to": "core/__init__.py",
       "kind": "package_init"
     },
     {
@@ -6161,6 +7334,66 @@
       "kind": "import"
     },
     {
+      "from": "main.py",
+      "to": "core/atlas_config.py",
+      "kind": "import"
+    },
+    {
+      "from": "main.py",
+      "to": "core/audit_event_store.py",
+      "kind": "import"
+    },
+    {
+      "from": "main.py",
+      "to": "core/execution_manager.py",
+      "kind": "import"
+    },
+    {
+      "from": "main.py",
+      "to": "core/instance_lock.py",
+      "kind": "import"
+    },
+    {
+      "from": "main.py",
+      "to": "core/instrument_rules.py",
+      "kind": "import"
+    },
+    {
+      "from": "observability/event_contract.py",
+      "to": "atlas_security/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "observability/governance_records.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "observability/governance_records.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "observability/governance_records.py",
+      "to": "atlas_org/memory_records.py",
+      "kind": "import"
+    },
+    {
+      "from": "observability/governance_records.py",
+      "to": "atlas_org/permissions.py",
+      "kind": "import"
+    },
+    {
+      "from": "observability/governance_records.py",
+      "to": "atlas_org/proposals.py",
+      "kind": "import"
+    },
+    {
+      "from": "observability/governance_records.py",
+      "to": "atlas_org/tasks.py",
+      "kind": "import"
+    },
+    {
       "from": "observability/panel_router.py",
       "to": "observability/__init__.py",
       "kind": "import"
@@ -6172,6 +7405,31 @@
     },
     {
       "from": "observability/panel_router.py",
+      "to": "observability/panel_sources.py",
+      "kind": "import"
+    },
+    {
+      "from": "observability/security_view.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "observability/security_view.py",
+      "to": "atlas_org/permissions.py",
+      "kind": "import"
+    },
+    {
+      "from": "observability/security_view.py",
+      "to": "atlas_org/security_review.py",
+      "kind": "import"
+    },
+    {
+      "from": "observability/security_view.py",
+      "to": "observability/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "observability/security_view.py",
       "to": "observability/panel_sources.py",
       "kind": "import"
     },
@@ -7356,8 +8614,18 @@
       "kind": "import"
     },
     {
+      "from": "tests/architecture/test_atlas_finance_init_is_lazy.py",
+      "to": "tools/build_architecture_inventory.py",
+      "kind": "import"
+    },
+    {
       "from": "tests/architecture/test_authority_guard.py",
       "to": "tools/build_architecture_inventory.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/architecture/test_ci_known_accepted_failures_check.py",
+      "to": "tools/ci_check_known_accepted_failures.py",
       "kind": "import"
     },
     {
@@ -7396,6 +8664,16 @@
       "kind": "import"
     },
     {
+      "from": "tests/architecture/test_data_layer_init_is_lazy.py",
+      "to": "tools/build_architecture_inventory.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/architecture/test_forbidden_edges_ancestor_resolution.py",
+      "to": "tools/build_architecture_inventory.py",
+      "kind": "import"
+    },
+    {
       "from": "tests/architecture/test_forbidden_layer_imports.py",
       "to": "tools/build_architecture_inventory.py",
       "kind": "import"
@@ -7431,7 +8709,32 @@
       "kind": "import"
     },
     {
+      "from": "tests/architecture/test_rem001_construction_paths.py",
+      "to": "tools/build_architecture_inventory.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/architecture/test_rem001_construction_paths.py",
+      "to": "tools/build_rem001_gate1_maps.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/architecture/test_rem001_state_authority_map.py",
+      "to": "tools/build_architecture_inventory.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/architecture/test_rem001_state_authority_map.py",
+      "to": "tools/build_rem001_gate1_maps.py",
+      "kind": "import"
+    },
+    {
       "from": "tests/architecture/test_runtime_closure_matches_inventory.py",
+      "to": "tools/build_architecture_inventory.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/architecture/test_runtime_has_no_ai_provider_dependency.py",
       "to": "tools/build_architecture_inventory.py",
       "kind": "import"
     },
@@ -7516,6 +8819,31 @@
       "kind": "import"
     },
     {
+      "from": "tests/atlas_os/test_scheduler_execute_task_golden.py",
+      "to": "atlas_os/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/atlas_os/test_scheduler_execute_task_golden.py",
+      "to": "atlas_os/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/atlas_os/test_scheduler_execute_task_golden.py",
+      "to": "atlas_os/scheduling/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/atlas_os/test_scheduler_execute_task_golden.py",
+      "to": "atlas_os/scheduling/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/atlas_os/test_scheduler_execute_task_golden.py",
+      "to": "atlas_os/scheduling/scheduler.py",
+      "kind": "import"
+    },
+    {
       "from": "tests/atlas_os/test_secrets_manager.py",
       "to": "atlas_os/__init__.py",
       "kind": "package_init"
@@ -7596,6 +8924,171 @@
       "kind": "import"
     },
     {
+      "from": "tests/test_agent_attribution.py",
+      "to": "tools/agent_attribution.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agent_cycle.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agent_cycle.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_agent_cycle.py",
+      "to": "atlas_org/memory_records.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agent_cycle.py",
+      "to": "atlas_org/tasks.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agent_cycle.py",
+      "to": "observability/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_agent_cycle.py",
+      "to": "observability/organization.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agent_cycle.py",
+      "to": "tools/agent_cycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agent_cycle.py",
+      "to": "tools/atlas_org_cli.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agent_cycle.py",
+      "to": "tools/atlas_self_review.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agent_fusion_refactor_golden.py",
+      "to": "ai/core/intelligence/agent_fusion.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agent_report.py",
+      "to": "tools/agent_report.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agent_state_single_source.py",
+      "to": "observability/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agent_state_single_source.py",
+      "to": "observability/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_agent_state_single_source.py",
+      "to": "observability/agent_states.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agent_state_single_source.py",
+      "to": "observability/command_center.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agent_state_single_source.py",
+      "to": "web_app.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agent_states.py",
+      "to": "observability/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agent_states.py",
+      "to": "observability/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_agent_states.py",
+      "to": "observability/agent_states.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agent_states.py",
+      "to": "web_app.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agents_page.py",
+      "to": "observability/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_agents_page.py",
+      "to": "observability/organization.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agents_page.py",
+      "to": "web_app.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_ai_gateway.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_ai_gateway.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_ai_gateway.py",
+      "to": "atlas_org/memory_records.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_ai_gateway.py",
+      "to": "atlas_org/proposals.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_ai_gateway.py",
+      "to": "tools/agent_cycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_ai_gateway.py",
+      "to": "tools/ai_gateway.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_ai_gateway.py",
+      "to": "tools/atlas_org_cli.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_application_health_market_signals.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_application_health_market_signals.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
       "from": "tests/test_application_lifecycle.py",
       "to": "core/__init__.py",
       "kind": "package_init"
@@ -7638,6 +9131,401 @@
     {
       "from": "tests/test_atlas_brain_phase5_shadow.py",
       "to": "core/decision_intelligence.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_config.py",
+      "to": "atlas_supervisor.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_config.py",
+      "to": "core/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_config.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_atlas_config.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_config.py",
+      "to": "core/atlas_config.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_config.py",
+      "to": "main.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_config.py",
+      "to": "tools/show_config.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_org_audit_fixes.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_org_audit_fixes.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_atlas_org_audit_fixes.py",
+      "to": "atlas_org/manager.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_org_audit_fixes.py",
+      "to": "atlas_org/memory_records.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_org_audit_fixes.py",
+      "to": "atlas_org/owner_auth.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_org_audit_fixes.py",
+      "to": "atlas_org/proposals.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_org_audit_fixes.py",
+      "to": "atlas_org/security_review.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_org_audit_fixes.py",
+      "to": "observability/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_org_audit_fixes.py",
+      "to": "observability/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_atlas_org_audit_fixes.py",
+      "to": "observability/command_center.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_org_audit_fixes.py",
+      "to": "tools/atlas_org_cli.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_org_governance.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_org_governance.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_atlas_org_governance.py",
+      "to": "atlas_org/memory_records.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_org_governance.py",
+      "to": "atlas_org/permissions.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_org_governance.py",
+      "to": "atlas_org/proposals.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_org_governance.py",
+      "to": "atlas_org/security_review.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_org_governance.py",
+      "to": "observability/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_org_governance.py",
+      "to": "observability/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_atlas_org_governance.py",
+      "to": "observability/governance_records.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_org_governance.py",
+      "to": "observability/organization.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_org_governance.py",
+      "to": "tools/atlas_org_cli.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_org_governance.py",
+      "to": "web_app.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_org_tasks.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_org_tasks.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_atlas_org_tasks.py",
+      "to": "atlas_org/manager.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_org_tasks.py",
+      "to": "atlas_org/memory_records.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_org_tasks.py",
+      "to": "atlas_org/proposals.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_org_tasks.py",
+      "to": "atlas_org/security_review.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_org_tasks.py",
+      "to": "atlas_org/tasks.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_org_tasks.py",
+      "to": "observability/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_org_tasks.py",
+      "to": "observability/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_atlas_org_tasks.py",
+      "to": "observability/governance_records.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_org_tasks.py",
+      "to": "tools/atlas_org_cli.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_self_review.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_self_review.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_atlas_self_review.py",
+      "to": "atlas_org/memory_records.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_self_review.py",
+      "to": "atlas_org/tasks.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_self_review.py",
+      "to": "tools/atlas_org_cli.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_self_review.py",
+      "to": "tools/atlas_self_review.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_backlog001_fear_greed_provider.py",
+      "to": "atlas_finance/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_backlog001_fear_greed_provider.py",
+      "to": "atlas_finance/market_data/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_backlog001_fear_greed_provider.py",
+      "to": "atlas_finance/market_data/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_backlog001_fear_greed_provider.py",
+      "to": "atlas_finance/market_data/fear_greed_provider.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_backlog001_macro_risk_wiring_and_fusion.py",
+      "to": "ai/core/intelligence/agent_fusion.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_backlog001_macro_risk_wiring_and_fusion.py",
+      "to": "analysis/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_backlog001_macro_risk_wiring_and_fusion.py",
+      "to": "analysis/evidence_status.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_backlog001_macro_risk_wiring_and_fusion.py",
+      "to": "analysis/world_analysis_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_backlog001_macro_risk_wiring_and_fusion.py",
+      "to": "atlas_finance/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_backlog001_macro_risk_wiring_and_fusion.py",
+      "to": "atlas_finance/market_data/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_backlog001_macro_risk_wiring_and_fusion.py",
+      "to": "atlas_finance/market_data/fear_greed_provider.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_backlog001_macro_risk_wiring_and_fusion.py",
+      "to": "atlas_finance/market_data/treasury_yield_provider.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_backlog001_macro_risk_wiring_and_fusion.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_backlog001_macro_risk_wiring_and_fusion.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_backlog001_macro_risk_wiring_and_fusion.py",
+      "to": "core/execution_manager.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_backlog001_macro_risk_wiring_and_fusion.py",
+      "to": "core/market_loop.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_backlog001_macro_risk_wiring_and_fusion.py",
+      "to": "core/market_risk_regime.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_backlog001_sentiment_wiring_and_fusion.py",
+      "to": "ai/core/intelligence/agent_fusion.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_backlog001_sentiment_wiring_and_fusion.py",
+      "to": "analysis/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_backlog001_sentiment_wiring_and_fusion.py",
+      "to": "analysis/evidence_status.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_backlog001_sentiment_wiring_and_fusion.py",
+      "to": "analysis/world_analysis_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_backlog001_sentiment_wiring_and_fusion.py",
+      "to": "atlas_finance/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_backlog001_sentiment_wiring_and_fusion.py",
+      "to": "atlas_finance/market_data/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_backlog001_sentiment_wiring_and_fusion.py",
+      "to": "atlas_finance/market_data/fear_greed_provider.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_backlog001_sentiment_wiring_and_fusion.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_backlog001_sentiment_wiring_and_fusion.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_backlog001_sentiment_wiring_and_fusion.py",
+      "to": "core/execution_manager.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_backlog001_sentiment_wiring_and_fusion.py",
+      "to": "core/market_loop.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_backtest_replay.py",
+      "to": "ai/core/atlas_brain.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_backtest_replay.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_backtest_replay.py",
+      "to": "core/risk_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_backtest_replay.py",
+      "to": "tools/backtest_replay.py",
       "kind": "import"
     },
     {
@@ -8457,6 +10345,16 @@
     },
     {
       "from": "tests/test_block4_market_data_sqlite_storage.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_block4_market_data_sqlite_storage.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_block4_market_data_sqlite_storage.py",
       "to": "data_layer/__init__.py",
       "kind": "package_init"
     },
@@ -8556,6 +10454,16 @@
       "kind": "import"
     },
     {
+      "from": "tests/test_block5a_risk_state_plumbing.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_block5a_risk_state_plumbing.py",
+      "to": "tests/_market_clock.py",
+      "kind": "import"
+    },
+    {
       "from": "tests/test_block5b_single_sizing_authority.py",
       "to": "core/__init__.py",
       "kind": "package_init"
@@ -8598,6 +10506,16 @@
     {
       "from": "tests/test_block5b_single_sizing_authority.py",
       "to": "core/risk_state_store.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_block5b_single_sizing_authority.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_block5b_single_sizing_authority.py",
+      "to": "tests/_market_clock.py",
       "kind": "import"
     },
     {
@@ -8648,6 +10566,16 @@
     {
       "from": "tests/test_block5c_upstream_sizing_authority.py",
       "to": "core/risk_state_store.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_block5c_upstream_sizing_authority.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_block5c_upstream_sizing_authority.py",
+      "to": "tests/_market_clock.py",
       "kind": "import"
     },
     {
@@ -9201,6 +11129,266 @@
       "kind": "import"
     },
     {
+      "from": "tests/test_brain_mem_001.py",
+      "to": "ai/core/atlas_brain.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_brain_mem_001.py",
+      "to": "ai/core/intelligence/memory_adapter.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_brain_mem_001.py",
+      "to": "ai/core/intelligence/trade_evidence.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_brain_mem_001.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_brain_mem_001.py",
+      "to": "core/brain.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_brain_mem_001.py",
+      "to": "core/decision.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_buy_stale_data_gate.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_buy_stale_data_gate.py",
+      "to": "core/market_loop.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_buy_stale_data_gate.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_buy_stale_data_gate.py",
+      "to": "tests/test_block5c_upstream_sizing_authority.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_candle_nonfinite.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_candle_nonfinite.py",
+      "to": "core/candle_processor.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_chaos_drill.py",
+      "to": "tools/chaos_drill.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_check_execution_authority_agreement.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_check_execution_authority_agreement.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_check_execution_authority_agreement.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_check_execution_authority_agreement.py",
+      "to": "tests/test_block5c_upstream_sizing_authority.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_check_execution_authority_agreement.py",
+      "to": "tools/check_execution_authority_agreement.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_code001_quality_ratchet.py",
+      "to": "tools/code_health_report.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_command_center.py",
+      "to": "observability/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_command_center.py",
+      "to": "observability/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_command_center.py",
+      "to": "observability/command_center.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_command_center.py",
+      "to": "web_app.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_corrupt_execution_state_fails_closed.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_corrupt_execution_state_fails_closed.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_corrupt_execution_state_fails_closed.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_corrupt_execution_state_fails_closed.py",
+      "to": "tests/test_block5c_upstream_sizing_authority.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_corrupt_risk_state_fails_closed.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_corrupt_risk_state_fails_closed.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_corrupt_risk_state_fails_closed.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_corrupt_risk_state_fails_closed.py",
+      "to": "tests/test_block5c_upstream_sizing_authority.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_dashboard_adminlte_and_integrity_panels.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_dashboard_adminlte_and_integrity_panels.py",
+      "to": "core/audit_event_store.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_dashboard_adminlte_and_integrity_panels.py",
+      "to": "core/market_loop.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_dashboard_adminlte_and_integrity_panels.py",
+      "to": "core/risk_state_store.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_dashboard_adminlte_and_integrity_panels.py",
+      "to": "observability/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_dashboard_adminlte_and_integrity_panels.py",
+      "to": "observability/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_dashboard_adminlte_and_integrity_panels.py",
+      "to": "observability/panel_router.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_dashboard_adminlte_and_integrity_panels.py",
+      "to": "observability/panel_sources.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_dashboard_adminlte_and_integrity_panels.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_dashboard_adminlte_and_integrity_panels.py",
+      "to": "tests/test_backlog001_macro_risk_wiring_and_fusion.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_dashboard_adminlte_and_integrity_panels.py",
+      "to": "tools/extract_candle_age_telemetry.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_dashboard_adminlte_and_integrity_panels.py",
+      "to": "web_app.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_dashboard_execution_gates.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_dashboard_execution_gates.py",
+      "to": "core/audit_event_store.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_dashboard_execution_gates.py",
+      "to": "core/risk_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_dashboard_execution_gates.py",
+      "to": "web_app.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_data_health_check.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_data_health_check.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_data_health_check.py",
+      "to": "core/execution_models.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_data_health_check.py",
+      "to": "core/execution_portfolio_foundation.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_data_health_check.py",
+      "to": "tools/data_health_check.py",
+      "kind": "import"
+    },
+    {
       "from": "tests/test_decision_adapter.py",
       "to": "core/__init__.py",
       "kind": "package_init"
@@ -9236,6 +11424,11 @@
       "kind": "import"
     },
     {
+      "from": "tests/test_decision_trace.py",
+      "to": "tools/decision_trace.py",
+      "kind": "import"
+    },
+    {
       "from": "tests/test_deprecated_execution_state_recovery.py",
       "to": "core/__init__.py",
       "kind": "package_init"
@@ -9243,6 +11436,11 @@
     {
       "from": "tests/test_deprecated_execution_state_recovery.py",
       "to": "core/execution_state.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_digital_trial.py",
+      "to": "tools/digital_trial.py",
       "kind": "import"
     },
     {
@@ -9291,6 +11489,76 @@
       "kind": "import"
     },
     {
+      "from": "tests/test_event_contract.py",
+      "to": "observability/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_event_contract.py",
+      "to": "observability/event_contract.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_event_contract.py",
+      "to": "web_app.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_evidence_store.py",
+      "to": "data_layer/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_evidence_store.py",
+      "to": "data_layer/contracts.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_evidence_store.py",
+      "to": "data_layer/evidence_store.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_evidence_store_integration.py",
+      "to": "ai/core/atlas_brain.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_evidence_store_integration.py",
+      "to": "analysis/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_evidence_store_integration.py",
+      "to": "analysis/evidence_status.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_evidence_store_integration.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_evidence_store_integration.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_evidence_store_integration.py",
+      "to": "core/brain.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_evidence_store_integration.py",
+      "to": "data_layer/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_evidence_store_integration.py",
+      "to": "data_layer/evidence_store.py",
+      "kind": "import"
+    },
+    {
       "from": "tests/test_exchange_manager_adapter_fail_closed.py",
       "to": "exchange/__init__.py",
       "kind": "package_init"
@@ -9513,6 +11781,156 @@
     {
       "from": "tests/test_exchange_manager_safety_integration.py",
       "to": "exchange/execution_safety_gate.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_execution_audit_trail_completeness.py",
+      "to": "atlas_security/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_execution_audit_trail_completeness.py",
+      "to": "atlas_security/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_execution_audit_trail_completeness.py",
+      "to": "atlas_security/sensitive_data_guard.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_execution_audit_trail_completeness.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_execution_audit_trail_completeness.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_execution_audit_trail_completeness.py",
+      "to": "core/audit_event.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_execution_audit_trail_completeness.py",
+      "to": "core/audit_event_store.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_execution_audit_trail_completeness.py",
+      "to": "core/execution_idempotency_store.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_execution_audit_trail_completeness.py",
+      "to": "core/execution_manager.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_execution_audit_trail_completeness.py",
+      "to": "core/execution_transaction_journal.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_execution_audit_trail_completeness.py",
+      "to": "core/risk_state_store.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_execution_audit_trail_completeness.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_execution_audit_trail_completeness.py",
+      "to": "tests/test_execution_crash_recovery_f1_f6.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_execution_audit_trail_completeness.py",
+      "to": "tests/test_recovery_risk_accounting_booking.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_execution_audit_trail_completeness.py",
+      "to": "tests/test_risk_accounting_day_auto_rollover.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_execution_audit_trail_completeness.py",
+      "to": "tests/test_risk_accounting_realized_pnl_wiring.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_execution_audit_trail_completeness.py",
+      "to": "tools/reconcile_execution_authorities.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_execution_crash_recovery_f1_f6.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_execution_crash_recovery_f1_f6.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_execution_crash_recovery_f1_f6.py",
+      "to": "core/audit_event_store.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_execution_crash_recovery_f1_f6.py",
+      "to": "core/capital_reservation.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_execution_crash_recovery_f1_f6.py",
+      "to": "core/execution_idempotency_store.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_execution_crash_recovery_f1_f6.py",
+      "to": "core/execution_models.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_execution_crash_recovery_f1_f6.py",
+      "to": "core/execution_portfolio_foundation.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_execution_crash_recovery_f1_f6.py",
+      "to": "core/execution_transaction_journal.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_execution_crash_recovery_f1_f6.py",
+      "to": "core/instrument_rules.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_execution_crash_recovery_f1_f6.py",
+      "to": "core/risk_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_execution_crash_recovery_f1_f6.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_execution_crash_recovery_f1_f6.py",
+      "to": "tests/test_block2_risk_service_composition_wiring.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_execution_crash_recovery_f1_f6.py",
+      "to": "tools/reconcile_execution_authorities.py",
       "kind": "import"
     },
     {
@@ -9523,6 +11941,46 @@
     {
       "from": "tests/test_execution_exposure_guard.py",
       "to": "exchange/execution_exposure_guard.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_execution_identifier_preservation.py",
+      "to": "atlas_security/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_execution_identifier_preservation.py",
+      "to": "atlas_security/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_execution_identifier_preservation.py",
+      "to": "atlas_security/sensitive_data_guard.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_execution_identifier_preservation.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_execution_identifier_preservation.py",
+      "to": "core/audit_event.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_execution_identifier_preservation.py",
+      "to": "core/audit_event_store.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_execution_identifier_preservation.py",
+      "to": "core/execution_idempotency_store.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_execution_identifier_preservation.py",
+      "to": "core/execution_transaction_journal.py",
       "kind": "import"
     },
     {
@@ -9543,6 +12001,226 @@
     {
       "from": "tests/test_execution_safety_gate.py",
       "to": "exchange/execution_safety_gate.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_exp001_paper_confidence_experiment.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_exp001_paper_confidence_experiment.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_exp001_paper_confidence_experiment.py",
+      "to": "core/capital_reservation.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_exp001_paper_confidence_experiment.py",
+      "to": "core/execution_manager.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_exp001_paper_confidence_experiment.py",
+      "to": "core/execution_models.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_exp001_paper_confidence_experiment.py",
+      "to": "core/experiment_ledger.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_exp001_paper_confidence_experiment.py",
+      "to": "core/instrument_rules.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_exp001_paper_confidence_experiment.py",
+      "to": "core/risk_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_exp001_paper_confidence_experiment.py",
+      "to": "core/risk_state_store.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_exp001_report.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_exp001_report.py",
+      "to": "core/risk_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_exp001_report.py",
+      "to": "tools/exp001_report.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_exp002_paper_confidence_experiment.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_exp002_paper_confidence_experiment.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_exp002_paper_confidence_experiment.py",
+      "to": "core/risk_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_exp002_paper_confidence_experiment.py",
+      "to": "main.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_exp002_paper_confidence_experiment.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_exp002_paper_confidence_experiment.py",
+      "to": "tests/test_block5e_fee_settlement_accounting.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_exp002_paper_confidence_experiment.py",
+      "to": "tests/test_exp001_paper_confidence_experiment.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_experience_agent.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_experience_agent.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_experience_agent.py",
+      "to": "atlas_org/memory_records.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_experience_agent.py",
+      "to": "observability/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_experience_agent.py",
+      "to": "observability/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_experience_agent.py",
+      "to": "observability/experience_view.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_experience_agent.py",
+      "to": "tools/atlas_org_cli.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_experience_agent.py",
+      "to": "tools/backtest_replay.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_experience_agent.py",
+      "to": "tools/experience_agent.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_experience_agent.py",
+      "to": "tools/lesson_book.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_extract_candle_age_telemetry.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_extract_candle_age_telemetry.py",
+      "to": "core/market_loop.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_extract_candle_age_telemetry.py",
+      "to": "tools/extract_candle_age_telemetry.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_f3_mark_to_market_wiring.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_f3_mark_to_market_wiring.py",
+      "to": "core/execution_manager.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_f3_mark_to_market_wiring.py",
+      "to": "core/market_loop.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_f3_mark_to_market_wiring.py",
+      "to": "core/risk_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_f3_unrealized_daily_loss.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_f3_unrealized_daily_loss.py",
+      "to": "core/risk_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_f3_unrealized_daily_loss.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_f3_unrealized_daily_loss.py",
+      "to": "tests/test_phase3_risk_capital_foundation.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_f4_paper_slippage.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_f4_paper_slippage.py",
+      "to": "core/execution_manager.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_f4_slippage_end_to_end.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_f4_slippage_end_to_end.py",
+      "to": "tests/test_block5e_fee_settlement_accounting.py",
       "kind": "import"
     },
     {
@@ -9586,6 +12264,91 @@
       "kind": "import"
     },
     {
+      "from": "tests/test_funding_rate_sentiment.py",
+      "to": "analysis/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_funding_rate_sentiment.py",
+      "to": "analysis/evidence_status.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_funding_rate_sentiment.py",
+      "to": "analysis/world_analysis_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_funding_rate_sentiment.py",
+      "to": "atlas_finance/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_funding_rate_sentiment.py",
+      "to": "atlas_finance/market_data/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_funding_rate_sentiment.py",
+      "to": "atlas_finance/market_data/funding_rate_provider.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_funding_rate_sentiment.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_funding_rate_sentiment.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_funding_rate_sentiment.py",
+      "to": "core/market_loop.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_funding_rate_sentiment.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_funding_rate_sentiment.py",
+      "to": "tests/test_block5e_fee_settlement_accounting.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_fusion_dissent_confidence.py",
+      "to": "ai/core/intelligence/agent_fusion.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_fusion_dissent_confidence.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_fusion_dissent_confidence.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_fusion_dissent_confidence.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_fusion_dissent_confidence.py",
+      "to": "tests/test_block5e_fee_settlement_accounting.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_fusion_dissent_confidence.py",
+      "to": "tools/strategy_compare.py",
+      "kind": "import"
+    },
+    {
       "from": "tests/test_historical_archive.py",
       "to": "atlas_finance/__init__.py",
       "kind": "package_init"
@@ -9621,6 +12384,236 @@
       "kind": "import"
     },
     {
+      "from": "tests/test_home_trading_pages.py",
+      "to": "observability/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_home_trading_pages.py",
+      "to": "observability/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_home_trading_pages.py",
+      "to": "observability/research_view.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_home_trading_pages.py",
+      "to": "observability/roadmap_view.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_home_trading_pages.py",
+      "to": "observability/security_view.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_home_trading_pages.py",
+      "to": "web_app.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_hq_page.py",
+      "to": "web_app.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_incident_report.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_incident_report.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_incident_report.py",
+      "to": "atlas_org/memory_records.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_incident_report.py",
+      "to": "tools/atlas_org_cli.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_incident_report.py",
+      "to": "tools/incident_report.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_independent_audit_fixes.py",
+      "to": "ai/core/intelligence/trade_evidence.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_independent_audit_fixes.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_independent_audit_fixes.py",
+      "to": "core/brain.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_independent_audit_fixes.py",
+      "to": "core/execution_manager.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_independent_audit_fixes.py",
+      "to": "core/market_loop.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_independent_audit_fixes.py",
+      "to": "core/order_lifecycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_indicator_numeric_accuracy.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_indicator_numeric_accuracy.py",
+      "to": "core/market_loop.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_indicator_numeric_accuracy.py",
+      "to": "core/technical_analyzer.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_learning_book_extras.py",
+      "to": "observability/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_learning_book_extras.py",
+      "to": "observability/learning_view.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_learning_view.py",
+      "to": "observability/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_learning_view.py",
+      "to": "observability/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_learning_view.py",
+      "to": "observability/learning_view.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_lesson_book.py",
+      "to": "tools/lesson_book.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_lesson_book.py",
+      "to": "tools/paper_position_report.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_limits_card.py",
+      "to": "observability/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_limits_card.py",
+      "to": "observability/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_limits_card.py",
+      "to": "observability/portfolio_view.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_limits_card.py",
+      "to": "web_app.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_lookahead_check.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_lookahead_check.py",
+      "to": "tests/test_backtest_replay.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_lookahead_check.py",
+      "to": "tools/backtest_replay.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_lookahead_check.py",
+      "to": "tools/lookahead_check.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_loopback_host_header_guard.py",
+      "to": "observability/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_loopback_host_header_guard.py",
+      "to": "observability/panel_router.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_loopback_host_header_guard.py",
+      "to": "web_app.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_main_process_heartbeat.py",
+      "to": "main.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_market_data_api_error_handling.py",
+      "to": "atlas_finance/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_market_data_api_error_handling.py",
+      "to": "atlas_finance/market_data/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_market_data_api_error_handling.py",
+      "to": "atlas_finance/market_data/binance_public_provider.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_market_data_api_error_handling.py",
+      "to": "atlas_finance/market_data/exceptions.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_market_data_api_error_handling.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_market_data_api_error_handling.py",
+      "to": "core/market_loop.py",
+      "kind": "import"
+    },
+    {
       "from": "tests/test_market_data_archive_sqlite.py",
       "to": "data_layer/__init__.py",
       "kind": "package_init"
@@ -9648,6 +12641,141 @@
     {
       "from": "tests/test_market_feed_restart_lifecycle.py",
       "to": "atlas_finance/market_data/binance_public_provider.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_market_loop_candle_age_telemetry.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_market_loop_candle_age_telemetry.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_market_loop_candle_age_telemetry.py",
+      "to": "core/candle_processor.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_market_loop_candle_age_telemetry.py",
+      "to": "core/logger.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_market_loop_candle_age_telemetry.py",
+      "to": "core/market_loop.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_market_loop_reconnect.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_market_loop_reconnect.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_market_loop_reconnect.py",
+      "to": "core/market_loop.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_market_loop_reconnect.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_market_loop_reconnect.py",
+      "to": "tests/test_block5c_upstream_sizing_authority.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_market_risk_regime.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_market_risk_regime.py",
+      "to": "core/market_risk_regime.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_measure_volatility_ceiling.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_measure_volatility_ceiling.py",
+      "to": "core/market_risk_regime.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_measure_volatility_ceiling.py",
+      "to": "tools/measure_volatility_ceiling.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_memory_claims.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_memory_claims.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_memory_claims.py",
+      "to": "atlas_org/memory_records.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_memory_claims.py",
+      "to": "tools/atlas_org_cli.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_merged_process_composition.py",
+      "to": "atlas_service.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_merged_process_composition.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_merged_process_composition.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_merged_process_composition.py",
+      "to": "main.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_meta_filter.py",
+      "to": "tools/meta_filter.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_migrate_execution_financial_state.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_migrate_execution_financial_state.py",
+      "to": "core/execution_portfolio_foundation.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_migrate_execution_financial_state.py",
+      "to": "tools/migrate_execution_financial_state.py",
       "kind": "import"
     },
     {
@@ -10001,6 +13129,11 @@
       "kind": "import"
     },
     {
+      "from": "tests/test_observability_artifact_freshness.py",
+      "to": "conftest.py",
+      "kind": "import"
+    },
+    {
       "from": "tests/test_observability_panel.py",
       "to": "observability/__init__.py",
       "kind": "import"
@@ -10018,6 +13151,211 @@
     {
       "from": "tests/test_observability_panel.py",
       "to": "observability/panel_sources.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_order_lifecycle.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_order_lifecycle.py",
+      "to": "core/order_lifecycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_order_lifecycle_observe.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_order_lifecycle_observe.py",
+      "to": "core/order_lifecycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_order_lifecycle_observe.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_order_lifecycle_observe.py",
+      "to": "tests/test_block5e_fee_settlement_accounting.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_organization_roster.py",
+      "to": "observability/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_organization_roster.py",
+      "to": "observability/organization.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_organization_roster.py",
+      "to": "web_app.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_owner_switches_2026_10_01.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_owner_switches_2026_10_01.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_owner_switches_2026_10_01.py",
+      "to": "observability/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_owner_switches_2026_10_01.py",
+      "to": "observability/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_owner_switches_2026_10_01.py",
+      "to": "observability/readiness.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_owner_switches_2026_10_01.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_owner_switches_2026_10_01.py",
+      "to": "tests/test_block5e_fee_settlement_accounting.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_owner_switches_2026_10_01.py",
+      "to": "web_app.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_panel_decoupling.py",
+      "to": "atlas_service.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_panel_decoupling.py",
+      "to": "main.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_panel_decoupling.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_panel_decoupling.py",
+      "to": "tests/test_merged_process_composition.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_paper_book_mirror_integrity.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_paper_book_mirror_integrity.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_paper_book_mirror_integrity.py",
+      "to": "core/paper_trader.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_paper_book_mirror_integrity.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_paper_book_mirror_integrity.py",
+      "to": "tests/test_block2_risk_service_composition_wiring.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_paper_book_mirror_integrity.py",
+      "to": "tests/test_block3_execution_exception_atomicity.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_paper_fee_model.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_paper_fee_model.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_paper_fee_model.py",
+      "to": "core/execution_manager.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_paper_fee_model.py",
+      "to": "core/execution_models.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_paper_fee_model.py",
+      "to": "core/risk_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_paper_fee_model.py",
+      "to": "main.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_paper_fee_model.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_paper_fee_model.py",
+      "to": "tests/test_block2_risk_service_composition_wiring.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_paper_fee_model.py",
+      "to": "tests/test_block3_execution_exception_atomicity.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_paper_fee_model.py",
+      "to": "tests/test_execution_crash_recovery_f1_f6.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_paper_position_report.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_paper_position_report.py",
+      "to": "tests/test_block5c_upstream_sizing_authority.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_paper_position_report.py",
+      "to": "tools/paper_position_report.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_performance_report.py",
+      "to": "tools/performance_report.py",
       "kind": "import"
     },
     {
@@ -10291,6 +13629,381 @@
       "kind": "import"
     },
     {
+      "from": "tests/test_portfolio_view.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_portfolio_view.py",
+      "to": "core/execution_models.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_portfolio_view.py",
+      "to": "core/execution_portfolio_foundation.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_portfolio_view.py",
+      "to": "observability/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_portfolio_view.py",
+      "to": "observability/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_portfolio_view.py",
+      "to": "observability/portfolio_view.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_portfolio_view.py",
+      "to": "web_app.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_position_risk_buckets.py",
+      "to": "core/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_position_risk_buckets.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_position_risk_buckets.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_position_risk_buckets.py",
+      "to": "core/position_risk_buckets.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_position_risk_buckets.py",
+      "to": "core/risk_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_position_risk_buckets.py",
+      "to": "observability/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_position_risk_buckets.py",
+      "to": "observability/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_position_risk_buckets.py",
+      "to": "observability/readiness.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_position_risk_buckets.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_position_risk_buckets.py",
+      "to": "tests/test_block5e_fee_settlement_accounting.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_price_chart.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_price_chart.py",
+      "to": "core/market_loop.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_price_chart.py",
+      "to": "web_app.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_process_supervisor.py",
+      "to": "atlas_service.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_process_supervisor.py",
+      "to": "atlas_supervisor.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_process_supervisor.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_process_supervisor.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_quarantine_audit_fork.py",
+      "to": "core/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_quarantine_audit_fork.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_quarantine_audit_fork.py",
+      "to": "core/audit_event_store.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_quarantine_audit_fork.py",
+      "to": "core/instance_lock.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_quarantine_audit_fork.py",
+      "to": "main.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_quarantine_audit_fork.py",
+      "to": "tools/quarantine_audit_fork.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_readiness.py",
+      "to": "observability/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_readiness.py",
+      "to": "observability/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_readiness.py",
+      "to": "observability/readiness.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_readiness.py",
+      "to": "web_app.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_reality_check.py",
+      "to": "tools/reality_check.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_recovery_risk_accounting_booking.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_recovery_risk_accounting_booking.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_recovery_risk_accounting_booking.py",
+      "to": "core/execution_portfolio_foundation.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_recovery_risk_accounting_booking.py",
+      "to": "core/execution_transaction_journal.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_recovery_risk_accounting_booking.py",
+      "to": "core/risk_state_store.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_recovery_risk_accounting_booking.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_recovery_risk_accounting_booking.py",
+      "to": "tests/test_execution_crash_recovery_f1_f6.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_recovery_risk_accounting_booking.py",
+      "to": "tests/test_risk_accounting_realized_pnl_wiring.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_recovery_risk_accounting_booking.py",
+      "to": "tools/reconcile_execution_authorities.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_refresh_venue_instrument_rules.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_refresh_venue_instrument_rules.py",
+      "to": "core/instrument_rules.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_refresh_venue_instrument_rules.py",
+      "to": "tools/refresh_venue_instrument_rules.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_refresh_venue_instrument_rules.py",
+      "to": "tools/venue_metadata_adapter.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_regime_bar_check.py",
+      "to": "tools/regime_bar_check.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_regime_engine.py",
+      "to": "tools/regime_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_regime_risk_level.py",
+      "to": "ai/core/atlas_brain.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_regime_risk_level.py",
+      "to": "ai/core/intelligence/risk_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_regime_risk_level.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_regime_risk_level.py",
+      "to": "core/execution_models.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_regime_risk_level.py",
+      "to": "core/market_loop.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_regime_risk_level.py",
+      "to": "core/market_risk_regime.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_regime_risk_level.py",
+      "to": "core/risk_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_regime_risk_level.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_regime_risk_level.py",
+      "to": "tests/test_backlog001_macro_risk_wiring_and_fusion.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_regime_risk_level.py",
+      "to": "tests/test_exp001_paper_confidence_experiment.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_evidence_bridge.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_research_evidence_bridge.py",
+      "to": "core/research_evidence_bridge.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_evidence_bridge.py",
+      "to": "data_layer/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_research_evidence_bridge.py",
+      "to": "data_layer/contracts.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_evidence_bridge.py",
+      "to": "data_layer/evidence_store.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_evidence_bridge.py",
+      "to": "research/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_research_evidence_bridge.py",
+      "to": "research/hypothesis_registry.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_evidence_bridge.py",
+      "to": "research/lifecycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_evidence_bridge.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_research_evidence_bridge.py",
+      "to": "tests/test_research_hypothesis_checks.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_hypothesis_checks.py",
+      "to": "research/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_research_hypothesis_checks.py",
+      "to": "research/hypothesis_registry.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_hypothesis_checks.py",
+      "to": "research/lifecycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_hypothesis_checks.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_research_hypothesis_checks.py",
+      "to": "tests/test_research_hypothesis_registry.py",
+      "kind": "import"
+    },
+    {
       "from": "tests/test_research_hypothesis_registry.py",
       "to": "research/__init__.py",
       "kind": "package_init"
@@ -10311,6 +14024,31 @@
       "kind": "import"
     },
     {
+      "from": "tests/test_research_hypothesis_registry_hardening.py",
+      "to": "research/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_research_hypothesis_registry_hardening.py",
+      "to": "research/hypothesis_registry.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_hypothesis_registry_hardening.py",
+      "to": "research/lifecycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_hypothesis_registry_hardening.py",
+      "to": "research/splitting.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_isolation.py",
+      "to": "tools/build_architecture_inventory.py",
+      "kind": "import"
+    },
+    {
       "from": "tests/test_research_lifecycle.py",
       "to": "research/__init__.py",
       "kind": "package_init"
@@ -10318,6 +14056,31 @@
     {
       "from": "tests/test_research_lifecycle.py",
       "to": "research/lifecycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_market_data_bridge.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_research_market_data_bridge.py",
+      "to": "core/research_market_data_bridge.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_market_data_bridge.py",
+      "to": "data_layer/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_research_market_data_bridge.py",
+      "to": "data_layer/market_data_archive_sqlite.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_market_data_bridge.py",
+      "to": "tools/build_architecture_inventory.py",
       "kind": "import"
     },
     {
@@ -10341,8 +14104,268 @@
       "kind": "import"
     },
     {
+      "from": "tests/test_research_timestamp_split_binding.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_research_timestamp_split_binding.py",
+      "to": "core/research_market_data_bridge.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_timestamp_split_binding.py",
+      "to": "core/research_timestamp_split_binding.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_timestamp_split_binding.py",
+      "to": "data_layer/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_research_timestamp_split_binding.py",
+      "to": "data_layer/market_data_archive_sqlite.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_timestamp_split_binding.py",
+      "to": "research/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_research_timestamp_split_binding.py",
+      "to": "research/splitting.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_timestamp_split_binding.py",
+      "to": "tools/build_architecture_inventory.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_risk_accounting_day_auto_rollover.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_risk_accounting_day_auto_rollover.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_risk_accounting_day_auto_rollover.py",
+      "to": "core/audit_event_store.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_risk_accounting_day_auto_rollover.py",
+      "to": "core/capital_reservation.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_risk_accounting_day_auto_rollover.py",
+      "to": "core/execution_manager.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_risk_accounting_day_auto_rollover.py",
+      "to": "core/execution_models.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_risk_accounting_day_auto_rollover.py",
+      "to": "core/execution_portfolio_foundation.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_risk_accounting_day_auto_rollover.py",
+      "to": "core/risk_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_risk_accounting_day_auto_rollover.py",
+      "to": "core/risk_state_store.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_risk_accounting_day_auto_rollover.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_risk_accounting_day_auto_rollover.py",
+      "to": "tests/test_block2_risk_service_composition_wiring.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_risk_accounting_day_auto_rollover.py",
+      "to": "tests/test_execution_crash_recovery_f1_f6.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_risk_accounting_realized_pnl_wiring.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_risk_accounting_realized_pnl_wiring.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_risk_accounting_realized_pnl_wiring.py",
+      "to": "core/audit_event_store.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_risk_accounting_realized_pnl_wiring.py",
+      "to": "core/execution_manager.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_risk_accounting_realized_pnl_wiring.py",
+      "to": "core/execution_models.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_risk_accounting_realized_pnl_wiring.py",
+      "to": "core/execution_portfolio_foundation.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_risk_accounting_realized_pnl_wiring.py",
+      "to": "core/risk_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_risk_accounting_realized_pnl_wiring.py",
+      "to": "core/risk_state_store.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_risk_accounting_realized_pnl_wiring.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_risk_accounting_realized_pnl_wiring.py",
+      "to": "tests/test_block2_risk_service_composition_wiring.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_risk_accounting_realized_pnl_wiring.py",
+      "to": "tests/test_execution_crash_recovery_f1_f6.py",
+      "kind": "import"
+    },
+    {
       "from": "tests/test_runtime_distribution_boundary.py",
       "to": "tools/build_runtime_distribution.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_s1_capital_sleeves.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_s1_capital_sleeves.py",
+      "to": "core/risk_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_s1_capital_sleeves.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_s1_capital_sleeves.py",
+      "to": "tests/test_phase3_risk_capital_foundation.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_security_guardian.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_security_guardian.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_security_guardian.py",
+      "to": "atlas_org/proposals.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_security_guardian.py",
+      "to": "atlas_org/security_review.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_security_guardian.py",
+      "to": "tools/atlas_org_cli.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_security_guardian.py",
+      "to": "tools/security_guardian.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_security_headers_and_origin_guard.py",
+      "to": "observability/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_security_headers_and_origin_guard.py",
+      "to": "observability/panel_router.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_security_headers_and_origin_guard.py",
+      "to": "web_app.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_select_universe.py",
+      "to": "tools/refresh_venue_instrument_rules.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_select_universe.py",
+      "to": "tools/select_universe.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_sell_without_position_routing.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_sell_without_position_routing.py",
+      "to": "core/execution_manager.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_sell_without_position_routing.py",
+      "to": "core/execution_models.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_sell_without_position_routing.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_sell_without_position_routing.py",
+      "to": "tests/test_block5b_single_sizing_authority.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_sell_without_position_routing.py",
+      "to": "tests/test_block5c_upstream_sizing_authority.py",
       "kind": "import"
     },
     {
@@ -10411,8 +14434,508 @@
       "kind": "import"
     },
     {
+      "from": "tests/test_single_instance_and_integrity_exit.py",
+      "to": "atlas_supervisor.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_single_instance_and_integrity_exit.py",
+      "to": "core/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_single_instance_and_integrity_exit.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_single_instance_and_integrity_exit.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_single_instance_and_integrity_exit.py",
+      "to": "core/audit_event_store.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_single_instance_and_integrity_exit.py",
+      "to": "core/instance_lock.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_single_instance_and_integrity_exit.py",
+      "to": "main.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_single_instance_and_integrity_exit.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_single_instance_and_integrity_exit.py",
+      "to": "tests/test_process_supervisor.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_start_atlas.py",
+      "to": "tools/start_atlas.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_state_backup.py",
+      "to": "tools/state_backup.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_state_directory_configuration.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_state_directory_configuration.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_state_directory_configuration.py",
+      "to": "core/brain.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_state_directory_configuration.py",
+      "to": "tools/fetch_historical_market_data.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_status_api_read_only_inventory.py",
+      "to": "web_app.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_strategy_agent.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_strategy_agent.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_strategy_agent.py",
+      "to": "atlas_org/proposals.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_strategy_agent.py",
+      "to": "tools/atlas_org_cli.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_strategy_agent.py",
+      "to": "tools/performance_report.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_strategy_agent.py",
+      "to": "tools/strategy_agent.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_strategy_compare.py",
+      "to": "tools/strategy_compare.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_strategy_compare_embargo.py",
+      "to": "tools/strategy_compare.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_strategy_registry.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_strategy_registry.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_strategy_registry.py",
+      "to": "atlas_org/strategy_registry.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_supervisor_package_gate.py",
+      "to": "atlas_supervisor.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task_status.py",
+      "to": "tools/task_status.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_trade_universe.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_trade_universe.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_trade_universe.py",
+      "to": "main.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_trade_universe.py",
+      "to": "tools/refresh_venue_instrument_rules.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_treasury_yield_provider.py",
+      "to": "atlas_finance/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_treasury_yield_provider.py",
+      "to": "atlas_finance/market_data/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_treasury_yield_provider.py",
+      "to": "atlas_finance/market_data/treasury_yield_provider.py",
+      "kind": "import"
+    },
+    {
       "from": "tests/test_web_app_contract.py",
       "to": "web_app.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_web_app_runtime_response_safety.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_web_app_runtime_response_safety.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_web_app_runtime_response_safety.py",
+      "to": "core/decision.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_web_app_runtime_response_safety.py",
+      "to": "core/decision_adapter.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_web_app_runtime_response_safety.py",
+      "to": "web_app.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_web_app_signals_and_trades.py",
+      "to": "web_app.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_world_model_provenance.py",
+      "to": "ai/core/atlas_world_model.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_attribution.py",
+      "to": "ai/core/intelligence/trade_evidence.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_attribution.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/agent_attribution.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_attribution.py",
+      "to": "tools/exp001_report.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_cycle.py",
+      "to": "ai/core/intelligence/trade_evidence.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_cycle.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_cycle.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/agent_cycle.py",
+      "to": "atlas_org/memory_records.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_cycle.py",
+      "to": "atlas_org/proposals.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_cycle.py",
+      "to": "atlas_org/tasks.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_cycle.py",
+      "to": "atlas_security/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_cycle.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/agent_cycle.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_cycle.py",
+      "to": "observability/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/agent_cycle.py",
+      "to": "observability/learning_view.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_cycle.py",
+      "to": "observability/security_view.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_cycle.py",
+      "to": "tools/ai_gateway.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_cycle.py",
+      "to": "tools/atlas_org_cli.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_cycle.py",
+      "to": "tools/atlas_self_review.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_cycle.py",
+      "to": "tools/data_health_check.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_cycle.py",
+      "to": "tools/exp001_report.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_cycle.py",
+      "to": "tools/experience_agent.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_cycle.py",
+      "to": "tools/paper_position_report.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_cycle.py",
+      "to": "tools/performance_report.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_cycle.py",
+      "to": "tools/reality_check.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_cycle.py",
+      "to": "tools/regime_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_cycle.py",
+      "to": "tools/strategy_agent.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_report.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_report.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/agent_report.py",
+      "to": "atlas_org/memory_records.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_report.py",
+      "to": "tools/atlas_org_cli.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/ai_gateway.py",
+      "to": "atlas_security/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/atlas_org_cli.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/atlas_org_cli.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/atlas_org_cli.py",
+      "to": "atlas_org/manager.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/atlas_org_cli.py",
+      "to": "atlas_org/memory_records.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/atlas_org_cli.py",
+      "to": "atlas_org/proposals.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/atlas_org_cli.py",
+      "to": "atlas_org/tasks.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/atlas_org_cli.py",
+      "to": "tools/security_guardian.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/atlas_self_review.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/atlas_self_review.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/atlas_self_review.py",
+      "to": "atlas_org/security_review.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/atlas_self_review.py",
+      "to": "atlas_org/tasks.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/atlas_self_review.py",
+      "to": "observability/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/atlas_self_review.py",
+      "to": "observability/panel_sources.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/atlas_self_review.py",
+      "to": "tools/atlas_org_cli.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/atlas_self_review.py",
+      "to": "tools/ci_check_known_accepted_failures.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/atlas_self_review.py",
+      "to": "tools/code_health_report.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/backtest_replay.py",
+      "to": "ai/core/atlas_brain.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/backtest_replay.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/backtest_replay.py",
+      "to": "core/execution_manager.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/backtest_replay.py",
+      "to": "core/execution_models.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/backtest_replay.py",
+      "to": "core/market_loop.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/backtest_replay.py",
+      "to": "core/market_risk_regime.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/backtest_replay.py",
+      "to": "core/risk_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/backtest_replay.py",
+      "to": "tools/measure_volatility_ceiling.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/backtest_replay.py",
+      "to": "tools/regime_engine.py",
       "kind": "import"
     },
     {
@@ -10441,6 +14964,221 @@
       "kind": "import"
     },
     {
+      "from": "tools/build_rem001_gate1_maps.py",
+      "to": "tools/build_architecture_inventory.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/chaos_drill.py",
+      "to": "tools/atlas_org_cli.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/check_execution_authority_agreement.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/check_execution_authority_agreement.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/check_execution_authority_agreement.py",
+      "to": "core/execution_idempotency_store.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/check_execution_authority_agreement.py",
+      "to": "core/execution_transaction_journal.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/check_execution_authority_agreement.py",
+      "to": "data_layer/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/check_execution_authority_agreement.py",
+      "to": "data_layer/runtime_safety.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/ci_check_known_accepted_failures.py",
+      "to": "tools/build_architecture_inventory.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/data_health_check.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/data_health_check.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/data_health_check.py",
+      "to": "atlas_org/memory_records.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/data_health_check.py",
+      "to": "atlas_org/proposals.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/data_health_check.py",
+      "to": "atlas_org/tasks.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/data_health_check.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/data_health_check.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/data_health_check.py",
+      "to": "core/execution_portfolio_foundation.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/data_health_check.py",
+      "to": "core/instrument_rules.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/data_health_check.py",
+      "to": "core/venue_rule_freshness.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/data_health_check.py",
+      "to": "tools/atlas_org_cli.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/decision_trace.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/decision_trace.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/decision_trace.py",
+      "to": "core/audit_event_store.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/decision_trace.py",
+      "to": "observability/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/decision_trace.py",
+      "to": "observability/learning_view.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/decision_trace.py",
+      "to": "tools/exp001_report.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/diagnose_audit_chain_fork.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/diagnose_audit_chain_fork.py",
+      "to": "core/audit_event_store.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/digital_trial.py",
+      "to": "tools/backtest_replay.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/exp001_report.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/exp001_report.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/exp001_report.py",
+      "to": "core/experiment_ledger.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/exp001_report.py",
+      "to": "core/risk_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/exp001_report.py",
+      "to": "tools/paper_position_report.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/experience_agent.py",
+      "to": "tools/atlas_org_cli.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/experience_agent.py",
+      "to": "tools/backtest_replay.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/experience_agent.py",
+      "to": "tools/lesson_book.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/experience_agent.py",
+      "to": "tools/measure_volatility_ceiling.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/experience_agent.py",
+      "to": "tools/regime_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/extract_candle_age_telemetry.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/extract_candle_age_telemetry.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/extract_candle_age_telemetry.py",
+      "to": "core/logger.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/extract_candle_age_telemetry.py",
+      "to": "core/market_loop.py",
+      "kind": "import"
+    },
+    {
       "from": "tools/fetch_historical_market_data.py",
       "to": "atlas_finance/__init__.py",
       "kind": "package_init"
@@ -10462,6 +15200,16 @@
     },
     {
       "from": "tools/fetch_historical_market_data.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/fetch_historical_market_data.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/fetch_historical_market_data.py",
       "to": "data_layer/__init__.py",
       "kind": "package_init"
     },
@@ -10478,6 +15226,111 @@
     {
       "from": "tools/generate_test_results_artifact.py",
       "to": "observability/panel_sources.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/incident_report.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/incident_report.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/incident_report.py",
+      "to": "atlas_org/memory_records.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/incident_report.py",
+      "to": "tools/atlas_org_cli.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/inspect_research_market_data_coverage.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/inspect_research_market_data_coverage.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/inspect_research_market_data_coverage.py",
+      "to": "core/research_market_data_bridge.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/inspect_research_market_data_coverage.py",
+      "to": "data_layer/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/inspect_research_market_data_coverage.py",
+      "to": "data_layer/market_data_archive_sqlite.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/lesson_book.py",
+      "to": "ai/core/intelligence/trade_evidence.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/lesson_book.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/lesson_book.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/lesson_book.py",
+      "to": "atlas_org/memory_records.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/lesson_book.py",
+      "to": "tools/agent_cycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/lesson_book.py",
+      "to": "tools/atlas_org_cli.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/lesson_book.py",
+      "to": "tools/exp001_report.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/lesson_book.py",
+      "to": "tools/paper_position_report.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/lookahead_check.py",
+      "to": "tools/backtest_replay.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/measure_volatility_ceiling.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/measure_volatility_ceiling.py",
+      "to": "core/market_risk_regime.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/meta_filter.py",
+      "to": "tools/lesson_book.py",
       "kind": "import"
     },
     {
@@ -10533,6 +15386,16 @@
     {
       "from": "tools/migrate_execution_financial_state.py",
       "to": "core/execution_portfolio_foundation.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/paper_position_report.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/paper_position_report.py",
+      "to": "core/application.py",
       "kind": "import"
     },
     {
@@ -10621,6 +15484,31 @@
       "kind": "import"
     },
     {
+      "from": "tools/performance_report.py",
+      "to": "ai/core/intelligence/trade_evidence.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/performance_report.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/performance_report.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/performance_report.py",
+      "to": "tools/atlas_org_cli.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/performance_report.py",
+      "to": "tools/exp001_report.py",
+      "kind": "import"
+    },
+    {
       "from": "tools/phase6a8_1_decision_execution_trace.py",
       "to": "core/__init__.py",
       "kind": "package_init"
@@ -10628,6 +15516,56 @@
     {
       "from": "tools/phase6a8_1_decision_execution_trace.py",
       "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/position_risk_buckets_repair.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/position_risk_buckets_repair.py",
+      "to": "core/position_risk_buckets.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/quarantine_audit_fork.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/quarantine_audit_fork.py",
+      "to": "core/audit_event_store.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/quarantine_audit_fork.py",
+      "to": "main.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/reality_check.py",
+      "to": "ai/core/intelligence/trade_evidence.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/reality_check.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/reality_check.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/reality_check.py",
+      "to": "tools/exp001_report.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/reality_check.py",
+      "to": "tools/paper_position_report.py",
       "kind": "import"
     },
     {
@@ -10642,6 +15580,21 @@
     },
     {
       "from": "tools/reconcile_execution_authorities.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/reconcile_execution_authorities.py",
+      "to": "core/audit_event_store.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/reconcile_execution_authorities.py",
+      "to": "core/capital_reservation.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/reconcile_execution_authorities.py",
       "to": "core/execution_idempotency_store.py",
       "kind": "import"
     },
@@ -10652,12 +15605,32 @@
     },
     {
       "from": "tools/reconcile_execution_authorities.py",
+      "to": "core/execution_models.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/reconcile_execution_authorities.py",
       "to": "core/execution_portfolio_foundation.py",
       "kind": "import"
     },
     {
       "from": "tools/reconcile_execution_authorities.py",
       "to": "core/execution_transaction_journal.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/reconcile_execution_authorities.py",
+      "to": "core/instrument_rules.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/reconcile_execution_authorities.py",
+      "to": "core/risk_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/reconcile_execution_authorities.py",
+      "to": "core/risk_state_store.py",
       "kind": "import"
     },
     {
@@ -10681,6 +15654,161 @@
       "kind": "import"
     },
     {
+      "from": "tools/refresh_venue_instrument_rules.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/refresh_venue_instrument_rules.py",
+      "to": "core/instrument_rules.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/refresh_venue_instrument_rules.py",
+      "to": "core/venue_rule_freshness.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/refresh_venue_instrument_rules.py",
+      "to": "tools/venue_metadata_adapter.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/regime_engine.py",
+      "to": "tools/select_universe.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/security_guardian.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/security_guardian.py",
+      "to": "atlas_org/proposals.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/security_guardian.py",
+      "to": "atlas_org/security_review.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/security_guardian.py",
+      "to": "tools/atlas_org_cli.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/select_universe.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/select_universe.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/show_config.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/show_config.py",
+      "to": "core/atlas_config.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/show_config.py",
+      "to": "main.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/start_atlas.py",
+      "to": "tools/agent_cycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/state_backup.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/state_backup.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/strategy_agent.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/strategy_agent.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/strategy_agent.py",
+      "to": "atlas_org/proposals.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/strategy_agent.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/strategy_agent.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/strategy_agent.py",
+      "to": "tools/atlas_org_cli.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/strategy_agent.py",
+      "to": "tools/exp001_report.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/strategy_agent.py",
+      "to": "tools/performance_report.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/strategy_compare.py",
+      "to": "tools/backtest_replay.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/strategy_compare.py",
+      "to": "tools/measure_volatility_ceiling.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/task_status.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/task_status.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/task_status.py",
+      "to": "atlas_org/tasks.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/task_status.py",
+      "to": "tools/atlas_org_cli.py",
+      "kind": "import"
+    },
+    {
       "from": "tools/venue_metadata_adapter.py",
       "to": "core/__init__.py",
       "kind": "package_init"
@@ -10698,11 +15826,81 @@
     {
       "from": "web_app.py",
       "to": "observability/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "web_app.py",
+      "to": "observability/__init__.py",
       "kind": "package_init"
     },
     {
       "from": "web_app.py",
+      "to": "observability/agent_states.py",
+      "kind": "import"
+    },
+    {
+      "from": "web_app.py",
+      "to": "observability/command_center.py",
+      "kind": "import"
+    },
+    {
+      "from": "web_app.py",
+      "to": "observability/event_contract.py",
+      "kind": "import"
+    },
+    {
+      "from": "web_app.py",
+      "to": "observability/experience_view.py",
+      "kind": "import"
+    },
+    {
+      "from": "web_app.py",
+      "to": "observability/governance_records.py",
+      "kind": "import"
+    },
+    {
+      "from": "web_app.py",
+      "to": "observability/learning_view.py",
+      "kind": "import"
+    },
+    {
+      "from": "web_app.py",
+      "to": "observability/organization.py",
+      "kind": "import"
+    },
+    {
+      "from": "web_app.py",
       "to": "observability/panel_router.py",
+      "kind": "import"
+    },
+    {
+      "from": "web_app.py",
+      "to": "observability/panel_sources.py",
+      "kind": "import"
+    },
+    {
+      "from": "web_app.py",
+      "to": "observability/portfolio_view.py",
+      "kind": "import"
+    },
+    {
+      "from": "web_app.py",
+      "to": "observability/readiness.py",
+      "kind": "import"
+    },
+    {
+      "from": "web_app.py",
+      "to": "observability/research_view.py",
+      "kind": "import"
+    },
+    {
+      "from": "web_app.py",
+      "to": "observability/roadmap_view.py",
+      "kind": "import"
+    },
+    {
+      "from": "web_app.py",
+      "to": "observability/security_view.py",
       "kind": "import"
     }
   ]

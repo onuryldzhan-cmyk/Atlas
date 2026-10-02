@@ -112,6 +112,7 @@ WEB_APP_GUARDED_ROUTES = [
     "/api/events",  # Atlas Event Contract v1 (2026-10-01), read-only
     "/api/candles",
     "/api/research",
+    "/api/experience",
     "/api/liveness",
     "/api/readiness",
     "/api/risk-accounting",

@@ -2418,7 +2418,6 @@ def create_app(
         ("/api/security", security_view.read_security),
         ("/api/roadmap", roadmap_view.read_roadmap),
         ("/api/research", research_view.read_research),
-        ("/api/experience", experience_view.read_experience),
     ):
         async def _governance_route(request: Request, _reader=reader) -> JSONResponse:
             if not is_loopback_request(request):
@@ -2427,6 +2426,16 @@ def create_app(
 
         application.add_api_route(path, _governance_route, methods=["GET"],
                                   response_class=JSONResponse)
+
+    # Experience agent summary (2026-10-02): reads only the state.json the
+    # agent writes under the running runtime's state directory (read-only).
+    @application.get("/api/experience", response_class=JSONResponse)
+    async def api_experience(request: Request) -> JSONResponse:
+        if not is_loopback_request(request):
+            return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+        path = experience_view.state_path_for(
+            _resolve_attr(application.state.atlas_runtime, "state_directory"))
+        return JSONResponse(status_code=200, content=await run_in_threadpool(experience_view.read_experience, path))
 
     # Price chart (v5.72): the market loop's last closed candles for one coin,
     # read-only; the chart overlays Atlas's own trades from /api/trades.

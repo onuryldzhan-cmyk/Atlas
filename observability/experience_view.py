@@ -15,18 +15,19 @@ from pathlib import Path
 from typing import Any
 
 
-def _state_path() -> Path:
-    from core.application import resolve_state_directory
-
-    return resolve_state_directory() / "research" / "experience" / "state.json"
+def state_path_for(state_directory: Any) -> Path | None:
+    """<state>/research/experience/state.json for the running runtime's state directory, else None."""
+    return Path(state_directory) / "research" / "experience" / "state.json" if state_directory else None
 
 
 def _day(ms: Any) -> str | None:
     return datetime.fromtimestamp(ms / 1000, UTC).date().isoformat() if isinstance(ms, int) else None
 
 
-def read_experience(state_path: Path | None = None) -> dict[str, Any]:
-    path = _state_path() if state_path is None else Path(state_path)
+def read_experience(state_path: Path | None) -> dict[str, Any]:
+    if state_path is None:
+        return {"available": False, "reason": "çalışma zamanı bağlı değil"}
+    path = Path(state_path)
     try:
         state = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:

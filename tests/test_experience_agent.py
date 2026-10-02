@@ -149,3 +149,11 @@ def test_experience_view_reads_state_and_reports_missing(tmp_path):
     out = ev.read_experience(good)
     assert out["available"] and out["days"] == 3 and out["oldest_day"] == "1970-01-01" and out["newest_day"] == "1970-01-03"
     assert out["updated_at"] is None and out["candidate_lessons"] == [{"action": "BUY"}]
+
+
+def test_experience_view_without_runtime_is_unavailable():
+    from observability import experience_view as ev
+
+    assert ev.state_path_for(None) is None
+    assert ev.read_experience(None)["available"] is False
+    assert str(ev.state_path_for("/s")).replace("\\", "/") == "/s/research/experience/state.json"

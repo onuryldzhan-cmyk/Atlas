@@ -128,6 +128,7 @@
     "observability/agent_states.py",
     "observability/command_center.py",
     "observability/event_contract.py",
+    "observability/experience_view.py",
     "observability/governance_records.py",
     "observability/learning_view.py",
     "observability/organization.py",
