@@ -553,6 +553,7 @@ class AtlasApplication:
         order_lifecycle_observe: bool = False,
         funding_sentiment: bool = False,
         fusion_full_weight_denominator: bool = False,
+        paper_fill_model: str = "LAST_PRICE",
     ) -> None:
         logger.info(
             "Initializing %s v%s",
@@ -575,6 +576,11 @@ class AtlasApplication:
         self.order_lifecycle_observe = bool(order_lifecycle_observe)
         self.funding_sentiment = bool(funding_sentiment)
         self.fusion_full_weight_denominator = bool(fusion_full_weight_denominator)
+        # Shadow stage S2 (owner approval 2026-10-02): BOOK prices PAPER fills against
+        # the live order book (core/atlas_config.py validates it and its own state dir).
+        self.paper_fill_model = str(paper_fill_model).strip().upper()
+        if self.paper_fill_model not in ("LAST_PRICE", "BOOK"):
+            raise ValueError("paper_fill_model must be LAST_PRICE or BOOK")
         if not self.paper_slippage_bps.is_finite() or not Decimal("0") <= self.paper_slippage_bps <= Decimal("100"):
             raise ValueError("paper_slippage_bps must be within [0, 100]")
         # registry v5.01 EXP-001. Off unless the production entry point asks
@@ -845,6 +851,10 @@ class AtlasApplication:
         # unrealized daily-loss check (read-only; unused while the flag is off).
         self.execution.mark_price_provider = self.market_loop.mark_prices
         self.execution.paper_slippage_bps = self.paper_slippage_bps
+        if self.paper_fill_model == "BOOK" and self.execution_mode == "PAPER":
+            from atlas_finance.market_data.order_book_provider import OrderBookFillProvider
+
+            self.execution.paper_fill_provider = OrderBookFillProvider()
         # Order state machine stage 1: observe only (owner approved 2026-10-01).
         self.execution.order_lifecycle_observe = self.order_lifecycle_observe
         # Design C: Binance funding rate as sentiment evidence when Fear & Greed is

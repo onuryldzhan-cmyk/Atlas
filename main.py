@@ -528,6 +528,9 @@ class AtlasProcess:
             count_unrealized_in_daily_loss=True,
             sleeves_enabled=True,
             paper_slippage_bps="5",
+            # Shadow stage S2: the operator chooses with ATLAS_FILL_MODEL (validated
+            # in core/atlas_config.py; BOOK needs its own 'shadow' state directory).
+            paper_fill_model=getattr(self, "paper_fill_model", "LAST_PRICE"),
             # Order state machine stage 1 (owner approved 2026-10-01): observe and
             # report illegal transitions; never changes a result.
             order_lifecycle_observe=True,
@@ -884,6 +887,7 @@ class AtlasProcess:
                 logger.critical("  config: %s", problem)
             return False
 
+        self.paper_fill_model = config.fill_model
         logger.info(
             "Configuration valid | %s",
             " ".join(f"{k}={v}" for k, v in config.describe().items()),

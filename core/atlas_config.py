@@ -37,6 +37,13 @@ from core.application import (
 
 PERMITTED_EXECUTION_MODE = "PAPER"
 
+# Shadow stage S2 (owner approval 2026-10-02): how a PAPER fill is priced.
+# LAST_PRICE (default) is the historical fill; BOOK prices it against the live
+# order book and requires its own, explicitly set state directory so Shadow
+# results never mix with the Paper record. The mode stays PAPER either way.
+FILL_MODEL_ENV = "ATLAS_FILL_MODEL"
+FILL_MODELS = frozenset({"LAST_PRICE", "BOOK"})
+
 HEARTBEAT_FILE_ENV = "ATLAS_SUPERVISOR_HEARTBEAT_FILE"
 
 # Every ATLAS_* variable the runtime reads. Anything else with the prefix
@@ -49,6 +56,7 @@ RUNTIME_ATLAS_VARIABLES = frozenset({
     SUPERVISOR_EPOCH_ENV,
     SUPERVISOR_RESTART_COUNT_ENV,
     HEARTBEAT_FILE_ENV,
+    FILL_MODEL_ENV,
 })
 
 # Read only by development tools, never by the runtime; tolerated so a
@@ -76,6 +84,7 @@ class AtlasConfig:
     market_archive_directory: Path
     evidence_directory: Path
     log_directory: Path | None
+    fill_model: str = "LAST_PRICE"
 
     def describe(self) -> dict[str, str]:
         """Effective values for display. Holds no secrets by construction."""
@@ -87,6 +96,7 @@ class AtlasConfig:
             "market_archive_directory": str(self.market_archive_directory),
             "evidence_directory": str(self.evidence_directory),
             "log_directory": str(self.log_directory) if self.log_directory else "(not configured)",
+            "fill_model": self.fill_model,
         }
 
 
@@ -135,11 +145,26 @@ def load_config(
         except Exception as exc:  # any other resolver failure is still a config problem
             errors.append(f"{key}: {type(exc).__name__}: {exc}")
 
+    fill_model = str(environ.get(FILL_MODEL_ENV, "LAST_PRICE")).strip().upper()
+    if fill_model not in FILL_MODELS:
+        errors.append(f"{FILL_MODEL_ENV} {fill_model!r} is refused: use one of {sorted(FILL_MODELS)}")
+    elif fill_model == "BOOK":
+        state = resolved.get("state_directory")
+        if not str(environ.get(STATE_DIRECTORY_ENV, "")).strip():
+            errors.append(f"{FILL_MODEL_ENV}=BOOK (Shadow) needs its own {STATE_DIRECTORY_ENV}; "
+                          "it never shares the Paper state")
+        elif state is not None and not any("shadow" in part.lower() for part in Path(state).parts):
+            # The Paper state may itself be a non-default directory, so "not the default" is not
+            # enough: a Shadow state directory must say so in its path (e.g. C:\AtlasState\shadow).
+            errors.append(f"{FILL_MODEL_ENV}=BOOK (Shadow) needs a state directory whose path names it "
+                          f"'shadow' (got {state}); the Paper state is never reused")
+
     if errors:
         raise AtlasConfigError(errors)
 
     return AtlasConfig(
         execution_mode=mode,
         paper_confidence_experiment=bool(paper_confidence_experiment),
+        fill_model=fill_model,
         **resolved,
     )

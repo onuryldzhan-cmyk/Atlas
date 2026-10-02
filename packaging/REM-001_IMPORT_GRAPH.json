@@ -16,29 +16,26 @@
     "analysis": "Static AST import resolution over git-tracked Python files, excluding imports guarded by if TYPE_CHECKING:. Third-party and stdlib targets resolve to nothing and carry no edge."
   },
   "source_identity": {
-    "generated_from_commit": "e75fa613627c05f86326d25c1cdf9a8f315237c2",
-    "generated_from_tree": "a3ac8a5bb79e094394d61ce8e56216904a4bbb62",
+    "generated_from_commit": "f83e472f357b877b605c81b0020a6cf662eace36",
+    "generated_from_tree": "1d32373ad4966177592edf7a930b24286aa30e4b",
     "tracked_working_tree_clean": false,
     "modified_tracked_paths_at_generation": [
-      "bservability/experience_view.py",
-      "packaging/atlas_architecture_map.json",
-      "packaging/atlas_runtime_closure.json",
-      "tests/test_experience_agent.py",
-      "tests/test_home_trading_pages.py",
-      "tests/test_loopback_host_header_guard.py",
-      "web_app.py"
+      "core/atlas_config.py",
+      "core/execution_manager.py",
+      "main.py",
+      "ore/application.py"
     ]
   },
   "scope": {
     "universe": "ALL_GIT_TRACKED_PYTHON_FILES",
     "universe_note": "The tool's existing tracked-file definition, used unchanged. No source-scope classification (ACTIVE_CANDIDATE / TEST / TOOL / ARCHIVE / BACKUP / QUARANTINE / REPORT_COPY) is applied or implied: that classification requires the human review gate ARCH-001.2.1 reserves and belongs to Gate 1 deliverable 1.",
-    "modules_total": 1083,
+    "modules_total": 1087,
     "modules_runtime_reachable": 134,
-    "modules_outside_runtime_closure": 949,
-    "edges_total": 2297,
-    "edges_import": 1646,
-    "edges_package_init": 651,
-    "edges_distinct_module_pairs": 2233,
+    "modules_outside_runtime_closure": 953,
+    "edges_total": 2318,
+    "edges_import": 1662,
+    "edges_package_init": 656,
+    "edges_distinct_module_pairs": 2253,
     "edges_count_note": "edges_total counts (from, to, kind) triples. A pair can carry both kinds when a file both imports a package directly and references one of its submodules, so edges_distinct_module_pairs is the figure to use when counting dependencies between modules.",
     "parse_failures": 3
   },
@@ -4013,6 +4010,14 @@
       "runtime_reachable": false
     },
     {
+      "module": "tests/test_sentiment_lessons.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_shadow_costs.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/test_single_instance_and_integrity_exit.py",
       "runtime_reachable": false
     },
@@ -4382,6 +4387,14 @@
     },
     {
       "module": "tools/semantic_reference_audit.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/sentiment_lessons.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/shadow_costs.py",
       "runtime_reachable": false
     },
     {
@@ -8965,12 +8978,22 @@
     },
     {
       "from": "tests/test_agent_cycle.py",
+      "to": "tools/ai_gateway.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agent_cycle.py",
       "to": "tools/atlas_org_cli.py",
       "kind": "import"
     },
     {
       "from": "tests/test_agent_cycle.py",
       "to": "tools/atlas_self_review.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agent_cycle.py",
+      "to": "tools/experience_agent.py",
       "kind": "import"
     },
     {
@@ -12115,6 +12138,11 @@
     },
     {
       "from": "tests/test_experience_agent.py",
+      "to": "atlas_org/proposals.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_experience_agent.py",
       "to": "observability/__init__.py",
       "kind": "import"
     },
@@ -12126,6 +12154,11 @@
     {
       "from": "tests/test_experience_agent.py",
       "to": "observability/experience_view.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_experience_agent.py",
+      "to": "tools/agent_cycle.py",
       "kind": "import"
     },
     {
@@ -14434,6 +14467,16 @@
       "kind": "import"
     },
     {
+      "from": "tests/test_sentiment_lessons.py",
+      "to": "tools/sentiment_lessons.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_shadow_costs.py",
+      "to": "tools/shadow_costs.py",
+      "kind": "import"
+    },
+    {
       "from": "tests/test_single_instance_and_integrity_exit.py",
       "to": "atlas_supervisor.py",
       "kind": "import"
@@ -14785,6 +14828,11 @@
     },
     {
       "from": "tools/agent_cycle.py",
+      "to": "tools/shadow_costs.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_cycle.py",
       "to": "tools/strategy_agent.py",
       "kind": "import"
     },
@@ -15131,6 +15179,21 @@
     {
       "from": "tools/exp001_report.py",
       "to": "tools/paper_position_report.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/experience_agent.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/experience_agent.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/experience_agent.py",
+      "to": "atlas_org/proposals.py",
       "kind": "import"
     },
     {
@@ -15706,6 +15769,61 @@
     {
       "from": "tools/select_universe.py",
       "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/sentiment_lessons.py",
+      "to": "atlas_finance/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/sentiment_lessons.py",
+      "to": "atlas_finance/market_data/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/sentiment_lessons.py",
+      "to": "atlas_finance/market_data/fear_greed_provider.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/sentiment_lessons.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/sentiment_lessons.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/sentiment_lessons.py",
+      "to": "tools/experience_agent.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/shadow_costs.py",
+      "to": "ai/core/intelligence/trade_evidence.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/shadow_costs.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/shadow_costs.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/shadow_costs.py",
+      "to": "tools/agent_cycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/shadow_costs.py",
+      "to": "tools/exp001_report.py",
       "kind": "import"
     },
     {

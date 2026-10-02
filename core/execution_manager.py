@@ -3010,6 +3010,36 @@ class ExecutionManager:
             raise ValueError("slipped fill price is not positive")
         return float(raw)
 
+    def _shadow_book_fill_price(self, request: Any) -> float | None:
+        """Live order book VWAP for this order (S2), rounded to the tick against Atlas; None = reject.
+
+        BUY notional is the risk-approved quote allocation; SELL notional is the held
+        base quantity at the request price. An unknown notional is never guessed.
+        """
+        side = "BUY" if str(request.action).upper().endswith("BUY") else "SELL"
+        try:
+            if side == "BUY":
+                notional = request.approved_quote_allocation
+            else:
+                foundation = getattr(self, "portfolio_foundation", None)
+                held = ((foundation.snapshot().get("positions") or {}).get(request.symbol) or {}) if foundation else {}
+                quantity = held.get("base_quantity")
+                notional = None if quantity is None else Decimal(str(quantity)) * Decimal(str(request.price))
+            if notional is None or not Decimal(str(notional)).is_finite() or Decimal(str(notional)) <= 0:
+                return None
+            price = self.paper_fill_provider(request.symbol, side, Decimal(str(notional)))
+        except Exception:
+            logger.exception("Shadow book fill price failed; the order is rejected")
+            return None
+        if not isinstance(price, Decimal) or not price.is_finite() or price <= 0:
+            return None
+        rules = self.instrument_rules.get(request.symbol) if self.instrument_rules is not None else None
+        tick = Decimal(str(getattr(rules, "price_tick", "0") or "0"))
+        if tick > 0:
+            from decimal import ROUND_CEILING, ROUND_FLOOR
+            price = (price / tick).to_integral_value(rounding=ROUND_CEILING if side == "BUY" else ROUND_FLOOR) * tick
+        return float(price) if price > 0 else None
+
     def _mark_to_market(self, positions: Any) -> Decimal | None:
         """Unrealized P&L of open positions (audit F-3), or None when not fully known.
 
@@ -4459,6 +4489,17 @@ class ExecutionManager:
         if not self._has_risk_admission(request):
             return self.reject(reason="CANONICAL_RISK_ADMISSION_MISSING", request=request)
 
+        # Shadow fill model (S2, owner approval 2026-10-02): with a provider the
+        # fill is priced against the live order book; no price means REJECT,
+        # never a fallback to the last price. Without a provider this is the
+        # historical PAPER fill, byte-identical.
+        if getattr(self, "paper_fill_provider", None) is not None:
+            filled_price = self._shadow_book_fill_price(request)
+            if filled_price is None:
+                return self.reject(reason="SHADOW_BOOK_PRICE_UNAVAILABLE", request=request)
+        else:
+            filled_price = self._paper_fill_price(request)
+
         execution_id = str(
             uuid.uuid4()
         )
@@ -4481,7 +4522,7 @@ class ExecutionManager:
             execution_id=execution_id,
             symbol=request.symbol,
             action=request.action,
-            filled_price=self._paper_fill_price(request),
+            filled_price=filled_price,
             filled_amount=0.0,
             mode=self.MODE_PAPER,
             data={

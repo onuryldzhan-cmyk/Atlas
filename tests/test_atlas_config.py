@@ -108,6 +108,9 @@ def test_main_mode_is_paper_and_passes_its_own_validation(roots):
 
 def test_every_allowlisted_variable_at_once_is_accepted(roots, tmp_path):
     environ = {name: "x" for name in RUNTIME_ATLAS_VARIABLES}
+    # 2026-10-02: ATLAS_FILL_MODEL is the first allowlisted variable whose VALUE is validated
+    # (LAST_PRICE or BOOK); "x" is rightly refused, so it gets its default. The name check stays.
+    environ["ATLAS_FILL_MODEL"] = "LAST_PRICE"
     config = load_config(environ, execution_mode="PAPER", paper_confidence_experiment=True)
     assert config.execution_mode == "PAPER"
 
