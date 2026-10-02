@@ -363,3 +363,22 @@ def test_golden_covers_every_return_path():
     assert {"EXECUTION_REQUEST_BUILD_FAILED", "TRANSACTION_PREPARE_FAILED", "DURABLE_FINANCIAL_FINALIZATION_FAILED",
             "CAPITAL_RESERVATION_COMMIT_FAILED", "DURABLE_COMMIT_FAILED", "TRANSACTION_JOURNAL_COMMIT_FAILED",
             "EXECUTION_PIPELINE_EXCEPTION"} <= errors, errors
+
+
+def test_a_none_terminal_result_never_falls_through_to_execution(tmp_path):
+    """T-0013 audit (LOW): with None as the phases' "continue" marker, a terminal result that is None
+    (a patched reject) made the split body go on to PAPER_EXECUTED. The single original body returned
+    it. Phases now continue only on the _CONTINUE marker, so None ends the run as before."""
+    offline = application(tmp_path / "offline")
+    offline.execution.reject = lambda *a, **k: None
+    assert offline.execution.execute(_buy()) is None  # not started: preflight ends the run
+
+    app = application(tmp_path / "invalid")
+    ex = app.execution
+    ex.start()
+    ex.reject = lambda *a, **k: None
+    request = ExecutionRequest("BTCUSDT", "BUY", 10.0, 1000, confidence=90.0, risk="MEDIUM", request_id="x1")
+    request.request_id = "   "
+    assert ex.execute(request) is None  # build phase ends the run
+    assert "BTCUSDT" not in app.portfolio_foundation.snapshot()["positions"]
+    assert not getattr(ex.transaction_journal, "entries", {})  # nothing was prepared or executed

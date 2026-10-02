@@ -48,6 +48,7 @@ Atlas Brain / Decision Engine
 from __future__ import annotations
 
 from contextlib import nullcontext
+from dataclasses import dataclass
 import logging
 from decimal import ROUND_DOWN, ROUND_HALF_EVEN, ROUND_UP, Decimal, InvalidOperation, localcontext
 import threading
@@ -56,7 +57,7 @@ import uuid
 
 from datetime import UTC, date, datetime
 from enum import Enum
-from typing import Any, Mapping
+from typing import Any, Mapping, cast
 
 from atlas_security import sanitize_sensitive_data
 
@@ -133,6 +134,36 @@ class ExecutionResetRefusedError(RuntimeError):
     book, so ``reset()`` refuses rather than proceeding. The message is a
     fixed reason token (never a request_id, execution_id, or state payload).
     """
+
+
+class _Continue:
+    """Marker a ``_decision_*`` phase returns to let the run go on (T-0013 audit, LOW).
+
+    ``None`` is deliberately not the marker: if a terminal result were ever None
+    (e.g. a patched ``reject``), the single original body returned it; with None
+    as the marker the split would have fallen through to execution (fail-open).
+    """
+
+    __slots__ = ()
+
+
+_CONTINUE = _Continue()
+
+
+@dataclass
+class _DecisionRun:
+    """State one ``ExecutionManager._execute_decision`` call threads through its phases (T-0013).
+
+    ``request_claimed`` and ``last_audit_event_id`` are written by the phases
+    exactly where the original single body assigned its locals, so the
+    ``except`` and ``finally`` clauses observe the same values.
+    """
+
+    started_at: float
+    request: ExecutionRequest | None = None
+    request_id: str | None = None
+    request_claimed: bool = False
+    last_audit_event_id: str | None = None
 
 
 class ExecutionManager:
@@ -1359,9 +1390,168 @@ class ExecutionManager:
         Audit writes are non-blocking. An audit storage failure
         increases audit_write_failures but does not interrupt
         execution.
+
+        Structure (T-0013)
+        ------------------
+        Each phase is one ``_decision_*`` helper, called in the order
+        above; a helper returns the terminal result that ends the run or
+        ``_CONTINUE`` to continue (not ``None``: a None result must end the
+        run exactly as the single body's ``return`` did, never fall through
+        to execution). The state the phases share - the request,
+        its id, whether it is claimed and the last audit event id - is
+        carried by ``_DecisionRun`` so the ``except``/``finally`` below see
+        exactly what the single original body saw.
         """
 
         started_at = time.perf_counter()
+
+        blocked = self._decision_preflight()
+
+        if not isinstance(blocked, _Continue):
+            return blocked
+
+        run = _DecisionRun(started_at=started_at)
+
+        try:
+            return self._decision_pipeline(
+                run,
+                decision,
+                market_state,
+            )
+
+        except Exception as exc:
+            return self._decision_pipeline_failure(
+                run,
+                exc,
+            )
+
+        finally:
+            # Defensive release for exceptions or unexpected
+            # early exits after a successful atomic claim.
+            if run.request_id:
+                self._consume_execution_side_effect(
+                    run.request_id
+                )
+
+                if run.request_claimed:
+                    self._release_request(
+                        run.request_id
+                    )
+
+    def _decision_pipeline(
+        self,
+        run: _DecisionRun,
+        decision: Any,
+        market_state: Any | None,
+    ) -> dict[str, Any]:
+        """Run the phases of one admitted decision in order; any exception reaches the caller's handler."""
+
+        terminal = self._decision_build(
+            run,
+            decision,
+        )
+
+        if not isinstance(terminal, _Continue):
+            return terminal
+
+        terminal = self._decision_receive_and_claim(
+            run,
+        )
+
+        if not isinstance(terminal, _Continue):
+            return terminal
+
+        terminal = self._decision_validate(
+            run,
+        )
+
+        if not isinstance(terminal, _Continue):
+            return terminal
+
+        terminal = self._decision_risk_gate(
+            run,
+            market_state,
+        )
+
+        if not isinstance(terminal, _Continue):
+            return terminal
+
+        terminal = self._decision_prepare(
+            run,
+        )
+
+        if not isinstance(terminal, _Continue):
+            return terminal
+
+        result, status = self._decision_route(
+            run,
+        )
+
+        # =================================================
+        # RETRYABLE FAILURE / NOT COMMITTED
+        # =================================================
+        #
+        # Terminal classification is a SUCCESS allow-list, not a
+        # failure allow-list. Only a status this manager itself
+        # recognises as a completed execution may continue into
+        # durable finalization; every other terminal status resolves
+        # through the unsuccessful-execution path.
+        #
+        # The previous `status in FAILURE_STATUSES` test admitted
+        # everything outside {FAILED, ERROR} into the durable-commit
+        # branch. The statuses that actually reach this point are
+        # PAPER_EXECUTED and FAILED (paper_execute), REJECTED (the
+        # canonical-admission guard inside paper_execute and
+        # live_execute), and LIVE_DISABLED / LIVE_NOT_IMPLEMENTED
+        # (live_execute). So a correctly denied LIVE request - one
+        # that provably performed no side effect at all - was
+        # finalized as a confirmed execution: it failed inside
+        # _finalize_durable_financial_state and left the runtime
+        # halted with an unresolved journal entry, INDETERMINATE
+        # capital, and an audit record asserting that an execution
+        # "was confirmed" which had never occurred.
+        #
+        # Inverting the test is also what makes an unrecognised
+        # terminal status fail closed. ExecutionResult.status
+        # defaults to "UNKNOWN", and any status added in future is
+        # treated as not-committed until it is deliberately declared
+        # a success here, rather than being silently durable.
+        #
+        # This changes only how a status is classified, never how a
+        # side effect is judged: _resolve_unsuccessful_execution
+        # still decides deterministic rollback versus genuine
+        # uncertainty from the recorded side-effect marker alone, so
+        # a post-side-effect failure remains INDETERMINATE exactly
+        # as before.
+
+        if status not in self.SUCCESS_STATUSES:
+            terminal = self._decision_unsuccessful(
+                run,
+                result,
+                status,
+            )
+
+        else:
+            terminal = self._decision_commit(
+                run,
+                result,
+                status,
+            )
+
+        if not isinstance(terminal, _Continue):
+            return terminal
+
+        self.publish(
+            "EXECUTION_COMPLETED",
+            result,
+        )
+
+        return result
+
+    def _decision_preflight(
+        self,
+    ) -> dict[str, Any] | _Continue:
+        """Count the decision; refuse it while offline, halted or financially not ready."""
 
         with self._lock:
             self.stats[
@@ -1421,986 +1611,29 @@ class ExecutionManager:
                 "timestamp": self._utc_now(),
             }
 
-        request: ExecutionRequest | None = None
+        return _CONTINUE
 
-        request_id: str | None = None
+    def _decision_build(
+        self,
+        run: _DecisionRun,
+        decision: Any,
+    ) -> dict[str, Any] | _Continue:
+        """Build the canonical request; a build failure or an empty request id ends the run."""
 
-        request_claimed = False
-
-        last_audit_event_id: str | None = None
+        # =================================================
+        # BUILD REQUEST
+        # =================================================
 
         try:
-            # =================================================
-            # BUILD REQUEST
-            # =================================================
-
-            try:
-                request = self.build_request(
-                    decision
-                )
-
-            except Exception as build_exc:
-                self._record_error(
-                    phase="build_request",
-                    error=build_exc,
-                    request=None,
-                )
-
-                with self._lock:
-                    self.stats[
-                        "failed"
-                    ] += 1
-
-                logger.exception(
-                    "Execution request build failed"
-                )
-
-                failure = (
-                    self._build_input_failure_result(
-                        decision=decision,
-                        error=build_exc,
-                        started_at=started_at,
-                    )
-                )
-
-                with self._lock:
-                    self._append_bounded(
-                        self.history,
-                        failure,
-                        self.MAX_HISTORY,
-                    )
-
-                self.publish(
-                    "EXECUTION_FAILED",
-                    failure,
-                )
-
-                return failure
-
-            request_id = str(
-                request.request_id
-            ).strip()
-
-            if not request_id:
-                return self.reject(
-                    reason="INVALID_REQUEST_ID",
-                    request=request,
-                )
-
-            # =================================================
-            # REQUEST RECEIVED AUDIT
-            # =================================================
-
-            last_audit_event_id = (
-                self._write_audit_event(
-                    event_type=(
-                        "EXECUTION_REQUEST_RECEIVED"
-                    ),
-                    request=request,
-                    payload={
-                        "symbol": request.symbol,
-                        "action": request.action,
-                        "price": request.price,
-                        "amount": request.amount,
-                        "confidence": (
-                            request.confidence
-                        ),
-                        "strategy": request.strategy,
-                        "risk": request.risk,
-                        "request_mode": request.mode,
-                        "order_type": (
-                            request.order_type
-                        ),
-                        "source": request.source,
-                    },
-                )
+            run.request = self.build_request(
+                decision
             )
 
-            # =================================================
-            # ATOMIC IDEMPOTENCY CLAIM
-            # =================================================
-
-            duplicate_result = self._claim_request(
-                request
-            )
-
-            if duplicate_result is not None:
-                duplicate_reason = str(
-                    duplicate_result.get(
-                        "duplicate_reason",
-                        duplicate_result.get(
-                            "reason",
-                            "DUPLICATE_REQUEST",
-                        ),
-                    )
-                ).strip().upper()
-
-                if (
-                    duplicate_reason
-                    == "DUPLICATE_REQUEST_PENDING"
-                ):
-                    audit_type = (
-                        "DUPLICATE_REQUEST_PENDING"
-                    )
-
-                elif (
-                    duplicate_reason
-                    == "DUPLICATE_REQUEST_COMPLETED"
-                ):
-                    audit_type = (
-                        "DUPLICATE_REQUEST_COMPLETED"
-                    )
-
-                else:
-                    audit_type = (
-                        "DUPLICATE_REQUEST_DETECTED"
-                    )
-
-                self._write_audit_event(
-                    event_type=audit_type,
-                    request=request,
-                    payload={
-                        "status": (
-                            duplicate_result.get(
-                                "status"
-                            )
-                        ),
-                        "reason": duplicate_reason,
-                        "cache_hit": bool(
-                            duplicate_result.get(
-                                "idempotency",
-                                {},
-                            ).get(
-                                "cache_hit",
-                                False,
-                            )
-                        ),
-                        "duplicate": True,
-                    },
-                    causation_id=(
-                        last_audit_event_id
-                    ),
-                )
-
-                return duplicate_result
-
-            request_claimed = True
-
-            # =================================================
-            # REQUEST VALIDATION
-            # =================================================
-
-            validation = self.validate_request(
-                request
-            )
-
-            if not validation[
-                "approved"
-            ]:
-                result = self.reject(
-                    reason=validation[
-                        "reason"
-                    ],
-                    request=request,
-                    details=validation.get(
-                        "details"
-                    ),
-                )
-
-                self._complete_request(
-                    request_id=request_id,
-                    result=result,
-                )
-
-                request_claimed = False
-
-                self._write_audit_event(
-                    event_type=(
-                        "EXECUTION_REQUEST_REJECTED"
-                    ),
-                    request=request,
-                    payload={
-                        "stage": (
-                            "REQUEST_VALIDATION"
-                        ),
-                        "status": result.get(
-                            "status"
-                        ),
-                        "reason": validation.get(
-                            "reason"
-                        ),
-                        "details": validation.get(
-                            "details"
-                        ),
-                    },
-                    causation_id=(
-                        last_audit_event_id
-                    ),
-                )
-
-                return result
-
-            with self._lock:
-                self.stats[
-                    "validated"
-                ] += 1
-
-            last_audit_event_id = (
-                self._write_audit_event(
-                    event_type=(
-                        "EXECUTION_REQUEST_VALIDATED"
-                    ),
-                    request=request,
-                    payload={
-                        "approved": True,
-                        "symbol": request.symbol,
-                        "action": request.action,
-                        "confidence": (
-                            request.confidence
-                        ),
-                        "minimum_confidence": (
-                            self.minimum_confidence
-                        ),
-                    },
-                    causation_id=(
-                        last_audit_event_id
-                    ),
-                )
-                or last_audit_event_id
-            )
-
-            # =================================================
-            # RISK VALIDATION
-            # =================================================
-
-            risk_validation = self.risk_check(
-                request=request,
-                market_state=market_state,
-            )
-
-            if not risk_validation[
-                "approved"
-            ]:
-                result = self.reject(
-                    reason=risk_validation[
-                        "reason"
-                    ],
-                    request=request,
-                    details=risk_validation.get(
-                        "details"
-                    ),
-                )
-
-                self._complete_request(
-                    request_id=request_id,
-                    result=result,
-                )
-
-                request_claimed = False
-
-                self._write_audit_event(
-                    event_type="RISK_REJECTED",
-                    request=request,
-                    payload={
-                        "approved": False,
-                        "status": result.get(
-                            "status"
-                        ),
-                        "reason": (
-                            risk_validation.get(
-                                "reason"
-                            )
-                        ),
-                        "details": (
-                            risk_validation.get(
-                                "details"
-                            )
-                        ),
-                    },
-                    causation_id=(
-                        last_audit_event_id
-                    ),
-                )
-
-                return result
-
-            if not self._has_risk_admission(request):
-                return self.reject(reason="CANONICAL_RISK_ADMISSION_MISSING", request=request)
-
-            risk_approved_event_id = self._write_audit_event(
-                event_type="RISK_APPROVED",
-                request=request,
-                payload={
-                    "approved": True,
-                    "risk": request.risk,
-                    "confidence": (
-                        request.confidence
-                    ),
-                    "details": (
-                        risk_validation.get(
-                            "details"
-                        )
-                    ),
-                },
-                causation_id=(
-                    last_audit_event_id
-                ),
-            )
-
-            self._close_experiment_if_unrecorded(
-                risk_approved_event_id,
-                risk_validation.get("details"),
-            )
-
-            last_audit_event_id = (
-                risk_approved_event_id
-                or last_audit_event_id
-            )
-
-            # =================================================
-            # DURABLE TRANSACTION PREPARE BARRIER
-            # =================================================
-
-            try:
-                prepared = self.transaction_journal.prepare(
-                    request_id,
-                    request.to_dict(),
-                )
-
-            except Exception as prepare_exc:
-                prepared = False
-
-                self._record_error(
-                    phase="transaction_prepare",
-                    error=prepare_exc,
-                    request=request,
-                )
-
-            if not prepared:
-                self._release_capital_reservation(request_id)
-                self._release_request(
-                    request_id
-                )
-
-                request_claimed = False
-
-                not_committed = {
-                    "success": False,
-                    "status": (
-                        CommitOutcome
-                        .NOT_COMMITTED
-                        .value
-                    ),
-                    "commit_outcome": (
-                        CommitOutcome
-                        .NOT_COMMITTED
-                        .value
-                    ),
-                    "error_code": (
-                        "TRANSACTION_PREPARE_FAILED"
-                    ),
-                    "message": (
-                        "Durable transaction prepare failed"
-                    ),
-                    "request_id": request_id,
-                    "symbol": request.symbol,
-                    "action": request.action,
-                    "mode": self.mode,
-                    "timestamp": self._utc_now(),
-                }
-
-                self._record_result(
-                    not_committed
-                )
-
-                self.publish(
-                    "EXECUTION_NOT_COMMITTED",
-                    not_committed,
-                )
-
-                return not_committed
-
-            # =================================================
-            # EXECUTION ROUTING
-            # =================================================
-
-            if self.mode == self.MODE_PAPER:
-                result = self.paper_execute(
-                    request
-                )
-
-            else:
-                result = self.live_execute(
-                    request
-                )
-
-            result.setdefault(
-                "request_id",
-                request_id,
-            )
-
-            result.setdefault(
-                "latency_ms",
-                round(
-                    (
-                        time.perf_counter()
-                        - started_at
-                    )
-                    * 1000,
-                    3,
-                ),
-            )
-
-            status = str(
-                result.get(
-                    "status",
-                    "UNKNOWN",
-                )
-            ).strip().upper()
-
-            # =================================================
-            # RETRYABLE FAILURE / NOT COMMITTED
-            # =================================================
-            #
-            # Terminal classification is a SUCCESS allow-list, not a
-            # failure allow-list. Only a status this manager itself
-            # recognises as a completed execution may continue into
-            # durable finalization; every other terminal status resolves
-            # through the unsuccessful-execution path.
-            #
-            # The previous `status in FAILURE_STATUSES` test admitted
-            # everything outside {FAILED, ERROR} into the durable-commit
-            # branch. The statuses that actually reach this point are
-            # PAPER_EXECUTED and FAILED (paper_execute), REJECTED (the
-            # canonical-admission guard inside paper_execute and
-            # live_execute), and LIVE_DISABLED / LIVE_NOT_IMPLEMENTED
-            # (live_execute). So a correctly denied LIVE request - one
-            # that provably performed no side effect at all - was
-            # finalized as a confirmed execution: it failed inside
-            # _finalize_durable_financial_state and left the runtime
-            # halted with an unresolved journal entry, INDETERMINATE
-            # capital, and an audit record asserting that an execution
-            # "was confirmed" which had never occurred.
-            #
-            # Inverting the test is also what makes an unrecognised
-            # terminal status fail closed. ExecutionResult.status
-            # defaults to "UNKNOWN", and any status added in future is
-            # treated as not-committed until it is deliberately declared
-            # a success here, rather than being silently durable.
-            #
-            # This changes only how a status is classified, never how a
-            # side effect is judged: _resolve_unsuccessful_execution
-            # still decides deterministic rollback versus genuine
-            # uncertainty from the recorded side-effect marker alone, so
-            # a post-side-effect failure remains INDETERMINATE exactly
-            # as before.
-
-            if status not in self.SUCCESS_STATUSES:
-                # An unsuccessful result is classified by the same
-                # side-effect boundary as a raised exception. A paper
-                # mutation that already persisted is not undone by the
-                # execution then reporting FAILED.
-                side_effect_possible = (
-                    self._resolve_unsuccessful_execution(
-                        request_id=request_id,
-                        reason=status,
-                        result=result,
-                    )
-                )
-
-                self._release_request(
-                    request_id
-                )
-
-                request_claimed = False
-
-                if side_effect_possible:
-                    # The original business failure is preserved in
-                    # error_code, message, and original_status; only the
-                    # commit classification changes, because this runtime
-                    # can no longer claim nothing happened.
-                    result[
-                        "original_status"
-                    ] = status
-
-                    result[
-                        "success"
-                    ] = False
-
-                    result[
-                        "status"
-                    ] = (
-                        CommitOutcome
-                        .COMMIT_STATUS_UNKNOWN
-                        .value
-                    )
-
-                    result[
-                        "commit_outcome"
-                    ] = (
-                        CommitOutcome
-                        .COMMIT_STATUS_UNKNOWN
-                        .value
-                    )
-
-                    result[
-                        "recovery_required"
-                    ] = True
-
-                    with self._lock:
-                        self.stats[
-                            "failed"
-                        ] += 1
-
-                    self._record_result(
-                        result
-                    )
-
-                    self._write_audit_event(
-                        event_type=(
-                            "EXECUTION_COMMIT_STATUS_UNKNOWN"
-                        ),
-                        request=request,
-                        payload={
-                            "success": False,
-                            "status": result.get(
-                                "status"
-                            ),
-                            "original_status": status,
-                            "message": result.get(
-                                "message"
-                            ),
-                            "error_code": result.get(
-                                "error_code"
-                            ),
-                            "latency_ms": result.get(
-                                "latency_ms"
-                            ),
-                            "retryable": False,
-                            "commit_outcome": (
-                                result.get(
-                                    "commit_outcome"
-                                )
-                            ),
-                        },
-                        causation_id=(
-                            last_audit_event_id
-                        ),
-                    )
-
-                    self.publish(
-                        "EXECUTION_COMMIT_STATUS_UNKNOWN",
-                        result,
-                    )
-
-                    return result
-
-                result[
-                    "commit_outcome"
-                ] = (
-                    CommitOutcome
-                    .NOT_COMMITTED
-                    .value
-                )
-
-                self._record_result(
-                    result
-                )
-
-                self._write_audit_event(
-                    event_type="EXECUTION_FAILED",
-                    request=request,
-                    payload={
-                        "success": bool(
-                            result.get(
-                                "success",
-                                False,
-                            )
-                        ),
-                        "status": status,
-                        "message": result.get(
-                            "message"
-                        ),
-                        "error_code": result.get(
-                            "error_code"
-                        ),
-                        "latency_ms": result.get(
-                            "latency_ms"
-                        ),
-                        "retryable": True,
-                        "commit_outcome": (
-                            result.get(
-                                "commit_outcome"
-                            )
-                        ),
-                    },
-                    causation_id=(
-                        last_audit_event_id
-                    ),
-                )
-
-            # =================================================
-            # TERMINAL DURABLE COMMIT
-            # =================================================
-
-            else:
-                finalized = None
-
-                try:
-                    if self.portfolio_foundation is not None:
-                        # Side-effect boundary. apply_confirmed() mutates the
-                        # durable financial authority, so from here an
-                        # interrupted request has an outcome this manager
-                        # cannot prove. Nothing earlier in the paper flow
-                        # mutates anything any more: the paper paths are
-                        # purely computational, and PaperTrader is projected
-                        # from this authority only after the commit lands.
-                        self._mark_execution_side_effect(request_id)
-
-                        finalized = self._finalize_durable_financial_state(
-                            request=request,
-                            result=result,
-                        )
-                except Exception as finalization_exc:
-                    self._record_error(
-                        phase="durable_financial_finalization",
-                        error=finalization_exc,
-                        request=request,
-                    )
-                    self._mark_capital_indeterminate(request_id)
-                    try:
-                        self.transaction_journal.mark_unknown(
-                            request_id,
-                            reason="DURABLE_FINANCIAL_FINALIZATION_FAILED",
-                            result=result,
-                        )
-                    except Exception:
-                        logger.exception("Unable to mark failed financial finalization unknown")
-                    with self._lock:
-                        self.execution_halted = True
-                        self.recovery_required = True
-                        self.halt_reason = "DURABLE_FINANCIAL_FINALIZATION_FAILED"
-                    # Same claim discipline as the unsuccessful-result branch
-                    # above: an interrupted execution must not leave its
-                    # request_id claimed in flight, which would outlive the
-                    # halt and answer EXECUTION_REQUESTS_IN_FLIGHT forever.
-                    self._release_request(request_id)
-                    request_claimed = False
-                    unknown_result = {
-                        "success": False,
-                        "status": CommitOutcome.COMMIT_STATUS_UNKNOWN.value,
-                        "commit_outcome": CommitOutcome.COMMIT_STATUS_UNKNOWN.value,
-                        "recovery_required": True,
-                        "error_code": "DURABLE_FINANCIAL_FINALIZATION_FAILED",
-                        "message": "Execution was confirmed but durable position/portfolio finalization failed",
-                        "request_id": request_id,
-                        "symbol": request.symbol,
-                        "action": request.action,
-                        "mode": self.mode,
-                        "timestamp": self._utc_now(),
-                    }
-                    self._record_result(unknown_result)
-                    self.publish("EXECUTION_COMMIT_STATUS_UNKNOWN", unknown_result)
-                    return unknown_result
-
-                # Block 5E: commit the reservation at the exact settled
-                # amount - notional + quote fee - rather than the full
-                # reservation, so the deterministic sub-quantum remainder a
-                # BUY never spent stops being permanently encumbered by this
-                # reservation. `None` when either figure is absent (e.g. a
-                # non-paper/live result), which preserves the historical
-                # full-amount commit for that case. The addition is pinned
-                # to the same explicit context as the rest of the 5E
-                # settlement slice (final-review MEDIUM #2), so a caller
-                # thread's ambient precision can never round this sum
-                # differently than `_finalize_durable_financial_state`
-                # already rounded the identical `notional + fee` figure it
-                # checked against the approval moments earlier - a
-                # divergence here would either under-commit or spuriously
-                # halt on `settled_amount exceeds reserved amount`.
-                settled_amount = None
-                notional_raw = result.get("filled_quote_notional")
-                settled_fee_raw = result.get("fee_amount")
-                if notional_raw is not None and settled_fee_raw is not None:
-                    try:
-                        with localcontext() as context:
-                            context.prec = SETTLEMENT_CONTEXT_PRECISION
-                            context.rounding = ROUND_HALF_EVEN
-                            settled_amount = Decimal(str(notional_raw)) + Decimal(str(settled_fee_raw))
-                    except (InvalidOperation, ValueError, TypeError):
-                        settled_amount = None
-
-                if not self._commit_capital_reservation(request_id, settled_amount):
-                    try:
-                        self.transaction_journal.mark_unknown(
-                            request_id,
-                            reason="CAPITAL_RESERVATION_COMMIT_FAILED",
-                            result=result,
-                        )
-                    except Exception:
-                        logger.exception("Unable to mark reservation commit failure unknown")
-                    with self._lock:
-                        self.execution_halted = True
-                        self.recovery_required = True
-                        self.halt_reason = "CAPITAL_RESERVATION_COMMIT_FAILED"
-                    # F-5: the same claim discipline dac9b72 gave the
-                    # finalization-failure branch above. Clearing only the
-                    # local flag left request_id in pending_request_ids, so
-                    # the claim outlived the halt and reset() refused with
-                    # EXECUTION_REQUESTS_IN_FLIGHT until restart.
-                    self._release_request(request_id)
-                    request_claimed = False
-                    unknown_result = {
-                        "success": False,
-                        "status": CommitOutcome.COMMIT_STATUS_UNKNOWN.value,
-                        "commit_outcome": CommitOutcome.COMMIT_STATUS_UNKNOWN.value,
-                        "recovery_required": True,
-                        "error_code": "CAPITAL_RESERVATION_COMMIT_FAILED",
-                        "message": "Execution finalized but reservation commit could not be confirmed",
-                        "request_id": request_id,
-                        "symbol": request.symbol,
-                        "action": request.action,
-                        "mode": self.mode,
-                        "timestamp": self._utc_now(),
-                    }
-                    self._record_result(unknown_result)
-                    self.publish("EXECUTION_COMMIT_STATUS_UNKNOWN", unknown_result)
-                    return unknown_result
-
-                # The durable authority is committed and the reservation is
-                # settled; only now is the passive book projected from it.
-                # This can neither fail nor alter the execution.
-                self._mirror_paper_book(
-                    request=request,
-                    result=result,
-                    finalized=finalized,
-                )
-
-                result[
-                    "commit_outcome"
-                ] = (
-                    CommitOutcome
-                    .COMMITTED
-                    .value
-                )
-
-                persisted = self._complete_request(
-                    request_id=request_id,
-                    result=result,
-                )
-
-                request_claimed = False
-
-                if not persisted:
-                    self._mark_capital_indeterminate(request_id)
-                    try:
-                        self.transaction_journal.mark_unknown(
-                            request_id,
-                            reason="DURABLE_COMMIT_FAILED",
-                            result=result,
-                        )
-
-                    except Exception:
-                        logger.exception(
-                            "Unable to persist unknown "
-                            "transaction outcome"
-                        )
-
-                    with self._lock:
-                        self.execution_halted = True
-                        self.recovery_required = True
-                        self.halt_reason = (
-                            "UNRESOLVED_TRANSACTION"
-                        )
-
-                    unknown_result = {
-                        "success": False,
-                        "status": (
-                            CommitOutcome
-                            .COMMIT_STATUS_UNKNOWN
-                            .value
-                        ),
-                        "commit_outcome": (
-                            CommitOutcome
-                            .COMMIT_STATUS_UNKNOWN
-                            .value
-                        ),
-                        "recovery_required": True,
-                        "error_code": (
-                            "DURABLE_COMMIT_FAILED"
-                        ),
-                        "message": (
-                            "Financial side effect completed but "
-                            "durable terminal persistence failed"
-                        ),
-                        "request_id": request_id,
-                        "symbol": request.symbol,
-                        "action": request.action,
-                        "mode": self.mode,
-                        "timestamp": self._utc_now(),
-                        "original_result": result,
-                    }
-
-                    self._record_result(
-                        unknown_result
-                    )
-
-                    self.publish(
-                        "EXECUTION_COMMIT_STATUS_UNKNOWN",
-                        unknown_result,
-                    )
-
-                    return unknown_result
-
-                try:
-                    journal_committed = (
-                        self.transaction_journal.mark_committed(
-                            request_id,
-                            result,
-                        )
-                    )
-
-                except Exception:
-                    journal_committed = False
-
-                    logger.exception(
-                        "Transaction journal commit failed"
-                    )
-
-                if not journal_committed:
-                    self._mark_capital_indeterminate(request_id)
-                    try:
-                        self.transaction_journal.mark_unknown(
-                            request_id,
-                            reason=(
-                                "TRANSACTION_JOURNAL_COMMIT_FAILED"
-                            ),
-                            result=result,
-                        )
-
-                    except Exception:
-                        logger.exception(
-                            "Unable to mark transaction unknown"
-                        )
-
-                    with self._lock:
-                        self.execution_halted = True
-                        self.recovery_required = True
-                        self.halt_reason = (
-                            "UNRESOLVED_TRANSACTION"
-                        )
-
-                    unknown_result = {
-                        "success": False,
-                        "status": (
-                            CommitOutcome
-                            .COMMIT_STATUS_UNKNOWN
-                            .value
-                        ),
-                        "commit_outcome": (
-                            CommitOutcome
-                            .COMMIT_STATUS_UNKNOWN
-                            .value
-                        ),
-                        "recovery_required": True,
-                        "error_code": (
-                            "TRANSACTION_JOURNAL_COMMIT_FAILED"
-                        ),
-                        "message": (
-                            "Terminal result persisted but journal "
-                            "commit could not be confirmed"
-                        ),
-                        "request_id": request_id,
-                        "symbol": request.symbol,
-                        "action": request.action,
-                        "mode": self.mode,
-                        "timestamp": self._utc_now(),
-                    }
-
-                    self._record_result(
-                        unknown_result
-                    )
-
-                    self.publish(
-                        "EXECUTION_COMMIT_STATUS_UNKNOWN",
-                        unknown_result,
-                    )
-
-                    return unknown_result
-
-                self._record_result(
-                    result
-                )
-
-                self._write_audit_event(
-                    event_type=(
-                        "EXECUTION_COMPLETED"
-                    ),
-                    request=request,
-                    payload={
-                        "success": bool(
-                            result.get(
-                                "success",
-                                False,
-                            )
-                        ),
-                        "status": status,
-                        "execution_id": (
-                            result.get(
-                                "execution_id"
-                            )
-                        ),
-                        "filled_price": (
-                            result.get(
-                                "filled_price"
-                            )
-                        ),
-                        "filled_amount": (
-                            result.get(
-                                "filled_amount"
-                            )
-                        ),
-                        "fee": result.get(
-                            "fee"
-                        ),
-                        "fee_amount": result.get(
-                            "fee_amount"
-                        ),
-                        "fee_currency": result.get(
-                            "fee_currency"
-                        ),
-                        "pnl": result.get(
-                            "pnl"
-                        ),
-                        "latency_ms": (
-                            result.get(
-                                "latency_ms"
-                            )
-                        ),
-                        "terminal": True,
-                        "commit_outcome": (
-                            result.get(
-                                "commit_outcome"
-                            )
-                        ),
-                    },
-                    causation_id=(
-                        last_audit_event_id
-                    ),
-                )
-
-            self.publish(
-                "EXECUTION_COMPLETED",
-                result,
-            )
-
-            return result
-
-        except Exception as exc:
+        except Exception as build_exc:
             self._record_error(
-                phase="execute",
-                error=exc,
-                request=request,
+                phase="build_request",
+                error=build_exc,
+                request=None,
             )
 
             with self._lock:
@@ -2409,86 +1642,15 @@ class ExecutionManager:
                 ] += 1
 
             logger.exception(
-                "Execution pipeline failed"
+                "Execution request build failed"
             )
 
-            # An exception after risk admission must not leave capital
-            # reserved, an admission stale, and the runtime running.
-            side_effect_possible = (
-                self._resolve_unsuccessful_execution(
-                    request_id=request_id,
-                    reason="EXECUTION_PIPELINE_EXCEPTION",
+            failure = (
+                self._build_input_failure_result(
+                    decision=decision,
+                    error=build_exc,
+                    started_at=run.started_at,
                 )
-                if request_id
-                else False
-            )
-
-            if side_effect_possible:
-                failure = self._failure_result(
-                    request=request,
-                    status=(
-                        CommitOutcome
-                        .COMMIT_STATUS_UNKNOWN
-                        .value
-                    ),
-                    message=(
-                        "Execution was interrupted after a paper "
-                        "execution side effect"
-                    ),
-                    error_code=(
-                        "EXECUTION_PIPELINE_EXCEPTION"
-                    ),
-                    error=exc,
-                )
-
-                failure[
-                    "commit_outcome"
-                ] = (
-                    CommitOutcome
-                    .COMMIT_STATUS_UNKNOWN
-                    .value
-                )
-
-                failure[
-                    "recovery_required"
-                ] = True
-
-            else:
-                failure = self._failure_result(
-                    request=request,
-                    status="FAILED",
-                    message=(
-                        "Execution pipeline failed"
-                    ),
-                    error_code=(
-                        "EXECUTION_PIPELINE_EXCEPTION"
-                    ),
-                    error=exc,
-                )
-
-                failure[
-                    "commit_outcome"
-                ] = (
-                    CommitOutcome
-                    .NOT_COMMITTED
-                    .value
-                )
-
-            if request_id:
-                failure.setdefault(
-                    "request_id",
-                    request_id,
-                )
-
-            failure[
-                "latency_ms"
-            ] = round(
-                (
-                    time.perf_counter()
-                    - started_at
-                )
-                * 1000,
-                3,
             )
 
             with self._lock:
@@ -2498,69 +1660,1213 @@ class ExecutionManager:
                     self.MAX_HISTORY,
                 )
 
-            if request is not None:
-                self._write_audit_event(
-                    event_type=(
-                        "EXECUTION_COMMIT_STATUS_UNKNOWN"
-                        if side_effect_possible
-                        else "EXECUTION_FAILED"
-                    ),
-                    request=request,
-                    payload={
-                        "success": False,
-                        "status": failure.get(
-                            "status"
-                        ),
-                        "message": failure.get(
-                            "message"
-                        ),
-                        "error_code": (
-                            "EXECUTION_PIPELINE_EXCEPTION"
-                        ),
-                        "error": str(
-                            exc
-                        ),
-                        "error_type": type(
-                            exc
-                        ).__name__,
-                        "latency_ms": failure.get(
-                            "latency_ms"
-                        ),
-                        "retryable": (
-                            not side_effect_possible
-                        ),
-                        "commit_outcome": failure.get(
-                            "commit_outcome"
-                        ),
-                    },
-                    causation_id=(
-                        last_audit_event_id
-                    ),
-                )
-
             self.publish(
-                (
-                    "EXECUTION_COMMIT_STATUS_UNKNOWN"
-                    if side_effect_possible
-                    else "EXECUTION_FAILED"
-                ),
+                "EXECUTION_FAILED",
                 failure,
             )
 
             return failure
 
-        finally:
-            # Defensive release for exceptions or unexpected
-            # early exits after a successful atomic claim.
-            if request_id:
-                self._consume_execution_side_effect(
-                    request_id
+        run.request_id = str(
+            cast(ExecutionRequest, run.request).request_id
+        ).strip()
+
+        if not run.request_id:
+            return self.reject(
+                reason="INVALID_REQUEST_ID",
+                request=run.request,
+            )
+
+        return _CONTINUE
+
+    def _decision_receive_and_claim(
+        self,
+        run: _DecisionRun,
+    ) -> dict[str, Any] | _Continue:
+        """Audit the received request and claim its id; a duplicate ends the run."""
+
+        request = cast(ExecutionRequest, run.request)
+
+        # =================================================
+        # REQUEST RECEIVED AUDIT
+        # =================================================
+
+        run.last_audit_event_id = (
+            self._write_audit_event(
+                event_type=(
+                    "EXECUTION_REQUEST_RECEIVED"
+                ),
+                request=request,
+                payload={
+                    "symbol": request.symbol,
+                    "action": request.action,
+                    "price": request.price,
+                    "amount": request.amount,
+                    "confidence": (
+                        request.confidence
+                    ),
+                    "strategy": request.strategy,
+                    "risk": request.risk,
+                    "request_mode": request.mode,
+                    "order_type": (
+                        request.order_type
+                    ),
+                    "source": request.source,
+                },
+            )
+        )
+
+        # =================================================
+        # ATOMIC IDEMPOTENCY CLAIM
+        # =================================================
+
+        duplicate_result = self._claim_request(
+            request
+        )
+
+        if duplicate_result is not None:
+            duplicate_reason = str(
+                duplicate_result.get(
+                    "duplicate_reason",
+                    duplicate_result.get(
+                        "reason",
+                        "DUPLICATE_REQUEST",
+                    ),
+                )
+            ).strip().upper()
+
+            if (
+                duplicate_reason
+                == "DUPLICATE_REQUEST_PENDING"
+            ):
+                audit_type = (
+                    "DUPLICATE_REQUEST_PENDING"
                 )
 
-                if request_claimed:
-                    self._release_request(
-                        request_id
+            elif (
+                duplicate_reason
+                == "DUPLICATE_REQUEST_COMPLETED"
+            ):
+                audit_type = (
+                    "DUPLICATE_REQUEST_COMPLETED"
+                )
+
+            else:
+                audit_type = (
+                    "DUPLICATE_REQUEST_DETECTED"
+                )
+
+            self._write_audit_event(
+                event_type=audit_type,
+                request=request,
+                payload={
+                    "status": (
+                        duplicate_result.get(
+                            "status"
+                        )
+                    ),
+                    "reason": duplicate_reason,
+                    "cache_hit": bool(
+                        duplicate_result.get(
+                            "idempotency",
+                            {},
+                        ).get(
+                            "cache_hit",
+                            False,
+                        )
+                    ),
+                    "duplicate": True,
+                },
+                causation_id=(
+                    run.last_audit_event_id
+                ),
+            )
+
+            return duplicate_result
+
+        run.request_claimed = True
+
+        return _CONTINUE
+
+    def _decision_validate(
+        self,
+        run: _DecisionRun,
+    ) -> dict[str, Any] | _Continue:
+        """Validate the request structure; a rejection is persisted, audited and ends the run."""
+
+        request = cast(ExecutionRequest, run.request)
+        request_id = cast(str, run.request_id)
+
+        # =================================================
+        # REQUEST VALIDATION
+        # =================================================
+
+        validation = self.validate_request(
+            request
+        )
+
+        if not validation[
+            "approved"
+        ]:
+            result = self.reject(
+                reason=validation[
+                    "reason"
+                ],
+                request=request,
+                details=validation.get(
+                    "details"
+                ),
+            )
+
+            self._complete_request(
+                request_id=request_id,
+                result=result,
+            )
+
+            run.request_claimed = False
+
+            self._write_audit_event(
+                event_type=(
+                    "EXECUTION_REQUEST_REJECTED"
+                ),
+                request=request,
+                payload={
+                    "stage": (
+                        "REQUEST_VALIDATION"
+                    ),
+                    "status": result.get(
+                        "status"
+                    ),
+                    "reason": validation.get(
+                        "reason"
+                    ),
+                    "details": validation.get(
+                        "details"
+                    ),
+                },
+                causation_id=(
+                    run.last_audit_event_id
+                ),
+            )
+
+            return result
+
+        with self._lock:
+            self.stats[
+                "validated"
+            ] += 1
+
+        run.last_audit_event_id = (
+            self._write_audit_event(
+                event_type=(
+                    "EXECUTION_REQUEST_VALIDATED"
+                ),
+                request=request,
+                payload={
+                    "approved": True,
+                    "symbol": request.symbol,
+                    "action": request.action,
+                    "confidence": (
+                        request.confidence
+                    ),
+                    "minimum_confidence": (
+                        self.minimum_confidence
+                    ),
+                },
+                causation_id=(
+                    run.last_audit_event_id
+                ),
+            )
+            or run.last_audit_event_id
+        )
+
+        return _CONTINUE
+
+    def _decision_risk_gate(
+        self,
+        run: _DecisionRun,
+        market_state: Any | None,
+    ) -> dict[str, Any] | _Continue:
+        """Apply the institutional risk controls and require a canonical admission."""
+
+        request = cast(ExecutionRequest, run.request)
+        request_id = cast(str, run.request_id)
+
+        # =================================================
+        # RISK VALIDATION
+        # =================================================
+
+        risk_validation = self.risk_check(
+            request=request,
+            market_state=market_state,
+        )
+
+        if not risk_validation[
+            "approved"
+        ]:
+            result = self.reject(
+                reason=risk_validation[
+                    "reason"
+                ],
+                request=request,
+                details=risk_validation.get(
+                    "details"
+                ),
+            )
+
+            self._complete_request(
+                request_id=request_id,
+                result=result,
+            )
+
+            run.request_claimed = False
+
+            self._write_audit_event(
+                event_type="RISK_REJECTED",
+                request=request,
+                payload={
+                    "approved": False,
+                    "status": result.get(
+                        "status"
+                    ),
+                    "reason": (
+                        risk_validation.get(
+                            "reason"
+                        )
+                    ),
+                    "details": (
+                        risk_validation.get(
+                            "details"
+                        )
+                    ),
+                },
+                causation_id=(
+                    run.last_audit_event_id
+                ),
+            )
+
+            return result
+
+        if not self._has_risk_admission(request):
+            return self.reject(reason="CANONICAL_RISK_ADMISSION_MISSING", request=request)
+
+        risk_approved_event_id = self._write_audit_event(
+            event_type="RISK_APPROVED",
+            request=request,
+            payload={
+                "approved": True,
+                "risk": request.risk,
+                "confidence": (
+                    request.confidence
+                ),
+                "details": (
+                    risk_validation.get(
+                        "details"
                     )
+                ),
+            },
+            causation_id=(
+                run.last_audit_event_id
+            ),
+        )
+
+        self._close_experiment_if_unrecorded(
+            risk_approved_event_id,
+            risk_validation.get("details"),
+        )
+
+        run.last_audit_event_id = (
+            risk_approved_event_id
+            or run.last_audit_event_id
+        )
+
+        return _CONTINUE
+
+    def _decision_prepare(
+        self,
+        run: _DecisionRun,
+    ) -> dict[str, Any] | _Continue:
+        """Durable transaction prepare barrier; nothing is executed unless it holds."""
+
+        request = cast(ExecutionRequest, run.request)
+        request_id = cast(str, run.request_id)
+
+        # =================================================
+        # DURABLE TRANSACTION PREPARE BARRIER
+        # =================================================
+
+        try:
+            prepared = self.transaction_journal.prepare(
+                request_id,
+                request.to_dict(),
+            )
+
+        except Exception as prepare_exc:
+            prepared = False
+
+            self._record_error(
+                phase="transaction_prepare",
+                error=prepare_exc,
+                request=request,
+            )
+
+        if not prepared:
+            self._release_capital_reservation(request_id)
+            self._release_request(
+                request_id
+            )
+
+            run.request_claimed = False
+
+            not_committed = {
+                "success": False,
+                "status": (
+                    CommitOutcome
+                    .NOT_COMMITTED
+                    .value
+                ),
+                "commit_outcome": (
+                    CommitOutcome
+                    .NOT_COMMITTED
+                    .value
+                ),
+                "error_code": (
+                    "TRANSACTION_PREPARE_FAILED"
+                ),
+                "message": (
+                    "Durable transaction prepare failed"
+                ),
+                "request_id": request_id,
+                "symbol": request.symbol,
+                "action": request.action,
+                "mode": self.mode,
+                "timestamp": self._utc_now(),
+            }
+
+            self._record_result(
+                not_committed
+            )
+
+            self.publish(
+                "EXECUTION_NOT_COMMITTED",
+                not_committed,
+            )
+
+            return not_committed
+
+        return _CONTINUE
+
+    def _decision_route(
+        self,
+        run: _DecisionRun,
+    ) -> tuple[dict[str, Any], str]:
+        """Route to paper or live execution and classify the returned status."""
+
+        request = cast(ExecutionRequest, run.request)
+        request_id = cast(str, run.request_id)
+        started_at = run.started_at
+
+        # =================================================
+        # EXECUTION ROUTING
+        # =================================================
+
+        if self.mode == self.MODE_PAPER:
+            result = self.paper_execute(
+                request
+            )
+
+        else:
+            result = self.live_execute(
+                request
+            )
+
+        result.setdefault(
+            "request_id",
+            request_id,
+        )
+
+        result.setdefault(
+            "latency_ms",
+            round(
+                (
+                    time.perf_counter()
+                    - started_at
+                )
+                * 1000,
+                3,
+            ),
+        )
+
+        status = str(
+            result.get(
+                "status",
+                "UNKNOWN",
+            )
+        ).strip().upper()
+
+        return result, status
+
+    def _decision_unsuccessful(
+        self,
+        run: _DecisionRun,
+        result: dict[str, Any],
+        status: str,
+    ) -> dict[str, Any] | _Continue:
+        """Resolve a non-success result; ends the run only when a side effect may have happened."""
+
+        request = cast(ExecutionRequest, run.request)
+        request_id = cast(str, run.request_id)
+
+        # An unsuccessful result is classified by the same
+        # side-effect boundary as a raised exception. A paper
+        # mutation that already persisted is not undone by the
+        # execution then reporting FAILED.
+        side_effect_possible = (
+            self._resolve_unsuccessful_execution(
+                request_id=request_id,
+                reason=status,
+                result=result,
+            )
+        )
+
+        self._release_request(
+            request_id
+        )
+
+        run.request_claimed = False
+
+        if side_effect_possible:
+            # The original business failure is preserved in
+            # error_code, message, and original_status; only the
+            # commit classification changes, because this runtime
+            # can no longer claim nothing happened.
+            result[
+                "original_status"
+            ] = status
+
+            result[
+                "success"
+            ] = False
+
+            result[
+                "status"
+            ] = (
+                CommitOutcome
+                .COMMIT_STATUS_UNKNOWN
+                .value
+            )
+
+            result[
+                "commit_outcome"
+            ] = (
+                CommitOutcome
+                .COMMIT_STATUS_UNKNOWN
+                .value
+            )
+
+            result[
+                "recovery_required"
+            ] = True
+
+            with self._lock:
+                self.stats[
+                    "failed"
+                ] += 1
+
+            self._record_result(
+                result
+            )
+
+            self._write_audit_event(
+                event_type=(
+                    "EXECUTION_COMMIT_STATUS_UNKNOWN"
+                ),
+                request=request,
+                payload={
+                    "success": False,
+                    "status": result.get(
+                        "status"
+                    ),
+                    "original_status": status,
+                    "message": result.get(
+                        "message"
+                    ),
+                    "error_code": result.get(
+                        "error_code"
+                    ),
+                    "latency_ms": result.get(
+                        "latency_ms"
+                    ),
+                    "retryable": False,
+                    "commit_outcome": (
+                        result.get(
+                            "commit_outcome"
+                        )
+                    ),
+                },
+                causation_id=(
+                    run.last_audit_event_id
+                ),
+            )
+
+            self.publish(
+                "EXECUTION_COMMIT_STATUS_UNKNOWN",
+                result,
+            )
+
+            return result
+
+        result[
+            "commit_outcome"
+        ] = (
+            CommitOutcome
+            .NOT_COMMITTED
+            .value
+        )
+
+        self._record_result(
+            result
+        )
+
+        self._write_audit_event(
+            event_type="EXECUTION_FAILED",
+            request=request,
+            payload={
+                "success": bool(
+                    result.get(
+                        "success",
+                        False,
+                    )
+                ),
+                "status": status,
+                "message": result.get(
+                    "message"
+                ),
+                "error_code": result.get(
+                    "error_code"
+                ),
+                "latency_ms": result.get(
+                    "latency_ms"
+                ),
+                "retryable": True,
+                "commit_outcome": (
+                    result.get(
+                        "commit_outcome"
+                    )
+                ),
+            },
+            causation_id=(
+                run.last_audit_event_id
+            ),
+        )
+
+        return _CONTINUE
+
+    def _decision_commit(
+        self,
+        run: _DecisionRun,
+        result: dict[str, Any],
+        status: str,
+    ) -> dict[str, Any] | _Continue:
+        """Make a successful execution durable; any failure halts with COMMIT_STATUS_UNKNOWN."""
+
+        # =================================================
+        # TERMINAL DURABLE COMMIT
+        # =================================================
+
+        finalized, terminal = self._decision_finalize(
+            run,
+            result,
+        )
+
+        if not isinstance(terminal, _Continue):
+            return terminal
+
+        terminal = self._decision_commit_reservation(
+            run,
+            result,
+        )
+
+        if not isinstance(terminal, _Continue):
+            return terminal
+
+        terminal = self._decision_persist_terminal(
+            run,
+            result,
+            finalized,
+        )
+
+        if not isinstance(terminal, _Continue):
+            return terminal
+
+        terminal = self._decision_journal_commit(
+            run,
+            result,
+        )
+
+        if not isinstance(terminal, _Continue):
+            return terminal
+
+        request = cast(ExecutionRequest, run.request)
+
+        self._record_result(
+            result
+        )
+
+        self._write_audit_event(
+            event_type=(
+                "EXECUTION_COMPLETED"
+            ),
+            request=request,
+            payload={
+                "success": bool(
+                    result.get(
+                        "success",
+                        False,
+                    )
+                ),
+                "status": status,
+                "execution_id": (
+                    result.get(
+                        "execution_id"
+                    )
+                ),
+                "filled_price": (
+                    result.get(
+                        "filled_price"
+                    )
+                ),
+                "filled_amount": (
+                    result.get(
+                        "filled_amount"
+                    )
+                ),
+                "fee": result.get(
+                    "fee"
+                ),
+                "fee_amount": result.get(
+                    "fee_amount"
+                ),
+                "fee_currency": result.get(
+                    "fee_currency"
+                ),
+                "pnl": result.get(
+                    "pnl"
+                ),
+                "latency_ms": (
+                    result.get(
+                        "latency_ms"
+                    )
+                ),
+                "terminal": True,
+                "commit_outcome": (
+                    result.get(
+                        "commit_outcome"
+                    )
+                ),
+            },
+            causation_id=(
+                run.last_audit_event_id
+            ),
+        )
+
+        return _CONTINUE
+
+    def _decision_finalize(
+        self,
+        run: _DecisionRun,
+        result: dict[str, Any],
+    ) -> tuple[Any, dict[str, Any] | _Continue]:
+        """Apply the confirmed execution to the durable financial authority (the side-effect boundary)."""
+
+        request = cast(ExecutionRequest, run.request)
+        request_id = cast(str, run.request_id)
+
+        finalized = None
+
+        try:
+            if self.portfolio_foundation is not None:
+                # Side-effect boundary. apply_confirmed() mutates the
+                # durable financial authority, so from here an
+                # interrupted request has an outcome this manager
+                # cannot prove. Nothing earlier in the paper flow
+                # mutates anything any more: the paper paths are
+                # purely computational, and PaperTrader is projected
+                # from this authority only after the commit lands.
+                self._mark_execution_side_effect(request_id)
+
+                finalized = self._finalize_durable_financial_state(
+                    request=request,
+                    result=result,
+                )
+        except Exception as finalization_exc:
+            self._record_error(
+                phase="durable_financial_finalization",
+                error=finalization_exc,
+                request=request,
+            )
+            self._mark_capital_indeterminate(request_id)
+            try:
+                self.transaction_journal.mark_unknown(
+                    request_id,
+                    reason="DURABLE_FINANCIAL_FINALIZATION_FAILED",
+                    result=result,
+                )
+            except Exception:
+                logger.exception("Unable to mark failed financial finalization unknown")
+            with self._lock:
+                self.execution_halted = True
+                self.recovery_required = True
+                self.halt_reason = "DURABLE_FINANCIAL_FINALIZATION_FAILED"
+            # Same claim discipline as the unsuccessful-result branch
+            # above: an interrupted execution must not leave its
+            # request_id claimed in flight, which would outlive the
+            # halt and answer EXECUTION_REQUESTS_IN_FLIGHT forever.
+            self._release_request(request_id)
+            run.request_claimed = False
+            unknown_result = {
+                "success": False,
+                "status": CommitOutcome.COMMIT_STATUS_UNKNOWN.value,
+                "commit_outcome": CommitOutcome.COMMIT_STATUS_UNKNOWN.value,
+                "recovery_required": True,
+                "error_code": "DURABLE_FINANCIAL_FINALIZATION_FAILED",
+                "message": "Execution was confirmed but durable position/portfolio finalization failed",
+                "request_id": request_id,
+                "symbol": request.symbol,
+                "action": request.action,
+                "mode": self.mode,
+                "timestamp": self._utc_now(),
+            }
+            self._record_result(unknown_result)
+            self.publish("EXECUTION_COMMIT_STATUS_UNKNOWN", unknown_result)
+            return finalized, unknown_result
+
+        return finalized, _CONTINUE
+
+    def _decision_commit_reservation(
+        self,
+        run: _DecisionRun,
+        result: dict[str, Any],
+    ) -> dict[str, Any] | _Continue:
+        """Commit the capital reservation at the exact settled amount."""
+
+        request = cast(ExecutionRequest, run.request)
+        request_id = cast(str, run.request_id)
+
+        # Block 5E: commit the reservation at the exact settled
+        # amount - notional + quote fee - rather than the full
+        # reservation, so the deterministic sub-quantum remainder a
+        # BUY never spent stops being permanently encumbered by this
+        # reservation. `None` when either figure is absent (e.g. a
+        # non-paper/live result), which preserves the historical
+        # full-amount commit for that case. The addition is pinned
+        # to the same explicit context as the rest of the 5E
+        # settlement slice (final-review MEDIUM #2), so a caller
+        # thread's ambient precision can never round this sum
+        # differently than `_finalize_durable_financial_state`
+        # already rounded the identical `notional + fee` figure it
+        # checked against the approval moments earlier - a
+        # divergence here would either under-commit or spuriously
+        # halt on `settled_amount exceeds reserved amount`.
+        settled_amount = None
+        notional_raw = result.get("filled_quote_notional")
+        settled_fee_raw = result.get("fee_amount")
+        if notional_raw is not None and settled_fee_raw is not None:
+            try:
+                with localcontext() as context:
+                    context.prec = SETTLEMENT_CONTEXT_PRECISION
+                    context.rounding = ROUND_HALF_EVEN
+                    settled_amount = Decimal(str(notional_raw)) + Decimal(str(settled_fee_raw))
+            except (InvalidOperation, ValueError, TypeError):
+                settled_amount = None
+
+        if not self._commit_capital_reservation(request_id, settled_amount):
+            try:
+                self.transaction_journal.mark_unknown(
+                    request_id,
+                    reason="CAPITAL_RESERVATION_COMMIT_FAILED",
+                    result=result,
+                )
+            except Exception:
+                logger.exception("Unable to mark reservation commit failure unknown")
+            with self._lock:
+                self.execution_halted = True
+                self.recovery_required = True
+                self.halt_reason = "CAPITAL_RESERVATION_COMMIT_FAILED"
+            # F-5: the same claim discipline dac9b72 gave the
+            # finalization-failure branch above. Clearing only the
+            # local flag left request_id in pending_request_ids, so
+            # the claim outlived the halt and reset() refused with
+            # EXECUTION_REQUESTS_IN_FLIGHT until restart.
+            self._release_request(request_id)
+            run.request_claimed = False
+            unknown_result = {
+                "success": False,
+                "status": CommitOutcome.COMMIT_STATUS_UNKNOWN.value,
+                "commit_outcome": CommitOutcome.COMMIT_STATUS_UNKNOWN.value,
+                "recovery_required": True,
+                "error_code": "CAPITAL_RESERVATION_COMMIT_FAILED",
+                "message": "Execution finalized but reservation commit could not be confirmed",
+                "request_id": request_id,
+                "symbol": request.symbol,
+                "action": request.action,
+                "mode": self.mode,
+                "timestamp": self._utc_now(),
+            }
+            self._record_result(unknown_result)
+            self.publish("EXECUTION_COMMIT_STATUS_UNKNOWN", unknown_result)
+            return unknown_result
+
+        return _CONTINUE
+
+    def _decision_persist_terminal(
+        self,
+        run: _DecisionRun,
+        result: dict[str, Any],
+        finalized: Any,
+    ) -> dict[str, Any] | _Continue:
+        """Project the paper book, mark the result COMMITTED and persist it as the terminal idempotency record."""
+
+        request = cast(ExecutionRequest, run.request)
+        request_id = cast(str, run.request_id)
+
+        # The durable authority is committed and the reservation is
+        # settled; only now is the passive book projected from it.
+        # This can neither fail nor alter the execution.
+        self._mirror_paper_book(
+            request=request,
+            result=result,
+            finalized=finalized,
+        )
+
+        result[
+            "commit_outcome"
+        ] = (
+            CommitOutcome
+            .COMMITTED
+            .value
+        )
+
+        persisted = self._complete_request(
+            request_id=request_id,
+            result=result,
+        )
+
+        run.request_claimed = False
+
+        if not persisted:
+            self._mark_capital_indeterminate(request_id)
+            try:
+                self.transaction_journal.mark_unknown(
+                    request_id,
+                    reason="DURABLE_COMMIT_FAILED",
+                    result=result,
+                )
+
+            except Exception:
+                logger.exception(
+                    "Unable to persist unknown "
+                    "transaction outcome"
+                )
+
+            with self._lock:
+                self.execution_halted = True
+                self.recovery_required = True
+                self.halt_reason = (
+                    "UNRESOLVED_TRANSACTION"
+                )
+
+            unknown_result = {
+                "success": False,
+                "status": (
+                    CommitOutcome
+                    .COMMIT_STATUS_UNKNOWN
+                    .value
+                ),
+                "commit_outcome": (
+                    CommitOutcome
+                    .COMMIT_STATUS_UNKNOWN
+                    .value
+                ),
+                "recovery_required": True,
+                "error_code": (
+                    "DURABLE_COMMIT_FAILED"
+                ),
+                "message": (
+                    "Financial side effect completed but "
+                    "durable terminal persistence failed"
+                ),
+                "request_id": request_id,
+                "symbol": request.symbol,
+                "action": request.action,
+                "mode": self.mode,
+                "timestamp": self._utc_now(),
+                "original_result": result,
+            }
+
+            self._record_result(
+                unknown_result
+            )
+
+            self.publish(
+                "EXECUTION_COMMIT_STATUS_UNKNOWN",
+                unknown_result,
+            )
+
+            return unknown_result
+
+        return _CONTINUE
+
+    def _decision_journal_commit(
+        self,
+        run: _DecisionRun,
+        result: dict[str, Any],
+    ) -> dict[str, Any] | _Continue:
+        """Mark the durable transaction committed in the journal."""
+
+        request = cast(ExecutionRequest, run.request)
+        request_id = cast(str, run.request_id)
+
+        try:
+            journal_committed = (
+                self.transaction_journal.mark_committed(
+                    request_id,
+                    result,
+                )
+            )
+
+        except Exception:
+            journal_committed = False
+
+            logger.exception(
+                "Transaction journal commit failed"
+            )
+
+        if not journal_committed:
+            self._mark_capital_indeterminate(request_id)
+            try:
+                self.transaction_journal.mark_unknown(
+                    request_id,
+                    reason=(
+                        "TRANSACTION_JOURNAL_COMMIT_FAILED"
+                    ),
+                    result=result,
+                )
+
+            except Exception:
+                logger.exception(
+                    "Unable to mark transaction unknown"
+                )
+
+            with self._lock:
+                self.execution_halted = True
+                self.recovery_required = True
+                self.halt_reason = (
+                    "UNRESOLVED_TRANSACTION"
+                )
+
+            unknown_result = {
+                "success": False,
+                "status": (
+                    CommitOutcome
+                    .COMMIT_STATUS_UNKNOWN
+                    .value
+                ),
+                "commit_outcome": (
+                    CommitOutcome
+                    .COMMIT_STATUS_UNKNOWN
+                    .value
+                ),
+                "recovery_required": True,
+                "error_code": (
+                    "TRANSACTION_JOURNAL_COMMIT_FAILED"
+                ),
+                "message": (
+                    "Terminal result persisted but journal "
+                    "commit could not be confirmed"
+                ),
+                "request_id": request_id,
+                "symbol": request.symbol,
+                "action": request.action,
+                "mode": self.mode,
+                "timestamp": self._utc_now(),
+            }
+
+            self._record_result(
+                unknown_result
+            )
+
+            self.publish(
+                "EXECUTION_COMMIT_STATUS_UNKNOWN",
+                unknown_result,
+            )
+
+            return unknown_result
+
+        return _CONTINUE
+
+    def _decision_pipeline_failure(
+        self,
+        run: _DecisionRun,
+        exc: Exception,
+    ) -> dict[str, Any]:
+        """Handle an exception raised anywhere in the pipeline (called from the except clause)."""
+
+        request = run.request
+        request_id = run.request_id
+        started_at = run.started_at
+
+        self._record_error(
+            phase="execute",
+            error=exc,
+            request=request,
+        )
+
+        with self._lock:
+            self.stats[
+                "failed"
+            ] += 1
+
+        logger.exception(
+            "Execution pipeline failed"
+        )
+
+        # An exception after risk admission must not leave capital
+        # reserved, an admission stale, and the runtime running.
+        side_effect_possible = (
+            self._resolve_unsuccessful_execution(
+                request_id=request_id,
+                reason="EXECUTION_PIPELINE_EXCEPTION",
+            )
+            if request_id
+            else False
+        )
+
+        if side_effect_possible:
+            failure = self._failure_result(
+                request=request,
+                status=(
+                    CommitOutcome
+                    .COMMIT_STATUS_UNKNOWN
+                    .value
+                ),
+                message=(
+                    "Execution was interrupted after a paper "
+                    "execution side effect"
+                ),
+                error_code=(
+                    "EXECUTION_PIPELINE_EXCEPTION"
+                ),
+                error=exc,
+            )
+
+            failure[
+                "commit_outcome"
+            ] = (
+                CommitOutcome
+                .COMMIT_STATUS_UNKNOWN
+                .value
+            )
+
+            failure[
+                "recovery_required"
+            ] = True
+
+        else:
+            failure = self._failure_result(
+                request=request,
+                status="FAILED",
+                message=(
+                    "Execution pipeline failed"
+                ),
+                error_code=(
+                    "EXECUTION_PIPELINE_EXCEPTION"
+                ),
+                error=exc,
+            )
+
+            failure[
+                "commit_outcome"
+            ] = (
+                CommitOutcome
+                .NOT_COMMITTED
+                .value
+            )
+
+        if request_id:
+            failure.setdefault(
+                "request_id",
+                request_id,
+            )
+
+        failure[
+            "latency_ms"
+        ] = round(
+            (
+                time.perf_counter()
+                - started_at
+            )
+            * 1000,
+            3,
+        )
+
+        with self._lock:
+            self._append_bounded(
+                self.history,
+                failure,
+                self.MAX_HISTORY,
+            )
+
+        if request is not None:
+            self._write_audit_event(
+                event_type=(
+                    "EXECUTION_COMMIT_STATUS_UNKNOWN"
+                    if side_effect_possible
+                    else "EXECUTION_FAILED"
+                ),
+                request=request,
+                payload={
+                    "success": False,
+                    "status": failure.get(
+                        "status"
+                    ),
+                    "message": failure.get(
+                        "message"
+                    ),
+                    "error_code": (
+                        "EXECUTION_PIPELINE_EXCEPTION"
+                    ),
+                    "error": str(
+                        exc
+                    ),
+                    "error_type": type(
+                        exc
+                    ).__name__,
+                    "latency_ms": failure.get(
+                        "latency_ms"
+                    ),
+                    "retryable": (
+                        not side_effect_possible
+                    ),
+                    "commit_outcome": failure.get(
+                        "commit_outcome"
+                    ),
+                },
+                causation_id=(
+                    run.last_audit_event_id
+                ),
+            )
+
+        self.publish(
+            (
+                "EXECUTION_COMMIT_STATUS_UNKNOWN"
+                if side_effect_possible
+                else "EXECUTION_FAILED"
+            ),
+            failure,
+        )
+
+        return failure
 
     def build_request(
         self,
