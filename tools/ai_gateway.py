@@ -171,7 +171,9 @@ def _claude_code_runner(prompt: str, system: str, schema: dict[str, Any], model:
              "--strict-mcp-config", "--append-system-prompt", system],
             input=prompt, capture_output=True, text=True, encoding="utf-8", timeout=TIMEOUT_S * 3, cwd=empty, env=env)
     if proc.returncode != 0:
-        raise RuntimeError(f"claude exit {proc.returncode}")
+        from atlas_security import sanitize_sensitive_text
+        detail = sanitize_sensitive_text((proc.stderr or proc.stdout or "").strip())[:300]
+        raise RuntimeError(f"claude exit {proc.returncode}: {detail}")
     return json.loads(proc.stdout)
 
 
@@ -187,7 +189,7 @@ def _ask_claude_code(system, prompt, schema, model, effort, agent, ledger, now_s
     try:
         out = (runner or _claude_code_runner)(prompt, system, schema, model, effort)
     except Exception as exc:  # CLI missing, not logged in, usage limit hit, timeout: abstain
-        return AIResult("ABSTAIN", reason=f"UNAVAILABLE ({type(exc).__name__})", model=model)
+        return AIResult("ABSTAIN", reason=f"UNAVAILABLE ({type(exc).__name__}: {str(exc)[:300]})", model=model)
     cost = Decimal(str(out.get("total_cost_usd") or "0")) if isinstance(out, dict) else Decimal("0")
     ledger.add(now_s, cost, agent)  # one entry = one call, also when the answer is rejected below
     if not isinstance(out, dict) or out.get("is_error"):
