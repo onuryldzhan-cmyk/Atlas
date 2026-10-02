@@ -157,3 +157,13 @@ def test_home_reads_regime_records_by_their_real_id_field():
     # /api/memory returns replayed records keyed "id" (not "record_id"); the old lookup always showed N/A.
     html = web_app.TEMPLATE_DIR.joinpath("home.html").read_text(encoding="utf-8")
     assert "r.author === 'market_regime'" in html and "r.id || r.record_id" in html and "localTime" not in html
+
+
+def test_data_refresh_uses_shared_poll_not_bare_intervals():
+    """2026-10-02: polling pauses in hidden tabs and never overlaps (window.atlasPoll in _atlas_theme.html)."""
+    theme = web_app.TEMPLATE_DIR.joinpath("_atlas_theme.html").read_text(encoding="utf-8")
+    assert "window.atlasPoll" in theme and "document.hidden" in theme and "visibilitychange" in theme
+    for name in ("agents", "dashboard", "decisions", "governance", "home", "hq", "postmortem", "system", "trading"):
+        html = web_app.TEMPLATE_DIR.joinpath(f"{name}.html").read_text(encoding="utf-8")
+        assert not re.search(r"setInterval\((refresh\w*|slow|update\w+),", html), name
+        assert "atlasPoll(" in html, name

@@ -312,7 +312,7 @@
     document.getElementById('chat-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') ask(); });
 
     setInterval(() => { document.getElementById('hq-clock').textContent = new Date().toLocaleTimeString('tr-TR'); }, 1000);
-    refresh(); setInterval(refresh, 10000);
+    refresh(); atlasPoll(refresh, 10000);
     requestAnimationFrame(draw);
 })();
 </script>

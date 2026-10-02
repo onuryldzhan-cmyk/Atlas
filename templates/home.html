@@ -257,8 +257,8 @@
     }
     document.getElementById('sym').addEventListener('change', renderView);
     refresh(); slow();
-    setInterval(refresh, 5000);
-    setInterval(slow, 60000);
+    atlasPoll(refresh, 5000);
+    atlasPoll(slow, 60000);
 })();
 </script>
 </body>

@@ -75,3 +75,19 @@
     .muted, .text-body-secondary { color: var(--atlas-muted) !important; }
     a { color: var(--atlas-accent); }
 </style>
+<script>
+/* Shared polling (2026-10-02, pattern from TanStack Query / SWR defaults):
+   no polling while the tab is hidden, no overlapping requests (a tick is
+   skipped while the previous call is still running), and one immediate
+   refresh when the tab becomes visible again. Read-only pages only. */
+window.atlasPoll = function (fn, ms) {
+    let busy = false;
+    const tick = async () => {
+        if (busy || document.hidden) return;
+        busy = true;
+        try { await fn(); } catch (e) { /* the page renders its own error state */ } finally { busy = false; }
+    };
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
+    return setInterval(tick, ms);
+};
+</script>

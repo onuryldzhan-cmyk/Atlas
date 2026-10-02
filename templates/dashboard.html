@@ -1690,7 +1690,7 @@
         }
 
         renderPriceSparkline();
-        setInterval(updateSignalsGrid, 5000);
+        atlasPoll(updateSignalsGrid, 5000);
         updateSignalsGrid();
         updateOrganization();
         function updateSlowPanels() {
@@ -1705,7 +1705,7 @@
             updateCommandCenter();
             return updateExecutionGates();
         }
-        setInterval(updateSlowPanels, 30000);
+        atlasPoll(updateSlowPanels, 30000);
         // Re-render the grid once the first gates read lands, instead of
         // waiting up to 5s with "yükleniyor" thresholds on every card.
         updateSlowPanels().then(updateSignalsGrid);

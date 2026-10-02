@@ -302,7 +302,7 @@
         const owner = orgUnits.find((u) => u.id === 'owner');
         if (owner) renderDetail(owner);
         refreshLive();
-        setInterval(refreshLive, 10000);
+        atlasPoll(refreshLive, 10000);
         const [tasks, proposals] = await Promise.all([getJson('/api/tasks'), getJson('/api/proposals')]);
         renderWork(tasks, proposals);
         renderCycle(await getJson('/api/memory'));
