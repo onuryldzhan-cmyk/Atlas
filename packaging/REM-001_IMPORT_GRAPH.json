@@ -16,12 +16,12 @@
     "analysis": "Static AST import resolution over git-tracked Python files, excluding imports guarded by if TYPE_CHECKING:. Third-party and stdlib targets resolve to nothing and carry no edge."
   },
   "source_identity": {
-    "generated_from_commit": "a542183009696ee14ed03edb83b88e3de982ca4a",
-    "generated_from_tree": "611ae9b6b9439f02a4ee19ac5560a2f6ddb71f1e",
+    "generated_from_commit": "8195bf22a888041dfe8bbde7c60781b73639ad74",
+    "generated_from_tree": "4017224e082340053a66e572efce2d6d303160af",
     "tracked_working_tree_clean": false,
     "modified_tracked_paths_at_generation": [
-      "ackaging/atlas_architecture_map.json",
-      "packaging/atlas_runtime_closure.json"
+      "ackaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md",
+      "packaging/REM-001_STATE_AUTHORITY_MAP.md"
     ]
   },
   "scope": {
