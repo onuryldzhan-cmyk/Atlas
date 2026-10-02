@@ -20,8 +20,8 @@ Command: `python -m tools.build_rem001_gate1_maps construction --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `5bf5df91c9a852e15c451482efb79d6bb869b1c7` |
-| generated_from_tree | `4fd848982745fcea457c8521c6eda4fe4e3fb793` |
+| generated_from_commit | `341274dc3ce343a949560c0370493796f803f4fb` |
+| generated_from_tree | `d7c2f2eeb25469c6034a390f3582d8e8a7a9a3e7` |
 | tracked_working_tree_clean | True |
 | modified_tracked_paths_at_generation | none |
 
@@ -63,7 +63,7 @@ below: it counted pattern hits, these count resolved call sites.
 | modules_constructing | 35 |
 | classes_constructed | 127 |
 | construction_edges | 97 |
-| ambiguous_class_names | 4 |
+| ambiguous_class_names | 5 |
 | parse_failures | 0 |
 
 ### Ambiguous class names
@@ -75,6 +75,7 @@ contribute no construction edge.
 - `AtlasBrain` — `ai/core/atlas_brain.py`, `core/brain.py`
 - `Decision` — `ai/core/atlas_reasoning_engine.py`, `core/decision.py`
 - `RiskLevel` — `atlas_org/permissions.py`, `core/decision.py`
+- `_Continue` — `core/execution_manager.py`, `core/market_loop.py`
 - `_TransportError` — `atlas_finance/market_data/fear_greed_provider.py`, `atlas_finance/market_data/treasury_yield_provider.py`
 
 ## Canonical construction chain (ADR-0001)
@@ -283,11 +284,11 @@ classes and their observed constructors:
 | `core/local_capability_adapter.py` | `ToolDescriptor` | `core/tool_gateway_contracts.py` | 128 | `LocalCapabilityProbeAdapter` |
 | `core/local_capability_adapter.py` | `ToolInvocationResult` | `core/tool_gateway_contracts.py` | 156 | `LocalCapabilityProbeAdapter::invoke` |
 | `core/local_capability_adapter.py` | `ToolInvocationResult` | `core/tool_gateway_contracts.py` | 175 | `LocalCapabilityProbeAdapter::invoke` |
-| `core/market_loop.py` | `CandleProcessor` | `core/candle_processor.py` | 231 | `MarketLoop::__init__` |
-| `core/market_loop.py` | `DecisionAdapter` | `core/decision_adapter.py` | 234 | `MarketLoop::__init__` |
-| `core/market_loop.py` | `SizingInputs` | `core/position_sizing.py` | 1861 | `MarketLoop::_apply_position_sizing` |
-| `core/market_loop.py` | `TechnicalAnalyzer` | `core/technical_analyzer.py` | 232 | `MarketLoop::__init__` |
-| `core/market_loop.py` | `WorldAnalysisEngine` | `analysis/world_analysis_engine.py` | 233 | `MarketLoop::__init__` |
+| `core/market_loop.py` | `CandleProcessor` | `core/candle_processor.py` | 243 | `MarketLoop::__init__` |
+| `core/market_loop.py` | `DecisionAdapter` | `core/decision_adapter.py` | 246 | `MarketLoop::__init__` |
+| `core/market_loop.py` | `SizingInputs` | `core/position_sizing.py` | 1947 | `MarketLoop::_apply_position_sizing` |
+| `core/market_loop.py` | `TechnicalAnalyzer` | `core/technical_analyzer.py` | 244 | `MarketLoop::__init__` |
+| `core/market_loop.py` | `WorldAnalysisEngine` | `analysis/world_analysis_engine.py` | 245 | `MarketLoop::__init__` |
 | `core/model_provider_contracts.py` | `OperationResult` | `core/operational_contracts.py` | 483 | `ModelInvocationResult::to_operation_result` |
 | `core/position_sizing.py` | `RiskBucket` | `core/risk_engine.py` | 162 | `PositionSizingService::propose` |
 | `core/tool_gateway_contracts.py` | `CapabilityClass` | `core/model_provider_contracts.py` | 120 | `ToolDescriptor::__post_init__` |
