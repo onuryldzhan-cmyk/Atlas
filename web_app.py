@@ -236,6 +236,15 @@ VENDORED_ASSETS = {
         BASE_DIR / "static" / "vendor" / "lightweight-charts-4.2.3" / "lightweight-charts.standalone.production.js",
         "text/javascript",
     ),
+    # MIT, owner-approved 2026-10-02 for the 3D Atlas HQ; ES modules (the first imports the second)
+    "three.module.min.js": (
+        BASE_DIR / "static" / "vendor" / "three-0.185.1" / "three.module.min.js",
+        "text/javascript",
+    ),
+    "three.core.min.js": (
+        BASE_DIR / "static" / "vendor" / "three-0.185.1" / "three.core.min.js",
+        "text/javascript",
+    ),
 }
 
 # Defense-in-depth response headers applied to every response this

@@ -109,6 +109,35 @@
     }
    },
    "notes": "Added 2026-09-29 (registry v5.72, owner: adopt useful projects). Apache-2.0 plus TradingView's attribution requirement: the Trading page keeps the chart's attributionLogo (link to tradingview.com) on. Scanned: no fetch/XHR/WebSocket/eval/new Function/import(); only URLs are the SVG namespace, the Apache license and the TradingView attribution link."
+  },
+  {
+   "package": "three",
+   "version": "0.185.1",
+   "license": "MIT",
+   "upstream_repository": "https://github.com/mrdoob/three.js",
+   "upstream_release_tag": "r185",
+   "npm_publisher": "mrdoob",
+   "tarball": "https://registry.npmjs.org/three/-/three-0.185.1.tgz",
+   "tarball_integrity": "sha512-5aojFCXKwnjBRZvUnt3WFfEcvUJgkN5LlijRFN95hMy8WVkG4I0QNcJE+OuWvuJ0bOdStrbfXn0pkd6/QyiAlg==",
+   "tarball_shasum": "63e9e241a17b101e211965121a017b4b4d8054ae",
+   "files": {
+    "three-0.185.1/three.module.min.js": {
+     "tarball_path": "package/build/three.module.min.js",
+     "sha256": "86bcee248b64f44bcfc23c331ae74619061957d59cab040171dcb6fb5900beb6",
+     "modified": false
+    },
+    "three-0.185.1/three.core.min.js": {
+     "tarball_path": "package/build/three.core.min.js",
+     "sha256": "05b2609338c76cd65daf74f3ac515bc9a5045e1b3b33edc07d8c9bd55250fa90",
+     "modified": false
+    },
+    "three-0.185.1/LICENSE": {
+     "tarball_path": "package/LICENSE",
+     "sha256": "8b378ebe60e2fe500158cb0ac71cb5e8b7d92953c2abcc63a0eb90499653b5bc",
+     "modified": false
+    }
+   },
+   "notes": "Added 2026-10-02 (owner approved the three.js HQ: 'Onayladım'). Used only by templates/hq.html as an ES module; three.module.min.js imports ./three.core.min.js, which resolves to the /assets allowlist. 0.185.1 is the newest release that still ships minified builds (0.186 ships unminified only, ~2.1 MB). Scanned: no XMLHttpRequest/WebSocket/sendBeacon/EventSource/importScripts/Worker(/import(/eval(/new Function/cookie/window.open/storage; three.core.min.js has fetch( only inside FileLoader and ImageBitmapLoader, which the HQ never calls (and CSP connect-src 'self' would confine them); one navigator.userAgent read (OculusBrowser check in WebXR). Only URLs: the XHTML namespace and a jcgt.org paper citation in a shader comment."
   }
  ],
  "security_review": {
@@ -119,6 +148,7 @@
   "provenance_check": "Each tarball was downloaded from registry.npmjs.org and its sha512 matched the registry's dist.integrity before extraction; vendored files are byte-identical to the tarball entries (sha256 above)."
  },
  "vetted_on_history": [
-  "2026-09-29 lightweight-charts 4.2.3"
+  "2026-09-29 lightweight-charts 4.2.3",
+  "2026-10-02 three 0.185.1"
  ]
 }

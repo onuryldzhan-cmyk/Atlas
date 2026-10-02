@@ -139,7 +139,9 @@ def test_vendored_files_match_recorded_provenance() -> None:
             assert record["modified"] is False
             checked += 1
 
-    assert checked == 9
+    # 9 -> 12 on 2026-10-02: three.js r185 (module, core, LICENSE) vendored for the owner-approved 3D HQ.
+    assert checked == 12
+    assert "MIT License" in (VENDOR_DIR / "three-0.185.1" / "LICENSE").read_text(encoding="utf-8")
     assert "MIT License" in (VENDOR_DIR / "adminlte-4.9.1" / "LICENSE").read_text(encoding="utf-8")
     assert "Apache License" in (VENDOR_DIR / "lightweight-charts-4.2.3" / "LICENSE").read_text(encoding="utf-8")
 
