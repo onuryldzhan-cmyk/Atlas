@@ -18,6 +18,7 @@ import hashlib
 import json
 import re
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 from fastapi.routing import APIRoute
@@ -37,6 +38,17 @@ def _shape(value: Any) -> Any:
     if isinstance(value, list):
         return sorted({json.dumps(_shape(v), sort_keys=True) for v in value})
     return type(value).__name__
+
+
+def _signal_backed(body: Any) -> Any:
+    """atlas_manager's state is derived from api_signals' output (agent_states.build), not from records."""
+    if not isinstance(body, dict):
+        return None
+    for value in (body, body.get("brief")):
+        agents = value.get("agents") if isinstance(value, dict) else None
+        if isinstance(agents, dict) and isinstance(agents.get("statuses"), dict):
+            return agents["statuses"].get("atlas_manager")
+    return None
 
 
 def _body(response, exact: bool = False) -> Any:
@@ -77,6 +89,17 @@ def collect(exact: bool = False) -> dict[str, Any]:
                                                                                                "referrer", "permissions"))),
                     "body": _body(resp, exact),
                 }
+    # With a market loop attached, /api/command-center and /api/chat feed api_signals' output
+    # into the brief; this pins that wiring (a wrong handler passed through is caught here).
+    stub = SimpleNamespace(market_loop=SimpleNamespace(status=lambda: {
+        "running": True, "last_cycle": "2026-10-02T00:00:00+00:00",
+        "last_signals": {"BTCUSDT": {"symbol": "BTCUSDT", "action": "BUY", "confidence": 71.0, "price": 100.0,
+                                     "risk": "MEDIUM", "agents": {"technical": {"action": "BUY"}}}}}))
+    client = TestClient(create_app(runtime=stub), base_url="http://127.0.0.1", client=("127.0.0.1", 50000))
+    for path in ("/api/signals", "/api/command-center", "/api/chat"):
+        resp = client.get(path)
+        calls[f"stub GET {path}"] = {"status": resp.status_code, "body": _body(resp, exact),
+                                     "from_signals": _signal_backed(resp.json())}
     return norm({
         "routes": routes,
         "openapi": app.openapi(),

@@ -2683,6 +2683,126 @@
     "x-frame-options"
    ],
    "status": 403
+  },
+  "stub GET /api/chat": {
+   "body": {
+    "answer": "str",
+    "available": "bool",
+    "engine": "str",
+    "intent": "str",
+    "navigate": "NoneType"
+   },
+   "from_signals": null,
+   "status": 200
+  },
+  "stub GET /api/command-center": {
+   "body": {
+    "agents": {
+     "source": "str",
+     "statuses": {
+      "agent_macro": "str",
+      "agent_momentum": "str",
+      "agent_risk": "str",
+      "agent_sentiment": "str",
+      "agent_technical": "str",
+      "atlas_manager": "str",
+      "ceo_ai": "str",
+      "code_engineering": "str",
+      "code_review": "str",
+      "data_quality": "str",
+      "digital_twin": "str",
+      "executive_assistant": "str",
+      "experiment_manager": "str",
+      "knowledge_manager": "str",
+      "market_regime": "str",
+      "model_council": "str",
+      "model_validation": "str",
+      "open_source_research": "str",
+      "overview_snapshot": "str",
+      "owner": "str",
+      "performance_audit": "str",
+      "quant_research": "str",
+      "red_team": "str",
+      "security": "str",
+      "strategy_lab": "str",
+      "strategy_research": "str",
+      "task_runner": "str"
+     },
+     "working": [
+      "\"str\""
+     ]
+    },
+    "available": "bool",
+    "health": {
+     "healthy": "bool",
+     "reason": "str",
+     "state": "str"
+    },
+    "memory": {
+     "available": "bool",
+     "records": "int"
+    },
+    "proposals": {
+     "available": "bool",
+     "awaiting_owner": [],
+     "counts": {
+      "DRAFT": "int"
+     },
+     "reason": "NoneType"
+    },
+    "tasks": {
+     "available": "bool",
+     "counts": {
+      "IN_PROGRESS": "int"
+     },
+     "reason": "NoneType"
+    },
+    "trading": {
+     "available": "bool",
+     "live_authority": "str",
+     "mode": "str",
+     "reason": "str"
+    }
+   },
+   "from_signals": "WORKING",
+   "status": 200
+  },
+  "stub GET /api/signals": {
+   "body": {
+    "signals": {
+     "BTCUSDT": {
+      "action": "str",
+      "agents": {
+       "macro": {
+        "reason": "str",
+        "status": "str"
+       },
+       "momentum": {
+        "reason": "str",
+        "status": "str"
+       },
+       "risk": {
+        "reason": "str",
+        "status": "str"
+       },
+       "sentiment": {
+        "reason": "str",
+        "status": "str"
+       },
+       "technical": {
+        "reason": "str",
+        "status": "str"
+       }
+      },
+      "confidence": "float",
+      "memory": "NoneType",
+      "symbol": "str"
+     }
+    },
+    "status": "str"
+   },
+   "from_signals": null,
+   "status": 200
   }
  },
  "middleware": [
