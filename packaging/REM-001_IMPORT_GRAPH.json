@@ -16,8 +16,8 @@
     "analysis": "Static AST import resolution over git-tracked Python files, excluding imports guarded by if TYPE_CHECKING:. Third-party and stdlib targets resolve to nothing and carry no edge."
   },
   "source_identity": {
-    "generated_from_commit": "8195bf22a888041dfe8bbde7c60781b73639ad74",
-    "generated_from_tree": "4017224e082340053a66e572efce2d6d303160af",
+    "generated_from_commit": "3d506bae051ae912899d35fe9be14fdacc667700",
+    "generated_from_tree": "db23966bd6d2c26dc0202cb40c364ca493230438",
     "tracked_working_tree_clean": false,
     "modified_tracked_paths_at_generation": [
       "ackaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md",
@@ -27,13 +27,13 @@
   "scope": {
     "universe": "ALL_GIT_TRACKED_PYTHON_FILES",
     "universe_note": "The tool's existing tracked-file definition, used unchanged. No source-scope classification (ACTIVE_CANDIDATE / TEST / TOOL / ARCHIVE / BACKUP / QUARANTINE / REPORT_COPY) is applied or implied: that classification requires the human review gate ARCH-001.2.1 reserves and belongs to Gate 1 deliverable 1.",
-    "modules_total": 1089,
+    "modules_total": 1095,
     "modules_runtime_reachable": 135,
-    "modules_outside_runtime_closure": 954,
-    "edges_total": 2326,
-    "edges_import": 1666,
-    "edges_package_init": 660,
-    "edges_distinct_module_pairs": 2261,
+    "modules_outside_runtime_closure": 960,
+    "edges_total": 2339,
+    "edges_import": 1677,
+    "edges_package_init": 662,
+    "edges_distinct_module_pairs": 2274,
     "edges_count_note": "edges_total counts (from, to, kind) triples. A pair can carry both kinds when a file both imports a package directly and references one of its submodules, so edges_distinct_module_pairs is the figure to use when counting dependencies between modules.",
     "parse_failures": 3
   },
@@ -3580,6 +3580,10 @@
       "runtime_reachable": false
     },
     {
+      "module": "tests/test_execute_decision_golden.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/test_execution_audit_trail_completeness.py",
       "runtime_reachable": false
     },
@@ -3896,6 +3900,10 @@
       "runtime_reachable": false
     },
     {
+      "module": "tests/test_protections_report.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/test_pytest_state_root_isolation.py",
       "runtime_reachable": false
     },
@@ -4080,6 +4088,10 @@
       "runtime_reachable": false
     },
     {
+      "module": "tests/test_universe_filter_report.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/test_venue_and_news_contracts.py",
       "runtime_reachable": false
     },
@@ -4201,6 +4213,10 @@
     },
     {
       "module": "tools/extract_candle_age_telemetry.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/fdr.py",
       "runtime_reachable": false
     },
     {
@@ -4336,6 +4352,10 @@
       "runtime_reachable": false
     },
     {
+      "module": "tools/protections_report.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tools/quarantine_audit_fork.py",
       "runtime_reachable": false
     },
@@ -4425,6 +4445,10 @@
     },
     {
       "module": "tools/task_status.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/universe_filter_report.py",
       "runtime_reachable": false
     },
     {
@@ -11818,6 +11842,26 @@
       "kind": "import"
     },
     {
+      "from": "tests/test_execute_decision_golden.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_execute_decision_golden.py",
+      "to": "core/execution_models.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_execute_decision_golden.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_execute_decision_golden.py",
+      "to": "tests/test_block5e_fee_settlement_accounting.py",
+      "kind": "import"
+    },
+    {
       "from": "tests/test_execution_audit_trail_completeness.py",
       "to": "atlas_security/__init__.py",
       "kind": "import"
@@ -13793,6 +13837,11 @@
       "kind": "import"
     },
     {
+      "from": "tests/test_protections_report.py",
+      "to": "tools/protections_report.py",
+      "kind": "import"
+    },
+    {
       "from": "tests/test_quarantine_audit_fork.py",
       "to": "core/__init__.py",
       "kind": "import"
@@ -14703,6 +14752,11 @@
       "kind": "import"
     },
     {
+      "from": "tests/test_universe_filter_report.py",
+      "to": "tools/universe_filter_report.py",
+      "kind": "import"
+    },
+    {
       "from": "tests/test_web_app_contract.py",
       "to": "web_app.py",
       "kind": "import"
@@ -14860,6 +14914,11 @@
     {
       "from": "tools/agent_cycle.py",
       "to": "tools/performance_report.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_cycle.py",
+      "to": "tools/protections_report.py",
       "kind": "import"
     },
     {
@@ -15254,6 +15313,11 @@
     },
     {
       "from": "tools/experience_agent.py",
+      "to": "tools/fdr.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/experience_agent.py",
       "to": "tools/lesson_book.py",
       "kind": "import"
     },
@@ -15618,6 +15682,11 @@
       "kind": "import"
     },
     {
+      "from": "tools/performance_report.py",
+      "to": "tools/fdr.py",
+      "kind": "import"
+    },
+    {
       "from": "tools/phase6a8_1_decision_execution_trace.py",
       "to": "core/__init__.py",
       "kind": "package_init"
@@ -15635,6 +15704,21 @@
     {
       "from": "tools/position_risk_buckets_repair.py",
       "to": "core/position_risk_buckets.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/protections_report.py",
+      "to": "ai/core/intelligence/trade_evidence.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/protections_report.py",
+      "to": "tools/agent_cycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/protections_report.py",
+      "to": "tools/exp001_report.py",
       "kind": "import"
     },
     {
@@ -15970,6 +16054,11 @@
     {
       "from": "tools/task_status.py",
       "to": "tools/atlas_org_cli.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/universe_filter_report.py",
+      "to": "tools/shadow_costs.py",
       "kind": "import"
     },
     {

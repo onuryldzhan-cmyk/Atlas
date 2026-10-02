@@ -19,8 +19,8 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `e566c69f2bce8e35e46a51f6a73d73da1db9fc3f` |
-| generated_from_tree | `2d5cf66d0b7e4ae544ac791a3b4e126ebefd9507` |
+| generated_from_commit | `3d506bae051ae912899d35fe9be14fdacc667700` |
+| generated_from_tree | `db23966bd6d2c26dc0202cb40c364ca493230438` |
 | tracked_working_tree_clean | False |
 | modified_tracked_paths_at_generation | ['ackaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md'] |
 
@@ -177,7 +177,7 @@ nothing is inferred from an absence.
 | `core/durable_append_log.py` | ATOMIC_REPLACE | 349 | `DurableAppendLog::rewrite` |
 | `core/durable_append_log.py` | UNLINK | 356 | `DurableAppendLog::rewrite` |
 | `core/execution_idempotency_store.py` | UNLINK | 863 | `ExecutionIdempotencyStore::reset` |
-| `core/execution_manager.py` | ATOMIC_REPLACE | 6607 | `ExecutionManager::_normalize_confidence` |
+| `core/execution_manager.py` | ATOMIC_REPLACE | 6913 | `ExecutionManager::_normalize_confidence` |
 | `core/execution_models.py` | ATOMIC_REPLACE | 96 | `normalize_timestamp` |
 | `core/execution_portfolio_foundation.py` | ATOMIC_REPLACE | 64 | `_utc` |
 | `core/execution_portfolio_foundation.py` | FSYNC | 183 | `FinancialStateStore::save` |
@@ -210,8 +210,8 @@ nothing is inferred from an absence.
 | `data_layer/models.py` | ATOMIC_REPLACE | 54 | `utc_text` |
 | `data_layer/models.py` | ATOMIC_REPLACE | 61 | `utc_text` |
 | `main.py` | PATH_WRITE_TEXT | 588 | `AtlasProcess::_write_heartbeat` |
-| `observability/agent_states.py` | ATOMIC_REPLACE | 64 | `_age_s` |
-| `observability/agent_states.py` | ATOMIC_REPLACE | 67 | `_age_s` |
+| `observability/agent_states.py` | ATOMIC_REPLACE | 65 | `_age_s` |
+| `observability/agent_states.py` | ATOMIC_REPLACE | 68 | `_age_s` |
 | `observability/command_center.py` | ATOMIC_REPLACE | 88 | `_money` |
 | `observability/command_center.py` | ATOMIC_REPLACE | 88 | `_money` |
 | `observability/command_center.py` | ATOMIC_REPLACE | 88 | `_money` |
