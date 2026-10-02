@@ -118,6 +118,7 @@ def _recent_records(records_dir: Path, n: int = 25) -> list[dict[str, Any]]:
     return recs[-n:]
 
 
+CEO_IGNORED_AUTHORS = frozenset({"ceo_ai", "executive_assistant", "overview_snapshot"})
 CEO_MIN_GAP_H = 2.5  # spaces the CEO's 5-hour call share instead of spending it in the first cycles
 
 
@@ -130,7 +131,10 @@ def ceo_brief(records_dir: Path, ask=None, *, min_gap_h: float = CEO_MIN_GAP_H,
     """
     from tools import ai_gateway as ai
 
-    recent = _recent_records(records_dir)
+    # Owner review 2026-10-02: CEO-0074 spent its call on its own previous brief and on routine
+    # cycle/self-review/overview records. The CEO now reads evidence only, and only evidence
+    # counts as "new" for the spacing gate below.
+    recent = [r for r in _recent_records(records_dir, 200) if r.get("author") not in CEO_IGNORED_AUTHORS][-25:]
     if not recent:
         return {"verdict": "OK", "summary": "kayıt yok; özet çıkarılmadı"}
     last_ceo = max((str(r.get("created_at") or "") for r in _recent_records(records_dir, 500)

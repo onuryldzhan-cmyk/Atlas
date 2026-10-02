@@ -221,3 +221,23 @@ def test_claude_code_runner_drops_api_keys_and_disables_tools(monkeypatch):
     assert cmd[cmd.index("--tools") + 1] == "" and cmd[cmd.index("--model") + 1] == "sonnet"
     assert cmd[cmd.index("--effort") + 1] == "high" and "--json-schema" in cmd and "--bare" not in cmd
     assert "ANTHROPIC_API_KEY" not in captured["env"] and captured["input"] == "prompt"
+
+
+def test_ceo_reads_evidence_only_and_routine_records_do_not_trigger_it(tmp_path, monkeypatch):
+    monkeypatch.setattr(ac, "_research_dir", lambda: tmp_path)
+    d = _records(tmp_path)
+    seen = []
+
+    def good(system, prompt, *a, **k):
+        seen.append(prompt)
+        return ai.AIResult("OK", data={"priorities": ["x"], "cited_records": ["MR-0001"]}, model="m")
+    monkeypatch.setattr(cli, "now", lambda: "2999-01-01T00:00:00Z")
+    cli.add_memory_record(d, {"record_id": "AC-0002", "type": "OPERATIONS", "authority": "TEMPORARY",
+                              "title": "Ajan döngüsü: 14/14", "body": "{}", "author": "executive_assistant", "source": "t"})
+    assert "1 öncelik" in ac.ceo_brief(d, ask=good)["summary"]
+    assert "AC-0002" not in seen[0] and "MR-0001" in seen[0]
+    later = datetime(3000, 1, 1, tzinfo=timezone.utc)
+    monkeypatch.setattr(cli, "now", lambda: "2999-06-01T00:00:00Z")
+    cli.add_memory_record(d, {"record_id": "OV-0004", "type": "OPERATIONS", "authority": "TEMPORARY",
+                              "title": "Durum özeti", "body": "{}", "author": "overview_snapshot", "source": "t"})
+    assert "yeni kayıt yok" in ac.ceo_brief(d, ask=good, now=later)["summary"] and len(seen) == 1
