@@ -19,8 +19,8 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `88c6305adbebaa3b1a846cdccdf46649a71e95f1` |
-| generated_from_tree | `a1529679592e2985659cf65ab1087a177fc2fb7f` |
+| generated_from_commit | `60d6fde7acf12c40b0a676ab47bccfd246e2ccff` |
+| generated_from_tree | `9e727157b132f02a90bcec1c4f3a291e61ebcd57` |
 | tracked_working_tree_clean | False |
 | modified_tracked_paths_at_generation | ['ackaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md'] |
 
@@ -60,11 +60,11 @@ observation.
 | field | value |
 | --- | --- |
 | entry_points | `main.py`, `web_app.py`, `atlas_service.py`, `atlas_supervisor.py` |
-| modules_in_runtime_closure | 133 |
+| modules_in_runtime_closure | 134 |
 | declared_state_file_constants | 10 |
 | persistence_sites | 91 |
 | modules_with_persistence_sites | 39 |
-| distinct_state_file_literals | 36 |
+| distinct_state_file_literals | 37 |
 | parse_failures | 0 |
 
 ## Declared durable state surface
@@ -130,6 +130,7 @@ nothing is inferred from an absence.
 | `risk-bucket sidecar unreadable: every position counts against every sleeve; repair: python -m tools.position_risk_buckets_repair <state>/position_risk_buckets.jsonl` | `observability/readiness.py` |
 | `risk_accounting_state.json` | `core/application.py` |
 | `runtime_data/audit/atlas_os_audit.jsonl` | `atlas_os/audit/audit_log.py` |
+| `state.json` | `observability/experience_view.py` |
 | `supervisor_heartbeat.json` | `atlas_supervisor.py` |
 | `tasks.jsonl` | `observability/governance_records.py` |
 
