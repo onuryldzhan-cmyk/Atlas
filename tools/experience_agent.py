@@ -210,7 +210,7 @@ def _compare(older: dict, newer: dict) -> list[dict]:
     return out
 
 
-def stream_groups(path: Path, split_iso: str) -> tuple[dict, dict, int]:
+def stream_groups(path: Path, split_iso: str, key_fn: Callable[[dict], tuple] | None = None) -> tuple[dict, dict, int]:
     """Row-by-row 240m aggregates per (action, regime, band) for rows before / from split_iso.
 
     The experience file grows to millions of rows (20 coins x 730 days); it is never loaded whole.
@@ -227,7 +227,9 @@ def stream_groups(path: Path, split_iso: str) -> tuple[dict, dict, int]:
     with path.open(encoding="utf-8") as f:
         for r in csv.DictReader(f):
             total += 1
-            key = (r["action"], r.get("regime") or "UNKNOWN", lb.band(r["confidence"]))
+            key = key_fn(r) if key_fn else (r["action"], r.get("regime") or "UNKNOWN", lb.band(r["confidence"]))
+            if key is None:
+                continue
             side = 0 if r["time"] < split_iso else 1
             g = acc[side].setdefault(key, [0, 0, 0, Decimal(0)])  # n, k, wins, sum
             g[0] += 1

@@ -162,11 +162,14 @@ class AgentFusion:
     # participating configured agents closes this categorically (no
     # 2-source combination can ever satisfy it) without touching
     # WEIGHTS, confidence scaling, or the execution gate. Accepted
-    # consequence: since macro/sentiment/market_risk currently have no
-    # provider, technical+momentum is the only combination ever
-    # reachable today, so this floor is never cleared until a genuine
-    # third evidence source exists - this is an intentional, accepted
-    # fail-closed state, not a bug.
+    # consequence (as written when no other provider existed): with only
+    # technical+momentum this floor is never cleared until a genuine
+    # third evidence source exists - an intentional, accepted fail-closed
+    # state, not a bug. [Comment updated 2026-10-02, no behaviour change:
+    # registry v4.66 (Fear & Greed sentiment) and v4.79 (Treasury macro,
+    # volatility market_risk) have since added providers; see
+    # analysis/world_analysis_engine.py. Sentiment votes only in its
+    # fear/greed band, so the floor is still not always reachable.]
 
     MIN_PARTICIPATING_AGENTS = 3
 
