@@ -75,7 +75,9 @@ def trace(trade: dict[str, Any], telemetry_lines: Iterable[str], audit_events: I
             near = [e for e in events if (lambda w: w is not None and opened - MATCH_WINDOW <= w <= opened + MATCH_WINDOW)(
                 _ts(e.get("timestamp"))) and str((e.get("payload") or {}).get("symbol", "")) == symbol]
             requests = {e.get("correlation_id") for e in near}
-            if near and len(requests) == 1:  # one request only; two overlapping requests stay unattributed
+            # One identified request only: two overlapping requests, or events
+            # without a correlation_id (unknowable request), stay unattributed.
+            if near and len(requests) == 1 and all(isinstance(r, str) and r for r in requests):
                 risk, risk_how = near, LEGACY_TIMESTAMP
     risk_rows = [{"at": e.get("timestamp"), "event": e.get("event_type"),
                   "outcome": (e.get("payload") or {}).get("status") or (e.get("payload") or {}).get("outcome"),

@@ -192,3 +192,11 @@ def test_one_complete_paper_trade_is_attributed_exactly_end_to_end(tmp_path):
     chosen = ppr.entry_approval(approvals["BTCUSDT"], position["opened_at"], position["position_id"])
     assert chosen["attribution"] == ppr.EXACT and chosen["request_id"] == result["request_id"]
     assert chosen["risk_approval_event_id"]
+
+
+def test_decision_trace_legacy_refuses_events_without_a_request_identity():
+    """Independent review MEDIUM-1: events lacking correlation_id cannot be proven to be one request."""
+    events = [{"event_type": "RISK_APPROVED", "timestamp": T0, "payload": {"symbol": "BTCUSDT"}},
+              {"event_type": "RISK_REJECTED", "timestamp": T0_PLUS, "payload": {"symbol": "BTCUSDT"}}]
+    t = dt.trace(closed("c1", T0, position_id="long:BTCUSDT:old"), [], events)
+    assert t["attribution"]["risk_and_execution"] == "UNATTRIBUTED"

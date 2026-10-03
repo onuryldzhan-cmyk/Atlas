@@ -12,7 +12,10 @@ def test_full_chain_is_joined():
     lines = [json.dumps({"symbol": "BTCUSDT", "timestamp": "2026-10-01T09:59:30+00:00",
                          "decision": {"action": "BUY", "confidence": 72.0, "votes": {"trend": "BUY", "risk": "HOLD"}}}),
              json.dumps({"symbol": "ETHUSDT", "timestamp": "2026-10-01T09:59:30+00:00", "decision": {"action": "BUY"}})]
+    # Phase-2 F1 review MEDIUM-1: a legacy join needs one identified request,
+    # so the fixture event carries its correlation_id (request_id).
     events = [{"event_type": "RISK_DECISION", "timestamp": "2026-10-01T10:00:01+00:00",
+               "correlation_id": "BTCUSDT|c1|BUY",
                "payload": {"symbol": "BTCUSDT", "status": "APPROVE", "reason_code": "RISK_APPROVED"}}]
     t = trace(TRADE, lines, events)
     assert t["1_decision"]["votes"] == {"trend": "BUY", "risk": "HOLD"}
