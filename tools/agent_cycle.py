@@ -1,7 +1,8 @@
 """Agent cycle: run every rule-based Atlas agent in turn and record what each one did.
 
-  python -m tools.agent_cycle                 # one cycle
-  python -m tools.agent_cycle --every 60      # repeat every 60 minutes (Ctrl+C stops it; Atlas is unaffected)
+  python -m tools.agent_cycle                 # one cycle: every agent now
+  python -m tools.agent_cycle --every 5       # scheduler: every 5 minutes run the agents that are due
+                                              # (each agent has its own clock, see SCHEDULE; Ctrl+C stops it)
 
 Runs next to Atlas on the owner machine and never touches the runtime, the
 execution path or money. Each agent reads real evidence and writes only
@@ -16,8 +17,11 @@ through the governed logs (memory records, tasks, proposals):
   data_quality          health check of the durable book, venue rules, logs
   security              Security Guardian scan of the running code
 
-One agent failing never stops the others; the failure is recorded. The
-whole cycle is one OPERATIONS memory record, which the Agents page shows.
+One agent failing never stops the others; the failure is recorded. A cycle
+is one OPERATIONS memory record, which the Agents page shows. Under the
+scheduler (owner 2026-10-03) an agent runs only when its turn has come and
+its inputs changed, and a tick is recorded when something changed or failed
+(at least hourly, so the dashboard sees the agents alive).
 """
 
 from __future__ import annotations
@@ -121,6 +125,14 @@ def _recent_records(records_dir: Path, n: int = 25) -> list[dict[str, Any]]:
 CEO_IGNORED_AUTHORS = frozenset({"ceo_ai", "executive_assistant", "overview_snapshot"})
 CEO_MIN_GAP_H = 2.5  # spaces the CEO's 5-hour call share instead of spending it in the first cycles
 CEO_MIN_EVIDENCE = 3  # fewer evidence records than this: no call (2026-10-02, a 1-record brief invented 5 priorities)
+# Owner 2026-10-03: longer questions are fine when they make the answer useful. The CEO reads each record's
+# body (capped), not only its title, so it can weigh the evidence instead of listing headlines.
+CEO_BODY_CHARS = 700
+CEO_TASK = ("Task: write at most 5 priorities for the owner, most important first, in Turkish. Each priority must be "
+            "one concrete decision or check the owner can act on now, say why it matters, and rest on the cited "
+            "records. Do not restate facts the records already state plainly (for example how many agents, records "
+            "or coins there are), do not ask questions and skip routine operations. If nothing needs the owner's "
+            "attention, return an empty priorities list and an empty cited_records list.")
 
 
 def ceo_brief(records_dir: Path, ask=None, *, min_gap_h: float = CEO_MIN_GAP_H,
@@ -152,17 +164,18 @@ def ceo_brief(records_dir: Path, ask=None, *, min_gap_h: float = CEO_MIN_GAP_H,
         if not any(str(r.get("created_at") or "") > last_ceo and r.get("author") != "ceo_ai" for r in recent):
             return {"verdict": "OK", "summary": "son özetten beri yeni kayıt yok; çağrı yapılmadı"}
     ids = {str(r.get("id")) for r in recent}
-    prompt = "Recent Atlas records (id | author | title):\n" + "\n".join(
-        f"{r.get('id')} | {r.get('author')} | {str(r.get('title') or '')[:160]}" for r in recent) + (
-        "\n\nGive at most 5 priorities for the owner today, most important first, in Turkish. "
-        "Cite the record ids each priority rests on in cited_records.")
+    prompt = "Atlas evidence records, oldest first (id | time | author | type | title, then the body):\n\n" + "\n".join(
+        f"[{r.get('id')}] {r.get('created_at')} | {r.get('author')} | {r.get('type')} | {str(r.get('title') or '')[:200]}\n"
+        f"  {' '.join(str(r.get('body') or '').split())[:CEO_BODY_CHARS]}" for r in recent) + "\n\n" + CEO_TASK
     res = (ask or ai.ask)(_AI_SYSTEM, prompt, _CEO_SCHEMA, ledger=_ai_ledger(), agent="ceo_ai")
     if res.status != "OK":
-        return {"verdict": "OK", "summary": f"AI-001 çekimser: {res.reason}"}
+        return {"verdict": "OK", "summary": f"AI-001 çekimser: {res.reason}", "pending": True}
+    priorities = [str(p)[:500] for p in res.data.get("priorities", []) if str(p).strip()][:5]
+    if not priorities:  # a valid answer: nothing needs the owner, so nothing is recorded
+        return {"verdict": "OK", "summary": "CEO: sahibin dikkatini gerektiren yeni bir konu yok; kayıt yazılmadı"}
     cited = [c for c in res.data.get("cited_records", []) if isinstance(c, str)]
     if not cited or any(c not in ids for c in cited):
         return {"verdict": "OK", "summary": "AI-001 cevabı reddedildi: var olmayan ya da hiç kayıt gösterilmedi (kanıt doğrulaması)"}
-    priorities = [str(p)[:300] for p in res.data.get("priorities", [])][:5]
     existing = {r["record_id"] for r in cli.read_log(records_dir / cli.MEMORY_LOG)}
     cli.add_memory_record(records_dir, {
         "record_id": f"CEO-{len(existing) + 1:04d}", "type": "OPERATIONS", "authority": "TEMPORARY",
@@ -173,11 +186,29 @@ def ceo_brief(records_dir: Path, ask=None, *, min_gap_h: float = CEO_MIN_GAP_H,
     return {"verdict": "OK", "summary": f"{len(priorities)} öncelik yazıldı ({res.model}, {res.cost_usd:.4f} $)"}
 
 
+COUNCIL_MAX_PER_RUN = 3  # owner 2026-10-03: review what is waiting (as needed), not one proposal per cycle
+COUNCIL_CONTEXT_CHARS = 1500
+
+
+def _council_context(records_dir: Path, pid: str) -> str:
+    """The evidence a reviewer needs next to the proposal: its red-team review and the latest measurements."""
+    recs = _recent_records(records_dir, 500)
+    groups = (("Red-team review of this proposal", [r for r in recs if r.get("author") == "red_team"
+                                                    and r.get("related_proposal") == pid]),
+              ("Latest performance and reality report", [r for r in recs if r.get("author") == "quant_research"]),
+              ("Latest model validation (confidence vs results)", [r for r in recs if r.get("author") == "model_validation"]))
+    parts = [f"{label} [{group[-1].get('id')}]: {group[-1].get('title')}\n"
+             f"{' '.join(str(group[-1].get('body') or '').split())[:COUNCIL_CONTEXT_CHARS]}"
+             for label, group in groups if group]
+    return "\n\n".join(parts) or "No related evidence record yet."
+
+
 def model_council(records_dir: Path, ask=None) -> dict[str, Any]:
-    """Multi-Model Council (org unit): two models review the newest open proposal independently.
+    """Multi-Model Council (org unit): two models review each open proposal independently.
 
     Disagreement is recorded as DISAGREEMENT, never forced into consensus (model_registry.json).
-    Each proposal is reviewed once.
+    Each proposal is reviewed once; up to COUNCIL_MAX_PER_RUN per run, and "pending" tells the
+    scheduler to come back when some are left or the model abstained.
     """
     from tools import ai_gateway as ai
 
@@ -190,30 +221,39 @@ def model_council(records_dir: Path, ask=None) -> dict[str, Any]:
     todo = [pid for pid in sorted(open_ids) if pid not in reviewed]
     if not todo:
         return {"verdict": "OK", "summary": "incelenecek yeni öneri yok"}
-    pid = todo[0]
-    fields = state[pid].fields or {}
-    prompt = (f"Proposal {pid}: {fields.get('title')}\nRisk: {fields.get('risk_level') or fields.get('risk')}\n"
-              f"Body: {json.dumps(fields, ensure_ascii=False, default=str)[:3000]}"
-              "\n\nShould the owner approve it? Answer SUPPORT, OPPOSE or UNSURE with short reasons in Turkish.")
-    votes = {}
-    for perspective in ai.COUNCIL_PERSPECTIVES:
-        system = f"{_AI_SYSTEM} Review independently as a {perspective}."
-        res = (ask or ai.ask)(system, prompt, _COUNCIL_SCHEMA, ledger=_ai_ledger(), agent="model_council")
-        votes[perspective] = {"verdict": res.data["verdict"], "reasons": [str(x)[:300] for x in res.data["reasons"]][:5]} \
-            if res.status == "OK" else {"verdict": "ABSTAIN", "reason": res.reason}
-    verdicts = {v["verdict"] for v in votes.values() if v["verdict"] != "ABSTAIN"}
-    if not verdicts:
-        return {"verdict": "OK", "summary": f"AI-001 çekimser: {next(iter(votes.values())).get('reason')}"}
-    outcome = verdicts.pop() if len(verdicts) == 1 else "DISAGREEMENT"
-    existing = {r["record_id"] for r in cli.read_log(records_dir / cli.MEMORY_LOG)}
-    cli.add_memory_record(records_dir, {
-        "record_id": f"MC-{len(existing) + 1:04d}", "type": "OPERATIONS", "authority": "TEMPORARY",
-        "title": f"Model konseyi {pid}: {outcome} (tavsiye, onay değil)",
-        "body": json.dumps({"votes": votes, "outcome": outcome, "model": ai.DEFAULT_MODEL,
-                            "note": "one model, two independent perspectives - not two models"}, ensure_ascii=False),
-        "author": "model_council", "related_proposal": pid,
-        "source": "tools/agent_cycle.py (model_council, tools/ai_gateway.py)"})
-    return {"verdict": "OK", "summary": f"{pid}: {outcome}"}
+    notes, pending = [], len(todo) > COUNCIL_MAX_PER_RUN
+    for pid in todo[:COUNCIL_MAX_PER_RUN]:
+        fields = state[pid].fields or {}
+        prompt = (f"Proposal {pid}: {fields.get('title')}\nRisk: {fields.get('risk_level') or fields.get('risk')}\n"
+                  f"Body: {json.dumps(fields, ensure_ascii=False, default=str)[:6000]}\n\n"
+                  f"Related evidence:\n{_council_context(records_dir, pid)}\n\n"
+                  "Should the owner approve it? Answer SUPPORT, OPPOSE or UNSURE. Give short reasons in Turkish that "
+                  "point to the evidence above (sample size, costs, what could make the claim wrong); do not repeat "
+                  "the proposal text.")
+        votes = {}
+        for perspective in ai.COUNCIL_PERSPECTIVES:
+            system = f"{_AI_SYSTEM} Review independently as a {perspective}."
+            res = (ask or ai.ask)(system, prompt, _COUNCIL_SCHEMA, ledger=_ai_ledger(), agent="model_council")
+            votes[perspective] = {"verdict": res.data["verdict"], "reasons": [str(x)[:300] for x in res.data["reasons"]][:5]} \
+                if res.status == "OK" else {"verdict": "ABSTAIN", "reason": res.reason}
+        verdicts = {v["verdict"] for v in votes.values() if v["verdict"] != "ABSTAIN"}
+        if not verdicts:  # the model is unavailable or out of quota: the rest would abstain too
+            notes.append(f"AI-001 çekimser: {next(iter(votes.values())).get('reason')}")
+            pending = True
+            break
+        outcome = verdicts.pop() if len(verdicts) == 1 else "DISAGREEMENT"
+        existing = {r["record_id"] for r in cli.read_log(records_dir / cli.MEMORY_LOG)}
+        cli.add_memory_record(records_dir, {
+            "record_id": f"MC-{len(existing) + 1:04d}", "type": "OPERATIONS", "authority": "TEMPORARY",
+            "title": f"Model konseyi {pid}: {outcome} (tavsiye, onay değil)",
+            "body": json.dumps({"votes": votes, "outcome": outcome, "model": ai.DEFAULT_MODEL,
+                                "note": "one model, two independent perspectives - not two models"}, ensure_ascii=False),
+            "author": "model_council", "related_proposal": pid,
+            "source": "tools/agent_cycle.py (model_council, tools/ai_gateway.py)"})
+        notes.append(f"{pid}: {outcome}")
+    if len(todo) > COUNCIL_MAX_PER_RUN and not notes[-1].startswith("AI-001"):
+        notes.append(f"{len(todo) - COUNCIL_MAX_PER_RUN} öneri sonraki çalışmaya kaldı")
+    return {"verdict": "OK", "summary": "; ".join(notes), "pending": pending}
 
 
 OVERCONFIDENCE_GAP = -0.10  # win rate this far below the stated confidence, in a MEASURED band
@@ -301,14 +341,29 @@ def market_regime(records_dir: Path, symbols=None, fetch_closes=None) -> dict[st
         counts[r["regime"]] = counts.get(r["regime"], 0) + 1
     if counts.get("UNKNOWN") == len(snap):
         return {"verdict": "WARN", "summary": f"{len(snap)} coin için veri alınamadı; rejim bilinmiyor"}
-    existing = {r["record_id"] for r in cli.read_log(records_dir / cli.MEMORY_LOG)} if (records_dir / cli.MEMORY_LOG).exists() else set()
     summary = ", ".join(f"{k} {v}" for k, v in sorted(counts.items(), key=lambda x: -x[1]))
+    trend = counts.get("TREND_UP", 0)
+    coins = {k: {"regime": v["regime"]} for k, v in snap.items()}
+    log = records_dir / cli.MEMORY_LOG
+    if log.exists():
+        # Owner 2026-10-03 (no busywork): an unchanged map is not recorded again. Before, every cycle wrote
+        # an MR record, which also counted as "new evidence" for the CEO and filled its context.
+        from atlas_org import memory_records
+
+        mine = [r for r in memory_records.replay(cli.read_log(log)).values() if r.get("author") == "market_regime"]
+        if mine:
+            try:
+                last = json.loads(max(mine, key=lambda r: r["seq"])["body"]).get("coins")
+            except (ValueError, KeyError, AttributeError):
+                last = None  # an unreadable last record never suppresses a new one
+            if last == coins:
+                return {"verdict": "OK", "summary": f"{summary}; rejim değişmedi, yeni kayıt yok"}
+    existing = {r["record_id"] for r in cli.read_log(log)} if log.exists() else set()
     cli.add_memory_record(records_dir, {
         "record_id": f"MR-{len(existing) + 1:04d}", "type": "EXPERIMENTS", "authority": "RESEARCH",
         "title": f"Piyasa rejimi: {summary}",
-        "body": json.dumps({"counts": counts, "coins": {k: {"regime": v["regime"]} for k, v in snap.items()}}, ensure_ascii=False),
+        "body": json.dumps({"counts": counts, "coins": coins}, ensure_ascii=False),
         "author": "market_regime", "source": "tools/agent_cycle.py (regime_engine)"})
-    trend = counts.get("TREND_UP", 0)
     return {"verdict": "OK", "summary": f"{summary}; yükselen trendde {trend}/{len(snap)} coin"}
 
 
@@ -718,23 +773,34 @@ def _cycle_ai_usage(start_s: float, end_s: float) -> tuple[int, Any] | None:
         return None
 
 
-def run_cycle(records_dir: Path = cli.RECORDS_DIR, agents=AGENTS) -> dict[str, Any]:
+def _run_agents(records_dir: Path, agents) -> list[dict[str, Any]]:
+    """Run the given agents in order; one failing never stops the others."""
     results = []
-    cycle_started = time.time()
     for unit, name, fn in agents:
         started = time.monotonic()
+        pending = False
         try:
-            outcome = validate_outcome(fn(records_dir))
+            raw = fn(records_dir)
+            outcome = validate_outcome(raw)
+            # "pending": work is left over (or the model abstained), so the scheduler comes back for it.
+            pending = isinstance(raw, dict) and raw.get("pending") is True and outcome["verdict"] != "FAIL"
         except (Exception, cli.RecordLockBusy) as exc:  # one agent failing never stops the others
             # RecordLockBusy is a SystemExit for the CLI; here a busy log fails this agent only.
             outcome = {"verdict": "FAIL", "summary": f"{type(exc).__name__}: {exc}"[:300]}
         seconds = round(time.monotonic() - started, 2)
         if seconds > AGENT_BUDGET_S and outcome.get("verdict") == "OK":
             outcome = {**outcome, "verdict": "WARN", "summary": f"süre bütçesi aşıldı ({seconds}s > {AGENT_BUDGET_S:g}s); " + str(outcome.get("summary", ""))}
-        results.append({"unit": unit, "name": name, **outcome, "seconds": seconds})
+        results.append({"unit": unit, "name": name, **outcome, "seconds": seconds, **({"pending": True} if pending else {})})
+    return results
+
+
+def _record_cycle(records_dir: Path, results: list[dict[str, Any]], started_s: float,
+                  skipped: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    """One AC record for the agents that ran (and, from the scheduler, the ones whose turn it was not)."""
+    skipped = skipped or []
     # 2026-10-02: the AI-001 advisors (CEO, council) make paid model calls, so the cycle reports what
     # the usage ledger recorded during it instead of the old "no model calls" text.
-    usage = _cycle_ai_usage(cycle_started, time.time())
+    usage = _cycle_ai_usage(started_s, time.time())
     resources = {"total_seconds": round(sum(r["seconds"] for r in results), 2),
                  "ai_calls": usage[0] if usage else "UNKNOWN (usage ledger unreadable)",
                  "ai_cost_usd": str(usage[1]) if usage else "UNKNOWN (usage ledger unreadable)",
@@ -745,28 +811,190 @@ def run_cycle(records_dir: Path = cli.RECORDS_DIR, agents=AGENTS) -> dict[str, A
         existing = {r["record_id"] for r in cli.read_log(records_dir / cli.MEMORY_LOG)} if (records_dir / cli.MEMORY_LOG).exists() else set()
         rid = f"AC-{len(existing) + 1:04d}"
         ok = sum(1 for r in results if r["verdict"] == "OK")
+        title = (f"Ajan döngüsü: {ok}/{len(results)} ajan sorunsuz" if not skipped else
+                 f"Ajan döngüsü: {len(results)} ajan çalıştı ({ok} sorunsuz), {len(skipped)} ajanın sırası değildi")
         cli.add_memory_record(records_dir, {
-            "record_id": rid, "type": "OPERATIONS", "authority": "TEMPORARY",
-            "title": f"Ajan döngüsü: {ok}/{len(results)} ajan sorunsuz",
-            "body": json.dumps({"agent_cycle": results, "resources": resources}, ensure_ascii=False),
+            "record_id": rid, "type": "OPERATIONS", "authority": "TEMPORARY", "title": title,
+            "body": json.dumps({"agent_cycle": results + skipped, "resources": resources}, ensure_ascii=False),
             "author": "executive_assistant", "source": "tools/agent_cycle.py"})
     except cli.RecordLockBusy as exc:  # the next cycle records again; the loop must not die on a busy log
         return {"record_id": None, "results": results, "resources": resources, "warning": str(exc)}
     return {"record_id": rid, "results": results, "resources": resources}
 
 
+def run_cycle(records_dir: Path = cli.RECORDS_DIR, agents=AGENTS) -> dict[str, Any]:
+    """Every agent now, ignoring the schedule (the one-shot command), recorded as one AC record."""
+    started = time.time()
+    return _record_cycle(records_dir, _run_agents(records_dir, agents), started)
+
+
+# ---------------------------------------------------------------- per-agent schedule (owner 2026-10-03)
+# "Each agent on its own clock, as much as its work needs, no busywork." minutes = earliest re-run;
+# inputs = files that must have changed since the agent's last clean run (None: the clock alone, for
+# agents that sample the outside world). Inputs are compared by size + modification time (a stat call).
+SCHEDULE: dict[str, tuple[float, tuple[str, ...] | None]] = {
+    "quant_research": (15, ("archive", "audit")),            # a new closed trade or approval
+    "strategy_lab": (15, ("archive", "proposals")),
+    "strategy_research": (60, None),                         # starts / collects the daily background comparison
+    "market_regime": (60, None),                             # 1-hour candles: a regime moves with an hourly close
+    "knowledge_manager": (30, ("archive", "memory")),
+    "task_runner": (10, ("tasks",)),
+    "overview_snapshot": (30, ("archive", "memory", "proposals", "tasks")),
+    "model_validation": (30, ("archive", "audit")),
+    "experiment_manager": (10, None),                        # one replayed day per run until the history is done
+    "digital_twin": (30, None),                              # order-book cost samples across the day
+    "performance_audit": (30, ("archive",)),
+    "ceo_ai": (150, ("memory",)),                            # model call: new evidence, at least 2.5 h apart
+    "model_council": (15, ("proposals",)),                   # model calls: proposals not reviewed yet
+    "red_team": (15, ("proposals",)),
+    "executive_assistant": (360, None),                      # code / test / security self-review
+    "data_quality": (60, None),
+    "security": (360, None),
+}
+SCHEDULE_FILE = "agent_schedule.json"
+# An idle runner still records one cycle an hour, so the dashboard (agent_states.RECENT_CYCLE_S = 2 h) never
+# shows working agents as OFFLINE; a tick in which something changed or failed is recorded at once.
+HEARTBEAT_RECORD_S = 3600.0
+LOG_FILES = (cli.MEMORY_LOG, cli.PROPOSALS_LOG, cli.TASKS_LOG)
+
+
+def _input_paths(records_dir: Path) -> dict[str, Path]:
+    from core.application import EXECUTION_AUDIT_EVENT_FILE, resolve_state_directory
+
+    return {"archive": _archive_path(), "audit": resolve_state_directory() / EXECUTION_AUDIT_EVENT_FILE,
+            "memory": records_dir / cli.MEMORY_LOG, "proposals": records_dir / cli.PROPOSALS_LOG,
+            "tasks": records_dir / cli.TASKS_LOG}
+
+
+def _stamp(path: Path) -> list[int] | None:
+    try:
+        st = path.stat()
+    except OSError:
+        return None
+    return [st.st_size, st.st_mtime_ns]
+
+
+def _fingerprint(unit: str, paths: dict[str, Path] | None) -> dict[str, Any] | None:
+    names = SCHEDULE.get(unit, (0, None))[1]
+    if not names or paths is None:
+        return None  # the clock alone decides
+    return {n: _stamp(paths[n]) for n in names}
+
+
+def _due(unit: str, entry: Any, fingerprint: dict[str, Any] | None, now: float) -> tuple[bool, str]:
+    """(due, why not). Unknown agents, first runs, unreadable entries and a clock that went back: due."""
+    if unit not in SCHEDULE or not isinstance(entry, dict):
+        return True, ""
+    try:
+        last = float(entry["last_run"])
+    except (KeyError, TypeError, ValueError):
+        return True, ""
+    if now < last:  # the clock went back: run instead of stalling until it catches up
+        return True, ""
+    wait = last + SCHEDULE[unit][0] * 60 - now
+    if wait > 0:
+        return False, f"sırası değil, {max(1, round(wait / 60))} dk sonra"
+    if entry.get("verdict") != "OK" or entry.get("pending"):
+        return True, ""  # a failed, warned or unfinished run is retried even without new input
+    if fingerprint is not None and entry.get("fingerprint") == fingerprint:
+        return False, "yeni girdi yok"
+    return True, ""
+
+
+def _load_schedule(path: Path) -> dict[str, Any]:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        data = None  # missing or unreadable: every agent is due once (the old every-cycle behaviour)
+    if not isinstance(data, dict) or not isinstance(data.get("units"), dict):
+        data = {"units": {}}
+    return data
+
+
+def _save_schedule(path: Path, state: dict[str, Any]) -> None:
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(state, ensure_ascii=False), encoding="utf-8")
+        tmp.replace(path)
+    except OSError:  # an unsaved schedule only means an agent may run once more; never fatal
+        pass
+
+
+def run_scheduled(records_dir: Path = cli.RECORDS_DIR, agents=AGENTS, *, state_path: Path | None = None,
+                  clock: Callable[[], float] = time.time) -> dict[str, Any]:
+    """One scheduler tick: only the agents that are due run (owner 2026-10-03)."""
+    path = state_path or (_research_dir() / SCHEDULE_FILE)
+    state = _load_schedule(path)
+    units = state["units"]
+    try:
+        paths: dict[str, Path] | None = _input_paths(records_dir)
+    except Exception:  # noqa: BLE001 - unknown input paths: the clock decides, an agent is never silenced
+        paths = None
+    started = clock()
+    logs_before = [_stamp(records_dir / name) for name in LOG_FILES]
+    results: list[dict[str, Any]] = []
+    skipped: list[dict[str, Any]] = []
+    for unit, name, fn in agents:
+        entry = units.get(unit)
+        fingerprint = _fingerprint(unit, paths)
+        due, why = _due(unit, entry, fingerprint, clock())
+        if not due:
+            last = entry.get("summary") if isinstance(entry, dict) else None
+            skipped.append({"unit": unit, "name": name, "verdict": "OK", "ran": False, "seconds": 0.0,
+                            "summary": f"atlandı ({why}); son çalışma: {str(last or 'henüz yok')[:300]}"})
+            continue
+        ran_at = clock()
+        result = _run_agents(records_dir, ((unit, name, fn),))[0]
+        results.append(result)
+        units[unit] = {"last_run": ran_at, "verdict": result["verdict"], "pending": bool(result.get("pending")),
+                       "fingerprint": fingerprint, "summary": result["summary"]}
+        _save_schedule(path, state)  # after every agent: a crash mid-tick never repeats finished work
+    if not results:
+        return {"record_id": None, "results": results, "skipped": skipped, "recorded": False}
+    changed = [_stamp(records_dir / name) for name in LOG_FILES] != logs_before
+    failed = any(r["verdict"] != "OK" for r in results)
+    last_record = state.get("last_record_at")
+    heartbeat = not isinstance(last_record, (int, float)) or not 0 <= clock() - last_record < HEARTBEAT_RECORD_S
+    if not (changed or failed or heartbeat):
+        return {"record_id": None, "results": results, "skipped": skipped, "recorded": False}
+    memory_before = _stamp(records_dir / cli.MEMORY_LOG)
+    out = _record_cycle(records_dir, results, started, skipped)
+    if out["record_id"]:
+        state["last_record_at"] = clock()
+        # The cycle record (and an incident it opens) is the runner's own bookkeeping, not new input:
+        # an agent whose memory input was current before it stays current after it.
+        memory_after = _stamp(records_dir / cli.MEMORY_LOG)
+        for entry in units.values():
+            fp = entry.get("fingerprint") if isinstance(entry, dict) else None
+            if isinstance(fp, dict) and "memory" in fp and fp["memory"] == memory_before:
+                fp["memory"] = memory_after
+        _save_schedule(path, state)
+    return {**out, "skipped": skipped, "recorded": bool(out["record_id"])}
+
+
+def _print_cycle(out: dict[str, Any]) -> None:
+    print(f"\n{out['record_id'] or 'kayıt yazılmadı'}  {time.strftime('%Y-%m-%d %H:%M')}")
+    for r in out["results"]:
+        print(f"  {r['verdict']:<4} {r['name']:<20} {r['summary']}")
+    if out.get("skipped"):
+        print(f"  ({len(out['skipped'])} ajanın sırası değildi ya da yeni girdisi yoktu)")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--every", type=float, default=None, help="repeat every N minutes")
+    parser.add_argument("--every", type=float, default=None,
+                        help="scheduler: every N minutes run the agents that are due (each agent has its own clock)")
     args = parser.parse_args(argv)
-    while True:
+    if not args.every:
         out = run_cycle()
-        print(f"\n{out['record_id'] or 'kayıt yazılamadı (kilit meşgul)'}  {time.strftime('%Y-%m-%d %H:%M')}")
-        for r in out["results"]:
-            print(f"  {r['verdict']:<4} {r['name']:<20} {r['summary']}")
-        if not args.every:
-            return 0 if all(r["verdict"] != "FAIL" for r in out["results"]) else 1
-        print(f"sonraki döngü {args.every:g} dakika sonra (durdurmak için Ctrl+C; Atlas etkilenmez)")
+        _print_cycle(out)
+        return 0 if all(r["verdict"] != "FAIL" for r in out["results"]) else 1
+    print(f"Ajanlar kendi saatleriyle çalışıyor: her {args.every:g} dakikada sırası gelenler (durdurmak için Ctrl+C; Atlas etkilenmez)")
+    while True:
+        out = run_scheduled()
+        if out["results"]:
+            _print_cycle(out)
         try:
             time.sleep(args.every * 60)
         except KeyboardInterrupt:

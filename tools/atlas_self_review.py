@@ -146,6 +146,23 @@ def collect(records: Path) -> list[dict[str, Any]]:
     return findings
 
 
+def _last_refused(records: Path) -> list[str] | None:
+    """The refused requests in the latest self-review record; None when there is none or it is unreadable."""
+    from atlas_org import memory_records
+
+    log = records / cli.MEMORY_LOG
+    if not log.exists():
+        return None
+    mine = [r for r in memory_records.replay(cli.read_log(log)).values() if str(r.get("id", "")).startswith("SR-")]
+    if not mine:
+        return None
+    try:
+        body = json.loads(max(mine, key=lambda r: r["seq"])["body"])
+        return sorted(str(item.get("request")) for item in body.get("refused", []))
+    except (ValueError, KeyError, AttributeError, TypeError):
+        return None
+
+
 def run(records: Path, apply: bool) -> dict[str, Any]:
     findings = collect(records)
     open_requests = {t["request"] for t in task_log.replay(cli.read_log(records / cli.TASKS_LOG)).values()
@@ -164,7 +181,11 @@ def run(records: Path, apply: bool) -> dict[str, Any]:
         open_requests.add(finding["request"])
     summary = {"findings": len(findings), "filed": filed, "skipped_duplicates": skipped, "refused": refused,
                "applied": apply}
-    if apply and findings:
+    # Owner 2026-10-03 (no busywork): a run is recorded when it filed a task or met a refusal the last record
+    # did not already show. Open duplicates and the same refusal again are not news; before, every agent
+    # cycle wrote another "0 tasks filed" record.
+    new_refusal = bool(refused) and sorted(r["request"] for r in refused) != _last_refused(records)
+    if apply and (filed or new_refusal):
         existing = {r["record_id"] for r in cli.read_log(records / cli.MEMORY_LOG)}
         rid = f"SR-{len(existing) + 1:04d}"
         cli.add_memory_record(records, {
