@@ -221,7 +221,11 @@ class DurableAppendWriter:
                 finally:
                     _unlock_fd(fd)
             finally:
-                os.close(fd)
+                # Re-review 2026-10-03 (LOW): the lock descriptor's close must
+                # never replace the append's own, already classified outcome;
+                # the OS drops the lock with the descriptor either way.
+                with contextlib.suppress(OSError):
+                    os.close(fd)
 
     # =========================================================
     # APPEND

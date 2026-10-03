@@ -26,3 +26,5 @@ blocks new buys until the next restart (Phase-2 A3).
 
 `<file>.lock` files are normal and can stay; the operating system releases the lock when the process ends.
 Windows behaviour of the lock and of the rollback (`ftruncate`) is not yet verified on the owner's machine.
+
+Do not "reset" a flagged store to get past the marker: since the 2026-10-03 re-review `reset(delete_file=True)` refuses while a marker exists, so the evidence is kept.

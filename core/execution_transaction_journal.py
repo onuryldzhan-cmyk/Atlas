@@ -961,6 +961,10 @@ class ExecutionTransactionJournal:
 
             if delete_file:
                 try:
+                    # Re-review 2026-10-03 (LOW): never destroy a file an
+                    # unresolved indeterminate write flagged for investigation.
+                    self._log._writer.check_recovery_marker()
+
                     self.file_path.unlink(
                         missing_ok=True
                     )

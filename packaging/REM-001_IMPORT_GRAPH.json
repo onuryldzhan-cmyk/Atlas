@@ -16,21 +16,16 @@
     "analysis": "Static AST import resolution over git-tracked Python files, excluding imports guarded by if TYPE_CHECKING:. Third-party and stdlib targets resolve to nothing and carry no edge."
   },
   "source_identity": {
-    "generated_from_commit": "9479929ea8960b7e36cfaf3ccad44a5b7c1089f9",
-    "generated_from_tree": "0f9761a3a47e1e05f08a0391d99407ac35214c59",
+    "generated_from_commit": "c5d6271cbbc067b104af0383c54652f3326c5045",
+    "generated_from_tree": "49062e4359e547607f0a003a7c053adfd3cbc9fb",
     "tracked_working_tree_clean": false,
     "modified_tracked_paths_at_generation": [
       "core/execution_idempotency_store.py",
-      "core/execution_manager.py",
       "core/execution_transaction_journal.py",
-      "core/risk_engine.py",
+      "docs/operations/DURABLE_APPEND_RECOVERY.md",
       "ore/durable_append_contract.py",
-      "packaging/REM-001_IMPORT_GRAPH.json",
       "packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md",
-      "packaging/REM-001_STATE_AUTHORITY_MAP.md",
-      "packaging/atlas_architecture_map.json",
-      "packaging/atlas_runtime_closure.json",
-      "tests/test_phase2_a2_durable_append_contract.py"
+      "packaging/REM-001_STATE_AUTHORITY_MAP.md"
     ]
   },
   "scope": {
