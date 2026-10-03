@@ -1,4 +1,12 @@
-"""AI-001 gateway + agents (Claude API, owner choice 2026-10-02). No network: a fake client stands in."""
+"""AI-001 gateway + agents (Claude API, owner choice 2026-10-02). No network: a fake client stands in.
+
+2026-10-03 (owner): the "60 % of the window, split by task size" rule is superseded by "the whole 5-hour
+window, each agent as much as its work needs", bounded by the agent allowlist, a per-agent runaway ceiling,
+the owner's own ceiling and "never pay twice for the same question". The three tests that pinned the old
+rule were replaced by tests of the new one (same safety properties: budget reached -> abstain, unreadable
+ledger -> abstain, unknown agent -> no spend, rolling window); the failure tests now ask a distinct question
+per case, because an identical question is no longer sent twice.
+"""
 
 from __future__ import annotations
 
@@ -40,18 +48,20 @@ def test_ok_answer_is_schema_validated_costed_and_ledgered(tmp_path):
 
 def test_every_failure_abstains(tmp_path):
     ledger = ai.UsageLedger(tmp_path / "u.json")
-    for factory, reason in ((fake("not json"), "MALFORMED"), (fake('{"b": 1}'), "MALFORMED"),
-                            (fake('{"a": "x"}', stop="refusal"), "REFUSAL"),
-                            (fake('{"a": "x"}', stop="max_tokens"), "TRUNCATED"),
-                            (fake("", raise_exc=TimeoutError()), "UNAVAILABLE")):
-        r = ai.ask("s", "q", SCHEMA, ledger=ledger, client_factory=factory, now=NOW)
+    for n, (factory, reason) in enumerate(((fake("not json"), "MALFORMED"), (fake('{"b": 1}'), "MALFORMED"),
+                                           (fake('{"a": "x"}', stop="refusal"), "REFUSAL"),
+                                           (fake('{"a": "x"}', stop="max_tokens"), "TRUNCATED"),
+                                           (fake("", raise_exc=TimeoutError()), "UNAVAILABLE"))):
+        r = ai.ask("s", f"q{n}", SCHEMA, ledger=ledger, client_factory=factory, now=NOW)
         assert r.status == "ABSTAIN" and reason in r.reason and r.data is None
 
 
 def test_budget_and_unreadable_ledger_stop_spending(tmp_path, monkeypatch):
     monkeypatch.setenv("ATLAS_AI_DAILY_BUDGET_USD", "0.01")
     ledger = ai.UsageLedger(tmp_path / "u.json")
-    ledger.add(NOW.timestamp() - 3600, Decimal("0.006"))  # 60 % of 0.01 used one hour ago
+    ledger.add(NOW.timestamp() - 3600, Decimal("0.006"))  # 60 % used: no longer a stop (owner 2026-10-03)
+    assert ai.ask("s", "q0", SCHEMA, ledger=ledger, client_factory=fake('{"a":"x"}'), now=NOW).status == "OK"
+    ledger.add(NOW.timestamp() - 3600, Decimal("0.004"))  # the whole 0.01 is used: stop
     assert "WINDOW_BUDGET" in ai.ask("s", "q", SCHEMA, ledger=ledger, client_factory=fake('{"a":"x"}'), now=NOW).reason
     (tmp_path / "bad.json").write_text("{", encoding="utf-8")
     assert "UNREADABLE" in ai.ask("s", "q", SCHEMA, ledger=ai.UsageLedger(tmp_path / "bad.json"),
@@ -131,22 +141,25 @@ def test_gateway_stays_out_of_the_trading_runtime():
     assert "tools/ai_gateway.py" not in _j.dumps(closure)
 
 
-def test_owner_quota_rule_60_percent_total_split_by_task_size(monkeypatch):
-    # Owner 2026-10-02: all agents together max 60 % of the daily budget, split by task size.
+def test_owner_rule_whole_window_shared_by_need(tmp_path, monkeypatch):
+    # Owner 2026-10-03 (supersedes 2026-10-02 "60 %, split by task size"): the whole window, shared by need.
     monkeypatch.setenv("ATLAS_AI_DAILY_BUDGET_USD", "3.00")
-    assert ai.agent_cap(None) == Decimal("1.80")
-    assert ai.agent_cap("ceo_ai") == Decimal("0.60")        # weight 1 of 3
-    assert ai.agent_cap("model_council") == Decimal("1.20")  # weight 2 of 3 (two models per run)
-    assert sum(ai.agent_cap(a) for a in ai.AGENT_WEIGHTS) <= ai.agent_cap(None)
-    assert ai.agent_cap("unknown_agent") == 0                # an unlisted agent cannot spend
+    assert ai.agent_cap(None) == Decimal("3.00")
+    assert ai.agent_cap("ceo_ai") == ai.agent_cap("model_council") == Decimal("3.00")  # no fixed split
+    assert ai.agent_cap("unknown_agent") == 0                                            # an unlisted agent cannot spend
+    assert not hasattr(ai, "TOTAL_SHARE") and not hasattr(ai, "AGENT_WEIGHTS")
+    r = ai.ask("s", "q", SCHEMA, ledger=ai.UsageLedger(tmp_path / "u.json"), client_factory=fake('{"a":"x"}'),
+               now=NOW, agent="executive_assistant")
+    assert r.status == "ABSTAIN" and "AGENT_NOT_ALLOWED" in r.reason
 
 
-def test_an_agent_stops_at_its_own_share_while_others_continue(tmp_path, monkeypatch):
+def test_a_runaway_agent_stops_while_others_continue(tmp_path, monkeypatch):
     monkeypatch.setenv("ATLAS_AI_DAILY_BUDGET_USD", "3.00")
     ledger = ai.UsageLedger(tmp_path / "u.json")
-    ledger.add(NOW.timestamp(), Decimal("0.60"), "ceo_ai")
+    for i in range(ai.RUNAWAY_CALLS_PER_WINDOW):  # a loop, not work: far above the CEO's normal 2 per window
+        ledger.add(NOW.timestamp() - i, Decimal("0.001"), "ceo_ai")
     blocked = ai.ask("s", "q", SCHEMA, ledger=ledger, client_factory=fake('{"a":"x"}'), now=NOW, agent="ceo_ai")
-    assert blocked.status == "ABSTAIN" and "AGENT_QUOTA_REACHED" in blocked.reason
+    assert blocked.status == "ABSTAIN" and "AGENT_RUNAWAY_LIMIT" in blocked.reason
     ok = ai.ask("s", "q", SCHEMA, ledger=ledger, client_factory=fake('{"a":"x"}'), now=NOW, agent="model_council")
     assert ok.status == "OK" and ledger.spent(NOW.timestamp(), "model_council") == Decimal("0.007")
 
@@ -155,11 +168,11 @@ def test_quota_is_a_rolling_five_hour_window(tmp_path, monkeypatch):
     # Owner 2026-10-02: "5 saatlik" - spend older than 5 hours no longer counts.
     monkeypatch.setenv("ATLAS_AI_WINDOW_BUDGET_USD", "1.00")
     ledger = ai.UsageLedger(tmp_path / "u.json")
-    ledger.add(NOW.timestamp() - 5 * 3600 - 1, Decimal("0.60"))   # just outside the window
+    ledger.add(NOW.timestamp() - 5 * 3600 - 1, Decimal("1.00"))   # the whole budget, just outside the window
     assert ledger.spent(NOW.timestamp()) == 0
-    assert ai.ask("s", "q", SCHEMA, ledger=ledger, client_factory=fake('{"a":"x"}'), now=NOW).status == "OK"
-    ledger.add(NOW.timestamp() - 4 * 3600, Decimal("0.60"))       # inside the window
-    assert "WINDOW_BUDGET" in ai.ask("s", "q", SCHEMA, ledger=ledger, client_factory=fake('{"a":"x"}'), now=NOW).reason
+    assert ai.ask("s", "q1", SCHEMA, ledger=ledger, client_factory=fake('{"a":"x"}'), now=NOW).status == "OK"
+    ledger.add(NOW.timestamp() - 4 * 3600, Decimal("1.00"))       # inside the window
+    assert "WINDOW_BUDGET" in ai.ask("s", "q2", SCHEMA, ledger=ledger, client_factory=fake('{"a":"x"}'), now=NOW).reason
 
 
 
@@ -189,23 +202,45 @@ def test_claude_code_default_backend_returns_structured_output(tmp_path, monkeyp
 def test_claude_code_failures_abstain(tmp_path, monkeypatch):
     monkeypatch.setenv("ATLAS_AI_WINDOW_CALLS", "100")
     ledger = ai.UsageLedger(tmp_path / "u.json")
-    for runner, reason in ((cc(exc=FileNotFoundError()), "UNAVAILABLE"), (cc({"is_error": True}), "CLAUDE_CODE_ERROR"),
-                           (cc({"structured_output": {"b": 1}}), "MALFORMED"), (cc({"result": "text only"}), "MALFORMED")):
-        r = ai.ask("s", "q", SCHEMA, ledger=ledger, now=NOW, agent="model_council", runner=runner)
+    for n, (runner, reason) in enumerate(((cc(exc=FileNotFoundError()), "UNAVAILABLE"), (cc({"is_error": True}), "CLAUDE_CODE_ERROR"),
+                                          (cc({"structured_output": {"b": 1}}), "MALFORMED"), (cc({"result": "text only"}), "MALFORMED"))):
+        r = ai.ask("s", f"q{n}", SCHEMA, ledger=ledger, now=NOW, agent="model_council", runner=runner)
         assert r.status == "ABSTAIN" and reason in r.reason
 
 
-def test_claude_code_quota_is_calls_per_5h_60_percent_split_by_task_size(tmp_path, monkeypatch):
-    monkeypatch.setenv("ATLAS_AI_WINDOW_CALLS", "10")   # 60 % -> 6 calls: ceo 2, council 4
-    assert ai.agent_call_cap(None) == 6 and ai.agent_call_cap("ceo_ai") == 2 and ai.agent_call_cap("model_council") == 4
-    assert ai.agent_call_cap("unknown") == 0
+def test_claude_code_owner_ceiling_is_used_in_full_and_unset_means_the_plan_limit(tmp_path, monkeypatch):
+    # Owner 2026-10-03: an owner-set ceiling is used in full (no 60 % share, no split between agents).
+    monkeypatch.setenv("ATLAS_AI_WINDOW_CALLS", "3")
     ledger = ai.UsageLedger(tmp_path / "u.json")
     ok = cc({"structured_output": {"a": "x"}})
-    assert [ai.ask("s", "q", SCHEMA, ledger=ledger, now=NOW, agent="ceo_ai", runner=ok).status for _ in range(3)] == ["OK", "OK", "ABSTAIN"]
+    asks = [("ceo_ai", "q1"), ("model_council", "q2"), ("model_council", "q3"), ("ceo_ai", "q4")]
+    assert [ai.ask("s", q, SCHEMA, ledger=ledger, now=NOW, agent=a, runner=ok).status for a, q in asks] == ["OK", "OK", "OK", "ABSTAIN"]
+    assert "WINDOW_CALLS_REACHED" in ai.ask("s", "q5", SCHEMA, ledger=ledger, now=NOW, agent="ceo_ai", runner=ok).reason
     later = datetime.fromtimestamp(NOW.timestamp() + 5 * 3600 + 1, tz=timezone.utc)
-    assert ai.ask("s", "q", SCHEMA, ledger=ledger, now=later, agent="ceo_ai", runner=ok).status == "OK"  # window rolled
+    assert ai.ask("s", "q6", SCHEMA, ledger=ledger, now=later, agent="ceo_ai", runner=ok).status == "OK"  # window rolled
+    monkeypatch.delenv("ATLAS_AI_WINDOW_CALLS")
+    assert ai.window_calls() is None                    # unset: the plan's own 5-hour limit is the budget
+    assert ai.ask("s", "q7", SCHEMA, ledger=ledger, now=NOW, agent="ceo_ai", runner=ok).status == "OK"
     monkeypatch.setenv("ATLAS_AI_WINDOW_CALLS", "x")
-    assert ai.window_calls() == 0
+    assert ai.window_calls() == 0                       # unreadable: no calls, never unlimited by mistake
+    assert "WINDOW_CALLS_REACHED" in ai.ask("s", "q8", SCHEMA, ledger=ledger, now=NOW, agent="ceo_ai", runner=ok).reason
+
+
+def test_the_same_question_is_never_paid_for_twice(tmp_path, monkeypatch):
+    # Owner 2026-10-03: "do not keep asking the same things" - only new evidence makes a new question.
+    monkeypatch.delenv("ATLAS_AI_WINDOW_CALLS", raising=False)
+    ledger, seen = ai.UsageLedger(tmp_path / "u.json"), []
+    ok = cc({"structured_output": {"a": "x"}}, seen=seen)
+    assert ai.ask("s", "same", SCHEMA, ledger=ledger, now=NOW, agent="ceo_ai", runner=ok).status == "OK"
+    again = ai.ask("s", "same", SCHEMA, ledger=ledger, now=NOW, agent="ceo_ai", runner=ok)
+    assert again.status == "ABSTAIN" and "DUPLICATE_QUESTION" in again.reason and len(seen) == 1  # nothing sent
+    assert ai.ask("s", "same", SCHEMA, ledger=ledger, now=NOW, agent="model_council", runner=ok).status == "OK"
+    assert ai.ask("s", "new evidence", SCHEMA, ledger=ledger, now=NOW, agent="ceo_ai", runner=ok).status == "OK"
+    next_day = datetime.fromtimestamp(NOW.timestamp() + 24 * 3600 + 1, tz=timezone.utc)
+    assert ai.ask("s", "same", SCHEMA, ledger=ledger, now=next_day, agent="ceo_ai", runner=ok).status == "OK"
+    old = ai.UsageLedger(tmp_path / "old.json")      # a ledger written before 2026-10-03 (three fields)
+    (tmp_path / "old.json").write_text(json.dumps([[NOW.timestamp(), "ceo_ai", "0.01"]]), encoding="utf-8")
+    assert old.calls(NOW.timestamp()) == 1 and old.asked(NOW.timestamp(), "ceo_ai", "x") is False
 
 
 def test_claude_code_runner_drops_api_keys_and_disables_tools(monkeypatch):

@@ -8,8 +8,11 @@ Contract: config/model_registry.json and ADR-0011.
 * Every prompt passes the SensitiveDataGuard first.
 * Output is constrained by a JSON schema (output_config.format) and validated again here.
 * timeout / malformed / refusal / unavailable / over budget -> ABSTAIN, never a default action.
-* A spend cap per rolling 5-hour window (ATLAS_AI_WINDOW_BUDGET_USD, default 1.00); all agents together
-  max 60 %, split by task size (AGENT_WEIGHTS).
+* Owner rule 2026-10-03: the agents may use the whole rolling 5-hour window of the owner's plan, each as
+  much as its work needs (the 2026-10-02 "60 %, split by task size" rule is superseded). Still bounded:
+  only AI_AGENTS may call, the same question is never paid for twice in 24 h, a per-agent runaway
+  ceiling stops a loop, and an owner-set ceiling (ATLAS_AI_WINDOW_CALLS / ATLAS_AI_WINDOW_BUDGET_USD)
+  is honoured in full.
 * A model's answer is advice: no output here can trade, deploy, approve or change a threshold.
 """
 
@@ -33,12 +36,20 @@ DEFAULT_DAILY_BUDGET_USD = Decimal("1.00")
 # Owner choice 2026-10-02: run the agents through Claude Code on the owner's Pro subscription
 # (`claude -p`), not a paid API key. ATLAS_AI_BACKEND=api switches back to the API path.
 BACKEND = os.environ.get("ATLAS_AI_BACKEND", "claude_code")
-# Pro usage is not visible to Atlas, so the quota there is CALLS per rolling 5-hour window.
-DEFAULT_WINDOW_CALLS = 10
-# Owner rule 2026-10-02: all AI agents together may use at most 60 % of the daily budget, and
-# that share is split between the agents by task size (weight = expected model calls per run).
-TOTAL_SHARE = Decimal("0.60")
-AGENT_WEIGHTS = {"ceo_ai": 1, "model_council": 2}
+# Pro usage is not visible to Atlas, so on the subscription the plan's own 5-hour limit is the budget:
+# Claude Code refuses past it and the agents abstain. ATLAS_AI_WINDOW_CALLS, when the owner sets it, is
+# an extra ceiling of calls per rolling 5 hours, used in full.
+#
+# Superseded record (kept, not erased): "Owner rule 2026-10-02: all AI agents together may use at most
+# 60 % of the daily budget, and that share is split between the agents by task size (TOTAL_SHARE 0.60,
+# AGENT_WEIGHTS ceo_ai 1 / model_council 2; default 10 calls -> ceo 2, council 4)."
+# Owner rule 2026-10-03 (reason: tie the budget to the whole 5-hour window and let each agent use what its
+# work needs): no share and no fixed split. What still bounds the spend, so a loop can never burn the window:
+AI_AGENTS = frozenset({"ceo_ai", "model_council"})  # nobody else may call a model
+# Per agent per rolling 5 hours: far above normal need (CEO <= 2 by its 2.5 h gap, council 2 calls per new
+# proposal); reaching it means a loop, not work.
+RUNAWAY_CALLS_PER_WINDOW = 12
+DUPLICATE_WINDOW_H = 24  # the same agent never pays twice for the same question within this window
 TIMEOUT_S = 120.0
 MAX_TOKENS = 16000
 USAGE_FILE = "ai_usage.json"
@@ -73,9 +84,10 @@ WINDOW_HOURS = 5  # owner rule 2026-10-02: quotas apply to a rolling 5-hour wind
 
 
 class UsageLedger:
-    """Spend entries [(epoch_s, agent, usd)] summed over the last WINDOW_HOURS (rolling).
+    """Spend entries [epoch_s, agent, usd(, question_hash)] summed over the last WINDOW_HOURS (rolling).
 
     Unreadable ledger -> treated as quota exhausted (fail closed). Entries older than a day are pruned.
+    The question hash (2026-10-03) is optional, so older three-field entries stay valid.
     """
 
     def __init__(self, path: Path) -> None:
@@ -98,10 +110,11 @@ class UsageLedger:
             return None
         total = Decimal("0")
         try:
-            for ts, who, usd in data:
+            for entry in data:
+                ts, who, usd = entry[0], entry[1], entry[2]
                 if now_s - float(ts) < WINDOW_HOURS * 3600 and (agent is None or who == agent):
                     total += Decimal(str(usd))
-        except (TypeError, ValueError, ArithmeticError):
+        except (TypeError, ValueError, ArithmeticError, IndexError, KeyError):
             return None
         return total
 
@@ -110,9 +123,20 @@ class UsageLedger:
         if data is None:
             return None
         try:
-            return sum(1 for ts, who, _ in data
-                       if now_s - float(ts) < WINDOW_HOURS * 3600 and (agent is None or who == agent))
-        except (TypeError, ValueError):
+            return sum(1 for entry in data
+                       if now_s - float(entry[0]) < WINDOW_HOURS * 3600 and (agent is None or entry[1] == agent))
+        except (TypeError, ValueError, IndexError, KeyError):
+            return None
+
+    def asked(self, now_s: float, agent: str | None, question: str) -> bool | None:
+        """True when this agent already paid for this exact question within DUPLICATE_WINDOW_H; None: unreadable."""
+        data = self._load()
+        if data is None:
+            return None
+        try:
+            return any(len(entry) > 3 and entry[3] == question and entry[1] == agent
+                       and now_s - float(entry[0]) < DUPLICATE_WINDOW_H * 3600 for entry in data)
+        except (TypeError, ValueError, IndexError, KeyError):
             return None
 
     def between(self, start_s: float, end_s: float) -> tuple[int, Decimal] | None:
@@ -122,17 +146,17 @@ class UsageLedger:
             return None
         calls, total = 0, Decimal("0")
         try:
-            for ts, _who, usd in data:
-                if start_s <= float(ts) <= end_s:
+            for entry in data:
+                if start_s <= float(entry[0]) <= end_s:
                     calls += 1
-                    total += Decimal(str(usd))
-        except (TypeError, ValueError, ArithmeticError):
+                    total += Decimal(str(entry[2]))
+        except (TypeError, ValueError, ArithmeticError, IndexError, KeyError):
             return None
         return calls, total
 
-    def add(self, now_s: float, cost: Decimal, agent: str | None = None) -> None:
+    def add(self, now_s: float, cost: Decimal, agent: str | None = None, question: str | None = None) -> None:
         data = [e for e in (self._load() or []) if now_s - float(e[0]) < 86400]
-        data.append([now_s, agent, str(cost)])
+        data.append([now_s, agent, str(cost)] + ([question] if question else []))
         self.path.parent.mkdir(parents=True, exist_ok=True)
         tmp = self.path.with_suffix(".tmp")
         tmp.write_text(json.dumps(data), encoding="utf-8")
@@ -140,32 +164,64 @@ class UsageLedger:
 
 
 def agent_cap(agent: str | None) -> Decimal:
-    """This agent's daily USD cap: budget x 60 % x its weight share. Unknown agent -> 0 (no spend)."""
-    usable = daily_budget() * TOTAL_SHARE
-    if agent is None:
-        return usable
-    weight = AGENT_WEIGHTS.get(agent)
-    if not weight:
+    """USD an agent may spend in the window (API backend): the whole shared budget for a listed agent,
+    0 for anyone else. There is no per-agent split any more (owner 2026-10-03)."""
+    if agent is not None and agent not in AI_AGENTS:
         return Decimal("0")
-    return usable * Decimal(weight) / Decimal(sum(AGENT_WEIGHTS.values()))
+    return daily_budget()
 
 
-def window_calls() -> int:
+def window_calls() -> int | None:
+    """The owner's optional ceiling of calls per rolling 5 hours (subscription backend).
+
+    Unset -> None: no Atlas ceiling, the plan's own 5-hour limit is the budget. Unreadable or negative -> 0:
+    no calls (fail closed, never unlimited by mistake)."""
+    raw = os.environ.get("ATLAS_AI_WINDOW_CALLS")
+    if raw is None or not raw.strip():
+        return None
     try:
-        return max(0, int(os.environ.get("ATLAS_AI_WINDOW_CALLS", DEFAULT_WINDOW_CALLS)))
+        return max(0, int(raw))
     except ValueError:
-        return 0  # unreadable -> no calls, never unlimited
-
-
-def agent_call_cap(agent: str | None) -> int:
-    """Calls per 5 h: all agents together max 60 % of ATLAS_AI_WINDOW_CALLS, split by task size (floor)."""
-    usable = int(window_calls() * TOTAL_SHARE)
-    if agent is None:
-        return usable
-    weight = AGENT_WEIGHTS.get(agent)
-    if not weight:
         return 0
-    return usable * weight // sum(AGENT_WEIGHTS.values())
+
+
+def question_key(system: str, prompt: str, schema: dict[str, Any], model: str, effort: str) -> str:
+    """Identity of a question, from exactly what is sent (after the SensitiveDataGuard)."""
+    import hashlib
+
+    blob = json.dumps([system, prompt, schema, model, effort], sort_keys=True, ensure_ascii=False, default=str)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:24]
+
+
+def _refusal(ledger: UsageLedger, now_s: float, agent: str | None, question: str, backend: str) -> AIResult | None:
+    """Every reason not to ask, checked before anything is spent (fail closed). None: the call may go ahead."""
+    if agent is not None and agent not in AI_AGENTS:
+        return AIResult("ABSTAIN", reason=f"AGENT_NOT_ALLOWED ({agent} may not call a model)")
+    used = ledger.calls(now_s)
+    if used is None:
+        return AIResult("ABSTAIN", reason="USAGE_LEDGER_UNREADABLE")
+    asked = ledger.asked(now_s, agent, question)
+    if asked is None:
+        return AIResult("ABSTAIN", reason="USAGE_LEDGER_UNREADABLE")
+    if asked:
+        return AIResult("ABSTAIN", reason=f"DUPLICATE_QUESTION (asked within {DUPLICATE_WINDOW_H} h; "
+                                          "only new evidence makes a new question)")
+    if backend == "claude_code":
+        ceiling = window_calls()
+        if ceiling is not None and used >= ceiling:
+            return AIResult("ABSTAIN", reason=f"WINDOW_CALLS_REACHED ({used}/{ceiling} calls in {WINDOW_HOURS} h, owner ceiling)")
+    else:
+        spent = ledger.spent(now_s)
+        if spent is None:
+            return AIResult("ABSTAIN", reason="USAGE_LEDGER_UNREADABLE")
+        if spent >= daily_budget():
+            return AIResult("ABSTAIN", reason=f"WINDOW_BUDGET_REACHED ({spent} USD in the last {WINDOW_HOURS} h)")
+    if agent is not None:
+        mine = ledger.calls(now_s, agent)
+        if mine is None or mine >= RUNAWAY_CALLS_PER_WINDOW:
+            return AIResult("ABSTAIN", reason=f"AGENT_RUNAWAY_LIMIT ({agent}: {mine} calls in {WINDOW_HOURS} h, "
+                                              f"limit {RUNAWAY_CALLS_PER_WINDOW}; normal need is far below)")
+    return None
 
 
 def _claude_code_runner(prompt: str, system: str, schema: dict[str, Any], model: str, effort: str) -> dict[str, Any]:
@@ -193,20 +249,16 @@ def _claude_code_runner(prompt: str, system: str, schema: dict[str, Any], model:
 
 
 def _ask_claude_code(system, prompt, schema, model, effort, agent, ledger, now_s, runner) -> AIResult:
-    used = ledger.calls(now_s)
-    if used is None:
-        return AIResult("ABSTAIN", reason="USAGE_LEDGER_UNREADABLE")
-    if used >= agent_call_cap(None):
-        return AIResult("ABSTAIN", reason=f"WINDOW_CALLS_REACHED ({used} calls in {WINDOW_HOURS} h, all agents max 60 %)")
-    mine = ledger.calls(now_s, agent)
-    if mine is None or mine >= agent_call_cap(agent):
-        return AIResult("ABSTAIN", reason=f"AGENT_QUOTA_REACHED ({agent}: {mine}/{agent_call_cap(agent)} calls in {WINDOW_HOURS} h)")
+    question = question_key(system, prompt, schema, model, effort)
+    refused = _refusal(ledger, now_s, agent, question, "claude_code")
+    if refused is not None:
+        return refused
     try:
         out = (runner or _claude_code_runner)(prompt, system, schema, model, effort)
     except Exception as exc:  # CLI missing, not logged in, usage limit hit, timeout: abstain
         return AIResult("ABSTAIN", reason=f"UNAVAILABLE ({type(exc).__name__}: {str(exc)[:300]})", model=model)
     cost = Decimal(str(out.get("total_cost_usd") or "0")) if isinstance(out, dict) else Decimal("0")
-    ledger.add(now_s, cost, agent)  # one entry = one call, also when the answer is rejected below
+    ledger.add(now_s, cost, agent, question)  # one entry = one call, also when the answer is rejected below
     if not isinstance(out, dict) or out.get("is_error"):
         return AIResult("ABSTAIN", reason="CLAUDE_CODE_ERROR", model=model)
     data = out.get("structured_output")
@@ -256,15 +308,11 @@ def ask(system: str, prompt: str, schema: dict[str, Any], *, model: str = DEFAUL
     if not key_available() and client_factory is None:
         return AIResult("ABSTAIN", reason="NO_CREDENTIALS (AI-001: owner sets ANTHROPIC_API_KEY on his machine)")
     now_s = (now or datetime.now(timezone.utc)).timestamp()
-    spent = ledger.spent(now_s)
-    if spent is None:
-        return AIResult("ABSTAIN", reason="USAGE_LEDGER_UNREADABLE")
-    if spent >= daily_budget() * TOTAL_SHARE:
-        return AIResult("ABSTAIN", reason=f"WINDOW_BUDGET_REACHED ({spent} USD in the last {WINDOW_HOURS} h, all agents max 60 %)")
-    mine = ledger.spent(now_s, agent) if agent else spent
-    if mine is None or mine >= agent_cap(agent):
-        return AIResult("ABSTAIN", reason=f"AGENT_QUOTA_REACHED ({agent}: {mine} / {agent_cap(agent):.4f} USD)")
     safe_prompt = sanitize_sensitive_data(prompt)
+    question = question_key(system, safe_prompt, schema, model, effort)
+    refused = _refusal(ledger, now_s, agent, question, "api")
+    if refused is not None:
+        return refused
     try:
         client = (client_factory or _default_client)()
         response = client.beta.messages.create(
@@ -276,7 +324,7 @@ def ask(system: str, prompt: str, schema: dict[str, Any], *, model: str = DEFAUL
     except Exception as exc:  # SDK missing, network, rate limit, 4xx/5xx: abstain
         return AIResult("ABSTAIN", reason=f"UNAVAILABLE ({type(exc).__name__})", model=model)
     cost = _cost(getattr(response, "model", model) or model, getattr(response, "usage", None))
-    ledger.add(now_s, cost, agent)
+    ledger.add(now_s, cost, agent, question)
     if getattr(response, "stop_reason", None) == "refusal":
         return AIResult("ABSTAIN", reason="REFUSAL", model=model, cost_usd=cost)
     if getattr(response, "stop_reason", None) == "max_tokens":

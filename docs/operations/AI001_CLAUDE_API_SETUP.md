@@ -16,20 +16,23 @@ Both give **advice only**. They cannot trade, deploy, approve or change a thresh
 - **Failures:** CLI missing, not logged in, usage limit reached, timeout or malformed answer → ABSTAIN.
 
 ## Quota (owner rule)
-Atlas cannot see your Pro usage percentage, so the quota counts **calls per rolling 5-hour window**:
-- `ATLAS_AI_WINDOW_CALLS`, default **10**.
-- All agents together may use at most **60 %** of it (6 calls).
-- That share is split by task size: CEO **2** calls, council **4** calls (two perspectives per proposal).
-- An agent stops at its share. An agent not in the list cannot call at all.
+~~Atlas cannot see your Pro usage percentage, so the quota counts **calls per rolling 5-hour window**: `ATLAS_AI_WINDOW_CALLS`, default **10**; all agents together may use at most **60 %** of it (6 calls); that share is split by task size: CEO **2** calls, council **4** calls; an agent stops at its share; an agent not in the list cannot call at all.~~ **[SUPERSEDED 2026-10-03 by the owner. Reason: tie the budget to the whole 5-hour window and let each agent use what its work needs. Text kept, not erased.]**
 
-Every call uses part of **your own** Pro 5-hour allowance.
+**Owner rule 2026-10-03:** the agents may use the **whole** rolling 5-hour window of your plan, each as much as its work needs. There is no 60 % share and no fixed split between agents.
+- **Budget:** Atlas cannot see your Pro usage, so the plan's own 5-hour limit is the budget. When Claude Code says the limit is reached, the agents abstain until the window rolls.
+- **Your own ceiling (optional):** `ATLAS_AI_WINDOW_CALLS` = calls per rolling 5 hours, used in full. Unset means no Atlas ceiling. An unreadable value means no calls.
+- **No repeated questions:** an agent never pays twice for the same question within 24 hours. Only new evidence makes a new question.
+- **Runaway stop:** at most **12** calls per agent per 5 hours. Normal need is far below that (CEO ≤ 2, council 2 per new proposal), so reaching it means a loop.
+- **Allowlist:** only `ceo_ai` and `model_council` may call a model.
+
+Every call uses part of **your own** plan allowance. Anthropic: "Both Pro and Max plans offer usage limits that are shared across Claude and Claude Code, meaning all activity in both tools counts against the same usage limits" (support.claude.com, article 11145838, read 2026-10-03). So if the agents use the whole window, your own Claude use waits for the reset too. If you want to keep part of the window for yourself, set a ceiling, for example `setx ATLAS_AI_WINDOW_CALLS "8"`.
 
 ## Owner steps (Windows PowerShell)
 1. Remove the placeholder key set earlier, so it can never shadow the subscription:
    `[Environment]::SetEnvironmentVariable("ANTHROPIC_API_KEY", $null, "User")`
 2. Close and reopen PowerShell.
 3. Check that Claude Code is installed and logged in: `claude --version`, then `claude` (type `/login` if asked; exit with `/exit`).
-4. Optional, change the call quota: `setx ATLAS_AI_WINDOW_CALLS "10"`
+4. Optional, set your own ceiling of calls per 5 hours: `setx ATLAS_AI_WINDOW_CALLS "8"` (unset = the whole plan window)
 5. Start Atlas: `python -m tools.start_atlas`
 
 `ATLAS_AI_BACKEND=api` switches back to the paid API-key path.
