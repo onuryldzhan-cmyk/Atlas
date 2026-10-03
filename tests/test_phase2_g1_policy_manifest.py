@@ -270,3 +270,17 @@ def test_main_refuses_to_start_when_the_check_cannot_be_applied(monkeypatch):
     assert process.start() is False
     assert started == [] and process.exit_code == 1
     assert "Policy manifest check could not be applied" in process.shutdown_reason
+
+
+def test_registry_ratification_pins_the_manifest_so_a_silent_edit_is_detected():
+    """Owner ratification (2026-10-03) lives in a successor registry record that pins the manifest bytes."""
+    import hashlib
+
+    record = json.loads((ROOT / "governance/current/ATLAS_MILESTONE_REGISTRY_v5.84.json").read_text(encoding="utf-8"))
+    ratified = record["phase2_governance_closeout_2026_10_03"]["owner_decision_2_policy_manifest_ratification"]
+    assert ratified["decision"] == "RATIFIED"
+    assert ratified["manifest_file_sha256"] == hashlib.sha256(pm.MANIFEST_PATH.read_bytes()).hexdigest()
+    assert ratified["manifest_integrity_digest"] == manifest()["integrity"]["digest"]
+    assert ratified["proposal_id"] == pm.EXPECTED_PROPOSAL_ID
+    assert record["supersedes"] == "ATLAS_MILESTONE_REGISTRY_v5.83.json"
+    assert record["phase2_governance_closeout_2026_10_03"]["exp002_audit"]["registry_status"].startswith("UNKNOWN")

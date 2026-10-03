@@ -274,3 +274,22 @@ def test_unrollable_stale_day_refuses_the_exit_cleanly(tmp_path):
     assert "RISK_ACCOUNTING_DAY_RECONCILIATION_REQUIRED" in str(result)
     assert "BTCUSDT" in app.portfolio_foundation.snapshot()["positions"]
     assert app.execution.recovery_required is False
+
+
+def test_degraded_audit_stays_blocked_in_process_even_after_later_audit_writes_succeed(tmp_path, monkeypatch):
+    """Owner decision 2026-10-03: DEGRADED -> BLOCK_NEW_RISK until restart, never auto-cleared.
+
+    Later successful audit appends (here the exit's own events) must not clear the latch;
+    only a restart (which re-validates the chain) does, and reductions stay permitted.
+    """
+    state_dir, app = _fresh(tmp_path)
+    assert _buy(app, "r1")["status"] == "PAPER_EXECUTED"
+    _fail_audit_at(monkeypatch, app, "EXECUTION_REQUEST_RECEIVED", 1)
+    assert "AUDIT_PERSISTENCE_DEGRADED" in str(_buy(app, "r2"))
+
+    assert _full_exit_sell(app, "s1")["status"] == "PAPER_EXECUTED"   # audit appends succeeded here
+    assert app.execution.audit_persistence_state() == "DEGRADED"       # latch not cleared by success
+    assert "AUDIT_PERSISTENCE_DEGRADED" in str(_buy(app, "r3"))        # new risk still blocked
+
+    restarted = _app(state_dir)
+    assert restarted.execution.audit_persistence_state() == "HEALTHY"
