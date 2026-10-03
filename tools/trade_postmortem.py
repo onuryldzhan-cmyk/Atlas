@@ -6,7 +6,8 @@ threshold, and every suggestion is advice for the owner.
 
 * Facts: observability.learning_view.experiences (net after the 0.1 %/side fee estimate, the coin's regime when
   the trade opened - from market_regime records, never one written later - fee impact, direction) joined with
-  the entry approval's confidence and risk (tools.paper_position_report.entry_approval).
+  the entry approval's confidence and risk (tools.paper_position_report.entry_approval: exact
+  request_id -> position_id identity; UNATTRIBUTED when the chain is missing, never the nearest in time).
 * One TP record per trade (TRADING / RESEARCH): outcome, why, what to watch next time, and how the same
   regime + confidence band did before this trade (no look-ahead). At most MAX_PER_RUN per run, so a first
   run back-fills the history over a few runs.
@@ -72,14 +73,17 @@ def band(confidence: Any) -> str:
 def facts(closed: list[dict[str, Any]], memory: list[dict[str, Any]], approvals: dict[str, list[dict]]) -> list[dict[str, Any]]:
     """Every closed trade as an experience, oldest first, with its entry confidence, risk and band."""
     from observability.learning_view import experiences
-    from tools.paper_position_report import entry_approval
+    from tools.paper_position_report import UNATTRIBUTED, entry_approval
 
     out = []
     for exp in experiences(closed, memory):
-        appr = entry_approval(approvals.get(str(exp.get("symbol")), []), exp.get("opened_at")) or {}
+        appr = entry_approval(approvals.get(str(exp.get("symbol")), []), exp.get("opened_at"),
+                              exp.get("position_id")) or {}
         conf = appr.get("confidence")
         out.append({**exp, "confidence": conf if isinstance(conf, (int, float)) else None, "band": band(conf),
-                    "risk": appr.get("risk"), "experiment_id": appr.get("experiment_id")})
+                    "risk": appr.get("risk"), "experiment_id": appr.get("experiment_id"),
+                    "request_id": appr.get("request_id"), "risk_approval_event_id": appr.get("risk_approval_event_id"),
+                    "attribution": appr.get("attribution") or UNATTRIBUTED})
     return out
 
 
@@ -146,7 +150,9 @@ def write_postmortems(records_dir: Path, exps: list[dict[str, Any]], memory: lis
         body = {"fingerprint": exp.get("fingerprint"), "position_id": exp.get("position_id"), "symbol": exp.get("symbol"),
                 "opened_at": exp.get("opened_at"), "closed_at": exp.get("closed_at"), "regime_at_entry": exp.get("regime"),
                 "confidence": exp.get("confidence"), "band": exp.get("band"), "risk": exp.get("risk"),
-                "experiment_id": exp.get("experiment_id"), "notional": exp.get("notional"),
+                "experiment_id": exp.get("experiment_id"), "request_id": exp.get("request_id"),
+                "risk_approval_event_id": exp.get("risk_approval_event_id"), "attribution": exp.get("attribution"),
+                "notional": exp.get("notional"),
                 "gross_pnl": exp.get("gross_pnl"), "net_pnl": net, **why, "analysis": exp.get("analysis")}
         rid = _record_id(records_dir, "TP")
         cli.add_memory_record(records_dir, {

@@ -2413,8 +2413,12 @@ class MarketLoop:
         votes = {name: str(v.get("action")) for name, v in agents.items() if isinstance(v, dict) and v.get("action") is not None}
         conf = decision.get("confidence")
         finite = isinstance(conf, (int, float)) and not isinstance(conf, bool) and math.isfinite(conf)  # audit A-4
+        # Phase-2 F1: the decision's canonical request_id (MarketLoop's
+        # symbol|candle|action fingerprint, set when it reached execution) so
+        # attribution joins on identity, not time; None when it never did.
+        request_id = decision.get("request_id")
         return {"action": str(decision.get("action")), "confidence": conf if finite else None,
-                "votes": votes}
+                "votes": votes, "request_id": request_id if isinstance(request_id, str) and request_id else None}
 
     def mark_prices(self, max_age_s: float = 300.0, now_ms: int | None = None) -> dict[str, Decimal]:
         """Last closed-candle close per symbol, only when fresh (audit F-3 mark-to-market).

@@ -9,8 +9,10 @@ net expectancy of the trades it supported. Below MIN_SAMPLE the verdict is
 INSUFFICIENT. Attribution is correlation, not causation, and it never
 changes any weight or authority: evidence only.
 
-Trades opened before votes were recorded (telemetry without "decision")
-are counted as unattributed, never guessed.
+Phase-2 F1: the join is exact - the telemetry decision whose request_id
+minted the trade's position_id. Trades without that chain (recorded before
+request_id was stamped) use an explicit LEGACY time fallback that accepts
+only one unambiguous decision; everything else is UNATTRIBUTED, never guessed.
 """
 
 from __future__ import annotations
@@ -24,6 +26,13 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from ai.core.intelligence.trade_evidence import net_pnl
+from tools.paper_position_report import (
+    EXACT,
+    LEGACY_TIMESTAMP,
+    UNATTRIBUTED,
+    is_canonical_position_id,
+    opened_by,
+)
 
 MIN_SAMPLE = 10
 MATCH_WINDOW = timedelta(minutes=3)
@@ -43,30 +52,53 @@ def decisions_by_symbol(telemetry_lines: Iterable[str]) -> dict[str, list[tuple[
             rec = json.loads(line)
         except ValueError:
             continue
+        if not isinstance(rec, dict):
+            continue
         dec, when = rec.get("decision"), _ts(rec.get("timestamp"))
-        if isinstance(dec, dict) and dec.get("action", "").upper().endswith("BUY") and when:
+        if isinstance(dec, dict) and str(dec.get("action", "")).upper().endswith("BUY") and when:
             out.setdefault(str(rec.get("symbol")), []).append((when, dec))
     for rows in out.values():
         rows.sort(key=lambda r: r[0])
     return out
 
 
+def entry_decision(trade: dict, rows: list[tuple[datetime, dict]]) -> tuple[dict | None, str]:
+    """(the decision that opened ``trade``, attribution) - EXACT, LEGACY_TIMESTAMP or UNATTRIBUTED.
+
+    Phase-2 F1: a trade whose position_id was minted from its opening request_id
+    is joined to the telemetry decision carrying that request_id, nothing else.
+    LEGACY fallback, only for a trade without that chain: telemetry records
+    without a request_id within MATCH_WINDOW of the open, accepted only when
+    they all record the same decision (one decision repeated every cycle);
+    differing decisions are ambiguous and stay UNATTRIBUTED.
+    """
+    position_id = trade.get("position_id")
+    if is_canonical_position_id(position_id):
+        exact = [d for _, d in rows if opened_by(position_id, d.get("request_id"))]
+        if exact and all(d == exact[0] for d in exact[1:]):
+            return exact[0], EXACT
+        return None, UNATTRIBUTED
+    opened = _ts(trade.get("opened_at"))
+    if opened is None:
+        return None, UNATTRIBUTED
+    candidates = [d for t, d in rows if not d.get("request_id") and opened - MATCH_WINDOW <= t <= opened + MATCH_WINDOW]
+    if candidates and all(d == candidates[0] for d in candidates[1:]):
+        return candidates[0], LEGACY_TIMESTAMP
+    return None, UNATTRIBUTED
+
+
 def attribute(closed: list[dict], decisions: dict[str, list[tuple[datetime, dict]]]) -> dict[str, Any]:
     per_agent: dict[str, dict[str, list[Decimal]]] = {}
-    unattributed = 0
+    unattributed = legacy = 0
     for trade in closed:
-        opened = _ts(trade.get("opened_at"))
-        rows = decisions.get(str(trade.get("symbol")), [])
-        match = None
-        if opened:
-            candidates = [d for t, d in rows if opened - MATCH_WINDOW <= t <= opened + MATCH_WINDOW]
-            match = candidates[-1] if candidates else None
-        if match is None or not match.get("votes"):
+        match, how = entry_decision(trade, decisions.get(str(trade.get("symbol")), []))
+        if match is None or not isinstance(match.get("votes"), dict) or not match.get("votes"):
             unattributed += 1
             continue
+        legacy += how == LEGACY_TIMESTAMP
         net = net_pnl(trade)
         for agent, vote in match["votes"].items():
-            side = "supported" if vote.upper().endswith("BUY") else "opposed"
+            side = "supported" if str(vote).upper().endswith("BUY") else "opposed"
             per_agent.setdefault(agent, {"supported": [], "opposed": []})[side].append(net)
     report = {}
     for agent, sides in sorted(per_agent.items()):
@@ -79,6 +111,7 @@ def attribute(closed: list[dict], decisions: dict[str, list[tuple[datetime, dict
                          "verdict": "MEASURED" if n >= MIN_SAMPLE else "INSUFFICIENT"}
         report[agent] = row
     return {"agents": report, "attributed_trades": len(closed) - unattributed, "unattributed_trades": unattributed,
+            "legacy_timestamp_attributed_trades": legacy,
             "note": "correlation only; never changes weights or authority"}
 
 

@@ -38,16 +38,17 @@ def test_reports_the_open_position_and_its_admission_without_writing(
     assert _digest(root) == before
 
 
-def test_entry_approval_picks_the_latest_one_before_opening():
+def test_legacy_entry_approval_never_picks_the_nearest_of_several():
+    """Phase-2 F1 (replaces test_entry_approval_picks_the_latest_one_before_opening, which
+    asserted that a 30-minutes-away approval was chosen over an equally distant one - the
+    timestamp guessing F1 removes). A legacy record far from every approval is UNATTRIBUTED."""
     approvals = [
         {"timestamp": "2026-09-28T10:00:00+00:00", "experiment_id": None},
         {"timestamp": "2026-09-28T11:00:00+00:00", "experiment_id": "EXP-001"},
         {"timestamp": "2026-09-28T12:00:00+00:00", "experiment_id": None},
     ]
 
-    chosen = tool.entry_approval(approvals, "2026-09-28T11:30:00+00:00")
-
-    assert chosen["experiment_id"] == "EXP-001"
+    assert tool.entry_approval(approvals, "2026-09-28T11:30:00+00:00") is None
 
 
 def test_an_approval_written_just_after_the_fill_is_still_the_one_chosen():
@@ -61,3 +62,4 @@ def test_an_approval_written_just_after_the_fill_is_still_the_one_chosen():
     chosen = tool.entry_approval(approvals, "2026-09-28T10:47:04.397057+00:00")
 
     assert chosen["experiment_id"] == "EXP-001"
+    assert chosen["attribution"] == tool.LEGACY_TIMESTAMP

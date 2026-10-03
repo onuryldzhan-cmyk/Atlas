@@ -48,7 +48,8 @@ def test_live_rows_use_entry_confidence_and_regime_known_before_the_trade():
                {"created_at": "2026-10-02T09:00:00Z", "body": json.dumps({"coins": {"BTCUSDT": {"regime": "PANIC"}}})}]
     import tools.paper_position_report as ppr
     real = ppr.entry_approval
-    ppr.entry_approval = lambda items, opened: items[0] if items else None
+    # Phase-2 F1: entry_approval also takes the position_id (exact attribution); this stub ignores it.
+    ppr.entry_approval = lambda items, opened, position_id=None: items[0] if items else None
     try:
         rows = lb.live_rows(closed, approvals, regimes)
     finally:

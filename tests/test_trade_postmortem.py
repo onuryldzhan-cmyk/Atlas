@@ -7,19 +7,27 @@ import json
 from datetime import datetime, timedelta, timezone
 
 from atlas_org import memory_records
+from core.execution_portfolio_foundation import mint_long_position_id
 from tools import ai_gateway as ai
 from tools import atlas_org_cli as cli
 from tools import trade_postmortem as tp
 
 
+def _rid(hour, symbol="BTCUSDT"):
+    return f"{symbol}|open:{hour}|BUY"
+
+
+# Phase-2 F1: each trade's position_id is minted from its opening request_id, as
+# ExecutionManager does, and joined to its own approval by that identity. (Before
+# F1 one 09:00 approval was attributed to every trade by nearest time.)
 def _rows(grosses, symbol="BTCUSDT", start=10):
-    return [{"position_id": f"p{start + i}", "symbol": symbol, "cost_quote": "1000", "gross_pnl": g,
+    return [{"position_id": mint_long_position_id(symbol, _rid(start + i, symbol)), "symbol": symbol, "cost_quote": "1000", "gross_pnl": g,
              "opened_at": f"2026-10-01T{start + i:02d}:00:00+00:00", "closed_at": f"2026-10-01T{start + i:02d}:30:00+00:00"}
             for i, g in enumerate(grosses)]
 
 
-APPROVALS = {"BTCUSDT": [{"timestamp": "2026-10-01T09:00:00+00:00", "confidence": 66.0, "risk": "MEDIUM",
-                          "experiment_id": "EXP-002"}]}
+APPROVALS = {"BTCUSDT": [{"timestamp": f"2026-10-01T{h:02d}:00:00.010+00:00", "confidence": 66.0, "risk": "MEDIUM",
+                          "experiment_id": "EXP-002", "request_id": _rid(h)} for h in range(24)]}
 
 
 def _mem(d):

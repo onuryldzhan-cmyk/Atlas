@@ -43,7 +43,7 @@ def calibration(records: list[dict], approvals: dict[str, list[dict]]) -> list[d
     confs: dict[tuple[int, int], list[float]] = {b: [] for b in BANDS}
     unattributed = 0
     for r in records:
-        appr = entry_approval(approvals.get(r.get("symbol", ""), []), r.get("opened_at"))
+        appr = entry_approval(approvals.get(r.get("symbol", ""), []), r.get("opened_at"), r.get("position_id"))
         conf = appr.get("confidence") if appr else None
         if not isinstance(conf, (int, float)):
             unattributed += 1

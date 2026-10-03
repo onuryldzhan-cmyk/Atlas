@@ -92,7 +92,7 @@ def live_rows(closed: list[dict], approvals: dict[str, list[dict]], regime_recor
     regimes = sorted(((str(r.get("created_at") or ""), r) for r in regime_records), key=lambda x: x[0])
     out = []
     for rec in closed:
-        appr = entry_approval(approvals.get(rec.get("symbol", ""), []), rec.get("opened_at"))
+        appr = entry_approval(approvals.get(rec.get("symbol", ""), []), rec.get("opened_at"), rec.get("position_id"))
         conf = appr.get("confidence") if appr else None
         try:
             cost = Decimal(str(rec["cost_quote"]))

@@ -1,7 +1,8 @@
 """Read-only EXP-001 results report: did the lowered confidence floor pay?
 
-Every closed paper position is attributed to its entry approval (the
-RISK_APPROVED BUY nearest in time, as tools/paper_position_report does) and
+Every closed paper position is attributed to its entry approval by exact
+identity (tools/paper_position_report.entry_approval: the RISK_APPROVED BUY
+whose request_id minted the position_id; never the nearest in time) and
 grouped: admitted under EXP-001 vs admitted at the policy floor. For each
 group it prints trades, wins/losses, win rate with a 95% Wilson interval,
 gross P&L, entry fees and average holding time, plus the experiment's
@@ -114,7 +115,8 @@ def summarize(records: list[dict]) -> dict:
 def group_closed(closed: list[dict], approvals: dict[str, list[dict]], exp=EXP) -> dict[str, list[dict]]:
     groups: dict[str, list[dict]] = {exp.experiment_id: [], "policy floor": [], "unattributed": []}
     for record in closed:
-        approval = entry_approval(approvals.get(record.get("symbol", ""), []), record.get("opened_at"))
+        approval = entry_approval(approvals.get(record.get("symbol", ""), []), record.get("opened_at"),
+                                  record.get("position_id"))
         if approval is None:
             groups["unattributed"].append(record)
         elif approval.get("experiment_id") == exp.experiment_id:
