@@ -28,7 +28,7 @@ import hashlib
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from decimal import Decimal
+from decimal import Decimal, localcontext
 from pathlib import Path
 from typing import Any
 
@@ -49,6 +49,8 @@ EXPECTED_PROPOSAL_ID = "PHASE2-G1-POLICY-MANIFEST"
 EXPECTED_GRANT_REGISTRY_ID = "ATLAS_MILESTONE_REGISTRY_v5.85"
 EXPECTED_GRANT_ID = "GRANT-EXP002-PAPER-CONFIDENCE-EXPERIMENT"
 GRANT_RECORD_KEY = "exp002_grant"
+# The grant registry is read from this exact path, never from a path the manifest chooses.
+EXPECTED_GRANT_REGISTRY_PATH = "governance/current/ATLAS_MILESTONE_REGISTRY_v5.85.json"
 
 MATCH = "MATCH"
 MISSING = "MISSING"
@@ -114,7 +116,11 @@ def _decimal_text(value: Any) -> str:
     number = Decimal(str(value))
     if not number.is_finite():
         raise ValueError("non-finite")
-    text = format(number.normalize(), "f")
+    # Exact: normalize() rounds to the context precision (28), which would make
+    # 0.62 and 0.62 + 1e-31 compare equal.
+    with localcontext() as context:
+        context.prec = max(len(number.as_tuple().digits) + 2, 28)
+        text = format(number.normalize(), "f")
     return "0" if text in ("-0", "") else text
 
 
@@ -243,7 +249,8 @@ def _verify_grant(manifest: Mapping[str, Any], policy: Mapping[str, Any], manife
 
     grant_ref = manifest.get("grant")
     if (not isinstance(grant_ref, dict) or grant_ref.get("grant_id") != EXPECTED_GRANT_ID
-            or grant_ref.get("grant_registry_id") != EXPECTED_GRANT_REGISTRY_ID):
+            or grant_ref.get("grant_registry_id") != EXPECTED_GRANT_REGISTRY_ID
+            or grant_ref.get("grant_registry_path") != EXPECTED_GRANT_REGISTRY_PATH):
         return GRANT_MISSING, "manifest does not name the expected EXP-002 grant and grant registry"
     try:
         registry = (root / str(grant_ref.get("grant_registry_path"))).resolve()
@@ -251,7 +258,7 @@ def _verify_grant(manifest: Mapping[str, Any], policy: Mapping[str, Any], manife
             return GRANT_MISSING, "grant_registry_path does not name the expected grant registry"
         record = json.loads(registry.read_text(encoding="utf-8"))
         manifest_bytes = manifest_path.read_bytes()
-    except (OSError, ValueError):
+    except Exception:  # unreadable or hostile input (incl. RecursionError) is never a pass
         return GRANT_MISSING, "grant registry or manifest unreadable"
     grant = record.get(GRANT_RECORD_KEY) if isinstance(record, dict) else None
     if not isinstance(grant, dict) or grant.get("grant_id") != EXPECTED_GRANT_ID or grant.get("status") != "GRANTED":
@@ -284,7 +291,7 @@ def verify(runtime: Mapping[str, Any], path: Path | str = MANIFEST_PATH, *,
         if not path.is_file():
             return PolicyManifestCheck(MISSING, f"no manifest at {path}", runtime=runtime)
         manifest = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError) as exc:
+    except Exception as exc:  # incl. RecursionError from a hostile manifest: never raises, always blocks
         return PolicyManifestCheck(MALFORMED, f"unreadable manifest: {type(exc).__name__}", runtime=runtime)
 
     if not isinstance(manifest, dict) or any(k not in manifest for k in _REQUIRED):

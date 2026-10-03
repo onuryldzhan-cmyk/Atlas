@@ -326,3 +326,30 @@ def test_degraded_audit_latch_policy_is_unchanged_by_the_manifest():
     source = (ROOT / "core" / "policy_manifest.py").read_text(encoding="utf-8")
     assert "audit_persistence" not in source and "write_failures" not in source
     assert copy.deepcopy(pm.MATCH) == "MATCH"
+
+
+# --- independent audit follow-ups (MEDIUM-1, LOW-2, LOW-3) ---------------------------------------------
+
+
+def test_grant_registry_must_be_read_from_the_exact_governance_path(repo):
+    """A forged v5.85 elsewhere in the repository, pointed at by the manifest, is refused."""
+    elsewhere = repo / "elsewhere" / "ATLAS_MILESTONE_REGISTRY_v5.85.json"
+    elsewhere.parent.mkdir()
+    shutil.copyfile(repo / V85, elsewhere)
+    rewrite_manifest(repo, lambda d: d["grant"].update(grant_registry_path="elsewhere/ATLAS_MILESTONE_REGISTRY_v5.85.json"))
+    assert verify_in(repo).status == pm.GRANT_MISSING
+    assert pm.EXPECTED_GRANT_REGISTRY_PATH == V85
+
+
+def test_decimal_text_is_exact_beyond_28_digits():
+    assert pm._decimal_text("0.62") == pm._decimal_text("0.620") == "0.62"
+    for drifted in ("0.6200000000000000000000000000001", "0.6199999999999999999999999999999",
+                    "0.62000000000000000000000000004"):
+        assert pm._decimal_text(drifted) != "0.62"
+
+
+def test_hostile_deeply_nested_manifest_blocks_instead_of_raising(tmp_path):
+    path = tmp_path / "deep.json"
+    path.write_text("[" * 200000, encoding="utf-8")
+    check = pm.verify(runtime_matching_manifest(), path)
+    assert check.status == pm.MALFORMED and check.block_new_risk
