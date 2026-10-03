@@ -121,13 +121,24 @@ def test_a_hung_agent_process_is_killed_and_restarted(tmp_path):
     assert len(spawned) == 2
 
 
-def test_a_second_runner_is_left_to_the_first(tmp_path):
+def test_a_second_runner_is_left_to_the_first_and_looked_at_again_later(tmp_path):
+    # Audit L2 (2026-10-03): this test pinned "give up for the whole session" on exit 3; a one-shot run that
+    # overlapped the launcher's start then left the agents off until a restart. Now the launcher looks again
+    # every ALREADY_RUNNING_RETRY_S, without counting it as a failure.
     clock = {"t": 0.0}
-    sup, spawned, logs = _supervisor(tmp_path, [FakeProc(code=sa.ALREADY_RUNNING_EXIT)], clock)
+    sup, spawned, logs = _supervisor(tmp_path, [FakeProc(code=sa.ALREADY_RUNNING_EXIT), FakeProc(code=sa.ALREADY_RUNNING_EXIT),
+                                                FakeProc(code=None)], clock)
     sup.poll(); sup.poll()
-    clock["t"] = 10_000
+    assert not sup.gave_up and sup.attempt == 0 and "tekrar bakacak" in logs[-1]
+    clock["t"] = sa.ALREADY_RUNNING_RETRY_S - 1
     sup.poll()
-    assert sup.gave_up and len(spawned) == 1 and "zaten açık" in logs[-1]
+    assert len(spawned) == 1                                            # not before the retry time
+    clock["t"] = sa.ALREADY_RUNNING_RETRY_S
+    sup.poll(); sup.poll()
+    assert len(spawned) == 2 and sum("tekrar bakacak" in line for line in logs) == 1   # said once
+    clock["t"] = 2 * sa.ALREADY_RUNNING_RETRY_S
+    sup.poll()
+    assert len(spawned) == 3 and sup.proc is spawned[-1]                 # the other runner is gone: ours runs
 
 
 def test_stop_asks_first_then_kills_and_releases_only_the_killed_writers_locks(tmp_path):
@@ -221,3 +232,56 @@ def test_whole_chain_launcher_to_real_runner_stops_politely(tmp_path, monkeypatc
         if proc.poll() is None:
             proc.kill()
             proc.wait()
+
+
+def test_audit_m3_a_runner_that_keeps_hanging_is_given_up(tmp_path):
+    # A hang right after start is a quick exit, not 45 healthy minutes (that used to restart it forever).
+    clock = {"t": 0.0}
+    wall = {"t": 1_000_000.0}
+    procs = [FakeProc(code=None) for _ in range(7)]
+    sup, spawned, logs = _supervisor(tmp_path, procs, clock, wall=lambda: wall["t"])
+    for _ in range(7):
+        sup.poll()                                                      # start; it never beats
+        if sup.gave_up:
+            break
+        clock["t"] += sa.AGENT_HANG_S + 1                               # monotonic time moves with the wall
+        wall["t"] += sa.AGENT_HANG_S + 1
+        sup.poll()                                                      # hang detected, killed
+        clock["t"] = max(clock["t"], sup.next_start)
+        wall["t"] += 600
+    assert sup.gave_up and len(spawned) == 6 and all(p.killed for p in spawned)
+
+
+def test_audit_m4_atlas_starts_even_when_agent_code_is_broken(monkeypatch):
+    started = []
+
+    class Atlas:
+        returncode = 0
+
+        def poll(self):
+            return 0
+
+        def wait(self, timeout=None):
+            return 0
+    monkeypatch.setattr(sa.subprocess, "Popen", lambda cmd, **kw: started.append(cmd) or Atlas())
+    monkeypatch.setattr(sa, "_agent_supervisor", lambda every: (_ for _ in ()).throw(ImportError("broken agents")))
+    assert sa.main([]) == 0 and started and started[0][-1].endswith("atlas_supervisor.py")
+
+
+def test_audit_l3_launcher_every_must_be_sane():
+    import argparse
+    for bad in ("0", "-1", "nan", "1e9", "x"):
+        with pytest.raises(argparse.ArgumentTypeError):
+            sa.minutes(bad)
+    assert sa.minutes("5") == 5.0
+
+
+def test_audit_l7_an_empty_lock_left_by_the_killed_writer_is_released(tmp_path):
+    old = tmp_path / "tasks.jsonl.lock"
+    old.write_text("")
+    os.utime(old, (1000.0, 1000.0))                                     # older than the killed process: not ours
+    new = tmp_path / "memory.jsonl.lock"
+    new.write_text("")                                                  # created after it started, before its PID
+    removed = cli.release_locks_of(tmp_path, 4242, empty_since=time.time() - 60)
+    assert removed == ["memory.jsonl.lock"] and old.exists() and not new.exists()
+    assert cli.release_locks_of(tmp_path, 4242) == [] and old.exists()  # without empty_since: never touched

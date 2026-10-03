@@ -84,10 +84,12 @@ WINDOW_HOURS = 5  # owner rule 2026-10-02: quotas apply to a rolling 5-hour wind
 
 
 class UsageLedger:
-    """Spend entries [epoch_s, agent, usd(, question_hash)] summed over the last WINDOW_HOURS (rolling).
+    """Spend entries [epoch_s, agent, usd(, question_hash(, answer))] summed over the last WINDOW_HOURS (rolling).
 
     Unreadable ledger -> treated as quota exhausted (fail closed). Entries older than a day are pruned.
-    The question hash (2026-10-03) is optional, so older three-field entries stay valid.
+    The question hash (2026-10-03) is optional, so older three-field entries stay valid. Audit H1 (2026-10-03):
+    a call is reserved BEFORE it is sent and settled with its cost (and, when usable, its answer) afterwards,
+    so a call that times out, crashes or is killed still counts against every bound.
     """
 
     def __init__(self, path: Path) -> None:
@@ -130,14 +132,21 @@ class UsageLedger:
 
     def asked(self, now_s: float, agent: str | None, question: str) -> bool | None:
         """True when this agent already paid for this exact question within DUPLICATE_WINDOW_H; None: unreadable."""
+        found = self.answer_for(now_s, agent, question)
+        return None if found is None else found[0]
+
+    def answer_for(self, now_s: float, agent: str | None, question: str) -> tuple[bool, Any] | None:
+        """(asked within DUPLICATE_WINDOW_H, its usable answer or None); None when the ledger is unreadable."""
         data = self._load()
         if data is None:
             return None
         try:
-            return any(len(entry) > 3 and entry[3] == question and entry[1] == agent
-                       and now_s - float(entry[0]) < DUPLICATE_WINDOW_H * 3600 for entry in data)
+            hits = [entry for entry in data if len(entry) > 3 and entry[3] == question and entry[1] == agent
+                    and now_s - float(entry[0]) < DUPLICATE_WINDOW_H * 3600]
         except (TypeError, ValueError, IndexError, KeyError):
             return None
+        answers = [entry[4] for entry in hits if len(entry) > 4 and isinstance(entry[4], dict)]
+        return bool(hits), (answers[-1] if answers else None)
 
     def between(self, start_s: float, end_s: float) -> tuple[int, Decimal] | None:
         """Calls and USD recorded in [start_s, end_s] (one agent cycle); None when the ledger is unreadable."""
@@ -157,9 +166,27 @@ class UsageLedger:
     def add(self, now_s: float, cost: Decimal, agent: str | None = None, question: str | None = None) -> None:
         data = [e for e in (self._load() or []) if now_s - float(e[0]) < 86400]
         data.append([now_s, agent, str(cost)] + ([question] if question else []))
+        self._write(data)
+
+    def settle(self, now_s: float, agent: str | None, question: str, cost: Decimal, answer: Any = None) -> None:
+        """Fill in the cost (and a usable answer) of the call reserved at now_s; append it if the reservation vanished."""
+        data = self._load()
+        if data is None:
+            raise OSError("usage ledger unreadable")
+        for entry in reversed(data):
+            if len(entry) > 3 and entry[0] == now_s and entry[1] == agent and entry[3] == question:
+                entry[2] = str(cost)
+                if answer is not None:
+                    entry[4:] = [answer]
+                break
+        else:
+            data.append([now_s, agent, str(cost), question] + ([answer] if answer is not None else []))
+        self._write(data)
+
+    def _write(self, data: list) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         tmp = self.path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(data), encoding="utf-8")
+        tmp.write_text(json.dumps(data, ensure_ascii=False, default=str), encoding="utf-8")
         tmp.replace(self.path)
 
 
@@ -194,18 +221,23 @@ def question_key(system: str, prompt: str, schema: dict[str, Any], model: str, e
 
 
 def _refusal(ledger: UsageLedger, now_s: float, agent: str | None, question: str, backend: str) -> AIResult | None:
-    """Every reason not to ask, checked before anything is spent (fail closed). None: the call may go ahead."""
-    if agent is not None and agent not in AI_AGENTS:
+    """Every reason not to ask, checked before anything is spent (fail closed). None: the call may go ahead.
+
+    A question already answered within DUPLICATE_WINDOW_H returns that answer for free (never paid twice)."""
+    if agent not in AI_AGENTS:  # audit L5: every call names a listed agent; None is not a way around the bounds
         return AIResult("ABSTAIN", reason=f"AGENT_NOT_ALLOWED ({agent} may not call a model)")
     used = ledger.calls(now_s)
     if used is None:
         return AIResult("ABSTAIN", reason="USAGE_LEDGER_UNREADABLE")
-    asked = ledger.asked(now_s, agent, question)
-    if asked is None:
+    found = ledger.answer_for(now_s, agent, question)
+    if found is None:
         return AIResult("ABSTAIN", reason="USAGE_LEDGER_UNREADABLE")
-    if asked:
-        return AIResult("ABSTAIN", reason=f"DUPLICATE_QUESTION (asked within {DUPLICATE_WINDOW_H} h; "
-                                          "only new evidence makes a new question)")
+    if found[0]:
+        if found[1] is not None:
+            return AIResult("OK", data=found[1], reason="CACHED (the same question was answered within "
+                                                         f"{DUPLICATE_WINDOW_H} h; not paid again)", extra={"cached": True})
+        return AIResult("ABSTAIN", reason=f"DUPLICATE_QUESTION (asked within {DUPLICATE_WINDOW_H} h without a usable "
+                                          "answer; only new evidence makes a new question)")
     if backend == "claude_code":
         ceiling = window_calls()
         if ceiling is not None and used >= ceiling:
@@ -216,12 +248,27 @@ def _refusal(ledger: UsageLedger, now_s: float, agent: str | None, question: str
             return AIResult("ABSTAIN", reason="USAGE_LEDGER_UNREADABLE")
         if spent >= daily_budget():
             return AIResult("ABSTAIN", reason=f"WINDOW_BUDGET_REACHED ({spent} USD in the last {WINDOW_HOURS} h)")
-    if agent is not None:
-        mine = ledger.calls(now_s, agent)
-        if mine is None or mine >= RUNAWAY_CALLS_PER_WINDOW:
-            return AIResult("ABSTAIN", reason=f"AGENT_RUNAWAY_LIMIT ({agent}: {mine} calls in {WINDOW_HOURS} h, "
-                                              f"limit {RUNAWAY_CALLS_PER_WINDOW}; normal need is far below)")
+    mine = ledger.calls(now_s, agent)
+    if mine is None or mine >= RUNAWAY_CALLS_PER_WINDOW:
+        return AIResult("ABSTAIN", reason=f"AGENT_RUNAWAY_LIMIT ({agent}: {mine} calls in {WINDOW_HOURS} h, "
+                                          f"limit {RUNAWAY_CALLS_PER_WINDOW}; normal need is far below)")
     return None
+
+
+def _reserve(ledger: UsageLedger, now_s: float, agent: str | None, question: str) -> AIResult | None:
+    """Audit H1: count the call before it is sent. None: reserved; else the ABSTAIN to return."""
+    try:
+        ledger.add(now_s, Decimal("0"), agent, question)
+    except OSError:
+        return AIResult("ABSTAIN", reason="USAGE_LEDGER_UNWRITABLE (a call that cannot be counted is not sent)")
+    return None
+
+
+def _settle(ledger: UsageLedger, now_s: float, agent: str | None, question: str, cost: Decimal, answer: Any = None) -> None:
+    try:
+        ledger.settle(now_s, agent, question, cost, answer)
+    except OSError:  # the reservation still counts the call; only its cost / cached answer is lost
+        pass
 
 
 def _claude_code_runner(prompt: str, system: str, schema: dict[str, Any], model: str, effort: str) -> dict[str, Any]:
@@ -249,22 +296,30 @@ def _claude_code_runner(prompt: str, system: str, schema: dict[str, Any], model:
 
 
 def _ask_claude_code(system, prompt, schema, model, effort, agent, ledger, now_s, runner) -> AIResult:
+    from atlas_security import sanitize_sensitive_data
+
     question = question_key(system, prompt, schema, model, effort)
-    refused = _refusal(ledger, now_s, agent, question, "claude_code")
+    refused = _refusal(ledger, now_s, agent, question, "claude_code") or _reserve(ledger, now_s, agent, question)
     if refused is not None:
         return refused
     try:
         out = (runner or _claude_code_runner)(prompt, system, schema, model, effort)
-    except Exception as exc:  # CLI missing, not logged in, usage limit hit, timeout: abstain
+    except Exception as exc:  # CLI missing, not logged in, usage limit hit, timeout: abstain (the call stays counted)
         return AIResult("ABSTAIN", reason=f"UNAVAILABLE ({type(exc).__name__}: {str(exc)[:300]})", model=model)
-    cost = Decimal(str(out.get("total_cost_usd") or "0")) if isinstance(out, dict) else Decimal("0")
-    ledger.add(now_s, cost, agent, question)  # one entry = one call, also when the answer is rejected below
+    try:
+        cost = Decimal(str(out.get("total_cost_usd") or "0")) if isinstance(out, dict) else Decimal("0")
+    except ArithmeticError:
+        cost = Decimal("0")
     if not isinstance(out, dict) or out.get("is_error"):
+        _settle(ledger, now_s, agent, question, cost)
         return AIResult("ABSTAIN", reason="CLAUDE_CODE_ERROR", model=model)
     data = out.get("structured_output")
     problem = _validate(data, schema)
     if problem:
+        _settle(ledger, now_s, agent, question, cost)
         return AIResult("ABSTAIN", reason=f"MALFORMED ({problem})", model=model)
+    data = sanitize_sensitive_data(data)
+    _settle(ledger, now_s, agent, question, cost, data)
     return AIResult("OK", data=data, model=model, cost_usd=cost, extra={"backend": "claude_code"})
 
 
@@ -310,7 +365,7 @@ def ask(system: str, prompt: str, schema: dict[str, Any], *, model: str = DEFAUL
     now_s = (now or datetime.now(timezone.utc)).timestamp()
     safe_prompt = sanitize_sensitive_data(prompt)
     question = question_key(system, safe_prompt, schema, model, effort)
-    refused = _refusal(ledger, now_s, agent, question, "api")
+    refused = _refusal(ledger, now_s, agent, question, "api") or _reserve(ledger, now_s, agent, question)
     if refused is not None:
         return refused
     try:
@@ -324,7 +379,7 @@ def ask(system: str, prompt: str, schema: dict[str, Any], *, model: str = DEFAUL
     except Exception as exc:  # SDK missing, network, rate limit, 4xx/5xx: abstain
         return AIResult("ABSTAIN", reason=f"UNAVAILABLE ({type(exc).__name__})", model=model)
     cost = _cost(getattr(response, "model", model) or model, getattr(response, "usage", None))
-    ledger.add(now_s, cost, agent, question)
+    _settle(ledger, now_s, agent, question, cost)
     if getattr(response, "stop_reason", None) == "refusal":
         return AIResult("ABSTAIN", reason="REFUSAL", model=model, cost_usd=cost)
     if getattr(response, "stop_reason", None) == "max_tokens":
@@ -337,4 +392,6 @@ def ask(system: str, prompt: str, schema: dict[str, Any], *, model: str = DEFAUL
     problem = _validate(data, schema)
     if problem:
         return AIResult("ABSTAIN", reason=f"MALFORMED ({problem})", model=model, cost_usd=cost)
-    return AIResult("OK", data=sanitize_sensitive_data(data), model=getattr(response, "model", model), cost_usd=cost)
+    data = sanitize_sensitive_data(data)
+    _settle(ledger, now_s, agent, question, cost, data)
+    return AIResult("OK", data=data, model=getattr(response, "model", model), cost_usd=cost)

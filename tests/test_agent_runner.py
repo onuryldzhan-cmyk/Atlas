@@ -49,7 +49,7 @@ def test_only_one_agent_runner_runs_at_a_time(tmp_path, monkeypatch):
 def test_runner_loop_beats_runs_what_is_due_and_releases_its_lock(tmp_path, monkeypatch):
     ran = []
     _isolate(tmp_path, monkeypatch, (("a", "A", lambda d: ran.append(1) or {"verdict": "OK", "summary": "ok"}),))
-    monkeypatch.setattr(ac, "_sleep", lambda stop, seconds: True)          # one tick, then stop
+    monkeypatch.setattr(ac, "_sleep", lambda stop, seconds, **kw: True)    # one tick, then stop
     import signal
     before = signal.getsignal(signal.SIGTERM)
     assert ac.main(["--every", "5"]) == 0

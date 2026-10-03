@@ -84,17 +84,20 @@ def _lock(path: Path) -> Iterator[None]:
         lock.unlink(missing_ok=True)
 
 
-def release_locks_of(directory: Path, pid: int) -> list[str]:
-    """Remove the record locks a dead writer left behind: only locks naming exactly this PID.
+def release_locks_of(directory: Path, pid: int, empty_since: float | None = None) -> list[str]:
+    """Remove the record locks a dead writer left behind: locks naming exactly this PID, and - with empty_since,
+    the dead process's start time - an EMPTY lock created after it started (it died between creating the lock
+    and writing its PID; audit L7). An empty lock older than that, or one naming another PID, is never touched.
 
     Call it only once the process is known to be gone (its exit was observed)."""
     removed = []
     for lock in sorted(Path(directory).glob("*.lock")):
         try:
             holder = lock.read_text(encoding="ascii", errors="replace").strip()
+            created = lock.stat().st_mtime
         except OSError:
             continue
-        if holder == str(pid):
+        if holder == str(pid) or (not holder and empty_since is not None and created >= empty_since):
             lock.unlink(missing_ok=True)
             removed.append(lock.name)
     return removed

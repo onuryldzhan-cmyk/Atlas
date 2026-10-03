@@ -6,6 +6,10 @@ the owner's own ceiling and "never pay twice for the same question". The three t
 rule were replaced by tests of the new one (same safety properties: budget reached -> abstain, unreadable
 ledger -> abstain, unknown agent -> no spend, rolling window); the failure tests now ask a distinct question
 per case, because an identical question is no longer sent twice.
+
+Audit 2026-10-03: L5 - every call names a listed agent (agent=None no longer bypasses the allowlist and the
+runaway ceiling), so the API-path tests pass agent="ceo_ai"; H1 - a call is reserved before it is sent, and a
+question answered within 24 h returns that answer for free (the duplicate test now expects the cached answer).
 """
 
 from __future__ import annotations
@@ -36,7 +40,8 @@ def fake(text, stop="end_turn", model="claude-sonnet-5-5", calls=None, raise_exc
 
 def test_ok_answer_is_schema_validated_costed_and_ledgered(tmp_path):
     calls, ledger = [], ai.UsageLedger(tmp_path / "u.json")
-    r = ai.ask("sys", "q api_key=sk-abc123456789abcdef", SCHEMA, ledger=ledger, client_factory=fake('{"a": "x"}', calls=calls), now=NOW)
+    r = ai.ask("sys", "q api_key=sk-abc123456789abcdef", SCHEMA, ledger=ledger, client_factory=fake('{"a": "x"}', calls=calls),
+               now=NOW, agent="ceo_ai")
     assert r.status == "OK" and r.data == {"a": "x"}
     assert r.cost_usd == Decimal("0.007")  # Sonnet 5.5: 1000*2 + 500*10 per 1M
     assert ledger.spent(NOW.timestamp()) == Decimal("0.007")
@@ -52,7 +57,7 @@ def test_every_failure_abstains(tmp_path):
                                            (fake('{"a": "x"}', stop="refusal"), "REFUSAL"),
                                            (fake('{"a": "x"}', stop="max_tokens"), "TRUNCATED"),
                                            (fake("", raise_exc=TimeoutError()), "UNAVAILABLE"))):
-        r = ai.ask("s", f"q{n}", SCHEMA, ledger=ledger, client_factory=factory, now=NOW)
+        r = ai.ask("s", f"q{n}", SCHEMA, ledger=ledger, client_factory=factory, now=NOW, agent="ceo_ai")
         assert r.status == "ABSTAIN" and reason in r.reason and r.data is None
 
 
@@ -60,12 +65,13 @@ def test_budget_and_unreadable_ledger_stop_spending(tmp_path, monkeypatch):
     monkeypatch.setenv("ATLAS_AI_DAILY_BUDGET_USD", "0.01")
     ledger = ai.UsageLedger(tmp_path / "u.json")
     ledger.add(NOW.timestamp() - 3600, Decimal("0.006"))  # 60 % used: no longer a stop (owner 2026-10-03)
-    assert ai.ask("s", "q0", SCHEMA, ledger=ledger, client_factory=fake('{"a":"x"}'), now=NOW).status == "OK"
+    assert ai.ask("s", "q0", SCHEMA, ledger=ledger, client_factory=fake('{"a":"x"}'), now=NOW, agent="ceo_ai").status == "OK"
     ledger.add(NOW.timestamp() - 3600, Decimal("0.004"))  # the whole 0.01 is used: stop
-    assert "WINDOW_BUDGET" in ai.ask("s", "q", SCHEMA, ledger=ledger, client_factory=fake('{"a":"x"}'), now=NOW).reason
+    assert "WINDOW_BUDGET" in ai.ask("s", "q", SCHEMA, ledger=ledger, client_factory=fake('{"a":"x"}'), now=NOW,
+                                     agent="ceo_ai").reason
     (tmp_path / "bad.json").write_text("{", encoding="utf-8")
     assert "UNREADABLE" in ai.ask("s", "q", SCHEMA, ledger=ai.UsageLedger(tmp_path / "bad.json"),
-                                  client_factory=fake('{"a":"x"}'), now=NOW).reason
+                                  client_factory=fake('{"a":"x"}'), now=NOW, agent="ceo_ai").reason
     monkeypatch.setenv("ATLAS_AI_DAILY_BUDGET_USD", "abc")
     assert ai.daily_budget() == 0
 
@@ -170,9 +176,10 @@ def test_quota_is_a_rolling_five_hour_window(tmp_path, monkeypatch):
     ledger = ai.UsageLedger(tmp_path / "u.json")
     ledger.add(NOW.timestamp() - 5 * 3600 - 1, Decimal("1.00"))   # the whole budget, just outside the window
     assert ledger.spent(NOW.timestamp()) == 0
-    assert ai.ask("s", "q1", SCHEMA, ledger=ledger, client_factory=fake('{"a":"x"}'), now=NOW).status == "OK"
+    assert ai.ask("s", "q1", SCHEMA, ledger=ledger, client_factory=fake('{"a":"x"}'), now=NOW, agent="ceo_ai").status == "OK"
     ledger.add(NOW.timestamp() - 4 * 3600, Decimal("1.00"))       # inside the window
-    assert "WINDOW_BUDGET" in ai.ask("s", "q2", SCHEMA, ledger=ledger, client_factory=fake('{"a":"x"}'), now=NOW).reason
+    assert "WINDOW_BUDGET" in ai.ask("s", "q2", SCHEMA, ledger=ledger, client_factory=fake('{"a":"x"}'), now=NOW,
+                                     agent="ceo_ai").reason
 
 
 
@@ -233,7 +240,8 @@ def test_the_same_question_is_never_paid_for_twice(tmp_path, monkeypatch):
     ok = cc({"structured_output": {"a": "x"}}, seen=seen)
     assert ai.ask("s", "same", SCHEMA, ledger=ledger, now=NOW, agent="ceo_ai", runner=ok).status == "OK"
     again = ai.ask("s", "same", SCHEMA, ledger=ledger, now=NOW, agent="ceo_ai", runner=ok)
-    assert again.status == "ABSTAIN" and "DUPLICATE_QUESTION" in again.reason and len(seen) == 1  # nothing sent
+    assert again.status == "OK" and again.data == {"a": "x"} and again.extra.get("cached") and len(seen) == 1  # not sent
+    assert ledger.calls(NOW.timestamp(), "ceo_ai") == 1                                   # and not counted again
     assert ai.ask("s", "same", SCHEMA, ledger=ledger, now=NOW, agent="model_council", runner=ok).status == "OK"
     assert ai.ask("s", "new evidence", SCHEMA, ledger=ledger, now=NOW, agent="ceo_ai", runner=ok).status == "OK"
     next_day = datetime.fromtimestamp(NOW.timestamp() + 24 * 3600 + 1, tz=timezone.utc)
@@ -280,3 +288,42 @@ def test_ceo_reads_evidence_only_and_routine_records_do_not_trigger_it(tmp_path,
     cli.add_memory_record(d, {"record_id": "OV-0004", "type": "OPERATIONS", "authority": "TEMPORARY",
                               "title": "Durum özeti", "body": "{}", "author": "overview_snapshot", "source": "t"})
     assert "yeni kayıt yok" in ac.ceo_brief(d, ask=good, now=later)["summary"] and len(seen) == 1
+
+
+def test_audit_h1_a_call_that_fails_or_times_out_still_counts(tmp_path, monkeypatch):
+    # A call is reserved before it is sent: a timeout, a crash or a kill can no longer escape every bound.
+    monkeypatch.delenv("ATLAS_AI_WINDOW_CALLS", raising=False)
+    ledger, sent = ai.UsageLedger(tmp_path / "u.json"), []
+    timeout = cc(exc=TimeoutError("360 s"), seen=sent)
+    results = [ai.ask("s", f"q{i}", SCHEMA, ledger=ledger, now=NOW, agent="model_council", runner=timeout)
+               for i in range(ai.RUNAWAY_CALLS_PER_WINDOW + 3)]
+    assert len(sent) == ai.RUNAWAY_CALLS_PER_WINDOW                      # the loop is stopped at the ceiling
+    assert all("UNAVAILABLE" in r.reason for r in results[:ai.RUNAWAY_CALLS_PER_WINDOW])
+    assert "AGENT_RUNAWAY_LIMIT" in results[-1].reason
+    assert ledger.calls(NOW.timestamp(), "model_council") == ai.RUNAWAY_CALLS_PER_WINDOW
+
+
+def test_audit_h1_an_unanswered_question_is_not_resent_and_a_bad_answer_is_not_cached(tmp_path, monkeypatch):
+    monkeypatch.delenv("ATLAS_AI_WINDOW_CALLS", raising=False)
+    ledger, sent = ai.UsageLedger(tmp_path / "u.json"), []
+    ai.ask("s", "q", SCHEMA, ledger=ledger, now=NOW, agent="ceo_ai", runner=cc(exc=TimeoutError(), seen=sent))
+    again = ai.ask("s", "q", SCHEMA, ledger=ledger, now=NOW, agent="ceo_ai", runner=cc({"structured_output": {"a": "x"}}, seen=sent))
+    assert again.status == "ABSTAIN" and "DUPLICATE_QUESTION" in again.reason and len(sent) == 1
+    ai.ask("s", "m", SCHEMA, ledger=ledger, now=NOW, agent="ceo_ai", runner=cc({"structured_output": {"b": 1}}))  # malformed
+    bad = ai.ask("s", "m", SCHEMA, ledger=ledger, now=NOW, agent="ceo_ai", runner=cc({"structured_output": {"a": "x"}}))
+    assert bad.status == "ABSTAIN" and "DUPLICATE_QUESTION" in bad.reason                  # never served from the cache
+
+
+def test_audit_h1_a_call_that_cannot_be_counted_is_not_sent(tmp_path, monkeypatch):
+    monkeypatch.delenv("ATLAS_AI_WINDOW_CALLS", raising=False)
+    sent = []
+    ledger = ai.UsageLedger(tmp_path / "u.json")
+    monkeypatch.setattr(ledger, "add", lambda *a, **k: (_ for _ in ()).throw(OSError("disk full")))
+    r = ai.ask("s", "q", SCHEMA, ledger=ledger, now=NOW, agent="ceo_ai", runner=cc({"structured_output": {"a": "x"}}, seen=sent))
+    assert r.status == "ABSTAIN" and "UNWRITABLE" in r.reason and sent == []
+
+
+def test_audit_l5_a_call_without_a_listed_agent_is_refused(tmp_path):
+    r = ai.ask("s", "q", SCHEMA, ledger=ai.UsageLedger(tmp_path / "u.json"), now=NOW,
+               runner=cc({"structured_output": {"a": "x"}}))
+    assert r.status == "ABSTAIN" and "AGENT_NOT_ALLOWED" in r.reason

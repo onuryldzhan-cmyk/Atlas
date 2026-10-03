@@ -43,7 +43,7 @@ def test_ceo_builds_on_its_previous_brief_and_marks_new_evidence(tmp_path, monke
     out = ac.ceo_brief(d, ask=follow, min_gap_h=0, now=datetime(3000, 1, 1, tzinfo=timezone.utc))
     assert "0 öncelik, 1 takip" in out["summary"]
     prompt = prompts[0]
-    assert "Your previous brief CEO-" in prompt and "ücret modelini doğrula" in prompt     # it sees what it said
+    assert "your brief CEO-" in prompt and "ücret modelini doğrula" in prompt              # it sees what it said
     assert "[EV-0004] NEW" in prompt and "[EV-0001] NEW" not in prompt                   # and what is new since
     assert "never an earlier priority again unchanged" in prompt
     briefs = sorted((r for r in _mem(d) if r["author"] == "ceo_ai"), key=lambda r: r["seq"])
@@ -93,3 +93,67 @@ def test_performance_report_states_what_changed_since_the_previous_one(tmp_path,
     since = json.loads(reports[1]["body"])["since_last_report"]
     assert since["new_trades"] == 3 and since["net_change"] is not None
     assert "+3 yeni işlem" in reports[1]["title"]
+
+
+def test_audit_m6_a_followups_only_brief_keeps_the_chain_and_shown_ids_may_be_cited(tmp_path, monkeypatch):
+    monkeypatch.setattr(ac, "_research_dir", lambda: tmp_path)
+    d = tmp_path / "records"
+    for n in (1, 2, 3):
+        _evidence(d, n)
+    ac.ceo_brief(d, ask=lambda *a, **k: ai.AIResult("OK", model="m", data={
+        "priorities": ["kalibrasyonu doğrula"], "followups": [], "cited_records": ["EV-0001"]}))
+    tick = {"s": 0}
+
+    def later():                                   # every record from here on is newer than the one before
+        tick["s"] += 1
+        return f"2999-01-01T00:{tick['s'] // 60:02d}:{tick['s'] % 60:02d}Z"
+    monkeypatch.setattr(cli, "now", later)
+    when = datetime(3000, 1, 1, tzinfo=timezone.utc)
+    first = next(r["id"] for r in _mem(d) if r["author"] == "ceo_ai")
+    _evidence(d, 4)
+    ac.ceo_brief(d, ask=lambda *a, **k: ai.AIResult("OK", model="m", data={      # follow-ups only
+        "priorities": [], "followups": ["kalibrasyon: hâlâ açık"], "cited_records": ["EV-0004"]}), min_gap_h=0, now=when)
+    _evidence(d, 5)
+    prompts = []
+
+    def cites_the_shown_brief(system, prompt, *a, **k):
+        prompts.append(prompt)
+        return ai.AIResult("OK", model="m", data={"priorities": ["yeni adım"], "followups": [],
+                                                   "cited_records": ["EV-0005", first]})
+
+    out = ac.ceo_brief(d, ask=cites_the_shown_brief, min_gap_h=0, now=when)
+    assert "kalibrasyonu doğrula" in prompts[0] and "kalibrasyon: hâlâ açık" in prompts[0]   # the chain held
+    assert "This is your first brief" not in prompts[0]
+    assert "1 öncelik" in out["summary"]                                                    # citing a shown brief is fine
+    _evidence(d, 6)
+    only_a_brief = ac.ceo_brief(d, ask=lambda *a, **k: ai.AIResult("OK", model="m", data={
+        "priorities": ["x"], "followups": [], "cited_records": [first]}), min_gap_h=0, now=when)
+    assert "reddedildi" in only_a_brief["summary"]                                          # a brief alone is not evidence
+
+
+def test_audit_m1_a_ceo_deferred_by_its_gap_comes_back(tmp_path, monkeypatch):
+    monkeypatch.setattr(ac, "_research_dir", lambda: tmp_path)
+    d = tmp_path / "records"
+    for n in (1, 2, 3):
+        _evidence(d, n)
+    ac.ceo_brief(d, ask=lambda *a, **k: ai.AIResult("OK", model="m", data={
+        "priorities": ["x"], "followups": [], "cited_records": ["EV-0001"]}))
+    deferred = ac.ceo_brief(d, ask=lambda *a, **k: (_ for _ in ()).throw(AssertionError("not yet")))
+    assert "beklenir" in deferred["summary"] and deferred["pending"] is True
+
+
+def test_audit_m5_one_perspective_is_not_a_council_verdict(tmp_path, monkeypatch):
+    from atlas_org import proposals as P
+
+    monkeypatch.setattr(ac, "_research_dir", lambda: tmp_path)
+    d = tmp_path / "records"
+    _evidence(d, 1)
+    monkeypatch.setattr(P, "replay", lambda log: {"SA-1": SimpleNamespace(status="DRAFT", fields={"title": "t", "risk_level": "LOW"})})
+    (d / cli.PROPOSALS_LOG).write_text("", encoding="utf-8")
+    answers = iter([ai.AIResult("OK", data={"verdict": "SUPPORT", "reasons": ["a"]}), ai.AIResult("ABSTAIN", reason="TIMEOUT")])
+    out = ac.model_council(d, ask=lambda *a, **k: next(answers))
+    assert out["pending"] is True and "çekimser (SA-1)" in out["summary"]
+    assert not [r for r in _mem(d) if r["author"] == "model_council"]                      # no one-voice "SUPPORT"
+    calls = []
+    out = ac.model_council(d, ask=lambda *a, **k: calls.append(1) or ai.AIResult("ABSTAIN", reason="UNAVAILABLE"))
+    assert len(calls) == 1                                                                 # stopped after the first

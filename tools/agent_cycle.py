@@ -174,9 +174,9 @@ CEO_TASK = ("Task - build on your previous brief, never repeat it:\n"
             "changed); if there is nothing at all, return all three lists empty.")
 
 
-def _brief_items(record: dict[str, Any] | None) -> list[str]:
+def _brief_items(record: dict[str, Any] | None, key: str = "priorities") -> list[str]:
     try:
-        return [str(p) for p in json.loads((record or {}).get("body") or "{}").get("priorities", [])][:5]
+        return [str(p) for p in json.loads((record or {}).get("body") or "{}").get(key, [])][:5]
     except (ValueError, AttributeError):
         return []
 
@@ -206,14 +206,24 @@ def ceo_brief(records_dir: Path, ask=None, *, min_gap_h: float = CEO_MIN_GAP_H,
             return {"verdict": "OK", "summary": "son CEO özetinin zamanı okunamadı; çağrı yapılmadı"}
         age_h = ((now or datetime.now(timezone.utc)) - last_at).total_seconds() / 3600
         if age_h < min_gap_h:
-            return {"verdict": "OK", "summary": f"son özet {age_h:.1f} saat önce; {min_gap_h} saat beklenir"}
+            # audit M1: come back once the gap has passed - the scheduler alone would wait for an unrelated input
+            return {"verdict": "OK", "summary": f"son özet {age_h:.1f} saat önce; {min_gap_h} saat beklenir", "pending": True}
         if not any(str(r.get("created_at") or "") > last_ceo and r.get("author") != "ceo_ai" for r in recent):
             return {"verdict": "OK", "summary": "son özetten beri yeni kayıt yok; çağrı yapılmadı"}
     ids = {str(r.get("id")) for r in recent}
     previous = mine[-1] if mine else None
-    earlier = _brief_items(previous)
-    head = (f"Your previous brief {previous.get('id')} ({previous.get('created_at')}):\n" + "\n".join(f"- {p}" for p in earlier)
-            if previous and earlier else "This is your first brief: there is no earlier one to build on.")
+    # audit M6: a follow-ups-only brief must not cut the chain - the open priorities come from the latest brief
+    # that had any, the follow-ups from the previous one, and both ids may be cited.
+    with_items = next((r for r in reversed(mine) if _brief_items(r)), None)
+    lines = []
+    if previous and _brief_items(previous, "followups"):
+        lines += [f"Your previous brief {previous.get('id')} ({previous.get('created_at')}) followed up:"]
+        lines += [f"- {f}" for f in _brief_items(previous, "followups")]
+    if with_items:
+        lines += [f"Open priorities from your brief {with_items.get('id')} ({with_items.get('created_at')}):"]
+        lines += [f"- {p}" for p in _brief_items(with_items)]
+    head = "\n".join(lines) if lines else "This is your first brief: there is no earlier one to build on."
+    shown = {str(r.get("id")) for r in (previous, with_items) if r}
     prompt = head + "\n\nAtlas evidence records, oldest first (id | NEW = after your previous brief | time | author | type | " \
         "title, then the body):\n\n" + "\n".join(
         f"[{r.get('id')}]{' NEW' if last_ceo and str(r.get('created_at') or '') > last_ceo else ''} {r.get('created_at')} | "
@@ -228,8 +238,8 @@ def ceo_brief(records_dir: Path, ask=None, *, min_gap_h: float = CEO_MIN_GAP_H,
     if not priorities and not followups:  # a valid answer: nothing new for the owner, so nothing is recorded
         return {"verdict": "OK", "summary": "CEO: sahibin dikkatini gerektiren yeni bir konu yok; kayıt yazılmadı"}
     cited = [c for c in data.get("cited_records", []) if isinstance(c, str)]
-    if not cited or any(c not in ids for c in cited):
-        return {"verdict": "OK", "summary": "AI-001 cevabı reddedildi: var olmayan ya da hiç kayıt gösterilmedi (kanıt doğrulaması)"}
+    if not any(c in ids for c in cited) or any(c not in ids | shown for c in cited):
+        return {"verdict": "OK", "summary": "AI-001 cevabı reddedildi: var olmayan ya da hiç kanıt kaydı gösterilmedi (kanıt doğrulaması)"}
     existing = {r["record_id"] for r in cli.read_log(records_dir / cli.MEMORY_LOG)}
     cli.add_memory_record(records_dir, {
         "record_id": f"CEO-{len(existing) + 1:04d}", "type": "OPERATIONS", "authority": "TEMPORARY",
@@ -318,17 +328,23 @@ def model_council(records_dir: Path, ask=None) -> dict[str, Any]:
                   "Should the owner approve it? Answer SUPPORT, OPPOSE or UNSURE. Give short reasons in Turkish that "
                   "point to the evidence above (sample size, costs, what could make the claim wrong); do not repeat "
                   "the proposal text.")
-        votes = {}
+        votes: dict[str, dict[str, Any]] = {}
+        abstained = None
         for perspective in ai.COUNCIL_PERSPECTIVES:
             system = f"{_AI_SYSTEM} Review independently as a {perspective}."
             res = (ask or ai.ask)(system, prompt, _COUNCIL_SCHEMA, ledger=_ai_ledger(), agent="model_council")
-            votes[perspective] = {"verdict": res.data["verdict"], "reasons": [str(x)[:300] for x in res.data["reasons"]][:5]} \
-                if res.status == "OK" else {"verdict": "ABSTAIN", "reason": res.reason}
-        verdicts = {v["verdict"] for v in votes.values() if v["verdict"] != "ABSTAIN"}
-        if not verdicts:  # the model is unavailable or out of quota: the rest would abstain too
-            notes.append(f"AI-001 çekimser: {next(iter(votes.values())).get('reason')}")
+            if res.status != "OK":
+                abstained = res.reason
+                break  # audit H1: the next perspective would hit the same wall; no call is spent on it
+            data = res.data or {}
+            votes[perspective] = {"verdict": data.get("verdict"), "reasons": [str(x)[:300] for x in data.get("reasons", [])][:5]}
+        if abstained is not None:
+            # audit M5: a council verdict needs every perspective - one answer is not a consensus. Come back later;
+            # an answer already given is served again from the gateway's cache, not paid twice.
+            notes.append(f"AI-001 çekimser ({pid}): {abstained}")
             pending = True
             break
+        verdicts = {v["verdict"] for v in votes.values()}
         outcome = verdicts.pop() if len(verdicts) == 1 else "DISAGREEMENT"
         existing = {r["record_id"] for r in cli.read_log(records_dir / cli.MEMORY_LOG)}
         cli.add_memory_record(records_dir, {
@@ -883,7 +899,8 @@ def _run_agents(records_dir: Path, agents) -> list[dict[str, Any]]:
 
 
 def _record_cycle(records_dir: Path, results: list[dict[str, Any]], started_s: float,
-                  skipped: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+                  skipped: list[dict[str, Any]] | None = None, *, incidents: bool = True,
+                  notes: dict[str, Any] | None = None) -> dict[str, Any]:
     """One AC record for the agents that ran (and, from the scheduler, the ones whose turn it was not)."""
     skipped = skipped or []
     # 2026-10-02: the AI-001 advisors (CEO, council) make paid model calls, so the cycle reports what
@@ -893,14 +910,17 @@ def _record_cycle(records_dir: Path, results: list[dict[str, Any]], started_s: f
                  "ai_calls": usage[0] if usage else "UNKNOWN (usage ledger unreadable)",
                  "ai_cost_usd": str(usage[1]) if usage else "UNKNOWN (usage ledger unreadable)",
                  "llm_tokens": "N/A (the usage ledger records calls and cost, not tokens)",
-                 "budget_per_agent_s": AGENT_BUDGET_S}
+                 "budget_per_agent_s": AGENT_BUDGET_S, **(notes or {})}
     try:
-        _open_incidents(records_dir, results)
+        if incidents:
+            _open_incidents(records_dir, results)
         existing = {r["record_id"] for r in cli.read_log(records_dir / cli.MEMORY_LOG)} if (records_dir / cli.MEMORY_LOG).exists() else set()
         rid = f"AC-{len(existing) + 1:04d}"
         ok = sum(1 for r in results if r["verdict"] == "OK")
         title = (f"Ajan döngüsü: {ok}/{len(results)} ajan sorunsuz" if not skipped else
                  f"Ajan döngüsü: {len(results)} ajan çalıştı ({ok} sorunsuz), {len(skipped)} ajanın sırası değildi")
+        if (notes or {}).get("schedule_save_failed"):
+            title += " - UYARI: zamanlama kaydedilemedi, ajanlar her turda yeniden çalışabilir"
         cli.add_memory_record(records_dir, {
             "record_id": rid, "type": "OPERATIONS", "authority": "TEMPORARY", "title": title,
             "body": json.dumps({"agent_cycle": results + skipped, "resources": resources}, ensure_ascii=False),
@@ -999,14 +1019,17 @@ def _load_schedule(path: Path) -> dict[str, Any]:
     return data
 
 
-def _save_schedule(path: Path, state: dict[str, Any]) -> None:
+def _save_schedule(path: Path, state: dict[str, Any]) -> bool:
+    """False when the schedule could not be written. Never fatal, but reported (audit L6): without it every tick
+    would quietly run every agent again."""
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp = path.with_suffix(".tmp")
         tmp.write_text(json.dumps(state, ensure_ascii=False), encoding="utf-8")
         tmp.replace(path)
-    except OSError:  # an unsaved schedule only means an agent may run once more; never fatal
-        pass
+    except OSError:
+        return False
+    return True
 
 
 def run_scheduled(records_dir: Path = cli.RECORDS_DIR, agents=AGENTS, *, state_path: Path | None = None,
@@ -1019,6 +1042,7 @@ def run_scheduled(records_dir: Path = cli.RECORDS_DIR, agents=AGENTS, *, state_p
     path = state_path or (_research_dir() / SCHEDULE_FILE)
     state = _load_schedule(path)
     units = state["units"]
+    names = {unit: name for unit, name, _ in agents}
     try:
         paths: dict[str, Path] | None = _input_paths(records_dir)
     except Exception:  # noqa: BLE001 - unknown input paths: the clock decides, an agent is never silenced
@@ -1027,6 +1051,17 @@ def run_scheduled(records_dir: Path = cli.RECORDS_DIR, agents=AGENTS, *, state_p
     logs_before = [_stamp(records_dir / name) for name in LOG_FILES]
     results: list[dict[str, Any]] = []
     skipped: list[dict[str, Any]] = []
+    saved = True
+    # Audit M3: an agent that was running when the previous runner hung or was killed is recorded as a failure and
+    # waits for its own interval, so it cannot block the agents after it on every restart.
+    for unit, entry in list(units.items()):
+        if isinstance(entry, dict) and "running_since" in entry:
+            summary = "önceki çalışması yarıda kaldı (çalıştırıcı asılı kaldı ya da durduruldu); sırası gelince yeniden denenecek"
+            units[unit] = {"last_run": entry["running_since"], "verdict": "FAIL", "pending": False,
+                           "fingerprint": entry.get("fingerprint"), "summary": summary}
+            results.append({"unit": unit, "name": names.get(unit, unit), "verdict": "FAIL", "summary": summary, "seconds": 0.0})
+    if results:
+        saved = _save_schedule(path, state) and saved
     for unit, name, fn in agents:
         if should_stop():
             break
@@ -1034,38 +1069,50 @@ def run_scheduled(records_dir: Path = cli.RECORDS_DIR, agents=AGENTS, *, state_p
         fingerprint = _fingerprint(unit, paths)
         due, why = _due(unit, entry, fingerprint, clock())
         if not due:
-            last = entry.get("summary") if isinstance(entry, dict) else None
-            skipped.append({"unit": unit, "name": name, "verdict": "OK", "ran": False, "seconds": 0.0,
-                            "summary": f"atlandı ({why}); son çalışma: {str(last or 'henüz yok')[:300]}"})
+            last = entry if isinstance(entry, dict) else {}
+            # audit M2: a skipped agent keeps its last verdict, so a failure stays visible until a run clears it
+            verdict = last.get("verdict") if last.get("verdict") in VERDICTS else "OK"
+            skipped.append({"unit": unit, "name": name, "verdict": verdict, "ran": False, "seconds": 0.0,
+                            "summary": f"atlandı ({why}); son çalışma: {str(last.get('summary') or 'henüz yok')[:300]}"})
             continue
         beat()
         ran_at = clock()
+        units[unit] = {**(entry if isinstance(entry, dict) else {}), "running_since": ran_at, "fingerprint": fingerprint}
+        saved = _save_schedule(path, state) and saved
         result = _run_agents(records_dir, ((unit, name, fn),))[0]
         results.append(result)
         units[unit] = {"last_run": ran_at, "verdict": result["verdict"], "pending": bool(result.get("pending")),
                        "fingerprint": fingerprint, "summary": result["summary"]}
-        _save_schedule(path, state)  # after every agent: a crash mid-tick never repeats finished work
+        saved = _save_schedule(path, state) and saved  # after every agent: a crash mid-tick never repeats finished work
+    notes = {} if saved else {"schedule_save_failed": True}
     if not results:
-        return {"record_id": None, "results": results, "skipped": skipped, "recorded": False}
+        return {"record_id": None, "results": results, "skipped": skipped, "recorded": False, **notes}
     changed = [_stamp(records_dir / name) for name in LOG_FILES] != logs_before
     failed = any(r["verdict"] != "OK" for r in results)
     last_record = state.get("last_record_at")
     heartbeat = not isinstance(last_record, (int, float)) or not 0 <= clock() - last_record < HEARTBEAT_RECORD_S
-    if not (changed or failed or heartbeat):
+    if not (changed or failed or heartbeat or notes):
         return {"record_id": None, "results": results, "skipped": skipped, "recorded": False}
-    memory_before = _stamp(records_dir / cli.MEMORY_LOG)
-    out = _record_cycle(records_dir, results, started, skipped)
+    try:
+        _open_incidents(records_dir, results)  # audit L1: incidents are new input for the agents that read them
+    except cli.RecordLockBusy:
+        pass  # the next failing tick opens it; the cycle record below still says what failed
+    log = records_dir / cli.MEMORY_LOG
+    memory_before = _stamp(log)
+    count_before = len(cli.read_log(log)) if log.exists() else 0
+    out = _record_cycle(records_dir, results, started, skipped, incidents=False, notes=notes)
     if out["record_id"]:
         state["last_record_at"] = clock()
-        # The cycle record (and an incident it opens) is the runner's own bookkeeping, not new input:
-        # an agent whose memory input was current before it stays current after it.
-        memory_after = _stamp(records_dir / cli.MEMORY_LOG)
-        for entry in units.values():
-            fp = entry.get("fingerprint") if isinstance(entry, dict) else None
-            if isinstance(fp, dict) and "memory" in fp and fp["memory"] == memory_before:
-                fp["memory"] = memory_after
-        _save_schedule(path, state)
-    return {**out, "skipped": skipped, "recorded": bool(out["record_id"])}
+        # The cycle record is the runner's own bookkeeping, not new input: an agent whose memory input was current
+        # before it stays current after it - but only when that record is the one and only line added (audit L1).
+        if len(cli.read_log(log)) == count_before + 1:
+            memory_after = _stamp(log)
+            for entry in units.values():
+                fp = entry.get("fingerprint") if isinstance(entry, dict) else None
+                if isinstance(fp, dict) and "memory" in fp and fp["memory"] == memory_before:
+                    fp["memory"] = memory_after
+        saved = _save_schedule(path, state) and saved
+    return {**out, "skipped": skipped, "recorded": bool(out["record_id"]), **({} if saved else {"schedule_save_failed": True})}
 
 
 def _print_cycle(out: dict[str, Any]) -> None:
@@ -1148,13 +1195,29 @@ def _watch_parent(stop, stream) -> None:
     stop.set()
 
 
-def _sleep(stop, seconds: float) -> bool:
-    """Wait in one-second slices so a stop signal is seen promptly on every platform. True: stop."""
+def _sleep(stop, seconds: float, beat: Callable[[], None] | None = None) -> bool:
+    """Wait in one-second slices so a stop signal is seen promptly on every platform; beat at least every minute
+    (audit M3: a long --every must not look like a hang). True: stop."""
     deadline = time.monotonic() + seconds
+    next_beat = time.monotonic() + 60
     while time.monotonic() < deadline:
         if stop.wait(min(1.0, max(0.0, deadline - time.monotonic()))):
             return True
+        if beat is not None and time.monotonic() >= next_beat:
+            beat()
+            next_beat = time.monotonic() + 60
     return stop.is_set()
+
+
+def minutes(value: str) -> float:
+    """--every: a finite number of minutes in (0, 1440] (audit L3: 0, negative or NaN would spin or never stop)."""
+    try:
+        n = float(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"{value!r} is not a number of minutes")
+    if not (0 < n <= 1440):  # also false for NaN
+        raise argparse.ArgumentTypeError(f"--every must be more than 0 and at most 1440 minutes, not {value}")
+    return n
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -1163,7 +1226,7 @@ def main(argv: list[str] | None = None) -> int:
     from core import instance_lock
 
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--every", type=float, default=None,
+    parser.add_argument("--every", type=minutes, default=None,
                         help="scheduler: every N minutes run the agents that are due (each agent has its own clock)")
     parser.add_argument("--parent-watch", action="store_true", help=argparse.SUPPRESS)  # set by tools.start_atlas
     args = parser.parse_args(argv)
@@ -1196,8 +1259,10 @@ def main(argv: list[str] | None = None) -> int:
                                     beat=lambda: _beat(directory))
                 if out["results"]:
                     _print_cycle(out)
-                    sys.stdout.flush()
-                if _sleep(stop, args.every * 60):
+                if out.get("schedule_save_failed"):
+                    print("UYARI: ajan zamanlaması kaydedilemedi (disk / izin?); ajanlar her turda yeniden çalışabilir")
+                sys.stdout.flush()
+                if _sleep(stop, args.every * 60, beat=lambda: _beat(directory)):
                     break
         finally:
             _restore_signals(previous)

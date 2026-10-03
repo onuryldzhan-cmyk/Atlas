@@ -223,3 +223,82 @@ def test_council_reviews_what_waits_with_evidence_and_comes_back_for_the_rest(tm
     props["SA-5"] = SimpleNamespace(status="DRAFT", fields={"title": "öneri 5", "risk_level": "LOW"})
     out = ac.model_council(d, ask=lambda *a, **k: ai.AIResult("ABSTAIN", reason="NO_QUOTA"))
     assert out["pending"] is True and "çekimser" in out["summary"]                        # retried later, not lost
+
+
+def test_audit_m2_a_skipped_agent_keeps_showing_its_failure(tmp_path, monkeypatch):
+    from observability import agent_states
+
+    records, clock, tick = _env(tmp_path, monkeypatch, {"data_quality": (60, None), "quant_research": (10, None)})
+    agents = (("data_quality", "Veri", lambda d: {"verdict": "FAIL", "summary": "disk dolu"}),
+              ("quant_research", "Performans", lambda d: _writer(d, f"PR-{clock['t']:.0f}") or {"verdict": "OK", "summary": "ok"}))
+    tick(agents)
+    clock["t"] += 11 * 60                                              # quant runs again; data_quality is skipped
+    tick(agents)
+    body = json.loads(_cycles(records)[-1]["body"])["agent_cycle"]
+    dq = next(r for r in body if r["unit"] == "data_quality")
+    assert dq["ran"] is False and dq["verdict"] == "FAIL"
+    memory = {"available": True, "records": memory_records.public_view(
+        memory_records.replay(cli.read_log(records / cli.MEMORY_LOG)))}
+    assert {a["id"]: a for a in agent_states.build({}, {}, memory, None)["agents"]}["data_quality"]["state"] == "ERROR"
+
+
+def test_audit_m3_an_agent_cut_off_last_time_is_failed_and_does_not_block_the_others(tmp_path, monkeypatch):
+    records, clock, tick = _env(tmp_path, monkeypatch, {"stuck": (60, None), "next": (10, None)})
+    state = tmp_path / "schedule.json"
+    state.write_text(json.dumps({"units": {"stuck": {"last_run": clock["t"] - 7200, "verdict": "OK",
+                                                     "running_since": clock["t"] - 600}}}), encoding="utf-8")
+    calls = []
+    agents = (("stuck", "Stuck", lambda d: calls.append("stuck") or {"verdict": "OK", "summary": "ok"}),
+              ("next", "Next", lambda d: calls.append("next") or {"verdict": "OK", "summary": "ok"}))
+    out = tick(agents)
+    assert calls == ["next"]                                            # the cut-off agent waits for its interval
+    stuck = next(r for r in out["results"] if r["unit"] == "stuck")
+    assert stuck["verdict"] == "FAIL" and "yarıda kaldı" in stuck["summary"]
+    assert any(r["type"] == "INCIDENTS" for r in memory_records.replay(cli.read_log(records / cli.MEMORY_LOG)).values())
+    saved = json.loads(state.read_text(encoding="utf-8"))["units"]
+    assert all("running_since" not in e for e in saved.values())        # nothing is left marked as running
+    clock["t"] += 51 * 60                                               # its own interval after the cut-off
+    tick(agents)
+    assert calls == ["next", "stuck", "next"]                            # retried once its interval has passed
+
+
+def test_audit_l1_a_new_incident_is_still_new_input(tmp_path, monkeypatch):
+    records, clock, tick = _env(tmp_path, monkeypatch, {"x": (10, None), "overview_snapshot": (10, ("memory",))})
+    seen = []
+    agents = (("x", "X", lambda d: {"verdict": "FAIL", "summary": "boom"}),
+              ("overview_snapshot", "Özet", lambda d: seen.append(1) or {"verdict": "OK", "summary": "ok"}))
+    tick(agents)                                                       # x fails: an incident is opened, then the AC
+    clock["t"] += 11 * 60
+    tick(agents)
+    assert len(seen) == 2                                              # the incident counted as new memory input
+
+
+def test_audit_l6_a_schedule_that_cannot_be_saved_is_reported(tmp_path, monkeypatch):
+    records, clock, tick = _env(tmp_path, monkeypatch, {"a": (10, None)})
+    monkeypatch.setattr(ac, "_save_schedule", lambda path, state: False)
+    out = tick((("a", "A", lambda d: {"verdict": "OK", "summary": "ok"}),))
+    assert out["schedule_save_failed"] is True and "zamanlama kaydedilemedi" in _cycles(records)[-1]["title"]
+
+
+def test_audit_l3_every_must_be_a_sane_number_of_minutes():
+    import argparse
+
+    import pytest
+    for bad in ("0", "-5", "nan", "inf", "abc", "2000"):
+        with pytest.raises(argparse.ArgumentTypeError):
+            ac.minutes(bad)
+    assert ac.minutes("5") == 5.0 and ac.minutes("0.5") == 0.5
+
+
+def test_audit_m3_sleep_beats_while_it_waits(monkeypatch):
+    import threading
+    now = {"t": 0.0}
+    monkeypatch.setattr(ac.time, "monotonic", lambda: now["t"])
+    beats = []
+
+    class Clockwork(threading.Event):
+        def wait(self, timeout=None):
+            now["t"] += timeout or 0
+            return False
+    assert ac._sleep(Clockwork(), 300, beat=lambda: beats.append(now["t"])) is False
+    assert len(beats) >= 4                                              # about once a minute over five minutes

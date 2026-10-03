@@ -4,7 +4,7 @@
 | Agent | How | Output |
 |---|---|---|
 | `ceo_ai` | Claude Code (`claude -p`), Sonnet, effort high | Up to 5 priorities grounded in cited memory record ids, as a `CEO-*` record. An answer citing a non-existent record is rejected. |
-| `model_council` | Same, two independent perspectives (risk-focused and evidence-focused) | SUPPORT / OPPOSE / UNSURE / DISAGREEMENT on the newest open proposal, as an `MC-*` record. |
+| `model_council` | Same, two independent perspectives (risk-focused and evidence-focused) | SUPPORT / OPPOSE / UNSURE / DISAGREEMENT on each open proposal not yet reviewed (up to 3 per run), as an `MC-*` record. A verdict is recorded only when both perspectives answered; otherwise it is retried later (audit 2026-10-03). |
 
 Both give **advice only**. They cannot trade, deploy, approve or change a threshold. The trading runtime never imports the gateway (ADR-0011).
 
@@ -21,7 +21,8 @@ Both give **advice only**. They cannot trade, deploy, approve or change a thresh
 **Owner rule 2026-10-03:** the agents may use the **whole** rolling 5-hour window of your plan, each as much as its work needs. There is no 60 % share and no fixed split between agents.
 - **Budget:** Atlas cannot see your Pro usage, so the plan's own 5-hour limit is the budget. When Claude Code says the limit is reached, the agents abstain until the window rolls.
 - **Your own ceiling (optional):** `ATLAS_AI_WINDOW_CALLS` = calls per rolling 5 hours, used in full. Unset means no Atlas ceiling. An unreadable value means no calls.
-- **No repeated questions:** an agent never pays twice for the same question within 24 hours. Only new evidence makes a new question.
+- **No repeated questions:** an agent never pays twice for the same question within 24 hours. If it was answered, the same answer is served again for free; if it was not (timeout, error), it is not resent. Only new evidence makes a new question.
+- **Counted before it is sent:** every call is written to the usage ledger before it goes out, so a call that times out, crashes or is stopped still counts against every limit below (audit 2026-10-03).
 - **Runaway stop:** at most **12** calls per agent per 5 hours. Normal need is far below that (CEO ≤ 2, council 2 per new proposal), so reaching it means a loop.
 - **Allowlist:** only `ceo_ai` and `model_council` may call a model.
 
