@@ -17,6 +17,7 @@ Responsibilities:
 from __future__ import annotations
 
 
+import math
 from datetime import datetime
 
 
@@ -163,6 +164,15 @@ class DecisionBuilder:
 
 
 
+                # Phase-2 E1: what the confidence number means.
+                "confidence_semantics":
+
+                    self._confidence_semantics(
+                        fusion
+                    ),
+
+
+
                 "risk":
 
                     risk.to_dict(),
@@ -249,6 +259,28 @@ class DecisionBuilder:
             return "FUSED_EVIDENCE"
 
         return reason
+
+
+    @staticmethod
+    def _confidence_semantics(
+        fusion
+    ):
+        """Phase-2 E1: consensus and coverage, never a fabricated probability."""
+
+        from ai.core.intelligence.agent_fusion import CONFIDENCE_SEMANTICS
+
+        def number(value):
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                return None
+            return round(float(value), 4) if math.isfinite(value) else None
+
+        return {
+            "meaning": CONFIDENCE_SEMANTICS,
+            "consensus": number(getattr(fusion, "confidence", None)),
+            "coverage": number(getattr(fusion, "coverage", None)),
+            "calibrated_p_win": None,
+            "calibration_ref": None,
+        }
 
 
     @staticmethod

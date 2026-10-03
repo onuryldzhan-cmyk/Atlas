@@ -692,7 +692,7 @@
                     `title="${esc(marker.label)} ≥ ${num(marker.value)}"></div>`)
                 .join('');
             return `<div class="d-flex justify-content-between small mb-1">` +
-                `<span class="text-body-secondary">confidence</span>` +
+                `<span class="text-body-secondary" title="weighted agent consensus, not a win probability">confidence (consensus)</span>` +
                 `<span class="font-monospace">${known ? `${esc(value)} / 100` : 'UNKNOWN'}</span></div>` +
                 `<div class="gate-bar"><div class="progress progress-sm" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${width}">` +
                 `<div class="progress-bar bg-${tone}" style="width:${width}%"></div></div>${ticks}</div>`;

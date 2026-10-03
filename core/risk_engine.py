@@ -234,6 +234,14 @@ PAPER_CONFIDENCE_EXPERIMENTS = {e.experiment_id: e for e in (EXP001_PAPER_CONFID
 
 @dataclass(frozen=True)
 class RiskPolicy:
+    """Owner risk policy.
+
+    Phase-2 E1: every ``*minimum_confidence`` here is a floor on weighted agent
+    consensus (the fused vote share over the full roster, 0..1). It is
+    not a probability of winning: no calibration model exists, and nothing in
+    this engine reads confidence as P(win) (no expected-value or Kelly sizing).
+    """
+
     total_capital: Decimal
     cash_reserve_pct: Decimal = Decimal("0.20")
     max_position_pct: Decimal = Decimal("0.40")

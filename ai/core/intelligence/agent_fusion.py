@@ -28,7 +28,7 @@ from __future__ import annotations
 
 
 from dataclasses import dataclass
-from typing import Dict
+from typing import Dict, Optional
 
 from analysis.evidence_status import MarketDataEvidenceStatus
 
@@ -44,6 +44,13 @@ _log = _logging.getLogger(__name__)
 # =====================================================
 # RESULT MODEL
 # =====================================================
+
+
+# Phase-2 E1: what ``confidence`` means. It is the winning bucket's weighted
+# share over the full expected roster (NB-5), with absent agents charged as
+# non-support (NB-4): agreement among agents, not P(win). No calibration model
+# exists, so ``calibrated_p_win`` is reported as None (unknown), never derived.
+CONFIDENCE_SEMANTICS = "WEIGHTED_CONSENSUS_NOT_PROBABILITY"
 
 
 @dataclass
@@ -68,6 +75,11 @@ class AgentFusionResult:
     reason: str = "FUSED_EVIDENCE"
 
 
+    # Phase-2 E1: configured weight that took part / full roster weight.
+    # None when the constructor did not supply it (unknown, never assumed).
+    coverage: Optional[float] = None
+
+
 
     def to_dict(self):
 
@@ -90,7 +102,32 @@ class AgentFusionResult:
 
 
             "reason":
-                self.reason
+                self.reason,
+
+
+            # Phase-2 E1: explicit semantics; "confidence" stays as the
+            # backward-compatible alias of "consensus".
+            "consensus":
+                round(
+                    self.confidence,
+                    3
+                ),
+
+
+            "coverage":
+                self.coverage,
+
+
+            "confidence_semantics":
+                CONFIDENCE_SEMANTICS,
+
+
+            "calibrated_p_win":
+                None,
+
+
+            "calibration_ref":
+                None
 
         }
 
@@ -586,6 +623,11 @@ class AgentFusion:
 
                 reason="INSUFFICIENT_EVIDENCE",
 
+                coverage=self._coverage_ratio(
+                    available_weight,
+                    total_configured_weight,
+                ),
+
             )
 
         buy, sell, hold = self._bucket_masses(
@@ -610,7 +652,12 @@ class AgentFusion:
 
                 confidence=0.0,
 
-                scores={}
+                scores={},
+
+                coverage=self._coverage_ratio(
+                    available_weight,
+                    total_configured_weight,
+                ),
 
             )
 
@@ -655,8 +702,29 @@ class AgentFusion:
 
             confidence=confidence,
 
-            scores=scores
+            scores=scores,
 
+            coverage=self._coverage_ratio(
+                available_weight,
+                total_configured_weight,
+            ),
+
+        )
+
+
+    @staticmethod
+    def _coverage_ratio(
+        available_weight,
+        total_configured_weight,
+    ):
+        """Phase-2 E1: participating configured weight / full roster weight (display only)."""
+
+        if total_configured_weight <= 0:
+            return 0.0
+
+        return round(
+            available_weight / total_configured_weight,
+            4,
         )
 
 
