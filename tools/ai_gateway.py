@@ -45,11 +45,17 @@ BACKEND = os.environ.get("ATLAS_AI_BACKEND", "claude_code")
 # AGENT_WEIGHTS ceo_ai 1 / model_council 2; default 10 calls -> ceo 2, council 4)."
 # Owner rule 2026-10-03 (reason: tie the budget to the whole 5-hour window and let each agent use what its
 # work needs): no share and no fixed split. What still bounds the spend, so a loop can never burn the window:
-AI_AGENTS = frozenset({"ceo_ai", "model_council"})  # nobody else may call a model
+# 2026-10-03: explainable_ai reviews the trade post-mortems (tools/trade_postmortem.py).
+AI_AGENTS = frozenset({"ceo_ai", "model_council", "explainable_ai"})  # nobody else may call a model
 # Per agent per rolling 5 hours: far above normal need (CEO <= 2 by its 2.5 h gap, council 2 calls per new
 # proposal); reaching it means a loop, not work.
 RUNAWAY_CALLS_PER_WINDOW = 12
 DUPLICATE_WINDOW_H = 24  # the same agent never pays twice for the same question within this window
+# Owner 2026-10-03 (apprentice): every new, validated answer is also appended to research/apprentice/teacher.jsonl
+# - question and answer exactly as sent and received (after the SensitiveDataGuard) - for tools/apprentice.py
+# and, one day, a local model's evaluation. Best effort: it never blocks or fails a call.
+TEACHER_FILE = "teacher.jsonl"
+TEACHER_MAX_BYTES = 200 * 1024 * 1024
 TIMEOUT_S = 120.0
 MAX_TOKENS = 16000
 USAGE_FILE = "ai_usage.json"
@@ -271,6 +277,22 @@ def _settle(ledger: UsageLedger, now_s: float, agent: str | None, question: str,
         pass
 
 
+def _teach(ledger: UsageLedger, now_s: float, agent: str | None, question: str, model: str, system: str,
+           prompt: str, answer: Any) -> None:
+    """Keep one new, validated exchange for the apprentice (never a cached repeat). Never raises."""
+    try:
+        path = Path(ledger.path).parent / "apprentice" / TEACHER_FILE
+        if path.exists() and path.stat().st_size > TEACHER_MAX_BYTES:
+            return  # full: the apprentice already has a large dataset; the call itself is unaffected
+        path.parent.mkdir(parents=True, exist_ok=True)
+        line = json.dumps({"at": now_s, "agent": agent, "question": question, "model": model, "system": system,
+                           "prompt": prompt, "answer": answer}, ensure_ascii=False, default=str)
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write(line + "\n")
+    except (OSError, TypeError, ValueError, AttributeError):
+        pass
+
+
 def _claude_code_runner(prompt: str, system: str, schema: dict[str, Any], model: str, effort: str) -> dict[str, Any]:
     """`claude -p` on the owner's logged-in subscription: no tools, no project config, prompt via stdin."""
     import shutil
@@ -320,6 +342,7 @@ def _ask_claude_code(system, prompt, schema, model, effort, agent, ledger, now_s
         return AIResult("ABSTAIN", reason=f"MALFORMED ({problem})", model=model)
     data = sanitize_sensitive_data(data)
     _settle(ledger, now_s, agent, question, cost, data)
+    _teach(ledger, now_s, agent, question, model, system, prompt, data)
     return AIResult("OK", data=data, model=model, cost_usd=cost, extra={"backend": "claude_code"})
 
 
@@ -394,4 +417,5 @@ def ask(system: str, prompt: str, schema: dict[str, Any], *, model: str = DEFAUL
         return AIResult("ABSTAIN", reason=f"MALFORMED ({problem})", model=model, cost_usd=cost)
     data = sanitize_sensitive_data(data)
     _settle(ledger, now_s, agent, question, cost, data)
+    _teach(ledger, now_s, agent, question, getattr(response, "model", model) or model, system, safe_prompt, data)
     return AIResult("OK", data=data, model=getattr(response, "model", model), cost_usd=cost)

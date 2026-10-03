@@ -49,6 +49,9 @@ AGENTS: dict[str, tuple[str, str]] = {  # unit id -> (display name, room)
     "ceo_ai": ("CEO AI (AI-001)", "command"),
     "model_council": ("Model konseyi (AI-001)", "review"),
     "overview_snapshot": ("Durum özeti", "system"),
+    "explainable_ai": ("İşlem sonrası analiz", "quant"),          # 2026-10-03: every trade's why, AI review
+    "deployment_manager": ("Değişiklik notları", "dev"),          # 2026-10-03: what changed, read-only
+    "ai_model_research": ("Çırak (Sonnet'ten öğrenir)", "research"),  # 2026-10-03: learns the AI advisors' work
     "agent_technical": ("Teknik analiz", "quant"),
     "agent_macro": ("Makro", "quant"),
     "agent_sentiment": ("Duygu (Fear & Greed)", "quant"),

@@ -6,7 +6,11 @@
 | `ceo_ai` | Claude Code (`claude -p`), Sonnet, effort high | Up to 5 priorities grounded in cited memory record ids, as a `CEO-*` record. An answer citing a non-existent record is rejected. |
 | `model_council` | Same, two independent perspectives (risk-focused and evidence-focused) | SUPPORT / OPPOSE / UNSURE / DISAGREEMENT on each open proposal not yet reviewed (up to 3 per run), as an `MC-*` record. A verdict is recorded only when both perspectives answered; otherwise it is retried later (audit 2026-10-03). |
 
-Both give **advice only**. They cannot trade, deploy, approve or change a threshold. The trading runtime never imports the gateway (ADR-0011).
+| `explainable_ai` (trade review, 2026-10-03) | Same | After 5 new trade post-mortems (TP-*, one per closed trade, written rule-based), a review: patterns, follow-ups on its previous suggestions, at most 3 testable suggestions, as a `TR-*` record. |
+
+All of them give **advice only**. They cannot trade, deploy, approve or change a threshold. The trading runtime never imports the gateway (ADR-0011).
+
+**Apprentice (`ai_model_research`, 2026-10-03):** every new, validated answer is also kept in `<state>/research/apprentice/teacher.jsonl` (question and answer as sent and received, after the SensitiveDataGuard). `tools/apprentice.py` learns from the recorded answers: how the council votes and which evidence the CEO picks. Before each new answer it makes its own prediction, so its scores are honest. It never calls a model. When a score is high enough on enough cases its `AP-*` record says so; any takeover needs your approval.
 
 ## How `tools/ai_gateway.py` calls Claude Code
 - **Command:** `claude -p --output-format json --json-schema … --model sonnet --effort high --tools "" --max-turns 3 --setting-sources user --strict-mcp-config`.
@@ -24,7 +28,7 @@ Both give **advice only**. They cannot trade, deploy, approve or change a thresh
 - **No repeated questions:** an agent never pays twice for the same question within 24 hours. If it was answered, the same answer is served again for free; if it was not (timeout, error), it is not resent. Only new evidence makes a new question.
 - **Counted before it is sent:** every call is written to the usage ledger before it goes out, so a call that times out, crashes or is stopped still counts against every limit below (audit 2026-10-03).
 - **Runaway stop:** at most **12** calls per agent per 5 hours. Normal need is far below that (CEO ≤ 2, council 2 per new proposal), so reaching it means a loop.
-- **Allowlist:** only `ceo_ai` and `model_council` may call a model.
+- **Allowlist:** only `ceo_ai`, `model_council` and `explainable_ai` may call a model.
 
 Every call uses part of **your own** plan allowance. Anthropic: "Both Pro and Max plans offer usage limits that are shared across Claude and Claude Code, meaning all activity in both tools counts against the same usage limits" (support.claude.com, article 11145838, read 2026-10-03). So if the agents use the whole window, your own Claude use waits for the reset too. If you want to keep part of the window for yourself, set a ceiling, for example `setx ATLAS_AI_WINDOW_CALLS "8"`.
 

@@ -20,6 +20,9 @@ through the governed logs (memory records, tasks, proposals):
   executive_assistant   self-review of code, tests, security and agents -> tasks
   data_quality          health check of the durable book, venue rules, logs
   security              Security Guardian scan of the running code
+  explainable_ai        every closed trade -> memory with why it won/lost; an AI review with realistic suggestions
+  deployment_manager    change notes: what changed / was fixed (git, read-only) and how Atlas looks since
+  ai_model_research     apprentice: learns the AI advisors' answers to take their work over one day (owner decides)
 
 One agent failing never stops the others; the failure is recorded. A cycle
 is one OPERATIONS memory record, which the Agents page shows. Under the
@@ -154,6 +157,9 @@ def _recent_records(records_dir: Path, n: int = 25) -> list[dict[str, Any]]:
 
 
 CEO_IGNORED_AUTHORS = frozenset({"ceo_ai", "executive_assistant", "overview_snapshot"})
+# 2026-10-03: one record per trade (TP) and the apprentice's scorecards (AP) are not CEO evidence; the trade
+# review (TR) that summarises the TPs and the change notes (DM) are.
+CEO_IGNORED_PREFIXES = ("TP-", "AP-")
 CEO_MIN_GAP_H = 2.5  # spaces the CEO's 5-hour call share instead of spending it in the first cycles
 CEO_MIN_EVIDENCE = 3  # fewer evidence records than this: no call (2026-10-02, a 1-record brief invented 5 priorities)
 # Owner 2026-10-03: longer questions are fine when they make the answer useful. The CEO reads each record's
@@ -193,7 +199,8 @@ def ceo_brief(records_dir: Path, ask=None, *, min_gap_h: float = CEO_MIN_GAP_H,
     # Owner review 2026-10-02: CEO-0074 spent its call on its own previous brief and on routine
     # cycle/self-review/overview records. The CEO now reads evidence only, and only evidence
     # counts as "new" for the spacing gate below.
-    recent = [r for r in _recent_records(records_dir, 200) if r.get("author") not in CEO_IGNORED_AUTHORS][-25:]
+    recent = [r for r in _recent_records(records_dir, 200) if r.get("author") not in CEO_IGNORED_AUTHORS
+              and not str(r.get("id", "")).startswith(CEO_IGNORED_PREFIXES)][-25:]
     if len(recent) < CEO_MIN_EVIDENCE:
         return {"verdict": "OK", "summary": f"{len(recent)} kanıt kaydı (en az {CEO_MIN_EVIDENCE} gerekir); özet çıkarılmadı"}
     mine = [r for r in _recent_records(records_dir, 500) if r.get("author") == "ceo_ai"]
@@ -799,6 +806,28 @@ def shadow_costs(records_dir: Path) -> dict[str, Any]:
     return out
 
 
+def trade_postmortem(records_dir: Path) -> dict[str, Any]:
+    """Explainable AI Center (owner 2026-10-03): every closed trade into memory, then an AI review (tools/trade_postmortem.py)."""
+    from tools import trade_postmortem as tp
+    from tools.exp001_report import load_closed
+
+    return tp.run(records_dir, load_closed(_archive_path()), _approvals(), ledger=_ai_ledger())
+
+
+def change_notes(records_dir: Path) -> dict[str, Any]:
+    """Deployment Manager, observation only (owner 2026-10-03): what changed and how Atlas looks since (tools/change_log.py)."""
+    from tools import change_log
+
+    return change_log.run(records_dir)
+
+
+def apprentice(records_dir: Path) -> dict[str, Any]:
+    """AI Model Research (owner 2026-10-03): learns the AI advisors' answers; never calls a model (tools/apprentice.py)."""
+    from tools import apprentice as ap
+
+    return ap.run(records_dir, _research_dir())
+
+
 AGENTS: tuple[tuple[str, str, Callable[[Path], dict[str, Any]]], ...] = (
     ("quant_research", "Performans analizi", quant_research),
     ("strategy_lab", "Strateji önerileri", strategy_lab),
@@ -811,9 +840,12 @@ AGENTS: tuple[tuple[str, str, Callable[[Path], dict[str, Any]]], ...] = (
     ("experiment_manager", "Deneyim ajanı", experience),
     ("digital_twin", "Shadow maliyet ölçümü", shadow_costs),
     ("performance_audit", "Koruma gözlemi", protections_watch),
+    ("explainable_ai", "İşlem sonrası analiz", trade_postmortem),
+    ("deployment_manager", "Değişiklik notları", change_notes),
     ("ceo_ai", "CEO özeti (AI-001)", ceo_brief),
     ("model_council", "Model konseyi (AI-001)", model_council),
     ("red_team", "Karşı görüş", red_team),
+    ("ai_model_research", "Çırak (Sonnet'ten öğrenir)", apprentice),
     ("executive_assistant", "Öz-değerlendirme", executive_assistant),
     ("data_quality", "Veri sağlığı", data_quality),
     ("security", "Güvenlik taraması", security),
@@ -952,6 +984,9 @@ SCHEDULE: dict[str, tuple[float, tuple[str, ...] | None]] = {
     "experiment_manager": (10, None),                        # one replayed day per run until the history is done
     "digital_twin": (30, None),                              # order-book cost samples across the day
     "performance_audit": (30, ("archive",)),
+    "explainable_ai": (15, ("archive", "audit")),            # a new closed trade; its AI review waits for 5 of them
+    "deployment_manager": (60, None),                        # new commits since the last note (git, read-only)
+    "ai_model_research": (30, ("memory",)),                  # learns from new CEO / council answers
     "ceo_ai": (150, ("memory",)),                            # model call: new evidence, at least 2.5 h apart
     "model_council": (15, ("proposals",)),                   # model calls: proposals not reviewed yet
     "red_team": (15, ("proposals",)),
