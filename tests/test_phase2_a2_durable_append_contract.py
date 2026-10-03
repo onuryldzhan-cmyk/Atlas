@@ -356,3 +356,73 @@ def test_concurrent_processes_cannot_corrupt_the_log(tmp_path: Path) -> None:
     assert records[0] == {"w": "seed"}
     sequences = _sequences(path)
     assert sequences == list(range(len(sequences)))
+
+
+# ---------------------------------------------------------------------------
+# Independent audit 2026-10-03 (F1 HIGH, F3 LOW, F4 LOW) regressions
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.skipif(os.name == "nt", reason="RLIMIT_FSIZE is POSIX-only")
+def test_audit_f1_partial_write_is_rolled_back_and_stays_rolled_back(tmp_path):
+    """A write that fails part-way must be classified, and nothing may be
+    re-flushed after the rollback (buffered close() used to do exactly that)."""
+    import resource
+    import signal
+    import subprocess
+    import sys
+
+    script = f"""
+import os, resource, signal, sys
+sys.path.insert(0, {str(Path(__file__).resolve().parent.parent)!r})
+from core.durable_append_contract import DurableAppendWriter, DurableAppendNotWrittenError
+signal.signal(signal.SIGXFSZ, signal.SIG_IGN)
+p = {str(tmp_path / "f.log")!r}
+w = DurableAppendWriter(p); w.establish(0)
+w.append_bytes(b"a" * 100 + b"\\n")
+resource.setrlimit(resource.RLIMIT_FSIZE, (150, resource.RLIM_INFINITY))
+try:
+    w.append_bytes(b"b" * 100 + b"\\n")
+    print("NO ERROR")
+except DurableAppendNotWrittenError:
+    print("NOT_WRITTEN", os.path.getsize(p), w.verified_size, w.poisoned is None)
+except BaseException as e:
+    print("OTHER", type(e).__name__)
+"""
+    out = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, timeout=60)
+    assert out.stdout.strip() == "NOT_WRITTEN 101 101 True", out.stdout + out.stderr
+
+
+def test_audit_f3_a_failing_persistence_state_is_never_healthy():
+    from core.execution_manager import ExecutionManager
+
+    class Broken:
+        def persistence_state(self):
+            raise AttributeError("internal bug")
+
+    manager = ExecutionManager.__new__(ExecutionManager)
+    manager.audit_enabled = True
+    manager.audit_store = Broken()
+    manager.audit_runtime_state = "HEALTHY"
+    assert manager.audit_persistence_state() == "DEGRADED"
+
+    manager.audit_store = object()          # injected store without the A2 contract
+    assert manager.audit_persistence_state() == "HEALTHY"
+
+
+def test_audit_f4_reset_with_delete_keeps_the_store_writable(tmp_path):
+    from core.execution_idempotency_store import ExecutionIdempotencyStore
+    from core.execution_transaction_journal import ExecutionTransactionJournal
+
+    journal = ExecutionTransactionJournal(tmp_path / "j.jsonl")
+    assert journal.prepare("r1", {"symbol": "BTCUSDT"})
+    journal.reset(delete_file=True)
+    assert journal.prepare("r2", {"symbol": "BTCUSDT"})
+    assert ExecutionTransactionJournal(tmp_path / "j.jsonl").has_unresolved()
+
+    store = ExecutionIdempotencyStore(tmp_path / "i.jsonl")
+    ok = {"success": True, "status": "PAPER_EXECUTED"}
+    assert store.record("r1", dict(ok))
+    store.reset(delete_file=True)
+    assert store.record("r2", dict(ok))
+    assert "r2" in ExecutionIdempotencyStore(tmp_path / "i.jsonl").completed_requests

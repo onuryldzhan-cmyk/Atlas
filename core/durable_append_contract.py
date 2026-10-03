@@ -60,6 +60,10 @@ NOT_WRITTEN = "NOT_WRITTEN"
 INDETERMINATE = "INDETERMINATE"
 
 RECOVERY_MARKER_SUFFIX = ".recovery_required"
+
+# Binary append, unbuffered: os.write on this descriptor goes straight to the
+# file (O_BINARY keeps Windows from translating newlines).
+_APPEND_FLAGS = os.O_WRONLY | os.O_APPEND | os.O_CREAT | getattr(os, "O_BINARY", 0)
 LOCK_SUFFIX = ".lock"
 
 
@@ -160,7 +164,8 @@ class DurableAppendWriter:
         if self.marker_path.exists():
             raise DurableRecoveryRequiredError(
                 f"{self.path.name}: unresolved indeterminate write "
-                f"(marker {self.marker_path.name}); operator recovery required"
+                f"(marker {self.marker_path.name}); operator recovery required - "
+                "see docs/operations/DURABLE_APPEND_RECOVERY.md"
             )
 
     def establish(self, size: int) -> None:
@@ -232,8 +237,15 @@ class DurableAppendWriter:
         with self.exclusive():
             self._require_writable()
 
-            with self.path.open("ab") as stream:
-                fd = stream.fileno()
+            # Unbuffered OS-level descriptor (audit 2026-10-03 F1, HIGH): with a
+            # buffered stream, close() re-flushed bytes left in the buffer
+            # AFTER _resolve_failure had rolled the file back, so a failure
+            # classified NOT_WRITTEN could still land a torn record on disk
+            # and escape as a plain OSError. os.write leaves nothing behind.
+            fd = os.open(self.path, _APPEND_FLAGS, 0o644)
+            failure: BaseException | None = None
+
+            try:
                 size = os.fstat(fd).st_size
 
                 if size != self.verified_size:
@@ -249,8 +261,11 @@ class DurableAppendWriter:
                     )
 
                 try:
-                    stream.write(data)
-                    stream.flush()
+                    view = memoryview(data)
+
+                    while view:
+                        written = os.write(fd, view)
+                        view = view[written:]
 
                     if self.fsync_enabled:
                         os.fsync(fd)
@@ -258,6 +273,26 @@ class DurableAppendWriter:
                 except BaseException as exc:
                     self._resolve_failure(fd, size, exc)
                     raise  # pragma: no cover - _resolve_failure always raises
+
+            except BaseException as exc:
+                failure = exc
+                raise
+
+            finally:
+                try:
+                    os.close(fd)
+                except BaseException as close_exc:
+                    # A close failure after a successful write+fsync leaves
+                    # the outcome unknowable: poison and mark (I-A1/I-A5).
+                    # If an earlier error is already propagating, that error
+                    # (already classified) wins.
+                    if failure is None:
+                        self._poison("indeterminate_close", repr(close_exc))
+                        self._write_marker(repr(close_exc))
+                        raise DurableAppendIndeterminateError(
+                            f"{self.path.name}: close after append failed: "
+                            f"{close_exc!r}"
+                        ) from close_exc
 
             self.verified_size = size + len(data)
 

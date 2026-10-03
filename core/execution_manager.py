@@ -541,14 +541,19 @@ class ExecutionManager:
         """
         if not getattr(self, "audit_enabled", False):
             return "DISABLED"
-        try:
-            store_state = str(getattr(self, "audit_store").persistence_state())
-        except AttributeError:
+        store = getattr(self, "audit_store", None)
+        if store is None or not hasattr(store, "persistence_state"):
             # An injected store without the A2 contract reports only through
             # this manager's own incident state.
             store_state = "AUDIT_HEALTHY"
-        except Exception:
-            return "DEGRADED"
+        else:
+            try:
+                store_state = str(store.persistence_state())
+            except Exception:
+                # Audit 2026-10-03 F3: any failure inside a real
+                # persistence_state() (AttributeError included) is unknown,
+                # and unknown is never HEALTHY.
+                return "DEGRADED"
         if store_state == "AUDIT_RECOVERY_REQUIRED":
             return "RECOVERY_REQUIRED"
         if (

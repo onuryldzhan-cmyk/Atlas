@@ -270,6 +270,11 @@
       "reason": "journal, matches L2 example bucket"
     },
     {
+      "pattern": "core/durable_append_contract.py",
+      "layer": "L2",
+      "reason": "Phase-2 A2 shared physical durable-append writer (rollback-or-poison, tail validation, OS file lock); stdlib-only storage primitive beneath core/durable_append_log.py and core/audit_event_store.py, not application orchestration, so it is exempt from the generic core/* -> L3 default (owner-approved Phase-2 remediation, 2026-10-03)"
+    },
+    {
       "pattern": "core/durable_append_log.py",
       "layer": "L2",
       "reason": "durable append-only storage primitive, matches L2 example bucket"
@@ -516,6 +521,7 @@
     "core/decision.py": "L1",
     "core/decision_adapter.py": "L3",
     "core/decision_intelligence.py": "L1",
+    "core/durable_append_contract.py": "L2",
     "core/durable_append_log.py": "L2",
     "core/event_bus.py": "L2",
     "core/execution_idempotency_store.py": "L2",
@@ -523,6 +529,7 @@
     "core/execution_models.py": "L1",
     "core/execution_portfolio_foundation.py": "L1",
     "core/execution_transaction_journal.py": "L2",
+    "core/exit_guard.py": "L3",
     "core/experiment_ledger.py": "L3",
     "core/fee_accounting.py": "L1",
     "core/instance_lock.py": "L3",
@@ -544,8 +551,10 @@
     "core/runtime.py": "L3",
     "core/scheduler.py": "L2",
     "core/service_container.py": "L2",
+    "core/system_health.py": "L3",
     "core/technical_analyzer.py": "L3",
     "core/tool_gateway_contracts.py": "L1",
+    "core/valuation_snapshot.py": "L3",
     "core/venue_rule_freshness.py": "L3",
     "data_layer/__init__.py": "L1",
     "data_layer/canonical_evidence.py": "L1",

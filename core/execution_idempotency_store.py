@@ -875,6 +875,11 @@ class ExecutionIdempotencyStore:
                         missing_ok=True
                     )
 
+                    # Audit 2026-10-03 F4: re-pin the writer at the now-empty
+                    # file, or the next append would see a size mismatch and
+                    # poison the store until restart.
+                    self._log.read()
+
                     self._durable_requests = {}
 
                 except Exception as exc:

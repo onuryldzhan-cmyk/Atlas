@@ -20,10 +20,10 @@ Command: `python -m tools.build_rem001_gate1_maps construction --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `23e55393da81ed412aaaff6a20efc272bae742f0` |
-| generated_from_tree | `0c5334c87108882c1de0b150b42c7e0ca69c0812` |
+| generated_from_commit | `9479929ea8960b7e36cfaf3ccad44a5b7c1089f9` |
+| generated_from_tree | `0f9761a3a47e1e05f08a0391d99407ac35214c59` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['core/application.py', 'core/audit_event_store.py', 'core/durable_append_log.py', 'core/execution_idempotency_store.py', 'core/execution_manager.py', 'core/execution_transaction_journal.py', 'core/market_loop.py', 'core/risk_engine.py', 'main.py', 'tests/golden/execute_decision_golden.json', 'tests/test_dashboard_execution_gates.py', 'tests/test_execution_audit_trail_completeness.py', 'tests/test_quarantine_audit_fork.py', 'tests/test_single_instance_and_integrity_exit.py', 'tlas_supervisor.py', 'web_app.py'] |
+| modified_tracked_paths_at_generation | ['core/execution_idempotency_store.py', 'core/execution_manager.py', 'core/execution_transaction_journal.py', 'core/risk_engine.py', 'ore/durable_append_contract.py', 'packaging/REM-001_IMPORT_GRAPH.json', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/REM-001_STATE_AUTHORITY_MAP.md', 'packaging/atlas_architecture_map.json', 'packaging/atlas_runtime_closure.json', 'tests/test_phase2_a2_durable_append_contract.py'] |
 
 ## Analysis
 
@@ -57,12 +57,12 @@ below: it counted pattern hits, these count resolved call sites.
 | --- | --- |
 | entry_points | `main.py`, `web_app.py`, `atlas_service.py`, `atlas_supervisor.py` |
 | composition_root_canonical | `core/application.py` (ADR-0001) |
-| modules_in_runtime_closure | 135 |
-| classes_defined_in_closure | 424 |
-| construction_sites | 295 |
-| modules_constructing | 35 |
-| classes_constructed | 127 |
-| construction_edges | 97 |
+| modules_in_runtime_closure | 139 |
+| classes_defined_in_closure | 435 |
+| construction_sites | 299 |
+| modules_constructing | 38 |
+| classes_constructed | 129 |
+| construction_edges | 101 |
 | ambiguous_class_names | 5 |
 | parse_failures | 0 |
 
@@ -225,6 +225,7 @@ classes and their observed constructors:
 | `core/application.py` | `ExecutionManager` | `core/execution_manager.py` | 803 | `AtlasApplication::_build_services` |
 | `core/application.py` | `ExecutionPortfolioFoundation` | `core/execution_portfolio_foundation.py` | 988 | `AtlasApplication::_build_financial_services` |
 | `core/application.py` | `ExecutionTransactionJournal` | `core/execution_transaction_journal.py` | 1032 | `AtlasApplication::_build_execution_durability` |
+| `core/application.py` | `ExitGuard` | `core/exit_guard.py` | 826 | `AtlasApplication::_build_services` |
 | `core/application.py` | `ExperimentAdmissionLedger` | `core/experiment_ledger.py` | 1090 | `AtlasApplication::_attach_paper_confidence_experiment` |
 | `core/application.py` | `FearGreedProvider` | `atlas_finance/market_data/fear_greed_provider.py` | 837 | `AtlasApplication::_build_services` |
 | `core/application.py` | `FinancialStateStore` | `core/execution_portfolio_foundation.py` | 989 | `AtlasApplication::_build_financial_services` |
@@ -250,6 +251,8 @@ classes and their observed constructors:
 | `core/application.py` | `UnconfiguredPolicyGate` | `core/local_capability_adapter.py` | 923 | `AtlasApplication::_build_capability_gateway` |
 | `core/application.py` | `VenueRuleFreshnessPolicy` | `core/venue_rule_freshness.py` | 646 | `AtlasApplication::__init__` |
 | `core/application.py` | `VenueRuleFreshnessService` | `core/venue_rule_freshness.py` | 1161 | `AtlasApplication::_build_instrument_rules` |
+| `core/audit_event_store.py` | `DurableAppendWriter` | `core/durable_append_contract.py` | 131 | `AuditEventStore::__init__` |
+| `core/durable_append_log.py` | `DurableAppendWriter` | `core/durable_append_contract.py` | 126 | `DurableAppendLog::__init__` |
 | `core/execution_idempotency_store.py` | `DurableAppendLog` | `core/durable_append_log.py` | 151 | `ExecutionIdempotencyStore::__init__` |
 | `core/execution_idempotency_store.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 302 | `ExecutionIdempotencyStore::load` |
 | `core/execution_idempotency_store.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 314 | `ExecutionIdempotencyStore::load` |
@@ -258,19 +261,19 @@ classes and their observed constructors:
 | `core/execution_idempotency_store.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 361 | `ExecutionIdempotencyStore::load` |
 | `core/execution_manager.py` | `AuditEventStore` | `core/audit_event_store.py` | 453 | `ExecutionManager::__init__` |
 | `core/execution_manager.py` | `ExecutionIdempotencyStore` | `core/execution_idempotency_store.py` | 410 | `ExecutionManager::__init__` |
-| `core/execution_manager.py` | `ExecutionRequest` | `core/execution_models.py` | 2938 | `ExecutionManager::build_request` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5044 | `ExecutionManager::paper_execute` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6374 | `ExecutionManager::_block_live_dispatch` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6434 | `ExecutionManager::live_execute` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6525 | `ExecutionManager::live_execute` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6779 | `ExecutionManager::_failure_result` |
+| `core/execution_manager.py` | `ExecutionRequest` | `core/execution_models.py` | 2943 | `ExecutionManager::build_request` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5049 | `ExecutionManager::paper_execute` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6379 | `ExecutionManager::_block_live_dispatch` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6439 | `ExecutionManager::live_execute` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6530 | `ExecutionManager::live_execute` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6784 | `ExecutionManager::_failure_result` |
 | `core/execution_manager.py` | `ExecutionTransactionJournal` | `core/execution_transaction_journal.py` | 429 | `ExecutionManager::__init__` |
 | `core/execution_manager.py` | `FinancialRuntimeSafetyService` | `data_layer/runtime_safety.py` | 440 | `ExecutionManager::__init__` |
 | `core/execution_manager.py` | `FinancialRuntimeSafetyService` | `data_layer/runtime_safety.py` | 516 | `ExecutionManager::_assess_financial_readiness` |
-| `core/execution_manager.py` | `PositionExposure` | `core/risk_engine.py` | 3234 | `ExecutionManager::_derived_position_exposures` |
-| `core/execution_manager.py` | `RestoredRiskState` | `core/risk_state_store.py` | 4703 | `ExecutionManager::_record_realized_risk_accounting` |
-| `core/execution_manager.py` | `RiskRequest` | `core/risk_engine.py` | 3914 | `ExecutionManager::_risk_canonical_verdict` |
-| `core/execution_manager.py` | `RiskState` | `core/risk_engine.py` | 3344 | `ExecutionManager::_derive_risk_state` |
+| `core/execution_manager.py` | `PositionExposure` | `core/risk_engine.py` | 3239 | `ExecutionManager::_derived_position_exposures` |
+| `core/execution_manager.py` | `RestoredRiskState` | `core/risk_state_store.py` | 4708 | `ExecutionManager::_record_realized_risk_accounting` |
+| `core/execution_manager.py` | `RiskRequest` | `core/risk_engine.py` | 3919 | `ExecutionManager::_risk_canonical_verdict` |
+| `core/execution_manager.py` | `RiskState` | `core/risk_engine.py` | 3349 | `ExecutionManager::_derive_risk_state` |
 | `core/execution_manager.py` | `VenueRuleFreshnessService` | `core/venue_rule_freshness.py` | 339 | `ExecutionManager::__init__` |
 | `core/execution_transaction_journal.py` | `DurableAppendLog` | `core/durable_append_log.py` | 174 | `ExecutionTransactionJournal::__init__` |
 | `core/execution_transaction_journal.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 294 | `ExecutionTransactionJournal::load` |
@@ -279,6 +282,7 @@ classes and their observed constructors:
 | `core/execution_transaction_journal.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 340 | `ExecutionTransactionJournal::load` |
 | `core/execution_transaction_journal.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 409 | `ExecutionTransactionJournal::_require_legal_transition` |
 | `core/execution_transaction_journal.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 426 | `ExecutionTransactionJournal::_require_legal_transition` |
+| `core/exit_guard.py` | `ExecutionRequest` | `core/execution_models.py` | 328 | `ExitGuard::_submit` |
 | `core/local_capability_adapter.py` | `CostMetadata` | `core/model_provider_contracts.py` | 147 | `LocalCapabilityProbeAdapter::free_cost` |
 | `core/local_capability_adapter.py` | `PolicyDecision` | `core/operational_contracts.py` | 82 | `UnconfiguredPolicyGate::evaluate` |
 | `core/local_capability_adapter.py` | `ToolDescriptor` | `core/tool_gateway_contracts.py` | 128 | `LocalCapabilityProbeAdapter` |

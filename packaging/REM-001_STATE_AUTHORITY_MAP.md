@@ -19,10 +19,10 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `23e55393da81ed412aaaff6a20efc272bae742f0` |
-| generated_from_tree | `0c5334c87108882c1de0b150b42c7e0ca69c0812` |
+| generated_from_commit | `9479929ea8960b7e36cfaf3ccad44a5b7c1089f9` |
+| generated_from_tree | `0f9761a3a47e1e05f08a0391d99407ac35214c59` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['core/application.py', 'core/audit_event_store.py', 'core/durable_append_log.py', 'core/execution_idempotency_store.py', 'core/execution_manager.py', 'core/execution_transaction_journal.py', 'core/market_loop.py', 'core/risk_engine.py', 'main.py', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'tests/golden/execute_decision_golden.json', 'tests/test_dashboard_execution_gates.py', 'tests/test_execution_audit_trail_completeness.py', 'tests/test_quarantine_audit_fork.py', 'tests/test_single_instance_and_integrity_exit.py', 'tlas_supervisor.py', 'web_app.py'] |
+| modified_tracked_paths_at_generation | ['core/execution_idempotency_store.py', 'core/execution_manager.py', 'core/execution_transaction_journal.py', 'core/risk_engine.py', 'ore/durable_append_contract.py', 'packaging/REM-001_IMPORT_GRAPH.json', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/REM-001_STATE_AUTHORITY_MAP.md', 'packaging/atlas_architecture_map.json', 'packaging/atlas_runtime_closure.json', 'tests/test_phase2_a2_durable_append_contract.py'] |
 
 ## What this artifact is, and what it is not
 
@@ -60,10 +60,10 @@ observation.
 | field | value |
 | --- | --- |
 | entry_points | `main.py`, `web_app.py`, `atlas_service.py`, `atlas_supervisor.py` |
-| modules_in_runtime_closure | 135 |
+| modules_in_runtime_closure | 139 |
 | declared_state_file_constants | 10 |
-| persistence_sites | 86 |
-| modules_with_persistence_sites | 37 |
+| persistence_sites | 93 |
+| modules_with_persistence_sites | 38 |
 | distinct_state_file_literals | 37 |
 | parse_failures | 0 |
 
@@ -171,8 +171,15 @@ nothing is inferred from an absence.
 | `core/capital_reservation.py` | ATOMIC_REPLACE | 453 | `CapitalReservationLedger::commit` |
 | `core/decision_adapter.py` | ATOMIC_REPLACE | 688 | `DecisionAdapter::_confidence_to_percent` |
 | `core/decision_adapter.py` | ATOMIC_REPLACE | 916 | `DecisionAdapter::get_created_at` |
+| `core/durable_append_contract.py` | UNLINK | 199 | `DurableAppendWriter::acknowledge_recovery` |
+| `core/durable_append_contract.py` | FSYNC | 271 | `DurableAppendWriter::append_bytes` |
+| `core/durable_append_contract.py` | FSYNC | 318 | `DurableAppendWriter::replace_atomically` |
+| `core/durable_append_contract.py` | ATOMIC_REPLACE | 320 | `DurableAppendWriter::replace_atomically` |
+| `core/durable_append_contract.py` | UNLINK | 324 | `DurableAppendWriter::replace_atomically` |
+| `core/durable_append_contract.py` | FSYNC | 376 | `DurableAppendWriter::_resolve_failure` |
+| `core/durable_append_contract.py` | FSYNC | 422 | `DurableAppendWriter::_write_marker` |
 | `core/execution_idempotency_store.py` | UNLINK | 874 | `ExecutionIdempotencyStore::reset` |
-| `core/execution_manager.py` | ATOMIC_REPLACE | 7125 | `ExecutionManager::_normalize_confidence` |
+| `core/execution_manager.py` | ATOMIC_REPLACE | 7130 | `ExecutionManager::_normalize_confidence` |
 | `core/execution_models.py` | ATOMIC_REPLACE | 96 | `normalize_timestamp` |
 | `core/execution_portfolio_foundation.py` | ATOMIC_REPLACE | 64 | `_utc` |
 | `core/execution_portfolio_foundation.py` | FSYNC | 183 | `FinancialStateStore::save` |

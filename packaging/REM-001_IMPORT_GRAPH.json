@@ -16,40 +16,33 @@
     "analysis": "Static AST import resolution over git-tracked Python files, excluding imports guarded by if TYPE_CHECKING:. Third-party and stdlib targets resolve to nothing and carry no edge."
   },
   "source_identity": {
-    "generated_from_commit": "23e55393da81ed412aaaff6a20efc272bae742f0",
-    "generated_from_tree": "0c5334c87108882c1de0b150b42c7e0ca69c0812",
+    "generated_from_commit": "9479929ea8960b7e36cfaf3ccad44a5b7c1089f9",
+    "generated_from_tree": "0f9761a3a47e1e05f08a0391d99407ac35214c59",
     "tracked_working_tree_clean": false,
     "modified_tracked_paths_at_generation": [
-      "core/application.py",
-      "core/audit_event_store.py",
-      "core/durable_append_log.py",
       "core/execution_idempotency_store.py",
       "core/execution_manager.py",
       "core/execution_transaction_journal.py",
-      "core/market_loop.py",
       "core/risk_engine.py",
-      "main.py",
+      "ore/durable_append_contract.py",
+      "packaging/REM-001_IMPORT_GRAPH.json",
       "packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md",
       "packaging/REM-001_STATE_AUTHORITY_MAP.md",
-      "tests/golden/execute_decision_golden.json",
-      "tests/test_dashboard_execution_gates.py",
-      "tests/test_execution_audit_trail_completeness.py",
-      "tests/test_quarantine_audit_fork.py",
-      "tests/test_single_instance_and_integrity_exit.py",
-      "tlas_supervisor.py",
-      "web_app.py"
+      "packaging/atlas_architecture_map.json",
+      "packaging/atlas_runtime_closure.json",
+      "tests/test_phase2_a2_durable_append_contract.py"
     ]
   },
   "scope": {
     "universe": "ALL_GIT_TRACKED_PYTHON_FILES",
     "universe_note": "The tool's existing tracked-file definition, used unchanged. No source-scope classification (ACTIVE_CANDIDATE / TEST / TOOL / ARCHIVE / BACKUP / QUARANTINE / REPORT_COPY) is applied or implied: that classification requires the human review gate ARCH-001.2.1 reserves and belongs to Gate 1 deliverable 1.",
-    "modules_total": 1107,
-    "modules_runtime_reachable": 135,
-    "modules_outside_runtime_closure": 972,
-    "edges_total": 2430,
-    "edges_import": 1750,
-    "edges_package_init": 680,
-    "edges_distinct_module_pairs": 2353,
+    "modules_total": 1116,
+    "modules_runtime_reachable": 139,
+    "modules_outside_runtime_closure": 977,
+    "edges_total": 2482,
+    "edges_import": 1790,
+    "edges_package_init": 692,
+    "edges_distinct_module_pairs": 2402,
     "edges_count_note": "edges_total counts (from, to, kind) triples. A pair can carry both kinds when a file both imports a package directly and references one of its submodules, so edges_distinct_module_pairs is the figure to use when counting dependencies between modules.",
     "parse_failures": 3
   },
@@ -61,7 +54,7 @@
   ],
   "runtime_closure_reference": {
     "artifact": "packaging/atlas_runtime_closure.json",
-    "modules": 135,
+    "modules": 139,
     "regression_gate": "BFS from entry_points over edges reproduces the referenced artifact exactly",
     "regression_gate_result": "PASS"
   },
@@ -1968,6 +1961,10 @@
       "runtime_reachable": true
     },
     {
+      "module": "core/durable_append_contract.py",
+      "runtime_reachable": true
+    },
+    {
       "module": "core/durable_append_log.py",
       "runtime_reachable": true
     },
@@ -2021,6 +2018,10 @@
     },
     {
       "module": "core/execution_transaction_journal.py",
+      "runtime_reachable": true
+    },
+    {
+      "module": "core/exit_guard.py",
       "runtime_reachable": true
     },
     {
@@ -2224,6 +2225,10 @@
       "runtime_reachable": false
     },
     {
+      "module": "core/system_health.py",
+      "runtime_reachable": true
+    },
+    {
       "module": "core/technical_analyzer.py",
       "runtime_reachable": true
     },
@@ -2238,6 +2243,10 @@
     {
       "module": "core/trade_plan_engine.py",
       "runtime_reachable": false
+    },
+    {
+      "module": "core/valuation_snapshot.py",
+      "runtime_reachable": true
     },
     {
       "module": "core/venue_rule_freshness.py",
@@ -3880,7 +3889,27 @@
       "runtime_reachable": false
     },
     {
+      "module": "tests/test_phase2_a2_durable_append_contract.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_phase2_a3_b1_audit_policy_and_reduce_only.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_phase2_b2_exit_guard.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_phase2_c1_valuation_snapshot.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/test_phase2_canonical_evidence_adapter.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_phase2_d1_health_readiness_liveness.py",
       "runtime_reachable": false
     },
     {
@@ -6056,6 +6085,16 @@
       "kind": "import"
     },
     {
+      "from": "atlas_supervisor.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "atlas_supervisor.py",
+      "to": "core/system_health.py",
+      "kind": "import"
+    },
+    {
       "from": "backtest/backtest_engine.py",
       "to": "strategy/strategy_base.py",
       "kind": "import"
@@ -6282,6 +6321,11 @@
     },
     {
       "from": "core/application.py",
+      "to": "core/exit_guard.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/application.py",
       "to": "core/experiment_ledger.py",
       "kind": "import"
     },
@@ -6367,6 +6411,11 @@
     },
     {
       "from": "core/application.py",
+      "to": "core/system_health.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/application.py",
       "to": "core/tool_gateway_contracts.py",
       "kind": "import"
     },
@@ -6423,6 +6472,11 @@
     {
       "from": "core/audit_event_store.py",
       "to": "core/audit_event.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/audit_event_store.py",
+      "to": "core/durable_append_contract.py",
       "kind": "import"
     },
     {
@@ -6498,6 +6552,16 @@
     {
       "from": "core/decision_engine.py",
       "to": "core/decision.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/durable_append_log.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "core/durable_append_log.py",
+      "to": "core/durable_append_contract.py",
       "kind": "import"
     },
     {
@@ -6597,6 +6661,11 @@
     },
     {
       "from": "core/execution_manager.py",
+      "to": "core/valuation_snapshot.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/execution_manager.py",
       "to": "core/venue_rule_freshness.py",
       "kind": "import"
     },
@@ -6633,6 +6702,16 @@
     {
       "from": "core/execution_transaction_journal.py",
       "to": "core/durable_append_log.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/exit_guard.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "core/exit_guard.py",
+      "to": "core/execution_models.py",
       "kind": "import"
     },
     {
@@ -13716,6 +13795,171 @@
       "kind": "import"
     },
     {
+      "from": "tests/test_phase2_a2_durable_append_contract.py",
+      "to": "core/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_a2_durable_append_contract.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_phase2_a2_durable_append_contract.py",
+      "to": "core/audit_event_store.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_a2_durable_append_contract.py",
+      "to": "core/durable_append_contract.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_a2_durable_append_contract.py",
+      "to": "core/durable_append_log.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_a2_durable_append_contract.py",
+      "to": "core/execution_idempotency_store.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_a2_durable_append_contract.py",
+      "to": "core/execution_manager.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_a2_durable_append_contract.py",
+      "to": "core/execution_transaction_journal.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_a3_b1_audit_policy_and_reduce_only.py",
+      "to": "core/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_a3_b1_audit_policy_and_reduce_only.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_phase2_a3_b1_audit_policy_and_reduce_only.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_a3_b1_audit_policy_and_reduce_only.py",
+      "to": "core/audit_event_store.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_a3_b1_audit_policy_and_reduce_only.py",
+      "to": "core/durable_append_contract.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_a3_b1_audit_policy_and_reduce_only.py",
+      "to": "core/execution_models.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_a3_b1_audit_policy_and_reduce_only.py",
+      "to": "core/risk_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_a3_b1_audit_policy_and_reduce_only.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_phase2_a3_b1_audit_policy_and_reduce_only.py",
+      "to": "tests/test_block2_risk_service_composition_wiring.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_a3_b1_audit_policy_and_reduce_only.py",
+      "to": "tests/test_execution_crash_recovery_f1_f6.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_a3_b1_audit_policy_and_reduce_only.py",
+      "to": "tests/test_risk_accounting_day_auto_rollover.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_b2_exit_guard.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_phase2_b2_exit_guard.py",
+      "to": "core/execution_models.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_b2_exit_guard.py",
+      "to": "core/exit_guard.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_b2_exit_guard.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_phase2_b2_exit_guard.py",
+      "to": "tests/test_block2_risk_service_composition_wiring.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_b2_exit_guard.py",
+      "to": "tests/test_phase2_a3_b1_audit_policy_and_reduce_only.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_b2_exit_guard.py",
+      "to": "tests/test_risk_accounting_day_auto_rollover.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_c1_valuation_snapshot.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_phase2_c1_valuation_snapshot.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_c1_valuation_snapshot.py",
+      "to": "core/risk_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_c1_valuation_snapshot.py",
+      "to": "core/valuation_snapshot.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_c1_valuation_snapshot.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_phase2_c1_valuation_snapshot.py",
+      "to": "tests/test_block2_risk_service_composition_wiring.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_c1_valuation_snapshot.py",
+      "to": "tests/test_execution_crash_recovery_f1_f6.py",
+      "kind": "import"
+    },
+    {
       "from": "tests/test_phase2_canonical_evidence_adapter.py",
       "to": "data_layer/__init__.py",
       "kind": "package_init"
@@ -13738,6 +13982,51 @@
     {
       "from": "tests/test_phase2_canonical_evidence_adapter.py",
       "to": "data_layer/sqlite.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_d1_health_readiness_liveness.py",
+      "to": "atlas_supervisor.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_d1_health_readiness_liveness.py",
+      "to": "core/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_d1_health_readiness_liveness.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_phase2_d1_health_readiness_liveness.py",
+      "to": "core/system_health.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_d1_health_readiness_liveness.py",
+      "to": "main.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_d1_health_readiness_liveness.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_phase2_d1_health_readiness_liveness.py",
+      "to": "tests/test_block2_risk_service_composition_wiring.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_d1_health_readiness_liveness.py",
+      "to": "tests/test_risk_accounting_day_auto_rollover.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_d1_health_readiness_liveness.py",
+      "to": "web_app.py",
       "kind": "import"
     },
     {

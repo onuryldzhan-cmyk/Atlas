@@ -639,7 +639,8 @@ class RiskEngine:
                                   code, state)
 
         # Phase-2 B1: a risk-reducing SELL is refused only for unknown durable
-        # state, invalid input or an invalid reduction. Policy-version and
+        # state, invalid size/price input or an invalid reduction (its
+        # confidence is not read at all - audit 2026-10-03 F5). Policy-version and
         # accounting-day reconciliation stay ahead of the reduction branch on
         # purpose: they ARE durable-state-unknown for the realized-P&L booking
         # every SELL performs (RiskStateStore.load / the day check refuse it),
