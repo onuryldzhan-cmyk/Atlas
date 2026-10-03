@@ -19,10 +19,10 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `c5d6271cbbc067b104af0383c54652f3326c5045` |
-| generated_from_tree | `49062e4359e547607f0a003a7c053adfd3cbc9fb` |
+| generated_from_commit | `e3f8b12616313ded01654668aee6def43c7b930a` |
+| generated_from_tree | `0bce595ba48543174e2cb065f8f0aae9b13cd020` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['core/execution_idempotency_store.py', 'core/execution_transaction_journal.py', 'docs/operations/DURABLE_APPEND_RECOVERY.md', 'ore/durable_append_contract.py', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md'] |
+| modified_tracked_paths_at_generation | ['ackaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md'] |
 
 ## What this artifact is, and what it is not
 
@@ -60,11 +60,11 @@ observation.
 | field | value |
 | --- | --- |
 | entry_points | `main.py`, `web_app.py`, `atlas_service.py`, `atlas_supervisor.py` |
-| modules_in_runtime_closure | 139 |
+| modules_in_runtime_closure | 140 |
 | declared_state_file_constants | 10 |
 | persistence_sites | 93 |
 | modules_with_persistence_sites | 38 |
-| distinct_state_file_literals | 37 |
+| distinct_state_file_literals | 38 |
 | parse_failures | 0 |
 
 ## Declared durable state surface
@@ -99,6 +99,7 @@ nothing is inferred from an absence.
 | `*.json` | `observability/panel_sources.py` |
 | `.json` | `atlas_org/security_review.py`, `core/execution_idempotency_store.py`, `core/execution_transaction_journal.py` |
 | `/openapi.json` | `web_app.py` |
+| `ATLAS_POLICY_MANIFEST_v1.json` | `core/policy_manifest.py` |
 | `atlas_memory.json` | `ai/core/atlas_memory_core.py` |
 | `atlas_reasoning.json` | `ai/core/atlas_reasoning_engine.py` |
 | `atlas_runtime_closure.json` | `observability/security_view.py` |
@@ -179,7 +180,7 @@ nothing is inferred from an absence.
 | `core/durable_append_contract.py` | FSYNC | 380 | `DurableAppendWriter::_resolve_failure` |
 | `core/durable_append_contract.py` | FSYNC | 426 | `DurableAppendWriter::_write_marker` |
 | `core/execution_idempotency_store.py` | UNLINK | 878 | `ExecutionIdempotencyStore::reset` |
-| `core/execution_manager.py` | ATOMIC_REPLACE | 7130 | `ExecutionManager::_normalize_confidence` |
+| `core/execution_manager.py` | ATOMIC_REPLACE | 7148 | `ExecutionManager::_normalize_confidence` |
 | `core/execution_models.py` | ATOMIC_REPLACE | 96 | `normalize_timestamp` |
 | `core/execution_portfolio_foundation.py` | ATOMIC_REPLACE | 64 | `_utc` |
 | `core/execution_portfolio_foundation.py` | FSYNC | 183 | `FinancialStateStore::save` |
@@ -211,7 +212,7 @@ nothing is inferred from an absence.
 | `data_layer/migrations.py` | ATOMIC_REPLACE | 146 | `apply_migrations` |
 | `data_layer/models.py` | ATOMIC_REPLACE | 54 | `utc_text` |
 | `data_layer/models.py` | ATOMIC_REPLACE | 61 | `utc_text` |
-| `main.py` | PATH_WRITE_TEXT | 588 | `AtlasProcess::_write_heartbeat` |
+| `main.py` | PATH_WRITE_TEXT | 616 | `AtlasProcess::_write_heartbeat` |
 | `observability/agent_states.py` | ATOMIC_REPLACE | 68 | `_age_s` |
 | `observability/agent_states.py` | ATOMIC_REPLACE | 71 | `_age_s` |
 | `observability/command_center.py` | ATOMIC_REPLACE | 88 | `_money` |

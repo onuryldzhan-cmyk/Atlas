@@ -543,6 +543,7 @@
     "core/operational_contracts.py": "L1",
     "core/order_lifecycle.py": "L3",
     "core/paper_trader.py": "L3",
+    "core/policy_manifest.py": "L3",
     "core/position_controller.py": "L3",
     "core/position_risk_buckets.py": "L3",
     "core/position_sizing.py": "L1",

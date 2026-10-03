@@ -20,10 +20,10 @@ Command: `python -m tools.build_rem001_gate1_maps construction --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `c5d6271cbbc067b104af0383c54652f3326c5045` |
-| generated_from_tree | `49062e4359e547607f0a003a7c053adfd3cbc9fb` |
-| tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['core/execution_idempotency_store.py', 'core/execution_transaction_journal.py', 'docs/operations/DURABLE_APPEND_RECOVERY.md', 'ore/durable_append_contract.py'] |
+| generated_from_commit | `e3f8b12616313ded01654668aee6def43c7b930a` |
+| generated_from_tree | `0bce595ba48543174e2cb065f8f0aae9b13cd020` |
+| tracked_working_tree_clean | True |
+| modified_tracked_paths_at_generation | none |
 
 ## Analysis
 
@@ -57,8 +57,8 @@ below: it counted pattern hits, these count resolved call sites.
 | --- | --- |
 | entry_points | `main.py`, `web_app.py`, `atlas_service.py`, `atlas_supervisor.py` |
 | composition_root_canonical | `core/application.py` (ADR-0001) |
-| modules_in_runtime_closure | 139 |
-| classes_defined_in_closure | 435 |
+| modules_in_runtime_closure | 140 |
+| classes_defined_in_closure | 436 |
 | construction_sites | 299 |
 | modules_constructing | 38 |
 | classes_constructed | 129 |
@@ -109,7 +109,7 @@ classes and their observed constructors:
 | `ai/core/atlas_brain.py` | `MemoryAdapter` | `ai/core/intelligence/memory_adapter.py` | 254 | `AtlasBrain::initialize_modules` |
 | `ai/core/atlas_brain.py` | `ReasoningAdapter` | `ai/core/intelligence/reasoning_adapter.py` | 250 | `AtlasBrain::initialize_modules` |
 | `ai/core/atlas_brain.py` | `SignalFusion` | `core/decision_intelligence.py` | 809 | `AtlasBrain::_build_phase5_shadow_proposal` |
-| `ai/core/intelligence/decision_builder.py` | `Decision` | `UNKNOWN` | 89 | `DecisionBuilder::create` |
+| `ai/core/intelligence/decision_builder.py` | `Decision` | `UNKNOWN` | 90 | `DecisionBuilder::create` |
 | `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 573 | `BinancePublicDataProvider::get_candles` |
 | `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 926 | `BinancePublicDataProvider::_parse_candle` |
 | `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 935 | `BinancePublicDataProvider::_parse_candle` |
@@ -259,21 +259,21 @@ classes and their observed constructors:
 | `core/execution_idempotency_store.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 326 | `ExecutionIdempotencyStore::load` |
 | `core/execution_idempotency_store.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 348 | `ExecutionIdempotencyStore::load` |
 | `core/execution_idempotency_store.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 361 | `ExecutionIdempotencyStore::load` |
-| `core/execution_manager.py` | `AuditEventStore` | `core/audit_event_store.py` | 453 | `ExecutionManager::__init__` |
-| `core/execution_manager.py` | `ExecutionIdempotencyStore` | `core/execution_idempotency_store.py` | 410 | `ExecutionManager::__init__` |
-| `core/execution_manager.py` | `ExecutionRequest` | `core/execution_models.py` | 2943 | `ExecutionManager::build_request` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5049 | `ExecutionManager::paper_execute` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6379 | `ExecutionManager::_block_live_dispatch` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6439 | `ExecutionManager::live_execute` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6530 | `ExecutionManager::live_execute` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6784 | `ExecutionManager::_failure_result` |
-| `core/execution_manager.py` | `ExecutionTransactionJournal` | `core/execution_transaction_journal.py` | 429 | `ExecutionManager::__init__` |
-| `core/execution_manager.py` | `FinancialRuntimeSafetyService` | `data_layer/runtime_safety.py` | 440 | `ExecutionManager::__init__` |
-| `core/execution_manager.py` | `FinancialRuntimeSafetyService` | `data_layer/runtime_safety.py` | 516 | `ExecutionManager::_assess_financial_readiness` |
-| `core/execution_manager.py` | `PositionExposure` | `core/risk_engine.py` | 3239 | `ExecutionManager::_derived_position_exposures` |
-| `core/execution_manager.py` | `RestoredRiskState` | `core/risk_state_store.py` | 4708 | `ExecutionManager::_record_realized_risk_accounting` |
-| `core/execution_manager.py` | `RiskRequest` | `core/risk_engine.py` | 3919 | `ExecutionManager::_risk_canonical_verdict` |
-| `core/execution_manager.py` | `RiskState` | `core/risk_engine.py` | 3349 | `ExecutionManager::_derive_risk_state` |
+| `core/execution_manager.py` | `AuditEventStore` | `core/audit_event_store.py` | 457 | `ExecutionManager::__init__` |
+| `core/execution_manager.py` | `ExecutionIdempotencyStore` | `core/execution_idempotency_store.py` | 414 | `ExecutionManager::__init__` |
+| `core/execution_manager.py` | `ExecutionRequest` | `core/execution_models.py` | 2956 | `ExecutionManager::build_request` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5067 | `ExecutionManager::paper_execute` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6397 | `ExecutionManager::_block_live_dispatch` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6457 | `ExecutionManager::live_execute` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6548 | `ExecutionManager::live_execute` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6802 | `ExecutionManager::_failure_result` |
+| `core/execution_manager.py` | `ExecutionTransactionJournal` | `core/execution_transaction_journal.py` | 433 | `ExecutionManager::__init__` |
+| `core/execution_manager.py` | `FinancialRuntimeSafetyService` | `data_layer/runtime_safety.py` | 444 | `ExecutionManager::__init__` |
+| `core/execution_manager.py` | `FinancialRuntimeSafetyService` | `data_layer/runtime_safety.py` | 520 | `ExecutionManager::_assess_financial_readiness` |
+| `core/execution_manager.py` | `PositionExposure` | `core/risk_engine.py` | 3252 | `ExecutionManager::_derived_position_exposures` |
+| `core/execution_manager.py` | `RestoredRiskState` | `core/risk_state_store.py` | 4726 | `ExecutionManager::_record_realized_risk_accounting` |
+| `core/execution_manager.py` | `RiskRequest` | `core/risk_engine.py` | 3937 | `ExecutionManager::_risk_canonical_verdict` |
+| `core/execution_manager.py` | `RiskState` | `core/risk_engine.py` | 3362 | `ExecutionManager::_derive_risk_state` |
 | `core/execution_manager.py` | `VenueRuleFreshnessService` | `core/venue_rule_freshness.py` | 339 | `ExecutionManager::__init__` |
 | `core/execution_transaction_journal.py` | `DurableAppendLog` | `core/durable_append_log.py` | 174 | `ExecutionTransactionJournal::__init__` |
 | `core/execution_transaction_journal.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 294 | `ExecutionTransactionJournal::load` |
@@ -390,7 +390,7 @@ classes and their observed constructors:
 | `exchange/market_feed.py` | `BinancePublicDataProvider` | `atlas_finance/market_data/binance_public_provider.py` | 117 | `MarketFeed::__init__` |
 | `exchange/market_feed.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 369 | `MarketFeed::_require_metadata` |
 | `exchange/market_feed.py` | `MarketFeedService` | `atlas_finance/market_data/market_feed_service.py` | 120 | `MarketFeed::__init__` |
-| `main.py` | `AtlasApplication` | `core/application.py` | 517 | `AtlasProcess::start` |
+| `main.py` | `AtlasApplication` | `core/application.py` | 540 | `AtlasProcess::start` |
 | `observability/governance_records.py` | `ProposalLogError` | `atlas_org/proposals.py` | 27 | `_load` |
 | `observability/governance_records.py` | `ProposalLogError` | `atlas_org/proposals.py` | 30 | `_load` |
 | `observability/governance_records.py` | `ProposalLogError` | `atlas_org/proposals.py` | 34 | `_load` |
