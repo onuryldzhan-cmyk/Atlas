@@ -531,6 +531,33 @@ class ExecutionManager:
             return False, str(reason or "FINANCIAL_STATE_RECOVERY_REQUIRED")
         return True, None
 
+    def audit_persistence_state(self) -> str:
+        """Phase-2 A3: HEALTHY, DEGRADED or RECOVERY_REQUIRED.
+
+        Combines this manager's own incident state with the store's
+        durable-append state (A2): a poisoned writer or an unresolved
+        recovery marker is RECOVERY_REQUIRED, any failed append DEGRADED.
+        Unknown is never HEALTHY: a store that cannot report is DEGRADED.
+        """
+        if not getattr(self, "audit_enabled", False):
+            return "DISABLED"
+        try:
+            store_state = str(getattr(self, "audit_store").persistence_state())
+        except AttributeError:
+            # An injected store without the A2 contract reports only through
+            # this manager's own incident state.
+            store_state = "AUDIT_HEALTHY"
+        except Exception:
+            return "DEGRADED"
+        if store_state == "AUDIT_RECOVERY_REQUIRED":
+            return "RECOVERY_REQUIRED"
+        if (
+            store_state != "AUDIT_HEALTHY"
+            or getattr(self, "audit_runtime_state", "HEALTHY") != "HEALTHY"
+        ):
+            return "DEGRADED"
+        return "HEALTHY"
+
     def _instrument_rules_startup_check(self) -> tuple[bool, str | None]:
         """Verify venue instrument rules cover every symbol this run needs.
 
@@ -1413,11 +1440,19 @@ class ExecutionManager:
         run = _DecisionRun(started_at=started_at)
 
         try:
-            return self._decision_pipeline(
+            result = self._decision_pipeline(
                 run,
                 decision,
                 market_state,
             )
+
+            # Phase-2 A3: the execution outcome stays exactly what it was; a
+            # degraded audit trail is reported beside it, never instead of it.
+            audit_state = self.audit_persistence_state()
+            if isinstance(result, dict) and audit_state not in {"HEALTHY", "DISABLED"}:
+                result["audit_persistence_state"] = audit_state
+
+            return result
 
         except Exception as exc:
             return self._decision_pipeline_failure(
@@ -3100,7 +3135,13 @@ class ExecutionManager:
                 },
             }
 
-        if request.confidence < self.minimum_confidence:
+        # Phase-2 B1: confidence is a new-risk admission criterion. A SELL
+        # that reduces a held position is never refused for low confidence;
+        # one that is not a reduction is refused by RiskEngine regardless.
+        if (
+            request.action == "BUY"
+            and request.confidence < self.minimum_confidence
+        ):
             return {
                 "approved": False,
                 "reason": "LOW_CONFIDENCE",
@@ -3277,6 +3318,29 @@ class ExecutionManager:
             today_utc=datetime.now(UTC).date(),
         )
 
+        # Phase-2 C1: one valuation snapshot per decision. Under the owner's
+        # F-3 switch (count_unrealized_in_daily_loss) current_equity is the
+        # conservative marked equity, so drawdown and sleeve capacity see
+        # open losses exactly as the daily-loss gate does. An INCOMPLETE
+        # snapshot leaves unrealized_pnl None, which RiskEngine refuses for
+        # new risk; reductions are decided before valuation is consulted.
+        valuation = (
+            self._valuation_snapshot(restored)
+            if foundation is not None
+            else None
+        )
+
+        if valuation is not None:
+            unrealized_pnl = valuation.unrealized_net
+            current_equity = (
+                valuation.marked_equity
+                if valuation.marked_equity is not None
+                else restored.current_equity
+            )
+        else:
+            unrealized_pnl = self._mark_to_market(positions)
+            current_equity = restored.current_equity
+
         return RiskState(
             positions=positions,
             committed_quote=sum(
@@ -3285,12 +3349,48 @@ class ExecutionManager:
             ),
             realized_daily_pnl=restored.realized_daily_pnl,
             peak_equity=restored.peak_equity,
-            current_equity=restored.current_equity,
+            current_equity=current_equity,
             state_ready=True,
             accounting_day_utc=restored.accounting_day_utc.isoformat(),
             policy_version=restored.policy_version,
-            unrealized_pnl=self._mark_to_market(positions),
+            unrealized_pnl=unrealized_pnl,
         )
+
+    def _valuation_snapshot(self, restored: Any) -> Any:
+        """Phase-2 C1 ValuationSnapshot of the durable book, or None.
+
+        None when the owner's F-3 switch is off or no price provider is
+        wired (the historical ledger-only basis then applies unchanged).
+        Any failure yields an INCOMPLETE-equivalent None unrealized figure
+        through ``_mark_to_market``'s historical contract: never zero-filled.
+        """
+        if not getattr(self.risk_engine.policy, "count_unrealized_in_daily_loss", False):
+            return None
+        provider = getattr(self, "mark_price_provider", None)
+        if provider is None:
+            return None
+        from core.valuation_snapshot import build_valuation_snapshot
+
+        try:
+            snapshot = build_valuation_snapshot(
+                book_positions=self.portfolio_foundation.snapshot().get("positions") or {},
+                marks=provider() or {},
+                ledger_equity=restored.current_equity,
+                peak_equity=restored.peak_equity,
+                realized_daily=restored.realized_daily_pnl,
+                close_fee_rate=getattr(self, "paper_fee_rate", 0) or 0,
+                as_of=datetime.now(UTC).isoformat(),
+            )
+        except Exception:
+            logger.warning("valuation snapshot unavailable; unrealized P&L unknown", exc_info=True)
+            self.unpriced_held_symbols = []
+            self.last_valuation_snapshot = None
+            return None
+
+        # Audit F-B: name the coins that make the valuation incomplete.
+        self.unpriced_held_symbols = sorted(snapshot.missing_marks)
+        self.last_valuation_snapshot = snapshot
+        return snapshot
 
     # Audit finding F-4 (owner 2026-09-30): PAPER fills at the candle close are
     # idealised. With a positive value the fill moves against Atlas by this many
@@ -3695,6 +3795,29 @@ class ExecutionManager:
             self._auto_rollover_risk_accounting_day()
         except Exception as exc:
             self._record_error(phase="risk_day_rollover", error=exc, request=request)
+
+        # Phase-2 A3 (after the rollover housekeeping, so a failed refusal
+        # audit is still retried on the next request):
+        # while audit persistence is not provably healthy no new
+        # risk is admitted. Atlas is LONG-only, so a BUY is the only request
+        # that can add exposure; a SELL is either a reduction (allowed, B1)
+        # or refused by RiskEngine as NON_RISK_REDUCING_SELL.
+        audit_state = self.audit_persistence_state()
+        if str(request.action).strip().upper() == "BUY":
+            if audit_state not in {"HEALTHY", "DISABLED"}:
+                return {"approved": False, "reason": "AUDIT_PERSISTENCE_" + audit_state,
+                        "status": "BLOCK_NEW_RISK",
+                        "details": {"audit_persistence_state": audit_state}}
+        elif audit_state == "RECOVERY_REQUIRED":
+            # Phase-2 B1/B2: a reduction stays allowed while audit is merely
+            # DEGRADED. A poisoned audit writer, however, cannot record the
+            # write-ahead RISK_ACCOUNTING_REALIZED_PNL_PREPARED event every
+            # SELL's realized-P&L booking requires, so executing the exit
+            # would commit a trade that cannot be booked and then halt in
+            # recovery. Refuse cleanly before anything executes instead.
+            return {"approved": False, "reason": "AUDIT_PERSISTENCE_RECOVERY_REQUIRED",
+                    "status": "BLOCK_RECOVERY_REQUIRED",
+                    "details": {"audit_persistence_state": audit_state}}
 
         return _CONTINUE
 
@@ -7668,11 +7791,9 @@ class ExecutionManager:
         replacing audit persistence, execution routing, risk,
         idempotency, or result handling.
 
-        The v31.2 policy is observational:
-        - mark audit runtime as degraded
-        - retain incident details
-        - expose state through health() and status()
-        - do not yet halt execution
+        The v31.2 policy marks the runtime degraded and keeps the incident.
+        Since Phase-2 A3 a non-HEALTHY audit persistence state blocks new
+        risk (BUY) in ``_risk_preconditions``; reduce-only exits continue.
         """
 
         request_id = str(
@@ -7940,6 +8061,7 @@ class ExecutionManager:
                 and not self.execution_halted
                 and not self.recovery_required
                 and self.audit_runtime_state == "HEALTHY"
+                and self.audit_persistence_state() in {"HEALTHY", "DISABLED"}
                 and not (
                     self.mode == self.MODE_LIVE
                     and not self.live_execution_enabled
@@ -7960,6 +8082,9 @@ class ExecutionManager:
                 "operational_state": {
                     "audit_runtime_state": (
                         self.audit_runtime_state
+                    ),
+                    "audit_persistence_state": (
+                        self.audit_persistence_state()
                     ),
                     "execution_halted": (
                         self.execution_halted
@@ -8022,6 +8147,9 @@ class ExecutionManager:
                     self.live_execution_enabled
                 ),
                 "operational_state": {
+                    "audit_persistence_state": (
+                        self.audit_persistence_state()
+                    ),
                     "audit_runtime_state": (
                         self.audit_runtime_state
                     ),

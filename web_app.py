@@ -766,6 +766,21 @@ _STATUS_RESPONSE_SPEC = {
         "market_data_stale": _status_bool,
         "market_data_stale_reason": _status_code,
         "market_loop_thread_alive": _status_bool,
+        # Phase-2 D1 tri-state signals: constant codes, booleans, numbers.
+        "system_health": {
+            "system_state": _status_code,
+            "process_alive": _status_code,
+            "loop_progressing": _status_code,
+            "loop_progress_age_seconds": _status_number,
+            "loop_stall_after_seconds": _status_number,
+            "market_data_healthy": _status_code,
+            "execution_healthy": _status_code,
+            "audit_healthy": _status_code,
+            "brain_healthy": _status_code,
+            "system_ready": _status_bool,
+            "safe_to_trade": _status_bool,
+            "safe_to_reduce": _status_bool,
+        },
     },
     "errors": _STATUS_ERRORS_SPEC,
 }

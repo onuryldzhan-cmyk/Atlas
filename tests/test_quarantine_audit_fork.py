@@ -16,6 +16,34 @@ from tools import quarantine_audit_fork as tool
 KW = dict(source="t", aggregate_type="x", payload={})
 
 
+class _PreContractWriter:
+    """The pre-Phase-2-A2 writer: trusts its own in-memory chain head and
+    appends without re-checking the file. Two of these on one file recreate
+    the 2026-09-28 fork, which the real AuditEventStore now refuses to
+    produce (A2 I-A7), so fork fixtures are built with this raw writer."""
+
+    def __init__(self, path):
+        from core.audit_event import GENESIS_HASH, AuditEvent
+        self._event = AuditEvent
+        self.path = Path(path)
+        self.head = GENESIS_HASH
+        if self.path.exists():
+            lines = [l for l in self.path.read_text("utf-8").splitlines() if l.strip()]
+            if lines:
+                self.head = json.loads(lines[-1])["event_hash"]
+
+    def append(self, *, event_type, source, aggregate_type, aggregate_id, payload):
+        event = self._event.create(
+            event_type=event_type, source=source, aggregate_type=aggregate_type,
+            aggregate_id=aggregate_id, payload=payload, previous_hash=self.head,
+        )
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self.path.open("a", encoding="utf-8", newline="\n") as f:
+            f.write(event.to_json() + "\n")
+        self.head = event.event_hash
+        return event
+
+
 @pytest.fixture(autouse=True)
 def state_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setenv("ATLAS_STATE_DIRECTORY", str(tmp_path))
@@ -28,10 +56,10 @@ def forked_log(tmp_path: Path) -> Path:
     A carries on from line 3 with 3 more. Lines 4-5 are the fork branch."""
 
     path = tmp_path / "audit.jsonl"
-    a = AuditEventStore(path)
+    a = _PreContractWriter(path)
     for i in range(3):
         a.append(event_type="E", aggregate_id=f"a{i}", **KW)
-    b = AuditEventStore(path)
+    b = _PreContractWriter(path)
     b.append(event_type="RECEIVED", aggregate_id="b0", **KW)
     b.append(event_type="DUPLICATE", aggregate_id="b0", **KW)
     for i in range(3, 6):
@@ -164,10 +192,10 @@ def test_a_branch_holding_an_experiment_admission_is_refused(tmp_path, capsys):
     admission count and silently re-open the experiment."""
 
     path = tmp_path / "audit.jsonl"
-    a = AuditEventStore(path)
+    a = _PreContractWriter(path)
     for i in range(3):
         a.append(event_type="E", aggregate_id=f"a{i}", **KW)
-    b = AuditEventStore(path)
+    b = _PreContractWriter(path)
     b.append(event_type="RISK_APPROVED", source="t", aggregate_type="x", aggregate_id="b0",
              payload={"approved": True, "details": {"experiment_id": "EXP-001"}})
     b.append(event_type="DUPLICATE", aggregate_id="b0", **KW)

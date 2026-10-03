@@ -712,36 +712,15 @@
    {
     "caused_by": null,
     "payload": {
-     "approved": true,
-     "confidence": 90.0,
+     "approved": false,
      "details": {
-      "instrument_rules_digest": "eef0e1808a3b2a3fe33b55cc25425a1d2eb430145fa5696cbda19d66fb821352",
-      "instrument_rules_source_version": "1790687644597"
+      "audit_persistence_state": "DEGRADED"
      },
-     "risk": "MEDIUM"
+     "reason": "AUDIT_PERSISTENCE_DEGRADED",
+     "status": "REJECTED"
     },
     "request_id": "b1",
-    "type": "RISK_APPROVED",
-    "written": false
-   },
-   {
-    "caused_by": null,
-    "payload": {
-     "commit_outcome": "COMMITTED",
-     "execution_id": "<v>",
-     "fee": 0.0,
-     "fee_amount": "0",
-     "fee_currency": "USDT",
-     "filled_amount": 1000.0,
-     "filled_price": 10.0,
-     "latency_ms": "<v>",
-     "pnl": 0.0,
-     "status": "PAPER_EXECUTED",
-     "success": true,
-     "terminal": true
-    },
-    "request_id": "b1",
-    "type": "EXECUTION_COMPLETED",
+    "type": "RISK_REJECTED",
     "written": false
    }
   ],
@@ -751,238 +730,84 @@
    false,
    null
   ],
-  "history": [
-   [
-    "PAPER_EXECUTED",
-    null,
-    "COMMITTED"
-   ]
-  ],
-  "journal": {
-   "b1": "COMMITTED"
-  },
+  "history": [],
+  "journal": {},
   "pending": [],
   "portfolio": {
-   "cash": "D:9000.00",
-   "positions": {
-    "BTCUSDT": {
-     "average_entry_price": "10.0",
-     "base_quantity": "100.0",
-     "cost_quote": "1000.00",
-     "entry_fees": "0",
-     "mark_price": "10.0",
-     "opened_at": "<ts>",
-     "position_id": "long:BTCUSDT:7dc96f776c8423e57a2785489a3f9c43fb6e756876d6ad9a9cac4aa4e72ec193",
-     "symbol": "BTCUSDT",
-     "version": 1
-    }
-   },
+   "cash": "D:10000",
+   "positions": {},
    "realized_gross_pnl": "D:0"
   },
   "published": [
    [
-    "TRADE_OPENED",
+    "EXECUTION_REJECTED",
     {
      "action": "BUY",
-     "data": {
-      "allocation": 1000.0,
-      "approved_quote_allocation": "1000.0",
-      "confidence": 90.0,
-      "executed_quote_notional": "1000.00",
-      "instrument_rules_digest": "eef0e1808a3b2a3fe33b55cc25425a1d2eb430145fa5696cbda19d66fb821352",
-      "instrument_rules_source": "https://api.binance.com/api/v3/exchangeInfo",
-      "instrument_rules_source_version": "1790687644597",
-      "order_type": "MARKET",
-      "request_id": "b1",
-      "risk": "MEDIUM",
-      "source": "ATLAS",
-      "strategy": "ATLAS",
-      "unallocated_quote_remainder": "0.00"
+     "amount": 1000.0,
+     "confidence": 90.0,
+     "details": {
+      "audit_persistence_state": "DEGRADED"
      },
-     "error_code": null,
-     "error_details": null,
-     "execution_id": "<v>",
-     "fee": 0.0,
-     "fee_amount": "0",
-     "fee_currency": "USDT",
-     "filled_amount": 1000.0,
-     "filled_base_quantity": "100.0",
-     "filled_price": 10.0,
-     "filled_quote_notional": "1000.00",
-     "idempotency_key": "b1",
-     "latency_ms": "<v>",
-     "message": "Paper execution completed",
-     "metadata": {
-      "request_mode": "PAPER"
-     },
+     "message": "AUDIT_PERSISTENCE_DEGRADED",
      "mode": "PAPER",
-     "order_id": "paper-order:<uuid>",
-     "pnl": 0.0,
-     "position_id": "long:BTCUSDT:7dc96f776c8423e57a2785489a3f9c43fb6e756876d6ad9a9cac4aa4e72ec193",
      "price": 10.0,
-     "provenance_ref": "transaction-journal:b1",
-     "quantity": 1000.0,
-     "requested_amount": 1000.0,
-     "requested_base_quantity": null,
-     "requested_price": 10.0,
-     "requested_quote_allocation": "1000.0",
-     "risk_level": "UNKNOWN",
-     "slippage": 0.0,
-     "status": "PAPER_EXECUTED",
-     "success": true,
-     "symbol": "BTCUSDT",
-     "timestamp": "<v>",
-     "trade_id": null
-    }
-   ],
-   [
-    "EXECUTION_COMPLETED",
-    {
-     "action": "BUY",
-     "commit_outcome": "COMMITTED",
-     "data": {
-      "allocation": 1000.0,
-      "approved_quote_allocation": "1000.0",
-      "confidence": 90.0,
-      "executed_quote_notional": "1000.00",
-      "instrument_rules_digest": "eef0e1808a3b2a3fe33b55cc25425a1d2eb430145fa5696cbda19d66fb821352",
-      "instrument_rules_source": "https://api.binance.com/api/v3/exchangeInfo",
-      "instrument_rules_source_version": "1790687644597",
-      "order_type": "MARKET",
-      "paper_mirror": "OK",
-      "request_id": "b1",
-      "risk": "MEDIUM",
-      "source": "ATLAS",
-      "strategy": "ATLAS",
-      "unallocated_quote_remainder": "0.00"
-     },
-     "durable_financial_state": {
-      "position_id": "long:BTCUSDT:7dc96f776c8423e57a2785489a3f9c43fb6e756876d6ad9a9cac4aa4e72ec193",
-      "replayed": false
-     },
-     "error_code": null,
-     "error_details": null,
-     "execution_id": "<v>",
-     "fee": 0.0,
-     "fee_amount": "0",
-     "fee_currency": "USDT",
-     "filled_amount": 1000.0,
-     "filled_base_quantity": "100.0",
-     "filled_price": 10.0,
-     "filled_quote_notional": "1000.00",
-     "idempotency_key": "b1",
-     "latency_ms": "<v>",
-     "message": "Paper execution completed",
-     "metadata": {
-      "request_mode": "PAPER"
-     },
-     "mode": "PAPER",
-     "order_id": "paper-order:<uuid>",
-     "pnl": 0.0,
-     "position_id": "long:BTCUSDT:7dc96f776c8423e57a2785489a3f9c43fb6e756876d6ad9a9cac4aa4e72ec193",
-     "price": 10.0,
-     "provenance_ref": "transaction-journal:b1",
-     "quantity": 1000.0,
+     "reason": "AUDIT_PERSISTENCE_DEGRADED",
      "request_id": "b1",
-     "requested_amount": 1000.0,
-     "requested_base_quantity": null,
-     "requested_price": 10.0,
-     "requested_quote_allocation": "1000.0",
-     "risk_level": "UNKNOWN",
-     "slippage": 0.0,
-     "status": "PAPER_EXECUTED",
-     "success": true,
+     "risk": "MEDIUM",
+     "status": "REJECTED",
+     "strategy": "ATLAS",
+     "success": false,
      "symbol": "BTCUSDT",
-     "timestamp": "<v>",
-     "trade_id": null
+     "timestamp": "<v>"
     }
    ]
   ],
-  "rejections": [],
-  "reservations": {
-   "b1": {
-    "amount": "1000.00",
-    "status": "COMMITTED"
-   }
-  },
+  "rejections": [
+   [
+    "AUDIT_PERSISTENCE_DEGRADED",
+    "b1"
+   ]
+  ],
+  "reservations": {},
   "results": [
    {
     "action": "BUY",
-    "commit_outcome": "COMMITTED",
-    "data": {
-     "allocation": 1000.0,
-     "approved_quote_allocation": "1000.0",
-     "confidence": 90.0,
-     "executed_quote_notional": "1000.00",
-     "instrument_rules_digest": "eef0e1808a3b2a3fe33b55cc25425a1d2eb430145fa5696cbda19d66fb821352",
-     "instrument_rules_source": "https://api.binance.com/api/v3/exchangeInfo",
-     "instrument_rules_source_version": "1790687644597",
-     "order_type": "MARKET",
-     "paper_mirror": "OK",
-     "request_id": "b1",
-     "risk": "MEDIUM",
-     "source": "ATLAS",
-     "strategy": "ATLAS",
-     "unallocated_quote_remainder": "0.00"
+    "amount": 1000.0,
+    "audit_persistence_state": "DEGRADED",
+    "confidence": 90.0,
+    "details": {
+     "audit_persistence_state": "DEGRADED"
     },
-    "durable_financial_state": {
-     "position_id": "long:BTCUSDT:7dc96f776c8423e57a2785489a3f9c43fb6e756876d6ad9a9cac4aa4e72ec193",
-     "replayed": false
-    },
-    "error_code": null,
-    "error_details": null,
-    "execution_id": "<v>",
-    "fee": 0.0,
-    "fee_amount": "0",
-    "fee_currency": "USDT",
-    "filled_amount": 1000.0,
-    "filled_base_quantity": "100.0",
-    "filled_price": 10.0,
-    "filled_quote_notional": "1000.00",
-    "idempotency_key": "b1",
-    "latency_ms": "<v>",
-    "message": "Paper execution completed",
-    "metadata": {
-     "request_mode": "PAPER"
-    },
+    "message": "AUDIT_PERSISTENCE_DEGRADED",
     "mode": "PAPER",
-    "order_id": "paper-order:<uuid>",
-    "pnl": 0.0,
-    "position_id": "long:BTCUSDT:7dc96f776c8423e57a2785489a3f9c43fb6e756876d6ad9a9cac4aa4e72ec193",
     "price": 10.0,
-    "provenance_ref": "transaction-journal:b1",
-    "quantity": 1000.0,
+    "reason": "AUDIT_PERSISTENCE_DEGRADED",
     "request_id": "b1",
-    "requested_amount": 1000.0,
-    "requested_base_quantity": null,
-    "requested_price": 10.0,
-    "requested_quote_allocation": "1000.0",
-    "risk_level": "UNKNOWN",
-    "slippage": 0.0,
-    "status": "PAPER_EXECUTED",
-    "success": true,
+    "risk": "MEDIUM",
+    "status": "REJECTED",
+    "strategy": "ATLAS",
+    "success": false,
     "symbol": "BTCUSDT",
-    "timestamp": "<v>",
-    "trade_id": null
+    "timestamp": "<v>"
    }
   ],
   "side_effect_markers": [],
   "stats": {
    "audit_events_written": 0,
-   "audit_write_failures": 4,
+   "audit_write_failures": 3,
    "cached_results_returned": 0,
    "duplicate_requests": 0,
    "duplicate_requests_completed": 0,
    "duplicate_requests_pending": 0,
-   "executed": 1,
+   "executed": 0,
    "failed": 0,
    "live_blocked": 0,
-   "paper_orders": 1,
+   "paper_orders": 0,
    "persistent_records_loaded": 0,
    "persistent_records_saved": 1,
    "persistent_save_failures": 0,
    "received": 1,
-   "rejected": 0,
+   "rejected": 1,
    "requests_claimed": 1,
    "requests_completed": 1,
    "requests_released": 0,

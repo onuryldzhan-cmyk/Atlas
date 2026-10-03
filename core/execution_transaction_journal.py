@@ -259,6 +259,17 @@ class ExecutionTransactionJournal:
 
                     return False
 
+                # Phase-2 A2: pin the verified (empty) offset now, so a later
+                # foreign write is detected instead of being read lazily.
+                try:
+                    self._log.read()
+                except Exception as exc:
+                    self.entries = {}
+                    self.loaded = False
+                    self.load_failed = True
+                    self._record_error(phase="load", error=exc)
+                    return False
+
                 self.entries = {}
                 self.loaded = True
                 self.load_failed = False

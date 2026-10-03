@@ -652,7 +652,10 @@ def test_c3_refusal_audit_failure_keeps_the_refusal_and_degrades_audit(tmp_path,
     monkeypatch.setattr(store, "append", fail_refused)
     failures_before = app.execution.stats["audit_write_failures"]
 
-    assert _risk_check(app)["reason"] == STALE_REASON
+    # Phase-2 A3: the failed audit write degrades audit persistence inside
+    # this very request, so the BUY is now blocked as new risk instead of
+    # reaching RiskEngine's stale-day refusal. The day is still not rolled.
+    assert _risk_check(app)["reason"] == "AUDIT_PERSISTENCE_DEGRADED"
     assert _stored(state_dir).accounting_day_utc < _today()
     assert app.execution.stats["audit_write_failures"] == failures_before + 1
     assert app.execution.audit_runtime_state == "AUDIT_DEGRADED"
@@ -660,7 +663,7 @@ def test_c3_refusal_audit_failure_keeps_the_refusal_and_degrades_audit(tmp_path,
 
     # Not marked as recorded, so the next request retries the write.
     monkeypatch.setattr(store, "append", original)
-    assert _risk_check(app, "rc2")["reason"] == STALE_REASON
+    assert _risk_check(app, "rc2")["reason"] == "AUDIT_PERSISTENCE_DEGRADED"
     [event] = _refusals(state_dir)
     _assert_refusal(event, "ORPHAN_RESERVATION_PRESENT")
 

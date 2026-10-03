@@ -16,6 +16,14 @@ Scenarios cover every return path of the function, most by fault injection.
 Regenerate ONLY when a behaviour change is intended and approved:
     python -c "import json, tempfile, pathlib; from tests.test_execute_decision_golden import collect, GOLDEN; \
 GOLDEN.write_text(json.dumps(collect(pathlib.Path(tempfile.mkdtemp())), indent=1, sort_keys=True))"
+
+Regeneration record:
+  * 2026-10-03, Phase-2 A3 (owner-approved remediation plan): only scenario
+    ``audit_store_failing`` changed (36 of 37 byte-identical). A BUY whose audit
+    writes fail is now refused before execution (RISK_REJECTED,
+    AUDIT_PERSISTENCE_DEGRADED) instead of executing and committing with no audit
+    trail - the intended A3 policy "no new risk while audit persistence is not
+    provably healthy". Verified 2026-10-03 against HEAD 23e5539.
 """
 from __future__ import annotations
 

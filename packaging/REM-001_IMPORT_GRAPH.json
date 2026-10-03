@@ -16,14 +16,28 @@
     "analysis": "Static AST import resolution over git-tracked Python files, excluding imports guarded by if TYPE_CHECKING:. Third-party and stdlib targets resolve to nothing and carry no edge."
   },
   "source_identity": {
-    "generated_from_commit": "7d601828097cc84527f7c0db06a5111f59495fd7",
-    "generated_from_tree": "83a17736eca65cd343add8f72a5c6fc3db551867",
+    "generated_from_commit": "23e55393da81ed412aaaff6a20efc272bae742f0",
+    "generated_from_tree": "0c5334c87108882c1de0b150b42c7e0ca69c0812",
     "tracked_working_tree_clean": false,
     "modified_tracked_paths_at_generation": [
-      "ackaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md",
+      "core/application.py",
+      "core/audit_event_store.py",
+      "core/durable_append_log.py",
+      "core/execution_idempotency_store.py",
+      "core/execution_manager.py",
+      "core/execution_transaction_journal.py",
+      "core/market_loop.py",
+      "core/risk_engine.py",
+      "main.py",
+      "packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md",
       "packaging/REM-001_STATE_AUTHORITY_MAP.md",
-      "tests/golden/create_app_golden.json",
-      "tests/test_create_app_golden.py"
+      "tests/golden/execute_decision_golden.json",
+      "tests/test_dashboard_execution_gates.py",
+      "tests/test_execution_audit_trail_completeness.py",
+      "tests/test_quarantine_audit_fork.py",
+      "tests/test_single_instance_and_integrity_exit.py",
+      "tlas_supervisor.py",
+      "web_app.py"
     ]
   },
   "scope": {
@@ -32,10 +46,10 @@
     "modules_total": 1107,
     "modules_runtime_reachable": 135,
     "modules_outside_runtime_closure": 972,
-    "edges_total": 2428,
-    "edges_import": 1748,
+    "edges_total": 2430,
+    "edges_import": 1750,
     "edges_package_init": 680,
-    "edges_distinct_module_pairs": 2351,
+    "edges_distinct_module_pairs": 2353,
     "edges_count_note": "edges_total counts (from, to, kind) triples. A pair can carry both kinds when a file both imports a package directly and references one of its submodules, so edges_distinct_module_pairs is the figure to use when counting dependencies between modules.",
     "parse_failures": 3
   },
@@ -14133,6 +14147,11 @@
     },
     {
       "from": "tests/test_quarantine_audit_fork.py",
+      "to": "core/audit_event.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_quarantine_audit_fork.py",
       "to": "core/audit_event_store.py",
       "kind": "import"
     },
@@ -14894,6 +14913,11 @@
     {
       "from": "tests/test_single_instance_and_integrity_exit.py",
       "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_single_instance_and_integrity_exit.py",
+      "to": "core/audit_event.py",
       "kind": "import"
     },
     {

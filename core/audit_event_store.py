@@ -45,7 +45,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import threading
 
 from datetime import UTC, datetime
@@ -55,6 +54,10 @@ from typing import Any, Mapping
 from core.audit_event import (
     GENESIS_HASH,
     AuditEvent,
+)
+from core.durable_append_contract import (
+    DurableAppendWriter,
+    DurableRecoveryRequiredError,
 )
 
 
@@ -70,6 +73,23 @@ class AuditChainIntegrityError(RuntimeError):
     distinct type lets main.py exit with a code the supervisor will not
     restart on, because a restart would only fail the same check again.
     """
+
+
+class AuditRecoveryRequiredError(
+    AuditChainIntegrityError,
+    DurableRecoveryRequiredError,
+):
+    """An earlier indeterminate audit write is unresolved (Phase-2 A2 I-A5).
+
+    Subclasses AuditChainIntegrityError so main.py keeps exiting with the
+    no-restart integrity code instead of entering a restart loop.
+    """
+
+
+# Phase-2 A3 runtime persistence states.
+AUDIT_HEALTHY = "AUDIT_HEALTHY"
+AUDIT_DEGRADED = "AUDIT_DEGRADED"
+AUDIT_RECOVERY_REQUIRED = "AUDIT_RECOVERY_REQUIRED"
 
 
 class AuditEventStore:
@@ -105,6 +125,13 @@ class AuditEventStore:
         )
 
         self._lock = threading.RLock()
+
+        # Phase-2 A2: shared durable append contract (tail validation,
+        # rollback-or-poison on fault, cross-process lock).
+        self._writer = DurableAppendWriter(
+            self.file_path,
+            fsync_enabled=self.fsync_enabled,
+        )
 
         self.loaded = False
 
@@ -161,7 +188,20 @@ class AuditEventStore:
                 "loads"
             ] += 1
 
+            try:
+                self._writer.check_recovery_marker()
+            except DurableRecoveryRequiredError as exc:
+                self.loaded = False
+                self._record_error(
+                    phase="load",
+                    error=exc,
+                )
+                raise AuditRecoveryRequiredError(
+                    str(exc)
+                ) from exc
+
             if not self.file_path.exists():
+                self._writer.establish(0)
                 self.loaded = True
                 self.event_count = 0
                 self.last_event_id = None
@@ -185,7 +225,21 @@ class AuditEventStore:
                         f"{verification.get('error')}"
                     )
 
+            raw_size = self.file_path.stat().st_size
+
+            if raw_size and not self._ends_with_newline():
+                # I-A6: a torn final record is corruption, never a tail to
+                # append onto.
+                self.loaded = False
+
+                raise AuditChainIntegrityError(
+                    "Audit event log has a torn tail "
+                    "(does not end with a newline)"
+                )
+
             events = self.read_all()
+
+            self._writer.establish(raw_size)
 
             if not events:
                 self.loaded = True
@@ -325,21 +379,15 @@ class AuditEventStore:
                 + "\n"
             )
 
-            with self.file_path.open(
-                "a",
-                encoding="utf-8",
-                newline="\n",
-            ) as file:
-                file.write(
-                    encoded_line
+            # Raises NOT_WRITTEN / INDETERMINATE / poisoned. The chain head
+            # below advances only after the record is verified durable, and
+            # an INDETERMINATE fault poisons the writer, so the same
+            # previous_hash can never be used for a second record.
+            self._writer.append_bytes(
+                encoded_line.encode(
+                    "utf-8"
                 )
-
-                file.flush()
-
-                if self.fsync_enabled:
-                    os.fsync(
-                        file.fileno()
-                    )
+            )
 
             self.event_count += 1
             self.last_event_id = (
@@ -744,6 +792,39 @@ class AuditEventStore:
                 ),
             }
 
+    def persistence_state(
+        self,
+    ) -> str:
+        """Phase-2 A3 runtime state of audit persistence.
+
+        RECOVERY_REQUIRED: not loaded, writer poisoned (indeterminate write
+        or foreign modification) or an unresolved recovery marker.
+        DEGRADED: at least one append failed but verifiably wrote nothing.
+        HEALTHY otherwise.
+        """
+
+        with self._lock:
+            writer = self._writer.status()
+
+            if (
+                not self.loaded
+                or writer["poisoned"] is not None
+                or writer["recovery_marker"]
+            ):
+                return AUDIT_RECOVERY_REQUIRED
+
+            if self.stats["write_failures"] > 0:
+                return AUDIT_DEGRADED
+
+            return AUDIT_HEALTHY
+
+    def _ends_with_newline(
+        self,
+    ) -> bool:
+        with self.file_path.open("rb") as stream:
+            stream.seek(-1, 2)
+            return stream.read(1) == b"\n"
+
     def health(
         self,
     ) -> dict[str, Any]:
@@ -772,6 +853,10 @@ class AuditEventStore:
                 "chain_valid": (
                     verification_valid
                 ),
+                "persistence_state": (
+                    self.persistence_state()
+                ),
+                "writer": self._writer.status(),
                 "last_error": (
                     dict(
                         self.last_error

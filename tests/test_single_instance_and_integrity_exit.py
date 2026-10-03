@@ -9,6 +9,7 @@ restart cannot fix either condition.
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -186,13 +187,41 @@ def test_other_fatal_errors_keep_exit_code_one(
     assert process.execute() == 1
 
 
+class _PreContractWriter:
+    """The pre-Phase-2-A2 writer: trusts its own in-memory chain head and
+    appends without re-checking the file. Two of these on one file recreate
+    the 2026-09-28 fork, which the real AuditEventStore now refuses to
+    produce (A2 I-A7), so fork fixtures are built with this raw writer."""
+
+    def __init__(self, path):
+        from core.audit_event import GENESIS_HASH, AuditEvent
+        self._event = AuditEvent
+        self.path = Path(path)
+        self.head = GENESIS_HASH
+        if self.path.exists():
+            lines = [l for l in self.path.read_text("utf-8").splitlines() if l.strip()]
+            if lines:
+                self.head = json.loads(lines[-1])["event_hash"]
+
+    def append(self, *, event_type, source, aggregate_type, aggregate_id, payload):
+        event = self._event.create(
+            event_type=event_type, source=source, aggregate_type=aggregate_type,
+            aggregate_id=aggregate_id, payload=payload, previous_hash=self.head,
+        )
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self.path.open("a", encoding="utf-8", newline="\n") as f:
+            f.write(event.to_json() + "\n")
+        self.head = event.event_hash
+        return event
+
+
 def test_forked_audit_chain_raises_the_integrity_error(tmp_path: Path) -> None:
     path = tmp_path / "audit.jsonl"
     kw = dict(source="t", aggregate_type="x", payload={})
 
-    first = AuditEventStore(path)
+    first = _PreContractWriter(path)
     first.append(event_type="E", aggregate_id="a0", **kw)
-    second = AuditEventStore(path)
+    second = _PreContractWriter(path)
     first.append(event_type="E", aggregate_id="a1", **kw)
     second.append(event_type="E", aggregate_id="b0", **kw)
 
@@ -284,9 +313,9 @@ def test_failed_construction_gives_the_lock_back(state_root: Path) -> None:
 
     audit = state_root / "audit" / "atlas_audit_events.jsonl"
     kw = dict(source="t", aggregate_type="x", payload={})
-    first = AuditEventStore(audit)
+    first = _PreContractWriter(audit)
     first.append(event_type="E", aggregate_id="a0", **kw)
-    second = AuditEventStore(audit)
+    second = _PreContractWriter(audit)
     first.append(event_type="E", aggregate_id="a1", **kw)
     second.append(event_type="E", aggregate_id="b0", **kw)
 

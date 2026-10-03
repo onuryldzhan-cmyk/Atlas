@@ -586,7 +586,12 @@ class AtlasProcess:
 
         try:
             self._heartbeat_file.write_text(
-                json.dumps({"written_at": time.time()}),
+                json.dumps(
+                    {
+                        "written_at": time.time(),
+                        **self._loop_progress_payload(),
+                    }
+                ),
                 encoding="utf-8",
             )
         except OSError as exc:
@@ -625,6 +630,35 @@ class AtlasProcess:
                     "Supervisor heartbeat write recovered for %s",
                     self._heartbeat_file,
                 )
+
+    def _loop_progress_payload(self) -> dict:
+        """Phase-2 D1: MarketLoop progress for the supervisor's stall check.
+
+        Reads one plain attribute without taking any lock, so the heartbeat
+        tick can never block behind a busy market cycle. Absent or unreadable
+        progress is reported as null (unknown), never as fresh.
+        """
+
+        try:
+            loop = getattr(self.application, "market_loop", None)
+            progress = getattr(loop, "last_loop_progress_monotonic", None)
+            interval = getattr(loop, "interval", None)
+
+            return {
+                "loop_progress_age_seconds": (
+                    round(time.monotonic() - progress, 3)
+                    if isinstance(progress, (int, float))
+                    else None
+                ),
+                "loop_interval_seconds": (
+                    interval if isinstance(interval, (int, float)) else None
+                ),
+            }
+        except Exception:
+            return {
+                "loop_progress_age_seconds": None,
+                "loop_interval_seconds": None,
+            }
 
     def run_forever(self) -> None:
         """

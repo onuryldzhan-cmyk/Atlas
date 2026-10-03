@@ -275,12 +275,14 @@ def test_latest_risk_decision_per_symbol_comes_from_the_audit_chain(tmp_path: Pa
 def test_malformed_audit_lines_are_skipped_not_fatal(tmp_path: Path) -> None:
     audit = _audit(tmp_path)
     cause = _request(audit, "BTCUSDT|open:1|BUY", "BTCUSDT", "BUY", 61.0)
+    _risk_outcome(audit, "BTCUSDT|open:1|BUY", "RISK_REJECTED", "CONFIDENCE_BELOW_POLICY", cause)
+    # Junk is written after the last store append: since Phase-2 A2 the
+    # store refuses to append onto a tail it did not write itself.
     with audit.file_path.open("a", encoding="utf-8") as handle:
         handle.write("{not json\n")
         handle.write('{"aggregate_type": "execution_request", "event_type": "RISK_REJECTED", '
                      '"payload": {"reason": "X"}, "causation_id": ["unhashable"]}\n')
         handle.write('{"aggregate_type": "execution_request", "event_type": "RISK_REJECTED", "payload": null}\n')
-    _risk_outcome(audit, "BTCUSDT|open:1|BUY", "RISK_REJECTED", "CONFIDENCE_BELOW_POLICY", cause)
 
     by_symbol = _gates(_Runtime(audit_store=audit))["latest_risk_decisions"]["by_symbol"]
 

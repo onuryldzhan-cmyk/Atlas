@@ -64,6 +64,8 @@ from collections.abc import Mapping
 from typing import Any
 
 from core import instance_lock
+from core.exit_guard import ExitGuard
+from core.system_health import assess as assess_system_health
 from core.experiment_ledger import EXPERIMENT_LEDGER_FILE, ExperimentAdmissionLedger
 from core.logger import AtlasLogger
 from core.runtime import AtlasRuntime
@@ -816,6 +818,14 @@ class AtlasApplication:
             instrument_rules=self.instrument_ruleset,
             instrument_rule_freshness=self.venue_rule_freshness,
             configured_symbols=configured_symbols,
+        )
+
+        # Phase-2 B2: Brain-independent reduce-only exit path. Inert by
+        # default (OBSERVE, no rules); ENFORCE or any rule is an owner
+        # decision. It is not yet invoked from MarketLoop's cycle.
+        self.exit_guard = ExitGuard(
+            self.execution,
+            self.portfolio_foundation,
         )
 
         # -----------------------------------------------------
@@ -2003,9 +2013,38 @@ class AtlasApplication:
             and not self.errors
         )
 
+        brain_health = self._safe_health(
+            self.brain,
+        )
+
+        system_health = assess_system_health(
+            {
+                "running": self.running,
+                "loop_running": market_status.get("running"),
+                "loop_thread_alive": market_health.get("thread_alive"),
+                "loop_progress_age_seconds": market_health.get(
+                    "loop_progress_age_seconds",
+                ),
+                "loop_interval_seconds": market_health.get(
+                    "loop_interval_seconds",
+                ),
+                "market_data_stale": market_health.get("market_data_stale"),
+                "execution_running": execution_status.get("running"),
+                "execution_halted": execution_halted,
+                "recovery_required": execution_recovery_required,
+                "audit_persistence_state": execution_operational_state.get(
+                    "audit_persistence_state",
+                ),
+                "brain_healthy": brain_health.get("healthy"),
+            }
+        )
+
         return {
             "healthy": healthy,
             "running": self.running,
+            # Phase-2 D1: tri-state signals; UNKNOWN is never healthy. The
+            # legacy "healthy" flag above is unchanged for existing readers.
+            "system_health": system_health,
             "execution_halted": execution_halted,
             "execution_recovery_required": execution_recovery_required,
             "execution_halt_reason": execution_halt_reason,
@@ -2081,6 +2120,10 @@ class AtlasApplication:
 
             "capital": self._safe_status(
                 self.capital,
+            ),
+
+            "exit_guard": self._safe_status(
+                getattr(self, "exit_guard", None),
             ),
 
             "position_controller": self._safe_status(

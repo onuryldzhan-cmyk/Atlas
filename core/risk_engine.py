@@ -638,6 +638,16 @@ class RiskEngine:
             return self._decision(RiskDecisionStatus.BLOCK_RECOVERY_REQUIRED if recovery else RiskDecisionStatus.REJECT,
                                   code, state)
 
+        # Phase-2 B1: a risk-reducing SELL is refused only for unknown durable
+        # state, invalid input or an invalid reduction. Policy-version and
+        # accounting-day reconciliation stay ahead of the reduction branch on
+        # purpose: they ARE durable-state-unknown for the realized-P&L booking
+        # every SELL performs (RiskStateStore.load / the day check refuse it),
+        # so admitting the exit would commit a trade that cannot be booked and
+        # halt in recovery. ExecutionManager rolls a stale PAPER day before
+        # evaluation, so only an un-rollable day reaches this refusal.
+        # Confidence, experiment, sleeve, loss and drawdown are new-risk gates
+        # and are never applied to a reduction.
         if not isinstance(state, RiskState) or not state.state_ready:
             return reject("RISK_STATE_NOT_READY", True)
         if state.policy_version != self.policy.version:
@@ -650,7 +660,10 @@ class RiskEngine:
         if not symbol or action not in {"BUY", "SELL"}:
             return reject("INVALID_REQUEST")
         try:
-            confidence = decimal_value(request.confidence, "confidence")
+            confidence = (
+                ZERO if reducing
+                else decimal_value(request.confidence, "confidence")
+            )
             allocation = decimal_value(request.requested_quote_allocation, "requested_quote_allocation", allow_zero=False)
             price = decimal_value(request.execution_price, "execution_price", allow_zero=False)
             # Analytical state only: conversion to an executable RiskBucket is

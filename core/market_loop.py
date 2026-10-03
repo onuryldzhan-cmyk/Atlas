@@ -255,6 +255,10 @@ class MarketLoop:
         self.last_cycle: str | None = None
         self.last_cycle_duration = 0.0
 
+        # Phase-2 D1: monotonic time the worker last finished a cycle. This,
+        # not thread liveness, is what "the loop is progressing" means.
+        self.last_loop_progress_monotonic: float | None = None
+
         # Latest candle-age measurement per symbol (registry v4.71).
         # Not fetch liveness: see CANDLE_AGE_MEASURED above. Each entry
         # records the worker cycle it was taken in, so a symbol that was
@@ -503,6 +507,8 @@ class MarketLoop:
                 self.last_cycle = datetime.now(
                     UTC
                 ).isoformat()
+
+                self.last_loop_progress_monotonic = time.monotonic()
 
             # After the duration is measured, so writing telemetry is
             # never inside the timed region.
@@ -2757,10 +2763,19 @@ class MarketLoop:
                 for entry in staleness.values()
             )
 
+            progress_at = self.last_loop_progress_monotonic
+
             return {
                 "healthy": healthy,
                 "running": self.running,
                 "thread_alive": thread_alive,
+                # Phase-2 D1: None until the first cycle completes.
+                "loop_progress_age_seconds": (
+                    None
+                    if progress_at is None
+                    else round(time.monotonic() - progress_at, 3)
+                ),
+                "loop_interval_seconds": self.interval,
                 "version": self.VERSION,
                 "errors": self.metrics[
                     "errors"

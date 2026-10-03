@@ -63,10 +63,14 @@ records" is exactly what that means.
 from __future__ import annotations
 
 import json
-import os
 
 from pathlib import Path
 from typing import Any, Mapping, Sequence
+
+from core.durable_append_contract import (
+    DurableAppendWriter,
+    DurableRecoveryRequiredError,
+)
 
 
 SEQUENCE_FIELD = "sequence"
@@ -77,6 +81,13 @@ _HEADER_VERSION_FIELD = "version"
 
 class DurableAppendLogCorruptError(RuntimeError):
     """The durable log is malformed, torn, mis-versioned, or mis-ordered."""
+
+
+class DurableAppendLogRecoveryRequiredError(
+    DurableAppendLogCorruptError,
+    DurableRecoveryRequiredError,
+):
+    """An earlier INDETERMINATE append left this log unresolved (A2 I-A5)."""
 
 
 class DurableAppendLog:
@@ -110,6 +121,10 @@ class DurableAppendLog:
         # auto_load=False cannot append over existing sequences.
         self._next_sequence: int | None = None
 
+        # Phase-2 A2: every physical write goes through the shared durable
+        # append contract (tail validation, rollback-or-poison, OS lock).
+        self._writer = DurableAppendWriter(self.path)
+
     # =========================================================
     # READ
     # =========================================================
@@ -120,14 +135,21 @@ class DurableAppendLog:
     def read(self) -> list[dict[str, Any]]:
         """Return every payload in append order, or raise on corruption."""
 
+        try:
+            self._writer.check_recovery_marker()
+        except DurableRecoveryRequiredError as exc:
+            raise DurableAppendLogRecoveryRequiredError(str(exc)) from exc
+
         if not self.path.exists():
             self._next_sequence = 0
+            self._writer.establish(0)
             return []
 
         raw = self.path.read_bytes()
 
         if not raw:
             self._next_sequence = 0
+            self._writer.establish(0)
             return []
 
         if not raw.endswith(b"\n"):
@@ -205,6 +227,7 @@ class DurableAppendLog:
             )
 
         self._next_sequence = expected_next
+        self._writer.establish(len(raw))
 
         return payloads
 
@@ -269,22 +292,13 @@ class DurableAppendLog:
                 )
             )
 
-        with self.path.open(
-            "a",
-            encoding="utf-8",
-            newline="\n",
-        ) as stream:
-            stream.write(
-                "".join(
-                    f"{line}\n" for line in lines
-                )
-            )
-
-            stream.flush()
-
-            os.fsync(
-                stream.fileno()
-            )
+        # Raises DurableAppendError (NOT_WRITTEN or INDETERMINATE); the
+        # sequence advances only once the whole batch is verified on disk.
+        self._writer.append_bytes(
+            "".join(
+                f"{line}\n" for line in lines
+            ).encode("utf-8")
+        )
 
         self._next_sequence = next_sequence + len(payloads)
 
@@ -324,43 +338,11 @@ class DurableAppendLog:
                 )
             )
 
-        temporary_path = self.path.with_suffix(
-            self.path.suffix + ".tmp"
+        self._writer.replace_atomically(
+            "".join(
+                f"{line}\n" for line in lines
+            ).encode("utf-8")
         )
-
-        try:
-            with temporary_path.open(
-                "w",
-                encoding="utf-8",
-                newline="\n",
-            ) as stream:
-                stream.write(
-                    "".join(
-                        f"{line}\n" for line in lines
-                    )
-                )
-
-                stream.flush()
-
-                os.fsync(
-                    stream.fileno()
-                )
-
-            os.replace(
-                temporary_path,
-                self.path,
-            )
-
-        except Exception:
-            try:
-                temporary_path.unlink(
-                    missing_ok=True
-                )
-
-            except Exception:
-                pass
-
-            raise
 
         self._next_sequence = len(payloads)
 
@@ -369,7 +351,7 @@ class DurableAppendLog:
     # =========================================================
 
     def _resolve_next_sequence(self) -> int:
-        if self._next_sequence is None:
+        if self._next_sequence is None or self._writer.verified_size is None:
             # Never append blind: an unread log is counted first so a store
             # constructed with auto_load=False cannot reuse a sequence.
             self.read()
@@ -379,10 +361,12 @@ class DurableAppendLog:
         )
 
     def _has_header(self) -> bool:
-        try:
-            return self.path.stat().st_size > 0
-        except OSError:
-            return False
+        # The verified offset, not a fresh stat: a foreign or torn byte must
+        # not suppress the header; the writer rejects such a tail anyway.
+        return bool(self._writer.verified_size)
+
+    def writer_status(self) -> dict[str, Any]:
+        return self._writer.status()
 
     def _with_sequence(
         self,

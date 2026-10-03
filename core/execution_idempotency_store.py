@@ -264,6 +264,17 @@ class ExecutionIdempotencyStore:
 
                     return {}
 
+                # Phase-2 A2: pin the verified (empty) offset now, so a later
+                # foreign write is detected instead of being read lazily.
+                try:
+                    self._log.read()
+                except Exception as exc:
+                    self.completed_requests = {}
+                    self._durable_requests = {}
+                    self.loaded = False
+                    self._record_error(phase="load", error=exc)
+                    return {}
+
                 self.completed_requests = {}
                 self._durable_requests = {}
                 self.loaded = True

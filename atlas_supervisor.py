@@ -109,6 +109,7 @@ exactly as it already does to a crash.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import signal
@@ -448,6 +449,41 @@ def _read_heartbeat_mtime(path: Path) -> int | None:
         return None
 
 
+# Phase-2 D1: a stalled MarketLoop (process alive, loop not progressing) is
+# only OBSERVED - logged on each transition - and never stops the child.
+# Moving it to ENFORCE is a separate owner decision: a restart cannot fix a
+# stall caused by durable-state recovery, and a wrong kill feeds the
+# restart budget.
+LOOP_STALL_POLICY = "OBSERVE"
+
+
+def _read_heartbeat_payload(path: Path) -> dict | None:
+    """Return the heartbeat JSON object, or None when unreadable/invalid."""
+
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+    return payload if isinstance(payload, dict) else None
+
+
+def loop_stalled(payload: dict | None) -> bool | None:
+    """True/False from the heartbeat's loop progress; None when unknown."""
+
+    if not isinstance(payload, dict):
+        return None
+
+    from core.system_health import stall_after_seconds
+
+    age = payload.get("loop_progress_age_seconds")
+
+    if isinstance(age, bool) or not isinstance(age, (int, float)):
+        return None
+
+    return age > stall_after_seconds(payload.get("loop_interval_seconds"))
+
+
 def _discard_heartbeat_file(path: Path) -> None:
     """Delete a heartbeat file left by an earlier run. Raises OSError."""
 
@@ -514,6 +550,7 @@ class ProcessSupervisor:
         heartbeat_file: Path | None = _UNSET,
         heartbeat_mtime: Callable[[Path], Any] | None = None,
         heartbeat_discard: Callable[[Path], None] | None = None,
+        heartbeat_payload: Callable[[Path], Any] | None = None,
     ) -> None:
         self.policy = policy if policy is not None else RestartPolicy()
         self.launch = launch if launch is not None else _launch_atlas_service
@@ -549,6 +586,13 @@ class ProcessSupervisor:
 
         # The mtime reader's values are only compared for change, never
         # against any clock - see this module's docstring.
+        self.heartbeat_payload = (
+            heartbeat_payload
+            if heartbeat_payload is not None
+            else _read_heartbeat_payload
+        )
+        # Last observed loop-stall verdict (Phase-2 D1, OBSERVE only).
+        self.loop_stall_observed: bool | None = None
         self.heartbeat_mtime = (
             heartbeat_mtime if heartbeat_mtime is not None else _read_heartbeat_mtime
         )
@@ -800,9 +844,34 @@ class ProcessSupervisor:
                             since_launch=since_launch,
                         )
 
+                    else:
+                        self._observe_loop_stall()
+
             self._stop_event.wait(
                 timeout=POLL_INTERVAL_SECONDS
             )
+
+    def _observe_loop_stall(self) -> None:
+        """Log loop-stall transitions; never stops the child (OBSERVE)."""
+
+        try:
+            stalled = loop_stalled(self.heartbeat_payload(self.heartbeat_file))
+        except Exception:
+            stalled = None
+
+        if stalled is None or stalled == self.loop_stall_observed:
+            return
+
+        self.loop_stall_observed = stalled
+
+        if stalled:
+            logger.warning(
+                "Atlas process is alive but MarketLoop is not progressing "
+                "(STALLED); policy=%s - not restarting",
+                LOOP_STALL_POLICY,
+            )
+        else:
+            logger.info("MarketLoop progressing again")
 
     def stop_child(self, child: Any) -> int | None:
         """Stop the child gracefully, escalating only if it will not go.

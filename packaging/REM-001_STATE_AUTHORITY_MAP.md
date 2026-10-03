@@ -19,10 +19,10 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `7d601828097cc84527f7c0db06a5111f59495fd7` |
-| generated_from_tree | `83a17736eca65cd343add8f72a5c6fc3db551867` |
+| generated_from_commit | `23e55393da81ed412aaaff6a20efc272bae742f0` |
+| generated_from_tree | `0c5334c87108882c1de0b150b42c7e0ca69c0812` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['ackaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'tests/golden/create_app_golden.json', 'tests/test_create_app_golden.py'] |
+| modified_tracked_paths_at_generation | ['core/application.py', 'core/audit_event_store.py', 'core/durable_append_log.py', 'core/execution_idempotency_store.py', 'core/execution_manager.py', 'core/execution_transaction_journal.py', 'core/market_loop.py', 'core/risk_engine.py', 'main.py', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'tests/golden/execute_decision_golden.json', 'tests/test_dashboard_execution_gates.py', 'tests/test_execution_audit_trail_completeness.py', 'tests/test_quarantine_audit_fork.py', 'tests/test_single_instance_and_integrity_exit.py', 'tlas_supervisor.py', 'web_app.py'] |
 
 ## What this artifact is, and what it is not
 
@@ -62,8 +62,8 @@ observation.
 | entry_points | `main.py`, `web_app.py`, `atlas_service.py`, `atlas_supervisor.py` |
 | modules_in_runtime_closure | 135 |
 | declared_state_file_constants | 10 |
-| persistence_sites | 91 |
-| modules_with_persistence_sites | 39 |
+| persistence_sites | 86 |
+| modules_with_persistence_sites | 37 |
 | distinct_state_file_literals | 37 |
 | parse_failures | 0 |
 
@@ -158,9 +158,8 @@ nothing is inferred from an absence.
 | `atlas_org/tasks.py` | ATOMIC_REPLACE | 223 | `agent_scorecards::when` |
 | `atlas_os/audit/audit_log.py` | FSYNC | 607 | `AuditLogService::_persist_record` |
 | `atlas_os/audit/audit_log.py` | ATOMIC_REPLACE | 741 | `AuditLogService::rotate` |
-| `atlas_supervisor.py` | UNLINK | 454 | `_discard_heartbeat_file` |
+| `atlas_supervisor.py` | UNLINK | 490 | `_discard_heartbeat_file` |
 | `core/audit_event.py` | ATOMIC_REPLACE | 566 | `AuditEvent::_normalize_timestamp` |
-| `core/audit_event_store.py` | FSYNC | 340 | `AuditEventStore::_append_event_locked` |
 | `core/candle_processor.py` | ATOMIC_REPLACE | 1071 | `CandleProcessor::_to_milliseconds` |
 | `core/capital_reservation.py` | JSON_DUMP | 111 | `JsonReservationStore::save` |
 | `core/capital_reservation.py` | FSYNC | 113 | `JsonReservationStore::save` |
@@ -172,19 +171,15 @@ nothing is inferred from an absence.
 | `core/capital_reservation.py` | ATOMIC_REPLACE | 453 | `CapitalReservationLedger::commit` |
 | `core/decision_adapter.py` | ATOMIC_REPLACE | 688 | `DecisionAdapter::_confidence_to_percent` |
 | `core/decision_adapter.py` | ATOMIC_REPLACE | 916 | `DecisionAdapter::get_created_at` |
-| `core/durable_append_log.py` | FSYNC | 285 | `DurableAppendLog::append` |
-| `core/durable_append_log.py` | FSYNC | 345 | `DurableAppendLog::rewrite` |
-| `core/durable_append_log.py` | ATOMIC_REPLACE | 349 | `DurableAppendLog::rewrite` |
-| `core/durable_append_log.py` | UNLINK | 356 | `DurableAppendLog::rewrite` |
-| `core/execution_idempotency_store.py` | UNLINK | 863 | `ExecutionIdempotencyStore::reset` |
-| `core/execution_manager.py` | ATOMIC_REPLACE | 7002 | `ExecutionManager::_normalize_confidence` |
+| `core/execution_idempotency_store.py` | UNLINK | 874 | `ExecutionIdempotencyStore::reset` |
+| `core/execution_manager.py` | ATOMIC_REPLACE | 7125 | `ExecutionManager::_normalize_confidence` |
 | `core/execution_models.py` | ATOMIC_REPLACE | 96 | `normalize_timestamp` |
 | `core/execution_portfolio_foundation.py` | ATOMIC_REPLACE | 64 | `_utc` |
 | `core/execution_portfolio_foundation.py` | FSYNC | 183 | `FinancialStateStore::save` |
 | `core/execution_portfolio_foundation.py` | ATOMIC_REPLACE | 184 | `FinancialStateStore::save` |
 | `core/execution_portfolio_foundation.py` | FSYNC | 257 | `AppliedExecutionArchiveStore::append` |
 | `core/execution_portfolio_foundation.py` | FSYNC | 421 | `ClosedPositionArchiveStore::append` |
-| `core/execution_transaction_journal.py` | UNLINK | 953 | `ExecutionTransactionJournal::reset` |
+| `core/execution_transaction_journal.py` | UNLINK | 964 | `ExecutionTransactionJournal::reset` |
 | `core/experiment_ledger.py` | OPEN_WRITE_MODE | 69 | `ExperimentAdmissionLedger::record` |
 | `core/experiment_ledger.py` | JSON_DUMP | 70 | `ExperimentAdmissionLedger::record` |
 | `core/experiment_ledger.py` | FSYNC | 72 | `ExperimentAdmissionLedger::record` |
