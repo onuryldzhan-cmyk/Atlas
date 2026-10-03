@@ -4,6 +4,10 @@
   python -m tools.agent_cycle --every 5       # scheduler: every 5 minutes run the agents that are due
                                               # (each agent has its own clock, see SCHEDULE; Ctrl+C stops it)
 
+Normally tools.start_atlas runs the scheduler for you, beside Atlas, as its own lower-priority process.
+Only one runner can run at a time (an OS lock): while it runs, both commands above refuse to start a
+second one, because two runners would race on record ids.
+
 Runs next to Atlas on the owner machine and never touches the runtime, the
 execution path or money. Each agent reads real evidence and writes only
 through the governed logs (memory records, tasks, proposals):
@@ -28,6 +32,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 from datetime import datetime, timezone
@@ -217,11 +222,12 @@ def ceo_brief(records_dir: Path, ask=None, *, min_gap_h: float = CEO_MIN_GAP_H,
     res = (ask or ai.ask)(_AI_SYSTEM, prompt, _CEO_SCHEMA, ledger=_ai_ledger(), agent="ceo_ai")
     if res.status != "OK":
         return {"verdict": "OK", "summary": f"AI-001 çekimser: {res.reason}", "pending": True}
-    priorities = [str(p)[:500] for p in res.data.get("priorities", []) if str(p).strip()][:5]
-    followups = [str(f)[:400] for f in res.data.get("followups", []) if str(f).strip()][:5]
+    data = res.data or {}
+    priorities = [str(p)[:500] for p in data.get("priorities", []) if str(p).strip()][:5]
+    followups = [str(f)[:400] for f in data.get("followups", []) if str(f).strip()][:5]
     if not priorities and not followups:  # a valid answer: nothing new for the owner, so nothing is recorded
         return {"verdict": "OK", "summary": "CEO: sahibin dikkatini gerektiren yeni bir konu yok; kayıt yazılmadı"}
-    cited = [c for c in res.data.get("cited_records", []) if isinstance(c, str)]
+    cited = [c for c in data.get("cited_records", []) if isinstance(c, str)]
     if not cited or any(c not in ids for c in cited):
         return {"verdict": "OK", "summary": "AI-001 cevabı reddedildi: var olmayan ya da hiç kayıt gösterilmedi (kanıt doğrulaması)"}
     existing = {r["record_id"] for r in cli.read_log(records_dir / cli.MEMORY_LOG)}
@@ -1004,8 +1010,12 @@ def _save_schedule(path: Path, state: dict[str, Any]) -> None:
 
 
 def run_scheduled(records_dir: Path = cli.RECORDS_DIR, agents=AGENTS, *, state_path: Path | None = None,
-                  clock: Callable[[], float] = time.time) -> dict[str, Any]:
-    """One scheduler tick: only the agents that are due run (owner 2026-10-03)."""
+                  clock: Callable[[], float] = time.time, should_stop: Callable[[], bool] = lambda: False,
+                  beat: Callable[[], None] = lambda: None) -> dict[str, Any]:
+    """One scheduler tick: only the agents that are due run (owner 2026-10-03).
+
+    should_stop is checked before each agent (a stop request never cuts an agent in half); beat is
+    called before each agent, so a supervisor can tell a long tick from a hung one."""
     path = state_path or (_research_dir() / SCHEDULE_FILE)
     state = _load_schedule(path)
     units = state["units"]
@@ -1018,6 +1028,8 @@ def run_scheduled(records_dir: Path = cli.RECORDS_DIR, agents=AGENTS, *, state_p
     results: list[dict[str, Any]] = []
     skipped: list[dict[str, Any]] = []
     for unit, name, fn in agents:
+        if should_stop():
+            break
         entry = units.get(unit)
         fingerprint = _fingerprint(unit, paths)
         due, why = _due(unit, entry, fingerprint, clock())
@@ -1026,6 +1038,7 @@ def run_scheduled(records_dir: Path = cli.RECORDS_DIR, agents=AGENTS, *, state_p
             skipped.append({"unit": unit, "name": name, "verdict": "OK", "ran": False, "seconds": 0.0,
                             "summary": f"atlandı ({why}); son çalışma: {str(last or 'henüz yok')[:300]}"})
             continue
+        beat()
         ran_at = clock()
         result = _run_agents(records_dir, ((unit, name, fn),))[0]
         results.append(result)
@@ -1063,24 +1076,136 @@ def _print_cycle(out: dict[str, Any]) -> None:
         print(f"  ({len(out['skipped'])} ajanın sırası değildi ya da yeni girdisi yoktu)")
 
 
+# ---------------------------------------------------------------- the runner process (owner 2026-10-03)
+# One runner at a time: two would race on record ids. The lock is the same exclusive OS lock Atlas uses for its
+# state root (core.instance_lock), on its own directory; the OS drops it when the process dies, so a crash never
+# leaves a stale lock. The heartbeat file lets tools.start_atlas tell a long tick from a hung runner.
+RUNNER_DIR = "agent_runner"
+HEARTBEAT_FILE = "heartbeat"
+ALREADY_RUNNING_EXIT = 3
+LOCK_UNAVAILABLE_EXIT = 2
+
+
+def runner_dir(create: bool = True) -> Path:
+    if create:
+        return _research_dir() / RUNNER_DIR
+    from core.application import resolve_state_directory
+
+    return resolve_state_directory() / "research" / RUNNER_DIR  # the same place, without creating anything
+
+
+def _beat(directory: Path) -> None:
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / HEARTBEAT_FILE).write_text(str(time.time()), encoding="utf-8")
+    except OSError:  # a missed beat only makes the supervisor's hang check stricter, never a crash here
+        pass
+
+
+def _install_stop_signals(stop) -> dict[Any, Any]:
+    """Ctrl+Break (Windows) / SIGTERM (elsewhere): finish the current agent, then stop. Returns the old handlers."""
+    import signal
+
+    previous = {}
+    for name in ("SIGBREAK", "SIGTERM"):
+        sig = getattr(signal, name, None)
+        if sig is not None:
+            try:
+                previous[sig] = signal.signal(sig, lambda *_: stop.set())
+            except (ValueError, OSError):  # not the main thread / not supported here
+                pass
+    return previous
+
+
+def _restore_signals(previous: dict[Any, Any]) -> None:
+    import signal
+
+    for sig, handler in previous.items():
+        try:
+            signal.signal(sig, handler)
+        except (ValueError, OSError, TypeError):
+            pass
+
+
+class _RawStdin:
+    """os.read on the descriptor. A daemon thread blocked in the buffered sys.stdin reader holds its lock, and
+    CPython aborts at shutdown when it finds that lock taken (seen 2026-10-03 as exit -6 after a clean stop)."""
+
+    def __init__(self, fd: int) -> None:
+        self.fd = fd
+
+    def read(self, n: int) -> bytes:
+        return os.read(self.fd, n)
+
+
+def _watch_parent(stop, stream) -> None:
+    """The launcher holds our stdin open; it reads EOF only when the launcher is gone. Then we stop too."""
+    try:
+        while stream.read(1):
+            pass
+    except (OSError, ValueError):
+        pass
+    stop.set()
+
+
+def _sleep(stop, seconds: float) -> bool:
+    """Wait in one-second slices so a stop signal is seen promptly on every platform. True: stop."""
+    deadline = time.monotonic() + seconds
+    while time.monotonic() < deadline:
+        if stop.wait(min(1.0, max(0.0, deadline - time.monotonic()))):
+            return True
+    return stop.is_set()
+
+
 def main(argv: list[str] | None = None) -> int:
+    import threading
+
+    from core import instance_lock
+
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--every", type=float, default=None,
                         help="scheduler: every N minutes run the agents that are due (each agent has its own clock)")
+    parser.add_argument("--parent-watch", action="store_true", help=argparse.SUPPRESS)  # set by tools.start_atlas
     args = parser.parse_args(argv)
-    if not args.every:
-        out = run_cycle()
-        _print_cycle(out)
-        return 0 if all(r["verdict"] != "FAIL" for r in out["results"]) else 1
-    print(f"Ajanlar kendi saatleriyle çalışıyor: her {args.every:g} dakikada sırası gelenler (durdurmak için Ctrl+C; Atlas etkilenmez)")
-    while True:
-        out = run_scheduled()
-        if out["results"]:
+    directory = runner_dir()
+    try:
+        instance_lock.acquire(directory)
+    except instance_lock.InstanceLockHeldError:
+        print("Ajanlar zaten çalışıyor (başka bir ajan çalıştırıcısı açık; örneğin tools.start_atlas). "
+              "İkincisi başlatılmadı: aynı anda iki çalıştırıcı kayıt numaralarında çakışırdı.")
+        return ALREADY_RUNNING_EXIT
+    except instance_lock.InstanceLockUnavailableError as exc:
+        print(f"Ajan kilidi açılamadı ({exc}); kilitsiz çalışılmaz.")
+        return LOCK_UNAVAILABLE_EXIT
+    try:
+        if not args.every:
+            out = run_cycle(cli.RECORDS_DIR, agents=AGENTS)
             _print_cycle(out)
+            return 0 if all(r["verdict"] != "FAIL" for r in out["results"]) else 1
+        stop = threading.Event()
+        previous = _install_stop_signals(stop)
+        if args.parent_watch:
+            threading.Thread(target=_watch_parent, args=(stop, _RawStdin(sys.stdin.fileno())), daemon=True,
+                             name="atlas-agents-parent-watch").start()
+        print(f"Ajanlar kendi saatleriyle çalışıyor: her {args.every:g} dakikada sırası gelenler "
+              "(durdurmak için Ctrl+C; Atlas etkilenmez)", flush=True)
         try:
-            time.sleep(args.every * 60)
-        except KeyboardInterrupt:
-            return 0
+            while not stop.is_set():
+                _beat(directory)
+                out = run_scheduled(cli.RECORDS_DIR, agents=AGENTS, should_stop=stop.is_set,
+                                    beat=lambda: _beat(directory))
+                if out["results"]:
+                    _print_cycle(out)
+                    sys.stdout.flush()
+                if _sleep(stop, args.every * 60):
+                    break
+        finally:
+            _restore_signals(previous)
+        return 0
+    except KeyboardInterrupt:
+        return 0
+    finally:
+        instance_lock.release(directory)
 
 
 if __name__ == "__main__":

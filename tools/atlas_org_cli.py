@@ -75,10 +75,29 @@ def _lock(path: Path) -> Iterator[None]:
                 raise RecordLockBusy(f"{lock.name} exists: another writer is active (or crashed; remove it after checking)")
             time.sleep(0.05)
     try:
+        # 2026-10-03: the lock names its writer, so a supervisor that had to kill a writer releases exactly
+        # that writer's locks (release_locks_of) instead of leaving them for the owner to find.
+        os.write(fd, str(os.getpid()).encode("ascii"))
         yield
     finally:
         os.close(fd)
         lock.unlink(missing_ok=True)
+
+
+def release_locks_of(directory: Path, pid: int) -> list[str]:
+    """Remove the record locks a dead writer left behind: only locks naming exactly this PID.
+
+    Call it only once the process is known to be gone (its exit was observed)."""
+    removed = []
+    for lock in sorted(Path(directory).glob("*.lock")):
+        try:
+            holder = lock.read_text(encoding="ascii", errors="replace").strip()
+        except OSError:
+            continue
+        if holder == str(pid):
+            lock.unlink(missing_ok=True)
+            removed.append(lock.name)
+    return removed
 
 
 def _append(path: Path, record: dict[str, Any]) -> None:
