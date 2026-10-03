@@ -247,3 +247,26 @@ def test_main_applies_the_check_as_a_block_never_as_configuration(tmp_path, monk
     main.apply_policy_manifest(app, path=tmp_path / "absent.json")
     assert app.execution.policy_manifest_block == "POLICY_MANIFEST_MISSING"
     assert pm.runtime_policy(app) == before          # nothing applied, nothing enabled
+
+
+def test_main_refuses_to_start_when_the_check_cannot_be_applied(monkeypatch):
+    """Fail-closed: an application whose block cannot be set never starts."""
+    import main
+
+    started = []
+
+    class NoExecution:
+        def __init__(self, **kwargs):
+            pass
+
+        def start(self):
+            started.append(True)
+            return True
+
+    monkeypatch.setattr(main, "AtlasApplication", NoExecution)
+    process = main.AtlasProcess()
+    monkeypatch.setattr(process, "_validate_configuration", lambda: True)
+    monkeypatch.setattr(process, "_acquire_instance_lock", lambda: True)
+    assert process.start() is False
+    assert started == [] and process.exit_code == 1
+    assert "Policy manifest check could not be applied" in process.shutdown_reason

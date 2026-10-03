@@ -563,7 +563,15 @@ class AtlasProcess:
         # Phase-2 G1: compare the constructed runtime policy with the
         # governance manifest before anything trades. A mismatch blocks new
         # risk only; nothing from the manifest is ever applied.
-        apply_policy_manifest(self.application)
+        try:
+            apply_policy_manifest(self.application)
+        except Exception as exc:
+            # The check could not even be applied: governance cannot be
+            # enforced, so Atlas does not start (fail-closed, never skipped).
+            self.exit_code = 1
+            self.shutdown_reason = f"Policy manifest check could not be applied: {exc!r}"
+            logger.critical(self.shutdown_reason)
+            return False
 
         logger.info(
             "Starting AtlasApplication"

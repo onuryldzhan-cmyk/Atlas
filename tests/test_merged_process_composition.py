@@ -812,6 +812,11 @@ class StubApplication:
         StubApplication.instance = self
         self.running = False
         self.stop_calls = 0
+        # Phase-2 G1: main.py applies the policy manifest result through
+        # application.execution before start; the stub models that interface.
+        self.execution = type(
+            "Execution", (), {"set_policy_manifest_block": lambda self, reason: None}
+        )()
         self.stopped_while_server_alive = None
         self.market_feed = type(
             "Feed", (), {"price": staticmethod(lambda symbol: 61234.5)}
@@ -1051,6 +1056,11 @@ class StubApplication:
         StubApplication.instance = self
         self.running = False
         self.stop_calls = 0
+        # Phase-2 G1: main.py applies the policy manifest result through
+        # application.execution before start; the stub models that interface.
+        self.execution = type(
+            "Execution", (), {"set_policy_manifest_block": lambda self, reason: None}
+        )()
 
     def start(self):
         self.running = True
