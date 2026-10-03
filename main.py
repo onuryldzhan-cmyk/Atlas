@@ -81,6 +81,29 @@ def trade_universe(path: Path | str = DEFAULT_INSTRUMENT_RULES_PATH) -> list[str
     if len(symbols) > MAX_TRADE_UNIVERSE:
         raise ValueError(f"{len(symbols)} symbols in {path}: at most {MAX_TRADE_UNIVERSE} (owner decision v5.41)")
     return symbols or None
+def apply_policy_manifest(application, path: Path | str | None = None):
+    """Phase-2 G1: verify the runtime policy against the manifest; block new risk on any mismatch.
+
+    Read-only towards configuration: the only effect is ExecutionManager's
+    policy_manifest_block (new BUYs refused, reduce-only exits per B1).
+    """
+
+    from core import policy_manifest
+
+    check = policy_manifest.verify(
+        policy_manifest.runtime_policy(application),
+        policy_manifest.MANIFEST_PATH if path is None else path,
+    )
+    application.execution.set_policy_manifest_block(check.block_reason)
+    if check.block_new_risk:
+        logger.critical("Policy manifest %s: %s - BLOCK_NEW_RISK (exits stay possible) %s",
+                        check.status, check.detail, check.to_dict()["mismatches"])
+    else:
+        logger.info("Policy manifest MATCH (registry %s, proposal %s, owner approval %s)",
+                    check.registry_id, check.proposal_id, check.owner_approval)
+    return check
+
+
 # EXP-001 stopped early by the owner on 2026-09-29 (registry v5.71): 16 trades,
 # 6/16 winners after fees, gross -74.48, net -99.30; back to the policy floor.
 # 2026-10-01: owner switched on EXP-002 ("Sadece EXP-002"), approved by the
@@ -536,6 +559,11 @@ class AtlasProcess:
             order_lifecycle_observe=True,
             symbols=trade_universe(),
         )
+
+        # Phase-2 G1: compare the constructed runtime policy with the
+        # governance manifest before anything trades. A mismatch blocks new
+        # risk only; nothing from the manifest is ever applied.
+        apply_policy_manifest(self.application)
 
         logger.info(
             "Starting AtlasApplication"

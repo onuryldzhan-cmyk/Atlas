@@ -1,0 +1,59 @@
+{
+  "manifest_version": 1,
+  "title": "Atlas runtime policy manifest (Phase-2 G1)",
+  "effective_state": "EFFECTIVE_FOR_COMPARISON_ONLY",
+  "note": "Pins the critical runtime switches main.py constructs. Read-only reference: core/policy_manifest.py compares the running application with it and any difference is BLOCK_NEW_RISK. Nothing is ever applied from this file and it can never enable LIVE. Changing a switch means a new versioned manifest (successor record) plus the matching code change, never an in-place edit.",
+  "registry_id": "ATLAS_MILESTONE_REGISTRY_v5.83",
+  "registry_path": "governance/current/ATLAS_MILESTONE_REGISTRY_v5.83.json",
+  "registry_sha256": "d7e2fd5f21cd788bd518e4cfb6d1461800ce57888f7b10ab0b665010878f7ce7",
+  "proposal_id": "PHASE2-G1-POLICY-MANIFEST",
+  "owner_approval": "UNKNOWN",
+  "owner_approval_note": "No owner ratification of this manifest is recorded. The switch values are the ones main.py already runs with; their own provenance is listed in sources. Ratification is an owner decision.",
+  "policy": {
+    "execution_mode": "PAPER",
+    "live_execution_enabled": false,
+    "execution_minimum_confidence": "60",
+    "risk_policy_version": "phase3-risk-v1",
+    "global_minimum_confidence": "0.6",
+    "paper_confidence_experiment": true,
+    "paper_confidence_experiment_id": "EXP-002",
+    "paper_fee_rate": "0.001",
+    "paper_slippage_bps": "5",
+    "count_unrealized_in_daily_loss": true,
+    "sleeves_enabled": true,
+    "funding_sentiment": false,
+    "fusion_full_weight_denominator": false,
+    "order_lifecycle_observe": true,
+    "paper_fill_model": {
+      "one_of": [
+        "LAST_PRICE",
+        "BOOK"
+      ]
+    },
+    "exit_guard_mode": "OBSERVE",
+    "exit_guard_rules": 0
+  },
+  "sources": {
+    "execution_mode": "main.py EXECUTION_MODE; core/atlas_config.py refuses anything but PAPER (live_authority=DENIED)",
+    "live_execution_enabled": "ExecutionManager default; live_authority=DENIED in the registry authority_state",
+    "execution_minimum_confidence": "ExecutionManager default floor (0-100 consensus scale)",
+    "risk_policy_version": "core/risk_engine.py RiskPolicy.version",
+    "global_minimum_confidence": "core/risk_engine.py RiskPolicy default (0-1 consensus scale; Phase-2 E1: not a probability)",
+    "paper_confidence_experiment": "main.py call site; EXP-002 switched on by the owner 2026-10-01 (main.py comment) - registry record UNKNOWN",
+    "paper_confidence_experiment_id": "main.py call site (EXP-001 stopped, registry v5.71)",
+    "paper_fee_rate": "main.py PAPER_FEE_RATE_PER_SIDE (registry v5.23)",
+    "paper_slippage_bps": "main.py call site; owner switch-on 2026-10-01 (F-4)",
+    "count_unrealized_in_daily_loss": "main.py call site; owner switch-on 2026-10-01 (F-3)",
+    "sleeves_enabled": "main.py call site; owner switch-on 2026-10-01 (S1)",
+    "funding_sentiment": "not passed by main.py (default off)",
+    "fusion_full_weight_denominator": "not passed by main.py (default off; owner decision pending per fusion dissent design)",
+    "order_lifecycle_observe": "main.py call site; owner approved 2026-10-01 (observe only)",
+    "paper_fill_model": "operator choice via ATLAS_FILL_MODEL (Shadow S2, owner approval 2026-10-02); validated by core/atlas_config.py",
+    "exit_guard_mode": "core/exit_guard.py default; Phase-2 B2 inert - ENFORCE is an owner decision",
+    "exit_guard_rules": "core/application.py constructs ExitGuard without rules"
+  },
+  "integrity": {
+    "algorithm": "sha256",
+    "digest": "2726cbcd287801c1e4d3e3208a1e5122cd2da615b899a75a9a9f31b56e371361"
+  }
+}

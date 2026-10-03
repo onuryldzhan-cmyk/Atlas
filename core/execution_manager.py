@@ -377,6 +377,10 @@ class ExecutionManager:
             live_execution_enabled
         )
 
+        # Phase-2 G1: set by main.py from the policy manifest check. None means
+        # no block; a reason string refuses new BUYs (reductions unaffected).
+        self.policy_manifest_block: str | None = None
+
         self.running = False
 
         self._lock = threading.RLock()
@@ -530,6 +534,15 @@ class ExecutionManager:
             reason = foundation.diagnostics().get("reason")
             return False, str(reason or "FINANCIAL_STATE_RECOVERY_REQUIRED")
         return True, None
+
+    def set_policy_manifest_block(self, reason: str | None) -> None:
+        """Phase-2 G1: block (reason) or unblock (None) new risk for a manifest result.
+
+        Only ever a block on new BUYs; it changes no other setting.
+        """
+        if reason is not None and (not isinstance(reason, str) or not reason.strip()):
+            raise ValueError("policy manifest block reason must be a non-empty string or None")
+        self.policy_manifest_block = reason
 
     def audit_persistence_state(self) -> str:
         """Phase-2 A3: HEALTHY, DEGRADED or RECOVERY_REQUIRED.
@@ -3809,6 +3822,11 @@ class ExecutionManager:
         # or refused by RiskEngine as NON_RISK_REDUCING_SELL.
         audit_state = self.audit_persistence_state()
         if str(request.action).strip().upper() == "BUY":
+            # Phase-2 G1: runtime policy differs from the governance manifest.
+            policy_block = getattr(self, "policy_manifest_block", None)
+            if policy_block:
+                return {"approved": False, "reason": policy_block, "status": "BLOCK_NEW_RISK",
+                        "details": {"policy_manifest_block": policy_block}}
             if audit_state not in {"HEALTHY", "DISABLED"}:
                 return {"approved": False, "reason": "AUDIT_PERSISTENCE_" + audit_state,
                         "status": "BLOCK_NEW_RISK",
@@ -8103,6 +8121,9 @@ class ExecutionManager:
                     "audit_incident_count": (
                         self.audit_incident_count
                     ),
+                    "policy_manifest_block": getattr(
+                        self, "policy_manifest_block", None
+                    ),
                     "last_audit_failure": (
                         dict(
                             self.last_audit_failure
@@ -8169,6 +8190,9 @@ class ExecutionManager:
                     ),
                     "audit_incident_count": (
                         self.audit_incident_count
+                    ),
+                    "policy_manifest_block": getattr(
+                        self, "policy_manifest_block", None
                     ),
                     "last_audit_failure": (
                         dict(

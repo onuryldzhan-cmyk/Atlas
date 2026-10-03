@@ -82,7 +82,8 @@ def assess(inputs: Mapping[str, Any]) -> dict[str, Any]:
       running, loop_running, loop_thread_alive, loop_progress_age_seconds,
       loop_interval_seconds, market_data_stale, execution_running,
       execution_halted, recovery_required, audit_persistence_state,
-      brain_healthy
+      brain_healthy, policy_manifest_block (Phase-2 G1: a reason string
+      blocks new risk only; reductions are unaffected)
     """
 
     data = inputs if isinstance(inputs, Mapping) else {}
@@ -149,7 +150,11 @@ def assess(inputs: Mapping[str, Any]) -> dict[str, Any]:
         for signal in (process_alive, loop_progressing, execution_healthy, market_data_healthy)
     ) and audit_healthy in {OK, DEGRADED}
 
-    safe_to_trade = safe_to_reduce and audit_healthy == OK and brain_healthy == OK
+    policy_block = data.get("policy_manifest_block")
+    policy_block = policy_block if isinstance(policy_block, str) and policy_block else None
+
+    safe_to_trade = (safe_to_reduce and audit_healthy == OK and brain_healthy == OK
+                     and policy_block is None)
 
     system_ready = process_alive == OK and loop_progressing == OK
 
@@ -177,4 +182,5 @@ def assess(inputs: Mapping[str, Any]) -> dict[str, Any]:
         "system_ready": system_ready,
         "safe_to_trade": safe_to_trade,
         "safe_to_reduce": safe_to_reduce,
+        "policy_manifest": policy_block,
     }

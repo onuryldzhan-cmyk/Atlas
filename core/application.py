@@ -2036,6 +2036,9 @@ class AtlasApplication:
                     "audit_persistence_state",
                 ),
                 "brain_healthy": brain_health.get("healthy"),
+                "policy_manifest_block": execution_operational_state.get(
+                    "policy_manifest_block",
+                ),
             }
         )
 
