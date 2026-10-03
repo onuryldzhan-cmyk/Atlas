@@ -53,19 +53,41 @@ def _approvals() -> dict:
     return approvals_by_symbol(resolve_state_directory() / EXECUTION_AUDIT_EVENT_FILE)
 
 
-def _last_recorded_trades(records_dir: Path) -> int | None:
+def _last_report_total(records_dir: Path) -> dict[str, Any] | None:
+    """The "total" block of the latest readable performance report (None when there is none)."""
     from atlas_org import memory_records
 
     records = memory_records.replay(cli.read_log(records_dir / cli.MEMORY_LOG)) if (records_dir / cli.MEMORY_LOG).exists() else {}
-    counts = []
+    totals = []
     for r in sorted(records.values(), key=lambda x: x["seq"]):
         if r["author"] != "quant_research" or r["type"] != "EXPERIMENTS":
             continue
         try:
-            counts.append(json.loads(r["body"]).get("total", {}).get("trades"))
+            total = json.loads(r["body"]).get("total", {})
         except (ValueError, AttributeError):  # an older truncated body is skipped, never fatal
             continue
-    return counts[-1] if counts else None
+        if isinstance(total, dict):
+            totals.append(total)
+    return totals[-1] if totals else None
+
+
+def _last_recorded_trades(records_dir: Path) -> int | None:
+    return (_last_report_total(records_dir) or {}).get("trades")
+
+
+def _since_last(previous: dict[str, Any] | None, total: dict[str, Any]) -> dict[str, Any] | None:
+    """Owner 2026-10-03, build on the previous report: what the new trades changed, not the same totals again."""
+    if not previous:
+        return None
+    from decimal import InvalidOperation
+
+    try:
+        net_change = str(Decimal(str(total.get("est_net_pnl"))) - Decimal(str(previous.get("est_net_pnl"))))
+    except (InvalidOperation, ValueError, TypeError):
+        net_change = None
+    return {"new_trades": int(total.get("trades") or 0) - int(previous.get("trades") or 0), "net_change": net_change,
+            "verdict_before": previous.get("verdict"), "verdict_now": total.get("verdict"),
+            "win_rate_before": previous.get("win_rate_after_fees"), "win_rate_now": total.get("win_rate_after_fees")}
 
 
 def quant_research(records_dir: Path) -> dict[str, Any]:
@@ -76,15 +98,18 @@ def quant_research(records_dir: Path) -> dict[str, Any]:
     closed = load_closed(_archive_path())
     report = analyse(closed)
     n = report["total"].get("trades", 0)
-    if n == _last_recorded_trades(records_dir):
+    previous = _last_report_total(records_dir)
+    if previous is not None and n == previous.get("trades"):
         return {"verdict": "OK", "summary": f"{n} işlem; yeni kapanan işlem yok, rapor tekrar yazılmadı"}
     real = reality(closed, _approvals())
-    body = {"total": report["total"], "lessons": report["lessons"], "trader_book": report.get("trader_book"),
-            "reality": real}
+    since = _since_last(previous, report["total"])
+    body = {"total": report["total"], "since_last_report": since, "lessons": report["lessons"],
+            "trader_book": report.get("trader_book"), "reality": real}
     existing = {r["record_id"] for r in cli.read_log(records_dir / cli.MEMORY_LOG)} if (records_dir / cli.MEMORY_LOG).exists() else set()
+    change = f" (+{since['new_trades']} yeni işlem, net değişim {since['net_change']})" if since else ""
     cli.add_memory_record(records_dir, {
         "record_id": f"PR-{len(existing) + 1:04d}", "type": "EXPERIMENTS", "authority": "RESEARCH",
-        "title": f"Performans ve gerçeklik raporu: {n} işlem", "body": json.dumps(body, ensure_ascii=False, default=str),
+        "title": f"Performans ve gerçeklik raporu: {n} işlem{change}", "body": json.dumps(body, ensure_ascii=False, default=str),
         "author": "quant_research", "source": "tools/agent_cycle.py (performance_report + reality_check)"})
     costs = real["costs"]
     edge = "" if not costs.get("trades") else ("; kenar maliyeti karşılıyor" if costs["edge_covers_costs"] else "; KENAR MALİYETİ KARŞILAMIYOR")
@@ -95,8 +120,9 @@ def quant_research(records_dir: Path) -> dict[str, Any]:
 # Owner choice 2026-10-02. They only ADVISE: a brief or a review is a memory record, never a
 # decision. Without a key on the owner's machine they abstain and say so - they never pretend.
 
-_CEO_SCHEMA = {"type": "object", "additionalProperties": False, "required": ["priorities", "cited_records"],
+_CEO_SCHEMA = {"type": "object", "additionalProperties": False, "required": ["priorities", "followups", "cited_records"],
                "properties": {"priorities": {"type": "array", "items": {"type": "string"}},
+                              "followups": {"type": "array", "items": {"type": "string"}},
                               "cited_records": {"type": "array", "items": {"type": "string"}}}}
 _COUNCIL_SCHEMA = {"type": "object", "additionalProperties": False, "required": ["verdict", "reasons"],
                    "properties": {"verdict": {"type": "string", "enum": ["SUPPORT", "OPPOSE", "UNSURE"]},
@@ -128,11 +154,26 @@ CEO_MIN_EVIDENCE = 3  # fewer evidence records than this: no call (2026-10-02, a
 # Owner 2026-10-03: longer questions are fine when they make the answer useful. The CEO reads each record's
 # body (capped), not only its title, so it can weigh the evidence instead of listing headlines.
 CEO_BODY_CHARS = 700
-CEO_TASK = ("Task: write at most 5 priorities for the owner, most important first, in Turkish. Each priority must be "
-            "one concrete decision or check the owner can act on now, say why it matters, and rest on the cited "
-            "records. Do not restate facts the records already state plainly (for example how many agents, records "
-            "or coins there are), do not ask questions and skip routine operations. If nothing needs the owner's "
-            "attention, return an empty priorities list and an empty cited_records list.")
+# Owner 2026-10-03: build on what was done before instead of asking the same things again. The CEO sees its
+# previous brief, the records that are NEW since it are marked, and each new priority must go a step further.
+CEO_TASK = ("Task - build on your previous brief, never repeat it:\n"
+            "1) followups: for each earlier priority, one line in Turkish saying whether the NEW records resolved it, "
+            "changed it or left it open, and the next, sharper step if it is still open.\n"
+            "2) priorities: at most 5 NEW priorities for the owner, most important first, in Turkish, drawn from the "
+            "NEW records. Each must be one concrete decision or check the owner can act on now, say why it matters, "
+            "and go a step further than before (a sharper check, a test that would settle it, or the next "
+            "decision) - never an earlier priority again unchanged.\n"
+            "Do not restate facts the records already state plainly (for example how many agents, records or coins "
+            "there are), do not ask questions and skip routine operations. Cite every record you rely on in "
+            "cited_records. If nothing new needs the owner, return empty priorities (followups may still say what "
+            "changed); if there is nothing at all, return all three lists empty.")
+
+
+def _brief_items(record: dict[str, Any] | None) -> list[str]:
+    try:
+        return [str(p) for p in json.loads((record or {}).get("body") or "{}").get("priorities", [])][:5]
+    except (ValueError, AttributeError):
+        return []
 
 
 def ceo_brief(records_dir: Path, ask=None, *, min_gap_h: float = CEO_MIN_GAP_H,
@@ -150,8 +191,8 @@ def ceo_brief(records_dir: Path, ask=None, *, min_gap_h: float = CEO_MIN_GAP_H,
     recent = [r for r in _recent_records(records_dir, 200) if r.get("author") not in CEO_IGNORED_AUTHORS][-25:]
     if len(recent) < CEO_MIN_EVIDENCE:
         return {"verdict": "OK", "summary": f"{len(recent)} kanıt kaydı (en az {CEO_MIN_EVIDENCE} gerekir); özet çıkarılmadı"}
-    last_ceo = max((str(r.get("created_at") or "") for r in _recent_records(records_dir, 500)
-                    if r.get("author") == "ceo_ai"), default="")
+    mine = [r for r in _recent_records(records_dir, 500) if r.get("author") == "ceo_ai"]
+    last_ceo = max((str(r.get("created_at") or "") for r in mine), default="")
     if last_ceo:
         try:
             last_at = datetime.strptime(last_ceo, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
@@ -164,14 +205,21 @@ def ceo_brief(records_dir: Path, ask=None, *, min_gap_h: float = CEO_MIN_GAP_H,
         if not any(str(r.get("created_at") or "") > last_ceo and r.get("author") != "ceo_ai" for r in recent):
             return {"verdict": "OK", "summary": "son özetten beri yeni kayıt yok; çağrı yapılmadı"}
     ids = {str(r.get("id")) for r in recent}
-    prompt = "Atlas evidence records, oldest first (id | time | author | type | title, then the body):\n\n" + "\n".join(
-        f"[{r.get('id')}] {r.get('created_at')} | {r.get('author')} | {r.get('type')} | {str(r.get('title') or '')[:200]}\n"
+    previous = mine[-1] if mine else None
+    earlier = _brief_items(previous)
+    head = (f"Your previous brief {previous.get('id')} ({previous.get('created_at')}):\n" + "\n".join(f"- {p}" for p in earlier)
+            if previous and earlier else "This is your first brief: there is no earlier one to build on.")
+    prompt = head + "\n\nAtlas evidence records, oldest first (id | NEW = after your previous brief | time | author | type | " \
+        "title, then the body):\n\n" + "\n".join(
+        f"[{r.get('id')}]{' NEW' if last_ceo and str(r.get('created_at') or '') > last_ceo else ''} {r.get('created_at')} | "
+        f"{r.get('author')} | {r.get('type')} | {str(r.get('title') or '')[:200]}\n"
         f"  {' '.join(str(r.get('body') or '').split())[:CEO_BODY_CHARS]}" for r in recent) + "\n\n" + CEO_TASK
     res = (ask or ai.ask)(_AI_SYSTEM, prompt, _CEO_SCHEMA, ledger=_ai_ledger(), agent="ceo_ai")
     if res.status != "OK":
         return {"verdict": "OK", "summary": f"AI-001 çekimser: {res.reason}", "pending": True}
     priorities = [str(p)[:500] for p in res.data.get("priorities", []) if str(p).strip()][:5]
-    if not priorities:  # a valid answer: nothing needs the owner, so nothing is recorded
+    followups = [str(f)[:400] for f in res.data.get("followups", []) if str(f).strip()][:5]
+    if not priorities and not followups:  # a valid answer: nothing new for the owner, so nothing is recorded
         return {"verdict": "OK", "summary": "CEO: sahibin dikkatini gerektiren yeni bir konu yok; kayıt yazılmadı"}
     cited = [c for c in res.data.get("cited_records", []) if isinstance(c, str)]
     if not cited or any(c not in ids for c in cited):
@@ -179,19 +227,50 @@ def ceo_brief(records_dir: Path, ask=None, *, min_gap_h: float = CEO_MIN_GAP_H,
     existing = {r["record_id"] for r in cli.read_log(records_dir / cli.MEMORY_LOG)}
     cli.add_memory_record(records_dir, {
         "record_id": f"CEO-{len(existing) + 1:04d}", "type": "OPERATIONS", "authority": "TEMPORARY",
-        "title": f"CEO özeti: {len(priorities)} öncelik (öneri, karar değil)",
-        "body": json.dumps({"priorities": priorities, "cited_records": cited, "model": res.model,
+        "title": f"CEO özeti: {len(priorities)} yeni öncelik, {len(followups)} takip (öneri, karar değil)",
+        "body": json.dumps({"priorities": priorities, "followups": followups, "cited_records": cited,
+                            "builds_on": previous.get("id") if previous else None, "model": res.model,
                             "cost_usd": str(res.cost_usd)}, ensure_ascii=False),
         "author": "ceo_ai", "source": "tools/agent_cycle.py (ceo_brief, tools/ai_gateway.py)"})
-    return {"verdict": "OK", "summary": f"{len(priorities)} öncelik yazıldı ({res.model}, {res.cost_usd:.4f} $)"}
+    return {"verdict": "OK", "summary": f"{len(priorities)} öncelik, {len(followups)} takip yazıldı ({res.model}, {res.cost_usd:.4f} $)"}
 
 
 COUNCIL_MAX_PER_RUN = 3  # owner 2026-10-03: review what is waiting (as needed), not one proposal per cycle
 COUNCIL_CONTEXT_CHARS = 1500
 
 
-def _council_context(records_dir: Path, pid: str) -> str:
-    """The evidence a reviewer needs next to the proposal: its red-team review and the latest measurements."""
+def _owner_track_record(state: dict[str, Any], recs: list[dict[str, Any]]) -> str:
+    """Earlier proposals the owner decided, next to the council's own verdict on each (owner 2026-10-03:
+    build on earlier work - the council learns the owner's bar and where it was wrong, it never decides)."""
+    said: dict[str, Any] = {}
+    for r in recs:
+        if r.get("author") == "model_council" and r.get("related_proposal"):
+            try:
+                said[str(r["related_proposal"])] = json.loads(r.get("body") or "{}").get("outcome")
+            except (ValueError, AttributeError):
+                continue
+    rows, agree, judged = [], 0, 0
+    for pid, prop in sorted(state.items()):
+        decision = getattr(prop, "owner_decision", None) or {}
+        if not decision.get("decision"):
+            continue
+        verdict = said.get(pid)
+        if verdict in ("SUPPORT", "OPPOSE") and decision["decision"] in ("APPROVED", "REJECTED"):
+            judged += 1
+            agree += (verdict == "SUPPORT") == (decision["decision"] == "APPROVED")
+        note = str(decision.get("note") or "")[:200]
+        title = str((getattr(prop, "fields", None) or {}).get("title"))[:120]
+        rows.append(f"{pid} '{title}': owner {decision['decision']}{' - ' + note if note else ''}; "
+                    f"council said {verdict or 'nothing'}")
+    if not rows:
+        return ""
+    return (f"Owner decisions on earlier proposals (your verdict matched {agree} of {judged} clear calls; where it "
+            "missed, weigh what the owner weighed):\n" + "\n".join(rows[-10:]))
+
+
+def _council_context(records_dir: Path, pid: str, state: dict[str, Any] | None = None) -> str:
+    """The evidence a reviewer needs next to the proposal: its red-team review, the latest measurements
+    and how the owner decided earlier proposals."""
     recs = _recent_records(records_dir, 500)
     groups = (("Red-team review of this proposal", [r for r in recs if r.get("author") == "red_team"
                                                     and r.get("related_proposal") == pid]),
@@ -200,6 +279,9 @@ def _council_context(records_dir: Path, pid: str) -> str:
     parts = [f"{label} [{group[-1].get('id')}]: {group[-1].get('title')}\n"
              f"{' '.join(str(group[-1].get('body') or '').split())[:COUNCIL_CONTEXT_CHARS]}"
              for label, group in groups if group]
+    track = _owner_track_record(state or {}, recs)
+    if track:
+        parts.append(track)
     return "\n\n".join(parts) or "No related evidence record yet."
 
 
@@ -226,7 +308,7 @@ def model_council(records_dir: Path, ask=None) -> dict[str, Any]:
         fields = state[pid].fields or {}
         prompt = (f"Proposal {pid}: {fields.get('title')}\nRisk: {fields.get('risk_level') or fields.get('risk')}\n"
                   f"Body: {json.dumps(fields, ensure_ascii=False, default=str)[:6000]}\n\n"
-                  f"Related evidence:\n{_council_context(records_dir, pid)}\n\n"
+                  f"Related evidence:\n{_council_context(records_dir, pid, state)}\n\n"
                   "Should the owner approve it? Answer SUPPORT, OPPOSE or UNSURE. Give short reasons in Turkish that "
                   "point to the evidence above (sample size, costs, what could make the claim wrong); do not repeat "
                   "the proposal text.")
