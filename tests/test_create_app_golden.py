@@ -8,6 +8,11 @@ status, content type, security headers and normalized body, called both from loo
 from a non-loopback client, with no runtime attached. Runtime-backed behaviour stays
 covered by the existing web tests; this pins the wiring the split moves.
 
+2026-10-03 (fix): the endpoints read governance records and a test-results artifact that differ from one
+machine to the next (agents write records on the owner's machine; the artifact is untracked and git-dependent),
+so the golden failed on a clean checkout. collect() now runs hermetically: those two sources point at an empty
+temporary root. Regenerated on the pre-refactor web_app.py (commit 4469419); the wiring pinned is unchanged.
+
 Regenerate ONLY for an intended, approved behaviour change:
     python -c "import json; from tests.test_create_app_golden import collect, GOLDEN; \
 GOLDEN.write_text(json.dumps(collect(), indent=1, sort_keys=True))"
@@ -17,9 +22,11 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import tempfile
+from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, Iterator
 
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
@@ -61,7 +68,25 @@ def _body(response, exact: bool = False) -> Any:
     return "sha256:" + hashlib.sha256(_NUM.sub("<n>", text).encode()).hexdigest()
 
 
-def collect(exact: bool = False) -> dict[str, Any]:
+@contextmanager
+def _hermetic(root: Path) -> Iterator[None]:
+    """create_app's wiring, not this machine's data: records and artifacts come from an empty root."""
+    from observability import governance_records, panel_sources
+
+    saved = governance_records.REPOSITORY_ROOT, panel_sources.REPOSITORY_ROOT
+    governance_records.REPOSITORY_ROOT = panel_sources.REPOSITORY_ROOT = Path(root)
+    try:
+        yield
+    finally:
+        governance_records.REPOSITORY_ROOT, panel_sources.REPOSITORY_ROOT = saved
+
+
+def collect(exact: bool = False, root: Path | None = None) -> dict[str, Any]:
+    with _hermetic(root or Path(tempfile.mkdtemp())):
+        return _collect(exact)
+
+
+def _collect(exact: bool) -> dict[str, Any]:
     from web_app import create_app
 
     app = create_app()
@@ -109,9 +134,9 @@ def collect(exact: bool = False) -> dict[str, Any]:
     })
 
 
-def test_create_app_matches_golden():
+def test_create_app_matches_golden(tmp_path):
     expected = json.loads(GOLDEN.read_text(encoding="utf-8"))
-    actual = collect()
+    actual = collect(root=tmp_path)
     assert actual["routes"] == expected["routes"], "route table changed"
     assert actual["middleware"] == expected["middleware"]
     assert actual["openapi"] == expected["openapi"]

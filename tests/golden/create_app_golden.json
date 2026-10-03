@@ -38,25 +38,17 @@
   },
   "127.0.0.1 GET /api/agent-states": {
    "body": {
-    "activity": [
-     "{\"agent\": \"str\", \"at\": \"str\", \"category\": \"str\", \"source\": \"str\", \"text\": \"str\"}"
-    ],
+    "activity": [],
     "agents": [
-     "{\"doing\": \"str\", \"history\": [\"{\\\"agent\\\": \\\"str\\\", \\\"at\\\": \\\"str\\\", \\\"category\\\": \\\"str\\\", \\\"source\\\": \\\"str\\\", \\\"text\\\": \\\"str\\\"}\"], \"id\": \"str\", \"name\": \"str\", \"room\": \"str\", \"room_name\": \"str\", \"source\": \"NoneType\", \"state\": \"str\"}",
-     "{\"doing\": \"str\", \"history\": [\"{\\\"agent\\\": \\\"str\\\", \\\"at\\\": \\\"str\\\", \\\"category\\\": \\\"str\\\", \\\"source\\\": \\\"str\\\", \\\"text\\\": \\\"str\\\"}\"], \"id\": \"str\", \"name\": \"str\", \"room\": \"str\", \"room_name\": \"str\", \"source\": \"str\", \"state\": \"str\"}",
      "{\"doing\": \"str\", \"history\": [], \"id\": \"str\", \"name\": \"str\", \"room\": \"str\", \"room_name\": \"str\", \"source\": \"NoneType\", \"state\": \"str\"}",
      "{\"doing\": \"str\", \"history\": [], \"id\": \"str\", \"name\": \"str\", \"room\": \"str\", \"room_name\": \"str\", \"source\": \"str\", \"state\": \"str\"}"
     ],
     "available": "bool",
     "counts": {
      "IDLE": "int",
-     "OFFLINE": "int",
-     "REVIEWING": "int",
-     "WAITING": "int"
+     "OFFLINE": "int"
     },
-    "flows": [
-     "{\"from\": \"str\", \"kind\": \"str\", \"label\": \"str\", \"to\": \"str\"}"
-    ],
+    "flows": [],
     "generated_at": "str",
     "rooms": {
      "command": "str",
@@ -158,9 +150,7 @@
       "strategy_research": "str",
       "task_runner": "str"
      },
-     "working": [
-      "\"str\""
-     ]
+     "working": []
     },
     "available": "bool",
     "health": {
@@ -175,16 +165,12 @@
     "proposals": {
      "available": "bool",
      "awaiting_owner": [],
-     "counts": {
-      "DRAFT": "int"
-     },
+     "counts": {},
      "reason": "NoneType"
     },
     "tasks": {
      "available": "bool",
-     "counts": {
-      "IN_PROGRESS": "int"
-     },
+     "counts": {},
      "reason": "NoneType"
     },
     "trading": {
@@ -206,12 +192,7 @@
   "127.0.0.1 GET /api/events": {
    "body": {
     "available": "bool",
-    "events": [
-     "{\"agent\": {\"id\": \"str\", \"role\": \"NoneType\"}, \"event_id\": \"str\", \"event_type\": \"str\", \"payload\": {\"label\": \"str\", \"proposal\": \"str\", \"source\": \"str\", \"to\": \"str\"}, \"run\": {\"id\": \"NoneType\", \"task_id\": \"NoneType\"}, \"schema\": \"str\", \"timestamp\": \"str\"}",
-     "{\"agent\": {\"id\": \"str\", \"role\": \"NoneType\"}, \"event_id\": \"str\", \"event_type\": \"str\", \"payload\": {\"source\": \"str\", \"status\": \"str\", \"title\": \"str\"}, \"run\": {\"id\": \"NoneType\", \"task_id\": \"NoneType\"}, \"schema\": \"str\", \"timestamp\": \"str\"}",
-     "{\"agent\": {\"id\": \"str\", \"role\": \"NoneType\"}, \"event_id\": \"str\", \"event_type\": \"str\", \"payload\": {\"source\": \"str\", \"summary\": \"str\", \"verdict\": \"str\"}, \"run\": {\"id\": \"str\", \"task_id\": \"NoneType\"}, \"schema\": \"str\", \"timestamp\": \"str\"}",
-     "{\"agent\": {\"id\": \"str\", \"role\": \"NoneType\"}, \"event_id\": \"str\", \"event_type\": \"str\", \"payload\": {\"source\": \"str\", \"title\": \"str\"}, \"run\": {\"id\": \"NoneType\", \"task_id\": \"NoneType\"}, \"schema\": \"str\", \"timestamp\": \"str\"}"
-    ],
+    "events": [],
     "schema": "str",
     "skipped": "int"
    },
@@ -298,10 +279,7 @@
   "127.0.0.1 GET /api/memory": {
    "body": {
     "available": "bool",
-    "records": [
-     "{\"author\": \"str\", \"authority\": \"str\", \"body\": \"str\", \"claims\": \"NoneType\", \"created_at\": \"str\", \"evaluation\": \"NoneType\", \"id\": \"str\", \"incident\": \"NoneType\", \"owner_verified\": \"NoneType\", \"related_decision\": \"NoneType\", \"related_proposal\": \"NoneType\", \"related_task\": \"NoneType\", \"seq\": \"int\", \"source\": \"str\", \"status\": \"str\", \"superseded_by\": \"NoneType\", \"supersedes\": \"NoneType\", \"title\": \"str\", \"type\": \"str\"}",
-     "{\"author\": \"str\", \"authority\": \"str\", \"body\": \"str\", \"claims\": [\"{\\\"claim\\\": \\\"str\\\", \\\"counter_evidence\\\": \\\"str\\\", \\\"evidence\\\": \\\"str\\\"}\"], \"created_at\": \"str\", \"evaluation\": \"NoneType\", \"id\": \"str\", \"incident\": \"NoneType\", \"owner_verified\": \"NoneType\", \"related_decision\": \"NoneType\", \"related_proposal\": \"str\", \"related_task\": \"NoneType\", \"seq\": \"int\", \"source\": \"str\", \"status\": \"str\", \"superseded_by\": \"NoneType\", \"supersedes\": \"NoneType\", \"title\": \"str\", \"type\": \"str\"}"
-    ],
+    "records": [],
     "types": [
      "\"str\""
     ]
@@ -318,23 +296,8 @@
   "127.0.0.1 GET /api/observability/governance": {
    "body": {
     "available": "bool",
-    "chain_depth": "int",
-    "reconciliation": {
-     "alignment_decision": "str",
-     "alignment_record": "str",
-     "compatibility_mode": "str",
-     "historical_registry": "str",
-     "historical_registry_policy": "str",
-     "historical_state_preserved": "bool",
-     "historical_state_rewritten": "bool",
-     "id": "str",
-     "severity": "str",
-     "status": "str"
-    },
-    "registry_directory": "str",
-    "registry_file": "str",
-    "registry_status": "str",
-    "schema_version": "str"
+    "reason": "str",
+    "registry_directory": "str"
    },
    "content_type": "application/json",
    "security_headers": [
@@ -343,7 +306,7 @@
     "x-content-type-options",
     "x-frame-options"
    ],
-   "status": 200
+   "status": 503
   },
   "127.0.0.1 GET /api/observability/telemetry-summary": {
    "body": {
@@ -365,33 +328,8 @@
    "body": {
     "artifact_path": "str",
     "available": "bool",
-    "commit_alignment": {
-     "artifact_commit": "str",
-     "head_commit": "str",
-     "state": "str"
-    },
-    "duration_seconds": "float",
     "meta_path": "str",
-    "provenance": {
-     "artifact": "str",
-     "available": "bool",
-     "command": [
-      "\"str\""
-     ],
-     "commit": "str",
-     "generated_at": "str",
-     "pytest_exit_code": "int",
-     "started_at": "<v>",
-     "target": "str"
-    },
-    "suite_timestamp": "str",
-    "totals": {
-     "errors": "int",
-     "failed": "int",
-     "passed": "int",
-     "skipped": "int",
-     "tests": "int"
-    }
+    "reason": "str"
    },
    "content_type": "application/json",
    "security_headers": [
@@ -400,7 +338,7 @@
     "x-content-type-options",
     "x-frame-options"
    ],
-   "status": 200
+   "status": 503
   },
   "127.0.0.1 GET /api/organization": {
    "body": {
@@ -466,17 +404,13 @@
    "body": {
     "available": "bool",
     "awaiting_owner": [],
-    "counts": {
-     "DRAFT": "int"
-    },
+    "counts": {},
     "head": {
-     "hash": "str",
+     "hash": "NoneType",
      "seq": "int"
     },
     "owner_signatures": "str",
-    "proposals": [
-     "{\"affected_components\": [\"\\\"str\\\"\"], \"author\": \"str\", \"claims\": [\"{\\\"claim\\\": \\\"str\\\", \\\"counter_evidence\\\": \\\"str\\\", \\\"evidence\\\": \\\"str\\\"}\"], \"created_at\": \"str\", \"history\": [\"{\\\"actor\\\": \\\"str\\\", \\\"at\\\": \\\"str\\\", \\\"event\\\": \\\"str\\\", \\\"seq\\\": \\\"int\\\", \\\"status\\\": \\\"str\\\"}\"], \"id\": \"str\", \"motivation\": \"str\", \"owner_decision\": \"NoneType\", \"problem\": \"str\", \"proposed_changes\": \"str\", \"reviews\": [], \"revision\": \"int\", \"risk_level\": \"str\", \"rollback_plan\": \"str\", \"status\": \"str\", \"tests\": \"NoneType\", \"title\": \"str\"}"
-    ]
+    "proposals": []
    },
    "content_type": "application/json",
    "security_headers": [
@@ -629,8 +563,7 @@
     ],
     "registry": {
      "available": "bool",
-     "file": "str",
-     "version": "str"
+     "reason": "str"
     },
     "venue_rules": {
      "available": "bool",
@@ -648,45 +581,12 @@
   },
   "127.0.0.1 GET /api/tasks": {
    "body": {
-    "agents": {
-     "code_engineering": {
-      "current_task": "str",
-      "recent": [
-       "{\"status\": \"str\", \"step\": \"int\", \"task\": \"str\"}"
-      ],
-      "status": "str"
-     },
-     "code_review": {
-      "current_task": "str",
-      "recent": [
-       "{\"status\": \"str\", \"step\": \"int\", \"task\": \"str\"}"
-      ],
-      "status": "str"
-     },
-     "open_source_research": {
-      "current_task": "str",
-      "recent": [
-       "{\"status\": \"str\", \"step\": \"int\", \"task\": \"str\"}"
-      ],
-      "status": "str"
-     },
-     "security": {
-      "current_task": "str",
-      "recent": [
-       "{\"status\": \"str\", \"step\": \"int\", \"task\": \"str\"}"
-      ],
-      "status": "str"
-     }
-    },
+    "agents": {},
     "available": "bool",
-    "counts": {
-     "IN_PROGRESS": "int"
-    },
+    "counts": {},
     "manager": "str",
     "scorecards": {},
-    "tasks": [
-     "{\"category\": \"str\", \"classification\": {\"matched\": [\"\\\"str\\\"\"], \"method\": \"str\", \"result\": \"str\"}, \"completeness\": {\"complete\": \"bool\", \"conflicts\": [], \"failed_steps\": [], \"missing_steps\": [\"\\\"int\\\"\"]}, \"created_at\": \"str\", \"created_by\": \"str\", \"history\": [\"{\\\"actor\\\": \\\"str\\\", \\\"at\\\": \\\"str\\\", \\\"event\\\": \\\"str\\\", \\\"note\\\": \\\"str\\\", \\\"seq\\\": \\\"int\\\", \\\"step\\\": \\\"NoneType\\\"}\", \"{\\\"actor\\\": \\\"str\\\", \\\"at\\\": \\\"str\\\", \\\"event\\\": \\\"str\\\", \\\"note\\\": \\\"str\\\", \\\"seq\\\": \\\"int\\\", \\\"step\\\": \\\"int\\\"}\"], \"id\": \"str\", \"proposal_id\": \"NoneType\", \"request\": \"str\", \"status\": \"str\", \"steps\": [\"{\\\"capability\\\": \\\"str\\\", \\\"goal\\\": \\\"str\\\", \\\"index\\\": \\\"int\\\", \\\"result\\\": \\\"NoneType\\\", \\\"role\\\": \\\"str\\\", \\\"status\\\": \\\"str\\\", \\\"unit\\\": \\\"str\\\"}\"]}"
-    ]
+    "tasks": []
    },
    "content_type": "application/json",
    "security_headers": [
@@ -2745,16 +2645,12 @@
     "proposals": {
      "available": "bool",
      "awaiting_owner": [],
-     "counts": {
-      "DRAFT": "int"
-     },
+     "counts": {},
      "reason": "NoneType"
     },
     "tasks": {
      "available": "bool",
-     "counts": {
-      "IN_PROGRESS": "int"
-     },
+     "counts": {},
      "reason": "NoneType"
     },
     "trading": {
