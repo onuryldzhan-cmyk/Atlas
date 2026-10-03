@@ -271,3 +271,22 @@ def test_daily_history_feeds_the_research_chart(tmp_path):
     out = ev.read_experience(xp._paths(res)[0])
     assert [d["decisions"] for d in out["daily"]] == [4, 4, 4]
     assert [d["day"] for d in out["daily"]] == sorted(d["day"] for d in out["daily"])
+
+
+def test_replay_noise_does_not_reach_the_console_and_errors_still_do(caplog):
+    # Owner console 2026-10-03: thousands of "execution skipped: manager unavailable" lines from this agent.
+    import logging
+
+    loop_log = logging.getLogger("AtlasAI.MarketLoop")
+    before = loop_log.level
+
+    def replay(data, **kw):
+        loop_log.warning("BTCUSDT execution skipped: manager unavailable")
+        loop_log.error("a real error")
+        return SimpleNamespace(signals=[])
+
+    with caplog.at_level(logging.DEBUG):
+        xp.replay_day(98 * D, _fetch, symbols=["BTCUSDT"], replay=replay)
+    messages = [r.getMessage() for r in caplog.records if r.name == "AtlasAI.MarketLoop"]
+    assert messages == ["a real error"]
+    assert loop_log.level == before                   # restored afterwards

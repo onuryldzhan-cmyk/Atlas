@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import csv
 import json
+import logging
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -118,8 +119,18 @@ def replay_day(day_ms: int, fetch: Fetcher, symbols=None, replay=None) -> list[d
     data = {s: rows for s, rows in data.items() if len(rows) >= MIN_COVERAGE * expected}
     if not data:
         return []
-    result = replay(data, step=15, sleeves=True, slippage_bps=SLIPPAGE_BPS, record_signals=True)
-    lo = datetime.fromtimestamp(day_ms / 1000, UTC).isoformat()
+    # The replay drives MarketLoop without an ExecutionManager on purpose, so its per-decision
+    # "execution skipped: manager unavailable" warning is expected noise (same as backtest_replay.main).
+    # In the agent process nothing configures logging, so it flooded the owner's console (2026-10-03).
+    # Errors still surface; the level is restored afterwards. This runs in the agent process, never in Atlas.
+    loop_log = logging.getLogger("AtlasAI.MarketLoop")
+    level = loop_log.level
+    loop_log.setLevel(logging.ERROR)
+    try:
+        result = replay(data, step=15, sleeves=True, slippage_bps=SLIPPAGE_BPS, record_signals=True)
+    finally:
+        loop_log.setLevel(level)
+    lo =datetime.fromtimestamp(day_ms / 1000, UTC).isoformat()
     hi = datetime.fromtimestamp((day_ms + DAY_MS) / 1000, UTC).isoformat()
     return [s for s in result.signals if lo <= s["time"] < hi]
 
