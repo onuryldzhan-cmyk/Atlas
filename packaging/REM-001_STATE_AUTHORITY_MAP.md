@@ -19,8 +19,8 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `d8e3fdc785ad4cbfcbb7f576a93915b5dc3ec572` |
-| generated_from_tree | `19a82f5d7502502decf24fc12d89b0ee6af3ec64` |
+| generated_from_commit | `a07344f8230adff90a75f234f0e3c5cb8ad712a6` |
+| generated_from_tree | `92411339183d893e2eb7bc8d2a611c6f0997284b` |
 | tracked_working_tree_clean | False |
 | modified_tracked_paths_at_generation | ['ackaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md'] |
 
@@ -99,7 +99,7 @@ nothing is inferred from an absence.
 | `*.json` | `observability/panel_sources.py` |
 | `.json` | `atlas_org/security_review.py`, `core/execution_idempotency_store.py`, `core/execution_transaction_journal.py` |
 | `/openapi.json` | `web_app.py` |
-| `ATLAS_POLICY_MANIFEST_v1.json` | `core/policy_manifest.py` |
+| `ATLAS_POLICY_MANIFEST_v2.json` | `core/policy_manifest.py` |
 | `atlas_memory.json` | `ai/core/atlas_memory_core.py` |
 | `atlas_reasoning.json` | `ai/core/atlas_reasoning_engine.py` |
 | `atlas_runtime_closure.json` | `observability/security_view.py` |
