@@ -46,7 +46,9 @@ def test_committed_manifest_is_valid_and_matches_main_py_runtime_policy():
     check = pm.verify(production_like_runtime())
     assert check.status == pm.MATCH and not check.block_new_risk and check.block_reason is None
     assert check.registry_id == pm.EXPECTED_REGISTRY_ID and check.proposal_id == pm.EXPECTED_PROPOSAL_ID
-    assert check.owner_approval == "UNKNOWN"   # the manifest never claims owner approval
+    # v2: the manifest's own text is never trusted; approval is reported only because the
+    # successor registry's EXP-002 grant exists, is GRANTED and pins this manifest's bytes.
+    assert check.owner_approval == f"{pm.OWNER_RATIFIED}:{pm.EXPECTED_GRANT_REGISTRY_ID}"
 
 
 def test_committed_manifest_covers_every_critical_switch_and_pins_paper():
@@ -279,8 +281,10 @@ def test_registry_ratification_pins_the_manifest_so_a_silent_edit_is_detected():
     record = json.loads((ROOT / "governance/current/ATLAS_MILESTONE_REGISTRY_v5.84.json").read_text(encoding="utf-8"))
     ratified = record["phase2_governance_closeout_2026_10_03"]["owner_decision_2_policy_manifest_ratification"]
     assert ratified["decision"] == "RATIFIED"
-    assert ratified["manifest_file_sha256"] == hashlib.sha256(pm.MANIFEST_PATH.read_bytes()).hexdigest()
-    assert ratified["manifest_integrity_digest"] == manifest()["integrity"]["digest"]
+    # v5.84 ratified manifest v1, which stays sealed and unchanged; v2 is pinned by v5.85.
+    v1 = ROOT / "governance/policy/ATLAS_POLICY_MANIFEST_v1.json"
+    assert ratified["manifest_file_sha256"] == hashlib.sha256(v1.read_bytes()).hexdigest()
+    assert ratified["manifest_integrity_digest"] == json.loads(v1.read_text(encoding="utf-8"))["integrity"]["digest"]
     assert ratified["proposal_id"] == pm.EXPECTED_PROPOSAL_ID
     assert record["supersedes"] == "ATLAS_MILESTONE_REGISTRY_v5.83.json"
     assert record["phase2_governance_closeout_2026_10_03"]["exp002_audit"]["registry_status"].startswith("UNKNOWN")
