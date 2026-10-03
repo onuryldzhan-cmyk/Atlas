@@ -13,6 +13,10 @@ machine to the next (agents write records on the owner's machine; the artifact i
 so the golden failed on a clean checkout. collect() now runs hermetically: those two sources point at an empty
 temporary root. Regenerated on the pre-refactor web_app.py (commit 4469419); the wiring pinned is unchanged.
 
+2026-10-03 (owner-approved change): regenerated after three new agents (explainable_ai, deployment_manager,
+ai_model_research) joined the roster. Verified diff: exactly six additions - those three keys under
+/api/command-center agents.statuses, in the loopback and the stub-runtime call; nothing removed or changed.
+
 Regenerate ONLY for an intended, approved behaviour change:
     python -c "import json; from tests.test_create_app_golden import collect, GOLDEN; \
 GOLDEN.write_text(json.dumps(collect(), indent=1, sort_keys=True))"

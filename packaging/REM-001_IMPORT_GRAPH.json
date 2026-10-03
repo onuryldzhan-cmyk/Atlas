@@ -16,24 +16,26 @@
     "analysis": "Static AST import resolution over git-tracked Python files, excluding imports guarded by if TYPE_CHECKING:. Third-party and stdlib targets resolve to nothing and carry no edge."
   },
   "source_identity": {
-    "generated_from_commit": "893d3e0e03cab0dec8c5f4b75f9a3e24c658c9ba",
-    "generated_from_tree": "093b5bdfdfa75b2169855b092e5ad49f8c311376",
+    "generated_from_commit": "7d601828097cc84527f7c0db06a5111f59495fd7",
+    "generated_from_tree": "83a17736eca65cd343add8f72a5c6fc3db551867",
     "tracked_working_tree_clean": false,
     "modified_tracked_paths_at_generation": [
       "ackaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md",
-      "packaging/REM-001_STATE_AUTHORITY_MAP.md"
+      "packaging/REM-001_STATE_AUTHORITY_MAP.md",
+      "tests/golden/create_app_golden.json",
+      "tests/test_create_app_golden.py"
     ]
   },
   "scope": {
     "universe": "ALL_GIT_TRACKED_PYTHON_FILES",
     "universe_note": "The tool's existing tracked-file definition, used unchanged. No source-scope classification (ACTIVE_CANDIDATE / TEST / TOOL / ARCHIVE / BACKUP / QUARANTINE / REPORT_COPY) is applied or implied: that classification requires the human review gate ARCH-001.2.1 reserves and belongs to Gate 1 deliverable 1.",
-    "modules_total": 1098,
+    "modules_total": 1107,
     "modules_runtime_reachable": 135,
-    "modules_outside_runtime_closure": 963,
-    "edges_total": 2352,
-    "edges_import": 1685,
-    "edges_package_init": 667,
-    "edges_distinct_module_pairs": 2287,
+    "modules_outside_runtime_closure": 972,
+    "edges_total": 2428,
+    "edges_import": 1748,
+    "edges_package_init": 680,
+    "edges_distinct_module_pairs": 2351,
     "edges_count_note": "edges_total counts (from, to, kind) triples. A pair can carry both kinds when a file both imports a package directly and references one of its submodules, so edges_distinct_module_pairs is the figure to use when counting dependencies between modules.",
     "parse_failures": 3
   },
@@ -3184,11 +3186,23 @@
       "runtime_reachable": false
     },
     {
+      "module": "tests/test_agent_runner.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_agent_schedule.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/test_agent_state_single_source.py",
       "runtime_reachable": false
     },
     {
       "module": "tests/test_agent_states.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_agents_build_on_previous_work.py",
       "runtime_reachable": false
     },
     {
@@ -3209,6 +3223,10 @@
     },
     {
       "module": "tests/test_application_mocked_integration.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_apprentice.py",
       "runtime_reachable": false
     },
     {
@@ -3449,6 +3467,10 @@
     },
     {
       "module": "tests/test_candle_nonfinite.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_change_log.py",
       "runtime_reachable": false
     },
     {
@@ -4092,6 +4114,10 @@
       "runtime_reachable": false
     },
     {
+      "module": "tests/test_trade_postmortem.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/test_trade_universe.py",
       "runtime_reachable": false
     },
@@ -4140,6 +4166,10 @@
       "runtime_reachable": false
     },
     {
+      "module": "tools/apprentice.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tools/architecture_audit.py",
       "runtime_reachable": false
     },
@@ -4173,6 +4203,10 @@
     },
     {
       "module": "tools/build_runtime_distribution.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/change_log.py",
       "runtime_reachable": false
     },
     {
@@ -4457,6 +4491,10 @@
     },
     {
       "module": "tools/task_status.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/trade_postmortem.py",
       "runtime_reachable": false
     },
     {
@@ -9054,6 +9092,86 @@
       "kind": "import"
     },
     {
+      "from": "tests/test_agent_runner.py",
+      "to": "core/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agent_runner.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_agent_runner.py",
+      "to": "core/instance_lock.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agent_runner.py",
+      "to": "tools/agent_cycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agent_runner.py",
+      "to": "tools/atlas_org_cli.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agent_schedule.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agent_schedule.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_agent_schedule.py",
+      "to": "atlas_org/memory_records.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agent_schedule.py",
+      "to": "atlas_org/proposals.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agent_schedule.py",
+      "to": "observability/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agent_schedule.py",
+      "to": "observability/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_agent_schedule.py",
+      "to": "observability/agent_states.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agent_schedule.py",
+      "to": "tools/agent_cycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agent_schedule.py",
+      "to": "tools/ai_gateway.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agent_schedule.py",
+      "to": "tools/atlas_org_cli.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agent_schedule.py",
+      "to": "tools/atlas_self_review.py",
+      "kind": "import"
+    },
+    {
       "from": "tests/test_agent_state_single_source.py",
       "to": "observability/__init__.py",
       "kind": "import"
@@ -9096,6 +9214,41 @@
     {
       "from": "tests/test_agent_states.py",
       "to": "web_app.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agents_build_on_previous_work.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agents_build_on_previous_work.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_agents_build_on_previous_work.py",
+      "to": "atlas_org/memory_records.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agents_build_on_previous_work.py",
+      "to": "atlas_org/proposals.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agents_build_on_previous_work.py",
+      "to": "tools/agent_cycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agents_build_on_previous_work.py",
+      "to": "tools/ai_gateway.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_agents_build_on_previous_work.py",
+      "to": "tools/atlas_org_cli.py",
       "kind": "import"
     },
     {
@@ -9176,6 +9329,36 @@
     {
       "from": "tests/test_application_mocked_integration.py",
       "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_apprentice.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_apprentice.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_apprentice.py",
+      "to": "atlas_org/memory_records.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_apprentice.py",
+      "to": "tools/ai_gateway.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_apprentice.py",
+      "to": "tools/apprentice.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_apprentice.py",
+      "to": "tools/atlas_org_cli.py",
       "kind": "import"
     },
     {
@@ -11259,6 +11442,31 @@
       "kind": "import"
     },
     {
+      "from": "tests/test_change_log.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_change_log.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_change_log.py",
+      "to": "atlas_org/memory_records.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_change_log.py",
+      "to": "tools/atlas_org_cli.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_change_log.py",
+      "to": "tools/change_log.py",
+      "kind": "import"
+    },
+    {
       "from": "tests/test_chaos_drill.py",
       "to": "tools/chaos_drill.py",
       "kind": "import"
@@ -11351,6 +11559,26 @@
     {
       "from": "tests/test_corrupt_risk_state_fails_closed.py",
       "to": "tests/test_block5c_upstream_sizing_authority.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_create_app_golden.py",
+      "to": "observability/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_create_app_golden.py",
+      "to": "observability/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_create_app_golden.py",
+      "to": "observability/governance_records.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_create_app_golden.py",
+      "to": "observability/panel_sources.py",
       "kind": "import"
     },
     {
@@ -14695,6 +14923,21 @@
     },
     {
       "from": "tests/test_start_atlas.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_start_atlas.py",
+      "to": "tests/test_agent_runner.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_start_atlas.py",
+      "to": "tools/atlas_org_cli.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_start_atlas.py",
       "to": "tools/start_atlas.py",
       "kind": "import"
     },
@@ -14791,6 +15034,41 @@
     {
       "from": "tests/test_task_status.py",
       "to": "tools/task_status.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_trade_postmortem.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_trade_postmortem.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_trade_postmortem.py",
+      "to": "atlas_org/memory_records.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_trade_postmortem.py",
+      "to": "tools/agent_cycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_trade_postmortem.py",
+      "to": "tools/ai_gateway.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_trade_postmortem.py",
+      "to": "tools/atlas_org_cli.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_trade_postmortem.py",
+      "to": "tools/trade_postmortem.py",
       "kind": "import"
     },
     {
@@ -14931,11 +15209,21 @@
     {
       "from": "tools/agent_cycle.py",
       "to": "core/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_cycle.py",
+      "to": "core/__init__.py",
       "kind": "package_init"
     },
     {
       "from": "tools/agent_cycle.py",
       "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_cycle.py",
+      "to": "core/instance_lock.py",
       "kind": "import"
     },
     {
@@ -14960,12 +15248,22 @@
     },
     {
       "from": "tools/agent_cycle.py",
+      "to": "tools/apprentice.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_cycle.py",
       "to": "tools/atlas_org_cli.py",
       "kind": "import"
     },
     {
       "from": "tools/agent_cycle.py",
       "to": "tools/atlas_self_review.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_cycle.py",
+      "to": "tools/change_log.py",
       "kind": "import"
     },
     {
@@ -15019,6 +15317,11 @@
       "kind": "import"
     },
     {
+      "from": "tools/agent_cycle.py",
+      "to": "tools/trade_postmortem.py",
+      "kind": "import"
+    },
+    {
       "from": "tools/agent_report.py",
       "to": "atlas_org/__init__.py",
       "kind": "import"
@@ -15041,6 +15344,41 @@
     {
       "from": "tools/ai_gateway.py",
       "to": "atlas_security/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/apprentice.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/apprentice.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/apprentice.py",
+      "to": "atlas_org/memory_records.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/apprentice.py",
+      "to": "atlas_org/proposals.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/apprentice.py",
+      "to": "tools/agent_cycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/apprentice.py",
+      "to": "tools/atlas_org_cli.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/apprentice.py",
+      "to": "tools/reality_check.py",
       "kind": "import"
     },
     {
@@ -15087,6 +15425,11 @@
       "from": "tools/atlas_self_review.py",
       "to": "atlas_org/__init__.py",
       "kind": "package_init"
+    },
+    {
+      "from": "tools/atlas_self_review.py",
+      "to": "atlas_org/memory_records.py",
+      "kind": "import"
     },
     {
       "from": "tools/atlas_self_review.py",
@@ -15196,6 +15539,26 @@
     {
       "from": "tools/build_rem001_gate1_maps.py",
       "to": "tools/build_architecture_inventory.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/change_log.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/change_log.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/change_log.py",
+      "to": "atlas_org/memory_records.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/change_log.py",
+      "to": "tools/atlas_org_cli.py",
       "kind": "import"
     },
     {
@@ -16050,7 +16413,17 @@
     },
     {
       "from": "tools/start_atlas.py",
+      "to": "atlas_supervisor.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/start_atlas.py",
       "to": "tools/agent_cycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/start_atlas.py",
+      "to": "tools/atlas_org_cli.py",
       "kind": "import"
     },
     {
@@ -16131,6 +16504,51 @@
     {
       "from": "tools/task_status.py",
       "to": "tools/atlas_org_cli.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/trade_postmortem.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/trade_postmortem.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/trade_postmortem.py",
+      "to": "atlas_org/memory_records.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/trade_postmortem.py",
+      "to": "observability/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/trade_postmortem.py",
+      "to": "observability/learning_view.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/trade_postmortem.py",
+      "to": "tools/ai_gateway.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/trade_postmortem.py",
+      "to": "tools/atlas_org_cli.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/trade_postmortem.py",
+      "to": "tools/paper_position_report.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/trade_postmortem.py",
+      "to": "tools/reality_check.py",
       "kind": "import"
     },
     {
