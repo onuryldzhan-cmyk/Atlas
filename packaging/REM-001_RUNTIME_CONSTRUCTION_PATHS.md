@@ -20,10 +20,10 @@ Command: `python -m tools.build_rem001_gate1_maps construction --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `a5bdbd6ae5b478344d9e38fb9a43e21d0ac3d7a1` |
-| generated_from_tree | `78945433d6dc85f2585c996efc339cefada9a5ac` |
+| generated_from_commit | `f6a6be629e69060b219b4d9b620e98ee09b80f11` |
+| generated_from_tree | `bfe33fb01bcd3e44e49c2ee551b6421702ec3d07` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['ackaging/REM-001_STATE_AUTHORITY_MAP.md'] |
+| modified_tracked_paths_at_generation | ['ore/policy_manifest.py', 'packaging/REM-001_IMPORT_GRAPH.json', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/REM-001_STATE_AUTHORITY_MAP.md', 'tests/test_phase2_g2_exp002_grant.py'] |
 
 ## Analysis
 

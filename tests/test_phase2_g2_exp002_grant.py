@@ -283,13 +283,20 @@ def test_base_registry_changed_after_pinning_blocks(repo):
     assert verify_in(repo).status == pm.REGISTRY_MISMATCH
 
 
-def test_only_a_coordinated_governed_change_matches(repo):
-    """Edit manifest + re-pin in the grant + a runtime that agrees: the one legitimate path."""
+def test_only_a_coordinated_governed_change_matches(repo, monkeypatch):
+    """Edit manifest + re-pin in the grant + a runtime that agrees + the code pin: the one legitimate path.
+
+    Test changed 2026-10-04 (stricter, not weaker): the sealed grant registry's sha256 is now
+    also pinned in core/policy_manifest.py, so a coordinated edit of the data files alone no
+    longer matches - see test_editing_the_sealed_grant_registry_alone_or_with_the_manifest_blocks.
+    """
     rewrite_manifest(repo, lambda d: d["policy"].update(exp002_max_admissions=40))
     rewrite_grant_registry(repo, lambda d: d["exp002_grant"]["parameters"].update(exp002_max_admissions=40))
     repin(repo)
     runtime = {**runtime_matching_manifest(), "exp002_max_admissions": 40}
-    assert verify_in(repo, runtime).status == pm.MATCH
+    assert verify_in(repo, runtime).status == pm.GRANT_MISMATCH     # data files alone: not enough
+    monkeypatch.setattr(pm, "EXPECTED_GRANT_REGISTRY_SHA256", pm.file_sha256((repo / V85).read_bytes()))
+    assert verify_in(repo, runtime).status == pm.MATCH              # governed change incl. the code pin
     assert verify_in(repo).status == pm.POLICY_MISMATCH   # the real runtime (30) no longer matches
 
 
@@ -353,3 +360,168 @@ def test_hostile_deeply_nested_manifest_blocks_instead_of_raising(tmp_path):
     path.write_text("[" * 200000, encoding="utf-8")
     check = pm.verify(runtime_matching_manifest(), path)
     assert check.status == pm.MALFORMED and check.block_new_risk
+
+
+# --- final closeout (2026-10-04): real-application matrix, sealed grant pin, line endings ---------------
+
+
+def production_kwargs(tmp_path, monkeypatch) -> dict:
+    """The exact keyword arguments main.py passes to AtlasApplication (captured, not copied)."""
+    import main
+
+    monkeypatch.setenv("ATLAS_STATE_DIRECTORY", str(tmp_path / "env-state"))
+    captured: dict = {}
+
+    class Probe:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+            raise RuntimeError("stop after construction arguments are known")
+
+    monkeypatch.setattr(main, "AtlasApplication", Probe)
+    process = main.AtlasProcess()
+    monkeypatch.setattr(process, "_validate_configuration", lambda: True)
+    monkeypatch.setattr(process, "_acquire_instance_lock", lambda: True)
+    with pytest.raises(RuntimeError, match="stop after"):
+        process.start()
+    monkeypatch.undo()
+    return captured
+
+
+def real_app(tmp_path, kwargs, **override):
+    from core.application import AtlasApplication
+
+    return AtlasApplication(**{**kwargs, "state_directory": seed_state(tmp_path / "state"), **override})
+
+
+def test_real_application_built_exactly_as_main_py_matches_registry_and_manifest(tmp_path, monkeypatch):
+    import main
+
+    kwargs = production_kwargs(tmp_path, monkeypatch)
+    app = real_app(tmp_path, kwargs)
+    check = main.apply_policy_manifest(app)
+    assert check.status == pm.MATCH and not check.block_new_risk
+    assert check.owner_approval == "OWNER_RATIFIED_VIA_REGISTRY:ATLAS_MILESTONE_REGISTRY_v5.85"
+    assert app.execution.policy_manifest_block is None
+    runtime = pm.runtime_policy(app)
+    assert runtime["exp002_experiment_id"] == "EXP-002" and runtime["exp002_minimum_confidence"] == "0.62"
+    assert runtime["exp002_buckets"] == ["MEDIUM"] and runtime["exp002_max_admissions"] == 30
+    assert runtime["exp002_starts_at"] == "2026-10-02T00:00:00+00:00"
+    assert runtime["exp002_ends_at"] == "2026-10-16T00:00:00+00:00"
+    assert runtime["exp002_sizing_mode"] == "HIGH_BUCKET_LIMITS"
+    assert runtime["execution_mode"] == "PAPER" and runtime["live_execution_enabled"] is False
+    assert runtime["exp002_paper_only"] is True and runtime["funding_sentiment"] is False
+    assert runtime["exit_guard_mode"] == "OBSERVE" and runtime["exit_guard_rules"] == 0
+
+
+def _edit_constant(field, value):
+    def apply(monkeypatch):
+        import dataclasses
+
+        from core import risk_engine
+
+        edited = dataclasses.replace(risk_engine.PAPER_CONFIDENCE_EXPERIMENTS["EXP-002"], **{field: value})
+        monkeypatch.setitem(risk_engine.PAPER_CONFIDENCE_EXPERIMENTS, "EXP-002", edited)
+    return apply
+
+
+def _edit_sizing_bucket(monkeypatch):
+    from core import risk_engine
+
+    monkeypatch.setattr(risk_engine, "EXPERIMENT_SIZING_BUCKET", risk_engine.RiskBucket.MEDIUM)
+
+
+def _cases():
+    from core import risk_engine
+    from datetime import UTC, datetime
+
+    medium_high = frozenset({risk_engine.RiskBucket.MEDIUM, risk_engine.RiskBucket.HIGH})
+    return [
+        ("floor", {}, _edit_constant("minimum_confidence", risk_engine.Decimal("0.61")), {"exp002_minimum_confidence"}),
+        ("bucket", {}, _edit_constant("buckets", medium_high), {"exp002_buckets"}),
+        ("cap", {}, _edit_constant("max_admissions", 40), {"exp002_max_admissions"}),
+        ("start", {}, _edit_constant("starts_at", datetime(2026, 10, 1, tzinfo=UTC)), {"exp002_starts_at"}),
+        ("expiry", {}, _edit_constant("ends_at", datetime(2026, 10, 17, tzinfo=UTC)), {"exp002_ends_at"}),
+        ("sizing", {}, _edit_sizing_bucket, {"exp002_sizing_mode"}),
+        ("experiment-id", {"paper_confidence_experiment_id": "EXP-001"}, None,
+         {"paper_confidence_experiment_id", "exp002_enabled", "exp002_experiment_id"}),
+        ("enabled-state", {"paper_confidence_experiment": False}, None,
+         {"paper_confidence_experiment", "exp002_enabled"}),
+        ("paper-only", {"execution_mode": "LIVE"}, None, {"execution_mode", "exp002_paper_only"}),
+        ("funding-sentiment", {"funding_sentiment": True}, None,
+         {"funding_sentiment", "exp002_funding_sentiment_off"}),
+    ]
+
+
+@pytest.mark.parametrize("name", [c[0] for c in _cases()])
+def test_editing_any_exp002_parameter_in_the_real_application_blocks_new_risk(tmp_path, monkeypatch, name):
+    import main
+
+    _, override, edit, expected = next(c for c in _cases() if c[0] == name)
+    kwargs = production_kwargs(tmp_path, monkeypatch)
+    if edit is not None:
+        edit(monkeypatch)
+    app = real_app(tmp_path, kwargs, **override)
+    check = main.apply_policy_manifest(app)
+    assert check.status == pm.POLICY_MISMATCH and check.block_new_risk, name
+    assert expected <= {m[0] for m in check.mismatches}, (name, [m[0] for m in check.mismatches])
+    assert app.execution.policy_manifest_block == "POLICY_MANIFEST_POLICY_MISMATCH"
+    assert check.to_dict()["decision"] == pm.BLOCK_NEW_RISK
+
+
+def test_the_code_pin_is_the_committed_sealed_grant_registry():
+    assert pm.EXPECTED_GRANT_REGISTRY_SHA256 == pm.file_sha256((ROOT / V85).read_bytes())
+
+
+def test_editing_the_sealed_grant_registry_alone_or_with_the_manifest_blocks(repo):
+    """Before the code pin, grant + manifest + runtime edited together matched silently."""
+    runtime = {**runtime_matching_manifest(), "exp002_max_admissions": 40}
+    # (a) the sealed grant registry edited alone
+    rewrite_grant_registry(repo, lambda d: d["exp002_grant"].update(purpose="edited"))
+    assert verify_in(repo).status == pm.GRANT_MISMATCH
+    # (b) grant + manifest + re-pin + agreeing runtime, all data files: still not the sealed record
+    rewrite_manifest(repo, lambda d: d["policy"].update(exp002_max_admissions=40))
+    rewrite_grant_registry(repo, lambda d: d["exp002_grant"]["parameters"].update(exp002_max_admissions=40))
+    repin(repo)
+    check = verify_in(repo, runtime)
+    assert check.status == pm.GRANT_MISMATCH and check.block_new_risk
+    assert check.block_reason == "POLICY_MANIFEST_GRANT_MISMATCH"
+
+
+def _crlf(repo: Path) -> None:
+    for rel in (V84, V85, V2):
+        path = repo / rel
+        path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
+
+
+def test_a_windows_crlf_checkout_of_the_chain_still_matches(repo):
+    """core.autocrlf rewrites the governance files with CRLF; no content changed, so no block."""
+    assert verify_in(repo).status == pm.MATCH
+    _crlf(repo)
+    assert verify_in(repo).status == pm.MATCH
+
+
+def test_line_ending_neutrality_accepts_no_content_edit(repo):
+    _crlf(repo)
+    path = repo / V85
+    path.write_bytes(path.read_bytes().replace(b"Bounded PAPER", b"Bounded  PAPER", 1))
+    assert verify_in(repo).status == pm.GRANT_MISMATCH
+    shutil.copyfile(ROOT / V85, repo / V85)
+    _crlf(repo)
+    path = repo / V84
+    path.write_bytes(path.read_bytes().replace(b"Phase-2", b"Phase 2", 1))
+    assert verify_in(repo).status == pm.REGISTRY_MISMATCH
+
+
+def test_editing_the_high_bucket_limits_the_experiment_is_sized_with_blocks(tmp_path, monkeypatch):
+    import main
+
+    from core import risk_engine
+
+    app = real_app(tmp_path, production_kwargs(tmp_path, monkeypatch))
+    assert app.risk_engine.policy is app.risk_policy          # one policy object feeds engine and manifest
+    high = app.risk_policy.buckets[risk_engine.RiskBucket.HIGH]
+    app.risk_policy.buckets[risk_engine.RiskBucket.HIGH] = risk_engine.BucketPolicy(
+        risk_engine.Decimal("0.15"), high.minimum_confidence, high.exposure_ceiling_pct)
+    check = main.apply_policy_manifest(app)
+    assert check.status == pm.POLICY_MISMATCH
+    assert {m[0] for m in check.mismatches} == {"exp002_sizing_max_allocation_pct"}

@@ -16,28 +16,27 @@
     "analysis": "Static AST import resolution over git-tracked Python files, excluding imports guarded by if TYPE_CHECKING:. Third-party and stdlib targets resolve to nothing and carry no edge."
   },
   "source_identity": {
-    "generated_from_commit": "c5d6271cbbc067b104af0383c54652f3326c5045",
-    "generated_from_tree": "49062e4359e547607f0a003a7c053adfd3cbc9fb",
+    "generated_from_commit": "f6a6be629e69060b219b4d9b620e98ee09b80f11",
+    "generated_from_tree": "bfe33fb01bcd3e44e49c2ee551b6421702ec3d07",
     "tracked_working_tree_clean": false,
     "modified_tracked_paths_at_generation": [
-      "core/execution_idempotency_store.py",
-      "core/execution_transaction_journal.py",
-      "docs/operations/DURABLE_APPEND_RECOVERY.md",
-      "ore/durable_append_contract.py",
+      "ore/policy_manifest.py",
+      "packaging/REM-001_IMPORT_GRAPH.json",
       "packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md",
-      "packaging/REM-001_STATE_AUTHORITY_MAP.md"
+      "packaging/REM-001_STATE_AUTHORITY_MAP.md",
+      "tests/test_phase2_g2_exp002_grant.py"
     ]
   },
   "scope": {
     "universe": "ALL_GIT_TRACKED_PYTHON_FILES",
     "universe_note": "The tool's existing tracked-file definition, used unchanged. No source-scope classification (ACTIVE_CANDIDATE / TEST / TOOL / ARCHIVE / BACKUP / QUARANTINE / REPORT_COPY) is applied or implied: that classification requires the human review gate ARCH-001.2.1 reserves and belongs to Gate 1 deliverable 1.",
-    "modules_total": 1116,
-    "modules_runtime_reachable": 139,
-    "modules_outside_runtime_closure": 977,
-    "edges_total": 2482,
-    "edges_import": 1790,
-    "edges_package_init": 692,
-    "edges_distinct_module_pairs": 2402,
+    "modules_total": 1121,
+    "modules_runtime_reachable": 140,
+    "modules_outside_runtime_closure": 981,
+    "edges_total": 2521,
+    "edges_import": 1820,
+    "edges_package_init": 701,
+    "edges_distinct_module_pairs": 2438,
     "edges_count_note": "edges_total counts (from, to, kind) triples. A pair can carry both kinds when a file both imports a package directly and references one of its submodules, so edges_distinct_module_pairs is the figure to use when counting dependencies between modules.",
     "parse_failures": 3
   },
@@ -49,7 +48,7 @@
   ],
   "runtime_closure_reference": {
     "artifact": "packaging/atlas_runtime_closure.json",
-    "modules": 139,
+    "modules": 140,
     "regression_gate": "BFS from entry_points over edges reproduces the referenced artifact exactly",
     "regression_gate_result": "PASS"
   },
@@ -2144,6 +2143,10 @@
       "runtime_reachable": false
     },
     {
+      "module": "core/policy_manifest.py",
+      "runtime_reachable": true
+    },
+    {
       "module": "core/portfolio_manager.py",
       "runtime_reachable": false
     },
@@ -3912,6 +3915,22 @@
       "runtime_reachable": false
     },
     {
+      "module": "tests/test_phase2_e1_confidence_semantics.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_phase2_f1_trade_attribution.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_phase2_g1_policy_manifest.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_phase2_g2_exp002_grant.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/test_phase2_market_data_evidence_semantics.py",
       "runtime_reachable": false
     },
@@ -5062,6 +5081,11 @@
     {
       "from": "ai/core/intelligence/agent_fusion.py",
       "to": "analysis/evidence_status.py",
+      "kind": "import"
+    },
+    {
+      "from": "ai/core/intelligence/decision_builder.py",
+      "to": "ai/core/intelligence/agent_fusion.py",
       "kind": "import"
     },
     {
@@ -6925,6 +6949,21 @@
       "kind": "import"
     },
     {
+      "from": "core/policy_manifest.py",
+      "to": "core/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/policy_manifest.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "core/policy_manifest.py",
+      "to": "core/risk_engine.py",
+      "kind": "import"
+    },
+    {
       "from": "core/position_sizing.py",
       "to": "core/__init__.py",
       "kind": "package_init"
@@ -7542,6 +7581,11 @@
     {
       "from": "main.py",
       "to": "core/instrument_rules.py",
+      "kind": "import"
+    },
+    {
+      "from": "main.py",
+      "to": "core/policy_manifest.py",
       "kind": "import"
     },
     {
@@ -14060,6 +14104,146 @@
       "kind": "import"
     },
     {
+      "from": "tests/test_phase2_e1_confidence_semantics.py",
+      "to": "ai/core/intelligence/agent_fusion.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_e1_confidence_semantics.py",
+      "to": "ai/core/intelligence/decision_builder.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_e1_confidence_semantics.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_phase2_e1_confidence_semantics.py",
+      "to": "core/risk_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_f1_trade_attribution.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_phase2_f1_trade_attribution.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_f1_trade_attribution.py",
+      "to": "core/execution_portfolio_foundation.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_f1_trade_attribution.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_phase2_f1_trade_attribution.py",
+      "to": "tests/test_block5c_upstream_sizing_authority.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_f1_trade_attribution.py",
+      "to": "tools/agent_attribution.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_f1_trade_attribution.py",
+      "to": "tools/decision_trace.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_f1_trade_attribution.py",
+      "to": "tools/exp001_report.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_f1_trade_attribution.py",
+      "to": "tools/paper_position_report.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_f1_trade_attribution.py",
+      "to": "tools/trade_postmortem.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_g1_policy_manifest.py",
+      "to": "core/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_g1_policy_manifest.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_phase2_g1_policy_manifest.py",
+      "to": "core/policy_manifest.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_g1_policy_manifest.py",
+      "to": "main.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_g1_policy_manifest.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_phase2_g1_policy_manifest.py",
+      "to": "tests/test_block5c_upstream_sizing_authority.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_g2_exp002_grant.py",
+      "to": "core/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_g2_exp002_grant.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_phase2_g2_exp002_grant.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_g2_exp002_grant.py",
+      "to": "core/policy_manifest.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_g2_exp002_grant.py",
+      "to": "core/risk_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_g2_exp002_grant.py",
+      "to": "main.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_phase2_g2_exp002_grant.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_phase2_g2_exp002_grant.py",
+      "to": "tests/test_block5c_upstream_sizing_authority.py",
+      "kind": "import"
+    },
+    {
       "from": "tests/test_phase2_market_data_evidence_semantics.py",
       "to": "ai/core/intelligence/agent_fusion.py",
       "kind": "import"
@@ -15361,6 +15545,16 @@
     },
     {
       "from": "tests/test_trade_postmortem.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_trade_postmortem.py",
+      "to": "core/execution_portfolio_foundation.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_trade_postmortem.py",
       "to": "tools/agent_cycle.py",
       "kind": "import"
     },
@@ -15477,6 +15671,11 @@
     {
       "from": "tools/agent_attribution.py",
       "to": "tools/exp001_report.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_attribution.py",
+      "to": "tools/paper_position_report.py",
       "kind": "import"
     },
     {
@@ -15991,7 +16190,17 @@
     },
     {
       "from": "tools/decision_trace.py",
+      "to": "tools/agent_attribution.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/decision_trace.py",
       "to": "tools/exp001_report.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/decision_trace.py",
+      "to": "tools/paper_position_report.py",
       "kind": "import"
     },
     {
@@ -16317,6 +16526,11 @@
     {
       "from": "tools/paper_position_report.py",
       "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/paper_position_report.py",
+      "to": "core/execution_portfolio_foundation.py",
       "kind": "import"
     },
     {

@@ -51,6 +51,13 @@ EXPECTED_GRANT_ID = "GRANT-EXP002-PAPER-CONFIDENCE-EXPERIMENT"
 GRANT_RECORD_KEY = "exp002_grant"
 # The grant registry is read from this exact path, never from a path the manifest chooses.
 EXPECTED_GRANT_REGISTRY_PATH = "governance/current/ATLAS_MILESTONE_REGISTRY_v5.85.json"
+# The grant registry is a sealed record: its (line-ending neutral) sha256 is pinned
+# here, in reviewed code, exactly like the registry/proposal ids above. The chain is
+# anchored in code -> v5.85 -> manifest v2 -> v5.84, so there is still no cycle (nothing
+# in the registry or manifest contains a hash of this module). Editing the grant
+# registry, alone or together with the manifest, is therefore GRANT_MISMATCH until a
+# governed change updates this constant (a new grant is a new successor registry).
+EXPECTED_GRANT_REGISTRY_SHA256 = "77f0c23ae150215dad6ef017eca8ca57b81d6c44e36c767a16278fc9efa2d0b8"
 
 MATCH = "MATCH"
 MISSING = "MISSING"
@@ -110,6 +117,20 @@ CRITICAL_SWITCHES = BASE_SWITCHES + EXP002_SWITCHES
 
 _REQUIRED = ("manifest_version", "registry_id", "registry_path", "registry_sha256", "proposal_id",
              "owner_approval", "grant", "policy", "integrity")
+
+
+def file_sha256(data: bytes) -> str:
+    """sha256 of a pinned governance file, line-ending neutral (CRLF read as LF).
+
+    The recorded pins are the sha256 of the committed (LF) bytes. A Windows
+    checkout with ``core.autocrlf`` writes the same files with CRLF, which
+    would make every byte pin fail and block all new risk although no content
+    changed (verified 2026-10-04 by rewriting the chain with CRLF). Only the
+    two-byte sequence CRLF is read as LF; any other change still changes the
+    digest, so this accepts no edit.
+    """
+
+    return hashlib.sha256(b"\n".join(data.split(b"\r\n"))).hexdigest()
 
 
 def _decimal_text(value: Any) -> str:
@@ -256,7 +277,8 @@ def _verify_grant(manifest: Mapping[str, Any], policy: Mapping[str, Any], manife
         registry = (root / str(grant_ref.get("grant_registry_path"))).resolve()
         if root.resolve() not in registry.parents or registry.stem != EXPECTED_GRANT_REGISTRY_ID:
             return GRANT_MISSING, "grant_registry_path does not name the expected grant registry"
-        record = json.loads(registry.read_text(encoding="utf-8"))
+        registry_bytes = registry.read_bytes()
+        record = json.loads(registry_bytes.decode("utf-8"))
         manifest_bytes = manifest_path.read_bytes()
     except Exception:  # unreadable or hostile input (incl. RecursionError) is never a pass
         return GRANT_MISSING, "grant registry or manifest unreadable"
@@ -265,7 +287,7 @@ def _verify_grant(manifest: Mapping[str, Any], policy: Mapping[str, Any], manife
         return GRANT_MISSING, "grant registry holds no GRANTED EXP-002 grant"
     pinned = grant.get("manifest_pin")
     if (not isinstance(pinned, dict)
-            or pinned.get("manifest_file_sha256") != hashlib.sha256(manifest_bytes).hexdigest()
+            or pinned.get("manifest_file_sha256") != file_sha256(manifest_bytes)
             or pinned.get("manifest_version") != manifest.get("manifest_version")):
         return GRANT_MISMATCH, "grant registry does not pin this manifest's bytes"
     parameters = grant.get("parameters")
@@ -274,6 +296,8 @@ def _verify_grant(manifest: Mapping[str, Any], policy: Mapping[str, Any], manife
         return GRANT_MISMATCH, "manifest EXP-002 parameters differ from the registry grant"
     if grant.get("live_effect") != "NONE" or parameters.get("exp002_paper_only") is not True:
         return GRANT_MISMATCH, "grant is not PAPER-only with no live effect"
+    if file_sha256(registry_bytes) != EXPECTED_GRANT_REGISTRY_SHA256:
+        return GRANT_MISMATCH, "grant registry differs from the sealed record pinned in code"
     return None
 
 
@@ -323,7 +347,7 @@ def verify(runtime: Mapping[str, Any], path: Path | str = MANIFEST_PATH, *,
         registry = (Path(repository_root) / str(manifest.get("registry_path"))).resolve()
         if Path(repository_root).resolve() not in registry.parents or registry.stem != EXPECTED_REGISTRY_ID:
             return PolicyManifestCheck(REGISTRY_MISMATCH, "registry_path does not name the expected registry", **meta)
-        digest = hashlib.sha256(registry.read_bytes()).hexdigest()
+        digest = file_sha256(registry.read_bytes())
     except OSError:
         return PolicyManifestCheck(REGISTRY_MISMATCH, "registry file unreadable", **meta)
     if digest != manifest.get("registry_sha256"):
@@ -349,8 +373,8 @@ def verify(runtime: Mapping[str, Any], path: Path | str = MANIFEST_PATH, *,
 
 __all__ = [
     "BASE_SWITCHES", "BLOCK_NEW_RISK", "CRITICAL_SWITCHES", "EXP002_SWITCHES", "EXPECTED_GRANT_ID",
-    "EXPECTED_GRANT_REGISTRY_ID", "GRANT_MISMATCH", "GRANT_MISSING", "OWNER_RATIFIED", "EXPECTED_PROPOSAL_ID", "EXPECTED_REGISTRY_ID", "INTEGRITY_FAILED",
+    "EXPECTED_GRANT_REGISTRY_ID", "EXPECTED_GRANT_REGISTRY_SHA256", "GRANT_MISMATCH", "GRANT_MISSING", "OWNER_RATIFIED", "EXPECTED_PROPOSAL_ID", "EXPECTED_REGISTRY_ID", "INTEGRITY_FAILED",
     "LIVE_REFUSED", "MALFORMED", "MANIFEST_PATH", "MATCH", "MISSING", "POLICY_MISMATCH", "PROPOSAL_MISMATCH",
-    "PolicyManifestCheck", "REGISTRY_MISMATCH", "integrity_digest", "runtime_policy", "verify",
+    "PolicyManifestCheck", "REGISTRY_MISMATCH", "file_sha256", "integrity_digest", "runtime_policy", "verify",
 ]
 
