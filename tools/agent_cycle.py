@@ -530,10 +530,13 @@ def strategy_research(records_dir: Path, research_dir: Path | None = None, launc
 
     Pre-registration (audit P4-CLOSURE-003 F-2): the run is bound to a sealed
     hypothesis only when ``strategy_research_registration.json`` in the
-    research directory names ``registry`` and ``hypothesis_id``; the tool then
-    refuses any run that does not match the sealed specification, window or
-    universe. A result counts as REGISTERED only if it re-verifies against
-    that registry (``strategy_compare.verify_registered_result``); anything
+    research directory names a ``hypothesis_id`` in the canonical registry
+    (``strategy_compare.canonical_registry()``, review R4-2) and that
+    hypothesis's sealed window has ended; the run then replays exactly that
+    window, and the tool refuses any run that does not match the sealed
+    specification, window or universe. Until the window ends the daily run is
+    exploratory. A result counts as REGISTERED only if it re-verifies against
+    the canonical registry (``strategy_compare.verify_registered_result``); anything
     else, including result files written before this rule, is recorded as
     EXPLORATORY: no BETTER claim, ``evidence_eligible`` false. Nothing is
     registered after the fact. A hypothesis hosts one run (review NEW-2): once
@@ -561,10 +564,8 @@ def strategy_research(records_dir: Path, research_dir: Path | None = None, launc
         existing = {r["record_id"] for r in cli.read_log(records_dir / cli.MEMORY_LOG)} if (records_dir / cli.MEMORY_LOG).exists() else set()
         from tools import strategy_compare as sc
 
-        binding = d / "strategy_research_registration.json"
-        try:  # never trust the result file's own claim: re-verify against the sealed registry
-            registry = json.loads(binding.read_text(encoding="utf-8"))["registry"] if binding.exists() else None
-            study, registered = sc.verify_registered_result(data, registry), True
+        try:  # never trust the result file's own claim: re-verify against the canonical registry (R4-2)
+            study, registered = sc.verify_registered_result(data, sc.canonical_registry()), True
         except (sc.StudyRegistrationError, OSError, ValueError, KeyError, TypeError) as exc:  # NF-7: never wedge the agent
             study, registered, refusal = {}, False, f"{type(exc).__name__}: {exc}"
         if registered:
@@ -604,10 +605,12 @@ def strategy_research(records_dir: Path, research_dir: Path | None = None, launc
         from tools import strategy_compare as sc
 
         try:  # a consumed hypothesis (its one run recorded, NEW-2) or a malformed binding runs as exploratory
-            reg = json.loads(binding.read_text(encoding="utf-8"))
-            sc.bind_study(reg["registry"], reg["hypothesis_id"], sc.study_parameters(
+            hypothesis = str(json.loads(binding.read_text(encoding="utf-8"))["hypothesis_id"])
+            registry = sc.canonical_registry()
+            study = sc.bind_study(registry, hypothesis, sc.study_parameters(
                 sc.VARIANTS, days=30, windows=3, embargo=240, step=15, exp001=True))
-            cmd += ["--registry", str(reg["registry"]), "--hypothesis", str(reg["hypothesis_id"])]
+            if study["window_ms"][1] <= now * 1000:  # the sealed window has ended: its data exists (R4-1)
+                cmd += ["--registry", str(registry), "--hypothesis", hypothesis]
         except (sc.StudyRegistrationError, OSError, ValueError, KeyError, TypeError):
             pass  # NF-7: never wedge the daily agent; the owner registers a new hypothesis for the next study
     (launch or (lambda c: subprocess.Popen(c, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,

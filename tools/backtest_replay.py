@@ -688,11 +688,15 @@ def main(argv: list[str] | None = None, fetch: Fetcher | None = None) -> int:
     return 0
 
 
-def _history(symbol: str, days: int, fetch: Fetcher) -> list[list]:
+def _history(symbol: str, days: int, fetch: Fetcher, window: tuple[int, int] | None = None) -> list[list]:
+    """The last ``days`` of closed candles, or exactly ``window`` = [start, end) in ms when given."""
     import time
 
-    now_ms = int(time.time() * 1000)
-    start = now_ms - days * 24 * 60 * 60_000
+    if window is None:
+        now_ms = int(time.time() * 1000)
+        start = now_ms - days * 24 * 60 * 60_000
+    else:
+        start, now_ms = window
     rows: list[list] = []
     while start < now_ms:
         for attempt in range(4):  # the owner's network times out now and then: retry, then give up loudly

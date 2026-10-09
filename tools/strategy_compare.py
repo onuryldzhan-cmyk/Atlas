@@ -20,11 +20,18 @@ whose ``feature_spec["strategy_compare"]`` equals this run's parameters
 (variants, reference, days, windows, embargo, step, exp001). The binding is
 checked before any data is downloaded; a mismatch, broken seal, unknown or
 terminal hypothesis is refused (exit 2). The data itself is then checked
-before any replay (reviews N-1, NF-1, NF-5): its symbols must equal the
-sealed universe and every candle must lie inside the sealed window and after
-the registration -- the later of ``preregistered_at`` (caller-supplied) and the
-registry's own genesis time (set by ``register()``, not by the caller) -- so
-results seen before the registration can never be re-labelled as a study.
+before any replay (reviews N-1, NF-1, NF-5, R4-1): its symbols must equal the
+sealed universe and its candles must be exactly the sealed window, one per
+minute with no gap -- a window that starts on a whole minute, lasts exactly
+the sealed ``days`` and lies wholly after the registration (the later of
+``preregistered_at`` and the registry's own genesis time, set by
+``register()``, not by the caller). Results seen before the registration can
+never be re-labelled as a study, and no slice of a wider window can be chosen
+after exploratory looks. A registered run downloads exactly that window.
+Registered studies use one canonical registry, ``canonical_registry()``
+(``<state root>/research/hypotheses.json``; review R4-2): a registry file
+anywhere else is refused, so a family cannot be registered N times and the
+best copy shown.
 One hypothesis hosts exactly one run (review NEW-2): once the data has passed
 those checks, and immediately before the replay, the run is recorded in the
 registry's own durable state chain by advancing the hypothesis REGISTERED ->
@@ -39,11 +46,14 @@ Consumers (the daily agent, tools/regime_bar_check) re-verify a
 REGISTERED result against the registry with ``verify_registered_result``.
 What that verification establishes: the registration exists, is sealed and
 non-terminal, its one recorded run is this result's run, the result's
-parameters and data range match it, and the result was not relabelled or
-altered after the run. What it cannot
-establish: authenticity against someone who rewrites the local registry or
-result file and recomputes the unkeyed hashes (registry-level limit
-NEW-M3/U1; closing it needs keyed signing, an owner decision). Without a registration the run is
+parameters match it, the dataset manifest claims exactly the sealed span
+(first and last candle, row count; contiguity itself is checked on the raw
+candles before the replay, not at verification), and the result was not
+relabelled or altered after the run. What it cannot establish: that the
+candle prices are genuine market data, or authenticity against someone who
+rewrites the local registry or result file and recomputes the unkeyed hashes
+(registry-level limit NEW-M3/U1; closing it needs keyed signing, an owner
+decision). Without a registration the run is
 EXPLORATORY: its table is kept, but every BETTER / NOT PROVEN verdict is
 replaced by EXPLORATORY and the result is marked ``evidence_eligible: false``,
 so it can never be promoted as evidence. Nothing is registered after the
@@ -95,12 +105,33 @@ def study_parameters(variants: dict[str, dict[str, Any]], *, days: int, windows:
             "embargo": embargo, "step": step, "exp001": exp001}
 
 
+MINUTE_MS = 60_000
+
+
+def canonical_registry() -> Path:
+    """The one hypothesis registry a registered study may use (review R4-2, owner decision 2026-10-09).
+
+    ``<state root>/research/hypotheses.json``, next to the daily research files. It is
+    pinned here, in tools/, not in research/ (the registry module keeps no default
+    path) and not in core/ or config/. Registering a family in another registry
+    file and showing only the best one is refused: no other file verifies.
+    """
+    from core.application import ConfiguredDirectoryError, resolve_state_directory
+
+    try:
+        return resolve_state_directory() / "research" / "hypotheses.json"
+    except ConfiguredDirectoryError as exc:
+        raise StudyRegistrationError(f"no canonical registry: {exc}") from exc
+
+
 def _sealed_record(registry_path: str | Path, hypothesis_id: str):
     from research.hypothesis_registry import RegistryError, HypothesisRegistry
 
     path = Path(registry_path)
     if not path.is_file():
         raise StudyRegistrationError(f"no hypothesis registry at {path}")
+    if path.resolve() != canonical_registry().resolve():
+        raise StudyRegistrationError(f"{path} is not the canonical registry {canonical_registry()}")
     try:
         record = HypothesisRegistry(registry_path=path).get(str(hypothesis_id))
         record.verify_seal()
@@ -110,35 +141,57 @@ def _sealed_record(registry_path: str | Path, hypothesis_id: str):
     return record
 
 
-def _window(record) -> tuple[Any, Any]:
-    """[earliest allowed candle, latest allowed candle] for a sealed study (NF-1, NF-7)."""
-    from datetime import datetime
+def _window(record) -> tuple[int, int]:
+    """The sealed span as [first candle open, end) in ms -- exactly what a registered run replays.
+
+    The span must start on a whole minute, last exactly the sealed ``days`` (review
+    R4-1: no slice of a wider window can be chosen after exploratory looks) and lie
+    wholly after the registration -- the later of ``preregistered_at`` and the
+    registry's own genesis time, set by ``register()`` (NF-1). Naive or unreadable
+    times are refused (NF-7).
+    """
+    from datetime import datetime, timedelta
 
     pre = record.preregistration
     try:
         moments = [datetime.fromisoformat(t) for t in
-                   (pre.data_start, pre.preregistered_at, record.state_chain[0].recorded_at, pre.data_end)]
-    except (ValueError, IndexError) as exc:
+                   (pre.data_start, pre.data_end, pre.preregistered_at, record.state_chain[0].recorded_at)]
+        days = pre.feature_spec[STUDY_SPEC_KEY]["days"]
+    except (ValueError, IndexError, KeyError, TypeError) as exc:
         raise StudyRegistrationError(f"{record.hypothesis_id}: unreadable sealed window: {exc}") from exc
     if any(m.tzinfo is None or m.utcoffset() is None for m in moments):
         raise StudyRegistrationError(f"{record.hypothesis_id}: the sealed window needs timezone-aware times")
-    return max(moments[:3]), moments[3]
+    start, end, *registered = moments
+    if start < max(registered):
+        raise StudyRegistrationError(f"{record.hypothesis_id}: the sealed window starts before the registration; "
+                                     f"results seen earlier cannot become a study")
+    if not isinstance(days, int) or isinstance(days, bool) or end - start != timedelta(days=days):
+        raise StudyRegistrationError(f"{record.hypothesis_id}: the sealed window is not exactly the sealed {days!r} days")
+    start_ms = int(start.timestamp() * 1000)
+    if start_ms % MINUTE_MS:
+        raise StudyRegistrationError(f"{record.hypothesis_id}: the sealed window must start on a whole minute")
+    return start_ms, start_ms + days * 1440 * MINUTE_MS
+
+
+def _check_universe(record, symbols) -> None:
+    if set(symbols) != set(record.preregistration.universe):
+        raise StudyRegistrationError(f"{record.hypothesis_id}: dataset symbols {sorted(symbols)} are not the "
+                                     f"sealed universe {sorted(record.preregistration.universe)}")
 
 
 def _check_rows(record, data: dict[str, list[list]]) -> None:
-    """Every replayed candle, not just the first and last (NF-5)."""
-    from datetime import UTC, datetime
-
+    """Every candle: exactly the sealed span, contiguous at one minute (NF-5, R4-1)."""
     start, end = _window(record)
-    if set(data) != set(record.preregistration.universe):
-        raise StudyRegistrationError(f"{record.hypothesis_id}: dataset symbols {sorted(data)} are not the "
-                                     f"sealed universe {sorted(record.preregistration.universe)}")
+    _check_universe(record, data)
     for symbol, rows in data.items():
-        for row in rows:
-            moment = datetime.fromtimestamp(int(row[0]) / 1000, tz=UTC)
-            if not start <= moment <= end:
-                raise StudyRegistrationError(f"{record.hypothesis_id}: {symbol} has a candle at {moment.isoformat()} "
-                                             f"outside the sealed window or before the registration")
+        try:
+            opens = [int(row[0]) for row in rows]
+        except (TypeError, ValueError, IndexError) as exc:
+            raise StudyRegistrationError(f"{record.hypothesis_id}: {symbol} has a malformed candle: {exc}") from exc
+        if opens != list(range(start, end, MINUTE_MS)):
+            raise StudyRegistrationError(f"{record.hypothesis_id}: {symbol} data is not exactly the sealed window, "
+                                         f"one candle per minute (a gap, an extra candle, or data before the "
+                                         f"registration or outside the window)")
 
 
 def result_digest(result: dict[str, Any]) -> str:
@@ -152,24 +205,17 @@ def result_digest(result: dict[str, Any]) -> str:
 
 
 def _check_data(record, manifest: dict[str, Any]) -> None:
-    """The replayed data must be inside the sealed window, after registration, on the sealed universe."""
-    from datetime import UTC, datetime
-
-    pre = record.preregistration
+    """The manifest of the replayed data must be the sealed span on the sealed universe (R4-1)."""
     start, end = _window(record)
     symbols = (manifest or {}).get("symbols") or {}
-    if set(symbols) != set(pre.universe):
-        raise StudyRegistrationError(f"{record.hypothesis_id}: dataset symbols {sorted(symbols)} are not the "
-                                     f"sealed universe {sorted(pre.universe)}")
+    _check_universe(record, symbols)
     for symbol, info in symbols.items():
-        first, last = (info or {}).get("first_open"), (info or {}).get("last_open")
-        if not isinstance(first, int) or not isinstance(last, int):
-            raise StudyRegistrationError(f"{record.hypothesis_id}: {symbol} has no candle time range")
-        if datetime.fromtimestamp(first / 1000, tz=UTC) < start:
-            raise StudyRegistrationError(f"{record.hypothesis_id}: {symbol} data starts before the sealed window or "
-                                         f"before the registration; results seen earlier cannot become a study")
-        if datetime.fromtimestamp(last / 1000, tz=UTC) > end:
-            raise StudyRegistrationError(f"{record.hypothesis_id}: {symbol} data runs past the sealed window")
+        info = info if isinstance(info, dict) else {}
+        span = (info.get("first_open"), info.get("last_open"), info.get("rows"))
+        if span != (start, end - MINUTE_MS, (end - start) // MINUTE_MS):
+            where = "before the registration or the sealed window" if isinstance(span[0], int) and span[0] < start else "the sealed window"
+            raise StudyRegistrationError(f"{record.hypothesis_id}: {symbol} data is not exactly {where} "
+                                         f"(first, last, rows = {span})")
 
 
 def check_study_data(registry_path: str | Path, hypothesis_id: str, manifest: dict[str, Any],
@@ -231,7 +277,8 @@ def bind_study(registry_path: str | Path, hypothesis_id: str, parameters: dict[s
         raise StudyRegistrationError(f"{hypothesis_id}: this run does not match the sealed study specification")
     return {"status": "REGISTERED", "evidence_eligible": True, "hypothesis_id": record.hypothesis_id,
             "preregistration_hash": record.preregistration_hash,
-            "preregistered_at": record.preregistration.preregistered_at, "parameters": parameters}
+            "preregistered_at": record.preregistration.preregistered_at, "parameters": parameters,
+            "window_ms": list(_window(record))}
 
 
 def _unrun():
@@ -408,7 +455,9 @@ def main(argv: list[str] | None = None, fetch=None) -> int:
         data = {}
         for symbol in symbols:
             print(f"downloading {symbol} ({args.days} days)...", file=sys.stderr, flush=True)
-            data[symbol] = bt._history(symbol, args.days, fetch)
+            # a registered study replays exactly its sealed window, never "the latest N days" (R4-1)
+            data[symbol] = bt._history(symbol, args.days, fetch,
+                                       window=tuple(study["window_ms"]) if study is not None else None)
     manifest = dataset_manifest(data)
     if study is not None:
         try:  # before any replay: the data must be the sealed window, after registration

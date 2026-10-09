@@ -16,6 +16,12 @@ depends on:
   contract, live/real-money authority is denied by default, and the way a
   state machine is kept from granting it is for the state not to exist.
 
+Strategy studies (``tools/strategy_compare``, review NEW-2) use the
+REGISTERED -> CALIBRATED transition as their one recorded run: a study runs
+only under a REGISTERED hypothesis, and starting it advances the hypothesis,
+so a hypothesis advanced to CALIBRATED by any workflow can no longer host a
+study. That is deliberate and conservative.
+
 DRAFT and WITHDRAWN describe the composition phase, before a hypothesis is
 sealed into the registry. This step does not persist that phase; the states
 are defined here so the contract is complete.

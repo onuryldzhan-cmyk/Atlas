@@ -12,9 +12,11 @@ fixed before the data, so it is applied here verbatim and cannot be moved:
    with a different dataset hash).
 
 A result counts only if it is a REGISTERED study that re-verifies against the
-hypothesis registry (seal, pre-registration hash, sealed specification, data
-inside the sealed window and after registration: strategy_compare
-.verify_registered_result; audit F-2 / review N-1). All periods must share one
+canonical hypothesis registry (``strategy_compare.canonical_registry()``,
+review R4-2; any other registry file is refused): seal, pre-registration hash,
+sealed specification, its one recorded run, data claiming exactly the sealed
+window, after registration (strategy_compare.verify_registered_result; audit
+F-2, reviews N-1, R4-1). All periods must share one
 sealed study specification and one family, the supplied periods must be every
 registered hypothesis of that family whatever its specification (no best-of-N
 selection by hypothesis or by specification, reviews NF-3 / NEW-2), each

@@ -24,21 +24,36 @@ from tools import atlas_org_cli as cli
 from tools import strategy_compare as sc
 
 DAILY = sc.study_parameters(sc.VARIANTS, days=30, windows=3, embargo=240, step=15, exp001=True)
-# Review NF-1: a study's data must postdate the registry's own genesis time (set by
-# register(), i.e. now), so a legitimate study here runs on candles dated after it:
-# tests/test_backtest_replay._rows shifted to 2099-12-03. PAST is the unshifted 2023 data.
-FUTURE_SHIFT = 4_100_000_000_000 - 1_700_000_000_000
-WINDOW = {"universe": ("BTCUSDT",), "data_start": "2099-01-01T00:00:00+00:00",
-          "data_end": "2100-12-31T00:00:00+00:00", "preregistered_at": "2026-10-01T00:00:00+00:00"}
-PAST_WINDOW = {"data_start": "2023-11-01T00:00:00+00:00", "data_end": "2023-12-31T00:00:00+00:00",
-               "preregistered_at": "2023-11-01T00:00:00+00:00"}
+# Reviews NF-1 / R4-1: a study's sealed window must lie wholly after the registry's own
+# genesis time (set by register(), i.e. now) and last exactly the sealed days, and the
+# data must be exactly that window, one candle per minute. A legitimate study here
+# therefore runs on tests/test_backtest_replay._rows shifted to start at 2100-01-01.
+# PAST is the unshifted 2023 data (2023-11-14).
+START_MS = 4_102_444_800_000  # 2100-01-01T00:00:00Z
+FUTURE_SHIFT = START_MS - 1_700_000_000_000
+PAST_START = "2023-11-14T22:13:20+00:00"
+AFTER_THE_WINDOWS = 4_200_000_000.0  # 2103: every sealed window here has ended
+
+
+@pytest.fixture(autouse=True)
+def state_root(tmp_path, monkeypatch):
+    """Review R4-2: registered studies use the canonical registry under the state root."""
+    monkeypatch.setenv("ATLAS_STATE_DIRECTORY", str(tmp_path))
+    (tmp_path / "research").mkdir()
+
+
+def _window(days, start="2100-01-01T00:00:00+00:00"):
+    from datetime import datetime, timedelta
+
+    return {"data_start": start, "data_end": (datetime.fromisoformat(start) + timedelta(days=days)).isoformat()}
 
 
 def _registry(tmp_path, spec=DAILY, hid="HYP-0001", **window):
-    path = tmp_path / "hypotheses.json"
+    path = sc.canonical_registry()
     reg = HypothesisRegistry(registry_path=path)
+    sealed = {"universe": ("BTCUSDT",), "preregistered_at": "2026-10-01T00:00:00+00:00", **_window(spec["days"])}
     reg.register(make_preregistration(hypothesis_id=hid, feature_spec={sc.STUDY_SPEC_KEY: spec},
-                                      **{**WINDOW, **window}))
+                                      **{**sealed, **window}))
     return path, reg
 
 
@@ -66,12 +81,10 @@ def test_unknown_hypothesis_missing_registry_and_missing_spec_are_refused(tmp_pa
     with pytest.raises(sc.StudyRegistrationError, match="no hypothesis registry"):
         sc.bind_study(tmp_path / "absent.json", "HYP-0001", DAILY)
     assert not (tmp_path / "absent.json").exists()  # binding never creates a registry
-    no_spec = tmp_path / "other"
-    no_spec.mkdir()
-    reg = HypothesisRegistry(registry_path=no_spec / "h.json")
-    reg.register(make_preregistration(hypothesis_id="HYP-0002", feature_spec={"lookback": 24}))
+    HypothesisRegistry(registry_path=path).register(
+        make_preregistration(hypothesis_id="HYP-0002", feature_spec={"lookback": 24}))
     with pytest.raises(sc.StudyRegistrationError, match="does not match"):
-        sc.bind_study(no_spec / "h.json", "HYP-0002", DAILY)
+        sc.bind_study(path, "HYP-0002", DAILY)
 
 
 def test_a_broken_seal_is_refused(tmp_path):
@@ -93,15 +106,19 @@ def test_a_terminal_hypothesis_cannot_host_a_new_study(tmp_path):
 # -- the tool: refuse before replay, quarantine without registration -------
 
 
-def _saved_dataset(tmp_path, past=False, outlier=None):
+def _candles(count=1440, past=False):
     from tests.test_backtest_replay import _rows
 
     shift = 0 if past else FUTURE_SHIFT
-    rows = [[r[0] + shift, *r[1:6], r[6] + shift, *r[7:]] for r in _rows(1500)]
+    return [[r[0] + shift, *r[1:6], r[6] + shift, *r[7:]] for r in _rows(count)]
+
+
+def _saved_dataset(tmp_path, past=False, outlier=None, rows=None, name=None):
+    rows = _candles(past=past) if rows is None else rows
     if outlier is not None:  # one mid-series candle with another open time (NF-5)
         rows[outlier[0]] = [outlier[1], *rows[outlier[0]][1:]]
     data = {"BTCUSDT": rows}
-    saved = tmp_path / ("past.json" if past else "ds.json")
+    saved = tmp_path / (name or ("past.json" if past else "ds.json"))
     saved.write_text(json.dumps({"manifest": sc.dataset_manifest(data), "data": data}), encoding="utf-8")
     return saved
 
@@ -125,7 +142,8 @@ def test_a_refused_binding_stops_before_any_replay(tmp_path, monkeypatch):
     assert sc.main(["--registry", str(path), "--json"]) == 2  # the two flags go together
 
 
-SPEC21 = sc.study_parameters(sc.VARIANTS, days=21, windows=3, embargo=0, step=15, exp001=True)
+# A one-day study keeps the synthetic data small (1440 one-minute candles).
+SPEC1 = sc.study_parameters(sc.VARIANTS, days=1, windows=3, embargo=0, step=15, exp001=True)
 
 
 # The sealed study's shape: every sealed variant, one row per sealed window.
@@ -134,11 +152,11 @@ FULL_TABLE = {name: [{"net_pnl": "1", "max_drawdown": "1", "closed_trades": 1}] 
 
 def _registered_run(tmp_path, monkeypatch, dataset=None, **window):
     dataset = dataset or {}
-    path, reg = _registry(tmp_path, spec=SPEC21, **window)
+    path, reg = _registry(tmp_path, spec=SPEC1, **window)
     replayed = []
     monkeypatch.setattr(sc, "compare", lambda *a, **k: replayed.append(1) or {"table": FULL_TABLE, "verdicts": {"x": "BETTER"}})
     out = tmp_path / "out.json"
-    rc = sc.main(["--dataset", str(_saved_dataset(tmp_path, **dataset)), "--symbols", "BTCUSDT", "--json",
+    rc = sc.main(["--dataset", str(_saved_dataset(tmp_path, **dataset)), "--symbols", "BTCUSDT", "--json", "--days", "1",
                   "--output", str(out), "--registry", str(path), "--hypothesis", "HYP-0001"])
     return rc, out, replayed, path, reg
 
@@ -157,11 +175,13 @@ def test_a_registered_run_keeps_its_verdicts_and_links_the_hypothesis(tmp_path, 
 
 
 @pytest.mark.parametrize("window", [
-    {"preregistered_at": "2100-01-01T00:00:00+00:00"},                    # registered after the data existed
-    {"data_start": "2020-01-01T00:00:00+00:00", "data_end": "2020-02-01T00:00:00+00:00",
+    {"preregistered_at": "2100-01-01T12:00:00+00:00"},                    # registered after the data existed
+    {**_window(1, "2020-01-01T00:00:00+00:00"),
      "preregistered_at": "2019-12-01T00:00:00+00:00"},                    # the reviewer's sealed 2020 window
-    {"data_start": "2099-12-04T00:00:00+00:00"},                          # data starts before the sealed window
-    {"data_end": "2099-12-04T00:00:00+00:00"},                            # data runs past the sealed window
+    _window(1, "2100-01-01T00:01:00+00:00"),                              # data starts before the sealed window
+    _window(1, "2099-12-31T23:59:00+00:00"),                              # data runs past the sealed window
+    {"data_end": "2100-01-03T00:00:00+00:00"},                            # a window wider than the sealed days
+    _window(1, "2100-01-01T00:00:30+00:00"),                              # not on a whole minute
     {"universe": ("ETHUSDT",)},                                           # not the sealed universe
 ])
 def test_data_outside_the_sealed_window_or_universe_is_refused_before_replay(tmp_path, monkeypatch, window):
@@ -177,13 +197,12 @@ def test_reviewer_n1_retroactive_registration_after_an_exploratory_look(tmp_path
     assert sc.main(["--dataset", str(dataset), "--symbols", "BTCUSDT", "--json", "--output", str(seen)]) == 0
     assert json.loads(seen.read_text(encoding="utf-8"))["study"]["status"] == "EXPLORATORY"
     # Register now -- honestly dated, or with preregistered_at backdated to before the data (NF-1).
-    for i, prereg in enumerate(("2026-10-09T00:00:00+00:00", PAST_WINDOW["preregistered_at"])):
-        sub = tmp_path / f"r{i}"
-        sub.mkdir()
-        path, _ = _registry(sub, spec=SPEC21, **{**PAST_WINDOW, "preregistered_at": prereg})
+    for hid, prereg in (("HYP-0001", "2026-10-09T00:00:00+00:00"), ("HYP-0002", "2023-11-01T00:00:00+00:00")):
+        path, _ = _registry(tmp_path, spec=SPEC1, hid=hid, preregistered_at=prereg, **_window(1, PAST_START))
         for _ in range(3):  # re-running the already-seen data never turns it into a study
-            assert sc.main(["--dataset", str(dataset), "--symbols", "BTCUSDT", "--json", "--output", str(sub / "r.json"),
-                            "--registry", str(path), "--hypothesis", "HYP-0001"]) == 2
+            assert sc.main(["--dataset", str(dataset), "--symbols", "BTCUSDT", "--json", "--days", "1",
+                            "--output", str(tmp_path / "r.json"), "--registry", str(path), "--hypothesis", hid]) == 2
+        assert HypothesisRegistry(registry_path=path).get(hid).state is HypothesisState.REGISTERED
 
 
 # -- the actual daily agent workflow --------------------------------------
@@ -194,21 +213,28 @@ def _sc_records(rec):
 
 
 def test_daily_agent_passes_the_owner_registration_to_the_run(tmp_path):
-    # Round 4 (NEW-2): the agent now checks the binding before launching, so this uses a real
-    # sealed registration of the daily study instead of a non-existent "reg.json".
+    # Rounds 4-5 (NEW-2, R4-1, R4-2): the agent checks the binding before launching, so this uses
+    # a real sealed registration in the canonical registry, launched once its window has ended.
     path, _ = _registry(tmp_path, hid="HYP-0007")
     rd, launched = tmp_path / "research", []
-    rd.mkdir()
-    (rd / "strategy_research_registration.json").write_text(
-        json.dumps({"registry": str(path), "hypothesis_id": "HYP-0007"}), encoding="utf-8")
-    ac.strategy_research(tmp_path / "records", research_dir=rd, launch=launched.append, now=1000.0)
+    rd.mkdir(exist_ok=True)
+    (rd / "strategy_research_registration.json").write_text(json.dumps({"hypothesis_id": "HYP-0007"}), encoding="utf-8")
+    ac.strategy_research(tmp_path / "records", research_dir=rd, launch=launched.append, now=AFTER_THE_WINDOWS)
     cmd = launched[0]
     assert cmd[cmd.index("--registry") + 1] == str(path) and cmd[cmd.index("--hypothesis") + 1] == "HYP-0007"
 
 
+def test_daily_agent_runs_exploratory_until_the_sealed_window_has_ended(tmp_path):
+    _registry(tmp_path, hid="HYP-0007")
+    rd, launched = tmp_path / "research", []
+    (rd / "strategy_research_registration.json").write_text(json.dumps({"hypothesis_id": "HYP-0007"}), encoding="utf-8")
+    ac.strategy_research(tmp_path / "records", research_dir=rd, launch=launched.append, now=1000.0)
+    assert "--hypothesis" not in launched[0]  # its data does not exist yet
+
+
 def test_daily_agent_without_registration_launches_an_exploratory_run(tmp_path):
     rd, launched = tmp_path / "research", []
-    rd.mkdir()
+    rd.mkdir(exist_ok=True)
     ac.strategy_research(tmp_path / "records", research_dir=rd, launch=launched.append, now=1000.0)
     assert "--hypothesis" not in launched[0] and "--registry" not in launched[0]
 
@@ -216,7 +242,7 @@ def test_daily_agent_without_registration_launches_an_exploratory_run(tmp_path):
 @pytest.mark.parametrize("study", [None, {"status": "EXPLORATORY"}, {"status": "REGISTERED"}])
 def test_daily_agent_never_promotes_an_unregistered_result(tmp_path, study):
     rd, rec = tmp_path / "research", tmp_path / "records"
-    rd.mkdir()
+    rd.mkdir(exist_ok=True)
     data = {"table": {"ref": [{"net_pnl": "1"}]}, "verdicts": {"ref": "-", "x": "BETTER"}}
     if study is not None:
         data["study"] = study
@@ -262,7 +288,9 @@ def test_daily_agent_does_not_trust_a_self_declared_registration(tmp_path, monke
         result["study"]["preregistration_hash"] = "a" * 64
     elif tamper == "other_spec":
         result["study"]["parameters"] = {**result["study"]["parameters"], "windows": 2}
-    done, record = _record_daily(tmp_path, result, None if tamper == "no_registry" else registry)
+    elif tamper == "no_registry":  # the canonical registry is gone: nothing verifies
+        registry.rename(registry.with_name("moved.json"))
+    done, record = _record_daily(tmp_path, result, registry)
     assert "x" not in done["summary"] and "BETTER" not in record["title"]
     assert json.loads(record["body"])["study"]["evidence_eligible"] is False
 
@@ -295,20 +323,22 @@ def test_nf6_a_terminal_hypothesis_no_longer_verifies(tmp_path, monkeypatch):
         sc.verify_registered_result(result, path)
 
 
-@pytest.mark.parametrize("binding", ["not json", "[1, 2]", '{"hypothesis_id": "HYP-0001"}', '{"registry": 5}'])
-def test_nf7_a_malformed_binding_never_wedges_the_daily_agent(tmp_path, monkeypatch, binding):
+@pytest.mark.parametrize("binding", ["not json", "[1, 2]", '{"hypothesis_id": "HYP-0001"}', '{"registry": 5}',
+                                     '{"hypothesis_id": ["HYP-0001"]}'])
+def test_nf7_a_malformed_or_spent_binding_never_wedges_the_daily_agent(tmp_path, monkeypatch, binding):
+    # Round 5 (R4-2): recording re-verifies against the canonical registry and no longer reads the
+    # binding, so the binding only decides the next launch. HYP-0001's one run is already spent.
     result, _ = _registered_result(tmp_path, monkeypatch)
     rd, rec = tmp_path / "research", tmp_path / "records"
-    rd.mkdir()
     (rd / "strategy_research_registration.json").write_text(binding, encoding="utf-8")
     (rd / "strategy_compare_latest.json").write_text(json.dumps(result), encoding="utf-8")
     done = ac.strategy_research(rec, research_dir=rd, launch=lambda c: None, now=1200.0)
     [record] = _sc_records(rec)
-    assert "x" not in done["summary"] and json.loads(record["body"])["study"]["evidence_eligible"] is False
+    assert json.loads(record["body"])["study"]["hypothesis_id"] == "HYP-0001" and "x" in done["summary"]
     launched = []
     (rd / "strategy_compare_latest.json").unlink()
-    ac.strategy_research(rec, research_dir=rd, launch=launched.append, now=10**9)
-    assert "--hypothesis" not in launched[0] or "--registry" in launched[0]
+    ac.strategy_research(rec, research_dir=rd, launch=launched.append, now=AFTER_THE_WINDOWS)
+    assert "--hypothesis" not in launched[0] and "--registry" not in launched[0]
 
 
 def test_nf7_a_corrupt_registry_or_malformed_result_is_refused_not_raised(tmp_path, monkeypatch):
@@ -325,7 +355,7 @@ def test_nf7_a_corrupt_registry_or_malformed_result_is_refused_not_raised(tmp_pa
 
 
 def test_nf7_naive_sealed_times_are_refused(tmp_path):
-    path, reg = _registry(tmp_path, data_start="2099-01-01T00:00:00", data_end="2100-12-31T00:00:00")
+    path, reg = _registry(tmp_path, data_start="2100-01-01T00:00:00", data_end="2100-01-31T00:00:00")
     with pytest.raises(sc.StudyRegistrationError, match="timezone-aware"):
         sc.check_study_data(path, "HYP-0001", {"symbols": {"BTCUSDT": {"first_open": 4_100_000_000_000,
                                                                        "last_open": 4_100_000_060_000}}})
@@ -341,7 +371,7 @@ def test_new2b_the_tool_records_the_run_and_refuses_a_second_one(tmp_path, monke
     assert record.state is HypothesisState.CALIBRATED  # durable, in the registry's own state chain
     result = json.loads(out.read_text(encoding="utf-8"))
     assert result["study"]["run_started_at"] == record.state_chain[-1].recorded_at
-    rc2 = sc.main(["--dataset", str(_saved_dataset(tmp_path)), "--symbols", "BTCUSDT", "--json",
+    rc2 = sc.main(["--dataset", str(_saved_dataset(tmp_path)), "--symbols", "BTCUSDT", "--json", "--days", "1",
                    "--output", str(tmp_path / "again.json"), "--registry", str(path), "--hypothesis", "HYP-0001"])
     assert rc2 == 2 and replayed == [1] and not (tmp_path / "again.json").exists()
     assert sc.verify_registered_result(result, path)["hypothesis_id"] == "HYP-0001"  # the one run still verifies
@@ -359,10 +389,10 @@ def test_new2b_daily_agent_runs_exploratory_when_the_binding_cannot_host_a_run(t
     if case == "consumed":
         reg.advance("HYP-0001", HypothesisState.CALIBRATED)
     rd, launched = tmp_path / "research", []
-    rd.mkdir()
+    rd.mkdir(exist_ok=True)
     (rd / "strategy_research_registration.json").write_text(json.dumps(
-        {"registry": str(path), "hypothesis_id": "HYP-0099" if case == "unknown" else "HYP-0001"}), encoding="utf-8")
-    ac.strategy_research(tmp_path / "records", research_dir=rd, launch=launched.append, now=1000.0)
+        {"hypothesis_id": "HYP-0099" if case == "unknown" else "HYP-0001"}), encoding="utf-8")
+    ac.strategy_research(tmp_path / "records", research_dir=rd, launch=launched.append, now=AFTER_THE_WINDOWS)
     assert "--hypothesis" not in launched[0] and "--registry" not in launched[0]
 
 
@@ -370,7 +400,7 @@ def test_new2b_daily_agent_runs_exploratory_when_the_binding_cannot_host_a_run(t
                                      '{"table": [], "verdicts": {"x": "BETTER"}, "dataset": 5}', "\udcff"])
 def test_new4_a_malformed_result_file_is_recorded_as_exploratory_not_raised(tmp_path, content):
     rd, rec = tmp_path / "research", tmp_path / "records"
-    rd.mkdir()
+    rd.mkdir(exist_ok=True)
     (rd / "strategy_compare_latest.json").write_text(content, encoding="utf-8", errors="surrogateescape")
     done = ac.strategy_research(rec, research_dir=rd, launch=lambda c: None, now=1200.0)
     assert "BETTER" not in done["summary"]
@@ -385,13 +415,67 @@ def _sc_records_after(rec, rd):
     return _sc_records(rec)
 
 
-def test_new4_a_binding_path_that_is_a_directory_is_refused_not_raised(tmp_path, monkeypatch):
-    result, _ = _registered_result(tmp_path, monkeypatch)
+def test_new4_a_registry_path_that_is_a_directory_is_refused_not_raised(tmp_path, monkeypatch):
+    # Round 5 (R4-2): the registry is the canonical path, not the binding's; make that a directory.
+    result, registry = _registered_result(tmp_path, monkeypatch)
+    registry.unlink()
+    registry.mkdir()
     rd, rec = tmp_path / "research", tmp_path / "records"
-    rd.mkdir()
-    (rd / "strategy_research_registration.json").write_text(
-        json.dumps({"registry": str(tmp_path), "hypothesis_id": "HYP-0001"}), encoding="utf-8")
     (rd / "strategy_compare_latest.json").write_text(json.dumps(result), encoding="utf-8")
     done = ac.strategy_research(rec, research_dir=rd, launch=lambda c: None, now=1200.0)
     assert "ön kayıt yok" in done["summary"]
     assert json.loads(_sc_records(rec)[0]["body"])["study"]["evidence_eligible"] is False
+
+
+# -- review round 5: R4-1 (exactly the sealed window), R4-2 (canonical registry) --
+
+
+def _drop(rows, i):
+    return rows[:i] + rows[i + 1:]
+
+
+@pytest.mark.parametrize("rows", [
+    lambda: _drop(_candles(), 700),                                   # one candle deleted mid-series
+    lambda: _drop(_candles(1441), 700),                               # deleted, padded at the end to the count
+    lambda: _candles()[:700] + [_candles()[699]] + _candles()[701:],  # a duplicated candle
+    lambda: _candles(1000),                                           # a slice of the sealed window
+    lambda: _candles(1500),                                           # more than the sealed window
+    lambda: [["abc", *r[1:]] if i == 5 else r for i, r in enumerate(_candles())],  # a malformed open time
+    lambda: [r if i != 5 else [] for i, r in enumerate(_candles())],  # an empty row
+])
+def test_r4_1_registered_data_must_be_exactly_the_sealed_window(tmp_path, monkeypatch, rows):
+    path, _ = _registry(tmp_path, spec=SPEC1)
+    replayed = []
+    monkeypatch.setattr(sc, "compare", lambda *a, **k: replayed.append(1) or {"table": FULL_TABLE, "verdicts": {}})
+    rc = sc.main(["--dataset", str(_saved_dataset(tmp_path, rows=rows())), "--symbols", "BTCUSDT", "--json",
+                  "--days", "1", "--output", str(tmp_path / "o.json"), "--registry", str(path), "--hypothesis", "HYP-0001"])
+    assert rc == 2 and replayed == [] and not (tmp_path / "o.json").exists()
+    assert HypothesisRegistry(registry_path=path).get("HYP-0001").state is HypothesisState.REGISTERED  # not spent
+
+
+def test_r4_1_a_registered_run_downloads_exactly_its_sealed_window(tmp_path, monkeypatch):
+    path, _ = _registry(tmp_path, spec=SPEC1)
+    candles, asked = _candles(1440 + 120), []
+
+    def fetch(symbol, start):  # a market that also has candles after the window
+        asked.append(start)
+        return [r for r in candles if r[0] >= start][:1000]
+
+    seen = []
+    monkeypatch.setattr(sc, "compare", lambda data, *a, **k: seen.append(data) or {"table": FULL_TABLE, "verdicts": {}})
+    rc = sc.main(["--symbols", "BTCUSDT", "--json", "--days", "1", "--output", str(tmp_path / "o.json"),
+                  "--registry", str(path), "--hypothesis", "HYP-0001"], fetch=fetch)
+    assert rc == 0 and asked[0] == START_MS
+    assert [r[0] for r in seen[0]["BTCUSDT"]] == list(range(START_MS, START_MS + 1440 * 60_000, 60_000))
+
+
+def test_r4_2_a_registry_outside_the_canonical_path_is_refused(tmp_path, monkeypatch):
+    result, registry = _registered_result(tmp_path, monkeypatch)
+    _registry(tmp_path, spec=SPEC1, hid="HYP-0002")
+    copy = tmp_path / "elsewhere.json"
+    copy.write_bytes(registry.read_bytes())  # the same registry file, outside the canonical path
+    with pytest.raises(sc.StudyRegistrationError, match="canonical"):
+        sc.bind_study(copy, "HYP-0002", SPEC1)
+    with pytest.raises(sc.StudyRegistrationError, match="canonical"):
+        sc.verify_registered_result(result, copy)
+    assert sc.verify_registered_result(result, registry)["hypothesis_id"] == "HYP-0001"
