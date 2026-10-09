@@ -30,7 +30,10 @@ never be re-labelled as a study, and no slice of a wider window can be chosen
 after exploratory looks. A registered run downloads exactly that window.
 A refused registered run (exit 2) writes a REFUSED result to ``--output``
 (never evidence) so the daily agent can record the refusal instead of
-waiting on it (review R5-1). A sealed window whose exchange history has a gap
+waiting on it (review R5-1); a run that crashes instead (a download, parse or
+replay error) writes a FAILED result (never evidence) the same way (R6-1).
+Neither marks anything here: the daily agent records them and decides what
+to retry. A sealed window whose exchange history has a gap
 can never be run: it is refused before the run is recorded, and the owner
 registers a new hypothesis.
 Registered studies use one canonical registry, ``canonical_registry()``
@@ -200,23 +203,31 @@ def _check_universe(record, symbols) -> None:
 
 
 def _candle_open(row) -> int:
-    """A Binance 1-minute kline, checked in full before a registered run is recorded (review R5-3).
+    """A Binance 1-minute kline, checked in full before a registered run is recorded (reviews R5-3, R6-2).
 
-    Twelve columns; integer open time and close time = open + 59 999 ms; finite,
-    positive open/high/low/close and a finite, non-negative volume. Anything else
-    raises, so a malformed dataset is refused while the hypothesis is still unspent.
+    Twelve columns: integer open time (0) and close time (6) = open + 59 999 ms; finite,
+    positive open/high/low/close (1-4) with low <= open, close <= high; finite, non-negative
+    base volume (5), quote volume (7), taker buy base (9) and taker buy quote (10) volumes;
+    a non-negative integer trade count (8). Column 11 is unused by Binance. Anything else
+    raises, so a malformed dataset is refused while the hypothesis is still unspent. This
+    checks shape and internal consistency, not that the prices are genuine market data.
     """
     from decimal import Decimal
 
     if not isinstance(row, (list, tuple)) or len(row) != 12:
         raise ValueError(f"a candle has 12 columns, got {row!r:.80}")
-    opened, closed = int(row[0]), int(row[6])
-    if closed != opened + MINUTE_MS - 1:
-        raise ValueError(f"close time {closed} is not open time {opened} + 59999")
-    prices = [Decimal(str(v)) for v in row[1:5]]
-    volume = Decimal(str(row[5]))
-    if not all(v.is_finite() and v > 0 for v in prices) or not (volume.is_finite() and volume >= 0):
-        raise ValueError(f"non-finite or non-positive price/volume at {opened}")
+    integers = (row[0], row[6], row[8])
+    if not all(isinstance(v, int) and not isinstance(v, bool) for v in integers):
+        raise ValueError(f"open time, close time and trade count must be integers in {row!r:.80}")
+    opened, closed, trades = integers
+    if closed != opened + MINUTE_MS - 1 or trades < 0:
+        raise ValueError(f"close time {closed} is not open time {opened} + 59999, or a negative trade count")
+    o, h, l, c = (Decimal(str(v)) for v in row[1:5])
+    volumes = [Decimal(str(row[i])) for i in (5, 7, 9, 10)]
+    if not all(v.is_finite() and v > 0 for v in (o, h, l, c)) or not all(v.is_finite() and v >= 0 for v in volumes):
+        raise ValueError(f"non-finite or non-positive price, or a negative volume, at {opened}")
+    if not l <= min(o, c) <= max(o, c) <= h:
+        raise ValueError(f"inconsistent candle at {opened}: low {l}, open {o}, close {c}, high {h}")
     return opened
 
 
@@ -459,6 +470,61 @@ def _refused(args, exc: Exception) -> int:
     return 2
 
 
+def _failed(args, exc: Exception) -> int:
+    """Exit 2 on a crash (download, parse, replay); with --output, leave a FAILED result (never evidence).
+
+    Review R6-1: a crash must not leave the daily agent waiting on a result that never comes.
+    A FAILED run is not a refusal: the cause may be transient, so nothing is marked; if the
+    crash came after ``start_study_run``, the hypothesis's one run is spent all the same.
+    """
+    if args.output:
+        _write_output(args.output, {"study": {"status": "FAILED", "evidence_eligible": False,
+                                              "hypothesis_id": None if args.hypothesis is None else str(args.hypothesis),
+                                              "reason": f"{type(exc).__name__}: {exc}"}})
+    return 2
+
+
+def _run(args, variants: dict[str, dict[str, Any]], study: dict[str, Any] | None, fetch) -> dict[str, Any]:
+    """Download or load, check, record the run (registered studies) and replay; raises on any failure."""
+    logging.getLogger("AtlasAI.MarketLoop").setLevel(logging.ERROR)
+    symbols = [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
+    if args.symbols_file:
+        symbols = json.loads(Path(args.symbols_file).read_text(encoding="utf-8"))["symbols"]
+    if fetch is None:
+        from tools.measure_volatility_ceiling import fetch_page as fetch
+    if args.dataset:
+        saved = json.loads(Path(args.dataset).read_text(encoding="utf-8"))
+        data = saved["data"]
+        if dataset_manifest(data)["dataset_sha256"] != saved["manifest"]["dataset_sha256"]:
+            print("DATASET CORRUPTED: hash mismatch, refusing to replay", file=sys.stderr)
+            raise ValueError("the saved dataset does not match its own hash")
+    else:
+        data = {}
+        for symbol in symbols:
+            print(f"downloading {symbol} ({args.days} days)...", file=sys.stderr, flush=True)
+            # a registered study replays exactly its sealed window, never "the latest N days" (R4-1)
+            data[symbol] = bt._history(symbol, args.days, fetch,
+                                       window=tuple(study["window_ms"]) if study is not None else None)
+    manifest = dataset_manifest(data)
+    if study is not None:
+        # before any replay: the data must be the sealed window, after registration
+        check_study_data(args.registry, args.hypothesis, manifest, data)
+        study = start_study_run(args.registry, study)  # last step before the replay
+    if args.save_dataset:
+        Path(args.save_dataset).write_text(json.dumps({"manifest": manifest, "data": data}, default=str), encoding="utf-8")
+    print(f"replaying {len(variants)} variants x {args.windows} windows (this takes a while)...", file=sys.stderr, flush=True)
+    result = compare(data, args.windows, args.step, not args.no_exp001, variants=variants, jobs=args.jobs, embargo=args.embargo)
+    result["dataset"] = manifest
+    if study is None:
+        quarantine(result)
+    else:
+        result["study"] = dict(study)
+        result["study"]["result_digest"] = result_digest(result)
+    if args.output:
+        _write_output(args.output, result)
+    return result
+
+
 def main(argv: list[str] | None = None, fetch=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--days", type=int, default=21)
@@ -498,51 +564,23 @@ def main(argv: list[str] | None = None, fetch=None) -> int:
         except StudyRegistrationError as exc:
             print(f"STUDY REFUSED: {exc}", file=sys.stderr)
             return _refused(args, exc)
-    logging.getLogger("AtlasAI.MarketLoop").setLevel(logging.ERROR)
-    symbols = [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
-    if args.symbols_file:
-        symbols = json.loads(Path(args.symbols_file).read_text(encoding="utf-8"))["symbols"]
-    if fetch is None:
-        from tools.measure_volatility_ceiling import fetch_page as fetch
-    if args.dataset:
-        saved = json.loads(Path(args.dataset).read_text(encoding="utf-8"))
-        data = saved["data"]
-        if dataset_manifest(data)["dataset_sha256"] != saved["manifest"]["dataset_sha256"]:
-            print("DATASET CORRUPTED: hash mismatch, refusing to replay", file=sys.stderr)
-            return 2
-    else:
-        data = {}
-        for symbol in symbols:
-            print(f"downloading {symbol} ({args.days} days)...", file=sys.stderr, flush=True)
-            # a registered study replays exactly its sealed window, never "the latest N days" (R4-1)
-            data[symbol] = bt._history(symbol, args.days, fetch,
-                                       window=tuple(study["window_ms"]) if study is not None else None)
-    manifest = dataset_manifest(data)
-    if study is not None:
-        try:  # before any replay: the data must be the sealed window, after registration
-            check_study_data(args.registry, args.hypothesis, manifest, data)
-            study = start_study_run(args.registry, study)  # last step before the replay
-        except StudyRegistrationError as exc:
-            print(f"STUDY REFUSED: {exc}", file=sys.stderr)
-            return _refused(args, exc)
-    if args.save_dataset:
-        Path(args.save_dataset).write_text(json.dumps({"manifest": manifest, "data": data}, default=str), encoding="utf-8")
-    print(f"replaying {len(variants)} variants x {args.windows} windows (this takes a while)...", file=sys.stderr, flush=True)
-    result = compare(data, args.windows, args.step, not args.no_exp001, variants=variants, jobs=args.jobs, embargo=args.embargo)
-    result["dataset"] = manifest
-    if study is None:
-        quarantine(result)
-    else:
-        result["study"] = dict(study)
-        result["study"]["result_digest"] = result_digest(result)
-    if args.output:
-        _write_output(args.output, result)
+    try:
+        result = _run(args, variants, study, fetch)
+    except StudyRegistrationError as exc:
+        print(f"STUDY REFUSED: {exc}", file=sys.stderr)
+        return _refused(args, exc)
+    except (OSError, ValueError, TypeError, KeyError, IndexError, AttributeError, ArithmeticError) as exc:
+        import traceback
+
+        traceback.print_exc()
+        return _failed(args, exc)
     result["parameters"] = {"embargo": args.embargo, "windows": args.windows, "step": args.step, "exp001": not args.no_exp001,
                             "variants": sorted(variants)}
     if args.json:
         print(json.dumps(result, default=str, ensure_ascii=False, indent=2))
         return 0
-    print(f"STRATEJİ KARŞILAŞTIRMASI — {len(symbols)} coin, {args.days} gün, {args.windows} pencere, "
+    manifest = result["dataset"]
+    print(f"STRATEJİ KARŞILAŞTIRMASI — {len(manifest['symbols'])} coin, {args.days} gün, {args.windows} pencere, "
           f"makro/sentiment hariç, ücret %0.1/taraf")
     header = "".join(f"  pencere {i + 1:<17}" for i in range(args.windows))
     print(f"{'strateji':<28}{header}  karar")

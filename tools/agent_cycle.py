@@ -520,23 +520,32 @@ def _research_dir() -> Path:
     return d
 
 
-def _research_refusal(records_dir: Path, d: Path, hypothesis: str, reason: str) -> None:
-    """Record once that a registered daily study cannot run (review R5-1); later launches run exploratory."""
-    refused = d / "strategy_compare.refused"
-    if refused.exists():
+def _research_refusal(records_dir: Path, d: Path, hypothesis: str, reason: str, status: str = "REFUSED") -> bool:
+    """Record that a daily study could not run (reviews R5-1, R6-1); True when a memory record was written.
+
+    REFUSED (the registered study can never run as sealed) also marks the hypothesis refused, so
+    later launches run exploratory; FAILED (a crash, possibly transient) marks nothing and the next
+    daily launch retries. Either is recorded once per hypothesis and reason, never as evidence.
+    """
+    note = d / ("strategy_compare.refused" if status == "REFUSED" else "strategy_compare.failed")
+    key = {"hypothesis_id": hypothesis, "reason": reason}
+    if note.exists():
         try:
-            if json.loads(refused.read_text(encoding="utf-8")).get("hypothesis_id") == hypothesis:
-                return
+            seen = json.loads(note.read_text(encoding="utf-8"))
+            if seen.get("hypothesis_id") == hypothesis and (status == "REFUSED" or seen.get("reason") == reason):
+                return False
         except (OSError, ValueError, AttributeError):
             pass
     existing = {r["record_id"] for r in cli.read_log(records_dir / cli.MEMORY_LOG)} if (records_dir / cli.MEMORY_LOG).exists() else set()
+    title = (f"Ön kayıtlı çalışma çalıştırılamadı ({hypothesis}); sahibin yeni bir hipotez kaydetmesi gerekir"
+             if status == "REFUSED" else f"Strateji karşılaştırması başarısız oldu ({hypothesis}); sonraki gün yeniden denenecek")
     cli.add_memory_record(records_dir, {
-        "record_id": f"SC-{len(existing) + 1:04d}", "type": "EXPERIMENTS", "authority": "RESEARCH",
-        "title": f"Ön kayıtlı çalışma çalıştırılamadı ({hypothesis}); sahibin yeni bir hipotez kaydetmesi gerekir",
-        "body": json.dumps({"study": {"status": "REFUSED", "evidence_eligible": False, "hypothesis_id": hypothesis,
+        "record_id": f"SC-{len(existing) + 1:04d}", "type": "EXPERIMENTS", "authority": "RESEARCH", "title": title,
+        "body": json.dumps({"study": {"status": status, "evidence_eligible": False, "hypothesis_id": hypothesis,
                                       "reason": reason}}, ensure_ascii=False, default=str),
-        "author": "strategy_lab", "source": "tools/agent_cycle.py (strategy_research, registered study refused)"})
-    refused.write_text(json.dumps({"hypothesis_id": hypothesis, "reason": reason}, ensure_ascii=False), encoding="utf-8")
+        "author": "strategy_lab", "source": f"tools/agent_cycle.py (strategy_research, study {status.lower()})"})
+    note.write_text(json.dumps(key, ensure_ascii=False), encoding="utf-8")
+    return True
 
 
 def strategy_research(records_dir: Path, research_dir: Path | None = None, launch=None, now: float | None = None,
@@ -569,7 +578,14 @@ def strategy_research(records_dir: Path, research_dir: Path | None = None, launc
     example) or the universe selection no longer matches the sealed universe --
     is recorded once as a REFUSED memory record and the hypothesis is marked
     refused, so later runs are exploratory and the launch summary says why
-    (review R5-1); it never stalls the daily research.
+    (review R5-1). The universe check runs only once the sealed window has
+    ended, as a set comparison (R6-3). The hypothesis is still unspent after
+    a refusal: once the cause is fixed (e.g. the universe selection restored)
+    the owner can delete ``strategy_compare.refused`` in the research directory
+    to retry it, or register a new hypothesis. A run that crashes (download or
+    parse error) or dies without writing any result is recorded as FAILED
+    (once per reason) and retried by the next daily launch, without marking
+    the hypothesis (R6-1). None of these records is evidence.
     """
     import subprocess
 
@@ -594,12 +610,15 @@ def strategy_research(records_dir: Path, research_dir: Path | None = None, launc
         except (sc.StudyRegistrationError, OSError, ValueError, KeyError, TypeError) as exc:  # NF-7: never wedge the agent
             study, registered, refusal = {}, False, f"{type(exc).__name__}: {exc}"
         claimed = data.get("study") if isinstance(data.get("study"), dict) else {}
-        if not registered and claimed.get("status") == "REFUSED":  # the tool refused a registered run (R5-1)
-            _research_refusal(records_dir, d, str(claimed.get("hypothesis_id")), str(claimed.get("reason")))
+        if not registered and claimed.get("status") in ("REFUSED", "FAILED"):  # the run never produced a result (R5-1, R6-1)
+            status, hypothesis, reason = claimed["status"], str(claimed.get("hypothesis_id")), str(claimed.get("reason"))
+            written = _research_refusal(records_dir, d, hypothesis, reason, status)
             seen.write_text(str(result.stat().st_mtime_ns), encoding="utf-8")
             marker.unlink(missing_ok=True)
-            return {"verdict": "OK", "summary": f"ön kayıtlı çalışma reddedildi ({claimed.get('hypothesis_id')}): "
-                                                f"{claimed.get('reason')}; hafızaya yazıldı, sonraki çalıştırmalar keşif"}
+            what = ("ön kayıtlı çalışma reddedildi" if status == "REFUSED" else "karşılaştırma başarısız oldu")
+            then = "sonraki çalıştırmalar keşif" if status == "REFUSED" else "sonraki gün yeniden denenecek"
+            return {"verdict": "OK", "summary": f"{what} ({hypothesis}): {reason}; "
+                                                f"{'hafızaya yazıldı' if written else 'zaten hafızada'}, {then}"}
         if registered:
             verdicts = raw_verdicts
             better = [k for k, v in verdicts.items() if v == "BETTER"]
@@ -628,6 +647,10 @@ def strategy_research(records_dir: Path, research_dir: Path | None = None, launc
         return {"verdict": "OK", "summary": f"karşılaştırma bitti ve hafızaya yazıldı; BETTER: {', '.join(better) or 'yok'}"}
     if marker.exists() and now - marker.stat().st_mtime < RESEARCH_TIMEOUT_H * 3600:
         return {"verdict": "OK", "summary": "karşılaştırma arka planda sürüyor"}
+    if marker.exists():  # R6-1: the last run died without writing any result (killed, out of memory): say so
+        _research_refusal(records_dir, d, "-", f"no result within {RESEARCH_TIMEOUT_H} h of the launch at "
+                                                f"{marker.read_text(encoding='utf-8')[:32]}", "FAILED")
+        marker.unlink(missing_ok=True)
     if result.exists() and now - result.stat().st_mtime < RESEARCH_EVERY_H * 3600:
         return {"verdict": "OK", "summary": "son karşılaştırma 24 saatten yeni; yeniden başlatılmadı"}
     cmd = [sys.executable, "-m", "tools.strategy_compare", "--days", "30", "--windows", "3", "--embargo", "240",
@@ -644,15 +667,15 @@ def strategy_research(records_dir: Path, research_dir: Path | None = None, launc
             registry = sc.canonical_registry()
             study = sc.bind_study(registry, hypothesis, sc.study_parameters(
                 sc.VARIANTS, days=30, windows=3, embargo=240, step=15, exp001=True))
-            symbols = json.loads((universe_file or Path(__file__).resolve().parents[1] / "config" / "universe_selection.json")
-                                 .read_text(encoding="utf-8"))["symbols"]
-            if sorted(symbols) != study["universe"]:  # R5-1: the selection drifted from the sealed universe
-                reason = f"the universe {sorted(symbols)} is not the sealed universe {study['universe']}"
-                _research_refusal(records_dir, d, hypothesis, reason)
-                raise sc.StudyRegistrationError(reason)
             if study["window_ms"][1] > now * 1000:
                 mode = f" (keşif: {hypothesis} için mühürlü pencere henüz bitmedi)"
             else:  # the sealed window has ended: its data exists (R4-1)
+                symbols = json.loads((universe_file or Path(__file__).resolve().parents[1] / "config" / "universe_selection.json")
+                                     .read_text(encoding="utf-8"))["symbols"]
+                if set(symbols) != set(study["universe"]):  # R5-1/R6-3: the selection drifted from the sealed universe
+                    reason = f"the universe {sorted(set(symbols))} is not the sealed universe {study['universe']}"
+                    _research_refusal(records_dir, d, hypothesis, reason)
+                    raise sc.StudyRegistrationError(reason)
                 cmd += ["--registry", str(registry), "--hypothesis", hypothesis]
                 mode = f" (ön kayıtlı: {hypothesis})"
         except (sc.StudyRegistrationError, OSError, ValueError, KeyError, TypeError, AttributeError) as exc:

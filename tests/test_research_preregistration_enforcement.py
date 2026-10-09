@@ -460,6 +460,15 @@ def _drop(rows, i):
     lambda: [r if i != 5 else [r[0], "-1", *r[2:]] for i, r in enumerate(_candles())],     # a negative price
     lambda: [r if i != 5 else [*r[:5], "-3", *r[6:]] for i, r in enumerate(_candles())],   # a negative volume
     lambda: [r if i != 5 else [*r[:6], r[6] + 1, *r[7:]] for i, r in enumerate(_candles())],  # bad close time
+    # review R6-2: every column, and the candle's own consistency
+    lambda: [r if i != 5 else [float(r[0]), *r[1:]] for i, r in enumerate(_candles())],    # a float open time
+    lambda: [r if i != 5 else [str(r[0]), *r[1:]] for i, r in enumerate(_candles())],      # a string open time
+    lambda: [r if i != 5 else [r[0], r[1], r[3], r[2], *r[4:]] for i, r in enumerate(_candles())],  # high < low
+    lambda: [r if i != 5 else [r[0], "999999", *r[2:]] for i, r in enumerate(_candles())],  # open above high
+    lambda: [r if i != 5 else [*r[:7], "garbage", *r[8:]] for i, r in enumerate(_candles())],  # quote volume
+    lambda: [r if i != 5 else [*r[:8], -1, *r[9:]] for i, r in enumerate(_candles())],        # trade count
+    lambda: [r if i != 5 else [*r[:8], True, *r[9:]] for i, r in enumerate(_candles())],      # a bool trade count
+    lambda: [r if i != 5 else [*r[:9], "NaN", *r[10:]] for i, r in enumerate(_candles())],    # taker volume
 ])
 def test_r4_1_registered_data_must_be_exactly_the_sealed_window(tmp_path, monkeypatch, rows):
     path, _ = _registry(tmp_path, spec=SPEC1)
@@ -570,3 +579,134 @@ def test_r5_1_a_refused_result_never_counts_as_evidence(tmp_path):
     done, _ = _launch(tmp_path, now=1200.0)
     assert "BETTER" not in done["summary"]
     assert json.loads(_refusals(tmp_path)[0]["body"])["study"]["evidence_eligible"] is False
+
+
+# -- review round 7: R6-1 (a crash never stalls the daily research), R6-3 (universe check) --
+
+
+def _status(out):
+    return json.loads(out.read_text(encoding="utf-8"))["study"]
+
+
+def _bound(tmp_path, spec=SPEC1, hid="HYP-0001"):
+    path, reg = _registry(tmp_path, spec=spec, hid=hid)
+    (tmp_path / "research" / "strategy_research_registration.json").write_text(
+        json.dumps({"hypothesis_id": hid}), encoding="utf-8")
+    return path, reg
+
+
+def _failed_records(tmp_path):
+    rec = tmp_path / "records"
+    return [r for r in _sc_records(rec) if json.loads(r["body"])["study"]["status"] == "FAILED"] if rec.exists() else []
+
+
+@pytest.mark.parametrize("fetch", [
+    "delisted",   # the exchange keeps refusing one sealed symbol (OSError after the retries)
+    "malformed",  # the exchange returns a malformed row
+])
+def test_r6_1_a_download_crash_leaves_a_failed_result_and_an_unspent_hypothesis(tmp_path, monkeypatch, fetch):
+    path, _ = _bound(tmp_path, spec=DAILY)  # the daily study, so the agent's retry can bind it
+    monkeypatch.setattr("time.sleep", lambda s: None)
+
+    def broken(symbol, start):
+        if fetch == "delisted":
+            raise OSError("HTTP Error 400: Invalid symbol")
+        return [[start, "1", "1", "1", "1", "1", None, "0", 0, "0", "0", "0"]]
+
+    out = tmp_path / "research" / "strategy_compare_latest.json"
+    rc = sc.main(["--symbols", "BTCUSDT", "--json", "--days", "30", "--embargo", "240", "--output", str(out),
+                  "--registry", str(path), "--hypothesis", "HYP-0001"], fetch=broken)
+    assert rc == 2 and _status(out)["status"] == "FAILED" and _status(out)["evidence_eligible"] is False
+    assert HypothesisRegistry(registry_path=path).get("HYP-0001").state is HypothesisState.REGISTERED
+    done, _ = _launch(tmp_path, now=1200.0)  # records the failure
+    assert "başarısız" in done["summary"] and len(_failed_records(tmp_path)) == 1
+    done, cmd = _launch(tmp_path)  # the next daily launch retries the registered study: no permanent marker
+    assert cmd[cmd.index("--hypothesis") + 1] == "HYP-0001"
+    assert not (tmp_path / "research" / "strategy_compare.refused").exists()
+
+
+def test_r6_1_a_replay_crash_after_the_run_is_recorded_is_reported_and_spends_the_hypothesis(tmp_path, monkeypatch):
+    path, _ = _bound(tmp_path)
+
+    def crash(*a, **k):
+        raise ValueError("replay blew up")
+
+    monkeypatch.setattr(sc, "compare", crash)
+    out = tmp_path / "research" / "strategy_compare_latest.json"
+    rc = sc.main(["--dataset", str(_saved_dataset(tmp_path)), "--symbols", "BTCUSDT", "--json", "--days", "1",
+                  "--output", str(out), "--registry", str(path), "--hypothesis", "HYP-0001"])
+    assert rc == 2 and _status(out)["status"] == "FAILED"
+    assert HypothesisRegistry(registry_path=path).get("HYP-0001").state is HypothesisState.CALIBRATED  # its data was read
+    _launch(tmp_path, now=1200.0)
+    done, cmd = _launch(tmp_path)
+    assert "--hypothesis" not in cmd and "CALIBRATED" in done["summary"]
+
+
+def test_r6_1_an_exploratory_crash_is_reported_too(tmp_path, monkeypatch):
+    monkeypatch.setattr("time.sleep", lambda s: None)
+    out = tmp_path / "research" / "strategy_compare_latest.json"
+
+    def broken(symbol, start):
+        raise OSError("network down")
+
+    assert sc.main(["--symbols", "BTCUSDT", "--json", "--days", "1", "--output", str(out)], fetch=broken) == 2
+    assert _status(out) == {"status": "FAILED", "evidence_eligible": False, "hypothesis_id": None,
+                            "reason": "OSError: network down"}
+
+
+def test_r6_1_a_run_that_died_without_any_result_is_reported_once_per_reason(tmp_path):
+    import os
+
+    marker = tmp_path / "research" / "strategy_compare.running"
+    for _ in range(2):
+        marker.write_text("1000.0", encoding="utf-8")
+        os.utime(marker, (0, 0))  # launched long ago; nothing was ever written
+        done, cmd = _launch(tmp_path)
+        assert cmd is not None
+    [record] = _failed_records(tmp_path)  # the same reason is not recorded twice
+    assert "no result within" in json.loads(record["body"])["study"]["reason"]
+
+
+def test_r6_1_a_repeated_failure_summary_does_not_claim_a_new_record(tmp_path):
+    import os
+
+    result = tmp_path / "research" / "strategy_compare_latest.json"
+    failed = {"study": {"status": "FAILED", "evidence_eligible": False, "hypothesis_id": "HYP-0001", "reason": "x"}}
+    summaries = []
+    for i in (1, 2):
+        result.write_text(json.dumps(failed), encoding="utf-8")
+        os.utime(result, ns=(i * 10**9, i * 10**9))  # a new result file each time
+        summaries.append(_launch(tmp_path, now=1200.0)[0]["summary"])
+    assert "hafızaya yazıldı" in summaries[0] and "zaten hafızada" in summaries[1]
+    assert len(_failed_records(tmp_path)) == 1
+
+
+def test_r6_3_universe_drift_before_the_window_ends_refuses_nothing(tmp_path):
+    _bound(tmp_path, spec=DAILY, hid="HYP-0007")
+    (tmp_path / "universe.json").write_text(json.dumps({"symbols": ["ETHUSDT"]}), encoding="utf-8")
+    done, cmd = _launch(tmp_path, now=1000.0)
+    assert "--hypothesis" not in cmd and "henüz bitmedi" in done["summary"] and _refusals(tmp_path) == []
+    (tmp_path / "universe.json").write_text(json.dumps({"symbols": ["BTCUSDT"]}), encoding="utf-8")
+    (tmp_path / "research" / "strategy_compare.running").unlink()
+    done, cmd = _launch(tmp_path)
+    assert cmd[cmd.index("--hypothesis") + 1] == "HYP-0007"
+
+
+def test_r6_3_the_universe_check_compares_sets(tmp_path):
+    _bound(tmp_path, spec=DAILY, hid="HYP-0007")
+    (tmp_path / "universe.json").write_text(json.dumps({"symbols": ["BTCUSDT", "BTCUSDT"]}), encoding="utf-8")
+    done, cmd = _launch(tmp_path)
+    assert cmd[cmd.index("--hypothesis") + 1] == "HYP-0007" and _refusals(tmp_path) == []
+
+
+def test_r6_3_after_fixing_the_cause_deleting_the_refused_marker_retries_the_unspent_hypothesis(tmp_path):
+    path, _ = _bound(tmp_path, spec=DAILY, hid="HYP-0007")
+    (tmp_path / "universe.json").write_text(json.dumps({"symbols": ["ETHUSDT"]}), encoding="utf-8")
+    done, cmd = _launch(tmp_path)
+    assert "--hypothesis" not in cmd and len(_refusals(tmp_path)) == 1
+    (tmp_path / "universe.json").write_text(json.dumps({"symbols": ["BTCUSDT"]}), encoding="utf-8")
+    (tmp_path / "research" / "strategy_compare.running").unlink()
+    (tmp_path / "research" / "strategy_compare.refused").unlink()  # the documented recovery
+    done, cmd = _launch(tmp_path)
+    assert cmd[cmd.index("--hypothesis") + 1] == "HYP-0007"
+    assert HypothesisRegistry(registry_path=path).get("HYP-0007").state is HypothesisState.REGISTERED
