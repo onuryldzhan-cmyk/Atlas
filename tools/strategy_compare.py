@@ -64,10 +64,13 @@ rewrites the local registry or result file and recomputes the unkeyed hashes
 decision).
 
 Further documented residuals (owner decision 2026-10-09, review round 5):
-- R5-2: the sealed specification fixes the variant *names*, the reference and
-  the run parameters, not what each variant does. Changing a variant's
-  arguments in ``VARIANTS`` or the replay / brain code after the registration
-  is not detected, and no code version is recorded in the result.
+- R5-2: for a names-only study the sealed specification fixes the variant
+  *names*, the reference and the run parameters, not what each variant does:
+  changing a variant's arguments in ``VARIANTS`` after the registration is not
+  detected. A generated study (Task 005) seals each variant's exact arguments
+  and their digest and runs exactly those, with the realistic reference
+  enforced, which closes this part for it. For both kinds, changes to the
+  replay / brain code are not detected and no code version is recorded.
 - R5-5: "canonical" is per state root: ``ATLAS_STATE_DIRECTORY`` selects the
   root, so another root has another canonical registry (file-write residual).
 - R5-6: exploratory runs may cover a sealed window's dates before its
@@ -122,10 +125,48 @@ class StudyRegistrationError(ValueError):
 
 
 def study_parameters(variants: dict[str, dict[str, Any]], *, days: int, windows: int, embargo: int,
-                     step: int, exp001: bool) -> dict[str, Any]:
-    """Exactly what a sealed registration must fix before the run."""
+                     step: int, exp001: bool, variant_args: dict[str, dict[str, Any]] | None = None) -> dict[str, Any]:
+    """Exactly what a sealed registration must fix before the run.
+
+    With ``variant_args`` (a generated study, Task 005) the specification also seals each
+    variant's exact arguments and their digest (research.hypothesis_generation.study_spec).
+    """
+    if variant_args is not None:
+        from research.hypothesis_generation import study_spec
+
+        return study_spec(variant_args, reference=REFERENCE, days=days, windows=windows, embargo=embargo,
+                          step=step, exp001=exp001)
     return {"variants": sorted(variants), "reference": REFERENCE, "days": days, "windows": windows,
             "embargo": embargo, "step": step, "exp001": exp001}
+
+
+def _check_reference(sealed: dict[str, dict[str, Any]]) -> None:
+    """A generated study tests against the realistic reference, and every variant fills exactly like it.
+
+    Task 005 reviews F-3 (a weaker reference) and N-1 (a variant with cheaper fills): either would
+    let a variant beat the reference by construction.
+    """
+    from research.hypothesis_generation import FILL_KNOBS, normalize_args
+
+    realistic = normalize_args(VARIANTS[REFERENCE])
+    if sealed.get(REFERENCE) != realistic:
+        raise StudyRegistrationError(f"the sealed reference is not {REFERENCE!r} with realistic fills "
+                                     f"{VARIANTS[REFERENCE]}; a weaker baseline cannot become a study")
+    for name, args in sealed.items():
+        if any(args.get(knob) != realistic.get(knob) for knob in FILL_KNOBS):
+            raise StudyRegistrationError(f"variant {name!r} does not fill like the realistic reference "
+                                         f"({', '.join(FILL_KNOBS)}); cheaper fills cannot become a study")
+
+
+def sealed_variants(registry_path: str | Path, hypothesis_id: str) -> dict[str, dict[str, Any]] | None:
+    """The sealed variant arguments of a generated study (Task 005), digest-checked; None for a names-only study."""
+    from research.hypothesis_generation import GenerationError, sealed_variant_args
+
+    record = _sealed_record(registry_path, hypothesis_id)
+    try:
+        return sealed_variant_args(record.preregistration.feature_spec.get(STUDY_SPEC_KEY))
+    except GenerationError as exc:
+        raise StudyRegistrationError(f"{hypothesis_id}: {exc}") from exc
 
 
 MINUTE_MS = 60_000
@@ -205,30 +246,13 @@ def _check_universe(record, symbols) -> None:
 def _candle_open(row) -> int:
     """A Binance 1-minute kline, checked in full before a registered run is recorded (reviews R5-3, R6-2).
 
-    Twelve columns: integer open time (0) and close time (6) = open + 59 999 ms; finite,
-    positive open/high/low/close (1-4) with low <= open, close <= high; finite, non-negative
-    base volume (5), quote volume (7), taker buy base (9) and taker buy quote (10) volumes;
-    a non-negative integer trade count (8). Column 11 is unused by Binance. Anything else
-    raises, so a malformed dataset is refused while the hypothesis is still unspent. This
-    checks shape and internal consistency, not that the prices are genuine market data.
+    The checks live in research.screening.validate_candle (Task 005), shared with the
+    pre-registration screening so both apply exactly the same rules; anything malformed
+    raises, so a malformed dataset is refused while the hypothesis is still unspent.
     """
-    from decimal import Decimal
+    from research.screening import validate_candle
 
-    if not isinstance(row, (list, tuple)) or len(row) != 12:
-        raise ValueError(f"a candle has 12 columns, got {row!r:.80}")
-    integers = (row[0], row[6], row[8])
-    if not all(isinstance(v, int) and not isinstance(v, bool) for v in integers):
-        raise ValueError(f"open time, close time and trade count must be integers in {row!r:.80}")
-    opened, closed, trades = integers
-    if closed != opened + MINUTE_MS - 1 or trades < 0:
-        raise ValueError(f"close time {closed} is not open time {opened} + 59999, or a negative trade count")
-    o, h, l, c = (Decimal(str(v)) for v in row[1:5])
-    volumes = [Decimal(str(row[i])) for i in (5, 7, 9, 10)]
-    if not all(v.is_finite() and v > 0 for v in (o, h, l, c)) or not all(v.is_finite() and v >= 0 for v in volumes):
-        raise ValueError(f"non-finite or non-positive price, or a negative volume, at {opened}")
-    if not l <= min(o, c) <= max(o, c) <= h:
-        raise ValueError(f"inconsistent candle at {opened}: low {l}, open {o}, close {c}, high {h}")
-    return opened
+    return validate_candle(row)
 
 
 def _check_rows(record, data: dict[str, list[list]]) -> None:
@@ -304,6 +328,9 @@ def _verify_registered_result(result: dict[str, Any], registry_path: str | Path 
         raise StudyRegistrationError(f"{record.hypothesis_id} is {record.state.value}; its results are not evidence")
     if study.get("run_started_at") != _run_started_at(record):  # NEW-2: the one recorded run
         raise StudyRegistrationError(f"{record.hypothesis_id}: this result is not the hypothesis's one recorded run")
+    sealed_args = sealed_variants(registry_path, record.hypothesis_id)
+    if sealed_args is not None:
+        _check_reference(sealed_args)
     if record.preregistration_hash != study.get("preregistration_hash"):
         raise StudyRegistrationError(f"{record.hypothesis_id}: pre-registration hash does not match the registry")
     if record.preregistration.feature_spec.get(STUDY_SPEC_KEY) != study.get("parameters"):
@@ -352,15 +379,17 @@ def start_study_run(registry_path: str | Path, study: dict[str, Any]) -> dict[st
     """Record the run in the registry's durable state chain; a second run is refused (NEW-2)."""
     from research.hypothesis_registry import HypothesisRegistry, RegistryError
     from research.lifecycle import HypothesisState, LifecycleError
+    from research.registry_lock import registry_write_lock
 
-    record = _sealed_record(registry_path, study["hypothesis_id"])
-    if record.state is not _unrun() or record.preregistration_hash != study["preregistration_hash"]:
-        raise StudyRegistrationError(f"{record.hypothesis_id} is {record.state.value}; its one run is already recorded")
-    try:
-        updated = HypothesisRegistry(registry_path=Path(registry_path)).advance(
-            record.hypothesis_id, HypothesisState.CALIBRATED)
-    except (RegistryError, LifecycleError) as exc:
-        raise StudyRegistrationError(f"{record.hypothesis_id}: the run could not be recorded: {exc}") from exc
+    with registry_write_lock(registry_path):  # Task 005 review F-1: no lost update of the run record
+        record = _sealed_record(registry_path, study["hypothesis_id"])  # re-read inside the lock
+        if record.state is not _unrun() or record.preregistration_hash != study["preregistration_hash"]:
+            raise StudyRegistrationError(f"{record.hypothesis_id} is {record.state.value}; its one run is already recorded")
+        try:
+            updated = HypothesisRegistry(registry_path=Path(registry_path)).advance(
+                record.hypothesis_id, HypothesisState.CALIBRATED)
+        except (RegistryError, LifecycleError) as exc:
+            raise StudyRegistrationError(f"{record.hypothesis_id}: the run could not be recorded: {exc}") from exc
     return {**study, "run_started_at": updated.state_chain[-1].recorded_at}
 
 
@@ -558,9 +587,17 @@ def main(argv: list[str] | None = None, fetch=None) -> int:
     study = None
     if args.hypothesis:
         try:  # checked before any data is downloaded or replayed
+            sealed = sealed_variants(args.registry, args.hypothesis)
+            if sealed is not None:  # a generated study runs exactly its sealed arguments (Task 005, closes R5-2)
+                if args.only:
+                    raise StudyRegistrationError("--only cannot narrow a study with sealed variant arguments")
+                from research.hypothesis_generation import replay_kwargs
+
+                _check_reference(sealed)
+                variants = {name: replay_kwargs(kw) for name, kw in sealed.items()}
             study = bind_study(args.registry, args.hypothesis, study_parameters(
                 variants, days=args.days, windows=args.windows, embargo=args.embargo, step=args.step,
-                exp001=not args.no_exp001))
+                exp001=not args.no_exp001, variant_args=sealed))
         except StudyRegistrationError as exc:
             print(f"STUDY REFUSED: {exc}", file=sys.stderr)
             return _refused(args, exc)
