@@ -536,7 +536,12 @@ def strategy_research(records_dir: Path, research_dir: Path | None = None, launc
     that registry (``strategy_compare.verify_registered_result``); anything
     else, including result files written before this rule, is recorded as
     EXPLORATORY: no BETTER claim, ``evidence_eligible`` false. Nothing is
-    registered after the fact.
+    registered after the fact. A hypothesis hosts one run (review NEW-2): once
+    its run is recorded, or when the binding does not bind (malformed, unknown,
+    a different sealed specification), the daily run launches as EXPLORATORY;
+    the next registered study needs a new hypothesis from the owner. An
+    unreadable or malformed result file is recorded as EXPLORATORY too
+    (NEW-4), so it never stops the daily research.
     """
     import subprocess
 
@@ -544,8 +549,15 @@ def strategy_research(records_dir: Path, research_dir: Path | None = None, launc
     result, marker, seen = d / "strategy_compare_latest.json", d / "strategy_compare.running", d / "strategy_compare.recorded"
     now = now if now is not None else time.time()
     if result.exists() and (not seen.exists() or seen.read_text(encoding="utf-8") != str(result.stat().st_mtime_ns)):
-        data = json.loads(result.read_text(encoding="utf-8"))
-        nets = {name: [r.get("net_pnl") for r in rows] for name, rows in data.get("table", {}).items()}
+        try:  # NEW-4: an unreadable or malformed result is recorded as exploratory, never raised
+            data = json.loads(result.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            data = {"unreadable": f"{type(exc).__name__}: {exc}"}
+        data = data if isinstance(data, dict) else {"unreadable": "the result is not a JSON object"}
+        table = {str(name): [r for r in rows if isinstance(r, dict)] if isinstance(rows, list) else []
+                 for name, rows in (data.get("table") if isinstance(data.get("table"), dict) else {}).items()}
+        raw_verdicts = data.get("verdicts") if isinstance(data.get("verdicts"), dict) else {}
+        nets = {name: [r.get("net_pnl") for r in rows] for name, rows in table.items()}
         existing = {r["record_id"] for r in cli.read_log(records_dir / cli.MEMORY_LOG)} if (records_dir / cli.MEMORY_LOG).exists() else set()
         from tools import strategy_compare as sc
 
@@ -553,14 +565,14 @@ def strategy_research(records_dir: Path, research_dir: Path | None = None, launc
         try:  # never trust the result file's own claim: re-verify against the sealed registry
             registry = json.loads(binding.read_text(encoding="utf-8"))["registry"] if binding.exists() else None
             study, registered = sc.verify_registered_result(data, registry), True
-        except (sc.StudyRegistrationError, ValueError, KeyError, TypeError) as exc:  # NF-7: never wedge the agent
+        except (sc.StudyRegistrationError, OSError, ValueError, KeyError, TypeError) as exc:  # NF-7: never wedge the agent
             study, registered, refusal = {}, False, f"{type(exc).__name__}: {exc}"
         if registered:
-            verdicts = data.get("verdicts") or {}
+            verdicts = raw_verdicts
             better = [k for k, v in verdicts.items() if v == "BETTER"]
             title = f"Strateji karşılaştırması ({study['hypothesis_id']}): BETTER = {', '.join(better) or 'yok'}"
         else:  # quarantine: never promote an unregistered study's verdicts
-            verdicts = {k: (v if v == "-" else "EXPLORATORY") for k, v in (data.get("verdicts") or {}).items()}
+            verdicts = {str(k): (v if v == "-" else "EXPLORATORY") for k, v in raw_verdicts.items()}
             study = {"status": "EXPLORATORY", "evidence_eligible": False, "reason": "NO_SEALED_PREREGISTRATION",
                      "detail": refusal}
             better = []
@@ -570,9 +582,10 @@ def strategy_research(records_dir: Path, research_dir: Path | None = None, launc
             "title": title,
             "body": json.dumps({"study": study, "verdicts": verdicts, "net_by_window": nets,
                                 # full evidence for tools/regime_bar_check (drawdown and trade counts per window)
-                                "drawdown_by_window": {name: [r.get("max_drawdown") for r in rows] for name, rows in data.get("table", {}).items()},
-                                "closed_by_window": {name: [r.get("closed_trades") for r in rows] for name, rows in data.get("table", {}).items()},
-                                "dataset": (data.get("dataset") or {}).get("dataset_sha256"), "finished_at": data.get("finished_at")},
+                                "drawdown_by_window": {name: [r.get("max_drawdown") for r in rows] for name, rows in table.items()},
+                                "closed_by_window": {name: [r.get("closed_trades") for r in rows] for name, rows in table.items()},
+                                "dataset": (data.get("dataset") if isinstance(data.get("dataset"), dict) else {}).get("dataset_sha256"),
+                                "finished_at": data.get("finished_at")},
                                ensure_ascii=False, default=str),
             "author": "strategy_lab", "source": "tools/agent_cycle.py (strategy_research, background tools.strategy_compare)"})
         seen.write_text(str(result.stat().st_mtime_ns), encoding="utf-8")
@@ -588,11 +601,15 @@ def strategy_research(records_dir: Path, research_dir: Path | None = None, launc
            "--symbols-file", "config/universe_selection.json", "--json", "--output", str(result)]
     binding = d / "strategy_research_registration.json"
     if binding.exists():  # a sealed hypothesis the owner registered for this daily study
-        try:
+        from tools import strategy_compare as sc
+
+        try:  # a consumed hypothesis (its one run recorded, NEW-2) or a malformed binding runs as exploratory
             reg = json.loads(binding.read_text(encoding="utf-8"))
+            sc.bind_study(reg["registry"], reg["hypothesis_id"], sc.study_parameters(
+                sc.VARIANTS, days=30, windows=3, embargo=240, step=15, exp001=True))
             cmd += ["--registry", str(reg["registry"]), "--hypothesis", str(reg["hypothesis_id"])]
-        except (ValueError, KeyError, TypeError):
-            pass  # NF-7: a malformed binding runs as exploratory instead of wedging the daily agent
+        except (sc.StudyRegistrationError, OSError, ValueError, KeyError, TypeError):
+            pass  # NF-7: never wedge the daily agent; the owner registers a new hypothesis for the next study
     (launch or (lambda c: subprocess.Popen(c, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                                            cwd=str(Path(__file__).resolve().parents[1]))))(cmd)
     marker.write_text(str(now), encoding="utf-8")

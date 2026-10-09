@@ -4,9 +4,11 @@ P4-CLOSURE-004 (audit F-2, reviews N-1 / NF-1..NF-6): a period counts only when
 it is a REGISTERED study that re-verifies against the hypothesis registry, so
 the bar-arithmetic tests below build their results from a real sealed registry.
 The candles are dated after the registration (the registry's own genesis time,
-not a caller-supplied ``preregistered_at``), each result carries its digest,
-and the arithmetic periods come from a one-member family so the family
-completeness rule is met. The arithmetic and its expected verdicts are unchanged.
+not a caller-supplied ``preregistered_at``), each hypothesis's one run is
+recorded in the registry (``start_study_run``, review NEW-2), each result
+carries its digest, and the arithmetic periods come from a one-member family
+so the family completeness rule is met. The arithmetic and its expected
+verdicts are unchanged.
 """
 
 import pytest
@@ -22,7 +24,11 @@ WINDOW = {"universe": ("BTCUSDT",), "data_start": "2099-01-01T00:00:00+00:00",
           "data_end": "2100-12-31T00:00:00+00:00", "preregistered_at": "2026-10-01T00:00:00+00:00"}
 FIRST_OPEN = 4_100_000_000_000  # 2099-12-03: inside the sealed window, after the registry's genesis
 LATER = FIRST_OPEN + 10 * 86_400_000  # a second, non-overlapping period
-PAIR, SOLO, OTHER = "FAM-REGIME-PAIR", "FAM-REGIME-SOLO", "FAM-REGIME-OTHER"
+PAIR, SOLO, OTHER, SPECS = "FAM-REGIME-PAIR", "FAM-REGIME-SOLO", "FAM-REGIME-OTHER", "FAM-REGIME-SPECS"
+
+
+def fresh(reg):
+    return HypothesisRegistry(registry_path=reg[0])  # runs are recorded through other instances
 
 
 @pytest.fixture
@@ -36,27 +42,31 @@ def reg(tmp_path):
 
     add("HYP-0001", PAIR)
     add("HYP-0002", PAIR)
-    add("HYP-0003", PAIR, {**SPEC, "windows": 2})
+    add("HYP-0003", SPECS, {**SPEC, "windows": 2})
     add("HYP-0004", SOLO)
     add("HYP-0005", OTHER)
     return path, registry
 
 
 def study(reg, hid="HYP-0004"):
-    path, registry = reg
-    record = registry.get(hid)
-    return {"status": "REGISTERED", "evidence_eligible": True, "hypothesis_id": hid,
-            "preregistration_hash": record.preregistration_hash,
-            "parameters": record.preregistration.feature_spec[sc.STUDY_SPEC_KEY]}
+    """The study block of the hypothesis's one run, recording that run on first use (as main() does)."""
+    record = fresh(reg).get(hid)
+    bound = {"status": "REGISTERED", "evidence_eligible": True, "hypothesis_id": hid,
+             "preregistration_hash": record.preregistration_hash,
+             "parameters": record.preregistration.feature_spec[sc.STUDY_SPEC_KEY]}
+    if record.state is HypothesisState.REGISTERED:
+        return sc.start_study_run(reg[0], bound)
+    return {**bound, "run_started_at": sc._run_started_at(record)}
 
 
-def result(flt, ref, ds="a", study=None, first_open=FIRST_OPEN):
+def result(flt, ref, ds="a", study=None, first_open=FIRST_OPEN, symbol="BTCUSDT"):
     rows = lambda xs: [{"net_pnl": n, "max_drawdown": d, "closed_trades": c} for n, d, c in xs]
     out = {"table": {FILTER: rows(flt), REFERENCE: rows(ref)},
            "dataset": {"dataset_sha256": ds,
-                       "symbols": {"BTCUSDT": {"first_open": first_open, "last_open": first_open + 60_000 * 1000}}}}
+                       "symbols": {symbol: {"first_open": first_open, "last_open": first_open + 60_000 * 1000}}}}
     if study is not None:
-        out["study"] = {**study, "result_digest": sc.result_digest(out)}  # as strategy_compare.main seals it
+        out["study"] = dict(study)  # as strategy_compare.main seals it
+        out["study"]["result_digest"] = sc.result_digest(out)
     return out
 
 
@@ -123,7 +133,7 @@ def test_data_from_before_the_registration_cannot_clear_the_bar(reg):
 
 
 def test_nf1_a_backdated_preregistered_at_does_not_make_old_data_eligible(reg):
-    path, registry = reg
+    path, registry = reg[0], fresh(reg)
     registry.register(make_preregistration(  # the caller claims 2023; the registry records today
         hypothesis_id="HYP-0006", family_id="FAM-REGIME-BACKDATED", feature_spec={sc.STUDY_SPEC_KEY: SPEC},
         universe=("BTCUSDT",), data_start="2023-11-01T00:00:00+00:00", data_end="2023-12-31T00:00:00+00:00",
@@ -152,7 +162,7 @@ def test_nf2_overlapping_periods_with_different_hashes_do_not_clear_the_bar(reg)
 # -- NF-3: no best-of-N selection across hypotheses or families --
 
 
-def test_nf3_every_family_member_with_the_specification_must_be_supplied(reg):
+def test_nf3_every_family_member_must_be_supplied(reg):
     out = verdict([result(GOOD, REF, "a", study(reg, "HYP-0001"))], reg[0])
     assert out["verdict"] == "NOT PROVEN" and "every registered hypothesis" in out["note"]
 
@@ -186,8 +196,8 @@ def test_a_table_that_is_not_the_sealed_shape_is_refused(reg):
 
 
 def test_nf6_results_of_a_terminal_hypothesis_do_not_count(reg):
-    path, registry = reg
     period = result(GOOD, REF, "a", study(reg))
+    path, registry = reg[0], fresh(reg)
     registry.advance("HYP-0004", HypothesisState.REJECTED)
     out = verdict([period], path)
     assert out["verdict"] == "NOT PROVEN" and "REJECTED" in out["periods"][0]["reason"]
@@ -205,3 +215,63 @@ def test_nf7_malformed_results_are_refused_not_raised(reg, mangle):
     period = result(GOOD, REF, "a", study(reg))
     mangle(period)
     assert verdict([period], reg[0])["verdict"] == "NOT PROVEN"
+
+
+# -- review round 4: NEW-1 / NEW-2 / NEW-3 ---------------------------------
+
+
+def _register(reg, hid, family, spec=SPEC, universe=("BTCUSDT",)):
+    fresh(reg).register(make_preregistration(hypothesis_id=hid, family_id=family,
+                                             feature_spec={sc.STUDY_SPEC_KEY: spec}, **{**WINDOW, "universe": universe}))
+
+
+def test_new1_two_universes_over_the_same_dates_are_one_period(reg):
+    _register(reg, "HYP-0010", "FAM-REGIME-UNIVERSE")
+    _register(reg, "HYP-0011", "FAM-REGIME-UNIVERSE", universe=("ETHUSDT",))
+    a = result(GOOD, REF, "a", study(reg, "HYP-0010"))
+    b = result(GOOD, REF, "b", study(reg, "HYP-0011"), symbol="ETHUSDT")
+    out = verdict([a, b], reg[0])
+    assert out["verdict"] == "NOT PROVEN" and "overlap" in out["note"]
+    later = result(GOOD, REF, "b", study(reg, "HYP-0011"), LATER, symbol="ETHUSDT")
+    assert verdict([a, later], reg[0])["verdict"] == "BAR CLEARED"  # disjoint dates do clear
+
+
+def test_new2a_varying_the_specification_inside_a_family_is_not_a_way_out(reg):
+    for hid in ("HYP-0020", "HYP-0021"):
+        _register(reg, hid, "FAM-REGIME-MIXED")
+    _register(reg, "HYP-0022", "FAM-REGIME-MIXED", {**SPEC, "step": 16})  # the losing variant, left out
+    out = verdict([result(GOOD, REF, "a", study(reg, "HYP-0020")),
+                   result(GOOD, REF, "b", study(reg, "HYP-0021"), LATER)], reg[0])
+    assert out["verdict"] == "NOT PROVEN" and "HYP-0022" in out["note"]
+
+
+def test_new2b_a_hypothesis_hosts_exactly_one_recorded_run(reg):
+    first = study(reg)  # records the run
+    with pytest.raises(sc.StudyRegistrationError, match="CALIBRATED"):
+        sc.start_study_run(reg[0], {k: v for k, v in first.items() if k != "run_started_at"})
+    with pytest.raises(sc.StudyRegistrationError, match="once"):
+        sc.bind_study(reg[0], "HYP-0004", SPEC)
+    # A second "run" claiming another start time is not the recorded run.
+    rerun = result(GOOD, REF, "a", {**first, "run_started_at": "2099-12-01T00:00:00+00:00"})
+    out = verdict([rerun], reg[0])
+    assert out["verdict"] == "NOT PROVEN" and "one recorded run" in out["periods"][0]["reason"]
+    assert verdict([result(GOOD, REF, "a", first)], reg[0])["verdict"] == "PENDING SECOND PERIOD"
+
+
+def test_new2b_a_hypothesis_without_a_recorded_run_has_no_registered_result(reg):
+    unrun = {k: v for k, v in study(reg, "HYP-0005").items() if k != "run_started_at"}
+    _register(reg, "HYP-0030", "FAM-REGIME-UNRUN")
+    record = fresh(reg).get("HYP-0030")
+    never_started = {**unrun, "hypothesis_id": "HYP-0030", "preregistration_hash": record.preregistration_hash,
+                     "run_started_at": record.state_chain[0].recorded_at}
+    assert verdict([result(GOOD, REF, "a", never_started)], reg[0])["verdict"] == "NOT PROVEN"
+
+
+def test_new3_relabelling_a_run_to_a_sibling_hypothesis_is_refused(reg):
+    a, b = study(reg, "HYP-0001"), study(reg, "HYP-0002")
+    run = result(REF, REF, "a", a)  # HYP-0001's real (losing) run
+    relabelled = {**run, "study": {**run["study"], "hypothesis_id": "HYP-0002",
+                                   "preregistration_hash": b["preregistration_hash"],
+                                   "run_started_at": b["run_started_at"]}}
+    out = verdict([relabelled], reg[0])
+    assert out["verdict"] == "NOT PROVEN" and "altered or relabelled" in out["periods"][0]["reason"]

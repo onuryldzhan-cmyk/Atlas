@@ -194,13 +194,16 @@ def _sc_records(rec):
 
 
 def test_daily_agent_passes_the_owner_registration_to_the_run(tmp_path):
+    # Round 4 (NEW-2): the agent now checks the binding before launching, so this uses a real
+    # sealed registration of the daily study instead of a non-existent "reg.json".
+    path, _ = _registry(tmp_path, hid="HYP-0007")
     rd, launched = tmp_path / "research", []
     rd.mkdir()
     (rd / "strategy_research_registration.json").write_text(
-        json.dumps({"registry": "reg.json", "hypothesis_id": "HYP-0007"}), encoding="utf-8")
+        json.dumps({"registry": str(path), "hypothesis_id": "HYP-0007"}), encoding="utf-8")
     ac.strategy_research(tmp_path / "records", research_dir=rd, launch=launched.append, now=1000.0)
     cmd = launched[0]
-    assert cmd[cmd.index("--registry") + 1] == "reg.json" and cmd[cmd.index("--hypothesis") + 1] == "HYP-0007"
+    assert cmd[cmd.index("--registry") + 1] == str(path) and cmd[cmd.index("--hypothesis") + 1] == "HYP-0007"
 
 
 def test_daily_agent_without_registration_launches_an_exploratory_run(tmp_path):
@@ -326,3 +329,69 @@ def test_nf7_naive_sealed_times_are_refused(tmp_path):
     with pytest.raises(sc.StudyRegistrationError, match="timezone-aware"):
         sc.check_study_data(path, "HYP-0001", {"symbols": {"BTCUSDT": {"first_open": 4_100_000_000_000,
                                                                        "last_open": 4_100_000_060_000}}})
+
+
+# -- review round 4: NEW-2b (one recorded run per hypothesis), NEW-4 -------------
+
+
+def test_new2b_the_tool_records_the_run_and_refuses_a_second_one(tmp_path, monkeypatch):
+    rc, out, replayed, path, _ = _registered_run(tmp_path, monkeypatch)
+    assert rc == 0 and replayed == [1]
+    record = HypothesisRegistry(registry_path=path).get("HYP-0001")
+    assert record.state is HypothesisState.CALIBRATED  # durable, in the registry's own state chain
+    result = json.loads(out.read_text(encoding="utf-8"))
+    assert result["study"]["run_started_at"] == record.state_chain[-1].recorded_at
+    rc2 = sc.main(["--dataset", str(_saved_dataset(tmp_path)), "--symbols", "BTCUSDT", "--json",
+                   "--output", str(tmp_path / "again.json"), "--registry", str(path), "--hypothesis", "HYP-0001"])
+    assert rc2 == 2 and replayed == [1] and not (tmp_path / "again.json").exists()
+    assert sc.verify_registered_result(result, path)["hypothesis_id"] == "HYP-0001"  # the one run still verifies
+
+
+def test_new2b_refused_data_does_not_consume_the_hypothesis(tmp_path, monkeypatch):
+    rc, _, replayed, path, _ = _registered_run(tmp_path, monkeypatch, universe=("ETHUSDT",))
+    assert rc == 2 and replayed == []
+    assert HypothesisRegistry(registry_path=path).get("HYP-0001").state is HypothesisState.REGISTERED
+
+
+@pytest.mark.parametrize("case", ["consumed", "other_spec", "unknown"])
+def test_new2b_daily_agent_runs_exploratory_when_the_binding_cannot_host_a_run(tmp_path, case):
+    path, reg = _registry(tmp_path, spec={**DAILY, "windows": 2} if case == "other_spec" else DAILY)
+    if case == "consumed":
+        reg.advance("HYP-0001", HypothesisState.CALIBRATED)
+    rd, launched = tmp_path / "research", []
+    rd.mkdir()
+    (rd / "strategy_research_registration.json").write_text(json.dumps(
+        {"registry": str(path), "hypothesis_id": "HYP-0099" if case == "unknown" else "HYP-0001"}), encoding="utf-8")
+    ac.strategy_research(tmp_path / "records", research_dir=rd, launch=launched.append, now=1000.0)
+    assert "--hypothesis" not in launched[0] and "--registry" not in launched[0]
+
+
+@pytest.mark.parametrize("content", ["{not json", "[1, 2]", '{"table": {"x": [1, "a"]}, "verdicts": ["BETTER"]}',
+                                     '{"table": [], "verdicts": {"x": "BETTER"}, "dataset": 5}', "\udcff"])
+def test_new4_a_malformed_result_file_is_recorded_as_exploratory_not_raised(tmp_path, content):
+    rd, rec = tmp_path / "research", tmp_path / "records"
+    rd.mkdir()
+    (rd / "strategy_compare_latest.json").write_text(content, encoding="utf-8", errors="surrogateescape")
+    done = ac.strategy_research(rec, research_dir=rd, launch=lambda c: None, now=1200.0)
+    assert "BETTER" not in done["summary"]
+    [record] = _sc_records(rec)
+    assert json.loads(record["body"])["study"]["evidence_eligible"] is False
+    assert (rd / "strategy_compare.recorded").exists()  # marked seen: the next cycle is not stuck on it
+    assert len(_sc_records_after(rec, rd)) == 1
+
+
+def _sc_records_after(rec, rd):
+    ac.strategy_research(rec, research_dir=rd, launch=lambda c: None, now=1300.0)
+    return _sc_records(rec)
+
+
+def test_new4_a_binding_path_that_is_a_directory_is_refused_not_raised(tmp_path, monkeypatch):
+    result, _ = _registered_result(tmp_path, monkeypatch)
+    rd, rec = tmp_path / "research", tmp_path / "records"
+    rd.mkdir()
+    (rd / "strategy_research_registration.json").write_text(
+        json.dumps({"registry": str(tmp_path), "hypothesis_id": "HYP-0001"}), encoding="utf-8")
+    (rd / "strategy_compare_latest.json").write_text(json.dumps(result), encoding="utf-8")
+    done = ac.strategy_research(rec, research_dir=rd, launch=lambda c: None, now=1200.0)
+    assert "ön kayıt yok" in done["summary"]
+    assert json.loads(_sc_records(rec)[0]["body"])["study"]["evidence_eligible"] is False

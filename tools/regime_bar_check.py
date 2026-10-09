@@ -16,9 +16,15 @@ hypothesis registry (seal, pre-registration hash, sealed specification, data
 inside the sealed window and after registration: strategy_compare
 .verify_registered_result; audit F-2 / review N-1). All periods must share one
 sealed study specification and one family, the supplied periods must be every
-registered hypothesis of that family with that specification (no best-of-N
-selection, review NF-3), and no two periods may overlap in time on any symbol
-(bar item 3 "non-overlapping", review NF-2). An EXPLORATORY, unlabelled or
+registered hypothesis of that family whatever its specification (no best-of-N
+selection by hypothesis or by specification, reviews NF-3 / NEW-2), each
+hypothesis hosts exactly one recorded run (strategy_compare.start_study_run),
+and no two periods may overlap in time: each period's span runs from its
+earliest to its latest candle over all of its symbols, so two universes over
+the same dates are one period, not two (bar item 3 "non-overlapping", reviews
+NF-2 / NEW-1). A family that loses a member (e.g. a crashed or rejected run)
+can therefore never clear the bar; that is deliberate. Selection across whole
+families stays visible in the registry but is not decided here (residual). An EXPLORATORY, unlabelled or
 unverifiable result cannot clear any part of the bar; without --registry
 nothing can.
 
@@ -36,6 +42,12 @@ from typing import Any
 REFERENCE = "gerçekçi dolum (referans)"
 FILTER = "rejim filtresi (sadece TREND_UP)"
 MIN_WINDOWS_WON, MIN_CLOSED = 2, 30
+
+
+def _span(result: dict[str, Any]) -> tuple[int, int]:
+    """Earliest to latest candle over every symbol of a verified period (NEW-1)."""
+    symbols = (result.get("dataset") or {}).get("symbols") or {}
+    return (min(info["first_open"] for info in symbols.values()), max(info["last_open"] for info in symbols.values()))
 
 
 def check_period(result: dict[str, Any], registry: str | Path | None = None) -> dict[str, Any]:
@@ -65,8 +77,7 @@ def check_period(result: dict[str, Any], registry: str | Path | None = None) -> 
     return {"ok": not reasons, "won": won, "windows": len(flt), "drawdown_no_worse": dd_ok, "closed": closed,
             "dataset": (result.get("dataset") or {}).get("dataset_sha256"), "hypothesis_id": study["hypothesis_id"],
             "specification": json.dumps(study.get("parameters"), sort_keys=True),
-            "ranges": {sym: (info.get("first_open"), info.get("last_open"))
-                       for sym, info in ((result.get("dataset") or {}).get("symbols") or {}).items()},
+            "span": _span(result),
             "reason": "; ".join(reasons) or "bar items 1-2 met"}
 
 
@@ -80,24 +91,21 @@ def verdict(results: list[dict[str, Any]], registry: str | Path | None = None) -
                 "note": "periods come from different sealed study specifications"}
     for i, a in enumerate(periods):
         for b in periods[i + 1:]:
-            for sym in set(a["ranges"]) & set(b["ranges"]):
-                (a0, a1), (b0, b1) = a["ranges"][sym], b["ranges"][sym]
-                if a0 <= b1 and b0 <= a1:
-                    return {"verdict": "NOT PROVEN", "periods": periods,
-                            "note": f"periods overlap in time on {sym}; bar item 3 needs non-overlapping periods"}
+            (a0, a1), (b0, b1) = a["span"], b["span"]
+            if a0 <= b1 and b0 <= a1:
+                return {"verdict": "NOT PROVEN", "periods": periods,
+                        "note": "periods overlap in time; bar item 3 needs non-overlapping periods"}
     from research.hypothesis_registry import HypothesisRegistry
 
     reg = HypothesisRegistry(registry_path=registry)
     records = [reg.get(p["hypothesis_id"]) for p in periods]
     families = {r.family_id for r in records}
-    spec = json.loads(periods[0]["specification"])
     if len(families) != 1:
         return {"verdict": "NOT PROVEN", "periods": periods, "note": "periods come from different hypothesis families"}
-    family = [r.hypothesis_id for r in reg.family(next(iter(families)))
-              if r.preregistration.feature_spec.get("strategy_compare") == spec]
+    family = [r.hypothesis_id for r in reg.family(next(iter(families)))]
     if sorted(family) != sorted(p["hypothesis_id"] for p in periods):
         return {"verdict": "NOT PROVEN", "periods": periods,
-                "note": f"every registered hypothesis of the family with this specification must be included: {sorted(family)}"}
+                "note": f"every registered hypothesis of the family must be included, once: {sorted(family)}"}
     if len(datasets) < 2:
         return {"verdict": "PENDING SECOND PERIOD", "periods": periods,
                 "note": "bar item 3: a second, non-overlapping period with a different dataset is required"}

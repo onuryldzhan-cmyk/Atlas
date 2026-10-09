@@ -25,12 +25,22 @@ sealed universe and every candle must lie inside the sealed window and after
 the registration -- the later of ``preregistered_at`` (caller-supplied) and the
 registry's own genesis time (set by ``register()``, not by the caller) -- so
 results seen before the registration can never be re-labelled as a study.
-A registered result carries a digest over its table, verdicts and dataset
-(NF-4). Consumers (the daily agent, tools/regime_bar_check) re-verify a
+One hypothesis hosts exactly one run (review NEW-2): once the data has passed
+those checks, and immediately before the replay, the run is recorded in the
+registry's own durable state chain by advancing the hypothesis REGISTERED ->
+CALIBRATED (``start_study_run``). A second run under the same hypothesis is
+refused, so a study cannot be re-run until a good-looking result appears; a
+new run needs a new hypothesis, which joins the family and must then be
+reported with it (tools/regime_bar_check). A run that crashes after this point
+still consumed its hypothesis -- its data was read. A registered result
+carries a digest over its table, verdicts, dataset and its own study block
+(hypothesis, pre-registration hash, parameters, run start; NF-4, NEW-3).
+Consumers (the daily agent, tools/regime_bar_check) re-verify a
 REGISTERED result against the registry with ``verify_registered_result``.
 What that verification establishes: the registration exists, is sealed and
-non-terminal, the result's parameters and data range match it, and the
-result was not relabelled or altered after the run. What it cannot
+non-terminal, its one recorded run is this result's run, the result's
+parameters and data range match it, and the result was not relabelled or
+altered after the run. What it cannot
 establish: authenticity against someone who rewrites the local registry or
 result file and recomputes the unkeyed hashes (registry-level limit
 NEW-M3/U1; closing it needs keyed signing, an owner decision). Without a registration the run is
@@ -132,10 +142,12 @@ def _check_rows(record, data: dict[str, list[list]]) -> None:
 
 
 def result_digest(result: dict[str, Any]) -> str:
-    """Binds a registered result's numbers to its study block (NF-4; unkeyed, detects relabelling)."""
+    """Binds a registered result's numbers to its study block (NF-4, NEW-3; unkeyed, detects relabelling)."""
     import hashlib
 
-    body = {"table": result.get("table"), "verdicts": result.get("verdicts"), "dataset": result.get("dataset")}
+    study = result.get("study") if isinstance(result.get("study"), dict) else {}
+    body = {"table": result.get("table"), "verdicts": result.get("verdicts"), "dataset": result.get("dataset"),
+            "study": {k: v for k, v in study.items() if k != "result_digest"}}
     return hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest()
 
 
@@ -192,6 +204,8 @@ def _verify_registered_result(result: dict[str, Any], registry_path: str | Path 
     record = _sealed_record(registry_path, study["hypothesis_id"])
     if is_terminal(record.state):  # NF-6
         raise StudyRegistrationError(f"{record.hypothesis_id} is {record.state.value}; its results are not evidence")
+    if study.get("run_started_at") != _run_started_at(record):  # NEW-2: the one recorded run
+        raise StudyRegistrationError(f"{record.hypothesis_id}: this result is not the hypothesis's one recorded run")
     if record.preregistration_hash != study.get("preregistration_hash"):
         raise StudyRegistrationError(f"{record.hypothesis_id}: pre-registration hash does not match the registry")
     if record.preregistration.feature_spec.get(STUDY_SPEC_KEY) != study.get("parameters"):
@@ -207,18 +221,48 @@ def _verify_registered_result(result: dict[str, Any], registry_path: str | Path 
 
 
 def bind_study(registry_path: str | Path, hypothesis_id: str, parameters: dict[str, Any]) -> dict[str, Any]:
-    """Bind a run to its sealed pre-registration, or refuse."""
-    from research.lifecycle import is_terminal
-
+    """Bind a run to its sealed pre-registration, or refuse. Validates only; start_study_run records it."""
     record = _sealed_record(registry_path, hypothesis_id)
-    if is_terminal(record.state):
-        raise StudyRegistrationError(f"{hypothesis_id} is {record.state.value}; no new study can run under it")
+    if record.state is not _unrun():  # terminal (NF-6) or its one run already recorded (NEW-2)
+        raise StudyRegistrationError(f"{hypothesis_id} is {record.state.value}; a study runs only under a "
+                                     f"{_unrun().value} hypothesis, once")
     sealed = record.preregistration.feature_spec.get(STUDY_SPEC_KEY)
     if sealed != json.loads(json.dumps(parameters)):
         raise StudyRegistrationError(f"{hypothesis_id}: this run does not match the sealed study specification")
     return {"status": "REGISTERED", "evidence_eligible": True, "hypothesis_id": record.hypothesis_id,
             "preregistration_hash": record.preregistration_hash,
             "preregistered_at": record.preregistration.preregistered_at, "parameters": parameters}
+
+
+def _unrun():
+    from research.lifecycle import HypothesisState
+
+    return HypothesisState.REGISTERED  # the only state a study run may start from
+
+
+def _run_started_at(record) -> str | None:
+    """When the hypothesis's one study run was recorded (REGISTERED -> CALIBRATED), if it was."""
+    from research.lifecycle import HypothesisState
+
+    starts = [t.recorded_at for t in record.state_chain
+              if t.from_state is _unrun() and t.to_state is HypothesisState.CALIBRATED]
+    return starts[0] if len(starts) == 1 else None
+
+
+def start_study_run(registry_path: str | Path, study: dict[str, Any]) -> dict[str, Any]:
+    """Record the run in the registry's durable state chain; a second run is refused (NEW-2)."""
+    from research.hypothesis_registry import HypothesisRegistry, RegistryError
+    from research.lifecycle import HypothesisState, LifecycleError
+
+    record = _sealed_record(registry_path, study["hypothesis_id"])
+    if record.state is not _unrun() or record.preregistration_hash != study["preregistration_hash"]:
+        raise StudyRegistrationError(f"{record.hypothesis_id} is {record.state.value}; its one run is already recorded")
+    try:
+        updated = HypothesisRegistry(registry_path=Path(registry_path)).advance(
+            record.hypothesis_id, HypothesisState.CALIBRATED)
+    except (RegistryError, LifecycleError) as exc:
+        raise StudyRegistrationError(f"{record.hypothesis_id}: the run could not be recorded: {exc}") from exc
+    return {**study, "run_started_at": updated.state_chain[-1].recorded_at}
 
 
 def quarantine(result: dict[str, Any]) -> dict[str, Any]:
@@ -369,6 +413,7 @@ def main(argv: list[str] | None = None, fetch=None) -> int:
     if study is not None:
         try:  # before any replay: the data must be the sealed window, after registration
             check_study_data(args.registry, args.hypothesis, manifest, data)
+            study = start_study_run(args.registry, study)  # last step before the replay
         except StudyRegistrationError as exc:
             print(f"STUDY REFUSED: {exc}", file=sys.stderr)
             return 2
@@ -380,7 +425,8 @@ def main(argv: list[str] | None = None, fetch=None) -> int:
     if study is None:
         quarantine(result)
     else:
-        result["study"] = {**study, "result_digest": result_digest(result)}
+        result["study"] = dict(study)
+        result["study"]["result_digest"] = result_digest(result)
     if args.output:
         out = Path(args.output)
         tmp = out.with_suffix(".tmp")
