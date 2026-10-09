@@ -40,6 +40,8 @@ def state_root(tmp_path, monkeypatch):
     """Review R4-2: registered studies use the canonical registry under the state root."""
     monkeypatch.setenv("ATLAS_STATE_DIRECTORY", str(tmp_path))
     (tmp_path / "research").mkdir()
+    # Review R5-1: the daily agent checks the sealed universe against the universe selection.
+    (tmp_path / "universe.json").write_text(json.dumps({"symbols": ["BTCUSDT"]}), encoding="utf-8")
 
 
 def _window(days, start="2100-01-01T00:00:00+00:00"):
@@ -146,6 +148,15 @@ def test_a_refused_binding_stops_before_any_replay(tmp_path, monkeypatch):
 SPEC1 = sc.study_parameters(sc.VARIANTS, days=1, windows=3, embargo=0, step=15, exp001=True)
 
 
+def _no_evidence(out):
+    """A refused run produced no result. Round 6 (R5-1): it now leaves a REFUSED file for the daily agent
+    to record (before, it left nothing); either way nothing in it can count as evidence."""
+    if not out.exists():
+        return True
+    study = json.loads(out.read_text(encoding="utf-8"))["study"]
+    return study["status"] == "REFUSED" and study["evidence_eligible"] is False and "table" not in json.loads(out.read_text(encoding="utf-8"))
+
+
 # The sealed study's shape: every sealed variant, one row per sealed window.
 FULL_TABLE = {name: [{"net_pnl": "1", "max_drawdown": "1", "closed_trades": 1}] * 3 for name in sc.VARIANTS}
 
@@ -186,7 +197,7 @@ def test_a_registered_run_keeps_its_verdicts_and_links_the_hypothesis(tmp_path, 
 ])
 def test_data_outside_the_sealed_window_or_universe_is_refused_before_replay(tmp_path, monkeypatch, window):
     rc, out, replayed, *_ = _registered_run(tmp_path, monkeypatch, **window)
-    assert rc == 2 and replayed == [] and not out.exists()
+    assert rc == 2 and replayed == [] and _no_evidence(out)
 
 
 def test_reviewer_n1_retroactive_registration_after_an_exploratory_look(tmp_path, monkeypatch):
@@ -219,7 +230,7 @@ def test_daily_agent_passes_the_owner_registration_to_the_run(tmp_path):
     rd, launched = tmp_path / "research", []
     rd.mkdir(exist_ok=True)
     (rd / "strategy_research_registration.json").write_text(json.dumps({"hypothesis_id": "HYP-0007"}), encoding="utf-8")
-    ac.strategy_research(tmp_path / "records", research_dir=rd, launch=launched.append, now=AFTER_THE_WINDOWS)
+    ac.strategy_research(tmp_path / "records", research_dir=rd, universe_file=rd.parent / "universe.json", launch=launched.append, now=AFTER_THE_WINDOWS)
     cmd = launched[0]
     assert cmd[cmd.index("--registry") + 1] == str(path) and cmd[cmd.index("--hypothesis") + 1] == "HYP-0007"
 
@@ -228,14 +239,14 @@ def test_daily_agent_runs_exploratory_until_the_sealed_window_has_ended(tmp_path
     _registry(tmp_path, hid="HYP-0007")
     rd, launched = tmp_path / "research", []
     (rd / "strategy_research_registration.json").write_text(json.dumps({"hypothesis_id": "HYP-0007"}), encoding="utf-8")
-    ac.strategy_research(tmp_path / "records", research_dir=rd, launch=launched.append, now=1000.0)
+    ac.strategy_research(tmp_path / "records", research_dir=rd, universe_file=rd.parent / "universe.json", launch=launched.append, now=1000.0)
     assert "--hypothesis" not in launched[0]  # its data does not exist yet
 
 
 def test_daily_agent_without_registration_launches_an_exploratory_run(tmp_path):
     rd, launched = tmp_path / "research", []
     rd.mkdir(exist_ok=True)
-    ac.strategy_research(tmp_path / "records", research_dir=rd, launch=launched.append, now=1000.0)
+    ac.strategy_research(tmp_path / "records", research_dir=rd, universe_file=rd.parent / "universe.json", launch=launched.append, now=1000.0)
     assert "--hypothesis" not in launched[0] and "--registry" not in launched[0]
 
 
@@ -247,7 +258,7 @@ def test_daily_agent_never_promotes_an_unregistered_result(tmp_path, study):
     if study is not None:
         data["study"] = study
     (rd / "strategy_compare_latest.json").write_text(json.dumps(data), encoding="utf-8")
-    done = ac.strategy_research(rec, research_dir=rd, launch=lambda c: None, now=1200.0)
+    done = ac.strategy_research(rec, research_dir=rd, universe_file=rd.parent / "universe.json", launch=lambda c: None, now=1200.0)
     assert "x" not in done["summary"]
     [record] = _sc_records(rec)
     body = json.loads(record["body"])
@@ -268,7 +279,7 @@ def _record_daily(tmp_path, result, registry=None):
         (rd / "strategy_research_registration.json").write_text(
             json.dumps({"registry": str(registry), "hypothesis_id": "HYP-0001"}), encoding="utf-8")
     (rd / "strategy_compare_latest.json").write_text(json.dumps(result), encoding="utf-8")
-    done = ac.strategy_research(rec, research_dir=rd, launch=lambda c: None, now=1200.0)
+    done = ac.strategy_research(rec, research_dir=rd, universe_file=rd.parent / "universe.json", launch=lambda c: None, now=1200.0)
     [record] = _sc_records(rec)
     return done, record
 
@@ -300,7 +311,7 @@ def test_daily_agent_does_not_trust_a_self_declared_registration(tmp_path, monke
 
 def test_nf5_one_mid_series_candle_outside_the_window_is_refused_before_replay(tmp_path, monkeypatch):
     rc, out, replayed, *_ = _registered_run(tmp_path, monkeypatch, dataset={"outlier": (700, 1_700_000_000_000)})
-    assert rc == 2 and replayed == [] and not out.exists()
+    assert rc == 2 and replayed == [] and _no_evidence(out)
 
 
 def test_nf4_a_registered_study_block_copied_onto_another_result_is_refused(tmp_path, monkeypatch):
@@ -332,12 +343,12 @@ def test_nf7_a_malformed_or_spent_binding_never_wedges_the_daily_agent(tmp_path,
     rd, rec = tmp_path / "research", tmp_path / "records"
     (rd / "strategy_research_registration.json").write_text(binding, encoding="utf-8")
     (rd / "strategy_compare_latest.json").write_text(json.dumps(result), encoding="utf-8")
-    done = ac.strategy_research(rec, research_dir=rd, launch=lambda c: None, now=1200.0)
+    done = ac.strategy_research(rec, research_dir=rd, universe_file=rd.parent / "universe.json", launch=lambda c: None, now=1200.0)
     [record] = _sc_records(rec)
     assert json.loads(record["body"])["study"]["hypothesis_id"] == "HYP-0001" and "x" in done["summary"]
     launched = []
     (rd / "strategy_compare_latest.json").unlink()
-    ac.strategy_research(rec, research_dir=rd, launch=launched.append, now=AFTER_THE_WINDOWS)
+    ac.strategy_research(rec, research_dir=rd, universe_file=rd.parent / "universe.json", launch=launched.append, now=AFTER_THE_WINDOWS)
     assert "--hypothesis" not in launched[0] and "--registry" not in launched[0]
 
 
@@ -373,7 +384,7 @@ def test_new2b_the_tool_records_the_run_and_refuses_a_second_one(tmp_path, monke
     assert result["study"]["run_started_at"] == record.state_chain[-1].recorded_at
     rc2 = sc.main(["--dataset", str(_saved_dataset(tmp_path)), "--symbols", "BTCUSDT", "--json", "--days", "1",
                    "--output", str(tmp_path / "again.json"), "--registry", str(path), "--hypothesis", "HYP-0001"])
-    assert rc2 == 2 and replayed == [1] and not (tmp_path / "again.json").exists()
+    assert rc2 == 2 and replayed == [1] and _no_evidence(tmp_path / "again.json")
     assert sc.verify_registered_result(result, path)["hypothesis_id"] == "HYP-0001"  # the one run still verifies
 
 
@@ -392,7 +403,7 @@ def test_new2b_daily_agent_runs_exploratory_when_the_binding_cannot_host_a_run(t
     rd.mkdir(exist_ok=True)
     (rd / "strategy_research_registration.json").write_text(json.dumps(
         {"hypothesis_id": "HYP-0099" if case == "unknown" else "HYP-0001"}), encoding="utf-8")
-    ac.strategy_research(tmp_path / "records", research_dir=rd, launch=launched.append, now=AFTER_THE_WINDOWS)
+    ac.strategy_research(tmp_path / "records", research_dir=rd, universe_file=rd.parent / "universe.json", launch=launched.append, now=AFTER_THE_WINDOWS)
     assert "--hypothesis" not in launched[0] and "--registry" not in launched[0]
 
 
@@ -402,7 +413,7 @@ def test_new4_a_malformed_result_file_is_recorded_as_exploratory_not_raised(tmp_
     rd, rec = tmp_path / "research", tmp_path / "records"
     rd.mkdir(exist_ok=True)
     (rd / "strategy_compare_latest.json").write_text(content, encoding="utf-8", errors="surrogateescape")
-    done = ac.strategy_research(rec, research_dir=rd, launch=lambda c: None, now=1200.0)
+    done = ac.strategy_research(rec, research_dir=rd, universe_file=rd.parent / "universe.json", launch=lambda c: None, now=1200.0)
     assert "BETTER" not in done["summary"]
     [record] = _sc_records(rec)
     assert json.loads(record["body"])["study"]["evidence_eligible"] is False
@@ -411,7 +422,7 @@ def test_new4_a_malformed_result_file_is_recorded_as_exploratory_not_raised(tmp_
 
 
 def _sc_records_after(rec, rd):
-    ac.strategy_research(rec, research_dir=rd, launch=lambda c: None, now=1300.0)
+    ac.strategy_research(rec, research_dir=rd, universe_file=rd.parent / "universe.json", launch=lambda c: None, now=1300.0)
     return _sc_records(rec)
 
 
@@ -422,7 +433,7 @@ def test_new4_a_registry_path_that_is_a_directory_is_refused_not_raised(tmp_path
     registry.mkdir()
     rd, rec = tmp_path / "research", tmp_path / "records"
     (rd / "strategy_compare_latest.json").write_text(json.dumps(result), encoding="utf-8")
-    done = ac.strategy_research(rec, research_dir=rd, launch=lambda c: None, now=1200.0)
+    done = ac.strategy_research(rec, research_dir=rd, universe_file=rd.parent / "universe.json", launch=lambda c: None, now=1200.0)
     assert "ön kayıt yok" in done["summary"]
     assert json.loads(_sc_records(rec)[0]["body"])["study"]["evidence_eligible"] is False
 
@@ -442,6 +453,13 @@ def _drop(rows, i):
     lambda: _candles(1500),                                           # more than the sealed window
     lambda: [["abc", *r[1:]] if i == 5 else r for i, r in enumerate(_candles())],  # a malformed open time
     lambda: [r if i != 5 else [] for i, r in enumerate(_candles())],  # an empty row
+    # review R5-3: every column is checked before the run is recorded
+    lambda: [r if i != 5 else r[:1] for i, r in enumerate(_candles())],                    # a short row
+    lambda: [r if i != 5 else r[:11] for i, r in enumerate(_candles())],                   # 11 columns
+    lambda: [r if i != 5 else [r[0], "NaN", *r[2:]] for i, r in enumerate(_candles())],    # a NaN price
+    lambda: [r if i != 5 else [r[0], "-1", *r[2:]] for i, r in enumerate(_candles())],     # a negative price
+    lambda: [r if i != 5 else [*r[:5], "-3", *r[6:]] for i, r in enumerate(_candles())],   # a negative volume
+    lambda: [r if i != 5 else [*r[:6], r[6] + 1, *r[7:]] for i, r in enumerate(_candles())],  # bad close time
 ])
 def test_r4_1_registered_data_must_be_exactly_the_sealed_window(tmp_path, monkeypatch, rows):
     path, _ = _registry(tmp_path, spec=SPEC1)
@@ -449,7 +467,7 @@ def test_r4_1_registered_data_must_be_exactly_the_sealed_window(tmp_path, monkey
     monkeypatch.setattr(sc, "compare", lambda *a, **k: replayed.append(1) or {"table": FULL_TABLE, "verdicts": {}})
     rc = sc.main(["--dataset", str(_saved_dataset(tmp_path, rows=rows())), "--symbols", "BTCUSDT", "--json",
                   "--days", "1", "--output", str(tmp_path / "o.json"), "--registry", str(path), "--hypothesis", "HYP-0001"])
-    assert rc == 2 and replayed == [] and not (tmp_path / "o.json").exists()
+    assert rc == 2 and replayed == [] and _no_evidence(tmp_path / "o.json")
     assert HypothesisRegistry(registry_path=path).get("HYP-0001").state is HypothesisState.REGISTERED  # not spent
 
 
@@ -479,3 +497,76 @@ def test_r4_2_a_registry_outside_the_canonical_path_is_refused(tmp_path, monkeyp
     with pytest.raises(sc.StudyRegistrationError, match="canonical"):
         sc.verify_registered_result(result, copy)
     assert sc.verify_registered_result(result, registry)["hypothesis_id"] == "HYP-0001"
+
+
+# -- review round 6: R5-1 (a refused registered daily run never stalls the research) --
+
+
+def _launch(tmp_path, now=AFTER_THE_WINDOWS):
+    launched = []
+    done = ac.strategy_research(tmp_path / "records", research_dir=tmp_path / "research", launch=launched.append,
+                                now=now, universe_file=tmp_path / "universe.json")
+    return done, launched[0] if launched else None
+
+
+def _refusals(tmp_path):
+    rec = tmp_path / "records"
+    return [r for r in _sc_records(rec) if json.loads(r["body"])["study"]["status"] == "REFUSED"] if rec.exists() else []
+
+
+def test_r5_1_a_tool_refusal_is_recorded_once_and_later_runs_are_exploratory(tmp_path, monkeypatch):
+    path, _ = _registry(tmp_path, spec=SPEC1)
+    rd = tmp_path / "research"
+    (rd / "strategy_research_registration.json").write_text(json.dumps({"hypothesis_id": "HYP-0001"}), encoding="utf-8")
+    monkeypatch.setattr(sc, "compare", lambda *a, **k: {"table": FULL_TABLE, "verdicts": {}})
+    gappy = _saved_dataset(tmp_path, rows=_drop(_candles(), 700))  # the exchange history has a gap
+    out = rd / "strategy_compare_latest.json"
+    assert sc.main(["--dataset", str(gappy), "--symbols", "BTCUSDT", "--json", "--days", "1", "--output", str(out),
+                    "--registry", str(path), "--hypothesis", "HYP-0001"]) == 2
+    refused = json.loads(out.read_text(encoding="utf-8"))
+    assert refused["study"]["status"] == "REFUSED" and refused["study"]["evidence_eligible"] is False
+    done, _ = _launch(tmp_path)
+    assert "reddedildi" in done["summary"] and "HYP-0001" in done["summary"]
+    [record] = _refusals(tmp_path)
+    assert "HYP-0001" in record["title"] and record["authority"] == "RESEARCH"
+    out.unlink()
+    for _ in range(3):  # no stall: every later launch is exploratory and says why; no duplicate record
+        done, cmd = _launch(tmp_path)
+        assert "--hypothesis" not in cmd and "refused earlier" in done["summary"]
+        (rd / "strategy_compare.running").unlink()
+    assert len(_refusals(tmp_path)) == 1
+    assert HypothesisRegistry(registry_path=path).get("HYP-0001").state is HypothesisState.REGISTERED  # unspent
+
+
+def test_r5_1_a_universe_that_drifted_from_the_sealed_one_falls_back_with_a_record(tmp_path):
+    _registry(tmp_path, hid="HYP-0007")
+    rd = tmp_path / "research"
+    (rd / "strategy_research_registration.json").write_text(json.dumps({"hypothesis_id": "HYP-0007"}), encoding="utf-8")
+    (tmp_path / "universe.json").write_text(json.dumps({"symbols": ["BTCUSDT", "ETHUSDT"]}), encoding="utf-8")
+    for _ in range(2):
+        done, cmd = _launch(tmp_path)
+        assert "--hypothesis" not in cmd and "keşif" in done["summary"]
+        (rd / "strategy_compare.running").unlink()
+    [record] = _refusals(tmp_path)
+    assert "sealed universe" in json.loads(record["body"])["study"]["reason"]
+
+
+def test_r5_1_a_new_hypothesis_after_a_refusal_runs_registered(tmp_path):
+    _registry(tmp_path, hid="HYP-0007")
+    rd = tmp_path / "research"
+    (rd / "strategy_compare.refused").write_text(json.dumps({"hypothesis_id": "HYP-0006", "reason": "gap"}), encoding="utf-8")
+    (rd / "strategy_research_registration.json").write_text(json.dumps({"hypothesis_id": "HYP-0007"}), encoding="utf-8")
+    done, cmd = _launch(tmp_path)
+    assert cmd[cmd.index("--hypothesis") + 1] == "HYP-0007" and "ön kayıtlı: HYP-0007" in done["summary"]
+
+
+def test_r5_1_a_refused_result_never_counts_as_evidence(tmp_path):
+    forged = {"study": {"status": "REFUSED", "hypothesis_id": "HYP-0001", "reason": "x", "evidence_eligible": True},
+              "verdicts": {"x": "BETTER"}, "table": {}}
+    with pytest.raises(sc.StudyRegistrationError):
+        sc.verify_registered_result(forged, sc.canonical_registry())
+    rd = tmp_path / "research"
+    (rd / "strategy_compare_latest.json").write_text(json.dumps(forged), encoding="utf-8")
+    done, _ = _launch(tmp_path, now=1200.0)
+    assert "BETTER" not in done["summary"]
+    assert json.loads(_refusals(tmp_path)[0]["body"])["study"]["evidence_eligible"] is False

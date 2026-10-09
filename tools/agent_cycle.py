@@ -520,7 +520,27 @@ def _research_dir() -> Path:
     return d
 
 
-def strategy_research(records_dir: Path, research_dir: Path | None = None, launch=None, now: float | None = None) -> dict[str, Any]:
+def _research_refusal(records_dir: Path, d: Path, hypothesis: str, reason: str) -> None:
+    """Record once that a registered daily study cannot run (review R5-1); later launches run exploratory."""
+    refused = d / "strategy_compare.refused"
+    if refused.exists():
+        try:
+            if json.loads(refused.read_text(encoding="utf-8")).get("hypothesis_id") == hypothesis:
+                return
+        except (OSError, ValueError, AttributeError):
+            pass
+    existing = {r["record_id"] for r in cli.read_log(records_dir / cli.MEMORY_LOG)} if (records_dir / cli.MEMORY_LOG).exists() else set()
+    cli.add_memory_record(records_dir, {
+        "record_id": f"SC-{len(existing) + 1:04d}", "type": "EXPERIMENTS", "authority": "RESEARCH",
+        "title": f"Ön kayıtlı çalışma çalıştırılamadı ({hypothesis}); sahibin yeni bir hipotez kaydetmesi gerekir",
+        "body": json.dumps({"study": {"status": "REFUSED", "evidence_eligible": False, "hypothesis_id": hypothesis,
+                                      "reason": reason}}, ensure_ascii=False, default=str),
+        "author": "strategy_lab", "source": "tools/agent_cycle.py (strategy_research, registered study refused)"})
+    refused.write_text(json.dumps({"hypothesis_id": hypothesis, "reason": reason}, ensure_ascii=False), encoding="utf-8")
+
+
+def strategy_research(records_dir: Path, research_dir: Path | None = None, launch=None, now: float | None = None,
+                      universe_file: Path | None = None) -> dict[str, Any]:
     """Owner 2026-10-01: nobody waits for strategy comparisons.
 
     Once a day this agent starts tools.strategy_compare in a separate
@@ -544,7 +564,12 @@ def strategy_research(records_dir: Path, research_dir: Path | None = None, launc
     a different sealed specification), the daily run launches as EXPLORATORY;
     the next registered study needs a new hypothesis from the owner. An
     unreadable or malformed result file is recorded as EXPLORATORY too
-    (NEW-4), so it never stops the daily research.
+    (NEW-4), so it never stops the daily research. A registered run that
+    cannot run -- the tool refused it (a gap in the exchange history, for
+    example) or the universe selection no longer matches the sealed universe --
+    is recorded once as a REFUSED memory record and the hypothesis is marked
+    refused, so later runs are exploratory and the launch summary says why
+    (review R5-1); it never stalls the daily research.
     """
     import subprocess
 
@@ -568,6 +593,13 @@ def strategy_research(records_dir: Path, research_dir: Path | None = None, launc
             study, registered = sc.verify_registered_result(data, sc.canonical_registry()), True
         except (sc.StudyRegistrationError, OSError, ValueError, KeyError, TypeError) as exc:  # NF-7: never wedge the agent
             study, registered, refusal = {}, False, f"{type(exc).__name__}: {exc}"
+        claimed = data.get("study") if isinstance(data.get("study"), dict) else {}
+        if not registered and claimed.get("status") == "REFUSED":  # the tool refused a registered run (R5-1)
+            _research_refusal(records_dir, d, str(claimed.get("hypothesis_id")), str(claimed.get("reason")))
+            seen.write_text(str(result.stat().st_mtime_ns), encoding="utf-8")
+            marker.unlink(missing_ok=True)
+            return {"verdict": "OK", "summary": f"ön kayıtlı çalışma reddedildi ({claimed.get('hypothesis_id')}): "
+                                                f"{claimed.get('reason')}; hafızaya yazıldı, sonraki çalıştırmalar keşif"}
         if registered:
             verdicts = raw_verdicts
             better = [k for k, v in verdicts.items() if v == "BETTER"]
@@ -600,23 +632,36 @@ def strategy_research(records_dir: Path, research_dir: Path | None = None, launc
         return {"verdict": "OK", "summary": "son karşılaştırma 24 saatten yeni; yeniden başlatılmadı"}
     cmd = [sys.executable, "-m", "tools.strategy_compare", "--days", "30", "--windows", "3", "--embargo", "240",
            "--symbols-file", "config/universe_selection.json", "--json", "--output", str(result)]
-    binding = d / "strategy_research_registration.json"
+    binding, mode = d / "strategy_research_registration.json", ""
     if binding.exists():  # a sealed hypothesis the owner registered for this daily study
         from tools import strategy_compare as sc
 
-        try:  # a consumed hypothesis (its one run recorded, NEW-2) or a malformed binding runs as exploratory
+        try:  # anything that keeps the registered run from running launches an exploratory one, with the reason
             hypothesis = str(json.loads(binding.read_text(encoding="utf-8"))["hypothesis_id"])
+            refused = d / "strategy_compare.refused"
+            if refused.exists() and json.loads(refused.read_text(encoding="utf-8")).get("hypothesis_id") == hypothesis:
+                raise sc.StudyRegistrationError(f"{hypothesis} was refused earlier; a new hypothesis is needed")
             registry = sc.canonical_registry()
             study = sc.bind_study(registry, hypothesis, sc.study_parameters(
                 sc.VARIANTS, days=30, windows=3, embargo=240, step=15, exp001=True))
-            if study["window_ms"][1] <= now * 1000:  # the sealed window has ended: its data exists (R4-1)
+            symbols = json.loads((universe_file or Path(__file__).resolve().parents[1] / "config" / "universe_selection.json")
+                                 .read_text(encoding="utf-8"))["symbols"]
+            if sorted(symbols) != study["universe"]:  # R5-1: the selection drifted from the sealed universe
+                reason = f"the universe {sorted(symbols)} is not the sealed universe {study['universe']}"
+                _research_refusal(records_dir, d, hypothesis, reason)
+                raise sc.StudyRegistrationError(reason)
+            if study["window_ms"][1] > now * 1000:
+                mode = f" (keşif: {hypothesis} için mühürlü pencere henüz bitmedi)"
+            else:  # the sealed window has ended: its data exists (R4-1)
                 cmd += ["--registry", str(registry), "--hypothesis", hypothesis]
-        except (sc.StudyRegistrationError, OSError, ValueError, KeyError, TypeError):
-            pass  # NF-7: never wedge the daily agent; the owner registers a new hypothesis for the next study
+                mode = f" (ön kayıtlı: {hypothesis})"
+        except (sc.StudyRegistrationError, OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
+            mode = f" (keşif: ön kayıt kullanılamadı: {exc})"  # NF-7: never wedge the daily agent
     (launch or (lambda c: subprocess.Popen(c, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                                            cwd=str(Path(__file__).resolve().parents[1]))))(cmd)
     marker.write_text(str(now), encoding="utf-8")
-    return {"verdict": "OK", "summary": "karşılaştırma arka planda başlatıldı (paralel); sonuç bir sonraki döngülerde hafızaya yazılacak"}
+    return {"verdict": "OK", "summary": "karşılaştırma arka planda başlatıldı (paralel)" + mode +
+                                        "; sonuç bir sonraki döngülerde hafızaya yazılacak"}
 
 
 def _snapshot(records_dir: Path, mem: list[dict[str, Any]]) -> dict[str, Any]:

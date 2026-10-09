@@ -39,6 +39,16 @@ Posture is ALLOWLIST-FIRST and fails closed:
 - Every other tool, including any tool the scout should never hold (Bash,
   NotebookEdit, MultiEdit, Agent, MCP tools), is denied.
 
+Known gaps in this hook, documented as residual (owner decision 2026-10-09,
+review R5-4; the hook is defense in depth only):
+- Glob patterns are compared literally against representative names, so a
+  pattern such as `**/.e*`, `**/?env` or `**/.*` can still list secret file
+  NAMES (not contents; content reads stay refused).
+- The IP-literal check does not recognise every shorthand form: `https://127.1/`
+  is not refused here, so "no IP literals" holds only for canonical forms.
+- A diff fence indented inside a list (e.g. "   ```diff") is not detected; the
+  scout holds no Write, so this only matters if the hook guards a writer.
+
 The guard never emits "allow". A silent exit leaves the normal permission flow
 (and the settings.json deny rules) in charge; this hook can only take authority
 away, never grant it.

@@ -28,6 +28,11 @@ the sealed ``days`` and lies wholly after the registration (the later of
 ``register()``, not by the caller). Results seen before the registration can
 never be re-labelled as a study, and no slice of a wider window can be chosen
 after exploratory looks. A registered run downloads exactly that window.
+A refused registered run (exit 2) writes a REFUSED result to ``--output``
+(never evidence) so the daily agent can record the refusal instead of
+waiting on it (review R5-1). A sealed window whose exchange history has a gap
+can never be run: it is refused before the run is recorded, and the owner
+registers a new hypothesis.
 Registered studies use one canonical registry, ``canonical_registry()``
 (``<state root>/research/hypotheses.json``; review R4-2): a registry file
 anywhere else is refused, so a family cannot be registered N times and the
@@ -53,7 +58,22 @@ relabelled or altered after the run. What it cannot establish: that the
 candle prices are genuine market data, or authenticity against someone who
 rewrites the local registry or result file and recomputes the unkeyed hashes
 (registry-level limit NEW-M3/U1; closing it needs keyed signing, an owner
-decision). Without a registration the run is
+decision).
+
+Further documented residuals (owner decision 2026-10-09, review round 5):
+- R5-2: the sealed specification fixes the variant *names*, the reference and
+  the run parameters, not what each variant does. Changing a variant's
+  arguments in ``VARIANTS`` or the replay / brain code after the registration
+  is not detected, and no code version is recorded in the result.
+- R5-5: "canonical" is per state root: ``ATLAS_STATE_DIRECTORY`` selects the
+  root, so another root has another canonical registry (file-write residual).
+- R5-6: exploratory runs may cover a sealed window's dates before its
+  registered run (the daily agent's own exploratory runs do), so abandoning a
+  family after such a look is possible; selection across families stays
+  visible in the canonical registry but is not prevented (cross-family
+  residual).
+- Result files and memory records written before this rule may still read
+  BETTER; the memory log is append-only and they are not relabelled. Without a registration the run is
 EXPLORATORY: its table is kept, but every BETTER / NOT PROVEN verdict is
 replaced by EXPLORATORY and the result is marked ``evidence_eligible: false``,
 so it can never be promoted as evidence. Nothing is registered after the
@@ -179,14 +199,35 @@ def _check_universe(record, symbols) -> None:
                                      f"sealed universe {sorted(record.preregistration.universe)}")
 
 
+def _candle_open(row) -> int:
+    """A Binance 1-minute kline, checked in full before a registered run is recorded (review R5-3).
+
+    Twelve columns; integer open time and close time = open + 59 999 ms; finite,
+    positive open/high/low/close and a finite, non-negative volume. Anything else
+    raises, so a malformed dataset is refused while the hypothesis is still unspent.
+    """
+    from decimal import Decimal
+
+    if not isinstance(row, (list, tuple)) or len(row) != 12:
+        raise ValueError(f"a candle has 12 columns, got {row!r:.80}")
+    opened, closed = int(row[0]), int(row[6])
+    if closed != opened + MINUTE_MS - 1:
+        raise ValueError(f"close time {closed} is not open time {opened} + 59999")
+    prices = [Decimal(str(v)) for v in row[1:5]]
+    volume = Decimal(str(row[5]))
+    if not all(v.is_finite() and v > 0 for v in prices) or not (volume.is_finite() and volume >= 0):
+        raise ValueError(f"non-finite or non-positive price/volume at {opened}")
+    return opened
+
+
 def _check_rows(record, data: dict[str, list[list]]) -> None:
     """Every candle: exactly the sealed span, contiguous at one minute (NF-5, R4-1)."""
     start, end = _window(record)
     _check_universe(record, data)
     for symbol, rows in data.items():
         try:
-            opens = [int(row[0]) for row in rows]
-        except (TypeError, ValueError, IndexError) as exc:
+            opens = [_candle_open(row) for row in rows]
+        except (TypeError, ValueError, IndexError, ArithmeticError) as exc:
             raise StudyRegistrationError(f"{record.hypothesis_id}: {symbol} has a malformed candle: {exc}") from exc
         if opens != list(range(start, end, MINUTE_MS)):
             raise StudyRegistrationError(f"{record.hypothesis_id}: {symbol} data is not exactly the sealed window, "
@@ -278,7 +319,7 @@ def bind_study(registry_path: str | Path, hypothesis_id: str, parameters: dict[s
     return {"status": "REGISTERED", "evidence_eligible": True, "hypothesis_id": record.hypothesis_id,
             "preregistration_hash": record.preregistration_hash,
             "preregistered_at": record.preregistration.preregistered_at, "parameters": parameters,
-            "window_ms": list(_window(record))}
+            "window_ms": list(_window(record)), "universe": sorted(record.preregistration.universe)}
 
 
 def _unrun():
@@ -400,6 +441,24 @@ def compare(data: dict[str, list[list]], windows: int, step: int, exp001: bool,
                                  "note": "a BETTER verdict among many variants can be luck; confirm on a second, non-overlapping period"}}
 
 
+def _write_output(path: str, payload: dict[str, Any]) -> None:
+    from datetime import datetime, timezone
+
+    out = Path(path)
+    tmp = out.with_suffix(".tmp")
+    tmp.write_text(json.dumps({**payload, "finished_at": datetime.now(timezone.utc).isoformat()},
+                              default=str, ensure_ascii=False), encoding="utf-8")
+    os.replace(tmp, out)
+
+
+def _refused(args, exc: Exception) -> int:
+    """Exit 2; with --output, leave a REFUSED result (never evidence) for the daily agent to record (R5-1)."""
+    if args.output:
+        _write_output(args.output, {"study": {"status": "REFUSED", "evidence_eligible": False,
+                                              "hypothesis_id": str(args.hypothesis), "reason": str(exc)}})
+    return 2
+
+
 def main(argv: list[str] | None = None, fetch=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--days", type=int, default=21)
@@ -438,7 +497,7 @@ def main(argv: list[str] | None = None, fetch=None) -> int:
                 exp001=not args.no_exp001))
         except StudyRegistrationError as exc:
             print(f"STUDY REFUSED: {exc}", file=sys.stderr)
-            return 2
+            return _refused(args, exc)
     logging.getLogger("AtlasAI.MarketLoop").setLevel(logging.ERROR)
     symbols = [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
     if args.symbols_file:
@@ -465,7 +524,7 @@ def main(argv: list[str] | None = None, fetch=None) -> int:
             study = start_study_run(args.registry, study)  # last step before the replay
         except StudyRegistrationError as exc:
             print(f"STUDY REFUSED: {exc}", file=sys.stderr)
-            return 2
+            return _refused(args, exc)
     if args.save_dataset:
         Path(args.save_dataset).write_text(json.dumps({"manifest": manifest, "data": data}, default=str), encoding="utf-8")
     print(f"replaying {len(variants)} variants x {args.windows} windows (this takes a while)...", file=sys.stderr, flush=True)
@@ -477,11 +536,7 @@ def main(argv: list[str] | None = None, fetch=None) -> int:
         result["study"] = dict(study)
         result["study"]["result_digest"] = result_digest(result)
     if args.output:
-        out = Path(args.output)
-        tmp = out.with_suffix(".tmp")
-        tmp.write_text(json.dumps({**result, "finished_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()},
-                                  default=str, ensure_ascii=False), encoding="utf-8")
-        os.replace(tmp, out)
+        _write_output(args.output, result)
     result["parameters"] = {"embargo": args.embargo, "windows": args.windows, "step": args.step, "exp001": not args.no_exp001,
                             "variants": sorted(variants)}
     if args.json:
