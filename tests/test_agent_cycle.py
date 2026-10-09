@@ -134,9 +134,12 @@ def test_strategy_research_launches_in_background_then_records_result(tmp_path):
     (rd / "strategy_compare_latest.json").write_text(json.dumps({
         "table": {"ref": [{"net_pnl": "1"}]}, "verdicts": {"ref": "-", "x": "BETTER"}, "dataset": {"dataset_sha256": "abc"}}), encoding="utf-8")
     done = ac.strategy_research(rec, research_dir=rd, launch=launched.append, now=1200.0)
-    assert "hafızaya yazıldı" in done["summary"] and "x" in done["summary"]
+    # F-2 (P4-CLOSURE-004): this result carries no registered study, so it is recorded as
+    # exploratory and its BETTER verdict is not promoted (was: "x" listed as BETTER).
+    assert "hafızaya yazıldı" in done["summary"] and "keşif" in done["summary"] and "x" not in done["summary"]
     sc = [r for r in memory_records.replay(cli.read_log(rec / cli.MEMORY_LOG)).values() if r["id"].startswith("SC-")]
     assert len(sc) == 1
+    assert json.loads(sc[0]["body"])["verdicts"]["x"] == "EXPLORATORY"
     assert "24 saatten yeni" in ac.strategy_research(rec, research_dir=rd, launch=launched.append)["summary"]
     assert len(launched) == 1
 

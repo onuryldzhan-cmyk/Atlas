@@ -59,8 +59,10 @@ def test_scout_holds_no_execution_or_edit_tool():
     header = SCOUT_PATH.read_text(encoding="utf-8").split("---")[1]
     tools_line = next(line for line in header.splitlines() if line.startswith("tools:"))
     tools = {t.strip() for t in tools_line.split(":", 1)[1].split(",")}
-    assert tools == {"WebSearch", "WebFetch", "Read", "Grep", "Glob", "Write"}
-    assert "atlas_proposal_write_guard.py" in header and "|| exit 2" in header
+    # P4-CLOSURE-004 F-3: the frontmatter hook was shown not to run in at least one environment,
+    # so the scout no longer holds Write at all (harness-enforced); it returns the proposal text.
+    assert tools == {"WebSearch", "WebFetch", "Read", "Grep", "Glob"}
+    assert "atlas_proposal_write_guard.py" in header and "|| exit 2" in header  # defense in depth
 
 
 # -- the injection test ---------------------------------------------------

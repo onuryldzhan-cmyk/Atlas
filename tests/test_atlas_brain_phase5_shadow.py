@@ -9,6 +9,7 @@ from decimal import Decimal
 import pytest
 
 from ai.core.atlas_brain import AtlasBrain
+from ai.core.intelligence.agent_fusion import AgentFusion
 from analysis.evidence_status import MarketDataEvidenceStatus
 from core.decision_intelligence import Action, CanonicalDecision
 
@@ -213,9 +214,10 @@ def test_sell_score_conviction_matches_agent_fusion_convention() -> None:
 def test_strong_sell_produces_high_sell_conviction_proposal() -> None:
     brain = AtlasBrain()
 
-    agent_results = {
-        "technical": {"action": "SELL", "score": 0.10},
-    }
+    # F-1 (P4-CLOSURE-004): the shadow fusion now counts the full expected roster
+    # (AgentFusion.WEIGHTS). Every agent votes the same way so this test keeps its own
+    # subject; a lone agent deciding for all five is covered by the NB-5 tests.
+    agent_results = {name: {"action": "SELL", "score": 0.10} for name in AgentFusion.WEIGHTS}
 
     proposal = brain._build_phase5_shadow_proposal(
         "BTCUSDT",
@@ -318,16 +320,19 @@ def test_fresh_ingestion_timestamp_is_accepted_by_freshness_gate() -> None:
         "timestamp": "2026-01-01T12:09:00+00:00",  # 1 minute old
     }
 
+    # F-1 (P4-CLOSURE-004): the shadow fusion now counts the full expected roster
+    # (AgentFusion.WEIGHTS). Every agent votes the same way so this test keeps its own
+    # subject; a lone agent deciding for all five is covered by the NB-5 tests.
     proposal = brain._build_phase5_shadow_proposal(
         "BTCUSDT",
-        {"technical": {"action": "BUY", "score": 0.8}},
+        {name: {"action": "BUY", "score": 0.8} for name in AgentFusion.WEIGHTS},
         fresh_market_data,
         now=fixed_now,
     )
 
     assert isinstance(proposal, CanonicalDecision)
     assert proposal.action is Action.BUY
-    assert len(proposal.evidence_ids) == 1
+    assert len(proposal.evidence_ids) == len(AgentFusion.WEIGHTS)
 
 
 def test_freshness_boundary_matches_strict_greater_than_semantics() -> None:
@@ -337,7 +342,10 @@ def test_freshness_boundary_matches_strict_greater_than_semantics() -> None:
     # not a change to FreshnessPolicy itself.
     brain = AtlasBrain()
     fixed_now = datetime(2026, 1, 1, 12, 5, 0, tzinfo=UTC)
-    agent_results = {"technical": {"action": "BUY", "score": 0.8}}
+    # F-1 (P4-CLOSURE-004): the shadow fusion now counts the full expected roster
+    # (AgentFusion.WEIGHTS). Every agent votes the same way so this test keeps its own
+    # subject; a lone agent deciding for all five is covered by the NB-5 tests.
+    agent_results = {name: {"action": "BUY", "score": 0.8} for name in AgentFusion.WEIGHTS}
 
     at_exactly_max_age = {
         **MARKET_DATA,
@@ -732,3 +740,52 @@ def test_atlas_brain_construction_is_isolated_to_temp_cwd(tmp_path) -> None:
     created_memory_dir = tmp_path / "memory_data"
     assert created_memory_dir.exists()
     assert created_memory_dir.is_dir()
+
+
+# -- P4-CLOSURE-004 F-1: expected roster (NB-5) and no gain from removal (NB-4) --
+
+
+def _shadow(agent_results):
+    brain = AtlasBrain()
+    fixed_now = datetime(2026, 1, 1, 12, 5, 0, tzinfo=UTC)
+    market_data = {**MARKET_DATA, "timestamp": "2026-01-01T12:04:30+00:00"}
+    return brain._build_phase5_shadow_proposal("BTCUSDT", agent_results, market_data, now=fixed_now)
+
+
+AUDIT_FULL = {"technical": {"action": "BUY", "score": 0.9}, "momentum": {"action": "SELL", "score": 0.1},
+              "risk": {"action": "HOLD", "score": 0.5}, "macro": {"action": "HOLD", "score": 0.5},
+              "sentiment": {"action": "HOLD", "score": 0.5}}
+
+
+def test_f1_auditor_scenario_full_roster_with_dissent_abstains():
+    proposal = _shadow(AUDIT_FULL)
+    assert proposal.action is Action.ABSTAIN and proposal.confidence == Decimal("0")
+
+
+def test_f1_removing_the_counter_evidence_does_not_promote_or_raise():
+    """Auditor: dropping the SELL used to turn ABSTAIN/0 into BUY/0.225."""
+    full = _shadow(AUDIT_FULL)
+    without_sell = _shadow({k: v for k, v in AUDIT_FULL.items() if k != "momentum"})
+    assert without_sell.action is Action.ABSTAIN
+    assert without_sell.confidence <= full.confidence
+    assert "EXPECTED_SOURCES_MISSING" in without_sell.reason_codes
+    assert json.loads(without_sell.market_context["missing_expected_sources"]) == ["agent:momentum"]
+
+
+def test_f1_one_surviving_agent_cannot_speak_for_the_roster():
+    """Auditor: one of five BUY 0.9 used to give BUY/0.9."""
+    proposal = _shadow({"technical": {"action": "BUY", "score": 0.9}})
+    assert proposal.action is Action.ABSTAIN and proposal.confidence == Decimal("0")
+    assert proposal.market_context["expected_source_coverage"] == "0.200000"
+
+
+def test_f1_full_unanimous_roster_is_unchanged():
+    proposal = _shadow({name: {"action": "BUY", "score": 0.8} for name in AgentFusion.WEIGHTS})
+    assert proposal.action is Action.BUY and proposal.confidence == Decimal("0.800000")
+    assert "missing_expected_sources" not in proposal.market_context
+
+
+def test_f1_an_unexpected_agent_is_not_counted_as_support():
+    roster = {name: {"action": "HOLD", "score": 0.5} for name in AgentFusion.WEIGHTS}
+    with_stranger = _shadow({**roster, "unlisted_agent": {"action": "BUY", "score": 1.0}})
+    assert with_stranger.action is Action.ABSTAIN and with_stranger.confidence == Decimal("0")

@@ -199,6 +199,15 @@ def _actor(value: Any, name: str) -> str:
     return value
 
 
+def _utf8(value: str, name: str) -> str:
+    """Refuse text that cannot be serialised (e.g. a lone surrogate) as input, not as a halt (F-5)."""
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError as exc:
+        raise KnowledgeInputError(f"{name} is not valid UTF-8 text") from exc
+    return value
+
+
 def _same_actor(a: str, b: str) -> bool:
     return a.strip().casefold() == b.strip().casefold()
 
@@ -206,7 +215,7 @@ def _same_actor(a: str, b: str) -> bool:
 def _text(value: Any, name: str) -> str:
     if not isinstance(value, str) or not value.strip() or len(value) > _MAX_TEXT:
         raise KnowledgeInputError(f"{name} must be non-empty text of at most {_MAX_TEXT} chars")
-    return value.strip()
+    return _utf8(value, name).strip()
 
 
 def _hash_ref(value: Any, name: str) -> str:
@@ -220,11 +229,11 @@ def _aware_timestamp(value: Any, name: str) -> str:
         raise KnowledgeInputError(f"{name} must be an ISO-8601 string")
     try:
         parsed = datetime.fromisoformat(value)
-    except ValueError as exc:
-        raise KnowledgeInputError(f"{name} is not ISO-8601: {value!r}") from exc
-    if parsed.tzinfo is None or parsed.utcoffset() is None:
-        raise KnowledgeInputError(f"{name} must carry a timezone")
-    return parsed.astimezone(timezone.utc).isoformat()
+        if parsed.tzinfo is None or parsed.utcoffset() is None:
+            raise KnowledgeInputError(f"{name} must carry a timezone")
+        return parsed.astimezone(timezone.utc).isoformat()
+    except (ValueError, OverflowError) as exc:  # F-5: an unrepresentable instant is input, not a halt
+        raise KnowledgeInputError(f"{name} is not a representable ISO-8601 instant: {value!r}") from exc
 
 
 def _enum(value: Any, enum_type: type[Enum], name: str) -> str:
@@ -381,6 +390,7 @@ class KnowledgeManager:
         self._verify_log()
         if not isinstance(uri, str) or not _URI_PATTERN.match(uri):
             raise KnowledgeInputError("uri must be 1-500 non-whitespace characters")
+        _utf8(uri, "uri")
         fields = {
             "kind": _enum(kind, SourceKind, "kind"),
             "uri": uri,

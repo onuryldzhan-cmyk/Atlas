@@ -527,6 +527,16 @@ def strategy_research(records_dir: Path, research_dir: Path | None = None, launc
     background process (all cores but one) and returns immediately. When the
     result file appears, the next cycle records it in memory (one SC-NNNN
     record per finished run). Research only; it never changes the runtime.
+
+    Pre-registration (audit P4-CLOSURE-003 F-2): the run is bound to a sealed
+    hypothesis only when ``strategy_research_registration.json`` in the
+    research directory names ``registry`` and ``hypothesis_id``; the tool then
+    refuses any run that does not match the sealed specification, window or
+    universe. A result counts as REGISTERED only if it re-verifies against
+    that registry (``strategy_compare.verify_registered_result``); anything
+    else, including result files written before this rule, is recorded as
+    EXPLORATORY: no BETTER claim, ``evidence_eligible`` false. Nothing is
+    registered after the fact.
     """
     import subprocess
 
@@ -537,11 +547,28 @@ def strategy_research(records_dir: Path, research_dir: Path | None = None, launc
         data = json.loads(result.read_text(encoding="utf-8"))
         nets = {name: [r.get("net_pnl") for r in rows] for name, rows in data.get("table", {}).items()}
         existing = {r["record_id"] for r in cli.read_log(records_dir / cli.MEMORY_LOG)} if (records_dir / cli.MEMORY_LOG).exists() else set()
-        better = [k for k, v in data.get("verdicts", {}).items() if v == "BETTER"]
+        from tools import strategy_compare as sc
+
+        binding = d / "strategy_research_registration.json"
+        try:  # never trust the result file's own claim: re-verify against the sealed registry
+            registry = json.loads(binding.read_text(encoding="utf-8"))["registry"] if binding.exists() else None
+            study, registered = sc.verify_registered_result(data, registry), True
+        except (sc.StudyRegistrationError, ValueError, KeyError, TypeError) as exc:  # NF-7: never wedge the agent
+            study, registered, refusal = {}, False, f"{type(exc).__name__}: {exc}"
+        if registered:
+            verdicts = data.get("verdicts") or {}
+            better = [k for k, v in verdicts.items() if v == "BETTER"]
+            title = f"Strateji karşılaştırması ({study['hypothesis_id']}): BETTER = {', '.join(better) or 'yok'}"
+        else:  # quarantine: never promote an unregistered study's verdicts
+            verdicts = {k: (v if v == "-" else "EXPLORATORY") for k, v in (data.get("verdicts") or {}).items()}
+            study = {"status": "EXPLORATORY", "evidence_eligible": False, "reason": "NO_SEALED_PREREGISTRATION",
+                     "detail": refusal}
+            better = []
+            title = "Keşif karşılaştırması (ön kayıtsız; kanıt değildir)"
         cli.add_memory_record(records_dir, {
             "record_id": f"SC-{len(existing) + 1:04d}", "type": "EXPERIMENTS", "authority": "RESEARCH",
-            "title": f"Strateji karşılaştırması: BETTER = {', '.join(better) or 'yok'}",
-            "body": json.dumps({"verdicts": data.get("verdicts"), "net_by_window": nets,
+            "title": title,
+            "body": json.dumps({"study": study, "verdicts": verdicts, "net_by_window": nets,
                                 # full evidence for tools/regime_bar_check (drawdown and trade counts per window)
                                 "drawdown_by_window": {name: [r.get("max_drawdown") for r in rows] for name, rows in data.get("table", {}).items()},
                                 "closed_by_window": {name: [r.get("closed_trades") for r in rows] for name, rows in data.get("table", {}).items()},
@@ -550,6 +577,8 @@ def strategy_research(records_dir: Path, research_dir: Path | None = None, launc
             "author": "strategy_lab", "source": "tools/agent_cycle.py (strategy_research, background tools.strategy_compare)"})
         seen.write_text(str(result.stat().st_mtime_ns), encoding="utf-8")
         marker.unlink(missing_ok=True)
+        if not registered:
+            return {"verdict": "OK", "summary": "karşılaştırma bitti ve hafızaya yazıldı; ön kayıt yok: keşif (kanıt değil)"}
         return {"verdict": "OK", "summary": f"karşılaştırma bitti ve hafızaya yazıldı; BETTER: {', '.join(better) or 'yok'}"}
     if marker.exists() and now - marker.stat().st_mtime < RESEARCH_TIMEOUT_H * 3600:
         return {"verdict": "OK", "summary": "karşılaştırma arka planda sürüyor"}
@@ -557,6 +586,13 @@ def strategy_research(records_dir: Path, research_dir: Path | None = None, launc
         return {"verdict": "OK", "summary": "son karşılaştırma 24 saatten yeni; yeniden başlatılmadı"}
     cmd = [sys.executable, "-m", "tools.strategy_compare", "--days", "30", "--windows", "3", "--embargo", "240",
            "--symbols-file", "config/universe_selection.json", "--json", "--output", str(result)]
+    binding = d / "strategy_research_registration.json"
+    if binding.exists():  # a sealed hypothesis the owner registered for this daily study
+        try:
+            reg = json.loads(binding.read_text(encoding="utf-8"))
+            cmd += ["--registry", str(reg["registry"]), "--hypothesis", str(reg["hypothesis_id"])]
+        except (ValueError, KeyError, TypeError):
+            pass  # NF-7: a malformed binding runs as exploratory instead of wedging the daily agent
     (launch or (lambda c: subprocess.Popen(c, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                                            cwd=str(Path(__file__).resolve().parents[1]))))(cmd)
     marker.write_text(str(now), encoding="utf-8")

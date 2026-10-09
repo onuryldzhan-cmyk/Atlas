@@ -684,6 +684,11 @@ class AtlasBrain:
         as a reproduction of production conviction - the two can and do
         diverge materially on identical agent input.
 
+        Missing agents (absent, malformed, stale) stay in the denominator:
+        the policy roster is AgentFusion.WEIGHTS, and SignalFusion counts a
+        missing agent as fully against the result, so a surviving subset can
+        never read as full agreement (P4-CLOSURE-004 F-1, NB-5).
+
         HOLD evidence contributes zero to SignalFusion's signed numerator
         (BUY is positive conviction, SELL is negative) but still
         contributes its full source weight to the denominator, so each
@@ -799,10 +804,14 @@ class AtlasBrain:
             if not evidence:
                 return None
 
+            # Expected roster, not the agents that happened to answer
+            # (P4-CLOSURE-004 F-1, NB-5): a missing or rejected agent stays
+            # in the denominator and counts against the result, never as
+            # agreement. Equal weight per agent is unchanged.
             policy = FusionPolicy(
                 weights={
-                    item.source: Decimal("1")
-                    for item in evidence
+                    f"agent:{name}": Decimal("1")
+                    for name in AgentFusion.WEIGHTS
                 }
             )
 

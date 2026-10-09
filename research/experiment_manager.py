@@ -543,6 +543,10 @@ class ExperimentManager:
     def _abort(self, hypothesis_id: str, reason: str) -> Experiment:
         if not isinstance(reason, str) or not reason.strip():
             raise ExperimentError("an abort needs a reason")
+        try:  # F-5: unserialisable text is refused input, not a halt
+            reason.encode("utf-8")
+        except UnicodeEncodeError as exc:
+            raise ExperimentError("an abort reason must be valid UTF-8 text") from exc
         return self._transition(hypothesis_id, ExperimentStatus.ABORTED, reason.strip())
 
     def record_run(self, hypothesis_id: str, run: RunResult) -> LogEntry:
