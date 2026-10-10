@@ -24,6 +24,29 @@ Idempotency rules
 - Indeterminate outcome quarantine guarantees fail-closed protection on uncertain order submission.
 - Fingerprints include normalized economic and exposure intent.
 - Uncertain exchange outcomes are durably reconciled by client order id.
+
+Task 008 hardening (registry v5.92)
+-----------------------------------
+- A PENDING_RECONCILIATION entry never expires and is never evicted; it is
+  released only by reconciliation. At capacity, new orders are refused.
+- Before a new order for a symbol, every unresolved order of that symbol is
+  reconciled; one that stays ambiguous halts the pair (HALT_VENUE_PAIR).
+- Venue errors are classified (exchange.base_exchange): a rate limit is retried
+  with full-jitter exponential backoff under the SAME client order id; an
+  unknown outcome (5xx, dropped connection) is reconciled, never resent; a
+  terminal rejection is cached as PERMANENTLY_REJECTED. Any other adapter
+  exception keeps its existing meaning: a definite local failure.
+- Optional durable order journal (DurableAppendLog): INTENT_CREATED, DISPATCHED,
+  VENUE_ACK, TERMINAL (plus UNRECONCILED, DISPATCH_FAILED, PAIR_HALTED), each
+  written before the state it records; a client order id the journal has seen
+  dispatched is never dispatched again unless the journal shows that attempt
+  never reached the venue (DISPATCH_FAILED under the adapter contract). This
+  covers every unfinished id and the most recent idempotency_max_entries
+  finished ones (v5.92 known limitations).
+- Optional venue precision gate: step, minimum quantity, minimum notional,
+  tick and upper bounds, on venue rules no older than 24 hours.
+- Real order submission stays disabled in the Binance adapters; live use also
+  requires the store, the journal and the venue rules (status live_prerequisites).
 """
 
 from __future__ import annotations
@@ -31,13 +54,24 @@ from __future__ import annotations
 import inspect
 import logging
 import math
+import random
 import re
 import threading
 import time
 
 from collections import OrderedDict
 from copy import deepcopy
-from typing import Any, Callable
+from decimal import Decimal, InvalidOperation
+from typing import Any, Callable, Mapping
+
+from core.durable_append_log import DurableAppendLog
+from core.instrument_rules import is_aligned_to_step
+from core.venue_rule_freshness import VenueRuleFreshnessPolicy, VenueRuleFreshnessService
+from exchange.base_exchange import (
+    VenueError,
+    VenueRateLimitedError,
+    VenueRejectedError,
+)
 
 from exchange.adapters.binance_global import BinanceGlobalExchange
 from exchange.adapters.binance_tr import BinanceTRExchange
@@ -77,6 +111,29 @@ _TERMINAL_ORDER_STATUSES = frozenset({
 })
 
 
+# Task 008: the brief's stale-rule TTL for orders dispatched through this manager.
+EXCHANGE_MAXIMUM_RULE_AGE_SECONDS = 24 * 60 * 60
+
+# Journal events that mean the order may have reached the venue.
+_JOURNAL_DISPATCHED_EVENTS = frozenset({"DISPATCHED", "VENUE_ACK", "UNRECONCILED"})
+# Journal events after which the venue did not receive the order: DISPATCHED is written before every
+# adapter call, and DISPATCH_FAILED only for a non-dispatch - a rate limit (not processed), a
+# preparation failure, a proven never-dispatched release, or a generic adapter exception, which the
+# adapter contract defines as a definite local failure before sending. A live adapter must therefore
+# raise VenueOutcomeUnknownError for ANY failure after transmission (v5.92 known limitations).
+_JOURNAL_NOT_DISPATCHED_EVENTS = frozenset({"INTENT_CREATED", "DISPATCH_FAILED"})
+# Last events of a finished key: bounded in the index (review 11 F-1).
+_JOURNAL_FINISHED_EVENTS = frozenset({"TERMINAL", "DISPATCH_FAILED"})
+
+
+class _JournalWriteError(RuntimeError):
+    """The order journal could not record an event; the guarded transition must not happen."""
+
+
+class _PendingCapacityError(RuntimeError):
+    """Every pending-reconciliation slot holds an unresolved order; no new order may start."""
+
+
 class ExchangeManager:
     VERSION = "3.0"
 
@@ -94,6 +151,14 @@ class ExchangeManager:
         idempotency_store_path: str | Path | None = None,
         wall_time_provider: Callable[[], float] | None = None,
         in_flight_wait_timeout_seconds: float = 30.0,
+        order_journal_path: str | Path | None = None,
+        venue_rules: Any = None,
+        venue_rule_freshness: VenueRuleFreshnessService | None = None,
+        rate_limit_max_attempts: int = 3,
+        rate_limit_backoff_base_seconds: float = 0.5,
+        rate_limit_backoff_cap_seconds: float = 8.0,
+        sleep_provider: Callable[[float], None] | None = None,
+        jitter_provider: Callable[[], float] | None = None,
     ) -> None:
         self.exchange_name = str(
             exchange_name
@@ -177,6 +242,305 @@ class ExchangeManager:
         )
 
         self._load_persistent_idempotency_entries()
+
+        # Task 008 (registry v5.92).
+        self.rate_limit_max_attempts = self._normalize_positive_int(
+            rate_limit_max_attempts, field_name="rate_limit_max_attempts")
+        self.rate_limit_backoff_base_seconds = self._normalize_positive_float(
+            rate_limit_backoff_base_seconds, field_name="rate_limit_backoff_base_seconds")
+        self.rate_limit_backoff_cap_seconds = self._normalize_positive_float(
+            rate_limit_backoff_cap_seconds, field_name="rate_limit_backoff_cap_seconds")
+        self._sleep = sleep_provider if sleep_provider is not None else time.sleep
+        self._jitter = jitter_provider if jitter_provider is not None else random.random
+        self._halted_pairs: dict[str, str] = {}
+        self._venue_rules = venue_rules
+        self._venue_rule_freshness = (
+            venue_rule_freshness if venue_rule_freshness is not None
+            else VenueRuleFreshnessService(VenueRuleFreshnessPolicy(
+                maximum_age_seconds=EXCHANGE_MAXIMUM_RULE_AGE_SECONDS))
+        )
+        self._order_journal = (
+            DurableAppendLog(order_journal_path, log_name="exchange_order_journal", version=1)
+            if order_journal_path is not None else None
+        )
+        self._journal_index: dict[str, dict[str, Any]] = {}
+        # Reviews 10 M-1 / 11 F-1: finished keys (last event TERMINAL or DISPATCH_FAILED) are indexed
+        # up to idempotency_max_entries, oldest first out; every key that may be on the venue stays.
+        # The journal FILE is append-only and never compacted (an immutable audit trail); its growth
+        # is a recorded limitation (v5.92).
+        self._journal_finished_keys: OrderedDict[str, None] = OrderedDict()
+        # Review 10 H-1: one writer at a time, so concurrent orders cannot interleave sequences.
+        self._journal_lock = threading.Lock()
+        self._journal_available = True
+        self._journal_error_type: str | None = None
+        self._load_order_journal()
+        self._restore_pending_from_journal()
+
+    def _restore_pending_from_journal(self) -> None:
+        """Review 11 F-5: an order the journal shows may be on the venue blocks its key and pair after a restart."""
+        if self._order_journal is None or not self._journal_available:
+            return
+        restored = 0
+        try:
+            with self._idempotency_lock:
+                for key, entry in list(self._journal_index.items()):
+                    if entry.get("event") not in _JOURNAL_DISPATCHED_EVENTS or key in self._pending_reconciliations:
+                        continue
+                    fingerprint = tuple(entry.get("fingerprint") or ())
+                    symbol, side, quantity = str(fingerprint[0]), str(fingerprint[1]), float(fingerprint[2])
+                    if len(self._pending_reconciliations) >= self.idempotency_max_entries:
+                        raise _PendingCapacityError("pending reconciliation capacity exhausted on restore")
+                    self._pending_reconciliations[key] = {
+                        "fingerprint": fingerprint,
+                        "response": self._pending_result(symbol=symbol, side=side, quantity=quantity),
+                        "symbol": symbol,
+                        "client_order_id": key,
+                        "created_at": float(self._monotonic_provider()),
+                    }
+                    restored += 1
+                # One durable save for the whole restore (review 12 I-2).
+                if restored and not self._persist_idempotency_entries():
+                    raise RuntimeError("restored pending reconciliations could not be persisted")
+        except Exception as exc:
+            logger.exception("A journaled unresolved order could not be restored; new orders are refused")
+            self._journal_available = False
+            self._journal_error_type = f"PendingRestoreFailed:{type(exc).__name__}"
+
+    # =====================================================
+    # TASK 008: ORDER JOURNAL
+    # =====================================================
+
+    def _load_order_journal(self) -> None:
+        if self._order_journal is None:
+            return
+        try:
+            for record in self._order_journal.read():
+                key = record.get("client_order_id")
+                if isinstance(key, str) and key:
+                    self._index_journal_event(key, record.get("event"), record)
+        except Exception as exc:  # a corrupt or unreadable journal fails closed
+            logger.exception("Exchange order journal is unreadable; new orders are refused")
+            self._journal_available = False
+            self._journal_error_type = type(exc).__name__
+
+    def _journal(self, event: str, key: str | None, **fields: Any) -> None:
+        """Durably record one event BEFORE the transition it guards; raises _JournalWriteError."""
+        if self._order_journal is None:
+            return
+        payload: dict[str, Any] = {
+            "event": event,
+            "client_order_id": key,
+            "recorded_at": float(self._wall_time_provider()),
+        }
+        for name, value in fields.items():
+            payload[name] = list(value) if name == "fingerprint" else deepcopy(value)
+        with self._journal_lock:
+            try:
+                self._order_journal.append([payload])
+            except Exception as exc:
+                self._journal_available = False
+                self._journal_error_type = type(exc).__name__
+                raise _JournalWriteError(f"order journal write failed: {event}") from exc
+            if key is not None:
+                self._index_journal_event(key, event, fields)
+
+    def _index_journal_event(self, key: str, event: Any, fields: Mapping[str, Any]) -> None:
+        """Index one journal event (caller holds the journal lock or is the constructor)."""
+        entry = self._journal_index.setdefault(key, {})
+        entry["event"] = event
+        for name in ("fingerprint", "symbol", "response"):
+            if fields.get(name) is not None:
+                entry[name] = tuple(fields[name]) if name == "fingerprint" else deepcopy(fields[name])
+        if event in _JOURNAL_FINISHED_EVENTS:
+            self._journal_finished_keys[key] = None
+            self._journal_finished_keys.move_to_end(key)
+            while len(self._journal_finished_keys) > self.idempotency_max_entries:
+                oldest, _ = self._journal_finished_keys.popitem(last=False)
+                if self._journal_index.get(oldest, {}).get("event") in _JOURNAL_FINISHED_EVENTS:
+                    self._journal_index.pop(oldest, None)
+        else:
+            self._journal_finished_keys.pop(key, None)  # a re-dispatched key is open again
+
+    def _journal_quiet(self, event: str, key: str | None, **fields: Any) -> None:
+        """Journal an event whose state is already the conservative one; a failure is logged, never swallowed."""
+        try:
+            self._journal(event, key, **fields)
+        except _JournalWriteError:
+            logger.exception("Order journal write failed: event=%s", event)
+
+    def _journal_gate(
+        self,
+        *,
+        key: str,
+        fingerprint: tuple[str, str, float, float, bool],
+        symbol: str,
+        side: str,
+        quantity: float,
+    ) -> dict[str, Any] | None:
+        """A client order id the journal has seen reach the venue is never dispatched again.
+
+        Finished ids are indexed up to idempotency_max_entries (v5.92 known limitations).
+
+        Called under the idempotency lock.
+        """
+        if self._order_journal is None:
+            return None
+        if not self._journal_available:
+            return self._rejection(reason="ORDER_JOURNAL_UNAVAILABLE", symbol=symbol, side=side, quantity=quantity)
+        with self._journal_lock:
+            entry = deepcopy(self._journal_index.get(key))
+        if entry is None:
+            return None
+        recorded = tuple(entry.get("fingerprint") or ())
+        if recorded and recorded != tuple(fingerprint):
+            return self._rejection(reason="IDEMPOTENCY_KEY_CONFLICT", symbol=symbol, side=side, quantity=quantity)
+        event = entry.get("event")
+        if event == "TERMINAL" and isinstance(entry.get("response"), dict):
+            return deepcopy(entry["response"])
+        if event in _JOURNAL_DISPATCHED_EVENTS and key not in self._pending_reconciliations:
+            # It may have reached the venue and no other record holds its outcome: reconcile it.
+            try:
+                return self._record_pending_reconciliation(
+                    key=key, fingerprint=fingerprint, symbol=symbol, side=side, quantity=quantity)
+            except Exception:
+                logger.exception("Journal-recovered order could not be registered for reconciliation")
+                return self._pending_result(symbol=symbol, side=side, quantity=quantity)
+        return None
+
+    # =====================================================
+    # TASK 008: PAIR RECONCILIATION LOCKOUT
+    # =====================================================
+
+    def _pair_reconciliation_gate(
+        self,
+        *,
+        key: str,
+        symbol: str,
+        side: str,
+        quantity: float,
+    ) -> dict[str, Any] | None:
+        """Reconcile every unresolved order of ``symbol`` before a new one; halt the pair if any stays ambiguous."""
+        with self._idempotency_lock:
+            # Review 10 L-3: an order still in flight is not an unresolved one.
+            others = [k for k, e in self._pending_reconciliations.items()
+                      if e.get("symbol") == symbol and k != key and k not in self._in_flight_requests]
+        for other in others:
+            self.reconcile_order(other)
+        with self._idempotency_lock:
+            still = [k for k, e in self._pending_reconciliations.items()
+                     if e.get("symbol") == symbol and k != key and k not in self._in_flight_requests]
+            if not still:
+                self._halted_pairs.pop(symbol, None)
+                return None
+            self._halted_pairs[symbol] = "UNRECONCILED_ORDERS"
+        try:
+            self._journal("PAIR_HALTED", None, symbol=symbol, blocked_client_order_id=key,
+                          unreconciled_orders=len(still))
+        except _JournalWriteError:
+            logger.exception("Pair halt could not be journaled: symbol=%s", symbol)
+        logger.warning("Venue pair halted until reconciliation: symbol=%s unreconciled=%s", symbol, len(still))
+        rejection = self._rejection(reason=ExecutionSafetyGate.HALT_VENUE_PAIR, symbol=symbol, side=side,
+                                    quantity=quantity)
+        rejection["unreconciled_orders"] = len(still)
+        return rejection
+
+    # =====================================================
+    # TASK 008: VENUE PRECISION GATE
+    # =====================================================
+
+    def _venue_precision_gate(
+        self,
+        *,
+        symbol: str,
+        side: str,
+        quantity: float,
+        order_notional: float,
+        price: Any,
+    ) -> dict[str, Any] | None:
+        """Pre-flight venue rules (fresh within 24 h); nothing reaches the adapter on a refusal."""
+        if self._venue_rules is None:
+            return None
+
+        def refuse(reason: str, **detail: Any) -> dict[str, Any]:
+            rejection = self._rejection(reason=reason, symbol=symbol, side=side, quantity=quantity)
+            rejection.update(detail)
+            return rejection
+
+        try:
+            ruleset = self._venue_rules() if callable(self._venue_rules) else self._venue_rules
+            report = self._venue_rule_freshness.assess(ruleset)
+        except Exception as exc:
+            logger.exception("Venue rules could not be read or assessed: symbol=%s", symbol)
+            return refuse("VENUE_RULES_UNAVAILABLE", error_type=type(exc).__name__)
+        if not report.is_fresh:
+            return refuse("VENUE_RULES_STALE", rule_status=report.status.value,
+                          rule_age_seconds=report.age_seconds, maximum_age_seconds=report.maximum_age_seconds)
+        rules = ruleset.get(symbol)
+        if rules is None:
+            return refuse("VENUE_RULES_UNKNOWN_SYMBOL")
+        try:
+            base = Decimal(str(quantity))
+            notional = Decimal(str(order_notional))
+        except (InvalidOperation, ValueError):
+            return refuse("INVALID_QUANTITY")
+        try:  # review 10 L-1: an extreme value is refused, never raised
+            if base < rules.min_quantity:
+                return refuse("QUANTITY_BELOW_VENUE_MINIMUM", min_quantity=str(rules.min_quantity))
+            if not is_aligned_to_step(base, rules.quantity_step):
+                return refuse("QUANTITY_NOT_ALIGNED_TO_STEP", quantity_step=str(rules.quantity_step))
+            if notional < rules.min_notional:
+                return refuse("NOTIONAL_BELOW_VENUE_MINIMUM", min_notional=str(rules.min_notional))
+            violation = rules.upper_bound_violation(base_quantity=base, quote_notional=notional)
+        except ArithmeticError:
+            return refuse("INVALID_QUANTITY")
+        if violation is not None:
+            return refuse(violation[0], **violation[1])
+        if price is not None:
+            if isinstance(price, bool):
+                return refuse("INVALID_PRICE")
+            try:
+                limit = Decimal(str(price))
+            except (InvalidOperation, ValueError):
+                return refuse("INVALID_PRICE")
+            if not limit.is_finite() or limit <= 0:
+                return refuse("INVALID_PRICE")
+            try:
+                aligned = is_aligned_to_step(limit, rules.price_tick)
+            except ArithmeticError:
+                return refuse("INVALID_PRICE")
+            if not aligned:
+                return refuse("PRICE_NOT_ALIGNED_TO_TICK", price_tick=str(rules.price_tick))
+        return None
+
+    def _backoff_delay(self, attempt: int) -> float:
+        """Full jitter: uniform in [0, min(cap, base x 2^(attempt-1))]."""
+        ceiling = min(self.rate_limit_backoff_cap_seconds,
+                      self.rate_limit_backoff_base_seconds * (2 ** min(attempt - 1, 62)))
+        return max(0.0, min(float(self._jitter()), 1.0)) * ceiling
+
+    def _dispatch_with_backoff(
+        self,
+        *,
+        symbol: str,
+        side: str,
+        quantity: float,
+        client_order_id: str,
+    ) -> Any:
+        """Submit under ONE client order id; only a rate limit (request not processed) is retried."""
+        attempt = 0
+        while True:
+            attempt += 1
+            self._journal("DISPATCHED", client_order_id, attempt=attempt)
+            try:
+                return self._submit_order_with_client_id(
+                    symbol=symbol, side=side, quantity=quantity, client_order_id=client_order_id)
+            except VenueRateLimitedError:
+                if attempt >= self.rate_limit_max_attempts:
+                    raise
+                delay = self._backoff_delay(attempt)
+                logger.warning("Venue rate limit; retrying with the same client order id: symbol=%s "
+                               "attempt=%s delay=%.3fs", symbol, attempt, delay)
+                self._sleep(delay)
 
     @staticmethod
     def _normalize_positive_float(
@@ -397,7 +761,7 @@ class ExchangeManager:
         wall_now = float(self._wall_time_provider())
         for key, entry in entries.items():
             remaining_ttl = max(0.0, float(entry["expires_at"]) - wall_now)
-            if remaining_ttl <= 0:
+            if remaining_ttl <= 0 and entry.get("state") != "PENDING_RECONCILIATION":
                 continue
             age = max(0.0, self.idempotency_ttl_seconds - remaining_ttl)
             normalized_entry = {
@@ -406,6 +770,7 @@ class ExchangeManager:
                 "created_at": monotonic_now - age,
             }
             if entry.get("state") == "PENDING_RECONCILIATION":
+                normalized_entry["created_at"] = monotonic_now  # Task 008: never expires
                 normalized_entry["symbol"] = entry["symbol"]
                 normalized_entry["client_order_id"] = entry.get("client_order_id", key)
                 self._pending_reconciliations[key] = normalized_entry
@@ -424,7 +789,9 @@ class ExchangeManager:
         def add_entry(key: str, entry: dict[str, Any], *, state: str) -> None:
             age = max(0.0, monotonic_now - float(entry["created_at"]))
             remaining_ttl = max(0.0, self.idempotency_ttl_seconds - age)
-            if remaining_ttl <= 0:
+            if state == "PENDING_RECONCILIATION":
+                remaining_ttl = self.idempotency_ttl_seconds  # Task 008: never expires
+            elif remaining_ttl <= 0:
                 return
             payload = {
                 "state": state,
@@ -531,14 +898,8 @@ class ExchangeManager:
             raise RuntimeError("idempotency persistence failed")
 
     def _purge_expired_pending_reconciliations(self) -> None:
-        now = float(self._monotonic_provider())
-        expired = [
-            key
-            for key, entry in self._pending_reconciliations.items()
-            if now - float(entry["created_at"]) >= self.idempotency_ttl_seconds
-        ]
-        for key in expired:
-            self._pending_reconciliations.pop(key, None)
+        """Task 008 (Vector B): an unresolved order never expires; only reconciliation releases it."""
+        return None
 
     @staticmethod
     def _pending_result(
@@ -594,6 +955,10 @@ class ExchangeManager:
             side=side,
             quantity=quantity,
         )
+        if key not in self._pending_reconciliations and (
+                len(self._pending_reconciliations) >= self.idempotency_max_entries):
+            # Task 008: never evict an unresolved order to make room; refuse the new one instead.
+            raise _PendingCapacityError("pending reconciliation capacity exhausted")
         self._pending_reconciliations[key] = {
             "fingerprint": fingerprint,
             "response": deepcopy(response),
@@ -602,8 +967,6 @@ class ExchangeManager:
             "created_at": float(self._monotonic_provider()),
         }
         self._pending_reconciliations.move_to_end(key)
-        while len(self._pending_reconciliations) > self.idempotency_max_entries:
-            self._pending_reconciliations.popitem(last=False)
         if not self._persist_idempotency_entries():
             self._pending_reconciliations.pop(key, None)
             raise RuntimeError("pending reconciliation persistence failed")
@@ -802,6 +1165,18 @@ class ExchangeManager:
             )
 
             if existing is None:
+                # Review 13 M-1: the journal is re-checked here, atomically with becoming the leader,
+                # so a request that passed the early check and then stalled can never re-send an
+                # order the journal has meanwhile seen reach the venue.
+                journal_result = self._journal_gate(
+                    key=key,
+                    fingerprint=fingerprint,
+                    symbol=symbol,
+                    side=side,
+                    quantity=quantity,
+                )
+                if journal_result is not None:
+                    return (False, journal_result, None)
                 pending_result = self._lookup_pending_reconciliation(
                     key=key,
                     fingerprint=fingerprint,
@@ -934,6 +1309,7 @@ class ExchangeManager:
         idempotency_key: Any = None,
         order_notional: Any = None,
         opens_new_position: Any = None,
+        price: Any = None,
     ) -> dict[str, Any]:
         normalized_symbol = str(
             symbol
@@ -1041,6 +1417,27 @@ class ExchangeManager:
             ),
         )
 
+        if price is not None:
+            # Reviews 10 M-2 / 11 F-3: the adapter contract places market orders only, so a price
+            # can be neither dispatched nor fingerprinted. It is refused before any idempotency
+            # lookup (a cached market result is never reported for a priced request), after the
+            # venue tick check.
+            precision_rejection = self._venue_precision_gate(
+                symbol=normalized_symbol,
+                side=normalized_side,
+                quantity=normalized_quantity,
+                order_notional=normalized_order_notional,
+                price=price,
+            )
+            if precision_rejection is not None:
+                return precision_rejection
+            return self._rejection(
+                reason="LIMIT_ORDERS_NOT_SUPPORTED",
+                symbol=normalized_symbol,
+                side=normalized_side,
+                quantity=normalized_quantity,
+            )
+
         with self._idempotency_lock:
             quarantined_result = self._lookup_quarantined_entry(
                 key=normalized_idempotency_key,
@@ -1060,8 +1457,28 @@ class ExchangeManager:
                 quantity=normalized_quantity,
             )
 
+            if cached_result is None:
+                cached_result = self._journal_gate(
+                    key=normalized_idempotency_key,
+                    fingerprint=fingerprint,
+                    symbol=normalized_symbol,
+                    side=normalized_side,
+                    quantity=normalized_quantity,
+                )
+
         if cached_result is not None:
             return cached_result
+
+        precision_rejection = self._venue_precision_gate(
+            symbol=normalized_symbol,
+            side=normalized_side,
+            quantity=normalized_quantity,
+            order_notional=normalized_order_notional,
+            price=price,
+        )
+
+        if precision_rejection is not None:
+            return precision_rejection
 
         safety_decision = (
             self.safety_gate.authorize_live_order()
@@ -1163,6 +1580,16 @@ class ExchangeManager:
 
             return rejection
 
+        pair_rejection = self._pair_reconciliation_gate(
+            key=normalized_idempotency_key,
+            symbol=normalized_symbol,
+            side=normalized_side,
+            quantity=normalized_quantity,
+        )
+
+        if pair_rejection is not None:
+            return pair_rejection
+
         is_leader, coordinated_result, in_flight_entry = (
             self._coordinate_in_flight_request(
                 key=normalized_idempotency_key,
@@ -1195,8 +1622,27 @@ class ExchangeManager:
             )
 
         leader_completed = False
+        pending_result = self._pending_result(
+            symbol=normalized_symbol,
+            side=normalized_side,
+            quantity=normalized_quantity,
+        )
         try:
             try:
+                with self._idempotency_lock:
+                    if (normalized_idempotency_key not in self._pending_reconciliations
+                            and len(self._pending_reconciliations) >= self.idempotency_max_entries):
+                        raise _PendingCapacityError("pending reconciliation capacity exhausted")
+                self._journal(
+                    "INTENT_CREATED",
+                    normalized_idempotency_key,
+                    symbol=normalized_symbol,
+                    side=normalized_side,
+                    quantity=normalized_quantity,
+                    order_notional=normalized_order_notional,
+                    opens_new_position=normalized_opens_new_position,
+                    fingerprint=fingerprint,
+                )
                 with self._idempotency_lock:
                     pending_result = self._record_pending_reconciliation(
                         key=normalized_idempotency_key,
@@ -1206,8 +1652,23 @@ class ExchangeManager:
                         quantity=normalized_quantity,
                     )
             except Exception as exc:
+                logger.exception(
+                    "Order could not be prepared; nothing was dispatched: symbol=%s side=%s quantity=%s",
+                    normalized_symbol,
+                    normalized_side,
+                    normalized_quantity,
+                )
+                if not isinstance(exc, _JournalWriteError) and self._journal_index.get(
+                        normalized_idempotency_key, {}).get("event") == "INTENT_CREATED":
+                    self._journal_quiet("DISPATCH_FAILED", normalized_idempotency_key,
+                                        reason="PREPARATION_FAILED", error_type=type(exc).__name__)
                 error_result = self._error_result(
-                    reason="IDEMPOTENCY_STORE_UNAVAILABLE",
+                    reason=(
+                        "ORDER_JOURNAL_UNAVAILABLE" if isinstance(exc, _JournalWriteError)
+                        else "PENDING_RECONCILIATION_CAPACITY_EXHAUSTED"
+                        if isinstance(exc, _PendingCapacityError)
+                        else "IDEMPOTENCY_STORE_UNAVAILABLE"
+                    ),
                     symbol=normalized_symbol,
                     side=normalized_side,
                     quantity=normalized_quantity,
@@ -1222,13 +1683,116 @@ class ExchangeManager:
                 return completed_result
 
             try:
-                result = self._submit_order_with_client_id(
+                result = self._dispatch_with_backoff(
                     symbol=normalized_symbol,
                     side=normalized_side,
                     quantity=normalized_quantity,
                     client_order_id=normalized_idempotency_key,
                 )
+            except _JournalWriteError as exc:
+                # DISPATCHED could not be recorded, so this attempt was never sent (earlier
+                # attempts, if any, were rate limited and not processed by the venue).
+                logger.exception("Order not dispatched: the order journal is unavailable")
+                with self._idempotency_lock:
+                    cleared = self._discard_pending_reconciliation(key=normalized_idempotency_key)
+                completed_result = self._complete_in_flight_request(
+                    key=normalized_idempotency_key,
+                    entry=in_flight_entry,
+                    response=(
+                        self._error_result(
+                            reason="ORDER_JOURNAL_UNAVAILABLE",
+                            symbol=normalized_symbol,
+                            side=normalized_side,
+                            quantity=normalized_quantity,
+                            error_type=type(exc).__name__,
+                        )
+                        if cleared else pending_result
+                    ),
+                )
+                leader_completed = True
+                return completed_result
+            except VenueRejectedError as exc:
+                logger.warning(
+                    "Venue rejected the order permanently: symbol=%s side=%s quantity=%s http_status=%s "
+                    "venue_code=%s",
+                    normalized_symbol,
+                    normalized_side,
+                    normalized_quantity,
+                    exc.http_status,
+                    exc.venue_code,
+                )
+                rejection = self._rejection(
+                    reason="PERMANENTLY_REJECTED",
+                    symbol=normalized_symbol,
+                    side=normalized_side,
+                    quantity=normalized_quantity,
+                )
+                rejection.update(
+                    venue_reason=str(exc),
+                    http_status=exc.http_status,
+                    venue_code=exc.venue_code,
+                )
+                try:
+                    self._journal("TERMINAL", normalized_idempotency_key, response=rejection)
+                    with self._idempotency_lock:
+                        self._cache_idempotency_result(
+                            key=normalized_idempotency_key,
+                            fingerprint=fingerprint,
+                            response=rejection,
+                        )
+                except Exception:
+                    logger.exception("Permanent rejection could not be durably recorded; it stays pending")
+                    rejection = pending_result
+                completed_result = self._complete_in_flight_request(
+                    key=normalized_idempotency_key,
+                    entry=in_flight_entry,
+                    response=rejection,
+                )
+                leader_completed = True
+                return completed_result
+            except VenueRateLimitedError as exc:
+                logger.warning(
+                    "Venue rate limit persisted after %s attempts; nothing was processed: symbol=%s",
+                    self.rate_limit_max_attempts,
+                    normalized_symbol,
+                )
+                try:
+                    self._journal(
+                        "DISPATCH_FAILED",
+                        normalized_idempotency_key,
+                        reason="VENUE_RATE_LIMITED",
+                        attempts=self.rate_limit_max_attempts,
+                    )
+                except _JournalWriteError:
+                    logger.exception("Rate-limit outcome could not be journaled; the order stays pending")
+                    completed_result = self._complete_in_flight_request(
+                        key=normalized_idempotency_key,
+                        entry=in_flight_entry,
+                        response=pending_result,
+                    )
+                    leader_completed = True
+                    return completed_result
+                with self._idempotency_lock:
+                    cleared = self._discard_pending_reconciliation(key=normalized_idempotency_key)
+                completed_result = self._complete_in_flight_request(
+                    key=normalized_idempotency_key,
+                    entry=in_flight_entry,
+                    response=(
+                        self._error_result(
+                            reason="VENUE_RATE_LIMITED",
+                            symbol=normalized_symbol,
+                            side=normalized_side,
+                            quantity=normalized_quantity,
+                            error_type=type(exc).__name__,
+                        )
+                        if cleared else pending_result
+                    ),
+                )
+                leader_completed = True
+                return completed_result
             except TimeoutError:
+                self._journal_quiet(
+                    "UNRECONCILED", normalized_idempotency_key, reason="EXCHANGE_TIMEOUT")
                 logger.exception(
                     "Exchange timeout left order outcome indeterminate: symbol=%s side=%s quantity=%s",
                     normalized_symbol,
@@ -1242,13 +1806,30 @@ class ExchangeManager:
                 )
                 leader_completed = True
                 return completed_result
-            except ConnectionError:
+            except ConnectionError as exc:
+                self._journal_quiet(
+                    "UNRECONCILED", normalized_idempotency_key, reason="EXCHANGE_OUTCOME_UNKNOWN",
+                    error_type=type(exc).__name__)
                 logger.exception(
                     "Exchange connection loss left order outcome indeterminate: symbol=%s side=%s quantity=%s",
                     normalized_symbol,
                     normalized_side,
                     normalized_quantity,
                 )
+                completed_result = self._complete_in_flight_request(
+                    key=normalized_idempotency_key,
+                    entry=in_flight_entry,
+                    response=pending_result,
+                )
+                leader_completed = True
+                return completed_result
+            except VenueError as exc:
+                # A venue response the taxonomy does not classify: its outcome is unknown.
+                self._journal_quiet(
+                    "UNRECONCILED", normalized_idempotency_key, reason="VENUE_ERROR_UNCLASSIFIED",
+                    error_type=type(exc).__name__)
+                logger.exception("Unclassified venue error left order outcome indeterminate: symbol=%s",
+                                 normalized_symbol)
                 completed_result = self._complete_in_flight_request(
                     key=normalized_idempotency_key,
                     entry=in_flight_entry,
@@ -1264,6 +1845,23 @@ class ExchangeManager:
                     normalized_side,
                     normalized_quantity,
                 )
+
+                try:
+                    self._journal(
+                        "DISPATCH_FAILED",
+                        normalized_idempotency_key,
+                        reason="EXCHANGE_ADAPTER_ERROR",
+                        error_type=type(exc).__name__,
+                    )
+                except _JournalWriteError:
+                    logger.exception("Adapter failure could not be journaled; the order stays pending")
+                    completed_result = self._complete_in_flight_request(
+                        key=normalized_idempotency_key,
+                        entry=in_flight_entry,
+                        response=pending_result,
+                    )
+                    leader_completed = True
+                    return completed_result
 
                 with self._idempotency_lock:
                     cleared = self._discard_pending_reconciliation(
@@ -1305,6 +1903,8 @@ class ExchangeManager:
                     normalized_quantity,
                     type(result).__name__,
                 )
+                self._journal_quiet(
+                    "UNRECONCILED", normalized_idempotency_key, reason="INVALID_EXCHANGE_RESPONSE")
                 completed_result = self._complete_in_flight_request(
                     key=normalized_idempotency_key,
                     entry=in_flight_entry,
@@ -1320,13 +1920,19 @@ class ExchangeManager:
                     quantity=normalized_quantity,
                     reason="EXCHANGE_ORDER_NOT_TERMINAL",
                 )
+                self._journal_quiet("VENUE_ACK", normalized_idempotency_key, response=result)
                 with self._idempotency_lock:
                     pending_entry = self._pending_reconciliations.get(
                         normalized_idempotency_key
                     )
                     if pending_entry is not None:
                         pending_entry["response"] = deepcopy(nonterminal)
-                        self._persist_idempotency_entries()
+                        if not self._persist_idempotency_entries():
+                            logger.error(
+                                "Venue acknowledgement could not be persisted; the order stays pending: "
+                                "symbol=%s",
+                                normalized_symbol,
+                            )
                 completed_result = self._complete_in_flight_request(
                     key=normalized_idempotency_key,
                     entry=in_flight_entry,
@@ -1336,6 +1942,7 @@ class ExchangeManager:
                 return completed_result
 
             try:
+                self._journal("TERMINAL", normalized_idempotency_key, response=result)
                 with self._idempotency_lock:
                     self._cache_idempotency_result(
                         key=normalized_idempotency_key,
@@ -1398,6 +2005,37 @@ class ExchangeManager:
                     if isinstance(event, threading.Event) and not event.is_set():
                         event.set()
 
+    def _release_never_dispatched(self, key: str, expected: dict[str, Any]) -> dict[str, Any] | None:
+        """Atomically release a pending order the journal proves never reached the venue (review 12 M-1).
+
+        Everything is re-verified and done under the idempotency lock: the pending entry must still
+        be the very one the caller examined, the order must not be in flight, and the journal's last
+        event must still show no dispatch. A stale caller therefore can never release (or journal
+        over) an order that was re-dispatched in the meantime. Returns None when nothing was released.
+        """
+        with self._idempotency_lock:
+            if (self._pending_reconciliations.get(key) is not expected
+                    or key in self._in_flight_requests
+                    or self._order_journal is None
+                    or not self._journal_available):
+                return None
+            with self._journal_lock:
+                last_event = self._journal_index.get(key, {}).get("event")
+            if last_event not in _JOURNAL_NOT_DISPATCHED_EVENTS:
+                return None
+            if last_event == "INTENT_CREATED":
+                try:
+                    self._journal("DISPATCH_FAILED", key, reason="NEVER_DISPATCHED")
+                except _JournalWriteError:
+                    logger.exception("Never-dispatched order could not be released; it stays pending")
+                    return None
+            if not self._discard_pending_reconciliation(key=key):
+                return None
+            symbol = expected.get("symbol", "")
+        logger.warning("Released a pending order that was never dispatched: symbol=%s", symbol)
+        return self._error_result(reason="NEVER_DISPATCHED", symbol=symbol, side="", quantity=0.0,
+                                  error_type="NeverDispatched")
+
     def reconcile_order(
         self,
         idempotency_key: Any,
@@ -1424,6 +2062,17 @@ class ExchangeManager:
                     quantity=0.0,
                 )
             pending_snapshot = deepcopy(pending)
+            with self._journal_lock:
+                last_event = self._journal_index.get(key, {}).get("event")
+            never_dispatched = (
+                self._order_journal is not None
+                and self._journal_available
+                and key not in self._in_flight_requests
+                and last_event in _JOURNAL_NOT_DISPATCHED_EVENTS
+            )
+        if never_dispatched:
+            released = self._release_never_dispatched(key, pending)
+            return released if released is not None else deepcopy(pending_snapshot["response"])
         query_method = getattr(self.exchange, "get_order_by_client_id", None)
         if not callable(query_method):
             return deepcopy(pending_snapshot["response"])
@@ -1445,6 +2094,7 @@ class ExchangeManager:
                     return deepcopy(cached["response"])
                 return deepcopy(pending_snapshot["response"])
             try:
+                self._journal("TERMINAL", key, response=result, reconciled=True)
                 self._cache_idempotency_result(
                     key=key,
                     fingerprint=current["fingerprint"],
@@ -1478,6 +2128,13 @@ class ExchangeManager:
                 pending_reconciliation_entries
                 + len(self._quarantined_keys)
             )
+            halted_pairs = dict(sorted(self._halted_pairs.items()))
+        live_prerequisites = {
+            "persistent_idempotency_store": self._idempotency_store is not None,
+            "order_journal": self._order_journal is not None,
+            "venue_rules": self._venue_rules is not None,
+        }
+        live_prerequisites["met"] = all(live_prerequisites.values())
 
         exchange_status_method = getattr(
             self.exchange,
@@ -1562,4 +2219,22 @@ class ExchangeManager:
                 }
             ),
             "exchange": exchange_status,
+            # Task 008 (registry v5.92).
+            "halted_pairs": halted_pairs,
+            "venue_precision_gate": {
+                "configured": self._venue_rules is not None,
+                "maximum_rule_age_seconds": self._venue_rule_freshness.policy.maximum_age_seconds,
+            },
+            "order_journal": {
+                "configured": self._order_journal is not None,
+                "available": self._journal_available if self._order_journal is not None else None,
+                "error_type": self._journal_error_type,
+            },
+            "rate_limit_retry": {
+                "max_attempts": self.rate_limit_max_attempts,
+                "backoff_base_seconds": self.rate_limit_backoff_base_seconds,
+                "backoff_cap_seconds": self.rate_limit_backoff_cap_seconds,
+                "jitter": "FULL",
+            },
+            "live_prerequisites": live_prerequisites,
         }

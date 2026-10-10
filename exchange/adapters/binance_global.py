@@ -42,7 +42,7 @@ from binance_sdk_spot.rest_api.models.enums import KlinesIntervalEnum
 from binance_sdk_spot.spot import Spot
 from dotenv import load_dotenv
 
-from exchange.base_exchange import BaseExchange
+from exchange.base_exchange import CLIENT_ORDER_ID_PATTERN, BaseExchange
 
 
 load_dotenv()
@@ -321,6 +321,18 @@ class BinanceGlobalExchange(BaseExchange):
         *,
         client_order_id: str | None = None,
     ) -> dict[str, Any]:
+
+        # Task 008 (registry v5.92): every order carries a venue-valid client order id
+        # (exchange.base_exchange.CLIENT_ORDER_ID_PATTERN); without one an order can never
+        # be reconciled, so it is refused before anything else.
+        if not isinstance(client_order_id, str) or not CLIENT_ORDER_ID_PATTERN.fullmatch(client_order_id):
+            return {
+                "status": "REJECTED",
+                "reason": "INVALID_CLIENT_ORDER_ID",
+                "symbol": symbol,
+                "side": side,
+                "quantity": quantity,
+            }
 
         logger.warning(
             "Real order disabled - PAPER MODE"
