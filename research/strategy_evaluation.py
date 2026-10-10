@@ -9,8 +9,10 @@ tools layer verifies results against the canonical registry and does every write
 **Evaluation** (``evaluate_result``) of ONE verified REGISTERED result of a
 generated study (exactly one variant against the realistic reference):
 
-* the daily series: each variant's closed-trade net P/L per UTC exit day, with a
-  0 for every day of the sealed window without an exit;
+* the daily series: each variant's net P/L per UTC exit day -- closed trades and
+  every position still open at a window's end, valued at that window's last close
+  less slippage and the exit fee (review M-A) -- with a 0 for every day of the
+  sealed window without an exit;
 * d = variant - reference per day; the statistic is t = mean(d) / se(d), with
   se the batch-means standard error over ``BATCHES`` consecutive batches (robust
   to day-to-day dependence);
@@ -30,7 +32,8 @@ generated study (exactly one variant against the realistic reference):
   14% (2%); milder lognormal skew 7-11%. The OUT_OF_SAMPLE check does not catch
   this (a loss-free window also passes it); BH across the family remains;
 * effect size: mean(d) / sd(d);
-* a two-sided bootstrap-t confidence interval for mean(d);
+* a two-sided bootstrap-t confidence interval for mean(d); resamples without
+  spread widen it on both sides (an unbounded side is recorded as null);
 * Sharpe and Sortino of the variant's daily P/L (annualised over 365 days, per
   unit of P/L -- the replay has no fixed capital base), its maximum drawdown;
 * EV per trade = P(W)E(W) - P(L)E(L) - C, where W/L split trades by their
@@ -229,11 +232,23 @@ def studentized_block_bootstrap(d: np.ndarray, *, samples: int, seed: int) -> tu
     t_star = np.where(valid, (resampled.mean(axis=1) - mean) / np.where(valid, se_star, 1.0), np.inf)
     p_value = float((1 + np.count_nonzero(t_star >= mean / se0)) / (samples + 1))
     tail = (1 - CONFIDENCE) / 2
-    if valid.any():
-        q_low, q_high = (float(q) for q in np.quantile(t_star[valid], [tail, 1 - tail]))
-    else:
-        q_low, q_high = math.inf, -math.inf
+    # ... and it widens the interval on both sides, never narrows it (review 5 L-B): an unbounded
+    # side comes out infinite (recorded as null).
+    q_high = float(np.quantile(np.where(valid, t_star, np.inf), 1 - tail, method="higher"))
+    q_low = float(np.quantile(np.where(valid, t_star, -np.inf), tail, method="lower"))
     return p_value, mean - q_high * se0, mean - q_low * se0, block
+
+
+def _lowest(bounds) -> float | None:
+    """The lowest lower bound; an unbounded (null) one makes the idea's bound unbounded too."""
+    bounds = list(bounds)
+    return None if any(b is None for b in bounds) else min(bounds)
+
+
+def _rank_key(entry: Mapping[str, Any]) -> tuple[float, str]:
+    """Highest conservative lower bound first; an unbounded (null) one ranks last (review 6 F2)."""
+    low = entry["conservative_ci_low"]
+    return (-(low if low is not None else -math.inf), entry["idea"])
 
 
 def _drawdown(series: np.ndarray) -> float:
@@ -261,11 +276,15 @@ class StudyEvaluation:
     better_verdict: bool
     stats: Mapping[str, Any]
 
+    def ci(self) -> list[float | None]:
+        """The interval as JSON: an unbounded side (too many resamples without spread) is null."""
+        return [x if math.isfinite(x) else None for x in (self.ci_low, self.ci_high)]
+
     def payload(self) -> dict[str, Any]:
         """What the TEST evaluation records (JSON): everything the shortlist needs, nothing else."""
         return {PAYLOAD_KEY: {"variant": self.variant, "days": list(self.days),
                               "variant_daily": list(self.variant_daily), "reference_daily": list(self.reference_daily),
-                              "mean_difference": self.mean_difference, "ci": [self.ci_low, self.ci_high],
+                              "mean_difference": self.mean_difference, "ci": self.ci(),
                               "better_verdict": self.better_verdict, **dict(self.stats)}}
 
 
@@ -457,7 +476,7 @@ def shortlist(registry: HypothesisRegistry, *, max_correlation: float = 0.8) -> 
             daily = {day: value for _, p in payloads for day, value in zip(p["days"], p["variant_daily"])}
             listed.append({"idea": fingerprint, "family_id": idea["family_id"], "variant": payloads[0][1]["variant"],
                            "hypotheses": [h for h, _ in payloads],
-                           "conservative_ci_low": min(p["ci"][0] for _, p in payloads),
+                           "conservative_ci_low": _lowest(p["ci"][0] for _, p in payloads),
                            "mean_difference": [p["mean_difference"] for _, p in payloads],
                            "p_values": [registry.get(h).test_evaluation.p_value for h, _ in payloads],
                            "sharpe": [p.get("sharpe") for _, p in payloads],
@@ -465,7 +484,7 @@ def shortlist(registry: HypothesisRegistry, *, max_correlation: float = 0.8) -> 
                            "ev": [p.get("ev") for _, p in payloads],
                            "regime_stability": [p.get("regime_stability") for _, p in payloads],
                            "_daily": daily})
-    listed.sort(key=lambda e: (-e["conservative_ci_low"], e["idea"]))
+    listed.sort(key=_rank_key)
     shortlist_, clusters = [], {}
     for entry in listed:
         relations = {rep["idea"]: _correlation(entry["_daily"], rep["_daily"]) for rep in shortlist_}

@@ -435,16 +435,21 @@ def split(data: dict[str, list[list]], windows: int, embargo: int = 0) -> list[d
 
 
 def daily_net(result) -> dict[str, str]:
-    """Closed-trade net P/L (after fees and slippage) by UTC exit day (Task 006: the daily series)."""
+    """Net P/L (after fees and slippage) by UTC exit day (Task 006: the daily series).
+
+    Closed trades, plus every position still open at the window end, valued at the window's last
+    close less slippage and the exit fee (``marked_open``, review M-A): a variant cannot hide a
+    loser by holding it past the window end.
+    """
     days: dict[str, Decimal] = {}
-    for trade in result.trades:
+    for trade in [*result.trades, *getattr(result, "marked_open", [])]:
         day = str(trade.exit_time)[:10]
         days[day] = days.get(day, Decimal("0")) + trade.net
     return {day: str(net) for day, net in sorted(days.items())}
 
 
 def ev_components(result, slippage_bps: Any = 0) -> dict[str, Any]:
-    """The pieces of EV = P(W)E(W) - P(L)E(L) - C over closed trades (Task 006).
+    """The pieces of EV = P(W)E(W) - P(L)E(L) - C over closed trades and window-end marks (Task 006).
 
     A trade's result before costs is its net + both fees + its slippage. Slippage is not booked
     separately by the replay -- buys fill at ref x (1 + s) and sells at ref x (1 - s) -- so it is
@@ -453,7 +458,8 @@ def ev_components(result, slippage_bps: Any = 0) -> dict[str, Any]:
     s = Decimal(str(slippage_bps or 0)) / Decimal(10000)
     wins = losses = 0
     win_sum = loss_sum = fees = slippage = Decimal("0")
-    for t in result.trades:
+    marked = list(getattr(result, "marked_open", []))
+    for t in [*result.trades, *marked]:
         proceeds = t.quantity * t.exit_price
         slip = t.cost * s / (1 + s) + (proceeds * s / (1 - s) if s < 1 else Decimal("0"))
         trade_fees = t.entry_fee + t.exit_fee
@@ -465,7 +471,7 @@ def ev_components(result, slippage_bps: Any = 0) -> dict[str, Any]:
             losses, loss_sum = losses + 1, loss_sum - before_costs
     return {"trades": wins + losses, "wins": wins, "win_sum": str(win_sum), "losses": losses,
             "loss_sum": str(loss_sum), "fees": str(fees), "slippage": str(slippage), "funding": "0",
-            "funding_note": "spot replay: no funding"}
+            "funding_note": "spot replay: no funding", "marked_open": len(marked)}
 
 
 def _one(job: tuple) -> dict[str, Any]:

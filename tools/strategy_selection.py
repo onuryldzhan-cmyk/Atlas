@@ -63,7 +63,7 @@ def _evaluate(args) -> dict[str, Any]:
         fresh.record_evaluation(study["hypothesis_id"], evaluation_record(evaluation))
     return {"hypothesis_id": study["hypothesis_id"], "state": "TESTED", "p_value": evaluation.p_value,
             "effect_size": evaluation.effect_size, "mean_difference": evaluation.mean_difference,
-            "ci": [evaluation.ci_low, evaluation.ci_high], "better_verdict": evaluation.better_verdict,
+            "ci": evaluation.ci(), "better_verdict": evaluation.better_verdict,
             "stats": evaluation.stats, "evidence_eligible": False,
             "note": "recorded once as the hypothesis's TEST evaluation; the family decides after adjudication"}
 

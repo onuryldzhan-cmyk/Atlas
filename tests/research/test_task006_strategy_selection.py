@@ -115,6 +115,22 @@ def test_the_old_percentile_bootstrap_would_fail_that_calibration():
     assert hits / 1500 > 0.09
 
 
+def test_resamples_without_spread_widen_the_interval_never_narrow_it():
+    """Review 5 L-B: activity clustered in 10 days leaves many resamples without spread; they count against
+    the p-value and leave the interval unbounded (recorded as null) instead of narrowing it."""
+    d = np.zeros(se.MIN_DAYS)
+    d[40:50] = np.random.default_rng(5).normal(3, 1, 10)
+    p, low, high, _ = se.studentized_block_bootstrap(d, samples=999, seed=1)
+    assert low == -np.inf and high == np.inf and 0 < p <= 1
+    ev = se.evaluate_result(synthetic(list(d), [0.0] * DAYS), samples=999)
+    assert ev.ci() == [None, None] and ev.payload()[se.PAYLOAD_KEY]["ci"] == [None, None]
+    json.dumps(ev.payload(), allow_nan=False)  # strict JSON: nothing infinite is recorded
+    assert se._lowest([1.0, None]) is None and se._lowest([1.0, -2.0]) == -2.0
+    ranked = sorted([{"idea": "a", "conservative_ci_low": None}, {"idea": "b", "conservative_ci_low": -1.0},
+                     {"idea": "c", "conservative_ci_low": 2.0}], key=se._rank_key)
+    assert [e["idea"] for e in ranked] == ["c", "b", "a"]  # review 6 F2: an unbounded bound ranks last
+
+
 def test_power_is_kept_for_a_real_edge():
     rng = np.random.default_rng(17)
     hits = sum(se.studentized_block_bootstrap(rng.normal(0.8, 1, se.MIN_DAYS), samples=999, seed=i)[0] <= 0.05
@@ -195,6 +211,73 @@ def test_ev_components_recover_slippage_exactly_from_replay_trades():
     assert list(daily) == ["2100-01-01", "2100-01-02"] and Decimal(daily["2100-01-01"]) == win.net
 
 
+def test_positions_open_at_the_window_end_are_marked_to_market():
+    """Review 5 M-A: a position still held at the window end is valued at the last close less slippage
+    and the exit fee, so a variant cannot hide a loser by holding it; the closed-trade report is unchanged."""
+    class AlwaysBuy:
+        def analyze_and_decide(self, symbol, market_data):
+            return {"symbol": symbol, "action": "BUY", "confidence": 95.0, "risk_level": "LOW"}
+
+    flat = [[r[0], "100", "100.1", "99.9", "100", *r[5:]] for r in candles(START_MS, 300)]
+    result = bt.replay({"BTCUSDT": flat}, step=20, brain_factory=AlwaysBuy, slippage_bps=5)
+    assert result.trades == [] and len(result.open_trades) == 1 and len(result.marked_open) == 1
+    held, mark = result.open_trades[0], result.marked_open[0]
+    gross = held.quantity * Decimal("100") * (1 - Decimal("0.0005"))
+    expected = gross - gross * bt.PAPER_FEE_RATE_PER_SIDE - held.cost - held.entry_fee
+    assert mark.exit_reason == "MARK_TO_MARKET" and abs(mark.net - expected) < Decimal("1e-20")
+    assert mark.net < -10  # fees and slippage on about 4000: a real loss, not hidden
+    assert mark.exit_time.startswith(DAY_NAMES[0]) and held.exit_price == 0  # open_trades itself is unchanged
+    assert sc.daily_net(result) == {DAY_NAMES[0]: str(mark.net)}
+    ev = sc.ev_components(result, 5)
+    assert (ev["marked_open"], ev["trades"], ev["losses"]) == (1, 1, 1)
+    summary = bt.summarize(result)
+    assert (summary["closed_trades"], summary["open_at_end"], summary["net_pnl"]) == (0, 1, 0)  # BETTER basis kept
+
+
+def _hold_or_sell(prices, sell_last, **kw):
+    """Review 6 F1: the same replay, holding to the window end or selling at the last decision."""
+    data = [[START_MS + i * 60_000, str(p), str(p), str(p), str(p), "10", START_MS + i * 60_000 + 59_999, "0", 3, "4",
+             "400", "0"] for i, p in enumerate(prices)]
+    calls = len(range(bt.WINDOW, len(prices), 20))
+
+    class Brain:
+        n = 0
+
+        def analyze_and_decide(self, symbol, market_data):
+            Brain.n += 1
+            action = "SELL" if sell_last and Brain.n >= calls else "BUY"
+            return {"symbol": symbol, "action": action, "confidence": 95.0, "risk_level": "LOW"}
+
+    return bt.replay({"BTCUSDT": data}, step=20, brain_factory=Brain, **kw)
+
+
+RISE = [Decimal(100)] * 260 + [Decimal(100) + Decimal(i) / 100 for i in range(1, 101)] + [Decimal(101)] * 80 \
+    + [Decimal(102)] * 200
+
+
+@pytest.mark.parametrize("kw", [dict(slippage_bps=5), dict(staged=True, slippage_bps=7),
+                                dict(staged=True, slippage_bps=7, next_open_fill=True)])
+def test_a_mark_equals_a_real_sell_at_the_window_end(kw):
+    """Review 6 F1: with a flat tail the mark is exactly what selling would have booked, including tranche
+    adds, partial take-profit sells, slippage and next-open fills."""
+    held, sold = _hold_or_sell(RISE, False, **kw), _hold_or_sell(RISE, True, **kw)
+    assert held.trades == [] and len(held.marked_open) == 1 and sold.trades and not sold.open_trades
+    if kw.get("staged"):
+        assert held.partial_sells > 0 and held.tranche_adds > 0  # the risky paths are really exercised
+    mark, real = held.marked_open[0], sold.trades[-1]
+    assert abs(mark.net - real.net) < Decimal("1e-20")
+    ev_m, ev_s = sc.ev_components(held, kw["slippage_bps"]), sc.ev_components(sold, kw["slippage_bps"])
+    assert all(abs(Decimal(ev_m[k]) - Decimal(ev_s[k])) < Decimal("1e-20") for k in ("win_sum", "loss_sum", "fees",
+                                                                                      "slippage"))
+
+
+def test_a_corrupt_last_close_falls_back_to_the_last_valid_one():
+    held = _hold_or_sell([Decimal(100)] * 299 + [Decimal(0)], False, slippage_bps=5)
+    clean = _hold_or_sell([Decimal(100)] * 300, False, slippage_bps=5)
+    [mark], [ref] = held.marked_open, clean.marked_open
+    assert mark.net == ref.net and mark.exit_time < ref.exit_time  # valued and dated at the last valid candle
+
+
 # -- regimes --------------------------------------------------------------------------
 
 
@@ -214,6 +297,17 @@ def test_daily_regimes_use_only_the_past():
     assert all(full[d] == cut[d] for d in cut)  # later candles never change an earlier day's label
     assert full[DAY_NAMES[0]] == "UNKNOWN" and set(full.values()) <= {"UNKNOWN", "TREND_UP", "TREND_DOWN", "SIDEWAYS",
                                                                         "HIGH_VOL", "PANIC", "TRANSITION"}
+
+
+def test_a_day_label_never_sees_that_day_s_own_candles(monkeypatch):
+    """Review 5 L-A: a crash at noon of day 4 may label day 5, never day 4 itself (same-day lookahead)."""
+    import tools.regime_engine as re_
+
+    monkeypatch.setattr(re_, "classify", lambda closes: {"regime": "PANIC" if closes and closes[-1] < 50 else "SIDEWAYS"})
+    crash = START_MS + 4 * 86_400_000 + 12 * 3_600_000
+    data = [[r[0], "100", "100", "100", "10" if r[0] >= crash else "100", *r[5:]] for r in candles(START_MS, 1440 * 6)]
+    labels = sc.daily_regimes({"BTCUSDT": data})
+    assert [labels[d] for d in DAY_NAMES[3:6]] == ["SIDEWAYS", "SIDEWAYS", "PANIC"]
 
 
 def test_a_regime_tie_across_the_universe_is_transition(monkeypatch):
@@ -306,6 +400,10 @@ def test_the_whole_cycle_adjudicates_a_family_and_clusters_correlated_winners(tm
     assert all(k not in json.dumps(report) for k in ("weight\":", "allocation\":", "size\":"))
 
 
+def _first_row(result):
+    return result["table"][next(n for n in result["table"] if n != sc.REFERENCE)][0]
+
+
 def test_evaluate_refuses_anything_but_a_verified_registered_run(tmp_path, monkeypatch, dataset_file):
     register()
     a = family_ids()[0]
@@ -317,6 +415,12 @@ def test_evaluate_refuses_anything_but_a_verified_registered_run(tmp_path, monke
         ("refused", lambda r: r.update(study={"status": "REFUSED", "hypothesis_id": a, "evidence_eligible": False})),
         ("failed", lambda r: r.update(study={"status": "FAILED", "hypothesis_id": a, "evidence_eligible": False})),
         ("relabelled", lambda r: r["study"].update(hypothesis_id=family_ids()[1])),
+        # review 5 L-C: every Task 006 input is covered by the result digest
+        ("daily_net", lambda r: _first_row(r)["daily_net"].update({next(iter(_first_row(r)["daily_net"])): "999"})),
+        ("reference_daily_net", lambda r: r["table"][sc.REFERENCE][0]["daily_net"].update({DAY_NAMES[0]: "-50"})),
+        ("ev", lambda r: _first_row(r)["ev"].update(fees="0")),
+        ("regime", lambda r: r["regimes"].update({DAY_NAMES[0]: "PANIC"})),
+        ("no_regimes", lambda r: r.pop("regimes")),
     ):
         bad = json.loads(json.dumps(raw))
         mutate(bad)

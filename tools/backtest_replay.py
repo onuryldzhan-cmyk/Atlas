@@ -133,10 +133,28 @@ class Position:
                      exit_time, exit_price, self.fees_out, reason, self.entry_confidence, self.entry_regime)
 
 
+def _mark_to_market(pos: Position, rows: list, slip: Decimal, fee_rate: Decimal) -> Trade:
+    """A still-open position valued as if sold at the window's last close (research; Task 006 review M-A).
+
+    The fill is that close x (1 - slippage) less the exit fee, as a real sell would pay, dated at
+    that candle's close (inside the window). The position itself is not changed. Without it a
+    variant that holds its losers past the window end would hide them from the daily P/L series.
+    """
+    row = next((r for r in reversed(rows) if Decimal(str(r[4])) > 0), rows[-1])
+    gross = pos.qty * max(Decimal(str(row[4])), Decimal("0")) * (1 - slip)
+    fee = gross * fee_rate
+    when = datetime.fromtimestamp(int(row[6]) / 1000, UTC).isoformat()
+    return Trade(pos.symbol, pos.entry_time, pos.cost_total / pos.qty_bought if pos.qty_bought else Decimal("0"),
+                 pos.qty_bought, pos.cost_total, pos.fees_in, pos.bucket, pos.experiment, when,
+                 (pos.proceeds + gross) / pos.qty_bought if pos.qty_bought else Decimal("0"), pos.fees_out + fee,
+                 "MARK_TO_MARKET", pos.entry_confidence, pos.entry_regime)
+
+
 @dataclass
 class Result:
     trades: list[Trade] = field(default_factory=list)
     open_trades: list[Trade] = field(default_factory=list)
+    marked_open: list[Trade] = field(default_factory=list)  # open_trades valued at the window end (Task 006)
     decisions: int = 0
     buy_signals: int = 0
     buy_rejections: dict[str, int] = field(default_factory=dict)
@@ -593,6 +611,7 @@ def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: 
                         stop_level[symbol] = price - atr_stop * atr
                     ledger["cash"] -= amount
             result.open_trades.extend(p.as_trade() for p in holdings.values())
+            result.marked_open.extend(_mark_to_market(p, data[p.symbol], slip, fee_rate) for p in holdings.values())
         finally:
             os.chdir(cwd)
     return result
