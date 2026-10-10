@@ -31,10 +31,12 @@ from core.risk_engine import (
     NON_EXECUTABLE_RISK_LEVELS,
     RiskBucket,
     RiskPolicy,
+    SizingSignal,
     UNSUPPORTED_RISK_SENTINEL,
     analytical_risk_level,
     decimal_value,
     derive_buy_capacity_limits,
+    sizing_ceiling,
 )
 
 ZERO = Decimal("0")
@@ -61,6 +63,11 @@ class SizingInputs:
     durable_free_quote_capital: Decimal
     symbol_exposure: Decimal
     committed_quote: Decimal
+    # Task 007: evidence for the downsize-only sizing ceiling (risk_engine.sizing_ceiling);
+    # read only when a sizing guard is on in the policy. None = unknown, never guessed.
+    # drawdown_pct must come from risk_engine.drawdown_fraction (the engine's own formula).
+    sizing_signal: SizingSignal | None = None
+    drawdown_pct: Decimal | None = None
 
     def __post_init__(self) -> None:
         request_id = str(self.request_id).strip()
@@ -186,6 +193,22 @@ class PositionSizingService:
 
             proposed = min(candidate, *capacity.as_tuple(), inputs.durable_free_quote_capital)
 
+        # Task 007: the same downsize-only ceiling RiskEngine.evaluate() vetoes above. It can
+        # only lower the proposal; with every sizing guard off it is absent and nothing changes.
+        ceiling = sizing_ceiling(self.policy, inputs.sizing_signal, drawdown_pct=inputs.drawdown_pct)
+        if ceiling.reason is not None:
+            return SizingProposal(
+                SizingStatus.REFUSED,
+                ceiling.reason,
+                ZERO,
+                {**base_provenance, **dict(ceiling.detail), "inputs_digest": self._inputs_digest(inputs),
+                 "proposed_quote_allocation": "0"},
+            )
+        if ceiling.amount is not None:
+            with localcontext() as context:
+                context.rounding = ROUND_DOWN
+                proposed = min(proposed, ceiling.amount)
+
         capacity_provenance = {
             "basis_pct": format(basis_pct, "f"),
             "remaining_bucket_allocation_capacity": format(capacity.bucket_allocation, "f"),
@@ -195,6 +218,7 @@ class PositionSizingService:
             "remaining_concentration_capacity": format(capacity.concentration, "f"),
             "remaining_portfolio_capacity": format(capacity.portfolio_exposure, "f"),
             "remaining_allocatable_capital_capacity": format(capacity.allocatable_capital, "f"),
+            **(dict(ceiling.detail) if ceiling.amount is not None else {}),
         }
 
         provenance = {

@@ -20,10 +20,10 @@ Command: `python -m tools.build_rem001_gate1_maps construction --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `d2c9296833676085dcc8e5cc589e5b30d893d7f9` |
-| generated_from_tree | `1314a5028b75b0df7c5ce3bbbeaa8a58116a23c1` |
+| generated_from_commit | `ab6eb0a4c45160e685f78dc902a8132bb8bf57cd` |
+| generated_from_tree | `06fa8e68c046fc48390220bdd5a92c4d6caf1899` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['.claude/hooks/atlas_proposal_write_guard.py', '.claude/settings.json', 'ai/core/atlas_brain.py', 'claude/agents/atlas-dashboard-scout.md', 'core/decision_intelligence.py', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'proposals/README.md', 'research/experiment_manager.py', 'research/knowledge_manager.py', 'tests/test_agent_cycle.py', 'tests/test_atlas_brain_phase5_shadow.py', 'tests/test_phase5_decision_intelligence_foundation.py', 'tests/test_regime_bar_check.py', 'tests/test_strategic_scout_boundary.py', 'tools/agent_cycle.py', 'tools/regime_bar_check.py', 'tools/strategy_compare.py'] |
+| modified_tracked_paths_at_generation | ['core/risk_engine.py', 'ore/position_sizing.py', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md'] |
 
 ## Analysis
 
@@ -58,7 +58,7 @@ below: it counted pattern hits, these count resolved call sites.
 | entry_points | `main.py`, `web_app.py`, `atlas_service.py`, `atlas_supervisor.py` |
 | composition_root_canonical | `core/application.py` (ADR-0001) |
 | modules_in_runtime_closure | 140 |
-| classes_defined_in_closure | 436 |
+| classes_defined_in_closure | 439 |
 | construction_sites | 299 |
 | modules_constructing | 38 |
 | classes_constructed | 129 |
@@ -294,7 +294,7 @@ classes and their observed constructors:
 | `core/market_loop.py` | `TechnicalAnalyzer` | `core/technical_analyzer.py` | 244 | `MarketLoop::__init__` |
 | `core/market_loop.py` | `WorldAnalysisEngine` | `analysis/world_analysis_engine.py` | 245 | `MarketLoop::__init__` |
 | `core/model_provider_contracts.py` | `OperationResult` | `core/operational_contracts.py` | 483 | `ModelInvocationResult::to_operation_result` |
-| `core/position_sizing.py` | `RiskBucket` | `core/risk_engine.py` | 162 | `PositionSizingService::propose` |
+| `core/position_sizing.py` | `RiskBucket` | `core/risk_engine.py` | 169 | `PositionSizingService::propose` |
 | `core/tool_gateway_contracts.py` | `CapabilityClass` | `core/model_provider_contracts.py` | 120 | `ToolDescriptor::__post_init__` |
 | `core/tool_gateway_contracts.py` | `InvocationOutcome` | `core/model_provider_contracts.py` | 222 | `ToolInvocationResult::__post_init__` |
 | `core/tool_gateway_contracts.py` | `ModelInvocationResult` | `core/model_provider_contracts.py` | 460 | `CapabilityGateway::invoke_model::denied` |
