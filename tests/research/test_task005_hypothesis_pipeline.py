@@ -393,7 +393,8 @@ def test_a_generated_study_cannot_be_run_with_other_arguments(monkeypatch, tmp_p
 def _template_file(tmp_path, **overrides):
     raw = dict(name="regime-atr", family_id="FAM-GEN-CLI", author="research", universe=["BTCUSDT"],
                base_args={}, grid={"atr_stop": ["2"]}, periods=[PERIOD_1.isoformat()],
-               economic_rationale="Volatility-scaled stops in trend regimes.", days=1, windows=3, embargo=0, step=15)
+               # days: Task 006's evaluation floor (strategy_evaluation.MIN_DAYS); the CLI refuses shorter windows
+               economic_rationale="Volatility-scaled stops in trend regimes.", days=90, windows=3, embargo=0, step=15)
     raw.update(overrides)
     path = tmp_path / "template.json"
     path.write_text(json.dumps(raw), encoding="utf-8")

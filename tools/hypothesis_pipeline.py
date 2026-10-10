@@ -56,6 +56,11 @@ def load_template(raw: dict[str, Any]):
         if base.get(key, value) != value:
             raise GenerationError(f"base_args.{key} must stay {value!r}: verdicts need realistic fills")
         base[key] = value
+    from research.strategy_evaluation import MIN_DAYS
+
+    if not isinstance(raw.get("days", 30), int) or raw.get("days", 30) < MIN_DAYS:
+        raise GenerationError(f"days must be at least {MIN_DAYS}: a shorter sealed window can never be evaluated "
+                              f"(Task 006) and would only spend its hypothesis")
     try:
         return Template(**{**raw, "universe": tuple(raw.get("universe") or ()), "periods": tuple(raw.get("periods") or ()),
                            "base_args": base, "reference": sc.REFERENCE, "reference_args": dict(sc.REALISTIC)})

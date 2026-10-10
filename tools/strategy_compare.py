@@ -277,6 +277,8 @@ def result_digest(result: dict[str, Any]) -> str:
     study = result.get("study") if isinstance(result.get("study"), dict) else {}
     body = {"table": result.get("table"), "verdicts": result.get("verdicts"), "dataset": result.get("dataset"),
             "study": {k: v for k, v in study.items() if k != "result_digest"}}
+    if "regimes" in result:  # Task 006: the window's daily regimes are part of the sealed result
+        body["regimes"] = result["regimes"]
     return hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest()
 
 
@@ -432,10 +434,82 @@ def split(data: dict[str, list[list]], windows: int, embargo: int = 0) -> list[d
     return [{s: rows[i * size + (embargo if i else 0):(i + 1) * size] for s, rows in data.items()} for i in range(windows)]
 
 
+def daily_net(result) -> dict[str, str]:
+    """Closed-trade net P/L (after fees and slippage) by UTC exit day (Task 006: the daily series)."""
+    days: dict[str, Decimal] = {}
+    for trade in result.trades:
+        day = str(trade.exit_time)[:10]
+        days[day] = days.get(day, Decimal("0")) + trade.net
+    return {day: str(net) for day, net in sorted(days.items())}
+
+
+def ev_components(result, slippage_bps: Any = 0) -> dict[str, Any]:
+    """The pieces of EV = P(W)E(W) - P(L)E(L) - C over closed trades (Task 006).
+
+    A trade's result before costs is its net + both fees + its slippage. Slippage is not booked
+    separately by the replay -- buys fill at ref x (1 + s) and sells at ref x (1 - s) -- so it is
+    recovered exactly from the trade's cost and proceeds. Funding is 0: the replay is spot.
+    """
+    s = Decimal(str(slippage_bps or 0)) / Decimal(10000)
+    wins = losses = 0
+    win_sum = loss_sum = fees = slippage = Decimal("0")
+    for t in result.trades:
+        proceeds = t.quantity * t.exit_price
+        slip = t.cost * s / (1 + s) + (proceeds * s / (1 - s) if s < 1 else Decimal("0"))
+        trade_fees = t.entry_fee + t.exit_fee
+        before_costs = t.net + trade_fees + slip
+        fees, slippage = fees + trade_fees, slippage + slip
+        if before_costs > 0:
+            wins, win_sum = wins + 1, win_sum + before_costs
+        else:
+            losses, loss_sum = losses + 1, loss_sum - before_costs
+    return {"trades": wins + losses, "wins": wins, "win_sum": str(win_sum), "losses": losses,
+            "loss_sum": str(loss_sum), "fees": str(fees), "slippage": str(slippage), "funding": "0",
+            "funding_note": "spot replay: no funding"}
+
+
 def _one(job: tuple) -> dict[str, Any]:
     part, step, exp001, brain_factory, kw = job
     logging.getLogger("AtlasAI.MarketLoop").setLevel(logging.ERROR)
-    return bt.summarize(bt.replay(part, step=step, exp001=exp001, brain_factory=brain_factory, **kw))
+    result = bt.replay(part, step=step, exp001=exp001, brain_factory=brain_factory, **kw)
+    row = bt.summarize(result)
+    row["daily_net"] = daily_net(result)
+    row["ev"] = ev_components(result, kw.get("slippage_bps", 0))
+    return row
+
+
+def daily_regimes(data: dict[str, list[list]]) -> dict[str, str]:
+    """Each UTC day's market regime from hourly closes known BEFORE that day (no lookahead; Task 006).
+
+    tools.regime_engine.classify per symbol on the last 30 days of completed hourly closes; the
+    day's label is the majority across the universe (a tie is TRANSITION). Days without enough
+    history are UNKNOWN (classify's own minimum).
+    """
+    from collections import Counter
+    from datetime import UTC, datetime
+
+    from tools.regime_engine import classify
+
+    hour, day_ms = 3_600_000, 86_400_000
+    hourly: dict[str, list[tuple[int, float]]] = {}
+    for symbol, rows in data.items():
+        closes: dict[int, float] = {}
+        for row in rows:
+            closes[int(row[0]) // hour] = float(row[4])  # the last minute of the hour wins
+        hourly[symbol] = sorted(closes.items())
+    opens = [int(row[0]) for rows in data.values() for row in rows]
+    if not opens:
+        return {}
+    labels = {}
+    for start in range(min(opens) // day_ms * day_ms, max(opens) + 1, day_ms):
+        votes = Counter()
+        for series in hourly.values():
+            known = [c for h, c in series if (h + 1) * hour <= start][-720:]  # completed before the day starts
+            votes[str(classify(known).get("regime", "UNKNOWN"))] += 1  # too little history: UNKNOWN
+        top = votes.most_common(2)
+        label = top[0][0] if len(top) == 1 or top[0][1] > top[1][1] else "TRANSITION"
+        labels[datetime.fromtimestamp(start / 1000, tz=UTC).date().isoformat()] = label
+    return labels
 
 
 def compare(data: dict[str, list[list]], windows: int, step: int, exp001: bool,
@@ -544,6 +618,7 @@ def _run(args, variants: dict[str, dict[str, Any]], study: dict[str, Any] | None
     print(f"replaying {len(variants)} variants x {args.windows} windows (this takes a while)...", file=sys.stderr, flush=True)
     result = compare(data, args.windows, args.step, not args.no_exp001, variants=variants, jobs=args.jobs, embargo=args.embargo)
     result["dataset"] = manifest
+    result["regimes"] = daily_regimes(data)
     if study is None:
         quarantine(result)
     else:
