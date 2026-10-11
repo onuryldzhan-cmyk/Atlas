@@ -16,32 +16,30 @@
     "analysis": "Static AST import resolution over git-tracked Python files, excluding imports guarded by if TYPE_CHECKING:. Third-party and stdlib targets resolve to nothing and carry no edge."
   },
   "source_identity": {
-    "generated_from_commit": "65b4950ef14d7b2dd37df825a4b8c47c7d4189c4",
-    "generated_from_tree": "fa3daf7582414a0066c7f5cc807db6a9608fcd1b",
+    "generated_from_commit": "6f9aac78cb77236d83d28287101ed9b5fc602958",
+    "generated_from_tree": "9cc44bab313471d04d1b370f6fde12ca0b1a24a1",
     "tracked_working_tree_clean": false,
     "modified_tracked_paths_at_generation": [
-      "core/market_loop.py",
-      "ore/market_cycle.py",
+      "exchange/adapters/binance_global.py",
+      "exchange/exchange_manager.py",
+      "exchange/execution_exposure_guard.py",
       "packaging/REM-001_IMPORT_GRAPH.json",
       "packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md",
       "packaging/REM-001_STATE_AUTHORITY_MAP.md",
-      "packaging/atlas_architecture_map.json",
-      "packaging/atlas_runtime_closure.json",
-      "tests/intelligence/__init__.py",
-      "tests/intelligence/test_task009_regime_tracking.py",
-      "tools/regime_engine.py"
+      "tests/core/test_task010_execution_engine.py",
+      "tlas_finance/market_data/market_feed_service.py"
     ]
   },
   "scope": {
     "universe": "ALL_GIT_TRACKED_PYTHON_FILES",
     "universe_note": "The tool's existing tracked-file definition, used unchanged. No source-scope classification (ACTIVE_CANDIDATE / TEST / TOOL / ARCHIVE / BACKUP / QUARANTINE / REPORT_COPY) is applied or implied: that classification requires the human review gate ARCH-001.2.1 reserves and belongs to Gate 1 deliverable 1.",
-    "modules_total": 1147,
+    "modules_total": 1148,
     "modules_runtime_reachable": 141,
-    "modules_outside_runtime_closure": 1006,
-    "edges_total": 2666,
-    "edges_import": 1930,
-    "edges_package_init": 736,
-    "edges_distinct_module_pairs": 2578,
+    "modules_outside_runtime_closure": 1007,
+    "edges_total": 2684,
+    "edges_import": 1943,
+    "edges_package_init": 741,
+    "edges_distinct_module_pairs": 2596,
     "edges_count_note": "edges_total counts (from, to, kind) triples. A pair can carry both kinds when a file both imports a package directly and references one of its submodules, so edges_distinct_module_pairs is the figure to use when counting dependencies between modules.",
     "parse_failures": 3
   },
@@ -3225,6 +3223,10 @@
     },
     {
       "module": "tests/core/test_task007_risk_intelligence.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/core/test_task010_execution_engine.py",
       "runtime_reachable": false
     },
     {
@@ -9325,6 +9327,96 @@
     {
       "from": "tests/core/test_task007_risk_intelligence.py",
       "to": "core/risk_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/core/test_task010_execution_engine.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/core/test_task010_execution_engine.py",
+      "to": "core/durable_append_log.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/core/test_task010_execution_engine.py",
+      "to": "core/order_lifecycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/core/test_task010_execution_engine.py",
+      "to": "exchange/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/core/test_task010_execution_engine.py",
+      "to": "exchange/adapters/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/core/test_task010_execution_engine.py",
+      "to": "exchange/adapters/binance_global.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/core/test_task010_execution_engine.py",
+      "to": "exchange/base_exchange.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/core/test_task010_execution_engine.py",
+      "to": "exchange/exchange_manager.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/core/test_task010_execution_engine.py",
+      "to": "exchange/execution_exposure_guard.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/core/test_task010_execution_engine.py",
+      "to": "exchange/execution_risk_guard.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/core/test_task010_execution_engine.py",
+      "to": "exchange/execution_safety_gate.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/core/test_task010_execution_engine.py",
+      "to": "exchange/market_feed.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/core/test_task010_execution_engine.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/core/test_task010_execution_engine.py",
+      "to": "tests/exchange/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/core/test_task010_execution_engine.py",
+      "to": "tests/exchange/test_task008_safety_idempotency.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/core/test_task010_execution_engine.py",
+      "to": "tests/phase6/test_market_feed_compatibility.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/core/test_task010_execution_engine.py",
+      "to": "tests/test_block5c_upstream_sizing_authority.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/core/test_task010_execution_engine.py",
+      "to": "tests/test_buy_stale_data_gate.py",
       "kind": "import"
     },
     {

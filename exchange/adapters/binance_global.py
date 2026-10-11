@@ -72,15 +72,11 @@ class BinanceGlobalExchange(BaseExchange):
 
         self.client: Spot | None = None
 
-        self.api_key = os.getenv(
-            "BINANCE_API_KEY",
-            "",
-        )
-
-        self.api_secret = os.getenv(
-            "BINANCE_API_SECRET",
-            "",
-        )
+        # Task 010 (registry v5.94): credentials are read only when a signed client is created,
+        # for an order query, which ExchangeManager makes only under live authorization. Public
+        # market data (connect, get_price, get_klines) uses a client without credentials, so no
+        # API key header is sent outside that path (review 20 F-2).
+        self._keyless_client = False
 
         logger.info(
             "Binance Global Adapter initialized"
@@ -90,11 +86,11 @@ class BinanceGlobalExchange(BaseExchange):
     # CLIENT
     # =====================================================
 
-    def _create_client(self) -> Spot:
+    def _create_client(self, *, signed: bool = False) -> Spot:
 
         configuration = ConfigurationRestAPI(
-            api_key=self.api_key or None,
-            api_secret=self.api_secret or None,
+            api_key=(os.getenv("BINANCE_API_KEY", "") or None) if signed else None,
+            api_secret=(os.getenv("BINANCE_API_SECRET", "") or None) if signed else None,
         )
 
         return Spot(
@@ -111,6 +107,7 @@ class BinanceGlobalExchange(BaseExchange):
 
             if self.client is None:
                 self.client = self._create_client()
+                self._keyless_client = True
 
             response = self.client.rest_api.time()
 
@@ -139,6 +136,8 @@ class BinanceGlobalExchange(BaseExchange):
         self.connected = False
 
         self.client = None
+
+        self._keyless_client = False
 
         logger.info(
             "Binance disconnected"
@@ -358,10 +357,18 @@ class BinanceGlobalExchange(BaseExchange):
 
         self._ensure_connection()
 
-        assert self.client is not None
+        # Review 21 L-1: a signed client exists only for this query and is never kept, so later
+        # public calls stay keyless (an injected client is used as given).
+        client = (
+            self._create_client(signed=True)
+            if self._keyless_client
+            else self.client
+        )
+
+        assert client is not None
 
         response = (
-            self.client
+            client
             .rest_api
             .get_order(
                 symbol=symbol,

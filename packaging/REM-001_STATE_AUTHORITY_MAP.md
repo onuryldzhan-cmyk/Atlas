@@ -19,10 +19,10 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `65b4950ef14d7b2dd37df825a4b8c47c7d4189c4` |
-| generated_from_tree | `fa3daf7582414a0066c7f5cc807db6a9608fcd1b` |
+| generated_from_commit | `6f9aac78cb77236d83d28287101ed9b5fc602958` |
+| generated_from_tree | `9cc44bab313471d04d1b370f6fde12ca0b1a24a1` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['core/market_loop.py', 'ore/market_cycle.py', 'packaging/REM-001_IMPORT_GRAPH.json', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/REM-001_STATE_AUTHORITY_MAP.md', 'packaging/atlas_architecture_map.json', 'packaging/atlas_runtime_closure.json', 'tests/intelligence/__init__.py', 'tests/intelligence/test_task009_regime_tracking.py', 'tools/regime_engine.py'] |
+| modified_tracked_paths_at_generation | ['exchange/adapters/binance_global.py', 'exchange/exchange_manager.py', 'exchange/execution_exposure_guard.py', 'packaging/REM-001_IMPORT_GRAPH.json', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/REM-001_STATE_AUTHORITY_MAP.md', 'tests/core/test_task010_execution_engine.py', 'tlas_finance/market_data/market_feed_service.py'] |
 
 ## What this artifact is, and what it is not
 
@@ -150,9 +150,9 @@ nothing is inferred from an absence.
 | `atlas_finance/market_data/binance_public_provider.py` | ATOMIC_REPLACE | 1044 | `BinancePublicDataProvider::_normalize_symbol` |
 | `atlas_finance/market_data/binance_public_provider.py` | ATOMIC_REPLACE | 1044 | `BinancePublicDataProvider::_normalize_symbol` |
 | `atlas_finance/market_data/binance_public_provider.py` | ATOMIC_REPLACE | 1044 | `BinancePublicDataProvider::_normalize_symbol` |
-| `atlas_finance/market_data/market_feed_service.py` | ATOMIC_REPLACE | 1719 | `MarketFeedService::_normalize_symbol` |
-| `atlas_finance/market_data/market_feed_service.py` | ATOMIC_REPLACE | 1719 | `MarketFeedService::_normalize_symbol` |
-| `atlas_finance/market_data/market_feed_service.py` | ATOMIC_REPLACE | 1719 | `MarketFeedService::_normalize_symbol` |
+| `atlas_finance/market_data/market_feed_service.py` | ATOMIC_REPLACE | 1763 | `MarketFeedService::_normalize_symbol` |
+| `atlas_finance/market_data/market_feed_service.py` | ATOMIC_REPLACE | 1763 | `MarketFeedService::_normalize_symbol` |
+| `atlas_finance/market_data/market_feed_service.py` | ATOMIC_REPLACE | 1763 | `MarketFeedService::_normalize_symbol` |
 | `atlas_org/proposals.py` | ATOMIC_REPLACE | 118 | `normalise_repo_path` |
 | `atlas_org/security_review.py` | ATOMIC_REPLACE | 203 | `_requirements::parse` |
 | `atlas_org/security_review.py` | ATOMIC_REPLACE | 216 | `files_digest` |

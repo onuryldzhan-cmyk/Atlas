@@ -20,10 +20,10 @@ Command: `python -m tools.build_rem001_gate1_maps construction --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `65b4950ef14d7b2dd37df825a4b8c47c7d4189c4` |
-| generated_from_tree | `fa3daf7582414a0066c7f5cc807db6a9608fcd1b` |
+| generated_from_commit | `6f9aac78cb77236d83d28287101ed9b5fc602958` |
+| generated_from_tree | `9cc44bab313471d04d1b370f6fde12ca0b1a24a1` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['core/market_loop.py', 'ore/market_cycle.py', 'packaging/REM-001_IMPORT_GRAPH.json', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/REM-001_STATE_AUTHORITY_MAP.md', 'packaging/atlas_architecture_map.json', 'packaging/atlas_runtime_closure.json', 'tests/intelligence/__init__.py', 'tests/intelligence/test_task009_regime_tracking.py', 'tools/regime_engine.py'] |
+| modified_tracked_paths_at_generation | ['exchange/adapters/binance_global.py', 'exchange/exchange_manager.py', 'exchange/execution_exposure_guard.py', 'packaging/REM-001_IMPORT_GRAPH.json', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/REM-001_STATE_AUTHORITY_MAP.md', 'tests/core/test_task010_execution_engine.py', 'tlas_finance/market_data/market_feed_service.py'] |
 
 ## Analysis
 
@@ -158,32 +158,32 @@ classes and their observed constructors:
 | `atlas_finance/market_data/binance_public_provider.py` | `MarketDataResponseError` | `atlas_finance/market_data/exceptions.py` | 853 | `BinancePublicDataProvider::_parse_candle` |
 | `atlas_finance/market_data/binance_public_provider.py` | `MarketDataTimeoutError` | `atlas_finance/market_data/exceptions.py` | 729 | `BinancePublicDataProvider::_perform_get` |
 | `atlas_finance/market_data/binance_public_provider.py` | `MarketPrice` | `atlas_finance/market_data/models.py` | 450 | `BinancePublicDataProvider::get_price` |
-| `atlas_finance/market_data/market_feed_service.py` | `InvalidCandleLimitError` | `atlas_finance/market_data/exceptions.py` | 1795 | `MarketFeedService::_validate_limit` |
-| `atlas_finance/market_data/market_feed_service.py` | `InvalidCandleLimitError` | `atlas_finance/market_data/exceptions.py` | 1808 | `MarketFeedService::_validate_limit` |
-| `atlas_finance/market_data/market_feed_service.py` | `InvalidSymbolError` | `atlas_finance/market_data/exceptions.py` | 1714 | `MarketFeedService::_normalize_symbol` |
-| `atlas_finance/market_data/market_feed_service.py` | `InvalidSymbolError` | `atlas_finance/market_data/exceptions.py` | 1736 | `MarketFeedService::_normalize_symbol` |
-| `atlas_finance/market_data/market_feed_service.py` | `InvalidTimeframeError` | `atlas_finance/market_data/exceptions.py` | 1750 | `MarketFeedService::_normalize_timeframe` |
-| `atlas_finance/market_data/market_feed_service.py` | `InvalidTimeframeError` | `atlas_finance/market_data/exceptions.py` | 1757 | `MarketFeedService::_normalize_timeframe` |
-| `atlas_finance/market_data/market_feed_service.py` | `InvalidTimeframeError` | `atlas_finance/market_data/exceptions.py` | 1773 | `MarketFeedService::_normalize_timeframe` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 378 | `MarketFeedService::__init__` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1693 | `MarketFeedService::_validate_failure_threshold` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1699 | `MarketFeedService::_validate_failure_threshold` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketDataError` | `atlas_finance/market_data/exceptions.py` | 1825 | `MarketFeedService::_validate_price_result` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketDataError` | `atlas_finance/market_data/exceptions.py` | 1831 | `MarketFeedService::_validate_price_result` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketDataError` | `atlas_finance/market_data/exceptions.py` | 1842 | `MarketFeedService::_validate_price_result` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketDataError` | `atlas_finance/market_data/exceptions.py` | 1857 | `MarketFeedService::_validate_candle_results` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketDataError` | `atlas_finance/market_data/exceptions.py` | 1873 | `MarketFeedService::_validate_candle_results` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketDataError` | `atlas_finance/market_data/exceptions.py` | 1882 | `MarketFeedService::_validate_candle_results` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketDataError` | `atlas_finance/market_data/exceptions.py` | 1891 | `MarketFeedService::_validate_candle_results` |
+| `atlas_finance/market_data/market_feed_service.py` | `InvalidCandleLimitError` | `atlas_finance/market_data/exceptions.py` | 1839 | `MarketFeedService::_validate_limit` |
+| `atlas_finance/market_data/market_feed_service.py` | `InvalidCandleLimitError` | `atlas_finance/market_data/exceptions.py` | 1852 | `MarketFeedService::_validate_limit` |
+| `atlas_finance/market_data/market_feed_service.py` | `InvalidSymbolError` | `atlas_finance/market_data/exceptions.py` | 1758 | `MarketFeedService::_normalize_symbol` |
+| `atlas_finance/market_data/market_feed_service.py` | `InvalidSymbolError` | `atlas_finance/market_data/exceptions.py` | 1780 | `MarketFeedService::_normalize_symbol` |
+| `atlas_finance/market_data/market_feed_service.py` | `InvalidTimeframeError` | `atlas_finance/market_data/exceptions.py` | 1794 | `MarketFeedService::_normalize_timeframe` |
+| `atlas_finance/market_data/market_feed_service.py` | `InvalidTimeframeError` | `atlas_finance/market_data/exceptions.py` | 1801 | `MarketFeedService::_normalize_timeframe` |
+| `atlas_finance/market_data/market_feed_service.py` | `InvalidTimeframeError` | `atlas_finance/market_data/exceptions.py` | 1817 | `MarketFeedService::_normalize_timeframe` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 379 | `MarketFeedService::__init__` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1737 | `MarketFeedService::_validate_failure_threshold` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1743 | `MarketFeedService::_validate_failure_threshold` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketDataError` | `atlas_finance/market_data/exceptions.py` | 1869 | `MarketFeedService::_validate_price_result` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketDataError` | `atlas_finance/market_data/exceptions.py` | 1875 | `MarketFeedService::_validate_price_result` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketDataError` | `atlas_finance/market_data/exceptions.py` | 1886 | `MarketFeedService::_validate_price_result` |
 | `atlas_finance/market_data/market_feed_service.py` | `MarketDataError` | `atlas_finance/market_data/exceptions.py` | 1901 | `MarketFeedService::_validate_candle_results` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketDataProviderUnavailableError` | `atlas_finance/market_data/exceptions.py` | 510 | `MarketFeedService::_on_start` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketDataRequestStatistics` | `atlas_finance/market_data/models.py` | 265 | `_MutableRequestStatistics::snapshot` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketDataServiceNotRunningError` | `atlas_finance/market_data/exceptions.py` | 1674 | `MarketFeedService::_require_running` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketDataServiceShutdownError` | `atlas_finance/market_data/exceptions.py` | 625 | `MarketFeedService::_on_stop` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketDataServiceStartupError` | `atlas_finance/market_data/exceptions.py` | 572 | `MarketFeedService::_on_start` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketFeedSnapshot` | `atlas_finance/market_data/models.py` | 919 | `MarketFeedService::market_feed_snapshot` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketFeedStatistics` | `atlas_finance/market_data/models.py` | 842 | `MarketFeedService::statistics` |
-| `atlas_finance/market_data/market_feed_service.py` | `ServiceIdentity` | `atlas_os/contracts.py` | 366 | `MarketFeedService::__init__` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketDataError` | `atlas_finance/market_data/exceptions.py` | 1917 | `MarketFeedService::_validate_candle_results` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketDataError` | `atlas_finance/market_data/exceptions.py` | 1926 | `MarketFeedService::_validate_candle_results` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketDataError` | `atlas_finance/market_data/exceptions.py` | 1935 | `MarketFeedService::_validate_candle_results` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketDataError` | `atlas_finance/market_data/exceptions.py` | 1945 | `MarketFeedService::_validate_candle_results` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketDataProviderUnavailableError` | `atlas_finance/market_data/exceptions.py` | 511 | `MarketFeedService::_on_start` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketDataRequestStatistics` | `atlas_finance/market_data/models.py` | 266 | `_MutableRequestStatistics::snapshot` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketDataServiceNotRunningError` | `atlas_finance/market_data/exceptions.py` | 1718 | `MarketFeedService::_require_running` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketDataServiceShutdownError` | `atlas_finance/market_data/exceptions.py` | 626 | `MarketFeedService::_on_stop` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketDataServiceStartupError` | `atlas_finance/market_data/exceptions.py` | 573 | `MarketFeedService::_on_start` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketFeedSnapshot` | `atlas_finance/market_data/models.py` | 920 | `MarketFeedService::market_feed_snapshot` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketFeedStatistics` | `atlas_finance/market_data/models.py` | 843 | `MarketFeedService::statistics` |
+| `atlas_finance/market_data/market_feed_service.py` | `ServiceIdentity` | `atlas_os/contracts.py` | 367 | `MarketFeedService::__init__` |
 | `atlas_org/tasks.py` | `Capability` | `atlas_org/permissions.py` | 73 | `_new_task` |
 | `atlas_os/audit/audit_log.py` | `ServiceIdentity` | `atlas_os/contracts.py` | 310 | `AuditLogService::__init__` |
 | `atlas_os/configuration/configuration_service.py` | `ServiceIdentity` | `atlas_os/contracts.py` | 460 | `ConfigurationService::__init__` |

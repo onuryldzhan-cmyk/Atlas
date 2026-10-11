@@ -115,7 +115,7 @@ _TERMINAL_ORDER_STATUSES = frozenset({
 EXCHANGE_MAXIMUM_RULE_AGE_SECONDS = 24 * 60 * 60
 
 # Journal events that mean the order may have reached the venue.
-_JOURNAL_DISPATCHED_EVENTS = frozenset({"DISPATCHED", "VENUE_ACK", "UNRECONCILED"})
+_JOURNAL_DISPATCHED_EVENTS = frozenset({"DISPATCHED", "VENUE_ACK", "UNRECONCILED", "FILL"})
 # Journal events after which the venue did not receive the order: DISPATCHED is written before every
 # adapter call, and DISPATCH_FAILED only for a non-dispatch - a rate limit (not processed), a
 # preparation failure, a proven never-dispatched release, or a generic adapter exception, which the
@@ -124,6 +124,21 @@ _JOURNAL_DISPATCHED_EVENTS = frozenset({"DISPATCHED", "VENUE_ACK", "UNRECONCILED
 _JOURNAL_NOT_DISPATCHED_EVENTS = frozenset({"INTENT_CREATED", "DISPATCH_FAILED"})
 # Last events of a finished key: bounded in the index (review 11 F-1).
 _JOURNAL_FINISHED_EVENTS = frozenset({"TERMINAL", "DISPATCH_FAILED"})
+
+# Task 010 (registry v5.94): venue fill fields (Binance names first). A FILL journal event records
+# the cumulative filled quantity of an open order; fill progress is monotonic and never exceeds the
+# order quantity (the core.order_lifecycle rules). Statuses below mean the whole order filled.
+_FILLED_QUANTITY_FIELDS = ("executedQty", "executed_qty", "filled_quantity")
+_FILLED_QUOTE_FIELDS = ("cummulativeQuoteQty", "cumulativeQuoteQty", "cumulative_quote_qty", "filled_quote")
+_FULL_FILL_STATUSES = frozenset({"FILLED", "EXECUTED", "SUCCESS"})
+# Venue terminal statuses in core.order_lifecycle terms (PAPER_ONLY: the adapter refused to send it,
+# so it never reached the venue - DENIED); anything else is UNKNOWN.
+_LIFECYCLE_TERMINAL_STATES = {"FILLED": "FILLED", "EXECUTED": "FILLED", "SUCCESS": "FILLED",
+                              "CANCELED": "CANCELLED", "CANCELLED": "CANCELLED", "EXPIRED": "EXPIRED",
+                              "REJECTED": "REJECTED", "PAPER_ONLY": "DENIED"}
+# Review 20 F-1: progress events a racing writer could journal after another writer's TERMINAL; once
+# a key is TERMINAL they are stale and never journaled (or, replayed from an older journal, indexed).
+_STALE_AFTER_TERMINAL_EVENTS = frozenset({"VENUE_ACK", "FILL", "UNRECONCILED"})
 
 
 class _JournalWriteError(RuntimeError):
@@ -273,8 +288,14 @@ class ExchangeManager:
         self._journal_lock = threading.Lock()
         self._journal_available = True
         self._journal_error_type: str | None = None
+        # Task 010 (registry v5.94): the fill progress of every open order, and the net filled base
+        # quantity per symbol, derived only from journaled events (replayed below at startup).
+        self._order_fills: dict[str, dict[str, Any]] = {}
+        self._filled_base: dict[str, Decimal] = {}
+        self._reservations_restored = True
         self._load_order_journal()
         self._restore_pending_from_journal()
+        self._restore_reservations()
 
     def _restore_pending_from_journal(self) -> None:
         """Review 11 F-5: an order the journal shows may be on the venue blocks its key and pair after a restart."""
@@ -326,6 +347,10 @@ class ExchangeManager:
     def _journal(self, event: str, key: str | None, **fields: Any) -> None:
         """Durably record one event BEFORE the transition it guards; raises _JournalWriteError."""
         if self._order_journal is None:
+            if key is not None:
+                with self._journal_lock:
+                    self._track_order_event(key, event, fields)
+                self._settle_reservation(key, event)
             return
         payload: dict[str, Any] = {
             "event": event,
@@ -335,6 +360,10 @@ class ExchangeManager:
         for name, value in fields.items():
             payload[name] = list(value) if name == "fingerprint" else deepcopy(value)
         with self._journal_lock:
+            if (key is not None and event in _STALE_AFTER_TERMINAL_EVENTS
+                    and self._journal_index.get(key, {}).get("event") == "TERMINAL"):
+                logger.warning("Stale %s after TERMINAL not journaled: client_order_id=%s", event, key)
+                return
             try:
                 self._order_journal.append([payload])
             except Exception as exc:
@@ -343,9 +372,13 @@ class ExchangeManager:
                 raise _JournalWriteError(f"order journal write failed: {event}") from exc
             if key is not None:
                 self._index_journal_event(key, event, fields)
+        if key is not None:
+            self._settle_reservation(key, event)
 
     def _index_journal_event(self, key: str, event: Any, fields: Mapping[str, Any]) -> None:
         """Index one journal event (caller holds the journal lock or is the constructor)."""
+        if event in _STALE_AFTER_TERMINAL_EVENTS and self._journal_index.get(key, {}).get("event") == "TERMINAL":
+            return  # review 20 F-1: a stale progress event written after TERMINAL by an older build
         entry = self._journal_index.setdefault(key, {})
         entry["event"] = event
         for name in ("fingerprint", "symbol", "response"):
@@ -360,6 +393,231 @@ class ExchangeManager:
                     self._journal_index.pop(oldest, None)
         else:
             self._journal_finished_keys.pop(key, None)  # a re-dispatched key is open again
+        self._track_order_event(key, event, fields)
+
+    # =====================================================
+    # TASK 010: FILL LEDGER AND EXPOSURE RESERVATIONS
+    # =====================================================
+
+    @staticmethod
+    def _fill_decimal(value: Any) -> Decimal | None:
+        if value is None or isinstance(value, bool):
+            return None
+        try:
+            number = Decimal(str(value))
+        except (InvalidOperation, ValueError):
+            return None
+        return number if number.is_finite() and number >= 0 else None
+
+    def _fill_report(self, result: Any, *, quantity: Decimal | None = None) -> tuple[Decimal | None, Decimal | None, bool]:
+        """(cumulative filled quantity, cumulative quote, malformed) of a venue report.
+
+        A FILLED-type status without a filled quantity means the whole ``quantity`` filled.
+        A fill field that is present but not a finite non-negative number is malformed.
+        """
+        if not isinstance(result, Mapping):
+            return None, None, False
+        values = []
+        for names in (_FILLED_QUANTITY_FIELDS, _FILLED_QUOTE_FIELDS):
+            raw = next((result[name] for name in names if result.get(name) is not None), None)
+            parsed = self._fill_decimal(raw)
+            if raw is not None and parsed is None:
+                return None, None, True
+            values.append(parsed)
+        filled, quote = values
+        if (filled is None and quantity is not None
+                and str(result.get("status", "")).strip().upper() in _FULL_FILL_STATUSES):
+            filled = quantity
+        return filled, quote, False
+
+    def _fill_anomaly(self, key: str, result: Any, *, terminal: bool) -> str | None:
+        """Why a venue report cannot be folded into the order's fill ledger, or None."""
+        with self._journal_lock:
+            entry = deepcopy(self._order_fills.get(key))
+        quantity = entry.get("quantity") if entry else None
+        filled, _, malformed = self._fill_report(result, quantity=quantity if terminal else None)
+        if malformed:
+            return "FILL_REPORT_MALFORMED"
+        if entry is None or filled is None or quantity is None:
+            return None
+        if filled > quantity:
+            return "FILL_EXCEEDS_ORDER"
+        if terminal and filled < entry["filled"]:
+            return "FILL_REGRESSED"
+        status = str(result.get("status", "")).strip().upper() if isinstance(result, Mapping) else ""
+        if terminal and status in _FULL_FILL_STATUSES and filled != quantity:
+            return "FILLED_QUANTITY_MISMATCH"
+        return None
+
+    def _track_order_event(self, key: str, event: Any, fields: Mapping[str, Any]) -> None:
+        """Fold one journaled event into the fill ledger (caller holds the journal lock or is the constructor)."""
+        if event == "INTENT_CREATED":
+            self._order_fills[key] = {
+                "symbol": str(fields.get("symbol") or ""),
+                "side": str(fields.get("side") or "").upper(),
+                "quantity": self._fill_decimal(fields.get("quantity")),
+                "filled": Decimal("0"),
+                "quote": None,
+                "state": "VALIDATED",
+            }
+            return
+        entry = self._order_fills.get(key)
+        if entry is None:
+            return
+        if event == "DISPATCHED":
+            entry["state"] = "SUBMITTED"
+        elif event == "VENUE_ACK":
+            entry["state"] = "PARTIALLY_FILLED" if entry["filled"] > 0 else "ACKNOWLEDGED"
+        elif event == "UNRECONCILED":
+            entry["state"] = "UNKNOWN"
+        elif event == "FILL":
+            self._apply_fill(entry, self._fill_decimal(fields.get("filled_quantity")),
+                             self._fill_decimal(fields.get("filled_quote")))
+            entry["state"] = "PARTIALLY_FILLED"
+        elif event == "TERMINAL":
+            filled, quote, malformed = self._fill_report(fields.get("response"), quantity=entry["quantity"])
+            if not malformed:
+                self._apply_fill(entry, filled, quote)
+            self._order_fills.pop(key, None)
+        elif event == "DISPATCH_FAILED":
+            self._order_fills.pop(key, None)
+
+    def _apply_fill(self, entry: dict[str, Any], filled: Decimal | None, quote: Decimal | None) -> None:
+        """Monotonic: a lower (stale) cumulative quantity never reduces what was recorded."""
+        if filled is None or filled <= entry["filled"]:
+            return
+        if entry["quantity"] is not None and filled > entry["quantity"]:
+            return
+        delta = filled - entry["filled"]
+        entry["filled"] = filled
+        if quote is not None:
+            entry["quote"] = quote
+        sign = Decimal("1") if entry["side"] == "BUY" else Decimal("-1")
+        symbol = entry["symbol"]
+        self._filled_base[symbol] = self._filled_base.get(symbol, Decimal("0")) + sign * delta
+
+    def _reserve_exposure(self, *, key: str, symbol: str, side: str, quantity: float,
+                          order_notional: float, opens_new_position: bool) -> dict[str, Any] | None:
+        """Hold an open BUY's notional in the exposure guard, checked against every other open BUY."""
+        if side != "BUY":
+            return None
+        reserve = getattr(self.exposure_guard, "reserve", None)
+        if not callable(reserve) or not self._reservations_restored:
+            return self._rejection(reason="EXPOSURE_RESERVATION_UNAVAILABLE", symbol=symbol, side=side,
+                                   quantity=quantity)
+        try:
+            decision = reserve(key, symbol=symbol, order_notional=order_notional,
+                               opens_new_position=opens_new_position)
+        except Exception:
+            logger.exception("Exposure reservation failed: symbol=%s", symbol)
+            decision = {"allowed": False, "reason": "EXPOSURE_RESERVATION_UNAVAILABLE"}
+        if not isinstance(decision, Mapping) or decision.get("allowed") is not True:
+            reason = decision.get("reason") if isinstance(decision, Mapping) else None
+            return self._rejection(reason=reason or "EXPOSURE_RESERVATION_REJECTED", symbol=symbol, side=side,
+                                   quantity=quantity)
+        return None
+
+    def _release_reservation(self, key: str) -> None:
+        release = getattr(self.exposure_guard, "release", None)
+        if callable(release):
+            try:
+                release(key)
+            except Exception:
+                logger.exception("Exposure reservation could not be released: client_order_id=%s", key)
+
+    def _settle_reservation(self, key: str, event: Any) -> None:
+        """A terminal or never-dispatched order no longer holds exposure (filled exposure arrives via
+        the guard's portfolio snapshot, as before)."""
+        if event in _JOURNAL_FINISHED_EVENTS:
+            self._release_reservation(key)
+
+    def _restore_reservations(self) -> None:
+        """Every open BUY known after a restart holds its exposure again (no check: it may be live)."""
+        with self._idempotency_lock:
+            with self._journal_lock:  # review 20 F-3: replayed intents that were never dispatched
+                for key in [k for k in self._order_fills if k not in self._pending_reconciliations]:
+                    self._order_fills.pop(key, None)
+        restore = getattr(self.exposure_guard, "restore_reservation", None)
+        if self.exposure_guard is None or not callable(restore):
+            return
+        try:
+            with self._idempotency_lock:
+                for key, entry in self._pending_reconciliations.items():
+                    fingerprint = tuple(entry.get("fingerprint") or ())
+                    if len(fingerprint) < 5:
+                        raise ValueError("an open order has no complete fingerprint")
+                    if str(fingerprint[1]).upper() == "BUY":
+                        restore(key, symbol=fingerprint[0], order_notional=fingerprint[3],
+                                opens_new_position=fingerprint[4])
+        except Exception:
+            logger.exception("An open order's exposure could not be restored; new BUY orders are refused")
+            self._reservations_restored = False
+
+    def order_state(self, idempotency_key: Any) -> dict[str, Any] | None:
+        """The lifecycle state (core.order_lifecycle terms) and fill progress of one client order id."""
+        key = self._normalize_idempotency_key(idempotency_key)
+        if key is None:
+            return None
+        with self._journal_lock:
+            entry = deepcopy(self._order_fills.get(key))
+            indexed = deepcopy(self._journal_index.get(key))
+        if entry is not None:
+            return {"client_order_id": key, "state": entry["state"], "symbol": entry["symbol"],
+                    "side": entry["side"], "quantity": self._decimal_text(entry["quantity"]),
+                    "filled_quantity": self._decimal_text(entry["filled"]),
+                    "filled_quote": self._decimal_text(entry["quote"])}
+        with self._idempotency_lock:
+            cached = deepcopy((self._idempotency_cache.get(key) or {}).get("response"))
+        response = (indexed or {}).get("response") if indexed else None
+        response = response if isinstance(response, dict) else cached
+        if not isinstance(response, dict):
+            return None
+        status = str(response.get("status", "")).strip().upper()
+        state = _LIFECYCLE_TERMINAL_STATES.get(status, "UNKNOWN")
+        if response.get("reason") == "PERMANENTLY_REJECTED":
+            state = "REJECTED"
+        return {"client_order_id": key, "state": state, "terminal": True, "response": response}
+
+    def _record_fill_progress(self, key: str, result: Any) -> dict[str, Any]:
+        """Journal a non-terminal venue report's fill progress (FILL) BEFORE returning it; the
+        returned progress is what the journal holds, never more."""
+        filled, quote, _ = self._fill_report(result)
+        # Review 20 F-1: journaled only while the order is still pending, under the lock every
+        # TERMINAL write holds, so progress can never be recorded after the order's outcome.
+        with self._idempotency_lock:
+            if key in self._pending_reconciliations:
+                with self._journal_lock:
+                    entry = self._order_fills.get(key)
+                    recorded = entry["filled"] if entry is not None else None
+                if recorded is not None and filled is not None and filled > recorded:
+                    self._journal_quiet("FILL", key, filled_quantity=format(filled, "f"),
+                                        filled_quote=None if quote is None else format(quote, "f"),
+                                        order_state="PARTIALLY_FILLED")
+        progress = self.order_state(key) or {}
+        if "filled_quantity" not in progress:
+            return {}
+        return {"order_state": progress["state"], "filled_quantity": progress["filled_quantity"],
+                "filled_quote": progress["filled_quote"]}
+
+    def _journal_unreconciled_while_pending(self, key: str, reason: str, result: Any) -> None:
+        """Review 20 F-1: an inconsistent report is journaled only while the order is still pending."""
+        with self._idempotency_lock:
+            if key in self._pending_reconciliations:
+                self._journal_quiet("UNRECONCILED", key, reason=reason, response=result)
+
+    def _forget_unsent(self, key: str) -> None:
+        """Review 20 F-3: an order dropped before dispatch leaves no open entry in the fill ledger."""
+        with self._journal_lock:
+            self._order_fills.pop(key, None)
+
+    @staticmethod
+    def _decimal_text(value: Decimal | None) -> str | None:
+        return None if value is None else format(value, "f")
+
+    def filled_positions(self) -> dict[str, str]:
+        """Net filled base quantity per symbol from journaled fills (BUY +, SELL -)."""
+        with self._journal_lock:
+            return {symbol: format(amount, "f") for symbol, amount in sorted(self._filled_base.items())}
 
     def _journal_quiet(self, event: str, key: str | None, **fields: Any) -> None:
         """Journal an event whose state is already the conservative one; a failure is logged, never swallowed."""
@@ -1628,6 +1886,23 @@ class ExchangeManager:
             quantity=normalized_quantity,
         )
         try:
+            # Task 010: an open BUY holds its notional, checked against every other open BUY.
+            reservation_rejection = self._reserve_exposure(
+                key=normalized_idempotency_key,
+                symbol=normalized_symbol,
+                side=normalized_side,
+                quantity=normalized_quantity,
+                order_notional=normalized_order_notional,
+                opens_new_position=normalized_opens_new_position,
+            )
+            if reservation_rejection is not None:
+                completed_result = self._complete_in_flight_request(
+                    key=normalized_idempotency_key,
+                    entry=in_flight_entry,
+                    response=reservation_rejection,
+                )
+                leader_completed = True
+                return completed_result
             try:
                 with self._idempotency_lock:
                     if (normalized_idempotency_key not in self._pending_reconciliations
@@ -1662,6 +1937,8 @@ class ExchangeManager:
                         normalized_idempotency_key, {}).get("event") == "INTENT_CREATED":
                     self._journal_quiet("DISPATCH_FAILED", normalized_idempotency_key,
                                         reason="PREPARATION_FAILED", error_type=type(exc).__name__)
+                self._release_reservation(normalized_idempotency_key)  # nothing was dispatched
+                self._forget_unsent(normalized_idempotency_key)
                 error_result = self._error_result(
                     reason=(
                         "ORDER_JOURNAL_UNAVAILABLE" if isinstance(exc, _JournalWriteError)
@@ -1695,6 +1972,9 @@ class ExchangeManager:
                 logger.exception("Order not dispatched: the order journal is unavailable")
                 with self._idempotency_lock:
                     cleared = self._discard_pending_reconciliation(key=normalized_idempotency_key)
+                if cleared:
+                    self._release_reservation(normalized_idempotency_key)
+                    self._forget_unsent(normalized_idempotency_key)
                 completed_result = self._complete_in_flight_request(
                     key=normalized_idempotency_key,
                     entry=in_flight_entry,
@@ -1913,7 +2193,23 @@ class ExchangeManager:
                 leader_completed = True
                 return completed_result
 
-            if not self._is_terminal_order_result(result):
+            terminal = self._is_terminal_order_result(result)
+            anomaly = self._fill_anomaly(normalized_idempotency_key, result, terminal=terminal)
+            if anomaly is not None:
+                # Task 010: an inconsistent fill report is never folded in; the order stays
+                # unreconciled (its pair halts) until the venue reports consistently.
+                logger.error("Inconsistent venue fill report left order unreconciled: symbol=%s reason=%s",
+                             normalized_symbol, anomaly)
+                self._journal_unreconciled_while_pending(normalized_idempotency_key, anomaly, result)
+                completed_result = self._complete_in_flight_request(
+                    key=normalized_idempotency_key,
+                    entry=in_flight_entry,
+                    response=pending_result,
+                )
+                leader_completed = True
+                return completed_result
+
+            if not terminal:
                 nonterminal = self._pending_result(
                     symbol=normalized_symbol,
                     side=normalized_side,
@@ -1921,6 +2217,7 @@ class ExchangeManager:
                     reason="EXCHANGE_ORDER_NOT_TERMINAL",
                 )
                 self._journal_quiet("VENUE_ACK", normalized_idempotency_key, response=result)
+                nonterminal.update(self._record_fill_progress(normalized_idempotency_key, result))
                 with self._idempotency_lock:
                     pending_entry = self._pending_reconciliations.get(
                         normalized_idempotency_key
@@ -2031,6 +2328,10 @@ class ExchangeManager:
                     return None
             if not self._discard_pending_reconciliation(key=key):
                 return None
+            # Review 21 L-2: released here whether or not DISPATCH_FAILED was journaled just now (an
+            # order restored after a restart was re-reserved although the journal already proved it).
+            self._release_reservation(key)
+            self._forget_unsent(key)
             symbol = expected.get("symbol", "")
         logger.warning("Released a pending order that was never dispatched: symbol=%s", symbol)
         return self._error_result(reason="NEVER_DISPATCHED", symbol=symbol, side="", quantity=0.0,
@@ -2073,6 +2374,10 @@ class ExchangeManager:
         if never_dispatched:
             released = self._release_never_dispatched(key, pending)
             return released if released is not None else deepcopy(pending_snapshot["response"])
+        if self.safety_gate.authorize_live_order().get("allowed") is not True:
+            # Task 010: outside live authorization nothing reaches the venue, not even a status
+            # query signed with whatever credentials the environment holds; the order stays pending.
+            return deepcopy(pending_snapshot["response"])
         query_method = getattr(self.exchange, "get_order_by_client_id", None)
         if not callable(query_method):
             return deepcopy(pending_snapshot["response"])
@@ -2084,8 +2389,32 @@ class ExchangeManager:
         except Exception:
             logger.exception("Exchange order reconciliation query failed")
             return deepcopy(pending_snapshot["response"])
-        if not isinstance(result, dict) or not self._is_terminal_order_result(result):
+        if not isinstance(result, dict):
             return deepcopy(pending_snapshot["response"])
+        terminal = self._is_terminal_order_result(result)
+        anomaly = self._fill_anomaly(key, result, terminal=terminal)
+        if anomaly is not None:
+            logger.error("Inconsistent venue fill report; the order stays unreconciled: reason=%s", anomaly)
+            self._journal_unreconciled_while_pending(key, anomaly, result)
+            with self._idempotency_lock:
+                cached = self._idempotency_cache.get(key)
+                if key not in self._pending_reconciliations and cached is not None:
+                    return deepcopy(cached["response"])  # a concurrent reconciliation resolved it
+            return deepcopy(pending_snapshot["response"])
+        if not terminal:
+            # Task 010: an open (e.g. partially filled) order stays pending, with its journaled progress.
+            progress = self._record_fill_progress(key, result)
+            with self._idempotency_lock:
+                current = self._pending_reconciliations.get(key)
+                if current is None:
+                    cached = self._idempotency_cache.get(key)
+                    return deepcopy(cached["response"]) if cached is not None else deepcopy(
+                        pending_snapshot["response"])
+                if progress:
+                    current["response"] = {**current["response"], **progress}
+                    if not self._persist_idempotency_entries():
+                        logger.error("Fill progress could not be persisted with the pending order")
+                return deepcopy(current["response"])
         with self._idempotency_lock:
             current = self._pending_reconciliations.get(key)
             if current is None:
@@ -2237,4 +2566,16 @@ class ExchangeManager:
                 "jitter": "FULL",
             },
             "live_prerequisites": live_prerequisites,
+            # Task 010 (registry v5.94).
+            "order_fills": self._order_fills_status(),
+        }
+
+    def _order_fills_status(self) -> dict[str, Any]:
+        with self._journal_lock:
+            open_orders = {key: entry["state"] for key, entry in self._order_fills.items()}
+        return {
+            "open_orders": len(open_orders),
+            "partially_filled": sum(1 for state in open_orders.values() if state == "PARTIALLY_FILLED"),
+            "filled_positions": self.filled_positions(),
+            "reservations_restored": self._reservations_restored,
         }
