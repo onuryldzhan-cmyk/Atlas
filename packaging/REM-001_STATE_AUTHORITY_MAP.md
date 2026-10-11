@@ -19,10 +19,10 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `f6a6be629e69060b219b4d9b620e98ee09b80f11` |
-| generated_from_tree | `bfe33fb01bcd3e44e49c2ee551b6421702ec3d07` |
+| generated_from_commit | `65b4950ef14d7b2dd37df825a4b8c47c7d4189c4` |
+| generated_from_tree | `fa3daf7582414a0066c7f5cc807db6a9608fcd1b` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['ore/policy_manifest.py', 'packaging/REM-001_IMPORT_GRAPH.json', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/REM-001_STATE_AUTHORITY_MAP.md', 'tests/test_phase2_g2_exp002_grant.py'] |
+| modified_tracked_paths_at_generation | ['core/market_loop.py', 'ore/market_cycle.py', 'packaging/REM-001_IMPORT_GRAPH.json', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/REM-001_STATE_AUTHORITY_MAP.md', 'packaging/atlas_architecture_map.json', 'packaging/atlas_runtime_closure.json', 'tests/intelligence/__init__.py', 'tests/intelligence/test_task009_regime_tracking.py', 'tools/regime_engine.py'] |
 
 ## What this artifact is, and what it is not
 
@@ -60,7 +60,7 @@ observation.
 | field | value |
 | --- | --- |
 | entry_points | `main.py`, `web_app.py`, `atlas_service.py`, `atlas_supervisor.py` |
-| modules_in_runtime_closure | 140 |
+| modules_in_runtime_closure | 141 |
 | declared_state_file_constants | 10 |
 | persistence_sites | 93 |
 | modules_with_persistence_sites | 38 |

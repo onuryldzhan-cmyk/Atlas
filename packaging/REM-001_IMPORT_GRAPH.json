@@ -16,27 +16,32 @@
     "analysis": "Static AST import resolution over git-tracked Python files, excluding imports guarded by if TYPE_CHECKING:. Third-party and stdlib targets resolve to nothing and carry no edge."
   },
   "source_identity": {
-    "generated_from_commit": "f6a6be629e69060b219b4d9b620e98ee09b80f11",
-    "generated_from_tree": "bfe33fb01bcd3e44e49c2ee551b6421702ec3d07",
+    "generated_from_commit": "65b4950ef14d7b2dd37df825a4b8c47c7d4189c4",
+    "generated_from_tree": "fa3daf7582414a0066c7f5cc807db6a9608fcd1b",
     "tracked_working_tree_clean": false,
     "modified_tracked_paths_at_generation": [
-      "ore/policy_manifest.py",
+      "core/market_loop.py",
+      "ore/market_cycle.py",
       "packaging/REM-001_IMPORT_GRAPH.json",
       "packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md",
       "packaging/REM-001_STATE_AUTHORITY_MAP.md",
-      "tests/test_phase2_g2_exp002_grant.py"
+      "packaging/atlas_architecture_map.json",
+      "packaging/atlas_runtime_closure.json",
+      "tests/intelligence/__init__.py",
+      "tests/intelligence/test_task009_regime_tracking.py",
+      "tools/regime_engine.py"
     ]
   },
   "scope": {
     "universe": "ALL_GIT_TRACKED_PYTHON_FILES",
     "universe_note": "The tool's existing tracked-file definition, used unchanged. No source-scope classification (ACTIVE_CANDIDATE / TEST / TOOL / ARCHIVE / BACKUP / QUARANTINE / REPORT_COPY) is applied or implied: that classification requires the human review gate ARCH-001.2.1 reserves and belongs to Gate 1 deliverable 1.",
-    "modules_total": 1121,
-    "modules_runtime_reachable": 140,
-    "modules_outside_runtime_closure": 981,
-    "edges_total": 2521,
-    "edges_import": 1820,
-    "edges_package_init": 701,
-    "edges_distinct_module_pairs": 2438,
+    "modules_total": 1147,
+    "modules_runtime_reachable": 141,
+    "modules_outside_runtime_closure": 1006,
+    "edges_total": 2666,
+    "edges_import": 1930,
+    "edges_package_init": 736,
+    "edges_distinct_module_pairs": 2578,
     "edges_count_note": "edges_total counts (from, to, kind) triples. A pair can carry both kinds when a file both imports a package directly and references one of its submodules, so edges_distinct_module_pairs is the figure to use when counting dependencies between modules.",
     "parse_failures": 3
   },
@@ -48,7 +53,7 @@
   ],
   "runtime_closure_reference": {
     "artifact": "packaging/atlas_runtime_closure.json",
-    "modules": 140,
+    "modules": 141,
     "regression_gate": "BFS from entry_points over edges reproduces the referenced artifact exactly",
     "regression_gate_result": "PASS"
   },
@@ -2095,6 +2100,10 @@
       "runtime_reachable": true
     },
     {
+      "module": "core/market_cycle.py",
+      "runtime_reachable": true
+    },
+    {
       "module": "core/market_intelligence.py",
       "runtime_reachable": false
     },
@@ -2819,7 +2828,19 @@
       "runtime_reachable": false
     },
     {
+      "module": "research/experiment_manager.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "research/hypothesis_generation.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "research/hypothesis_registry.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "research/knowledge_manager.py",
       "runtime_reachable": false
     },
     {
@@ -2831,7 +2852,19 @@
       "runtime_reachable": false
     },
     {
+      "module": "research/registry_lock.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "research/screening.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "research/splitting.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "research/strategy_evaluation.py",
       "runtime_reachable": false
     },
     {
@@ -3075,6 +3108,10 @@
       "runtime_reachable": false
     },
     {
+      "module": "tests/architecture/test_experiment_manager_isolation.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/architecture/test_forbidden_edges_ancestor_resolution.py",
       "runtime_reachable": false
     },
@@ -3088,6 +3125,10 @@
     },
     {
       "module": "tests/architecture/test_intelligence_cannot_import_execution.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/architecture/test_knowledge_manager_isolation.py",
       "runtime_reachable": false
     },
     {
@@ -3179,6 +3220,30 @@
       "runtime_reachable": false
     },
     {
+      "module": "tests/core/__init__.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/core/test_task007_risk_intelligence.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/exchange/__init__.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/exchange/test_task008_safety_idempotency.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/intelligence/__init__.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/intelligence/test_task009_regime_tracking.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/phase6/test_application_lifecycle_integration.py",
       "runtime_reachable": false
     },
@@ -3188,6 +3253,18 @@
     },
     {
       "module": "tests/phase6/test_market_loop_integration.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/research/__init__.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/research/test_task005_hypothesis_pipeline.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/research/test_task006_strategy_selection.py",
       "runtime_reachable": false
     },
     {
@@ -4031,6 +4108,10 @@
       "runtime_reachable": false
     },
     {
+      "module": "tests/test_research_experiment_manager.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/test_research_hypothesis_checks.py",
       "runtime_reachable": false
     },
@@ -4047,7 +4128,15 @@
       "runtime_reachable": false
     },
     {
+      "module": "tests/test_research_knowledge_manager.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/test_research_lifecycle.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_research_manager_input_availability.py",
       "runtime_reachable": false
     },
     {
@@ -4056,6 +4145,10 @@
     },
     {
       "module": "tests/test_research_multiple_testing.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_research_preregistration_enforcement.py",
       "runtime_reachable": false
     },
     {
@@ -4084,6 +4177,10 @@
     },
     {
       "module": "tests/test_s1_capital_sleeves.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_scout_guard_hardening.py",
       "runtime_reachable": false
     },
     {
@@ -4140,6 +4237,10 @@
     },
     {
       "module": "tests/test_status_api_read_only_inventory.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_strategic_scout_boundary.py",
       "runtime_reachable": false
     },
     {
@@ -4328,6 +4429,10 @@
     },
     {
       "module": "tools/generate_test_results_artifact.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/hypothesis_pipeline.py",
       "runtime_reachable": false
     },
     {
@@ -4544,6 +4649,10 @@
     },
     {
       "module": "tools/strategy_compare.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/strategy_selection.py",
       "runtime_reachable": false
     },
     {
@@ -6905,6 +7014,11 @@
     },
     {
       "from": "core/market_loop.py",
+      "to": "core/market_cycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/market_loop.py",
       "to": "core/position_sizing.py",
       "kind": "import"
     },
@@ -7345,6 +7459,26 @@
     },
     {
       "from": "exchange/exchange_manager.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "exchange/exchange_manager.py",
+      "to": "core/durable_append_log.py",
+      "kind": "import"
+    },
+    {
+      "from": "exchange/exchange_manager.py",
+      "to": "core/instrument_rules.py",
+      "kind": "import"
+    },
+    {
+      "from": "exchange/exchange_manager.py",
+      "to": "core/venue_rule_freshness.py",
+      "kind": "import"
+    },
+    {
+      "from": "exchange/exchange_manager.py",
       "to": "exchange/__init__.py",
       "kind": "package_init"
     },
@@ -7361,6 +7495,11 @@
     {
       "from": "exchange/exchange_manager.py",
       "to": "exchange/adapters/binance_tr.py",
+      "kind": "import"
+    },
+    {
+      "from": "exchange/exchange_manager.py",
+      "to": "exchange/base_exchange.py",
       "kind": "import"
     },
     {
@@ -8074,6 +8213,46 @@
       "kind": "import"
     },
     {
+      "from": "research/experiment_manager.py",
+      "to": "research/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "research/experiment_manager.py",
+      "to": "research/hypothesis_registry.py",
+      "kind": "import"
+    },
+    {
+      "from": "research/experiment_manager.py",
+      "to": "research/lifecycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "research/hypothesis_generation.py",
+      "to": "research/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "research/hypothesis_generation.py",
+      "to": "research/hypothesis_registry.py",
+      "kind": "import"
+    },
+    {
+      "from": "research/hypothesis_generation.py",
+      "to": "research/registry_lock.py",
+      "kind": "import"
+    },
+    {
+      "from": "research/hypothesis_generation.py",
+      "to": "research/screening.py",
+      "kind": "import"
+    },
+    {
+      "from": "research/hypothesis_generation.py",
+      "to": "research/splitting.py",
+      "kind": "import"
+    },
+    {
       "from": "research/hypothesis_registry.py",
       "to": "research/__init__.py",
       "kind": "package_init"
@@ -8091,6 +8270,26 @@
     {
       "from": "research/hypothesis_registry.py",
       "to": "research/splitting.py",
+      "kind": "import"
+    },
+    {
+      "from": "research/strategy_evaluation.py",
+      "to": "research/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "research/strategy_evaluation.py",
+      "to": "research/hypothesis_generation.py",
+      "kind": "import"
+    },
+    {
+      "from": "research/strategy_evaluation.py",
+      "to": "research/hypothesis_registry.py",
+      "kind": "import"
+    },
+    {
+      "from": "research/strategy_evaluation.py",
+      "to": "research/lifecycle.py",
       "kind": "import"
     },
     {
@@ -8919,6 +9118,21 @@
       "kind": "import"
     },
     {
+      "from": "tests/architecture/test_knowledge_manager_isolation.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/architecture/test_knowledge_manager_isolation.py",
+      "to": "tests/architecture/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/architecture/test_knowledge_manager_isolation.py",
+      "to": "tests/architecture/test_experiment_manager_isolation.py",
+      "kind": "import"
+    },
+    {
       "from": "tests/architecture/test_layer_assignment_is_total.py",
       "to": "tools/build_architecture_inventory.py",
       "kind": "import"
@@ -9099,6 +9313,146 @@
       "kind": "import"
     },
     {
+      "from": "tests/core/test_task007_risk_intelligence.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/core/test_task007_risk_intelligence.py",
+      "to": "core/position_sizing.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/core/test_task007_risk_intelligence.py",
+      "to": "core/risk_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/exchange/test_task008_safety_idempotency.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/exchange/test_task008_safety_idempotency.py",
+      "to": "core/instrument_rules.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/exchange/test_task008_safety_idempotency.py",
+      "to": "core/venue_rule_freshness.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/exchange/test_task008_safety_idempotency.py",
+      "to": "exchange/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/exchange/test_task008_safety_idempotency.py",
+      "to": "exchange/adapters/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/exchange/test_task008_safety_idempotency.py",
+      "to": "exchange/adapters/binance_global.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/exchange/test_task008_safety_idempotency.py",
+      "to": "exchange/base_exchange.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/exchange/test_task008_safety_idempotency.py",
+      "to": "exchange/exchange_manager.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/exchange/test_task008_safety_idempotency.py",
+      "to": "exchange/execution_exposure_guard.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/exchange/test_task008_safety_idempotency.py",
+      "to": "exchange/execution_risk_guard.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/exchange/test_task008_safety_idempotency.py",
+      "to": "exchange/execution_safety_gate.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/exchange/test_task008_safety_idempotency.py",
+      "to": "exchange/persistent_idempotency_store.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/intelligence/test_task009_regime_tracking.py",
+      "to": "core/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/intelligence/test_task009_regime_tracking.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/intelligence/test_task009_regime_tracking.py",
+      "to": "core/market_cycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/intelligence/test_task009_regime_tracking.py",
+      "to": "core/market_loop.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/intelligence/test_task009_regime_tracking.py",
+      "to": "core/position_sizing.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/intelligence/test_task009_regime_tracking.py",
+      "to": "core/risk_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/intelligence/test_task009_regime_tracking.py",
+      "to": "exchange/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/intelligence/test_task009_regime_tracking.py",
+      "to": "exchange/market_feed.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/intelligence/test_task009_regime_tracking.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/intelligence/test_task009_regime_tracking.py",
+      "to": "tests/phase6/test_market_feed_compatibility.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/intelligence/test_task009_regime_tracking.py",
+      "to": "tests/test_block5c_upstream_sizing_authority.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/intelligence/test_task009_regime_tracking.py",
+      "to": "tools/backtest_replay.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/intelligence/test_task009_regime_tracking.py",
+      "to": "tools/regime_engine.py",
+      "kind": "import"
+    },
+    {
       "from": "tests/phase6/test_application_lifecycle_integration.py",
       "to": "core/__init__.py",
       "kind": "package_init"
@@ -9151,6 +9505,151 @@
     {
       "from": "tests/phase6/test_market_loop_integration.py",
       "to": "core/technical_analyzer.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/research/test_task005_hypothesis_pipeline.py",
+      "to": "research/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/research/test_task005_hypothesis_pipeline.py",
+      "to": "research/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/research/test_task005_hypothesis_pipeline.py",
+      "to": "research/hypothesis_generation.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/research/test_task005_hypothesis_pipeline.py",
+      "to": "research/hypothesis_registry.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/research/test_task005_hypothesis_pipeline.py",
+      "to": "research/lifecycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/research/test_task005_hypothesis_pipeline.py",
+      "to": "research/multiple_testing.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/research/test_task005_hypothesis_pipeline.py",
+      "to": "research/registry_lock.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/research/test_task005_hypothesis_pipeline.py",
+      "to": "research/screening.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/research/test_task005_hypothesis_pipeline.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/research/test_task005_hypothesis_pipeline.py",
+      "to": "tests/test_research_hypothesis_registry.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/research/test_task005_hypothesis_pipeline.py",
+      "to": "tools/backtest_replay.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/research/test_task005_hypothesis_pipeline.py",
+      "to": "tools/hypothesis_pipeline.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/research/test_task005_hypothesis_pipeline.py",
+      "to": "tools/strategy_compare.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/research/test_task006_strategy_selection.py",
+      "to": "research/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/research/test_task006_strategy_selection.py",
+      "to": "research/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/research/test_task006_strategy_selection.py",
+      "to": "research/hypothesis_generation.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/research/test_task006_strategy_selection.py",
+      "to": "research/hypothesis_registry.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/research/test_task006_strategy_selection.py",
+      "to": "research/lifecycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/research/test_task006_strategy_selection.py",
+      "to": "research/registry_lock.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/research/test_task006_strategy_selection.py",
+      "to": "research/screening.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/research/test_task006_strategy_selection.py",
+      "to": "research/strategy_evaluation.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/research/test_task006_strategy_selection.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/research/test_task006_strategy_selection.py",
+      "to": "tests/research/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/research/test_task006_strategy_selection.py",
+      "to": "tests/research/test_task005_hypothesis_pipeline.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/research/test_task006_strategy_selection.py",
+      "to": "tools/backtest_replay.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/research/test_task006_strategy_selection.py",
+      "to": "tools/hypothesis_pipeline.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/research/test_task006_strategy_selection.py",
+      "to": "tools/regime_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/research/test_task006_strategy_selection.py",
+      "to": "tools/strategy_compare.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/research/test_task006_strategy_selection.py",
+      "to": "tools/strategy_selection.py",
       "kind": "import"
     },
     {
@@ -9496,6 +9995,11 @@
     {
       "from": "tests/test_atlas_brain_phase5_shadow.py",
       "to": "ai/core/atlas_brain.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_atlas_brain_phase5_shadow.py",
+      "to": "ai/core/intelligence/agent_fusion.py",
       "kind": "import"
     },
     {
@@ -14730,7 +15234,37 @@
     },
     {
       "from": "tests/test_regime_bar_check.py",
+      "to": "research/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_regime_bar_check.py",
+      "to": "research/hypothesis_registry.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_regime_bar_check.py",
+      "to": "research/lifecycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_regime_bar_check.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_regime_bar_check.py",
+      "to": "tests/test_research_hypothesis_registry.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_regime_bar_check.py",
       "to": "tools/regime_bar_check.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_regime_bar_check.py",
+      "to": "tools/strategy_compare.py",
       "kind": "import"
     },
     {
@@ -14839,6 +15373,36 @@
       "kind": "import"
     },
     {
+      "from": "tests/test_research_experiment_manager.py",
+      "to": "research/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_research_experiment_manager.py",
+      "to": "research/experiment_manager.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_experiment_manager.py",
+      "to": "research/hypothesis_registry.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_experiment_manager.py",
+      "to": "research/lifecycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_experiment_manager.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_research_experiment_manager.py",
+      "to": "tests/test_research_hypothesis_registry.py",
+      "kind": "import"
+    },
+    {
       "from": "tests/test_research_hypothesis_checks.py",
       "to": "research/__init__.py",
       "kind": "package_init"
@@ -14909,6 +15473,31 @@
       "kind": "import"
     },
     {
+      "from": "tests/test_research_knowledge_manager.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_knowledge_manager.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_research_knowledge_manager.py",
+      "to": "atlas_org/owner_auth.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_knowledge_manager.py",
+      "to": "research/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_research_knowledge_manager.py",
+      "to": "research/knowledge_manager.py",
+      "kind": "import"
+    },
+    {
       "from": "tests/test_research_lifecycle.py",
       "to": "research/__init__.py",
       "kind": "package_init"
@@ -14916,6 +15505,36 @@
     {
       "from": "tests/test_research_lifecycle.py",
       "to": "research/lifecycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_manager_input_availability.py",
+      "to": "research/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_research_manager_input_availability.py",
+      "to": "research/experiment_manager.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_manager_input_availability.py",
+      "to": "research/hypothesis_registry.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_manager_input_availability.py",
+      "to": "research/knowledge_manager.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_manager_input_availability.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_research_manager_input_availability.py",
+      "to": "tests/test_research_hypothesis_registry.py",
       "kind": "import"
     },
     {
@@ -14951,6 +15570,66 @@
     {
       "from": "tests/test_research_multiple_testing.py",
       "to": "research/multiple_testing.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_preregistration_enforcement.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_preregistration_enforcement.py",
+      "to": "atlas_org/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_research_preregistration_enforcement.py",
+      "to": "atlas_org/memory_records.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_preregistration_enforcement.py",
+      "to": "research/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_research_preregistration_enforcement.py",
+      "to": "research/hypothesis_registry.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_preregistration_enforcement.py",
+      "to": "research/lifecycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_preregistration_enforcement.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_research_preregistration_enforcement.py",
+      "to": "tests/test_backtest_replay.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_preregistration_enforcement.py",
+      "to": "tests/test_research_hypothesis_registry.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_preregistration_enforcement.py",
+      "to": "tools/agent_cycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_preregistration_enforcement.py",
+      "to": "tools/atlas_org_cli.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_research_preregistration_enforcement.py",
+      "to": "tools/strategy_compare.py",
       "kind": "import"
     },
     {
@@ -15825,6 +16504,11 @@
     },
     {
       "from": "tools/agent_cycle.py",
+      "to": "tools/strategy_compare.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/agent_cycle.py",
       "to": "tools/trade_postmortem.py",
       "kind": "import"
     },
@@ -16359,6 +17043,46 @@
       "kind": "import"
     },
     {
+      "from": "tools/hypothesis_pipeline.py",
+      "to": "research/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/hypothesis_pipeline.py",
+      "to": "research/hypothesis_generation.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/hypothesis_pipeline.py",
+      "to": "research/hypothesis_registry.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/hypothesis_pipeline.py",
+      "to": "research/screening.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/hypothesis_pipeline.py",
+      "to": "research/strategy_evaluation.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/hypothesis_pipeline.py",
+      "to": "tools/backtest_replay.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/hypothesis_pipeline.py",
+      "to": "tools/measure_volatility_ceiling.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/hypothesis_pipeline.py",
+      "to": "tools/strategy_compare.py",
+      "kind": "import"
+    },
+    {
       "from": "tools/incident_report.py",
       "to": "atlas_org/__init__.py",
       "kind": "import"
@@ -16829,6 +17553,31 @@
       "kind": "import"
     },
     {
+      "from": "tools/regime_bar_check.py",
+      "to": "research/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/regime_bar_check.py",
+      "to": "research/hypothesis_registry.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/regime_bar_check.py",
+      "to": "tools/strategy_compare.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/regime_engine.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/regime_engine.py",
+      "to": "core/market_cycle.py",
+      "kind": "import"
+    },
+    {
       "from": "tools/regime_engine.py",
       "to": "tools/select_universe.py",
       "kind": "import"
@@ -17000,12 +17749,97 @@
     },
     {
       "from": "tools/strategy_compare.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/strategy_compare.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/strategy_compare.py",
+      "to": "research/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/strategy_compare.py",
+      "to": "research/hypothesis_generation.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/strategy_compare.py",
+      "to": "research/hypothesis_registry.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/strategy_compare.py",
+      "to": "research/lifecycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/strategy_compare.py",
+      "to": "research/registry_lock.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/strategy_compare.py",
+      "to": "research/screening.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/strategy_compare.py",
       "to": "tools/backtest_replay.py",
       "kind": "import"
     },
     {
       "from": "tools/strategy_compare.py",
       "to": "tools/measure_volatility_ceiling.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/strategy_compare.py",
+      "to": "tools/regime_engine.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/strategy_selection.py",
+      "to": "research/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/strategy_selection.py",
+      "to": "research/hypothesis_generation.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/strategy_selection.py",
+      "to": "research/hypothesis_registry.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/strategy_selection.py",
+      "to": "research/lifecycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/strategy_selection.py",
+      "to": "research/multiple_testing.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/strategy_selection.py",
+      "to": "research/registry_lock.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/strategy_selection.py",
+      "to": "research/strategy_evaluation.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/strategy_selection.py",
+      "to": "tools/strategy_compare.py",
       "kind": "import"
     },
     {

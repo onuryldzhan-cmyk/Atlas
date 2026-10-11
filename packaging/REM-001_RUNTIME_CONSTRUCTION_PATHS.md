@@ -20,10 +20,10 @@ Command: `python -m tools.build_rem001_gate1_maps construction --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `ab6eb0a4c45160e685f78dc902a8132bb8bf57cd` |
-| generated_from_tree | `06fa8e68c046fc48390220bdd5a92c4d6caf1899` |
+| generated_from_commit | `65b4950ef14d7b2dd37df825a4b8c47c7d4189c4` |
+| generated_from_tree | `fa3daf7582414a0066c7f5cc807db6a9608fcd1b` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['core/risk_engine.py', 'ore/position_sizing.py', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md'] |
+| modified_tracked_paths_at_generation | ['core/market_loop.py', 'ore/market_cycle.py', 'packaging/REM-001_IMPORT_GRAPH.json', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/REM-001_STATE_AUTHORITY_MAP.md', 'packaging/atlas_architecture_map.json', 'packaging/atlas_runtime_closure.json', 'tests/intelligence/__init__.py', 'tests/intelligence/test_task009_regime_tracking.py', 'tools/regime_engine.py'] |
 
 ## Analysis
 
@@ -57,12 +57,12 @@ below: it counted pattern hits, these count resolved call sites.
 | --- | --- |
 | entry_points | `main.py`, `web_app.py`, `atlas_service.py`, `atlas_supervisor.py` |
 | composition_root_canonical | `core/application.py` (ADR-0001) |
-| modules_in_runtime_closure | 140 |
-| classes_defined_in_closure | 439 |
-| construction_sites | 299 |
+| modules_in_runtime_closure | 141 |
+| classes_defined_in_closure | 446 |
+| construction_sites | 301 |
 | modules_constructing | 38 |
-| classes_constructed | 129 |
-| construction_edges | 101 |
+| classes_constructed | 131 |
+| construction_edges | 102 |
 | ambiguous_class_names | 5 |
 | parse_failures | 0 |
 
@@ -288,11 +288,13 @@ classes and their observed constructors:
 | `core/local_capability_adapter.py` | `ToolDescriptor` | `core/tool_gateway_contracts.py` | 128 | `LocalCapabilityProbeAdapter` |
 | `core/local_capability_adapter.py` | `ToolInvocationResult` | `core/tool_gateway_contracts.py` | 156 | `LocalCapabilityProbeAdapter::invoke` |
 | `core/local_capability_adapter.py` | `ToolInvocationResult` | `core/tool_gateway_contracts.py` | 175 | `LocalCapabilityProbeAdapter::invoke` |
-| `core/market_loop.py` | `CandleProcessor` | `core/candle_processor.py` | 243 | `MarketLoop::__init__` |
-| `core/market_loop.py` | `DecisionAdapter` | `core/decision_adapter.py` | 246 | `MarketLoop::__init__` |
-| `core/market_loop.py` | `SizingInputs` | `core/position_sizing.py` | 1953 | `MarketLoop::_apply_position_sizing` |
-| `core/market_loop.py` | `TechnicalAnalyzer` | `core/technical_analyzer.py` | 244 | `MarketLoop::__init__` |
-| `core/market_loop.py` | `WorldAnalysisEngine` | `analysis/world_analysis_engine.py` | 245 | `MarketLoop::__init__` |
+| `core/market_loop.py` | `CandleProcessor` | `core/candle_processor.py` | 272 | `MarketLoop::__init__` |
+| `core/market_loop.py` | `DecisionAdapter` | `core/decision_adapter.py` | 275 | `MarketLoop::__init__` |
+| `core/market_loop.py` | `MarketCycleTracker` | `core/market_cycle.py` | 258 | `MarketLoop::__init__` |
+| `core/market_loop.py` | `RegimeGateConfig` | `core/market_cycle.py` | 250 | `MarketLoop::__init__` |
+| `core/market_loop.py` | `SizingInputs` | `core/position_sizing.py` | 2198 | `MarketLoop::_apply_position_sizing` |
+| `core/market_loop.py` | `TechnicalAnalyzer` | `core/technical_analyzer.py` | 273 | `MarketLoop::__init__` |
+| `core/market_loop.py` | `WorldAnalysisEngine` | `analysis/world_analysis_engine.py` | 274 | `MarketLoop::__init__` |
 | `core/model_provider_contracts.py` | `OperationResult` | `core/operational_contracts.py` | 483 | `ModelInvocationResult::to_operation_result` |
 | `core/position_sizing.py` | `RiskBucket` | `core/risk_engine.py` | 169 | `PositionSizingService::propose` |
 | `core/tool_gateway_contracts.py` | `CapabilityClass` | `core/model_provider_contracts.py` | 120 | `ToolDescriptor::__post_init__` |

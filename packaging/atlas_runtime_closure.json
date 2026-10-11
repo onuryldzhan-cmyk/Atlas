@@ -98,6 +98,7 @@
     "core/lifecycle.py",
     "core/local_capability_adapter.py",
     "core/logger.py",
+    "core/market_cycle.py",
     "core/market_loop.py",
     "core/market_risk_regime.py",
     "core/model_provider_contracts.py",

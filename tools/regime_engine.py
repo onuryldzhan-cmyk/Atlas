@@ -13,85 +13,35 @@ Regimes (strategy-framework layer 2), decided in this order:
   TRANSITION    everything in between (no clear state: the honest answer)
 
 The efficiency ratio (Kaufman) is |net move| / sum(|bar moves|) over a window:
-1 = straight line, 0 = pure chop. Pure functions over OHLC rows; research only,
-nothing here reaches the runtime. The strategy router will read these regimes
-only after a proposal the owner approves.
+1 = straight line, 0 = pure chop. The classifier itself lives in core/market_cycle.py
+(Task 009, registry v5.93) and is shared with the runtime regime gate, which stays
+OFF until evidence measured on the runtime rule (v5.93 C-9), the policy manifest and an
+owner decision.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import math
-import sys
 from typing import Any
 
-WINDOW = 24            # bars for the efficiency ratio (24 x 1h = one day)
-EMA_SLOW = 50
-TREND_ER = 0.35
-SIDEWAYS_ER = 0.15
-VOL_WINDOW = 24
-VOL_HISTORY = 24 * 20  # percentiles over ~20 days of 1h bars
-PANIC_BARS = 6
-PANIC_DROP = 0.06
-
-
-def efficiency_ratio(closes: list[float], window: int = WINDOW) -> float | None:
-    if len(closes) <= window:
-        return None
-    seg = closes[-window - 1:]
-    path = sum(abs(b - a) for a, b in zip(seg, seg[1:]))
-    return 0.0 if path == 0 else abs(seg[-1] - seg[0]) / path
-
-
-def ema(values: list[float], span: int) -> list[float]:
-    k, out = 2 / (span + 1), []
-    for v in values:
-        out.append(v if not out else out[-1] + k * (v - out[-1]))
-    return out
-
-
-def rolling_vol(closes: list[float], window: int = VOL_WINDOW) -> list[float]:
-    rets = [b / a - 1 for a, b in zip(closes, closes[1:]) if a > 0]
-    return [_pstdev(rets[i - window:i]) for i in range(window, len(rets) + 1)]
-
-
-def _pstdev(xs: list[float]) -> float:
-    """Population stdev in floats (two-pass, fsum). statistics.pstdev computes with exact
-    Fractions and made one market_regime cycle take 329 s (2026-10-02); labels are unchanged
-    (tests/test_regime_engine.py compares both on random series)."""
-    n = len(xs)
-    m = math.fsum(xs) / n
-    return math.sqrt(math.fsum((x - m) ** 2 for x in xs) / n)
-
-
-def classify(closes: list[float]) -> dict[str, Any]:
-    need = max(WINDOW, EMA_SLOW, VOL_WINDOW) + 2
-    if len(closes) < need or any(c <= 0 for c in closes):
-        return {"regime": "UNKNOWN", "reason": f"needs >= {need} positive closes, got {len(closes)}"}
-    er = efficiency_ratio(closes)
-    vols = rolling_vol(closes)[-VOL_HISTORY:]
-    now_vol = vols[-1]
-    ranked = sorted(vols)
-    pct = sum(1 for v in ranked if v < now_vol) / len(ranked)  # strictly below: a flat history is not "high"
-    slow = ema(closes, EMA_SLOW)
-    slope = slow[-1] / slow[-6] - 1 if slow[-6] > 0 else 0.0
-    drop = closes[-1] / closes[-1 - PANIC_BARS] - 1
-    facts = {"efficiency_ratio": round(er, 3), "vol_percentile": round(pct, 2),
-             "ema_slope_5": round(slope, 4), f"move_{PANIC_BARS}_bars": round(drop, 4)}
-    if drop <= -PANIC_DROP and pct >= 0.9:
-        regime = "PANIC"
-    elif pct >= 0.8:
-        regime = "HIGH_VOL"
-    elif er >= TREND_ER and slope > 0:
-        regime = "TREND_UP"
-    elif er >= TREND_ER and slope < 0:
-        regime = "TREND_DOWN"
-    elif er <= SIDEWAYS_ER:
-        regime = "SIDEWAYS"
-    else:
-        regime = "TRANSITION"
-    return {"regime": regime, **facts}
+# Task 009 (registry v5.93): the classifier moved to core.market_cycle so replay, research and the
+# runtime regime gate share ONE function; the names below are re-exported unchanged.
+from core.market_cycle import (  # noqa: E402,F401
+    EMA_SLOW,
+    PANIC_BARS,
+    PANIC_DROP,
+    SIDEWAYS_ER,
+    TREND_ER,
+    VOL_HISTORY,
+    VOL_WINDOW,
+    WINDOW,
+    _pstdev,
+    classify,
+    efficiency_ratio,
+    ema,
+    rolling_vol,
+)
 
 
 def history(closes: list[float], step: int = 6) -> dict[str, int]:

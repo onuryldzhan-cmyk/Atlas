@@ -77,6 +77,7 @@ from core.candle_processor import (
     CandleProcessor,
 )
 from core.decision_adapter import DecisionAdapter
+from core.market_cycle import MarketCycleTracker, RegimeGateConfig, permission
 from core.execution_models import normalize_risk
 from core.position_sizing import PositionSizingService, SizingInputs, SizingStatus
 from core.technical_analyzer import TechnicalAnalyzer
@@ -211,6 +212,9 @@ class MarketLoop:
         sentiment_provider: Any | None = None,
         macro_provider: Any | None = None,
         market_risk_provider: Any | None = None,
+        regime_observation: bool = False,
+        regime_gate: RegimeGateConfig | None = None,
+        regime_feed: Any | None = None,
     ) -> None:
         self.brain = brain
         self.market_feed = market_feed
@@ -230,6 +234,31 @@ class MarketLoop:
         # fusion-input vote only and has no connection to RiskEngine.
         self.macro_provider = macro_provider
         self.market_risk_provider = market_risk_provider
+
+        # Task 009 (registry v5.93): closed 1H/4H/1D regime tracking (core.market_cycle). With
+        # regime_observation False and no enabled gate (the defaults) nothing is fetched, no
+        # metric or status key appears, and every decision is byte-identical. Observation only
+        # records the regime; the BUY gate (regime_gate.enabled, default OFF, switched on only
+        # after evidence measured on the runtime rule and an owner signature) can only turn a
+        # BUY into a skip or shrink its proposed size - never create, enlarge or touch a SELL.
+        # Review 17: regime bars come from a dedicated regime_feed, never market_feed, so a
+        # regime fetch failure can never count toward (or latch) the 1m feed's degradation.
+        if regime_gate is not None and not isinstance(regime_gate, RegimeGateConfig):
+            raise ValueError("regime_gate must be a RegimeGateConfig")
+        if not isinstance(regime_observation, bool):
+            raise ValueError("regime_observation must be a bool")
+        self.regime_gate = regime_gate if regime_gate is not None else RegimeGateConfig()
+        if (regime_observation or self.regime_gate.enabled) and (
+            regime_feed is None or regime_feed is market_feed
+        ):
+            raise ValueError("regime tracking needs its own regime_feed, separate from market_feed")
+        self.regime_feed = regime_feed
+        self._deferred_regime_observations: list[tuple[str, dict[str, Any], datetime]] | None = None
+        self.market_cycle = (
+            MarketCycleTracker(self._fetch_regime_bars, self.regime_gate)
+            if regime_observation or self.regime_gate.enabled
+            else None
+        )
 
         self.symbols = self._normalize_symbols(
             symbols or self.DEFAULT_SYMBOLS
@@ -540,13 +569,32 @@ class MarketLoop:
 
         processing_cutoff = self._processing_cutoff()
 
-        for symbol in tuple(self.symbols):
+        # Review 17 F2: observe-only regime fetches wait until every symbol of the cycle
+        # has been routed, so no symbol's execution waits on another symbol's regime I/O.
+        if self.market_cycle is not None and not self.regime_gate.enabled:
+            self._deferred_regime_observations = []
+
+        try:
+            for symbol in tuple(self.symbols):
+                if not self.running:
+                    break
+
+                self.process_symbol(
+                    symbol,
+                    processing_cutoff=processing_cutoff,
+                )
+        finally:
+            deferred = self._deferred_regime_observations or []
+            self._deferred_regime_observations = None
+
+        for symbol, decision, cutoff in deferred:
             if not self.running:
                 break
 
-            self.process_symbol(
+            self._observe_regime(
                 symbol,
-                processing_cutoff=processing_cutoff,
+                decision,
+                cutoff,
             )
 
     @staticmethod
@@ -657,6 +705,21 @@ class MarketLoop:
                 normalized_decision,
             )
 
+            # Review 16 L1 / review 17 F2: the gate needs the regime before the BUY checks;
+            # observation alone runs after routing (inside run_cycle, after every symbol of
+            # the cycle), so its network I/O never sits before a routing in the same cycle.
+            observe_late = (
+                self.market_cycle is not None
+                and not self.regime_gate.enabled
+            )
+
+            if self.market_cycle is not None and not observe_late:
+                self._observe_regime(
+                    symbol,
+                    normalized_decision,
+                    processing_cutoff,
+                )
+
             terminal = self._symbol_execution_gate(
                 symbol,
                 normalized_decision,
@@ -665,6 +728,13 @@ class MarketLoop:
             )
 
             if not isinstance(terminal, _Continue):
+                if observe_late:
+                    self._observe_regime_late(
+                        symbol,
+                        normalized_decision,
+                        processing_cutoff,
+                    )
+
                 return terminal
 
             market_state = self.world.build_market_state(
@@ -684,6 +754,13 @@ class MarketLoop:
             self._increment_metric(
                 "symbols_scanned"
             )
+
+            if observe_late:
+                self._observe_regime_late(
+                    symbol,
+                    normalized_decision,
+                    processing_cutoff,
+                )
 
             return result
 
@@ -1151,7 +1228,175 @@ class MarketLoop:
 
                 return result
 
+        if action == "BUY" and self.regime_gate.enabled:
+            vetoed = self._regime_gate_buy(
+                symbol,
+                normalized_decision,
+            )
+
+            if vetoed is not None:
+                return vetoed
+
         return _CONTINUE
+
+    # =========================================================
+    # MARKET REGIME (Task 009, registry v5.93)
+    # =========================================================
+
+    def _fetch_regime_bars(
+        self,
+        symbol: str,
+        interval: str,
+        limit: int,
+    ) -> Any:
+        """Closed higher-timeframe bars from the dedicated regime feed (core.market_cycle filters them)."""
+
+        candles_method = getattr(
+            self.regime_feed,
+            "candles",
+            None,
+        )
+
+        if not callable(
+            candles_method
+        ):
+            raise AttributeError(
+                "regime_feed does not provide candles()"
+            )
+
+        return candles_method(
+            symbol,
+            interval=interval,
+            limit=limit,
+        )
+
+    def _observe_regime_late(
+        self,
+        symbol: str,
+        normalized_decision: dict[str, Any],
+        processing_cutoff: datetime,
+    ) -> None:
+        """Observe-only: defer to the end of a running cycle, else observe now (direct callers)."""
+
+        deferred = self._deferred_regime_observations
+
+        if deferred is not None:
+            deferred.append(
+                (symbol, normalized_decision, processing_cutoff)
+            )
+            return
+
+        self._observe_regime(
+            symbol,
+            normalized_decision,
+            processing_cutoff,
+        )
+
+    def _observe_regime(
+        self,
+        symbol: str,
+        normalized_decision: dict[str, Any],
+        processing_cutoff: datetime,
+    ) -> None:
+        """Record this cycle's regime; never raises; observation alone never touches the decision."""
+
+        try:
+            snapshot = self.market_cycle.observe(
+                symbol,
+                int(processing_cutoff.timestamp() * 1000),
+            )
+        except Exception as exc:
+            self._record_error(
+                phase="market_regime",
+                error=exc,
+            )
+            snapshot = {
+                "regime": "UNKNOWN",
+                "anchor_reason": f"OBSERVER_ERROR:{type(exc).__name__}",
+            }
+
+        if self.regime_gate.enabled:
+            # Only the gate counts and annotates; observation alone leaves the decision and
+            # the metrics untouched (its state lives in market_cycle and status()).
+            self._increment_metric(
+                "regime_observations"
+            )
+
+            metadata = normalized_decision.setdefault(
+                "metadata",
+                {},
+            )
+
+            if isinstance(metadata, dict):
+                metadata["market_regime"] = snapshot.get(
+                    "regime",
+                    "UNKNOWN",
+                )
+
+    def _regime_gate_buy(
+        self,
+        symbol: str,
+        normalized_decision: dict[str, Any],
+    ) -> dict[str, Any] | None:
+        """BUY permissibility under the symbol's regime; a refusal is a SKIPPED result."""
+
+        snapshot = (
+            self.market_cycle.snapshot(symbol)
+            if self.market_cycle is not None
+            else None
+        ) or {"regime": "UNKNOWN"}
+
+        regime = str(snapshot.get("regime", "UNKNOWN"))
+
+        verdict = permission(
+            self.regime_gate.archetype,
+            regime,
+        )
+
+        if not verdict.allowed:
+            self._increment_metric(
+                "buy_regime_vetoed"
+            )
+
+            logger.info(
+                "%s BUY not routed: regime %s refuses %s (%s)",
+                symbol,
+                regime,
+                self.regime_gate.archetype,
+                verdict.reason,
+            )
+
+            result = {
+                "status": "SKIPPED",
+                "reason": verdict.reason,
+                "symbol": symbol,
+                "action": "BUY",
+                "market_regime": regime,
+                "strategy_archetype": self.regime_gate.archetype,
+                "timestamp": datetime.now(
+                    UTC
+                ).isoformat(),
+            }
+
+            with self.lock:
+                self.last_executions[
+                    symbol
+                ] = result
+
+            return result
+
+        metadata = normalized_decision.setdefault(
+            "metadata",
+            {},
+        )
+
+        if isinstance(metadata, dict):
+            metadata["regime_scale"] = format(
+                verdict.scale,
+                "f",
+            )
+
+        return None
 
     # =========================================================
     # CANDLE LOADING
@@ -2001,6 +2246,35 @@ class MarketLoop:
 
             return None
 
+        proposed_allocation = proposal.proposed_quote_allocation
+
+        if self.regime_gate.enabled:
+            # Task 009: a marginal regime only ever shrinks the proposal (scale in (0, 1]);
+            # the gate already refused every BUY whose regime scale is 0.
+            try:
+                scale = Decimal(str(metadata.get("regime_scale")))
+            except Exception:
+                scale = Decimal("0")
+
+            if not scale.is_finite() or scale <= 0 or scale > 1:
+                logger.warning(
+                    "%s BUY sizing refused: invalid regime scale %r",
+                    symbol,
+                    metadata.get("regime_scale"),
+                )
+
+                request = manager.build_request(decision)
+
+                return manager.reject(
+                    "REGIME_SCALE_INVALID",
+                    request,
+                    details={"regime_scale": str(metadata.get("regime_scale"))},
+                )
+
+            if scale < 1:
+                proposed_allocation = proposed_allocation * scale
+                metadata["regime_scaled_allocation"] = format(proposed_allocation, "f")
+
         # A prior admission for this exact request identity already reserved
         # a specific amount. If today's inputs price the same request
         # differently, that is stale or conflicting replay input, and it
@@ -2010,14 +2284,14 @@ class MarketLoop:
 
         if (
             existing_reservation is not None
-            and existing_reservation.amount != proposal.proposed_quote_allocation
+            and existing_reservation.amount != proposed_allocation
         ):
             logger.warning(
                 "%s sizing replay conflict request_id=%s reserved=%s proposed=%s",
                 symbol,
                 request_id,
                 format(existing_reservation.amount, "f"),
-                format(proposal.proposed_quote_allocation, "f"),
+                format(proposed_allocation, "f"),
             )
 
             request = manager.build_request(decision)
@@ -2028,7 +2302,7 @@ class MarketLoop:
                 details={
                     "reserved_amount": format(existing_reservation.amount, "f"),
                     "proposed_amount": format(
-                        proposal.proposed_quote_allocation, "f"
+                        proposed_allocation, "f"
                     ),
                 },
             )
@@ -2037,7 +2311,7 @@ class MarketLoop:
         # (Block 5C B1) so it reaches ``risk_check`` without crossing the
         # lossy ``amount`` float mirror. ``amount`` itself is deliberately
         # left untouched: it stays compatibility-only and non-authoritative.
-        decision["proposed_quote_allocation"] = proposal.proposed_quote_allocation
+        decision["proposed_quote_allocation"] = proposed_allocation
 
         return None
 
@@ -3160,7 +3434,7 @@ class MarketLoop:
                 and self.thread.is_alive()
             )
 
-            return {
+            payload = {
                 "name": self.NAME,
                 "version": self.VERSION,
                 "running": self.running,
@@ -3223,6 +3497,12 @@ class MarketLoop:
                     "decision_adapter": True,
                 },
             }
+
+        # Task 009: present only when regime tracking is on, so the default status is unchanged.
+        if self.market_cycle is not None:
+            payload["market_regime"] = self.market_cycle.status()
+
+        return payload
 
     # =========================================================
     # REPRESENTATION

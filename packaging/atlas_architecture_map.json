@@ -537,6 +537,7 @@
     "core/lifecycle.py": "L2",
     "core/local_capability_adapter.py": "L2",
     "core/logger.py": "L2",
+    "core/market_cycle.py": "L3",
     "core/market_loop.py": "L3",
     "core/market_risk_regime.py": "L3",
     "core/model_provider_contracts.py": "L1",
