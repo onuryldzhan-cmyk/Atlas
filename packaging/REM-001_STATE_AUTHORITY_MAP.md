@@ -19,10 +19,10 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `6f9aac78cb77236d83d28287101ed9b5fc602958` |
-| generated_from_tree | `9cc44bab313471d04d1b370f6fde12ca0b1a24a1` |
+| generated_from_commit | `cb70cb0fa5dd4b0344d5925d79b52e982836b903` |
+| generated_from_tree | `43810778aa9ca5f235663c24b9b4d1428dc31989` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['exchange/adapters/binance_global.py', 'exchange/exchange_manager.py', 'exchange/execution_exposure_guard.py', 'packaging/REM-001_IMPORT_GRAPH.json', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/REM-001_STATE_AUTHORITY_MAP.md', 'tests/core/test_task010_execution_engine.py', 'tlas_finance/market_data/market_feed_service.py'] |
+| modified_tracked_paths_at_generation | ['ackaging/REM-001_IMPORT_GRAPH.json', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/REM-001_STATE_AUTHORITY_MAP.md', 'research/scout/__init__.py', 'research/scout/acceptance_gate.py', 'research/scout/provenance.py', 'research/scout/strategic_scout.py', 'research/scout/trader_reputation.py', 'tests/research/test_task011_strategic_scout.py'] |
 
 ## What this artifact is, and what it is not
 

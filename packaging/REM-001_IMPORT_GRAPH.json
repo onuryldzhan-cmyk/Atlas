@@ -16,30 +16,31 @@
     "analysis": "Static AST import resolution over git-tracked Python files, excluding imports guarded by if TYPE_CHECKING:. Third-party and stdlib targets resolve to nothing and carry no edge."
   },
   "source_identity": {
-    "generated_from_commit": "6f9aac78cb77236d83d28287101ed9b5fc602958",
-    "generated_from_tree": "9cc44bab313471d04d1b370f6fde12ca0b1a24a1",
+    "generated_from_commit": "cb70cb0fa5dd4b0344d5925d79b52e982836b903",
+    "generated_from_tree": "43810778aa9ca5f235663c24b9b4d1428dc31989",
     "tracked_working_tree_clean": false,
     "modified_tracked_paths_at_generation": [
-      "exchange/adapters/binance_global.py",
-      "exchange/exchange_manager.py",
-      "exchange/execution_exposure_guard.py",
-      "packaging/REM-001_IMPORT_GRAPH.json",
+      "ackaging/REM-001_IMPORT_GRAPH.json",
       "packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md",
       "packaging/REM-001_STATE_AUTHORITY_MAP.md",
-      "tests/core/test_task010_execution_engine.py",
-      "tlas_finance/market_data/market_feed_service.py"
+      "research/scout/__init__.py",
+      "research/scout/acceptance_gate.py",
+      "research/scout/provenance.py",
+      "research/scout/strategic_scout.py",
+      "research/scout/trader_reputation.py",
+      "tests/research/test_task011_strategic_scout.py"
     ]
   },
   "scope": {
     "universe": "ALL_GIT_TRACKED_PYTHON_FILES",
     "universe_note": "The tool's existing tracked-file definition, used unchanged. No source-scope classification (ACTIVE_CANDIDATE / TEST / TOOL / ARCHIVE / BACKUP / QUARANTINE / REPORT_COPY) is applied or implied: that classification requires the human review gate ARCH-001.2.1 reserves and belongs to Gate 1 deliverable 1.",
-    "modules_total": 1148,
+    "modules_total": 1154,
     "modules_runtime_reachable": 141,
-    "modules_outside_runtime_closure": 1007,
-    "edges_total": 2684,
-    "edges_import": 1943,
-    "edges_package_init": 741,
-    "edges_distinct_module_pairs": 2596,
+    "modules_outside_runtime_closure": 1013,
+    "edges_total": 2714,
+    "edges_import": 1964,
+    "edges_package_init": 750,
+    "edges_distinct_module_pairs": 2625,
     "edges_count_note": "edges_total counts (from, to, kind) triples. A pair can carry both kinds when a file both imports a package directly and references one of its submodules, so edges_distinct_module_pairs is the figure to use when counting dependencies between modules.",
     "parse_failures": 3
   },
@@ -2854,6 +2855,26 @@
       "runtime_reachable": false
     },
     {
+      "module": "research/scout/__init__.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "research/scout/acceptance_gate.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "research/scout/provenance.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "research/scout/strategic_scout.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "research/scout/trader_reputation.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "research/screening.py",
       "runtime_reachable": false
     },
@@ -3267,6 +3288,10 @@
     },
     {
       "module": "tests/research/test_task006_strategy_selection.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/research/test_task011_strategic_scout.py",
       "runtime_reachable": false
     },
     {
@@ -8275,6 +8300,106 @@
       "kind": "import"
     },
     {
+      "from": "research/scout/__init__.py",
+      "to": "research/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "research/scout/__init__.py",
+      "to": "research/scout/acceptance_gate.py",
+      "kind": "import"
+    },
+    {
+      "from": "research/scout/__init__.py",
+      "to": "research/scout/provenance.py",
+      "kind": "import"
+    },
+    {
+      "from": "research/scout/__init__.py",
+      "to": "research/scout/strategic_scout.py",
+      "kind": "import"
+    },
+    {
+      "from": "research/scout/__init__.py",
+      "to": "research/scout/trader_reputation.py",
+      "kind": "import"
+    },
+    {
+      "from": "research/scout/acceptance_gate.py",
+      "to": "research/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "research/scout/acceptance_gate.py",
+      "to": "research/hypothesis_registry.py",
+      "kind": "import"
+    },
+    {
+      "from": "research/scout/acceptance_gate.py",
+      "to": "research/lifecycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "research/scout/acceptance_gate.py",
+      "to": "research/scout/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "research/scout/acceptance_gate.py",
+      "to": "research/scout/provenance.py",
+      "kind": "import"
+    },
+    {
+      "from": "research/scout/strategic_scout.py",
+      "to": "research/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "research/scout/strategic_scout.py",
+      "to": "research/hypothesis_registry.py",
+      "kind": "import"
+    },
+    {
+      "from": "research/scout/strategic_scout.py",
+      "to": "research/registry_lock.py",
+      "kind": "import"
+    },
+    {
+      "from": "research/scout/strategic_scout.py",
+      "to": "research/scout/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "research/scout/strategic_scout.py",
+      "to": "research/scout/acceptance_gate.py",
+      "kind": "import"
+    },
+    {
+      "from": "research/scout/strategic_scout.py",
+      "to": "research/scout/provenance.py",
+      "kind": "import"
+    },
+    {
+      "from": "research/scout/strategic_scout.py",
+      "to": "research/scout/trader_reputation.py",
+      "kind": "import"
+    },
+    {
+      "from": "research/scout/trader_reputation.py",
+      "to": "research/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "research/scout/trader_reputation.py",
+      "to": "research/scout/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "research/scout/trader_reputation.py",
+      "to": "research/scout/provenance.py",
+      "kind": "import"
+    },
+    {
       "from": "research/strategy_evaluation.py",
       "to": "research/__init__.py",
       "kind": "package_init"
@@ -9742,6 +9867,56 @@
     {
       "from": "tests/research/test_task006_strategy_selection.py",
       "to": "tools/strategy_selection.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/research/test_task011_strategic_scout.py",
+      "to": "research/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/research/test_task011_strategic_scout.py",
+      "to": "research/hypothesis_registry.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/research/test_task011_strategic_scout.py",
+      "to": "research/lifecycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/research/test_task011_strategic_scout.py",
+      "to": "research/scout/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/research/test_task011_strategic_scout.py",
+      "to": "research/scout/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/research/test_task011_strategic_scout.py",
+      "to": "research/scout/acceptance_gate.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/research/test_task011_strategic_scout.py",
+      "to": "research/scout/provenance.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/research/test_task011_strategic_scout.py",
+      "to": "research/scout/strategic_scout.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/research/test_task011_strategic_scout.py",
+      "to": "research/scout/trader_reputation.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/research/test_task011_strategic_scout.py",
+      "to": "research/splitting.py",
       "kind": "import"
     },
     {
