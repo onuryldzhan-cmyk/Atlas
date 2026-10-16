@@ -20,10 +20,10 @@ Command: `python -m tools.build_rem001_gate1_maps construction --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `cb70cb0fa5dd4b0344d5925d79b52e982836b903` |
-| generated_from_tree | `43810778aa9ca5f235663c24b9b4d1428dc31989` |
+| generated_from_commit | `c5586bb5b2d84445909579abdbbe2f0ada8c3607` |
+| generated_from_tree | `d93174d5f53bde4c5035e12de3063f9cef9539ff` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['ackaging/REM-001_IMPORT_GRAPH.json', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/REM-001_STATE_AUTHORITY_MAP.md', 'research/scout/__init__.py', 'research/scout/acceptance_gate.py', 'research/scout/provenance.py', 'research/scout/strategic_scout.py', 'research/scout/trader_reputation.py', 'tests/research/test_task011_strategic_scout.py'] |
+| modified_tracked_paths_at_generation | ['core/brain_decision_payload.schema.json', 'core/market_loop.py', 'ore/brain_decision_contract.py', 'packaging/REM-001_IMPORT_GRAPH.json', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/REM-001_STATE_AUTHORITY_MAP.md', 'packaging/atlas_architecture_map.json', 'packaging/atlas_runtime_closure.json', 'tests/core/test_task012_brain_decision_contract.py', 'tests/golden/process_symbol_golden.json', 'tests/test_process_symbol_golden.py'] |
 
 ## Analysis
 
@@ -57,8 +57,8 @@ below: it counted pattern hits, these count resolved call sites.
 | --- | --- |
 | entry_points | `main.py`, `web_app.py`, `atlas_service.py`, `atlas_supervisor.py` |
 | composition_root_canonical | `core/application.py` (ADR-0001) |
-| modules_in_runtime_closure | 141 |
-| classes_defined_in_closure | 446 |
+| modules_in_runtime_closure | 142 |
+| classes_defined_in_closure | 448 |
 | construction_sites | 301 |
 | modules_constructing | 38 |
 | classes_constructed | 131 |
@@ -288,13 +288,13 @@ classes and their observed constructors:
 | `core/local_capability_adapter.py` | `ToolDescriptor` | `core/tool_gateway_contracts.py` | 128 | `LocalCapabilityProbeAdapter` |
 | `core/local_capability_adapter.py` | `ToolInvocationResult` | `core/tool_gateway_contracts.py` | 156 | `LocalCapabilityProbeAdapter::invoke` |
 | `core/local_capability_adapter.py` | `ToolInvocationResult` | `core/tool_gateway_contracts.py` | 175 | `LocalCapabilityProbeAdapter::invoke` |
-| `core/market_loop.py` | `CandleProcessor` | `core/candle_processor.py` | 272 | `MarketLoop::__init__` |
-| `core/market_loop.py` | `DecisionAdapter` | `core/decision_adapter.py` | 275 | `MarketLoop::__init__` |
-| `core/market_loop.py` | `MarketCycleTracker` | `core/market_cycle.py` | 258 | `MarketLoop::__init__` |
-| `core/market_loop.py` | `RegimeGateConfig` | `core/market_cycle.py` | 250 | `MarketLoop::__init__` |
-| `core/market_loop.py` | `SizingInputs` | `core/position_sizing.py` | 2198 | `MarketLoop::_apply_position_sizing` |
-| `core/market_loop.py` | `TechnicalAnalyzer` | `core/technical_analyzer.py` | 273 | `MarketLoop::__init__` |
-| `core/market_loop.py` | `WorldAnalysisEngine` | `analysis/world_analysis_engine.py` | 274 | `MarketLoop::__init__` |
+| `core/market_loop.py` | `CandleProcessor` | `core/candle_processor.py` | 273 | `MarketLoop::__init__` |
+| `core/market_loop.py` | `DecisionAdapter` | `core/decision_adapter.py` | 276 | `MarketLoop::__init__` |
+| `core/market_loop.py` | `MarketCycleTracker` | `core/market_cycle.py` | 259 | `MarketLoop::__init__` |
+| `core/market_loop.py` | `RegimeGateConfig` | `core/market_cycle.py` | 251 | `MarketLoop::__init__` |
+| `core/market_loop.py` | `SizingInputs` | `core/position_sizing.py` | 2247 | `MarketLoop::_apply_position_sizing` |
+| `core/market_loop.py` | `TechnicalAnalyzer` | `core/technical_analyzer.py` | 274 | `MarketLoop::__init__` |
+| `core/market_loop.py` | `WorldAnalysisEngine` | `analysis/world_analysis_engine.py` | 275 | `MarketLoop::__init__` |
 | `core/model_provider_contracts.py` | `OperationResult` | `core/operational_contracts.py` | 483 | `ModelInvocationResult::to_operation_result` |
 | `core/position_sizing.py` | `RiskBucket` | `core/risk_engine.py` | 169 | `PositionSizingService::propose` |
 | `core/tool_gateway_contracts.py` | `CapabilityClass` | `core/model_provider_contracts.py` | 120 | `ToolDescriptor::__post_init__` |

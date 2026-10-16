@@ -75,6 +75,7 @@
     "core/audit_event.py",
     "core/audit_event_store.py",
     "core/brain.py",
+    "core/brain_decision_contract.py",
     "core/candle_processor.py",
     "core/capital_reservation.py",
     "core/controller/__init__.py",

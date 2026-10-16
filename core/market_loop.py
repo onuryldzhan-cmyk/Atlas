@@ -76,6 +76,7 @@ from core.candle_processor import (
     CandleContractError,
     CandleProcessor,
 )
+from core.brain_decision_contract import BrainDecisionPayload, ContractViolation
 from core.decision_adapter import DecisionAdapter
 from core.market_cycle import MarketCycleTracker, RegimeGateConfig, permission
 from core.execution_models import normalize_risk
@@ -1080,7 +1081,55 @@ class MarketLoop:
             "decisions_normalized"
         )
 
+        # Task 012 (registry v5.96): the typed Brain -> MarketLoop contract. A decision that
+        # breaks it is dropped fail-closed before any execution gate, like a failed
+        # normalization, so the candle is retried next cycle. A valid decision passes unchanged.
+        try:
+            BrainDecisionPayload.from_decision(
+                normalized_decision,
+                expected_symbol=symbol,
+                now=self._decision_contract_now(),
+            )
+        except ContractViolation as violation:
+            self._increment_metric(
+                "decisions_rejected"
+            )
+            self._increment_metric(
+                "decision_contract_rejected"
+            )
+
+            logger.warning(
+                "%s decision rejected by the Brain decision contract: %s",
+                symbol,
+                violation,
+            )
+
+            self.publish(
+                "DECISION_CONTRACT_REJECTED",
+                {
+                    "symbol": symbol,
+                    "reason": violation.code,
+                    "detail": str(violation),
+                    "decision": self._safe_payload(
+                        normalized_decision
+                    ),
+                    "timestamp": datetime.now(
+                        UTC
+                    ).isoformat(),
+                },
+            )
+
+            return None, None, None
+
         return normalized_decision, market_data, _CONTINUE
+
+    @staticmethod
+    def _decision_contract_now() -> datetime:
+        """The clock the decision contract's staleness rule reads (a seam for tests)."""
+
+        return datetime.now(
+            UTC
+        )
 
     def _symbol_execution_gate(
         self,

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "atlas:core/brain_decision_payload.schema.json",
+  "title": "BrainDecisionPayload",
+  "description": "Task 012 (registry v5.96): one normalized Brain decision as MarketLoop receives it. Documentation of core/brain_decision_contract.py, which is the only runtime validator. Not expressible here: symbol must equal the cycle's symbol, and created_at must be timezone-aware, at most 180 s before and at most 5 s after the check. The runtime parses created_at with Python's datetime.fromisoformat, which accepts more ISO 8601 forms than RFC 3339 date-time; the strategy pattern's ECMA \\S differs from Python's str.strip on a few characters (some control characters and U+FEFF). In draft 2020-12, format is an annotation unless a validator asserts it, so a standard validator may not check created_at's form at all.",
+  "type": "object",
+  "required": ["action", "symbol", "confidence", "strategy", "risk_level", "price", "created_at", "metadata"],
+  "properties": {
+    "action": {"type": "string", "enum": ["BUY", "SELL", "HOLD"]},
+    "symbol": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_./-]*$"},
+    "confidence": {"type": "number", "minimum": 0, "maximum": 100},
+    "strategy": {"type": "string", "pattern": "\\S"},
+    "risk_level": {"type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL", "UNKNOWN"]},
+    "price": {"type": "number", "exclusiveMinimum": 0},
+    "created_at": {"type": "string", "format": "date-time"},
+    "metadata": {"type": "object"}
+  },
+  "additionalProperties": true
+}

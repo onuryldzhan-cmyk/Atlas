@@ -953,25 +953,20 @@
  "invalid_action": {
   "errors": [],
   "memory": {
-   "agent_evidence": [
-    "BTCUSDT"
-   ],
+   "agent_evidence": [],
    "executions": {},
    "fetch_success": [
     "BTCUSDT"
    ],
-   "processed": {
-    "BTCUSDT": "open:1700011940000"
-   },
-   "signals": [
-    "BTCUSDT"
-   ]
+   "processed": {},
+   "signals": []
   },
   "metrics": {
    "backfill_gap_exceeded": 0,
    "buy_stale_data_skipped": 0,
-   "closed_candles_processed": 1,
+   "closed_candles_processed": 0,
    "cycles": 0,
+   "decision_contract_rejected": 1,
    "decisions_normalized": 1,
    "decisions_received": 1,
    "decisions_rejected": 1,
@@ -994,46 +989,45 @@
   "positions": {},
   "published": [
    [
-    "ATLAS_DECISION",
+    "DECISION_CONTRACT_REJECTED",
     {
-     "action": "TELEPORT",
-     "confidence": 90.0,
-     "created_at": "<v>",
-     "metadata": {
-      "adapter_name": "DecisionAdapter",
-      "adapter_version": "5.2",
-      "candle_identity": "open:1700011940000",
-      "closed_candle_only": true,
-      "market_loop_version": "8.2",
-      "normalized_action": "BUY",
-      "normalized_at": "<ts>",
-      "normalized_confidence": 90.0,
-      "raw_decision_type": "dict",
-      "source_fields": [
-       "action",
-       "confidence",
-       "market_state",
-       "price",
-       "reason",
-       "risk",
-       "strategy",
-       "symbol"
-      ]
+     "decision": {
+      "action": "TELEPORT",
+      "confidence": 90.0,
+      "created_at": "<v>",
+      "metadata": {
+       "adapter_name": "DecisionAdapter",
+       "adapter_version": "5.2",
+       "market_loop_version": "8.2",
+       "normalized_action": "BUY",
+       "normalized_at": "<ts>",
+       "normalized_confidence": 90.0,
+       "raw_decision_type": "dict",
+       "source_fields": [
+        "action",
+        "confidence",
+        "market_state",
+        "price",
+        "reason",
+        "risk",
+        "strategy",
+        "symbol"
+       ]
+      },
+      "price": 261.25,
+      "risk_level": "MEDIUM",
+      "strategy": "BLOCK5C_UPSTREAM_SIZING_AUTHORITY",
+      "symbol": "BTCUSDT"
      },
-     "price": 261.25,
-     "risk_level": "MEDIUM",
-     "strategy": "BLOCK5C_UPSTREAM_SIZING_AUTHORITY",
-     "symbol": "BTCUSDT"
+     "detail": "ACTION_INVALID: 'TELEPORT'",
+     "reason": "ACTION_INVALID",
+     "symbol": "BTCUSDT",
+     "timestamp": "<v>"
     }
    ]
   ],
   "results": [
-   {
-    "action": "TELEPORT",
-    "reason": "INVALID_NORMALIZED_ACTION",
-    "status": "REJECTED",
-    "symbol": "BTCUSDT"
-   }
+   null
   ]
  },
  "invalid_analysis": {

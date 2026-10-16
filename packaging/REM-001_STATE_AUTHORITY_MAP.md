@@ -19,10 +19,10 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `cb70cb0fa5dd4b0344d5925d79b52e982836b903` |
-| generated_from_tree | `43810778aa9ca5f235663c24b9b4d1428dc31989` |
+| generated_from_commit | `c5586bb5b2d84445909579abdbbe2f0ada8c3607` |
+| generated_from_tree | `d93174d5f53bde4c5035e12de3063f9cef9539ff` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['ackaging/REM-001_IMPORT_GRAPH.json', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/REM-001_STATE_AUTHORITY_MAP.md', 'research/scout/__init__.py', 'research/scout/acceptance_gate.py', 'research/scout/provenance.py', 'research/scout/strategic_scout.py', 'research/scout/trader_reputation.py', 'tests/research/test_task011_strategic_scout.py'] |
+| modified_tracked_paths_at_generation | ['core/brain_decision_payload.schema.json', 'core/market_loop.py', 'ore/brain_decision_contract.py', 'packaging/REM-001_IMPORT_GRAPH.json', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/REM-001_STATE_AUTHORITY_MAP.md', 'packaging/atlas_architecture_map.json', 'packaging/atlas_runtime_closure.json', 'tests/core/test_task012_brain_decision_contract.py', 'tests/golden/process_symbol_golden.json', 'tests/test_process_symbol_golden.py'] |
 
 ## What this artifact is, and what it is not
 
@@ -60,7 +60,7 @@ observation.
 | field | value |
 | --- | --- |
 | entry_points | `main.py`, `web_app.py`, `atlas_service.py`, `atlas_supervisor.py` |
-| modules_in_runtime_closure | 141 |
+| modules_in_runtime_closure | 142 |
 | declared_state_file_constants | 10 |
 | persistence_sites | 93 |
 | modules_with_persistence_sites | 38 |

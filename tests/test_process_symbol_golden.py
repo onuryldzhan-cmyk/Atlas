@@ -186,7 +186,13 @@ def test_golden_covers_every_process_symbol_return():
     results = [r for snap in expected.values() for r in snap["results"]]
     reasons = {r.get("reason") for r in results if isinstance(r, dict)}
     assert None in results  # "skip" results
+    # INVALID_NORMALIZED_ACTION left this set with Task 012 (registry v5.96, owner decision D-1 option a):
+    # the Brain decision contract now refuses an invalid action before the execution gate, so process_symbol
+    # can no longer return it. The gate's branch stays as defence in depth and is tested directly by
+    # tests/core/test_task012_brain_decision_contract.py::test_the_execution_gate_still_refuses_an_invalid_action_behind_the_contract.
     assert {"NO_CLOSED_CANDLES", "INSUFFICIENT_CLOSED_CANDLES", "CANDLE_IDENTITY_UNAVAILABLE",
-            "DUPLICATE_CLOSED_CANDLE", "NON_EXECUTION_ACTION", "INVALID_NORMALIZED_ACTION",
+            "DUPLICATE_CLOSED_CANDLE", "NON_EXECUTION_ACTION",
             "EXECUTION_MANAGER_UNAVAILABLE", "NO_POSITION_TO_SELL", "STALE_MARKET_DATA"} <= reasons, reasons
+    assert None in [r for r in expected["invalid_action"]["results"]]  # now refused at the contract
+    assert [event for event, _ in expected["invalid_action"]["published"]] == ["DECISION_CONTRACT_REJECTED"]
     assert any(isinstance(r, dict) and r.get("status") == "PAPER_EXECUTED" for r in results)

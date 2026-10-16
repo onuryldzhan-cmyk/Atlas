@@ -514,6 +514,7 @@
     "core/audit_event.py": "L1",
     "core/audit_event_store.py": "L2",
     "core/brain.py": "L3",
+    "core/brain_decision_contract.py": "L3",
     "core/candle_processor.py": "L3",
     "core/capital_reservation.py": "L1",
     "core/controller/__init__.py": "L3",
