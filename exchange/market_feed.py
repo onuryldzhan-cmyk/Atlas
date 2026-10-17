@@ -291,6 +291,30 @@ class MarketFeed:
 
         return self.service.health()
 
+    def status(
+        self,
+    ) -> dict[str, Any]:
+        """Task 013 (registry v5.97): the feed's lifecycle state and DEGRADED -> recovered transitions.
+
+        Read-only, built from health(); only counts, a state name and timestamps, never the
+        provider's error text. Nothing reads it to decide anything.
+        """
+
+        report = self.service.health()
+        details = report.details
+
+        return {
+            "available": True,
+            "status_supported": True,
+            "healthy": report.status.value == "HEALTHY",
+            "state": report.state.value,
+            "consecutive_failures": details.get("consecutive_failures"),
+            "degradations": details.get("degradations"),
+            "recoveries": details.get("recoveries"),
+            "last_degraded_at": details.get("last_degraded_at"),
+            "last_recovered_at": details.get("last_recovered_at"),
+        }
+
     @staticmethod
     def _to_legacy_candle_row(
         candle: MarketCandle,

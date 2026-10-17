@@ -5,6 +5,8 @@
   market loop incl. per-symbol market-data staleness, execution operational
   state, venue rules), /api/proposals, /api/tasks, /api/memory (governance
   log integrity) and /api/observability/* (test artifact, telemetry).
+  Task 013 (registry v5.97) adds the market feed's DEGRADED -> recovered
+  transitions and the Brain decision contract's rejection reason codes.
   A missing source is shown as UNKNOWN, never as healthy.
 #}
 <html lang="tr" data-bs-theme="dark" data-lte-color-mode="off">
@@ -53,6 +55,8 @@
     const ageSeconds = (iso) => { const t = Date.parse(iso || ''); return Number.isNaN(t) ? null : Math.max(0, (Date.now() - t) / 1000); };
     // Presentation thresholds only: the supervisor's own stale limit is 30 s.
     const CYCLE_STALE_S = 30;
+    // Same window as observability/readiness.py RECENT_CONTRACT_REJECTION_S.
+    const CONTRACT_RECENT_S = 300;
     const row = (name, state, detail) => `<div class="svc"><span><span class="dot ${state}"></span>${esc(name)}</span><span class="muted text-end">${esc(state)} · ${detail}</span></div>`;
 
     async function refresh() {
@@ -73,6 +77,25 @@
         const stale = Object.entries(ml.market_data_staleness || {}).filter(([, v]) => v && v.stale).map(([k]) => k);
         rows.push(!ml.market_data_staleness ? row('Piyasa verisi', 'UNKNOWN', 'bayatlık bilgisi yok')
             : row('Piyasa verisi', stale.length ? 'DEGRADED' : 'OK', stale.length ? `bayat: ${esc(stale.join(', '))}` : 'tüm coinler güncel'));
+        // Task 013 (registry v5.97): market-data provider DEGRADED -> recovered transitions.
+        const fd = st.market_feed || {};
+        rows.push(!fd.state ? row('Veri sağlayıcı', 'UNKNOWN', 'durum yok')
+            : row('Veri sağlayıcı', fd.state === 'RUNNING' ? 'OK' : (fd.state === 'DEGRADED' ? 'DEGRADED' : 'DOWN'),
+                `${esc(fd.state)} · bozulma ${esc(fd.degradations ?? '?')} · toparlanma ${esc(fd.recoveries ?? '?')}`
+                + (fd.last_degraded_at ? ` · son bozulma ${esc(fd.last_degraded_at)}` : '')
+                + (fd.last_recovered_at ? ` · son toparlanma ${esc(fd.last_recovered_at)}` : '')));
+        // Task 013: Brain decision contract rejections (reason codes and counts only).
+        const dc = ml.decision_contract;
+        if (!ml.name) {
+            rows.push(row('Karar sözleşmesi', 'UNKNOWN', 'durum yok'));
+        } else if (!dc) {
+            rows.push(row('Karar sözleşmesi', 'OK', 'reddedilen karar yok'));
+        } else {
+            const last = dc.last_rejection || {}, lastAge = ageSeconds(last.at);
+            const counts = Object.entries(dc.rejections_by_reason || {}).map(([k, v]) => `${esc(k)} ×${esc(v)}`).join(', ');
+            rows.push(row('Karar sözleşmesi', lastAge === null || lastAge <= CONTRACT_RECENT_S ? 'DEGRADED' : 'OK',
+                `reddedilen: ${counts || '?'} · son ${esc(last.reason || '?')} ${lastAge === null ? '?' : lastAge.toFixed(0) + ' sn önce'} · reddedilen karar hiç yönlendirilmez`));
+        }
         const ex = st.execution || {}, op = ex.operational_state || {};
         rows.push(!ex.name ? row('İşlem motoru', 'UNKNOWN', 'durum yok')
             : row('İşlem motoru', op.execution_halted || op.recovery_required ? 'DOWN' : 'OK',

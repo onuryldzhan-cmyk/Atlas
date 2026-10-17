@@ -19,10 +19,10 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `c5586bb5b2d84445909579abdbbe2f0ada8c3607` |
-| generated_from_tree | `d93174d5f53bde4c5035e12de3063f9cef9539ff` |
+| generated_from_commit | `e4a887e625cca279d77f012e52617640b5b0a728` |
+| generated_from_tree | `3ba9e8ab1c8592cb4d5d5672964dac82ed462cf5` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['core/brain_decision_payload.schema.json', 'core/market_loop.py', 'ore/brain_decision_contract.py', 'packaging/REM-001_IMPORT_GRAPH.json', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/REM-001_STATE_AUTHORITY_MAP.md', 'packaging/atlas_architecture_map.json', 'packaging/atlas_runtime_closure.json', 'tests/core/test_task012_brain_decision_contract.py', 'tests/golden/process_symbol_golden.json', 'tests/test_process_symbol_golden.py'] |
+| modified_tracked_paths_at_generation | ['core/market_loop.py', 'exchange/market_feed.py', 'observability/readiness.py', 'packaging/REM-001_IMPORT_GRAPH.json', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/REM-001_STATE_AUTHORITY_MAP.md', 'templates/system.html', 'tests/test_task013_reliability_signals.py', 'tlas_finance/market_data/market_feed_service.py', 'web_app.py'] |
 
 ## What this artifact is, and what it is not
 
@@ -150,9 +150,9 @@ nothing is inferred from an absence.
 | `atlas_finance/market_data/binance_public_provider.py` | ATOMIC_REPLACE | 1044 | `BinancePublicDataProvider::_normalize_symbol` |
 | `atlas_finance/market_data/binance_public_provider.py` | ATOMIC_REPLACE | 1044 | `BinancePublicDataProvider::_normalize_symbol` |
 | `atlas_finance/market_data/binance_public_provider.py` | ATOMIC_REPLACE | 1044 | `BinancePublicDataProvider::_normalize_symbol` |
-| `atlas_finance/market_data/market_feed_service.py` | ATOMIC_REPLACE | 1763 | `MarketFeedService::_normalize_symbol` |
-| `atlas_finance/market_data/market_feed_service.py` | ATOMIC_REPLACE | 1763 | `MarketFeedService::_normalize_symbol` |
-| `atlas_finance/market_data/market_feed_service.py` | ATOMIC_REPLACE | 1763 | `MarketFeedService::_normalize_symbol` |
+| `atlas_finance/market_data/market_feed_service.py` | ATOMIC_REPLACE | 1787 | `MarketFeedService::_normalize_symbol` |
+| `atlas_finance/market_data/market_feed_service.py` | ATOMIC_REPLACE | 1787 | `MarketFeedService::_normalize_symbol` |
+| `atlas_finance/market_data/market_feed_service.py` | ATOMIC_REPLACE | 1787 | `MarketFeedService::_normalize_symbol` |
 | `atlas_org/proposals.py` | ATOMIC_REPLACE | 118 | `normalise_repo_path` |
 | `atlas_org/security_review.py` | ATOMIC_REPLACE | 203 | `_requirements::parse` |
 | `atlas_org/security_review.py` | ATOMIC_REPLACE | 216 | `files_digest` |
@@ -229,8 +229,8 @@ nothing is inferred from an absence.
 | `observability/panel_sources.py` | ATOMIC_REPLACE | 377 | `_supersedes_name` |
 | `observability/portfolio_view.py` | ATOMIC_REPLACE | 41 | `_age_seconds` |
 | `observability/portfolio_view.py` | ATOMIC_REPLACE | 45 | `_age_seconds` |
-| `observability/readiness.py` | ATOMIC_REPLACE | 27 | `_age` |
-| `observability/readiness.py` | ATOMIC_REPLACE | 31 | `_age` |
+| `observability/readiness.py` | ATOMIC_REPLACE | 37 | `_age` |
+| `observability/readiness.py` | ATOMIC_REPLACE | 41 | `_age` |
 | `portfolio/capital_manager.py` | OPEN_WRITE_MODE | 797 | `CapitalManager::save_positions` |
 | `portfolio/capital_manager.py` | JSON_DUMP | 808 | `CapitalManager::save_positions` |
 

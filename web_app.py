@@ -652,6 +652,26 @@ _STATUS_MARKET_LOOP_SPEC = {
     ),
     "errors": _STATUS_ERRORS_SPEC,
     "dependencies": _status_mapping(_status_identifier, _status_bool),
+    # Task 013 (registry v5.97): Brain decision contract rejections - reason codes and counts only,
+    # never the rejected decision or its detail text.
+    "decision_contract": {
+        "rejections_by_reason": _status_mapping(_status_code, _status_number),
+        "last_rejection": {
+            "reason": _status_code,
+            "at": _status_timestamp,
+        },
+    },
+}
+
+# Task 013 (registry v5.97): the market feed's lifecycle state and DEGRADED -> recovered transitions.
+# Counts, a state code and timestamps only; the provider's error text is never published.
+_STATUS_MARKET_FEED_SPEC = {
+    "state": _status_code,
+    "consecutive_failures": _status_number,
+    "degradations": _status_number,
+    "recoveries": _status_number,
+    "last_degraded_at": _status_timestamp,
+    "last_recovered_at": _status_timestamp,
 }
 
 # Keys every AtlasApplication._safe_status fallback can produce in place of
@@ -692,7 +712,7 @@ _STATUS_RESPONSE_SPEC = {
     ),
     "brain": _status_service(_STATUS_BRAIN_SPEC),
     "execution": _status_service(_STATUS_EXECUTION_SPEC),
-    "market_feed": _status_service({}),
+    "market_feed": _status_service(_STATUS_MARKET_FEED_SPEC),
     "market_loop": _status_service(_STATUS_MARKET_LOOP_SPEC),
     "controller": _status_service(
         {

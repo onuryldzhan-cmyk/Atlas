@@ -9,7 +9,15 @@ only from the allowlisted /api/status payload:
   (the supervisor's own stale threshold);
 * no coin's market data flagged stale;
 * execution not halted and no recovery required;
-* venue rules FRESH.
+* venue rules FRESH;
+* no Brain decision rejected by the decision contract in the last
+  RECENT_CONTRACT_REJECTION_S seconds (Task 013, registry v5.97);
+* the market-data provider RUNNING (Task 013): DEGRADED or any other
+  reported state fails, and an unreadable state is UNKNOWN.
+
+The last two appear only when they fail or are UNKNOWN, like the other
+conditional checks, so a healthy status yields the same checks as before. A
+feed without status() support reports nothing here.
 
 Anything missing counts as NOT ready (unknown is never ready). Pure: no I/O.
 """
@@ -20,6 +28,8 @@ from datetime import UTC, datetime
 from typing import Any
 
 MAX_CYCLE_AGE_S = 30.0
+# Task 013: a contract rejection this recent means decisions are being dropped right now.
+RECENT_CONTRACT_REJECTION_S = 300.0
 
 
 def _age(stamp: Any, now: datetime) -> float | None:
@@ -88,6 +98,32 @@ def evaluate(status: dict[str, Any], now: datetime | None = None) -> dict[str, A
 
     rules = (execution.get("venue_rules") or {}).get("status")
     check("venue_rules", None if rules is None else rules == "FRESH", f"status {rules}")
+
+    contract = loop.get("decision_contract")
+    if isinstance(contract, dict):
+        # Task 013: reason codes and counts only (the /api/status allowlist publishes nothing else).
+        counts = contract.get("rejections_by_reason")
+        counts = counts if isinstance(counts, dict) else {}
+        summary = ", ".join(f"{code} x{count}" for code, count in sorted(counts.items(), key=lambda kv: str(kv[0])))
+        last = contract.get("last_rejection") if isinstance(contract.get("last_rejection"), dict) else {}
+        last_age = _age(last.get("at"), now) if last.get("at") else None
+        if last_age is None or last_age <= RECENT_CONTRACT_REJECTION_S:
+            check("decision_contract", None if last_age is None else False,
+                  f"Brain decisions rejected by the decision contract ({summary or 'no counts'}); latest {last.get('reason')} "
+                  f"{'at an unknown time' if last_age is None else f'{last_age:.0f} s ago'}: a rejected decision is never routed")
+
+    feed = status.get("market_feed")
+    if isinstance(feed, dict):
+        state = feed.get("state")
+        if state == "DEGRADED":
+            # Task 013 (Task 010's recovery): a DEGRADED feed keeps serving and recovers on its next success.
+            check("market_feed", False,
+                  f"market-data provider DEGRADED since {feed.get('last_degraded_at')}; {feed.get('degradations')} "
+                  f"degradation(s), {feed.get('recoveries')} recovery(ies) so far; it recovers on its next successful request")
+        elif isinstance(state, str) and state != "RUNNING":
+            check("market_feed", False, f"market-data provider {state}: not serving")
+        elif state is None and feed.get("status_supported") is not False:
+            check("market_feed", None, "market-data provider state unreadable")
 
     return {"ready": all(c["ok"] for c in checks), "checks": checks, "evaluated_at": now.isoformat(),
             "live_authority": "DENIED"}

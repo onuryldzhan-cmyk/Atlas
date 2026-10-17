@@ -441,6 +441,13 @@ class MarketFeedService(
 
         self._degradation_active = False
 
+        # Task 013 (registry v5.97): observation only - how often the provider degraded and
+        # recovered, and when. Read by health details; never read by any decision.
+        self._degradations = 0
+        self._recoveries = 0
+        self._last_degraded_at: datetime | None = None
+        self._last_recovered_at: datetime | None = None
+
         logger.info(
             "%s v%s initialized with provider %s.",
             self.SERVICE_NAME,
@@ -1009,6 +1016,19 @@ class MarketFeedService(
                     .isoformat()
                     if statistics
                     .last_failure_at
+                    else None
+                ),
+                # Task 013 (registry v5.97): DEGRADED -> recovered transitions.
+                "degradations": self._degradations,
+                "recoveries": self._recoveries,
+                "last_degraded_at": (
+                    self._last_degraded_at.isoformat()
+                    if self._last_degraded_at
+                    else None
+                ),
+                "last_recovered_at": (
+                    self._last_recovered_at.isoformat()
+                    if self._last_recovered_at
                     else None
                 ),
             }
@@ -1685,6 +1705,8 @@ class MarketFeedService(
                 return False
 
             self.recover()  # cannot raise: the state was checked under this same lock
+            self._recoveries += 1
+            self._last_recovered_at = utc_now()
 
             return True
 
@@ -1704,6 +1726,8 @@ class MarketFeedService(
             self.mark_degraded(  # cannot raise: the state was checked under this same lock
                 reason
             )
+            self._degradations += 1
+            self._last_degraded_at = utc_now()
 
             return True
 

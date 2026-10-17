@@ -374,6 +374,11 @@ class MarketLoop:
 
         self.errors: list[dict[str, Any]] = []
 
+        # Task 013 (registry v5.97): observation only - contract rejections per reason code and the
+        # latest one, for the readiness check and the /system page. Never read by the decision path.
+        self._contract_rejections: dict[str, int] = {}
+        self._last_contract_rejection: dict[str, str] | None = None
+
         logger.info(
             "Atlas Market Loop v%s initialized",
             self.VERSION,
@@ -1097,6 +1102,15 @@ class MarketLoop:
             self._increment_metric(
                 "decision_contract_rejected"
             )
+
+            with self.lock:
+                self._contract_rejections[violation.code] = (
+                    self._contract_rejections.get(violation.code, 0) + 1
+                )
+                self._last_contract_rejection = {
+                    "reason": violation.code,
+                    "at": datetime.now(UTC).isoformat(),
+                }
 
             logger.warning(
                 "%s decision rejected by the Brain decision contract: %s",
@@ -3550,6 +3564,14 @@ class MarketLoop:
         # Task 009: present only when regime tracking is on, so the default status is unchanged.
         if self.market_cycle is not None:
             payload["market_regime"] = self.market_cycle.status()
+
+        # Task 013: present only after a contract rejection, so the default status is unchanged.
+        with self.lock:
+            if self._contract_rejections:
+                payload["decision_contract"] = {
+                    "rejections_by_reason": dict(self._contract_rejections),
+                    "last_rejection": dict(self._last_contract_rejection or {}),
+                }
 
         return payload
 
