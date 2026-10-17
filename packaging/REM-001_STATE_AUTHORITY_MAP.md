@@ -19,10 +19,10 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `e4a887e625cca279d77f012e52617640b5b0a728` |
-| generated_from_tree | `3ba9e8ab1c8592cb4d5d5672964dac82ed462cf5` |
+| generated_from_commit | `4dc0971b4406a08f0b435be3986c4830ca3e9a79` |
+| generated_from_tree | `c7caedfe26c542a3e821507b23d2aaf43de2159f` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['core/market_loop.py', 'exchange/market_feed.py', 'observability/readiness.py', 'packaging/REM-001_IMPORT_GRAPH.json', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/REM-001_STATE_AUTHORITY_MAP.md', 'templates/system.html', 'tests/test_task013_reliability_signals.py', 'tlas_finance/market_data/market_feed_service.py', 'web_app.py'] |
+| modified_tracked_paths_at_generation | ['docs/operations/TASK014_PAPER_VERIFICATION_2026-10-17.md', 'ore/application.py', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'tests/test_task014_paper_locks.py'] |
 
 ## What this artifact is, and what it is not
 

@@ -564,7 +564,12 @@ class AtlasApplication:
         )
 
         self.exchange_name = str(exchange_name)
-        self.execution_mode = str(execution_mode).upper()
+        # Task 014 (registry v5.98): normalised exactly as ExecutionManager normalises it, and an unknown
+        # mode is refused instead of being reported here while the manager silently runs PAPER. LIVE stays
+        # constructible for tests; it has no authority (live_execution_enabled is never passed) and no adapter.
+        self.execution_mode = str(execution_mode).strip().upper()
+        if self.execution_mode not in ("PAPER", "LIVE"):
+            raise ValueError(f"execution_mode {execution_mode!r} is not PAPER or LIVE")
         # Registry v5.23: 0 by default (historical fee-free paper, kept for
         # every test and tool that builds the application); main.py passes
         # PAPER_FEE_RATE_PER_SIDE for the real runtime.

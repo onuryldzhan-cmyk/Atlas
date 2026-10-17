@@ -16,32 +16,27 @@
     "analysis": "Static AST import resolution over git-tracked Python files, excluding imports guarded by if TYPE_CHECKING:. Third-party and stdlib targets resolve to nothing and carry no edge."
   },
   "source_identity": {
-    "generated_from_commit": "e4a887e625cca279d77f012e52617640b5b0a728",
-    "generated_from_tree": "3ba9e8ab1c8592cb4d5d5672964dac82ed462cf5",
+    "generated_from_commit": "4dc0971b4406a08f0b435be3986c4830ca3e9a79",
+    "generated_from_tree": "c7caedfe26c542a3e821507b23d2aaf43de2159f",
     "tracked_working_tree_clean": false,
     "modified_tracked_paths_at_generation": [
-      "core/market_loop.py",
-      "exchange/market_feed.py",
-      "observability/readiness.py",
-      "packaging/REM-001_IMPORT_GRAPH.json",
+      "docs/operations/TASK014_PAPER_VERIFICATION_2026-10-17.md",
+      "ore/application.py",
       "packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md",
       "packaging/REM-001_STATE_AUTHORITY_MAP.md",
-      "templates/system.html",
-      "tests/test_task013_reliability_signals.py",
-      "tlas_finance/market_data/market_feed_service.py",
-      "web_app.py"
+      "tests/test_task014_paper_locks.py"
     ]
   },
   "scope": {
     "universe": "ALL_GIT_TRACKED_PYTHON_FILES",
     "universe_note": "The tool's existing tracked-file definition, used unchanged. No source-scope classification (ACTIVE_CANDIDATE / TEST / TOOL / ARCHIVE / BACKUP / QUARANTINE / REPORT_COPY) is applied or implied: that classification requires the human review gate ARCH-001.2.1 reserves and belongs to Gate 1 deliverable 1.",
-    "modules_total": 1157,
+    "modules_total": 1158,
     "modules_runtime_reachable": 142,
-    "modules_outside_runtime_closure": 1015,
-    "edges_total": 2731,
-    "edges_import": 1975,
-    "edges_package_init": 756,
-    "edges_distinct_module_pairs": 2641,
+    "modules_outside_runtime_closure": 1016,
+    "edges_total": 2735,
+    "edges_import": 1977,
+    "edges_package_init": 758,
+    "edges_distinct_module_pairs": 2645,
     "edges_count_note": "edges_total counts (from, to, kind) triples. A pair can carry both kinds when a file both imports a package directly and references one of its submodules, so edges_distinct_module_pairs is the figure to use when counting dependencies between modules.",
     "parse_failures": 3
   },
@@ -4301,6 +4296,10 @@
     },
     {
       "module": "tests/test_task013_reliability_signals.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_task014_paper_locks.py",
       "runtime_reachable": false
     },
     {
@@ -16565,6 +16564,26 @@
     {
       "from": "tests/test_task013_reliability_signals.py",
       "to": "web_app.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task014_paper_locks.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_task014_paper_locks.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task014_paper_locks.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_task014_paper_locks.py",
+      "to": "tests/test_block5c_upstream_sizing_authority.py",
       "kind": "import"
     },
     {
