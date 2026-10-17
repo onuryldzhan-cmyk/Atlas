@@ -20,10 +20,10 @@ Command: `python -m tools.build_rem001_gate1_maps construction --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `4dc0971b4406a08f0b435be3986c4830ca3e9a79` |
-| generated_from_tree | `c7caedfe26c542a3e821507b23d2aaf43de2159f` |
+| generated_from_commit | `2f5a958729ca04978290701e48026029be0e7ecd` |
+| generated_from_tree | `8eb4f393a83997b67079a491dc3dc8cd1d128594` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['docs/operations/TASK014_PAPER_VERIFICATION_2026-10-17.md', 'ore/application.py', 'tests/test_task014_paper_locks.py'] |
+| modified_tracked_paths_at_generation | ['checkpoints/20261017T151033Z_task-015-soak-day0.md', 'docs/operations/TASK015_SOAK_DAY0_PLAN_2026-10-17.md', 'tests/test_soak_report.py', 'tools/soak_report.py'] |
 
 ## Analysis
 

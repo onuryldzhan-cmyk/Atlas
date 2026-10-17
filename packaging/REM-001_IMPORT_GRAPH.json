@@ -16,27 +16,28 @@
     "analysis": "Static AST import resolution over git-tracked Python files, excluding imports guarded by if TYPE_CHECKING:. Third-party and stdlib targets resolve to nothing and carry no edge."
   },
   "source_identity": {
-    "generated_from_commit": "4dc0971b4406a08f0b435be3986c4830ca3e9a79",
-    "generated_from_tree": "c7caedfe26c542a3e821507b23d2aaf43de2159f",
+    "generated_from_commit": "2f5a958729ca04978290701e48026029be0e7ecd",
+    "generated_from_tree": "8eb4f393a83997b67079a491dc3dc8cd1d128594",
     "tracked_working_tree_clean": false,
     "modified_tracked_paths_at_generation": [
-      "docs/operations/TASK014_PAPER_VERIFICATION_2026-10-17.md",
-      "ore/application.py",
+      "checkpoints/20261017T151033Z_task-015-soak-day0.md",
+      "docs/operations/TASK015_SOAK_DAY0_PLAN_2026-10-17.md",
       "packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md",
       "packaging/REM-001_STATE_AUTHORITY_MAP.md",
-      "tests/test_task014_paper_locks.py"
+      "tests/test_soak_report.py",
+      "tools/soak_report.py"
     ]
   },
   "scope": {
     "universe": "ALL_GIT_TRACKED_PYTHON_FILES",
     "universe_note": "The tool's existing tracked-file definition, used unchanged. No source-scope classification (ACTIVE_CANDIDATE / TEST / TOOL / ARCHIVE / BACKUP / QUARANTINE / REPORT_COPY) is applied or implied: that classification requires the human review gate ARCH-001.2.1 reserves and belongs to Gate 1 deliverable 1.",
-    "modules_total": 1158,
+    "modules_total": 1160,
     "modules_runtime_reachable": 142,
-    "modules_outside_runtime_closure": 1016,
-    "edges_total": 2735,
-    "edges_import": 1977,
-    "edges_package_init": 758,
-    "edges_distinct_module_pairs": 2645,
+    "modules_outside_runtime_closure": 1018,
+    "edges_total": 2744,
+    "edges_import": 1984,
+    "edges_package_init": 760,
+    "edges_distinct_module_pairs": 2654,
     "edges_count_note": "edges_total counts (from, to, kind) triples. A pair can carry both kinds when a file both imports a package directly and references one of its submodules, so edges_distinct_module_pairs is the figure to use when counting dependencies between modules.",
     "parse_failures": 3
   },
@@ -4255,6 +4256,10 @@
       "runtime_reachable": false
     },
     {
+      "module": "tests/test_soak_report.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/test_start_atlas.py",
       "runtime_reachable": false
     },
@@ -4672,6 +4677,10 @@
     },
     {
       "module": "tools/show_config.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/soak_report.py",
       "runtime_reachable": false
     },
     {
@@ -16397,6 +16406,31 @@
       "kind": "import"
     },
     {
+      "from": "tests/test_soak_report.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_soak_report.py",
+      "to": "core/execution_manager.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_soak_report.py",
+      "to": "core/execution_models.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_soak_report.py",
+      "to": "core/execution_portfolio_foundation.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_soak_report.py",
+      "to": "tools/soak_report.py",
+      "kind": "import"
+    },
+    {
       "from": "tests/test_start_atlas.py",
       "to": "tests/__init__.py",
       "kind": "package_init"
@@ -18064,6 +18098,26 @@
     {
       "from": "tools/show_config.py",
       "to": "main.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/soak_report.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/soak_report.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/soak_report.py",
+      "to": "core/execution_manager.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/soak_report.py",
+      "to": "core/execution_portfolio_foundation.py",
       "kind": "import"
     },
     {
