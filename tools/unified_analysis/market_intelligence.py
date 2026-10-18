@@ -99,8 +99,8 @@ METRICS: dict[str, Callable[[TimeframeView], float | None]] = {
 @dataclass(frozen=True)
 class MarketSnapshot:
     symbol: str
-    cutoff_ms: int
-    as_of: datetime
+    cutoff_ms: int                              # bar boundary: only bars closed before it are used
+    as_of: datetime                             # decision time: no source may be observed after it
     views: Mapping[str, TimeframeView]
     sources: tuple[SourceRef, ...]
     problems: tuple[str, ...]
@@ -108,6 +108,7 @@ class MarketSnapshot:
     fear_greed: Mapping[str, Any] | None        # {"value", "observed_at"} when usable
     treasury: Mapping[str, Any] | None          # {"ten_year_change_bp", "curve_spread_bp", "observed_at"}
     source_name: str = ""
+    entry_from_ms: int = 0                      # the first bar boundary at or after the decision time (settlement)
 
     @property
     def usable(self) -> bool:
@@ -172,20 +173,33 @@ def _reading_field(reading: Any, name: str) -> Any:
 
 
 def build_snapshot(inputs: MarketInputs) -> MarketSnapshot:
-    """Pure: validate every input against the cutoff and attach provenance. Never raises on bad data."""
+    """Pure: validate every input against the cutoff and attach provenance. Never raises on bad data.
+
+    Two moments (review F3): the bar ``cutoff_ms`` (a primary-timeframe boundary) and the decision time, which is
+    the fetch time. A live run fetches inside the hour after its cutoff, so context read at fetch time (funding)
+    is legitimate for the decision but would be look-ahead against the bar boundary. Every context source is
+    therefore checked against the decision time, and settlement starts at the first boundary at or after it
+    (``entry_from_ms``), never at the earlier cutoff. A replay's decision time is its cutoff.
+    """
     cutoff_ms = inputs.cutoff_ms
-    as_of = _ms_to_dt(cutoff_ms)
+    step = INTERVAL_MS[PRIMARY_TIMEFRAME]
     problems: list[str] = []
     fetched_at = inputs.fetched_at if isinstance(inputs.fetched_at, datetime) and inputs.fetched_at.tzinfo else None
+    as_of = fetched_at if fetched_at is not None else _ms_to_dt(cutoff_ms)
+    decision_ms = int(as_of.timestamp() * 1000)
     if fetched_at is None:
         problems.append("FETCHED_AT_MISSING_OR_NAIVE")
-    elif as_of > fetched_at + FUTURE_TOLERANCE:
+    elif decision_ms < cutoff_ms - FUTURE_TOLERANCE.total_seconds() * 1000:
         problems.append("CUTOFF_AFTER_FETCH")  # the data cannot describe a moment after it was fetched
+    elif decision_ms - cutoff_ms >= step:
+        problems.append("FETCH_LONG_AFTER_CUTOFF")  # the decision would use bars older than the last closed one
+    entry_from_ms = cutoff_ms if decision_ms <= cutoff_ms else cutoff_ms + step
+    untrusted = fetched_at is None or "CUTOFF_AFTER_FETCH" in problems or "FETCH_LONG_AFTER_CUTOFF" in problems
     views: dict[str, TimeframeView] = {}
     sources: list[SourceRef] = []
     for tf in TIMEFRAMES:
         view = _view(tf, inputs.klines.get(tf), cutoff_ms)
-        if fetched_at is None or "CUTOFF_AFTER_FETCH" in problems:
+        if untrusted:
             view = TimeframeView(tf, False, "UNTRUSTED_FETCH_TIME")
         views[tf] = view
         if not view.usable:
@@ -250,7 +264,7 @@ def build_snapshot(inputs: MarketInputs) -> MarketSnapshot:
                 sources.append(SourceRef("macro:treasury", "us_treasury_par_yields", None, None, observed, fetched_at,
                                          f"10y change {change} bp, 10y-2y {spread} bp"))
     return MarketSnapshot(inputs.symbol, cutoff_ms, as_of, views, tuple(sources), tuple(problems), funding,
-                          fear_greed, treasury, inputs.source)
+                          fear_greed, treasury, inputs.source, entry_from_ms)
 
 
 # =============================================================================

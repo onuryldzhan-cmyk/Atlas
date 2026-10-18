@@ -16,12 +16,15 @@ Idempotency: one prediction per (symbol, cutoff, profile). Re-recording the iden
 report for the same id is refused (the first one stands, so a re-run cannot pick the better answer in hindsight).
 One outcome per prediction; a second is refused.
 
-Look-ahead and leakage: settlement reads only bars that open at or after the prediction's cutoff, needs the whole
-horizon to have closed (otherwise PENDING), and scores against the reference close known at the cutoff.
+Look-ahead and leakage: settlement reads only the bars of [entry_from, entry_from + horizon), where entry_from is
+the first bar boundary at or after the decision time; it needs the whole window to have closed (otherwise PENDING)
+and enters at that first bar's open. Calibration takes ``as_of_ms`` and uses only outcomes closed by then.
 
 Skill vs hindsight: calibration counts only settled, non-overlapping predictions per symbol (overlapping horizons
-are not independent), charges a round-trip cost before a direction counts as a hit, and calls a class MEASURED only
-when both the older and the newer half of its history clear MIN_SAMPLES/2 and a hit rate above 0.5 (walk-forward).
+are not independent), charges a round-trip cost before a direction counts as a hit (and counts a thesis that hit its
+own invalidation as a miss), and calls a class MEASURED only when both the older and the newer half of its history
+clear MIN_SAMPLES/2 and a hit rate above 0.5 (walk-forward). It is keyed on the scored class (the candidate for a
+capped or rejected result), so the cap cannot stop its own record from growing.
 """
 
 from __future__ import annotations
@@ -94,7 +97,10 @@ class ExperienceLedger:
     def _append(self, records: list[dict[str, Any]], payload: dict[str, Any]) -> dict[str, Any]:
         payload = {**payload, "prev_hash": records[-1]["hash"] if records else GENESIS}
         payload["hash"] = _hash(payload)
-        self._log.append([payload])
+        try:
+            self._log.append([payload])
+        except Exception as exc:  # serialization, I/O, a poisoned writer or a concurrent writer (review F8)
+            raise ExperienceLedgerError(f"experience ledger append failed: {type(exc).__name__}: {exc}") from exc
         return payload
 
     def predictions(self) -> dict[str, dict[str, Any]]:
@@ -115,10 +121,13 @@ class ExperienceLedger:
                     return r  # idempotent re-record
                 raise ExperienceConflict(f"{report.analysis_id} is already recorded with a different report")
         primary = next((s for s in body["scenarios"] if s["name"] == body["primary_scenario"]), None)
+        basis = body.get("confidence_basis") or {}
         return self._append(records, {
             "record_type": "PREDICTION", "analysis_id": report.analysis_id, "symbol": report.symbol,
-            "cutoff_ms": report.cutoff_ms, "horizon_ms": report.horizon_hours * 3_600_000,
+            "cutoff_ms": report.cutoff_ms, "entry_from_ms": report.entry_from_ms or report.cutoff_ms,
+            "horizon_ms": report.horizon_hours * 3_600_000,
             "classification": report.classification.value, "confidence": str(report.confidence),
+            "candidate": basis.get("candidate"), "candidate_confidence": basis.get("candidate_confidence"),
             "reference_close": report.reference_close,
             "invalidation": primary["invalidation"] if primary else [],
             "report_sha256": report_sha, "report": body})
@@ -131,12 +140,30 @@ class ExperienceLedger:
             raise ExperienceLedgerError(f"no prediction {analysis_id_}")
         if any(r["record_type"] == "OUTCOME" and r["analysis_id"] == analysis_id_ for r in records):
             raise ExperienceConflict(f"{analysis_id_} is already settled")
-        if outcome.get("first_bar_open_ms", -1) < prediction["cutoff_ms"]:
+        first, through = outcome.get("first_bar_open_ms"), outcome.get("through_ms")
+        if not all(isinstance(v, int) and not isinstance(v, bool) for v in (first, through)):
+            raise ExperienceLedgerError("outcome window fields must be integers")
+        start = _entry_from(prediction)
+        if first < start:
             raise ExperienceLedgerError("outcome uses a bar from before the cutoff")
-        if outcome.get("through_ms", -1) < prediction["cutoff_ms"] + prediction["horizon_ms"]:
+        if through < start + prediction["horizon_ms"]:
             raise ExperienceLedgerError("outcome does not cover the whole horizon")
         return self._append(records, {"record_type": "OUTCOME", "analysis_id": analysis_id_,
                                       "prediction_hash": prediction["hash"], **to_jsonable(dict(outcome))})
+
+
+def _entry_from(prediction: Mapping[str, Any]) -> int:
+    return int(prediction.get("entry_from_ms") or prediction["cutoff_ms"])
+
+
+def scored_class(prediction: Mapping[str, Any]) -> str | None:
+    """The class a prediction is scored and calibrated as: its classification when that is a claim, else the
+    candidate the evidence pointed to before the calibration cap, the threshold or the risk gate (so a capped or
+    rejected class keeps accumulating a record instead of freezing at its first misses)."""
+    cls = prediction["classification"]
+    if cls in {c.value for c in DIRECTIONAL} or cls == Classification.NEUTRAL_RANGE.value:
+        return cls
+    return prediction.get("candidate")
 
 
 @dataclass(frozen=True)
@@ -146,21 +173,28 @@ class Pending:
 
 def evaluate(prediction: Mapping[str, Any], rows: Any, *, now_ms: int,
              benchmark_rows: Any = None) -> dict[str, Any] | Pending:
-    """Score one prediction on the bars of its own horizon (only bars after the cutoff). Never reads earlier bars."""
-    cutoff, horizon = int(prediction["cutoff_ms"]), int(prediction["horizon_ms"])
-    end = cutoff + horizon
+    """Score one prediction on the bars of its own horizon only.
+
+    The window is [entry_from, entry_from + horizon): it starts at the first bar boundary at or after the decision
+    (never earlier, so context read during the cutoff hour cannot "predict" a move it already saw). The entry price
+    is that first bar's open; every bar outside the window is ignored."""
+    start, horizon = _entry_from(prediction), int(prediction["horizon_ms"])
+    end = start + horizon
     if now_ms < end:
         return Pending("HORIZON_NOT_ELAPSED")
-    ref = prediction.get("reference_close")
-    if not isinstance(ref, (int, float)) or not math.isfinite(ref) or ref <= 0:
-        return Pending("NO_REFERENCE_CLOSE")
     step = INTERVAL_MS[SETTLE_TIMEFRAME]
-    window = [r for r in (rows or []) if isinstance(r, (list, tuple)) and r and cutoff <= int(r[0]) < end]
+    window = [r for r in (rows or []) if isinstance(r, (list, tuple)) and r and start <= int(r[0]) < end]
     bars, reason = closed_bars(window, interval=SETTLE_TIMEFRAME, cutoff_ms=end)
-    if bars is None or bars[0].open_ms != cutoff or len(bars) != horizon // step:
+    if bars is None or bars[0].open_ms != start or len(bars) != horizon // step:
         return Pending(f"INCOMPLETE_WINDOW ({reason or 'missing bars'})")
+    try:
+        entry = float(next(r for r in window if int(r[0]) == start)[1])
+    except (TypeError, ValueError, IndexError):
+        return Pending("MALFORMED_ENTRY_BAR")
+    if not math.isfinite(entry) or entry <= 0:
+        return Pending("MALFORMED_ENTRY_BAR")
     closes = [b.close for b in bars]
-    ret = closes[-1] / ref - 1.0
+    ret = closes[-1] / entry - 1.0
     invalidated_at = None
     for b in bars:
         for cond in prediction.get("invalidation") or []:
@@ -169,26 +203,33 @@ def evaluate(prediction: Mapping[str, Any], rows: Any, *, now_ms: int,
                 break
         if invalidated_at is not None:
             break
-    cls = prediction["classification"]
+    cls = scored_class(prediction)
     sign = 1.0 if cls == Classification.BULLISH_SETUP.value else -1.0 if cls == Classification.BEARISH_SETUP.value else 0.0
     out: dict[str, Any] = {"first_bar_open_ms": bars[0].open_ms, "through_ms": bars[-1].close_ms + 1,
-                           "bars": len(bars), "return": round(ret, 8), "invalidated_at_ms": invalidated_at,
-                           "round_trip_cost": ROUND_TRIP_COST}
+                           "bars": len(bars), "entry_open": entry, "return": round(ret, 8),
+                           "invalidated_at_ms": invalidated_at, "round_trip_cost": ROUND_TRIP_COST, "scored_as": cls}
     if sign:
         signed = sign * ret
-        adverse = min(sign * (c / ref - 1.0) for c in closes)
-        hit = signed - ROUND_TRIP_COST > 0
+        adverse = min(sign * (c / entry - 1.0) for c in closes)
+        # a thesis that hit its own invalidation is wrong even if price came back (review F10)
+        hit = signed - ROUND_TRIP_COST > 0 and invalidated_at is None
+        bound = prediction.get("candidate_confidence") or prediction.get("confidence") or "0"
         out.update({"signed_return": round(signed, 8), "max_adverse_close": round(adverse, 8), "hit": hit,
-                    "brier": round((float(prediction["confidence"]) - (1.0 if hit else 0.0)) ** 2, 8)})
+                    # diagnostic only: the confidence is an evidence bound, not a probability
+                    "brier_on_bound": round((float(bound) - (1.0 if hit else 0.0)) ** 2, 8)})
     elif cls == Classification.NEUTRAL_RANGE.value:
         out["hit"] = invalidated_at is None
     else:
-        out["hit"] = None  # INSUFFICIENT_EVIDENCE / RISK_REJECTED: no claim to score; the move is kept for review
+        out["hit"] = None  # no claim and no candidate: nothing to score; the move is kept for review
     if benchmark_rows is not None:
-        bwin = [r for r in benchmark_rows if isinstance(r, (list, tuple)) and r and cutoff - step <= int(r[0]) < end]
+        bwin = [r for r in benchmark_rows if isinstance(r, (list, tuple)) and r and start <= int(r[0]) < end]
         bbars, _ = closed_bars(bwin, interval=SETTLE_TIMEFRAME, cutoff_ms=end)
-        if bbars and bbars[0].open_ms == cutoff - step and len(bbars) == horizon // step + 1:
-            bench = bbars[-1].close / bbars[0].close - 1.0
+        try:
+            bopen = float(next(r for r in bwin if int(r[0]) == start)[1])
+        except (StopIteration, TypeError, ValueError, IndexError):
+            bopen = None
+        if bbars and bopen and bopen > 0 and bbars[0].open_ms == start and len(bbars) == horizon // step:
+            bench = bbars[-1].close / bopen - 1.0
             out.update({"benchmark_return": round(bench, 8), "excess_return": round(ret - bench, 8)})
     return out
 
@@ -206,28 +247,35 @@ def _non_overlapping(rows: Iterable[tuple[dict, dict]]) -> list[tuple[dict, dict
     """Per symbol, keep a prediction only if its window starts after the previous kept one ended."""
     kept: list[tuple[dict, dict]] = []
     last_end: dict[str, int] = {}
-    for pred, out in sorted(rows, key=lambda x: (x[0]["symbol"], x[0]["cutoff_ms"])):
-        if pred["cutoff_ms"] >= last_end.get(pred["symbol"], -1):
+    for pred, out in sorted(rows, key=lambda x: (x[0]["symbol"], _entry_from(x[0]))):
+        if _entry_from(pred) >= last_end.get(pred["symbol"], -1):
             kept.append((pred, out))
-            last_end[pred["symbol"]] = pred["cutoff_ms"] + pred["horizon_ms"]
+            last_end[pred["symbol"]] = _entry_from(pred) + pred["horizon_ms"]
     return kept
 
 
-def _key(prediction: Mapping[str, Any]) -> str:
+def _key(prediction: Mapping[str, Any]) -> str | None:
+    cls = scored_class(prediction)
+    if cls is None:
+        return None
     roster = (prediction.get("report") or {}).get("confidence_basis", {}).get("roster") or "live"
-    return f"{roster}:{prediction['classification']}"
+    return f"{roster}:{cls}"
 
 
-def calibration(records: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
-    """Track record per "<roster>:<classification>" from settled predictions (the decision layer's confidence cap).
-    Live and historical (archive replay) analyses use different rosters and are never pooled."""
+def calibration(records: list[dict[str, Any]], *, as_of_ms: int | None = None) -> dict[str, dict[str, Any]]:
+    """Track record per "<roster>:<scored class>" from settled predictions (the decision layer's confidence cap).
+
+    ``as_of_ms`` (review F5): only outcomes whose whole window had closed by then count, so an analysis at a past
+    cutoff (replay, archive analysis) never sees an outcome from its own future. Live and historical rosters are
+    never pooled."""
     preds = {r["analysis_id"]: r for r in records if r["record_type"] == "PREDICTION"}
     pairs = [(preds[r["analysis_id"]], r) for r in records
-             if r["record_type"] == "OUTCOME" and r["analysis_id"] in preds and isinstance(r.get("hit"), bool)]
+             if r["record_type"] == "OUTCOME" and r["analysis_id"] in preds and isinstance(r.get("hit"), bool)
+             and (as_of_ms is None or int(r.get("through_ms", 0)) <= as_of_ms)]
     out: dict[str, dict[str, Any]] = {}
-    for key in {_key(p) for p, _ in pairs}:
+    for key in {k for k in (_key(p) for p, _ in pairs) if k is not None}:
         cls = key.split(":", 1)[1]
-        rows = sorted(_non_overlapping((p, o) for p, o in pairs if _key(p) == key), key=lambda x: x[0]["cutoff_ms"])
+        rows = sorted(_non_overlapping((p, o) for p, o in pairs if _key(p) == key), key=lambda x: _entry_from(x[0]))
         n = len(rows)
         hits = sum(1 for _, o in rows if o["hit"])
         half = n // 2
@@ -235,10 +283,10 @@ def calibration(records: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
         rate = (lambda xs: sum(1 for _, o in xs if o["hit"]) / len(xs) if xs else None)
         measured = (n >= MIN_SAMPLES and len(older) >= MIN_SAMPLES // 2 and len(newer) >= MIN_SAMPLES // 2
                     and (rate(older) or 0) > 0.5 and (rate(newer) or 0) > 0.5)
-        briers = [o["brier"] for _, o in rows if "brier" in o]
+        briers = [o["brier_on_bound"] for _, o in rows if "brier_on_bound" in o]
         out[key] = {"n": n, "hits": hits, "hit_rate": round(hits / n, 4) if n else None,
                     "wilson_lower": round(wilson_lower(hits, n), 4), "older_hit_rate": rate(older),
                     "newer_hit_rate": rate(newer), "measured": measured,
-                    "mean_brier": round(sum(briers) / len(briers), 4) if briers else None,
+                    "mean_brier_on_bound": round(sum(briers) / len(briers), 4) if briers else None,
                     "directional": cls in {c.value for c in DIRECTIONAL}}
     return out

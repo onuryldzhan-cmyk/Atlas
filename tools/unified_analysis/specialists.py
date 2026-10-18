@@ -21,6 +21,7 @@ without a cited deterministic finding is dropped.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any, Callable, Protocol
@@ -314,6 +315,27 @@ NARRATIVE_SYSTEM = (
     "atr_pct_14, swing_low_24, swing_high_24, quote_volume_24); strength 0..1; say NONE when you have no view.")
 
 
+NARRATIVE_KINDS = ("INTERPRETATION", "HYPOTHESIS")
+_NUMBER = re.compile(r"(?<![A-Za-z_])[-+]?\d+(?:[.,]\d+)*(?:\.\d+)?")
+
+
+def _numbers_backed(statement: str, claims: tuple[Claim, ...]) -> bool:
+    """Every number written in the statement must be one of its claims' values (as a value or as a percentage,
+    within the model tolerance). Indicator periods in names (RSI(14), EMA20, 24h, 1d) are not free numbers."""
+    from tools.unified_analysis.verification import MODEL_REL_TOL
+
+    text = re.sub(r"(?i)\b(rsi|ema|atr|sma)\s*\(?\s*\d+\s*\)?|\b\d+\s*(h|d|m|w|bar|bars)\b", " ", statement)
+    for raw in _NUMBER.findall(text):
+        try:
+            value = float(raw.replace(",", ""))
+        except ValueError:
+            return False
+        if not any(abs(value - v) <= max(1e-9, MODEL_REL_TOL * abs(v)) or abs(value - 100 * v) <= max(1e-9, MODEL_REL_TOL * abs(100 * v))
+                   for v in (c.value for c in claims)):
+            return False
+    return True
+
+
 def model_narrative(snapshot: MarketSnapshot, reports: tuple[SpecialistReport, ...],
                     ask: Callable[[str, str, dict[str, Any]], Any]) -> SpecialistReport:
     """One model call. Abstains on any model failure; malformed items are dropped, never repaired."""
@@ -324,26 +346,37 @@ def model_narrative(snapshot: MarketSnapshot, reports: tuple[SpecialistReport, .
                 "claims": [{"metric": c.metric, "timeframe": c.timeframe, "value": c.value} for c in f.claims]}
                for f in findings]
     prompt = f"Symbol {snapshot.symbol}, analysis time {snapshot.as_of.isoformat()}.\nFindings:\n" + json.dumps(payload)
-    result = ask(NARRATIVE_SYSTEM, prompt, NARRATIVE_SCHEMA)
-    cost = getattr(result, "cost_usd", Decimal("0")) or Decimal("0")
-    if getattr(result, "status", None) != "OK" or not isinstance(getattr(result, "data", None), dict):
+    from tools.unified_analysis.review import _cost, _safe_ask
+
+    result = _safe_ask(ask, NARRATIVE_SYSTEM, prompt, NARRATIVE_SCHEMA)
+    cost = _cost(result)
+    data = getattr(result, "data", None)
+    if getattr(result, "status", None) != "OK" or not isinstance(data, dict) or not isinstance(data.get("findings"), list):
         return SpecialistReport(NARRATIVE_AGENT, AgentStatus.ABSTAIN, reason=f"MODEL_{getattr(result, 'reason', 'ABSTAIN')}",
                                 inference_calls=1, cost_usd=cost)
     known = {f.finding_id: f for f in findings}
     out: list[Finding] = []
     dropped = 0
-    for i, item in enumerate((result.data.get("findings") or [])[:4]):
+    for i, item in enumerate(data["findings"][:4]):
         try:
+            if not isinstance(item["cites"], list) or not isinstance(item["claims"], list) \
+                    or item["kind"] not in NARRATIVE_KINDS:
+                dropped += 1
+                continue
             cites = tuple(str(c) for c in item["cites"] if str(c) in known)
             if not cites:
                 dropped += 1
                 continue
             claims = tuple(Claim(str(c["metric"]), str(c["timeframe"]), float(c["value"])) for c in item["claims"])
-            out.append(Finding(f"narrative:{i}", NARRATIVE_AGENT, FindingKind(item["kind"]), str(item["statement"])[:400],
+            statement = str(item["statement"])[:400]
+            if not _numbers_backed(statement, claims):
+                dropped += 1   # a number in free text that no recomputed claim backs (review F1)
+                continue
+            out.append(Finding(f"narrative:{i}", NARRATIVE_AGENT, FindingKind(item["kind"]), statement,
                                Stance(item["stance"]), min(MODEL_STRENGTH_CAP, max(0.0, float(item["strength"]))),
                                tuple(sorted({e for c in cites for e in known[c].evidence})), claims,
                                known[cites[0]].independence_group, model_generated=True))
-        except (KeyError, TypeError, ValueError):
+        except (KeyError, TypeError, ValueError, AttributeError):
             dropped += 1
     if not out:
         return SpecialistReport(NARRATIVE_AGENT, AgentStatus.ABSTAIN, reason=f"MODEL_NO_USABLE_FINDING (dropped {dropped})",

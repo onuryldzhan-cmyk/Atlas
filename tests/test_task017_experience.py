@@ -80,8 +80,9 @@ def test_a_different_report_for_the_same_id_is_refused(ledger, bull_report):
 def test_pipeline_records_through_the_ledger(ledger):
     report = run_analysis(inputs(0.002), ledger=ledger)
     assert report.analysis_id in ledger.predictions()
+    # review F7: a data outage is not an analysis and is not recorded, so a healthy re-run is not refused
     unusable = run_analysis(inputs(k={"1h": None, "4h": None, "1d": None}, symbol="ETHUSDT"), ledger=ledger)
-    assert ledger.predictions()[unusable.analysis_id]["classification"] == "INSUFFICIENT_EVIDENCE"
+    assert unusable.analysis_id not in ledger.predictions() and unusable.metrics["recorded"] is False
 
 
 def test_tampered_ledger_halts(ledger, bull_report):
@@ -159,7 +160,7 @@ def test_a_direction_inside_costs_is_not_a_hit_and_invalidation_is_tracked(ledge
     assert out["hit"] is False and out["invalidated_at_ms"] is not None
     first_below = next(r for r in crash if r[4] < threshold)
     assert out["invalidated_at_ms"] == first_below[6]
-    assert out["brier"] == pytest.approx(float(pred["confidence"]) ** 2)
+    assert out["brier_on_bound"] == pytest.approx(float(pred["confidence"]) ** 2)
 
 
 def test_benchmark_excess_return(ledger, bull_report):
@@ -196,7 +197,8 @@ def _fake_records(n, hit_fn, horizon_h=24, every_h=24, cls="BULLISH_SETUP", rost
         recs.append({"record_type": "PREDICTION", "analysis_id": aid, "symbol": "BTCUSDT",
                      "cutoff_ms": i * every_h * H, "horizon_ms": horizon_h * H, "classification": cls,
                      "report": {"confidence_basis": {"roster": roster}}})
-        recs.append({"record_type": "OUTCOME", "analysis_id": aid, "hit": hit_fn(i), "brier": 0.2})
+        recs.append({"record_type": "OUTCOME", "analysis_id": aid, "hit": hit_fn(i), "brier_on_bound": 0.2,
+                     "through_ms": (i * every_h + horizon_h) * H})
     return recs
 
 

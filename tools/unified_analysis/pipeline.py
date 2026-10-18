@@ -1,7 +1,8 @@
 """End-to-end orchestration of one analysis. Never raises on bad data or a failing agent; every branch is recorded.
 
 Branches that save work:
-  * unusable primary data   -> INSUFFICIENT_EVIDENCE at once: no specialist, no model call
+  * unusable primary data   -> INSUFFICIENT_EVIDENCE at once: no specialist, no model call, and not recorded in
+                               the experience ledger (an outage is not an analysis)
   * no directional thesis   -> the model court does not sit (nothing to try)
   * inference budget        -> ``max_inference_calls`` bounds every model call of the run (narrative + court);
                                the gateway's own window, duplicate and runaway limits apply on top
@@ -83,9 +84,10 @@ def run_analysis(inputs: MarketInputs, *, ask: Ask | None = None, specialists=DE
             (), (), empty_review, verification, RiskAssessment(("DATA_UNUSABLE",), ()), snapshot.sources,
             reference_close, UNAVAILABLE_CAPABILITIES,
             {"inference_calls": 0, "cost_usd": "0", "timings": timings, "data_problems": list(snapshot.problems),
-             "source": snapshot.source_name, "profile": profile})
-        if ledger is not None:
-            ledger.record_prediction(report)
+             "source": snapshot.source_name, "profile": profile, "recorded": False},
+            snapshot.entry_from_ms)
+        # Not recorded (review F7): a data outage is not an analysis, and recording it would make a healthy
+        # re-run of the same cutoff a refused duplicate.
         return report
 
     reports = tuple(_run_specialist(s, snapshot) for s in specialists)
@@ -101,7 +103,8 @@ def run_analysis(inputs: MarketInputs, *, ask: Ask | None = None, specialists=DE
         "finding:narrative"))
     scenarios, primary, contradictory = build_scenarios(snapshot, accepted)
     t = lap("verification_intake_and_scenarios_ms", t)
-    calibrated = any(bool(v.get("measured")) for k, v in (calibration or {}).items() if k.startswith(f"{roster}:"))
+    target = {"BULL": "BULLISH_SETUP", "BEAR": "BEARISH_SETUP", "NEUTRAL": "NEUTRAL_RANGE"}[primary]
+    calibrated = bool(((calibration or {}).get(f"{roster}:{target}") or {}).get("measured"))
     reviewed = review(snapshot, accepted, scenarios, primary, reports, calibrated=calibrated,
                       dropped_model_findings=dropped, ask=ask, jurors=jurors, max_calls=budget - calls)
     calls += reviewed.inference_calls
@@ -119,7 +122,7 @@ def run_analysis(inputs: MarketInputs, *, ask: Ask | None = None, specialists=DE
         reference_close, UNAVAILABLE_CAPABILITIES,
         {"inference_calls": calls, "inference_budget": budget, "cost_usd": str(cost), "timings": timings,
          "data_problems": list(snapshot.problems), "source": snapshot.source_name, "profile": profile,
-         "accepted_findings": len(accepted)})
+         "accepted_findings": len(accepted), "recorded": ledger is not None}, snapshot.entry_from_ms)
     if ledger is not None:
         ledger.record_prediction(report)
     return report

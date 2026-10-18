@@ -5,8 +5,11 @@
   3. fusion over the EXPECTED roster   core.decision_intelligence.SignalFusion: a missing or failed specialist counts
                                        fully against every direction (NB-5 denominator, NB-4 monotone)
   4. scenario / fusion agreement       they must point the same way, else INSUFFICIENT_EVIDENCE
-  5. confidence                        fusion bound - review penalties, capped by the measured track record (or by
-                                       UNCALIBRATED_CAP without one); below the threshold -> INSUFFICIENT_EVIDENCE
+  5. confidence                        fusion bound - review penalties (counter-evidence exempt: fusion counts it),
+                                       capped by the candidate class's track record (Wilson lower bound when
+                                       MEASURED, else the hit rate shrunk toward UNCALIBRATED_CAP, never above it);
+                                       below the threshold -> INSUFFICIENT_EVIDENCE. A NEUTRAL_RANGE needs the
+                                       monotone neutral bound >= the threshold and reports no confidence
   6. risk gate (last, no override)     restrictive regime, thin liquidity, extreme volatility or a BLOCKING
                                        objection -> RISK_REJECTED, however many agents agree
 
@@ -42,7 +45,8 @@ DECISION_THRESHOLD = D("0.20")
 MINIMUM_SOURCES = 2
 MAJOR_PENALTY = D("0.10")
 UNCALIBRATED_CAP = D("0.50")
-NEUTRAL_SCALE = D("0.50")
+CAP_PRIOR_N = D("10")             # pseudo-samples at UNCALIBRATED_CAP in the shrunk cap (uncalibrated)
+PENALTY_EXEMPT = frozenset({"COUNTER_EVIDENCE"})
 MIN_QUOTE_VOLUME_24 = 5_000_000.0   # quote units (USDT) traded in 24h; below it the book is too thin to read
 MAX_ATR_PCT = 0.03                   # 1h ATR above 3 % of price: volatility swamps any thesis
 SOURCE_VERSION = "task017-unified-analysis-v1"
@@ -90,13 +94,51 @@ def assess_risk(snapshot: MarketSnapshot, reports: tuple[SpecialistReport, ...],
     return RiskAssessment(tuple(dict.fromkeys(rejections)), tuple(dict.fromkeys(warnings)))
 
 
+def neutral_bound(reports: tuple[SpecialistReport, ...], roster: str = "live") -> Decimal:
+    """Worst-case agreement on "no directional edge", over the expected roster (the NB-4/NB-5 rule of SignalFusion
+    applied to the range view): a NEUTRAL source counts +strength, a directional one -strength, a source with no
+    view 0, a missing or failed one -1 (fully against). Removing any source never raises it."""
+    weights = ROSTERS[roster]
+    total = sum(weights.values(), D("0"))
+    present = {r.agent: r for r in reports if r.status is AgentStatus.OK and r.agent in weights}
+    net = D("0")
+    for agent, weight in weights.items():
+        r = present.get(agent)
+        if r is None:
+            net -= weight
+        elif r.stance is Stance.NEUTRAL:
+            net += D(str(r.strength)) * weight
+        elif r.stance in (Stance.BULLISH, Stance.BEARISH):
+            net -= D(str(r.strength)) * weight
+    return (net / total).quantize(D("0.000001"))
+
+
+def calibration_cap(track: Mapping[str, Any]) -> tuple[Decimal, dict[str, Any]]:
+    """The confidence cap from the candidate class's settled record (review F4: a poor record must lower it).
+
+    MEASURED: the Wilson 95 % lower bound. Otherwise the hit rate shrunk toward UNCALIBRATED_CAP with a prior of
+    CAP_PRIOR_N pseudo-samples, never above UNCALIBRATED_CAP: no record = 0.50, a losing record lowers it smoothly,
+    and one early miss cannot freeze the class at zero."""
+    n, hits = int(track.get("n") or 0), int(track.get("hits") or 0)
+    if track.get("measured"):
+        cap = D(str(track["wilson_lower"])).quantize(D("0.000001"))
+        return cap, {"status": "MEASURED", "n": n, "hit_rate": track.get("hit_rate"), "wilson_lower": str(cap)}
+    shrunk = (D(hits) + UNCALIBRATED_CAP * CAP_PRIOR_N) / (D(n) + CAP_PRIOR_N)
+    cap = min(UNCALIBRATED_CAP, shrunk).quantize(D("0.000001"))
+    return cap, {"status": "UNCALIBRATED", "n": n, "hits": hits, "cap": str(cap)}
+
+
 def decide(snapshot: MarketSnapshot, reports: tuple[SpecialistReport, ...], scenarios: tuple[Scenario, ...],
            primary: str, review: ReviewResult, verification: VerificationResult,
            calibration: Mapping[str, Mapping[str, Any]] | None = None, roster: str = "live"
            ) -> tuple[Classification, Decimal, dict[str, Any], RiskAssessment, tuple[str, ...]]:
-    """``calibration`` is keyed "<roster>:<classification>" (experience.calibration)."""
+    """``calibration`` is keyed "<roster>:<candidate class>" (experience.calibration).
+
+    The reported confidence is non-zero only for a directional result. Every other result reports 0 and keeps the
+    value it would have had in ``basis["candidate_confidence"]``, so no path from a directional result to a
+    non-directional one (or between non-directional ones) can raise the reported figure (review F2, NB-4)."""
     risk = assess_risk(snapshot, reports, review)
-    basis: dict[str, Any] = {"calibrated_probability": False, "roster": roster}
+    basis: dict[str, Any] = {"calibrated_probability": False, "roster": roster, "candidate": None}
     if not snapshot.usable:
         return Classification.INSUFFICIENT_EVIDENCE, D("0"), basis, risk, ("DATA_UNUSABLE",)
     if not verification.passed:
@@ -109,12 +151,11 @@ def decide(snapshot: MarketSnapshot, reports: tuple[SpecialistReport, ...], scen
                   "expected_sources": list(fusion.expected_sources), "fusion_reasons": list(fusion.reason_codes)})
     chosen = next(s for s in scenarios if s.name == primary)
     if chosen.stance is Stance.NEUTRAL:
-        target = Classification.NEUTRAL_RANGE
-        if chosen.support_score <= 0 or (fusion.action is Action.ABSTAIN
-                                         and "INSUFFICIENT_VALID_EVIDENCE" in fusion.reason_codes):
+        bound = neutral_bound(reports, roster)
+        basis["neutral_bound"] = str(bound)
+        if fusion.action is not Action.ABSTAIN or chosen.support_score <= 0 or bound < DECISION_THRESHOLD:
             return Classification.INSUFFICIENT_EVIDENCE, D("0"), basis, risk, ("NO_CLEAR_EDGE",)
-        # A range view's confidence is an availability bound only: it never rises when evidence is removed (NB-4).
-        raw = (fusion.coverage * NEUTRAL_SCALE).quantize(D("0.000001"))
+        target, raw = Classification.NEUTRAL_RANGE, bound
     else:
         target = Classification.BULLISH_SETUP if chosen.stance is Stance.BULLISH else Classification.BEARISH_SETUP
         expected = Action.BUY if chosen.stance is Stance.BULLISH else Action.SELL
@@ -124,22 +165,20 @@ def decide(snapshot: MarketSnapshot, reports: tuple[SpecialistReport, ...], scen
         if fusion.action is not expected:
             return Classification.INSUFFICIENT_EVIDENCE, D("0"), basis, risk, ("FUSION_SCENARIO_DISAGREE",)
         raw = fusion.confidence
-    majors = sum(1 for o in review.objections if o.severity is Severity.MAJOR)
+    # COUNTER_EVIDENCE is already inside the fusion bound; penalising it again would let the removal of an
+    # opposing source lift confidence by more than the fusion loses (NB-4).
+    majors = sum(1 for o in review.objections if o.severity is Severity.MAJOR and o.category not in PENALTY_EXEMPT)
     penalised = max(D("0"), raw - MAJOR_PENALTY * majors)
-    track = (calibration or {}).get(f"{roster}:{target.value}") or {}
-    if track.get("measured"):
-        cap = D(str(track["wilson_lower"])).quantize(D("0.000001"))
-        basis["calibration"] = {"status": "MEASURED", **{k: track[k] for k in ("n", "hit_rate", "wilson_lower") if k in track}}
-    else:
-        cap = UNCALIBRATED_CAP
-        basis["calibration"] = {"status": "UNCALIBRATED", "n": track.get("n", 0), "cap": str(UNCALIBRATED_CAP)}
-    confidence = min(penalised, cap)
-    basis.update({"raw": str(raw), "major_objections": majors, "penalty": str(MAJOR_PENALTY * majors),
-                  "cap": str(cap)})
+    cap, basis["calibration"] = calibration_cap((calibration or {}).get(f"{roster}:{target.value}") or {})
+    candidate_confidence = min(penalised, cap)
+    basis.update({"candidate": target.value, "candidate_confidence": str(candidate_confidence), "raw": str(raw),
+                  "major_objections": majors, "penalty": str(MAJOR_PENALTY * majors), "cap": str(cap)})
     reasons: tuple[str, ...] = tuple(fusion.reason_codes)
     if not risk.approved:
         # the last gate, with no override path: agreement among agents cannot lift a risk rejection
         return Classification.RISK_REJECTED, D("0"), basis, risk, ("RISK_REJECTED",) + risk.rejections
-    if target in (Classification.BULLISH_SETUP, Classification.BEARISH_SETUP) and confidence < DECISION_THRESHOLD:
-        return Classification.INSUFFICIENT_EVIDENCE, confidence, basis, risk, ("REVIEW_OBJECTIONS_OUTWEIGH",) + reasons
-    return target, confidence, basis, risk, reasons
+    if target is Classification.NEUTRAL_RANGE:
+        return target, D("0"), basis, risk, reasons + ("RANGE_VIEW_CARRIES_NO_CONFIDENCE",)
+    if candidate_confidence < DECISION_THRESHOLD:
+        return Classification.INSUFFICIENT_EVIDENCE, D("0"), basis, risk, ("REVIEW_OBJECTIONS_OUTWEIGH",) + reasons
+    return target, candidate_confidence, basis, risk, reasons

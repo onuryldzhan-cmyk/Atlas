@@ -32,7 +32,12 @@ python -m tools.unified_analysis calibration
 | 5 review | `review.py` | Deterministic prosecutor, plus an optional model court (prosecutor and three lens jurors). | No directional thesis means the court does not sit. |
 | 6 report verification | `verification.py` | No look-ahead, freshness, scenario references, contradiction, invalidation. | Contradiction means `INSUFFICIENT_EVIDENCE`. |
 | 7 decision and risk | `decision.py` | `SignalFusion` over the expected roster (NB-4/NB-5), then review penalties, then the calibration cap, then the risk gate. | The risk gate runs last and has no override. |
-| 8 experience | `experience.py` | A PREDICTION record goes in first. After the horizon, an OUTCOME record is added that references the prediction's hash. | Before the horizon has closed, the record stays PENDING. |
+| 8 experience | `experience.py` | A PREDICTION record goes in first. After the horizon, an OUTCOME record is added that references the prediction's hash. | Before the horizon has closed, the record stays PENDING. A data outage is not recorded. |
+
+**Two moments.** The bar cutoff is the last 1h boundary; the decision time is the fetch time (live: within the
+hour after the cutoff; replay: the cutoff itself). Bars must close before the cutoff, and every context source must
+be observed at or before the decision time. Settlement starts at `entry_from_ms`, the first bar boundary at or after
+the decision time, at that bar's open. The decision hour itself is never scored.
 
 ## 3. Layer contracts
 
@@ -56,7 +61,7 @@ count as a *missing* source in fusion (NB-5), never as agreement.
 | derivatives | funding | crowded long or short, as weak contrarian context | 0.5 |
 | sentiment | Fear & Greed | extremes only, weak contrarian, market-wide | 0.5 |
 | macro | US treasury | a 10-year move of 25 bp or more, weak | 0.5 |
-| narrative (optional model) | verified findings | at most 4 interpretations or hypotheses. It must cite findings, may never state a fact, and its strength is capped at 0.3 | outside the roster |
+| narrative (optional model) | verified findings | at most 4 interpretations or hypotheses. It must cite findings, may never state a fact or write a number no recomputed claim backs, and its strength is capped at 0.3. Its findings are **recorded, never scored**: they enter neither the scenarios nor the review's group count | outside the roster |
 | news, on-chain | none | declared `NO_PROVIDER`; reported as gaps, never simulated | n/a |
 
 **Rosters.** The `live` roster is all six deterministic specialists. Atlas holds no point-in-time history of funding,
@@ -64,16 +69,26 @@ sentiment or macro data, and using today's value for a past cutoff would be look
 uses the declared `hist` roster: technical, regime and liquidity. The roster is recorded in every report's
 `confidence_basis`, and calibration keys are `<roster>:<classification>`, so the two rosters are never pooled.
 
-**Confidence.** Confidence is computed in four steps; each one only ever lowers it:
+**Confidence.** Only a directional result reports a confidence. Every other result reports 0 and keeps the value
+it would have had in `confidence_basis.candidate_confidence`, so no change of class can raise the reported figure
+(NB-4, tested by removing every subset of specialists from nine different bases). For a directional result:
 
 1. **Fusion bound.** Confidence starts as the `SignalFusion` worst-case agreement bound: each missing source counts
    fully against.
-2. **Review penalty.** Then 0.10 is subtracted for each MAJOR objection.
-3. **Calibration cap.** Next, the confidence is capped. The cap is the Wilson 95 % lower bound of the measured hit
-   rate, or 0.50 while the class is UNCALIBRATED.
+2. **Review penalty.** Then 0.10 is subtracted for each MAJOR objection. COUNTER_EVIDENCE is exempt, because the
+   fusion bound already counts it; penalising it twice would let the removal of an opposing source raise confidence.
+3. **Calibration cap.** Next, the confidence is capped from the candidate class's settled record:
+   - MEASURED: the Wilson 95 % lower bound of the hit rate;
+   - otherwise: the hit rate shrunk toward 0.50 with 10 pseudo-samples, never above 0.50 (no record = 0.50; a
+     losing record lowers it smoothly).
+   Calibration is keyed on the *candidate* (the class the evidence pointed to before the cap, the threshold and the
+   risk gate), so a capped class keeps accumulating a record instead of freezing at its first misses.
 4. **Threshold.** Finally, a directional result below 0.20 becomes `INSUFFICIENT_EVIDENCE`.
 
-It is never a probability: `calibrated_probability` stays false.
+A `NEUTRAL_RANGE` needs a NEUTRAL primary scenario, a fusion that abstains on both directions, and a monotone
+neutral bound of at least 0.20. In that bound a neutral source counts +strength, a directional one -strength and a
+missing one -1, so moderate two-sided evidence is `INSUFFICIENT_EVIDENCE`, not a range. Confidence is never a
+probability: `calibrated_probability` stays false.
 
 **Risk gate.** Any of the following rejects the result, whatever the fusion and the jury said:
 
@@ -152,14 +167,15 @@ The model calls' usage ledger is `<state>/research/ai_usage.json`, shared with t
 |---|---|
 | Binance or archive unavailable | Timeframe `FETCH_FAILED` with its reason. If the 1h timeframe is affected: `INSUFFICIENT_EVIDENCE`, no model call. |
 | Gap, duplicate, stale bar, NaN or inconsistent OHLC | That timeframe is UNUSABLE with its reason; nothing is interpolated. |
-| Context provider down, malformed, stale or after the cutoff | Its specialist ABSTAINs; it is a missing source in fusion and a MINOR objection. |
+| Context provider down, malformed, stale or observed after the decision time | Its specialist ABSTAINs; it is a missing source in fusion and a MINOR objection. |
+| Fetch more than an hour after the bar cutoff | All timeframes untrusted: `INSUFFICIENT_EVIDENCE`. |
 | Specialist raises or returns garbage | FAILED; missing source; recorded as a non-blocking check. |
 | Specialist states a wrong number | Blocking verification failure; `INSUFFICIENT_EVIDENCE`. |
-| Model unavailable, refusing, over budget or malformed | Narrative ABSTAIN, court ABSTAINED; the deterministic result stands. |
-| Model invents a number, a fact or a citation | The finding or charge is dropped and recorded; the result cannot move. |
+| Model unavailable, refusing, over budget, malformed, wrongly typed, or the call raises | Narrative ABSTAIN, court ABSTAINED; the deterministic result stands. |
+| Model invents a number, a fact or a citation | The finding or charge is dropped and recorded. Narrative findings are never scored, so the classification and confidence cannot move; only cited court charges can lower confidence. |
 | Strong bull and strong bear evidence | `INSUFFICIENT_EVIDENCE` (contradiction). |
-| Ledger edited, reordered or torn | HALT (exit 3); nothing is appended. |
-| Re-run of a recorded analysis | Identical: no-op. Different: refused (exit 4); the first one stands. |
+| Ledger edited, reordered or torn, or an append fails | HALT (exit 3); nothing is appended. |
+| Re-run of a recorded analysis | Identical: no-op. Different: refused (exit 4); the first one stands, and the re-run's report is still saved as `<id>.rerun-<ms>.json`. |
 
 ## 9. Cost and latency
 
@@ -179,7 +195,12 @@ The model calls' usage ledger is `<state>/research/ai_usage.json`, shared with t
   No predictive skill is claimed. Calibration needs at least 30 settled, non-overlapping predictions per class, with
   both walk-forward halves above a 0.5 hit rate.
 - **Cost model.** The round-trip cost charged before a direction counts is 0.3 % (0.1 % fee and 5 bps slippage per
-  side). That is Atlas's estimate, not a measured figure.
+  side). That is Atlas's estimate, not a measured figure. A directional prediction that hits its own invalidation
+  during the horizon is a miss even if price comes back.
+- **Calibration hindsight.** Calibration only uses outcomes whose window had closed by the decision time
+  (`as_of_ms`). Replays settle up to each cutoff before calibrating on it.
+- **NB-4 and the model court.** NB-4 holds for the deterministic path. A cited model charge only ever lowers
+  confidence, but a model reading a smaller record may cite less: model output is not a fixed input.
 - **Missing data.** News and on-chain data are absent. Funding, sentiment and macro data have no history, so archive
   replays use the reduced `hist` roster.
 - **Court independence.** Model jurors are not statistically independent. The court's usefulness has not been

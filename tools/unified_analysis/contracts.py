@@ -230,6 +230,7 @@ class AnalysisReport:
     reference_close: float | None
     unavailable_capabilities: tuple[str, ...]
     metrics: dict[str, Any]
+    entry_from_ms: int = 0               # settlement starts at this bar boundary (at or after the decision time)
     note: str = "Advisory analysis only. Not a trading instruction; no order, size or gate follows from it."
 
     def to_dict(self) -> dict[str, Any]:

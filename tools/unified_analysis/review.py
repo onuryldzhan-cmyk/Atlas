@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import json
 from decimal import Decimal
+from types import SimpleNamespace
 from typing import Any, Callable
 
 from core.market_cycle import RESTRICTIVE_REGIMES
@@ -150,11 +151,26 @@ def _case_file(snapshot: MarketSnapshot, accepted: tuple[Finding, ...], chosen: 
         "opposing_findings": [{"id": i, "kind": by_id[i].kind.value, "statement": by_id[i].statement}
                               for i in chosen.opposing],
         "other_findings": [{"id": f.finding_id, "statement": f.statement} for f in accepted
-                           if f.finding_id not in chosen.supporting and f.finding_id not in chosen.opposing],
+                           if f.finding_id not in chosen.supporting and f.finding_id not in chosen.opposing
+                           and not f.model_generated],   # the case file holds the record, not a model's opinion
         "objections_already_raised": [o.statement for o in objections],
         "not_analysed": list(UNAVAILABLE_CAPABILITIES),
     }
     return json.dumps(case, ensure_ascii=False, indent=1)
+
+
+def _safe_ask(ask: Callable[[str, str, dict[str, Any]], Any], system: str, prompt: str, schema: dict[str, Any]) -> Any:
+    """A model call that cannot raise into the pipeline (review F6): any exception is an ABSTAIN."""
+    try:
+        return ask(system, prompt, schema)
+    except Exception as exc:
+        return SimpleNamespace(status="ABSTAIN", data=None, reason=f"ASK_RAISED ({type(exc).__name__})",
+                               cost_usd=Decimal("0"))
+
+
+def _cost(result: Any) -> Decimal:
+    value = getattr(result, "cost_usd", None)
+    return value if isinstance(value, Decimal) and value.is_finite() and value >= 0 else Decimal("0")
 
 
 def model_court(snapshot: MarketSnapshot, accepted: tuple[Finding, ...], scenarios: tuple[Scenario, ...], primary: str,
@@ -169,21 +185,26 @@ def model_court(snapshot: MarketSnapshot, accepted: tuple[Finding, ...], scenari
     known = {f.finding_id for f in accepted}
     case = _case_file(snapshot, accepted, chosen, objections)
     calls, cost = 1, Decimal("0")
-    pros = ask(f"You are the PROSECUTOR. Build the strongest honest case that the thesis is wrong. {COURT_RULES} "
-               "Give at most 5 charges; each cites the finding ids it rests on.", case, PROSECUTOR_SCHEMA)
-    cost += getattr(pros, "cost_usd", Decimal("0")) or Decimal("0")
-    if getattr(pros, "status", None) != "OK" or not isinstance(getattr(pros, "data", None), dict):
+    pros = _safe_ask(ask, f"You are the PROSECUTOR. Build the strongest honest case that the thesis is wrong. "
+                          f"{COURT_RULES} Give at most 5 charges; each cites the finding ids it rests on.",
+                     case, PROSECUTOR_SCHEMA)
+    cost += _cost(pros)
+    data = getattr(pros, "data", None)
+    if getattr(pros, "status", None) != "OK" or not isinstance(data, dict) \
+            or not isinstance(data.get("charges"), list) or not isinstance(data.get("unresolved_questions", []), list):
         return ReviewResult((), (f"model court abstained: {getattr(pros, 'reason', 'ABSTAIN')}",), "ABSTAINED",
                             independence_note=INDEPENDENCE_NOTE, inference_calls=calls, cost_usd=cost)
     out: list[Objection] = []
     questions: list[str] = []
     charges = []
-    for i, charge in enumerate((pros.data.get("charges") or [])[:5]):
+    for i, charge in enumerate(data["charges"][:5]):
         try:
             statement = str(charge["statement"])[:400]
+            if not isinstance(charge["cites"], list):
+                continue
             cites = tuple(str(c) for c in charge["cites"] if str(c) in known)
             severity = Severity.MINOR if charge.get("severity") == "MINOR" else Severity.MAJOR
-        except (KeyError, TypeError):
+        except (KeyError, TypeError, AttributeError):
             continue
         charges.append(statement)
         if cites:
@@ -191,14 +212,15 @@ def model_court(snapshot: MarketSnapshot, accepted: tuple[Finding, ...], scenari
                                  cites, model_generated=True))
         else:
             questions.append(f"uncited charge (not counted): {statement}")
-    questions.extend(f"prosecutor asks: {str(q)[:300]}" for q in (pros.data.get("unresolved_questions") or [])[:5])
+    questions.extend(f"prosecutor asks: {str(q)[:300]}" for q in (data.get("unresolved_questions") or [])[:5])
     record = case + "\n\nProsecution charges:\n" + "\n".join(f"{n + 1}. {c}" for n, c in enumerate(charges))
     votes: list[dict[str, Any]] = []
     for name, lens in JUROR_LENSES[:jurors]:
         calls += 1
-        res = ask(f"You are a JUROR: {name}. {lens} You decide alone and never see other jurors. {COURT_RULES} "
-                  "UPHOLD means the thesis survives the charges; REJECT means it does not.", record, JUROR_SCHEMA)
-        cost += getattr(res, "cost_usd", Decimal("0")) or Decimal("0")
+        res = _safe_ask(ask, f"You are a JUROR: {name}. {lens} You decide alone and never see other jurors. "
+                             f"{COURT_RULES} UPHOLD means the thesis survives the charges; REJECT means it does not.",
+                        record, JUROR_SCHEMA)
+        cost += _cost(res)
         data = getattr(res, "data", None)
         if getattr(res, "status", None) != "OK" or not isinstance(data, dict) or data.get("vote") not in (
                 "UPHOLD", "REJECT", "NO_VIEW"):

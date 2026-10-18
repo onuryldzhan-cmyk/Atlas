@@ -25,7 +25,11 @@ def _score(findings: Iterable[Finding]) -> tuple[float, tuple[str, ...]]:
 
 
 def build_scenarios(snapshot: MarketSnapshot, findings: tuple[Finding, ...]) -> tuple[tuple[Scenario, ...], str, bool]:
-    """(scenarios, primary scenario name, contradictory). Only findings that survived verification are passed in."""
+    """(scenarios, primary scenario name, contradictory). Only findings that survived verification are passed in.
+
+    Model findings are recorded but never scored (review F1): a model citing findings of four different groups
+    would otherwise add four "independent" groups out of its own reading of the same data."""
+    findings = tuple(f for f in findings if not f.model_generated)
     bull = [f for f in findings if f.stance is Stance.BULLISH]
     bear = [f for f in findings if f.stance is Stance.BEARISH]
     neutral = [f for f in findings if f.stance is Stance.NEUTRAL]

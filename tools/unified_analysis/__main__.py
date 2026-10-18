@@ -71,8 +71,8 @@ def _parse_time(value: str) -> datetime:
     return parsed.astimezone(UTC)
 
 
-def _save_report(state: Path, report: AnalysisReport) -> Path:
-    path = state / "reports" / f"{report.analysis_id}.json"
+def _save_report(state: Path, report: AnalysisReport, suffix: str = "") -> Path:
+    path = state / "reports" / f"{report.analysis_id}{suffix}.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(report.to_dict(), ensure_ascii=False, indent=1), encoding="utf-8")
     return path
@@ -113,16 +113,29 @@ def cmd_analyze(args: argparse.Namespace, ledger: ExperienceLedger, state: Path)
             return 2
         inputs = collect_archive(Path(args.archive), args.symbol, floor_cutoff(args.cutoff))
     else:
+        if args.cutoff:
+            print("--cutoff applies only to --source archive (a live analysis is always now)", file=sys.stderr)
+            return 2
         inputs = collect_binance(args.symbol)
-    cal = calibration(ledger.records())
+    decision_ms = int(inputs.fetched_at.timestamp() * 1000)
+    cal = calibration(ledger.records(), as_of_ms=decision_ms)   # only outcomes known at the decision time
     ask = gateway_ask(args.model, args.effort) if args.ai else None
     report = run_analysis(inputs, ask=ask, calibration=cal, horizon_hours=args.horizon,
-                          max_inference_calls=args.max_calls, jurors=args.jurors,
-                          ledger=None if args.no_record else ledger)
-    path = _save_report(state, report)
+                          max_inference_calls=args.max_calls, jurors=args.jurors)
+    status, code = "not recorded (--no-record)", 0
+    if not args.no_record:
+        if report.reason_codes[:1] != ("DATA_UNUSABLE",):
+            try:
+                ledger.record_prediction(report)
+                status = f"recorded in {ledger.path}"
+            except ExperienceConflict as exc:
+                status, code = f"NOT recorded: {exc} (the first one stands)", 4
+        else:
+            status = "not recorded (data unusable: not an analysis)"
+    path = _save_report(state, report, suffix="" if code == 0 else f".rerun-{decision_ms}")
     print(json.dumps(report.to_dict(), ensure_ascii=False, indent=1) if args.json else render(report))
-    print(f"  report          {path}" + ("" if args.no_record else f"  (recorded in {ledger.path})"))
-    return 0
+    print(f"  report          {path}  ({status})")
+    return code
 
 
 def cmd_replay(args: argparse.Namespace, ledger: ExperienceLedger, state: Path) -> int:
@@ -140,9 +153,11 @@ def cmd_replay(args: argparse.Namespace, ledger: ExperienceLedger, state: Path) 
             continue
         # settle what had closed by this cutoff, then calibrate on it: no outcome from after the cutoff is used
         _settle_from_archive(ledger, archive, now_ms=cutoff, only=None)
-        cal = calibration(ledger.records())
+        cal = calibration(ledger.records(), as_of_ms=cutoff)
         report = run_analysis(collect_archive(archive, args.symbol, cutoff), calibration=cal,
-                              horizon_hours=args.horizon, ledger=ledger)
+                              horizon_hours=args.horizon, ledger=None)
+        if report.reason_codes[:1] != ("DATA_UNUSABLE",):
+            ledger.record_prediction(report)
         print(f"  {report.as_of.isoformat()}  {report.classification.value:<22} {report.confidence}")
         moment += step
         done += 1
@@ -158,12 +173,13 @@ def _settle_from_archive(ledger: ExperienceLedger, archive: Path, *, now_ms: int
     for aid, pred in ledger.predictions().items():
         if aid in outcomes or (only and pred["symbol"] != only):
             continue
-        end = pred["cutoff_ms"] + pred["horizon_ms"]
+        start = int(pred.get("entry_from_ms") or pred["cutoff_ms"])
+        end = start + pred["horizon_ms"]
         if now_ms < end:
             continue
         try:
-            rows = read_archive_rows(archive, pred["symbol"], "1h", pred["cutoff_ms"], end - step)
-            bench = read_archive_rows(archive, BENCHMARK, "1h", pred["cutoff_ms"] - step, end - step)
+            rows = read_archive_rows(archive, pred["symbol"], "1h", start, end - step)
+            bench = read_archive_rows(archive, BENCHMARK, "1h", start, end - step)
         except ArchiveUnavailable:
             continue
         result = evaluate(pred, rows, now_ms=now_ms, benchmark_rows=bench)
@@ -186,14 +202,15 @@ def cmd_settle(args: argparse.Namespace, ledger: ExperienceLedger, state: Path) 
     for aid, pred in ledger.predictions().items():
         if aid in outcomes or (args.symbol and pred["symbol"] != args.symbol):
             continue
-        end = pred["cutoff_ms"] + pred["horizon_ms"]
+        start = int(pred.get("entry_from_ms") or pred["cutoff_ms"])
+        end = start + pred["horizon_ms"]
         if now_ms < end:
             pending += 1
             continue
         try:
             path = "/api/v3/klines?symbol={}&interval=1h&startTime={}&endTime={}&limit=1000"
-            rows = http_get(path.format(pred["symbol"], pred["cutoff_ms"], end - 1))
-            bench = http_get(path.format(BENCHMARK, pred["cutoff_ms"] - INTERVAL_MS["1h"], end - 1))
+            rows = http_get(path.format(pred["symbol"], start, end - 1))
+            bench = http_get(path.format(BENCHMARK, start, end - 1))
         except Exception as exc:
             print(f"  {aid}: fetch failed ({type(exc).__name__}), left pending")
             pending += 1
@@ -210,7 +227,7 @@ def cmd_settle(args: argparse.Namespace, ledger: ExperienceLedger, state: Path) 
 
 
 def cmd_calibration(args: argparse.Namespace, ledger: ExperienceLedger, state: Path) -> int:
-    cal = calibration(ledger.records())
+    cal = calibration(ledger.records(), as_of_ms=int(datetime.now(UTC).timestamp() * 1000))
     if args.json:
         print(json.dumps(to_jsonable(cal), indent=1))
         return 0
@@ -220,6 +237,20 @@ def cmd_calibration(args: argparse.Namespace, ledger: ExperienceLedger, state: P
         print(f"  {key:<34} n {v['n']:<4} hit {v['hit_rate']}  wilson95 {v['wilson_lower']}  older {v['older_hit_rate']}"
               f"  newer {v['newer_hit_rate']}  {'MEASURED' if v['measured'] else 'not measured'}")
     return 0
+
+
+def _positive_int(value: str) -> int:
+    number = int(value)
+    if number < 1:
+        raise argparse.ArgumentTypeError("must be >= 1")
+    return number
+
+
+def _non_negative_int(value: str) -> int:
+    number = int(value)
+    if number < 0:
+        raise argparse.ArgumentTypeError("must be >= 0")
+    return number
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -234,9 +265,9 @@ def build_parser() -> argparse.ArgumentParser:
     a.add_argument("--ai", action="store_true", help="add the model narrative and court (tools.ai_gateway)")
     a.add_argument("--model", default=None)
     a.add_argument("--effort", default=None)
-    a.add_argument("--jurors", type=int, default=3)
-    a.add_argument("--max-calls", type=int, default=DEFAULT_MAX_INFERENCE_CALLS)
-    a.add_argument("--horizon", type=int, default=DEFAULT_HORIZON_HOURS)
+    a.add_argument("--jurors", type=_non_negative_int, default=3)
+    a.add_argument("--max-calls", type=_non_negative_int, default=DEFAULT_MAX_INFERENCE_CALLS)
+    a.add_argument("--horizon", type=_positive_int, default=DEFAULT_HORIZON_HOURS)
     a.add_argument("--no-record", action="store_true")
     a.add_argument("--json", action="store_true")
     r = sub.add_parser("replay")
@@ -244,8 +275,8 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--archive", required=True)
     r.add_argument("--start", required=True, type=_parse_time)
     r.add_argument("--end", required=True, type=_parse_time)
-    r.add_argument("--every", type=int, default=24, help="hours between cutoffs (>= horizon)")
-    r.add_argument("--horizon", type=int, default=DEFAULT_HORIZON_HOURS)
+    r.add_argument("--every", type=_positive_int, default=24, help="hours between cutoffs (>= horizon)")
+    r.add_argument("--horizon", type=_positive_int, default=DEFAULT_HORIZON_HOURS)
     s = sub.add_parser("settle")
     s.add_argument("--archive")
     s.add_argument("--symbol", type=str.upper)
