@@ -46,7 +46,9 @@ BACKEND = os.environ.get("ATLAS_AI_BACKEND", "claude_code")
 # Owner rule 2026-10-03 (reason: tie the budget to the whole 5-hour window and let each agent use what its
 # work needs): no share and no fixed split. What still bounds the spend, so a loop can never burn the window:
 # 2026-10-03: explainable_ai reviews the trade post-mortems (tools/trade_postmortem.py).
-AI_AGENTS = frozenset({"ceo_ai", "model_council", "explainable_ai"})  # nobody else may call a model
+# Task 017 (registry v5.101): unified_analysis - the analysis narrative and the adversarial court
+# (tools/unified_analysis), only when the owner runs it with --ai; same per-agent runaway ceiling as the others.
+AI_AGENTS = frozenset({"ceo_ai", "model_council", "explainable_ai", "unified_analysis"})  # nobody else may call a model
 # Per agent per rolling 5 hours: far above normal need (CEO <= 2 by its 2.5 h gap, council 2 calls per new
 # proposal); reaching it means a loop, not work.
 RUNAWAY_CALLS_PER_WINDOW = 12
