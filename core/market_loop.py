@@ -672,130 +672,26 @@ class MarketLoop:
             if not isinstance(terminal, _Continue):
                 return terminal
 
-            # Mark the candle only after Brain output has been
-            # normalized successfully. Failed cycles may retry.
-            with self.lock:
-                self.last_processed_candles[
-                    symbol
-                ] = candle_identity
-
-                self.last_signals[
-                    symbol
-                ] = normalized_decision
-
-                self.last_agent_evidence[
-                    symbol
-                ] = self._agent_evidence_snapshot(
-                    market_data
-                )
-
-            self._increment_metric(
-                "closed_candles_processed"
-            )
-
-            normalized_decision.setdefault(
-                "metadata",
-                {},
-            )
-
-            normalized_decision["metadata"].update(
-                {
-                    "candle_identity": candle_identity,
-                    "closed_candle_only": True,
-                    "market_loop_version": self.VERSION,
-                }
-            )
-
-            self.publish(
-                "ATLAS_DECISION",
+            self._symbol_commit_decision(
+                symbol,
+                candle_identity,
                 normalized_decision,
+                market_data,
             )
 
-            # Review 16 L1 / review 17 F2: the gate needs the regime before the BUY checks;
-            # observation alone runs after routing (inside run_cycle, after every symbol of
-            # the cycle), so its network I/O never sits before a routing in the same cycle.
-            observe_late = (
-                self.market_cycle is not None
-                and not self.regime_gate.enabled
-            )
-
-            if self.market_cycle is not None and not observe_late:
-                self._observe_regime(
-                    symbol,
-                    normalized_decision,
-                    processing_cutoff,
-                )
-
-            terminal = self._symbol_execution_gate(
+            return self._symbol_route(
                 symbol,
                 normalized_decision,
+                market_data,
                 closed_candles,
                 processing_cutoff,
             )
 
-            if not isinstance(terminal, _Continue):
-                if observe_late:
-                    self._observe_regime_late(
-                        symbol,
-                        normalized_decision,
-                        processing_cutoff,
-                    )
-
-                return terminal
-
-            market_state = self.world.build_market_state(
-                market_data
-            )
-
-            result = self.route_execution(
-                decision=normalized_decision,
-                market_state=market_state,
-            )
-
-            with self.lock:
-                self.last_executions[
-                    symbol
-                ] = result
-
-            self._increment_metric(
-                "symbols_scanned"
-            )
-
-            if observe_late:
-                self._observe_regime_late(
-                    symbol,
-                    normalized_decision,
-                    processing_cutoff,
-                )
-
-            return result
-
         except CandleContractError as exc:
-            # Ambiguous or unordered market data. The symbol fails
-            # closed for this cycle instead of guessing a winner.
-            self._increment_metric(
-                "symbols_skipped"
-            )
-
-            self._increment_metric(
-                "market_data_contract_violations"
-            )
-
-            logger.error(
-                "%s skipped: %s | %s",
+            return self._symbol_contract_violation(
                 symbol,
-                exc.reason,
                 exc,
             )
-
-            return {
-                "status": "SKIPPED",
-                "reason": exc.reason,
-                "symbol": symbol,
-                "detail": str(
-                    exc
-                ),
-            }
 
         except Exception as exc:
             self._record_error(
@@ -809,6 +705,156 @@ class MarketLoop:
             )
 
             return None
+
+    def _symbol_commit_decision(
+        self,
+        symbol: str,
+        candle_identity: Any,
+        normalized_decision: dict[str, Any],
+        market_data: Any,
+    ) -> None:
+        """Record the processed candle and decision, annotate the metadata and publish ATLAS_DECISION."""
+
+        # Mark the candle only after Brain output has been
+        # normalized successfully. Failed cycles may retry.
+        with self.lock:
+            self.last_processed_candles[
+                symbol
+            ] = candle_identity
+
+            self.last_signals[
+                symbol
+            ] = normalized_decision
+
+            self.last_agent_evidence[
+                symbol
+            ] = self._agent_evidence_snapshot(
+                market_data
+            )
+
+        self._increment_metric(
+            "closed_candles_processed"
+        )
+
+        normalized_decision.setdefault(
+            "metadata",
+            {},
+        )
+
+        normalized_decision["metadata"].update(
+            {
+                "candle_identity": candle_identity,
+                "closed_candle_only": True,
+                "market_loop_version": self.VERSION,
+            }
+        )
+
+        self.publish(
+            "ATLAS_DECISION",
+            normalized_decision,
+        )
+
+    def _symbol_route(
+        self,
+        symbol: str,
+        normalized_decision: dict[str, Any],
+        market_data: Any,
+        closed_candles: Any,
+        processing_cutoff: datetime,
+    ) -> dict[str, Any] | None:
+        """Observe the regime, apply the execution gate, then route the decision; returns the result."""
+
+        # Review 16 L1 / review 17 F2: the gate needs the regime before the BUY checks;
+        # observation alone runs after routing (inside run_cycle, after every symbol of
+        # the cycle), so its network I/O never sits before a routing in the same cycle.
+        observe_late = (
+            self.market_cycle is not None
+            and not self.regime_gate.enabled
+        )
+
+        if self.market_cycle is not None and not observe_late:
+            self._observe_regime(
+                symbol,
+                normalized_decision,
+                processing_cutoff,
+            )
+
+        terminal = self._symbol_execution_gate(
+            symbol,
+            normalized_decision,
+            closed_candles,
+            processing_cutoff,
+        )
+
+        if not isinstance(terminal, _Continue):
+            if observe_late:
+                self._observe_regime_late(
+                    symbol,
+                    normalized_decision,
+                    processing_cutoff,
+                )
+
+            return terminal
+
+        market_state = self.world.build_market_state(
+            market_data
+        )
+
+        result = self.route_execution(
+            decision=normalized_decision,
+            market_state=market_state,
+        )
+
+        with self.lock:
+            self.last_executions[
+                symbol
+            ] = result
+
+        self._increment_metric(
+            "symbols_scanned"
+        )
+
+        if observe_late:
+            self._observe_regime_late(
+                symbol,
+                normalized_decision,
+                processing_cutoff,
+            )
+
+        return result
+
+    def _symbol_contract_violation(
+        self,
+        symbol: str,
+        exc: CandleContractError,
+    ) -> dict[str, Any]:
+        """Fail the symbol closed for this cycle after ambiguous or unordered market data."""
+
+        # Ambiguous or unordered market data. The symbol fails
+        # closed for this cycle instead of guessing a winner.
+        self._increment_metric(
+            "symbols_skipped"
+        )
+
+        self._increment_metric(
+            "market_data_contract_violations"
+        )
+
+        logger.error(
+            "%s skipped: %s | %s",
+            symbol,
+            exc.reason,
+            exc,
+        )
+
+        return {
+            "status": "SKIPPED",
+            "reason": exc.reason,
+            "symbol": symbol,
+            "detail": str(
+                exc
+            ),
+        }
 
     def _symbol_closed_candles(
         self,

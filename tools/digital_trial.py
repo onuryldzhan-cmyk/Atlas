@@ -88,9 +88,14 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--dataset", required=True)
     parser.add_argument("--step", type=int, default=15)
+    parser.add_argument("--max-hold-hours", type=float, default=0, help="SA-FEE-DRAG.1 time stop (0 = off)")
+    parser.add_argument("--trail-activation", type=float, default=0, help="SA-FEE-DRAG.1 trailing-stop activation")
+    parser.add_argument("--trail-distance", type=float, default=0, help="SA-FEE-DRAG.1 trailing-stop distance")
     args = parser.parse_args(argv)
     saved = json.loads(Path(args.dataset).read_text(encoding="utf-8"))
-    out = run(saved["data"], step=args.step, slippage_bps=5, next_open_fill=True)
+    out = run(saved["data"], step=args.step, slippage_bps=5, next_open_fill=True,
+              max_hold_min=int(args.max_hold_hours * 60), trail_activation=args.trail_activation,
+              trail_distance=args.trail_distance)
     print(json.dumps(out, indent=2, ensure_ascii=False))
     return 0 if out["verdict"] == "PASS" else 1
 

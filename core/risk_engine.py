@@ -149,6 +149,13 @@ class BucketPolicy:
 # bucket - so moving decisions from HIGH to MEDIUM cannot enlarge them.
 EXPERIMENT_SIZING_BUCKET = RiskBucket.HIGH
 
+# Regimes (core.market_cycle labels) in which a trend signal is not trusted at the normal floor.
+# Anything not listed as a confirmed directional/volatility state is treated the same way.
+RANGE_REGIMES = frozenset({"SIDEWAYS", "TRANSITION"})
+NON_RANGE_REGIMES = frozenset({"TREND_UP", "TREND_DOWN", "HIGH_VOL", "PANIC"})
+# Ready-made value for RiskPolicy.range_regime_minimum_confidence: MEDIUM 0.70 -> 0.75.
+RANGE_REGIME_MEDIUM_FLOOR = {RiskBucket.MEDIUM: Decimal("0.75")}
+
 
 def _default_buckets() -> dict[RiskBucket, BucketPolicy]:
     return {
@@ -383,6 +390,13 @@ class RiskPolicy:
     kelly_fraction: Decimal | None = None
     volatility_target: Decimal | None = None
     drawdown_sizing: bool = False
+    # Range-regime confidence floor (SIDEWAYS/TRANSITION). Opt-in, default empty = OFF, so the
+    # policy, its version and every existing decision stay byte-identical; switching it on in the
+    # runtime is a separate owner decision. A BUY in a bucket listed here needs at least this
+    # confidence while the symbol's regime is SIDEWAYS, TRANSITION, UNKNOWN or not supplied
+    # (NB-4: missing evidence can only refuse more). It only raises the floor and applies to the
+    # experiment floor too; exits never see it.
+    range_regime_minimum_confidence: Mapping[RiskBucket, Decimal] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "total_capital", decimal_value(self.total_capital, "total_capital", allow_zero=False))
@@ -419,6 +433,17 @@ class RiskPolicy:
         if set(normalized) != set(RiskBucket):
             raise ValueError("LOW, MEDIUM, and HIGH bucket policies are required")
         object.__setattr__(self, "buckets", normalized)
+        range_floors: dict[RiskBucket, Decimal] = {}
+        for key, raw in dict(self.range_regime_minimum_confidence).items():
+            try:
+                bucket = key if isinstance(key, RiskBucket) else RiskBucket(str(key).upper())
+            except ValueError as exc:
+                raise ValueError("invalid range regime bucket") from exc
+            floor = decimal_value(raw, "range_regime_minimum_confidence", allow_zero=False)
+            if floor > ONE:
+                raise ValueError("range_regime_minimum_confidence must be between 0 and 1")
+            range_floors[bucket] = floor
+        object.__setattr__(self, "range_regime_minimum_confidence", range_floors)
         for name in ("correlation_ceiling", "cluster_exposure_pct", "quote_exposure_pct", "kelly_fraction"):
             raw = getattr(self, name)
             if raw is not None:
@@ -684,6 +709,9 @@ class RiskRequest:
     # This symbol's return correlation with each other symbol; None/missing = unknown.
     return_correlations: Mapping[str, Decimal] | None = None
     sizing_signal: SizingSignal | None = None
+    # The symbol's market regime (core.market_cycle label) when known; read only by
+    # RiskPolicy.range_regime_minimum_confidence, so it changes nothing while that is empty.
+    market_regime: str | None = None
 
 
 @dataclass(frozen=True)
@@ -781,6 +809,14 @@ class RiskEngine:
         if not experiment.is_open(self._experiment_clock(), self.experiment_admissions):
             return None
         return max(self.policy.global_minimum_confidence, experiment.minimum_confidence)
+
+    def _range_regime_floor(self, bucket: RiskBucket, regime: Any) -> Decimal | None:
+        """The raised floor for ``bucket`` under ``regime``, or None when the guard is off or not applicable."""
+        floor = self.policy.range_regime_minimum_confidence.get(bucket)
+        if floor is None:
+            return None
+        name = regime.strip().upper() if isinstance(regime, str) else ""
+        return None if name in NON_RANGE_REGIMES else floor
 
     def sizing_bucket(self, bucket: Any, confidence: Any) -> RiskBucket:
         """Bucket whose size limits apply to a BUY at ``confidence`` (registry v5.22).
@@ -1017,10 +1053,18 @@ class RiskEngine:
                 return reject(sleeve_reject)
         experiment_id = ""
         default_floor = max(self.policy.global_minimum_confidence, bucket_policy.minimum_confidence)
+        regime_floor = self._range_regime_floor(bucket, request.market_regime)
+        regime_detail: dict[str, str] = {}
+        if regime_floor is not None:
+            default_floor = max(default_floor, regime_floor)
+            regime_detail = {"market_regime": str(request.market_regime or "UNKNOWN"),
+                             "range_regime_floor": _fmt(regime_floor)}
         if confidence < default_floor:
             experiment_floor = self._experiment_floor(bucket)
+            if experiment_floor is not None and regime_floor is not None:
+                experiment_floor = max(experiment_floor, regime_floor)
             if experiment_floor is None or confidence < experiment_floor:
-                return reject("CONFIDENCE_BELOW_POLICY")
+                return reject("CONFIDENCE_BELOW_POLICY", detail=regime_detail or None)
             experiment_id = self.experiment.experiment_id
         with localcontext() as context:
             context.prec = RISK_CONTEXT_PRECISION

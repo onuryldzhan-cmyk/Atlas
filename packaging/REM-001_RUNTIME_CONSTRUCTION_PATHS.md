@@ -20,10 +20,10 @@ Command: `python -m tools.build_rem001_gate1_maps construction --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `24cc292897276c4e890fc2d5406606b7dd54b64a` |
-| generated_from_tree | `4617502ca1f4294dc598b242c65ae9dc0d2fe8ec` |
+| generated_from_commit | `6d6b846c8baea2bf0079e8ef0f4ddfb7d3db9856` |
+| generated_from_tree | `e5867cc6342ef3ee82f55e1d361f0a6c98fd2da7` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['docs/architecture/UNIFIED_ANALYSIS.md', 'tests/_task017_support.py', 'tests/test_task017_experience.py', 'tests/test_task017_review_regressions.py', 'tests/test_task017_unified_analysis.py', 'tools/ai_gateway.py', 'tools/unified_analysis/__init__.py', 'tools/unified_analysis/__main__.py', 'tools/unified_analysis/contracts.py', 'tools/unified_analysis/decision.py', 'tools/unified_analysis/experience.py', 'tools/unified_analysis/indicators.py', 'tools/unified_analysis/market_intelligence.py', 'tools/unified_analysis/pipeline.py', 'tools/unified_analysis/review.py', 'tools/unified_analysis/scenarios.py', 'tools/unified_analysis/specialists.py', 'tools/unified_analysis/verification.py'] |
+| modified_tracked_paths_at_generation | ['core/execution_manager.py', 'core/market_loop.py', 'core/risk_engine.py', 'tests/core/test_risk_engine.py', 'tests/core/test_time_stop.py', 'tools/backtest_replay.py', 'tools/digital_trial.py'] |
 
 ## Analysis
 
@@ -259,22 +259,22 @@ classes and their observed constructors:
 | `core/execution_idempotency_store.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 326 | `ExecutionIdempotencyStore::load` |
 | `core/execution_idempotency_store.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 348 | `ExecutionIdempotencyStore::load` |
 | `core/execution_idempotency_store.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 361 | `ExecutionIdempotencyStore::load` |
-| `core/execution_manager.py` | `AuditEventStore` | `core/audit_event_store.py` | 457 | `ExecutionManager::__init__` |
-| `core/execution_manager.py` | `ExecutionIdempotencyStore` | `core/execution_idempotency_store.py` | 414 | `ExecutionManager::__init__` |
-| `core/execution_manager.py` | `ExecutionRequest` | `core/execution_models.py` | 2956 | `ExecutionManager::build_request` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5067 | `ExecutionManager::paper_execute` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6397 | `ExecutionManager::_block_live_dispatch` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6457 | `ExecutionManager::live_execute` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6548 | `ExecutionManager::live_execute` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6802 | `ExecutionManager::_failure_result` |
-| `core/execution_manager.py` | `ExecutionTransactionJournal` | `core/execution_transaction_journal.py` | 433 | `ExecutionManager::__init__` |
-| `core/execution_manager.py` | `FinancialRuntimeSafetyService` | `data_layer/runtime_safety.py` | 444 | `ExecutionManager::__init__` |
-| `core/execution_manager.py` | `FinancialRuntimeSafetyService` | `data_layer/runtime_safety.py` | 520 | `ExecutionManager::_assess_financial_readiness` |
-| `core/execution_manager.py` | `PositionExposure` | `core/risk_engine.py` | 3252 | `ExecutionManager::_derived_position_exposures` |
-| `core/execution_manager.py` | `RestoredRiskState` | `core/risk_state_store.py` | 4726 | `ExecutionManager::_record_realized_risk_accounting` |
-| `core/execution_manager.py` | `RiskRequest` | `core/risk_engine.py` | 3937 | `ExecutionManager::_risk_canonical_verdict` |
-| `core/execution_manager.py` | `RiskState` | `core/risk_engine.py` | 3362 | `ExecutionManager::_derive_risk_state` |
-| `core/execution_manager.py` | `VenueRuleFreshnessService` | `core/venue_rule_freshness.py` | 339 | `ExecutionManager::__init__` |
+| `core/execution_manager.py` | `AuditEventStore` | `core/audit_event_store.py` | 468 | `ExecutionManager::__init__` |
+| `core/execution_manager.py` | `ExecutionIdempotencyStore` | `core/execution_idempotency_store.py` | 425 | `ExecutionManager::__init__` |
+| `core/execution_manager.py` | `ExecutionRequest` | `core/execution_models.py` | 2967 | `ExecutionManager::build_request` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5079 | `ExecutionManager::paper_execute` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6409 | `ExecutionManager::_block_live_dispatch` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6469 | `ExecutionManager::live_execute` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6560 | `ExecutionManager::live_execute` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6814 | `ExecutionManager::_failure_result` |
+| `core/execution_manager.py` | `ExecutionTransactionJournal` | `core/execution_transaction_journal.py` | 444 | `ExecutionManager::__init__` |
+| `core/execution_manager.py` | `FinancialRuntimeSafetyService` | `data_layer/runtime_safety.py` | 455 | `ExecutionManager::__init__` |
+| `core/execution_manager.py` | `FinancialRuntimeSafetyService` | `data_layer/runtime_safety.py` | 531 | `ExecutionManager::_assess_financial_readiness` |
+| `core/execution_manager.py` | `PositionExposure` | `core/risk_engine.py` | 3263 | `ExecutionManager::_derived_position_exposures` |
+| `core/execution_manager.py` | `RestoredRiskState` | `core/risk_state_store.py` | 4738 | `ExecutionManager::_record_realized_risk_accounting` |
+| `core/execution_manager.py` | `RiskRequest` | `core/risk_engine.py` | 3948 | `ExecutionManager::_risk_canonical_verdict` |
+| `core/execution_manager.py` | `RiskState` | `core/risk_engine.py` | 3373 | `ExecutionManager::_derive_risk_state` |
+| `core/execution_manager.py` | `VenueRuleFreshnessService` | `core/venue_rule_freshness.py` | 350 | `ExecutionManager::__init__` |
 | `core/execution_transaction_journal.py` | `DurableAppendLog` | `core/durable_append_log.py` | 174 | `ExecutionTransactionJournal::__init__` |
 | `core/execution_transaction_journal.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 294 | `ExecutionTransactionJournal::load` |
 | `core/execution_transaction_journal.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 306 | `ExecutionTransactionJournal::load` |
@@ -292,7 +292,7 @@ classes and their observed constructors:
 | `core/market_loop.py` | `DecisionAdapter` | `core/decision_adapter.py` | 276 | `MarketLoop::__init__` |
 | `core/market_loop.py` | `MarketCycleTracker` | `core/market_cycle.py` | 259 | `MarketLoop::__init__` |
 | `core/market_loop.py` | `RegimeGateConfig` | `core/market_cycle.py` | 251 | `MarketLoop::__init__` |
-| `core/market_loop.py` | `SizingInputs` | `core/position_sizing.py` | 2261 | `MarketLoop::_apply_position_sizing` |
+| `core/market_loop.py` | `SizingInputs` | `core/position_sizing.py` | 2307 | `MarketLoop::_apply_position_sizing` |
 | `core/market_loop.py` | `TechnicalAnalyzer` | `core/technical_analyzer.py` | 274 | `MarketLoop::__init__` |
 | `core/market_loop.py` | `WorldAnalysisEngine` | `analysis/world_analysis_engine.py` | 275 | `MarketLoop::__init__` |
 | `core/model_provider_contracts.py` | `OperationResult` | `core/operational_contracts.py` | 483 | `ModelInvocationResult::to_operation_result` |

@@ -150,6 +150,17 @@ class _Continue:
 _CONTINUE = _Continue()
 
 
+def _request_market_regime(request: Any) -> str | None:
+    """The market regime MarketLoop annotated on the decision (``metadata["market_regime"]``), if any.
+
+    Read only by ``RiskPolicy.range_regime_minimum_confidence`` (default OFF); anything that is not a
+    plain string is passed on as missing, which that guard treats as unknown (fail closed).
+    """
+    metadata = getattr(request, "metadata", None)
+    regime = metadata.get("market_regime") if isinstance(metadata, dict) else None
+    return regime if isinstance(regime, str) else None
+
+
 @dataclass
 class _DecisionRun:
     """State one ``ExecutionManager._execute_decision`` call threads through its phases (T-0013).
@@ -3942,6 +3953,7 @@ class ExecutionManager:
                         execution_price=Decimal(str(request.price)),
                         risk_bucket=request.risk,
                         reduce_only=request.reduce_only,
+                        market_regime=_request_market_regime(request),
                     ),
                     risk_state,
                 )

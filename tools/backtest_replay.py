@@ -121,6 +121,7 @@ class Position:
     entry_ms: int = 0
     entry_confidence: Decimal = Decimal("0")
     entry_regime: str = "UNKNOWN"
+    trail_active: bool = False           # SA-FEE-DRAG.1: profit-activated trailing stop has armed
 
     @property
     def avg_entry(self) -> Decimal:
@@ -176,6 +177,34 @@ STOP_CONFIRM_CANDLES = 2
 SLEEVES = {"LOW": Decimal("0.50"), "MEDIUM": Decimal("0.35"), "HIGH": Decimal("0.15")}
 # a remainder below the venue minimum notional (5 USDT) means the sleeve is full
 SLEEVE_MIN_ORDER = Decimal("5")
+
+
+def time_trailing_exit(pos: Position, *, price: Decimal, now_ms: int, fee_rate: Decimal, max_hold_min: int = 0,
+                       trail_activation: Decimal = Decimal("0"),
+                       trail_distance: Decimal = Decimal("0")) -> str | None:
+    """SA-FEE-DRAG.1 exit rules for one open position, judged on one closed candle (research only).
+
+    ``price`` is the close known at ``now_ms``; nothing later is read, so the rule cannot look ahead.
+    Order: the trailing stop first (it protects a profit), then the holding-time cap.
+      * trailing stop: arms once price >= average entry x (1 + trail_activation), and stays armed;
+        once armed it exits when price <= the peak close since entry x (1 - trail_distance).
+      * time stop: a position held at least ``max_hold_min`` minutes whose net unrealized P&L
+        (after the exit fee and the entry fees still carried) is not positive is closed.
+    Returns "TRAIL_STOP", "TIME_STOP" or None. Mutates only ``pos.peak`` and ``pos.trail_active``.
+    """
+    if pos.qty <= 0 or price <= 0:
+        return None
+    pos.peak = max(pos.peak, price)
+    if trail_activation > 0:
+        if not pos.trail_active and price >= pos.avg_entry * (1 + trail_activation):
+            pos.trail_active = True
+        if pos.trail_active and price <= pos.peak * (1 - trail_distance):
+            return "TRAIL_STOP"
+    if max_hold_min > 0 and (now_ms - pos.entry_ms) / 60_000 >= max_hold_min:
+        net_unrealized = pos.qty * price * (1 - fee_rate) - pos.cost_open - pos.fees_open
+        if net_unrealized <= 0:
+            return "TIME_STOP"
+    return None
 
 
 def _state(holdings: dict, realized_today: Decimal, equity: Decimal, peak: Decimal, day: str,
@@ -335,7 +364,9 @@ def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: 
            min_hold_min: int = 0, sell_confirm: int = 1,
            trend_ema_hours: int = 0, atr_stop: Decimal | float = 0, risk_per_trade: Decimal | float = 0,
            cost_gate: Decimal | float = 0, regime_filter: bool = False,
-           fusion_fix: bool = False, record_signals: bool = False) -> Result:
+           fusion_fix: bool = False, record_signals: bool = False,
+           max_hold_min: int = 0, trail_activation: Decimal | float = 0,
+           trail_distance: Decimal | float = 0) -> Result:
     """Baseline (staged=False, sleeves=False) = today's runtime behaviour.
     staged=True adds the approved tranche entries, take-profit ladder, trailing
     stop and confirmed hard stop; sleeves=True caps each risk bucket's total
@@ -353,8 +384,18 @@ def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: 
     entry - atr_stop x ATR(14, 1-hour) fixed at entry; risk_per_trade > 0
     (needs atr_stop) sizes so a stop-out loses at most that fraction of
     equity, never above the bucket's own allocation (risk-reducing only).
+    SA-FEE-DRAG.1 (research only, no runtime change): max_hold_min > 0 closes a position held at least that
+    long whose net unrealized P&L is not positive (TIME_STOP); trail_activation > 0 (with trail_distance)
+    arms a trailing stop once price is that fraction above entry (TRAIL_STOP). Both are judged on the
+    closed candle at each step, so they see no later data; after such an exit that symbol's decision for
+    the step is skipped, so it cannot re-buy on the candle it was stopped out of.
     All defaults reproduce the baseline exactly."""
 
+    trail_activation, trail_distance = Decimal(str(trail_activation)), Decimal(str(trail_distance))
+    if max_hold_min < 0 or trail_activation < 0 or not 0 <= trail_distance < 1:
+        raise ValueError("max_hold_min and trail_activation must be >= 0 and trail_distance in [0, 1)")
+    if trail_activation > 0 and trail_distance <= 0:
+        raise ValueError("trail_activation needs trail_distance > 0")
     if brain_factory is None:
         from ai.core.atlas_brain import AtlasBrain
         brain_factory = AtlasBrain
@@ -472,6 +513,17 @@ def replay(candles_by_symbol: dict[str, list[list]], *, step: int = 15, exp001: 
                             elif pos.tp2 and price <= pos.peak * (1 - TRAILING):
                                 sell(pos, Decimal("1"), sell_fill, day, when, "TRAILING_STOP")
                                 pos = None
+
+                    # --- SA-FEE-DRAG.1 time stop / profit-activated trailing stop (research)
+                    pos = holdings.get(symbol)
+                    if pos is not None and (max_hold_min or trail_activation):
+                        why = time_trailing_exit(pos, price=price, now_ms=close_ms, fee_rate=fee_rate,
+                                                 max_hold_min=max_hold_min, trail_activation=trail_activation,
+                                                 trail_distance=trail_distance)
+                        if why:
+                            sell(pos, Decimal("1"), sell_fill, day, when, why)
+                            stop_level.pop(symbol, None)
+                            continue
 
                     # --- ATR protective stop (research): fixed at entry, confirmed by closes
                     pos = holdings.get(symbol)
@@ -642,6 +694,46 @@ def summarize(result: Result) -> dict:
     }
 
 
+def matrix_row(result: Result) -> dict:
+    """Net P&L ($), win rate (%), max drawdown (% of peak equity) and fees ($) of one replay.
+
+    Closed trades plus still-open positions marked to market at the window end, so a rule that
+    realizes a loss is compared with a baseline that keeps carrying it, not flattered by it.
+    """
+    trades = sorted(result.trades + result.marked_open, key=lambda t: t.exit_time)
+    equity = peak = CAPITAL
+    max_dd = Decimal("0")
+    for t in trades:
+        equity += t.net
+        peak = max(peak, equity)
+        max_dd = max(max_dd, (peak - equity) / peak * 100)
+    wins = sum(1 for t in trades if t.net > 0)
+    return {"trades": len(trades), "net_pnl": sum((t.net for t in trades), Decimal("0")),
+            "win_rate": Decimal(wins) / len(trades) * 100 if trades else Decimal("0"),
+            "max_drawdown_pct": max_dd, "fees": sum((t.entry_fee + t.exit_fee for t in trades), Decimal("0"))}
+
+
+def compare_time_stop(data: dict[str, list[list]], *, max_hold_min: int, trail_activation: Decimal | float,
+                      trail_distance: Decimal | float, **replay_kw) -> dict:
+    """The same candles replayed twice: today's rules vs the same rules plus the time/trailing stop."""
+    base = matrix_row(replay(data, **replay_kw))
+    enforced = matrix_row(replay(data, max_hold_min=max_hold_min, trail_activation=trail_activation,
+                                 trail_distance=trail_distance, **replay_kw))
+    return {"baseline": base, "time_stop": enforced, "fee_drag_delta": enforced["fees"] - base["fees"]}
+
+
+def format_matrix(report: dict) -> str:
+    b, t = report["baseline"], report["time_stop"]
+    lines = [f"{'metric':<22}{'v5.101 baseline':>18}{'time-stop enforced':>20}",
+             f"{'Net P&L ($)':<22}{b['net_pnl']:>18.2f}{t['net_pnl']:>20.2f}",
+             f"{'Win rate (%)':<22}{b['win_rate']:>18.1f}{t['win_rate']:>20.1f}",
+             f"{'Max drawdown (%)':<22}{b['max_drawdown_pct']:>18.2f}{t['max_drawdown_pct']:>20.2f}",
+             f"{'Fees ($)':<22}{b['fees']:>18.2f}{t['fees']:>20.2f}",
+             f"{'Trades (incl. open)':<22}{b['trades']:>18}{t['trades']:>20}",
+             f"Fee drag delta ($): {report['fee_drag_delta']:+.2f} (time-stop fees minus baseline fees)"]
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None, fetch: Fetcher | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--days", type=int, default=7)
@@ -661,7 +753,19 @@ def main(argv: list[str] | None = None, fetch: Fetcher | None = None) -> int:
                         help="write every BUY/SELL decision with its 60m/240m net outcome to this CSV (lesson book)")
     parser.add_argument("--trades-out", default=None, help="write every closed trade (confidence, regime, net) to this CSV")
     parser.add_argument("--risk-per-trade", type=float, default=0, help="max equity fraction lost at the ATR stop (needs --atr-stop)")
+    parser.add_argument("--max-hold-hours", type=float, default=0,
+                        help="SA-FEE-DRAG.1: close a position held this long without a net profit (0 = off)")
+    parser.add_argument("--trail-activation", type=float, default=0,
+                        help="SA-FEE-DRAG.1: arm a trailing stop once price is this fraction above entry (0.015 = +1.5%%)")
+    parser.add_argument("--trail-distance", type=float, default=0, help="trailing stop distance below the peak close")
+    parser.add_argument("--compare-time-stop", action="store_true",
+                        help="print baseline vs time-stop matrix (defaults 48 h, +1.5%% activation, 1%% distance)")
     args = parser.parse_args(argv)
+    if args.compare_time_stop:
+        args.max_hold_hours = args.max_hold_hours or 48.0
+        args.trail_activation = args.trail_activation or 0.015
+        args.trail_distance = args.trail_distance or 0.01
+    max_hold_min = int(args.max_hold_hours * 60)
 
     # The replay drives MarketLoop without an ExecutionManager on purpose, so
     # its per-decision "execution skipped: manager unavailable" warning is
@@ -677,11 +781,21 @@ def main(argv: list[str] | None = None, fetch: Fetcher | None = None) -> int:
         print(f"downloading {symbol} ({args.days} days)...", file=sys.stderr, flush=True)
         data[symbol] = _history(symbol, args.days, fetch)
     print("replaying the real decision chain (this takes a few minutes)...", file=sys.stderr, flush=True)
-    result = replay(data, step=args.step, exp001=args.exp001, staged=args.staged, sleeves=args.sleeves,
-                    slippage_bps=args.slippage_bps, next_open_fill=args.next_open_fill,
-                    min_hold_min=args.min_hold, sell_confirm=args.sell_confirm,
-                    trend_ema_hours=args.trend_ema, atr_stop=args.atr_stop, risk_per_trade=args.risk_per_trade,
-                    record_signals=bool(args.signals_out))
+    common = dict(step=args.step, exp001=args.exp001, staged=args.staged, sleeves=args.sleeves,
+                  slippage_bps=args.slippage_bps, next_open_fill=args.next_open_fill,
+                  min_hold_min=args.min_hold, sell_confirm=args.sell_confirm,
+                  trend_ema_hours=args.trend_ema, atr_stop=args.atr_stop, risk_per_trade=args.risk_per_trade)
+    if args.compare_time_stop:
+        report = compare_time_stop(data, max_hold_min=max_hold_min, trail_activation=args.trail_activation,
+                                   trail_distance=args.trail_distance, **common)
+        print(f"TIME-STOP COMPARISON - days={args.days} step={args.step}m symbols={','.join(data)} "
+              f"max_hold={args.max_hold_hours}h trail +{args.trail_activation:.1%} / {args.trail_distance:.1%}; "
+              "open positions marked to market at the window end in both columns; fills at candle close")
+        print(format_matrix(report))
+        print("Research evidence only (1-minute candles). Not a promise of live results. Nothing was changed.")
+        return 0
+    result = replay(data, record_signals=bool(args.signals_out), max_hold_min=max_hold_min,
+                    trail_activation=args.trail_activation, trail_distance=args.trail_distance, **common)
     s = summarize(result)
     if args.signals_out:
         n = write_signals_csv(args.signals_out, result.signals)
