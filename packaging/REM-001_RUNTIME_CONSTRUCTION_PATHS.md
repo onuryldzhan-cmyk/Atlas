@@ -20,10 +20,10 @@ Command: `python -m tools.build_rem001_gate1_maps construction --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `442d44e27a06eaa24cc59065822e89092f1ad6e6` |
-| generated_from_tree | `f8129e66a325948eb03608cc060323053d27ac2b` |
+| generated_from_commit | `24cc292897276c4e890fc2d5406606b7dd54b64a` |
+| generated_from_tree | `4617502ca1f4294dc598b242c65ae9dc0d2fe8ec` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['checkpoints/20261018T095257Z_task-016-soak-criteria-hardening.md', 'docs/operations/TASK015_SOAK_DAY0_PLAN_2026-10-17.md', 'tests/test_soak_report.py', 'tests/test_task016_soak_criteria.py', 'tools/soak_report.py'] |
+| modified_tracked_paths_at_generation | ['docs/architecture/UNIFIED_ANALYSIS.md', 'tests/_task017_support.py', 'tests/test_task017_experience.py', 'tests/test_task017_review_regressions.py', 'tests/test_task017_unified_analysis.py', 'tools/ai_gateway.py', 'tools/unified_analysis/__init__.py', 'tools/unified_analysis/__main__.py', 'tools/unified_analysis/contracts.py', 'tools/unified_analysis/decision.py', 'tools/unified_analysis/experience.py', 'tools/unified_analysis/indicators.py', 'tools/unified_analysis/market_intelligence.py', 'tools/unified_analysis/pipeline.py', 'tools/unified_analysis/review.py', 'tools/unified_analysis/scenarios.py', 'tools/unified_analysis/specialists.py', 'tools/unified_analysis/verification.py'] |
 
 ## Analysis
 

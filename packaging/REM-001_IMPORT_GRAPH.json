@@ -16,29 +16,42 @@
     "analysis": "Static AST import resolution over git-tracked Python files, excluding imports guarded by if TYPE_CHECKING:. Third-party and stdlib targets resolve to nothing and carry no edge."
   },
   "source_identity": {
-    "generated_from_commit": "442d44e27a06eaa24cc59065822e89092f1ad6e6",
-    "generated_from_tree": "f8129e66a325948eb03608cc060323053d27ac2b",
+    "generated_from_commit": "24cc292897276c4e890fc2d5406606b7dd54b64a",
+    "generated_from_tree": "4617502ca1f4294dc598b242c65ae9dc0d2fe8ec",
     "tracked_working_tree_clean": false,
     "modified_tracked_paths_at_generation": [
-      "checkpoints/20261018T095257Z_task-016-soak-criteria-hardening.md",
-      "docs/operations/TASK015_SOAK_DAY0_PLAN_2026-10-17.md",
+      "docs/architecture/UNIFIED_ANALYSIS.md",
       "packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md",
       "packaging/REM-001_STATE_AUTHORITY_MAP.md",
-      "tests/test_soak_report.py",
-      "tests/test_task016_soak_criteria.py",
-      "tools/soak_report.py"
+      "tests/_task017_support.py",
+      "tests/test_task017_experience.py",
+      "tests/test_task017_review_regressions.py",
+      "tests/test_task017_unified_analysis.py",
+      "tools/ai_gateway.py",
+      "tools/unified_analysis/__init__.py",
+      "tools/unified_analysis/__main__.py",
+      "tools/unified_analysis/contracts.py",
+      "tools/unified_analysis/decision.py",
+      "tools/unified_analysis/experience.py",
+      "tools/unified_analysis/indicators.py",
+      "tools/unified_analysis/market_intelligence.py",
+      "tools/unified_analysis/pipeline.py",
+      "tools/unified_analysis/review.py",
+      "tools/unified_analysis/scenarios.py",
+      "tools/unified_analysis/specialists.py",
+      "tools/unified_analysis/verification.py"
     ]
   },
   "scope": {
     "universe": "ALL_GIT_TRACKED_PYTHON_FILES",
     "universe_note": "The tool's existing tracked-file definition, used unchanged. No source-scope classification (ACTIVE_CANDIDATE / TEST / TOOL / ARCHIVE / BACKUP / QUARANTINE / REPORT_COPY) is applied or implied: that classification requires the human review gate ARCH-001.2.1 reserves and belongs to Gate 1 deliverable 1.",
-    "modules_total": 1161,
+    "modules_total": 1177,
     "modules_runtime_reachable": 142,
-    "modules_outside_runtime_closure": 1019,
-    "edges_total": 2753,
-    "edges_import": 1991,
-    "edges_package_init": 762,
-    "edges_distinct_module_pairs": 2663,
+    "modules_outside_runtime_closure": 1035,
+    "edges_total": 2857,
+    "edges_import": 2066,
+    "edges_package_init": 791,
+    "edges_distinct_module_pairs": 2763,
     "edges_count_note": "edges_total counts (from, to, kind) triples. A pair can carry both kinds when a file both imports a package directly and references one of its submodules, so edges_distinct_module_pairs is the figure to use when counting dependencies between modules.",
     "parse_failures": 3
   },
@@ -3101,6 +3114,10 @@
       "runtime_reachable": false
     },
     {
+      "module": "tests/_task017_support.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/architecture/__init__.py",
       "runtime_reachable": false
     },
@@ -4313,6 +4330,18 @@
       "runtime_reachable": false
     },
     {
+      "module": "tests/test_task017_experience.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_task017_review_regressions.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_task017_unified_analysis.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/test_task_status.py",
       "runtime_reachable": false
     },
@@ -4714,6 +4743,54 @@
     },
     {
       "module": "tools/trade_postmortem.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/unified_analysis/__init__.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/unified_analysis/__main__.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/unified_analysis/contracts.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/unified_analysis/decision.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/unified_analysis/experience.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/unified_analysis/indicators.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/unified_analysis/market_intelligence.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/unified_analysis/pipeline.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/unified_analysis/review.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/unified_analysis/scenarios.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/unified_analysis/specialists.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tools/unified_analysis/verification.py",
       "runtime_reachable": false
     },
     {
@@ -9198,6 +9275,26 @@
     {
       "from": "test_validator.py",
       "to": "core/decision.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/_task017_support.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/_task017_support.py",
+      "to": "core/market_cycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/_task017_support.py",
+      "to": "tools/unified_analysis/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/_task017_support.py",
+      "to": "tools/unified_analysis/market_intelligence.py",
       "kind": "import"
     },
     {
@@ -16666,6 +16763,191 @@
       "kind": "import"
     },
     {
+      "from": "tests/test_task017_experience.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_task017_experience.py",
+      "to": "core/market_cycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task017_experience.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_task017_experience.py",
+      "to": "tests/_task017_support.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task017_experience.py",
+      "to": "tools/ai_gateway.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task017_experience.py",
+      "to": "tools/unified_analysis/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task017_experience.py",
+      "to": "tools/unified_analysis/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_task017_experience.py",
+      "to": "tools/unified_analysis/__main__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task017_experience.py",
+      "to": "tools/unified_analysis/contracts.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task017_experience.py",
+      "to": "tools/unified_analysis/experience.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task017_experience.py",
+      "to": "tools/unified_analysis/pipeline.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task017_review_regressions.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_task017_review_regressions.py",
+      "to": "core/market_cycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task017_review_regressions.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_task017_review_regressions.py",
+      "to": "tests/_task017_support.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task017_review_regressions.py",
+      "to": "tools/build_architecture_inventory.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task017_review_regressions.py",
+      "to": "tools/unified_analysis/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task017_review_regressions.py",
+      "to": "tools/unified_analysis/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_task017_review_regressions.py",
+      "to": "tools/unified_analysis/__main__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task017_review_regressions.py",
+      "to": "tools/unified_analysis/contracts.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task017_review_regressions.py",
+      "to": "tools/unified_analysis/decision.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task017_review_regressions.py",
+      "to": "tools/unified_analysis/experience.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task017_review_regressions.py",
+      "to": "tools/unified_analysis/market_intelligence.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task017_review_regressions.py",
+      "to": "tools/unified_analysis/pipeline.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task017_review_regressions.py",
+      "to": "tools/unified_analysis/specialists.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task017_unified_analysis.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_task017_unified_analysis.py",
+      "to": "core/market_cycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task017_unified_analysis.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_task017_unified_analysis.py",
+      "to": "tests/_task017_support.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task017_unified_analysis.py",
+      "to": "tools/unified_analysis/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task017_unified_analysis.py",
+      "to": "tools/unified_analysis/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_task017_unified_analysis.py",
+      "to": "tools/unified_analysis/contracts.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task017_unified_analysis.py",
+      "to": "tools/unified_analysis/indicators.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task017_unified_analysis.py",
+      "to": "tools/unified_analysis/market_intelligence.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task017_unified_analysis.py",
+      "to": "tools/unified_analysis/pipeline.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task017_unified_analysis.py",
+      "to": "tools/unified_analysis/scenarios.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task017_unified_analysis.py",
+      "to": "tools/unified_analysis/specialists.py",
+      "kind": "import"
+    },
+    {
       "from": "tests/test_task_status.py",
       "to": "tools/task_status.py",
       "kind": "import"
@@ -18393,6 +18675,321 @@
     {
       "from": "tools/trade_postmortem.py",
       "to": "tools/reality_check.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/__main__.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/unified_analysis/__main__.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/__main__.py",
+      "to": "tools/ai_gateway.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/__main__.py",
+      "to": "tools/select_universe.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/__main__.py",
+      "to": "tools/unified_analysis/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/unified_analysis/__main__.py",
+      "to": "tools/unified_analysis/contracts.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/__main__.py",
+      "to": "tools/unified_analysis/experience.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/__main__.py",
+      "to": "tools/unified_analysis/market_intelligence.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/__main__.py",
+      "to": "tools/unified_analysis/pipeline.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/decision.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/unified_analysis/decision.py",
+      "to": "core/decision_intelligence.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/decision.py",
+      "to": "core/market_cycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/decision.py",
+      "to": "tools/unified_analysis/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/unified_analysis/decision.py",
+      "to": "tools/unified_analysis/contracts.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/decision.py",
+      "to": "tools/unified_analysis/market_intelligence.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/decision.py",
+      "to": "tools/unified_analysis/specialists.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/experience.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/unified_analysis/experience.py",
+      "to": "core/durable_append_log.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/experience.py",
+      "to": "core/market_cycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/experience.py",
+      "to": "tools/unified_analysis/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/unified_analysis/experience.py",
+      "to": "tools/unified_analysis/contracts.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/indicators.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/unified_analysis/indicators.py",
+      "to": "core/market_cycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/market_intelligence.py",
+      "to": "atlas_finance/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/unified_analysis/market_intelligence.py",
+      "to": "atlas_finance/market_data/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/unified_analysis/market_intelligence.py",
+      "to": "atlas_finance/market_data/fear_greed_provider.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/market_intelligence.py",
+      "to": "atlas_finance/market_data/funding_rate_provider.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/market_intelligence.py",
+      "to": "atlas_finance/market_data/treasury_yield_provider.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/market_intelligence.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/unified_analysis/market_intelligence.py",
+      "to": "core/market_cycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/market_intelligence.py",
+      "to": "tools/select_universe.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/market_intelligence.py",
+      "to": "tools/unified_analysis/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/market_intelligence.py",
+      "to": "tools/unified_analysis/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/unified_analysis/market_intelligence.py",
+      "to": "tools/unified_analysis/contracts.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/market_intelligence.py",
+      "to": "tools/unified_analysis/indicators.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/pipeline.py",
+      "to": "tools/unified_analysis/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/unified_analysis/pipeline.py",
+      "to": "tools/unified_analysis/contracts.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/pipeline.py",
+      "to": "tools/unified_analysis/decision.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/pipeline.py",
+      "to": "tools/unified_analysis/experience.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/pipeline.py",
+      "to": "tools/unified_analysis/market_intelligence.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/pipeline.py",
+      "to": "tools/unified_analysis/review.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/pipeline.py",
+      "to": "tools/unified_analysis/scenarios.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/pipeline.py",
+      "to": "tools/unified_analysis/specialists.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/pipeline.py",
+      "to": "tools/unified_analysis/verification.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/review.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/unified_analysis/review.py",
+      "to": "core/market_cycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/review.py",
+      "to": "tools/unified_analysis/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/unified_analysis/review.py",
+      "to": "tools/unified_analysis/contracts.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/review.py",
+      "to": "tools/unified_analysis/market_intelligence.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/review.py",
+      "to": "tools/unified_analysis/specialists.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/scenarios.py",
+      "to": "tools/unified_analysis/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/unified_analysis/scenarios.py",
+      "to": "tools/unified_analysis/contracts.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/scenarios.py",
+      "to": "tools/unified_analysis/market_intelligence.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/specialists.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/unified_analysis/specialists.py",
+      "to": "core/market_cycle.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/specialists.py",
+      "to": "tools/unified_analysis/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/unified_analysis/specialists.py",
+      "to": "tools/unified_analysis/contracts.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/specialists.py",
+      "to": "tools/unified_analysis/market_intelligence.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/specialists.py",
+      "to": "tools/unified_analysis/review.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/specialists.py",
+      "to": "tools/unified_analysis/verification.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/verification.py",
+      "to": "tools/unified_analysis/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tools/unified_analysis/verification.py",
+      "to": "tools/unified_analysis/contracts.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/unified_analysis/verification.py",
+      "to": "tools/unified_analysis/market_intelligence.py",
       "kind": "import"
     },
     {
