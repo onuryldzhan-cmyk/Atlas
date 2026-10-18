@@ -16,28 +16,29 @@
     "analysis": "Static AST import resolution over git-tracked Python files, excluding imports guarded by if TYPE_CHECKING:. Third-party and stdlib targets resolve to nothing and carry no edge."
   },
   "source_identity": {
-    "generated_from_commit": "2f5a958729ca04978290701e48026029be0e7ecd",
-    "generated_from_tree": "8eb4f393a83997b67079a491dc3dc8cd1d128594",
+    "generated_from_commit": "442d44e27a06eaa24cc59065822e89092f1ad6e6",
+    "generated_from_tree": "f8129e66a325948eb03608cc060323053d27ac2b",
     "tracked_working_tree_clean": false,
     "modified_tracked_paths_at_generation": [
-      "checkpoints/20261017T151033Z_task-015-soak-day0.md",
+      "checkpoints/20261018T095257Z_task-016-soak-criteria-hardening.md",
       "docs/operations/TASK015_SOAK_DAY0_PLAN_2026-10-17.md",
       "packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md",
       "packaging/REM-001_STATE_AUTHORITY_MAP.md",
       "tests/test_soak_report.py",
+      "tests/test_task016_soak_criteria.py",
       "tools/soak_report.py"
     ]
   },
   "scope": {
     "universe": "ALL_GIT_TRACKED_PYTHON_FILES",
     "universe_note": "The tool's existing tracked-file definition, used unchanged. No source-scope classification (ACTIVE_CANDIDATE / TEST / TOOL / ARCHIVE / BACKUP / QUARANTINE / REPORT_COPY) is applied or implied: that classification requires the human review gate ARCH-001.2.1 reserves and belongs to Gate 1 deliverable 1.",
-    "modules_total": 1160,
+    "modules_total": 1161,
     "modules_runtime_reachable": 142,
-    "modules_outside_runtime_closure": 1018,
-    "edges_total": 2744,
-    "edges_import": 1984,
-    "edges_package_init": 760,
-    "edges_distinct_module_pairs": 2654,
+    "modules_outside_runtime_closure": 1019,
+    "edges_total": 2753,
+    "edges_import": 1991,
+    "edges_package_init": 762,
+    "edges_distinct_module_pairs": 2663,
     "edges_count_note": "edges_total counts (from, to, kind) triples. A pair can carry both kinds when a file both imports a package directly and references one of its submodules, so edges_distinct_module_pairs is the figure to use when counting dependencies between modules.",
     "parse_failures": 3
   },
@@ -4305,6 +4306,10 @@
     },
     {
       "module": "tests/test_task014_paper_locks.py",
+      "runtime_reachable": false
+    },
+    {
+      "module": "tests/test_task016_soak_criteria.py",
       "runtime_reachable": false
     },
     {
@@ -16621,6 +16626,46 @@
       "kind": "import"
     },
     {
+      "from": "tests/test_task016_soak_criteria.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_task016_soak_criteria.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task016_soak_criteria.py",
+      "to": "core/execution_portfolio_foundation.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task016_soak_criteria.py",
+      "to": "data_layer/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_task016_soak_criteria.py",
+      "to": "data_layer/market_data_archive_sqlite.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task016_soak_criteria.py",
+      "to": "tools/bootstrap_financial_state.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task016_soak_criteria.py",
+      "to": "tools/fetch_historical_market_data.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task016_soak_criteria.py",
+      "to": "tools/soak_report.py",
+      "kind": "import"
+    },
+    {
       "from": "tests/test_task_status.py",
       "to": "tools/task_status.py",
       "kind": "import"
@@ -18118,6 +18163,11 @@
     {
       "from": "tools/soak_report.py",
       "to": "core/execution_portfolio_foundation.py",
+      "kind": "import"
+    },
+    {
+      "from": "tools/soak_report.py",
+      "to": "core/instrument_rules.py",
       "kind": "import"
     },
     {

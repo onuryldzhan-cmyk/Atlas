@@ -89,6 +89,16 @@ def trade_through_the_foundation(root, trades, partial_first=False):
     return root
 
 
+def summary_of(nets, **overrides):
+    """A summary whose Task 016 PASS conditions all hold, unless overridden (a missing key counts as not met)."""
+    nets = [Decimal(v) for v in nets]
+    summary = {"trades": len(nets), "e": sum(nets) / len(nets), "lower_bound": report.lower_bound(nets),
+               "day_lower_bound": 1.0, "top_removed_e": Decimal("1"), "excess_mean": 0.01, "excess_lower_bound": 0.005,
+               "excess_day_lower_bound": 0.004}
+    summary.update(overrides)
+    return summary
+
+
 TRADES = [("BTCUSDT", "100", "101.3"), ("ETHUSDT", "50", "48.77"), ("SOLUSDT", "20", "20.91")]
 
 
@@ -151,21 +161,17 @@ def test_window_counts_opened_at_or_after_start_and_closed_before_end():
     (["5"] + ["0"] * 99, "INCONCLUSIVE (E > 0, lower bound <= 0)"),         # E = 0.05, lower bound exactly 0
 ])
 def test_verdict_follows_the_pre_registered_sheet(nets, verdict):
-    nets = [Decimal(v) for v in nets]
-    summary = {"trades": len(nets), "e": sum(nets) / len(nets), "lower_bound": report.lower_bound(nets)}
-    assert report.verdict(summary).startswith(verdict)
+    assert report.verdict(summary_of(nets)).startswith(verdict)
 
 
 @pytest.mark.parametrize("nets, verdict", [
-    (["5"] * 100, "INCONCLUSIVE (PASS conditions hold, but the archive"),   # only a PASS is lowered
+    (["5"] * 100, "INCONCLUSIVE (PASS conditions on E hold, but the archive"),   # only a PASS is lowered
     (["-1"] * 100, "FAIL"),
     (["5"] * 99, "INCONCLUSIVE (E > 0, 99 < 100"),
     (["5"] * 10, "INSUFFICIENT"),
 ])
 def test_an_incomplete_archive_can_only_lower_a_pass(nets, verdict):
-    nets = [Decimal(v) for v in nets]
-    summary = {"trades": len(nets), "e": sum(nets) / len(nets), "lower_bound": report.lower_bound(nets)}
-    assert report.verdict(summary, archive_complete=False).startswith(verdict)
+    assert report.verdict(summary_of(nets), archive_complete=False).startswith(verdict)
 
 
 def test_the_pre_registered_numbers_are_fixed():
@@ -256,7 +262,7 @@ def test_an_archive_gross_above_the_accounts_is_flagged_too(tmp_path, monkeypatc
     root = write_state(tmp_path / "state", [record(i) for i in range(100)], realized="999")
     code, out = run(monkeypatch, capsys, root)
     assert code == 0 and "WARNING: archive gross P&L 1000 differs" in out
-    assert "INCONCLUSIVE (PASS conditions hold, but the archive" in out
+    assert "INCONCLUSIVE (PASS conditions on E hold, but the archive does not account" in out
 
 
 def test_without_a_financial_state_the_archive_is_unchecked_and_cannot_pass(tmp_path, monkeypatch, capsys):
@@ -264,7 +270,7 @@ def test_without_a_financial_state_the_archive_is_unchecked_and_cannot_pass(tmp_
     (root / STATE).unlink()
     code, out = run(monkeypatch, capsys, root)
     assert code == 0 and "open positions UNKNOWN" in out
-    assert "INCONCLUSIVE (PASS conditions hold, but the archive" in out
+    assert "INCONCLUSIVE (PASS conditions on E hold, but the archive does not account" in out
 
 
 def test_empty_state_is_insufficient_not_an_error(tmp_path, monkeypatch, capsys):

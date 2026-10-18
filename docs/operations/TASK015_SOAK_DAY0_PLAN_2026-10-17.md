@@ -1,19 +1,21 @@
-# Task 015 — Paper soak initiation: day-0 execution plan (registry v5.99)
+# Task 015 — Paper soak initiation: day-0 execution plan (registry v5.99; criteria additions of Task 016, registry v5.100)
 
 Date: 2026-10-17. Phase 2 INVESTMENT ENGINE. Execution mode PAPER only, live authority DENIED. Nothing in this plan
 changes trading behaviour, adds a venue, or moves anything up the Paper → Shadow ladder.
 
 This plan turns the Task 014 soak plan (`docs/operations/TASK014_PAPER_VERIFICATION_2026-10-17.md` §3) into the steps
-the owner runs. Where the two differ, the Task 014 document governs the criteria; this document governs the order of
-steps.
+the owner runs. Where the two differ, the Task 014 document governs the criteria, **except** that the sheet in §1
+(lines 5, 6 and 16–19, which the owner extended on 2026-10-17 after Task 014) supersedes the PASS and INCONCLUSIVE
+rows of Task 014 §3, and line 19 adds a stop condition to Task 014's list of stop conditions; this document governs the order of steps.
 
 ## 0. Who does what
 
 - **The soak runs on the owner's machine.** The agent's cloud environment has no access to Binance (per
   `docs/operations/OWNER_TERMINAL_TASKS.md`), so the agent cannot refresh the venue rules or start the run.
-- **The agent's part** is this plan, the pre-registration sheet, the v5.99 record and the read-only report script
-  `tools/soak_report.py` with its tests (§1, line 11).
-- **The owner's part** is the three day-0 lines of §1 (lines 1, 12 and 14), §2 (run) and the daily routine in §4.
+- **The agent's part** is this plan, the pre-registration sheet, the v5.99 and v5.100 records and the read-only report
+  script `tools/soak_report.py` with its tests (§1, lines 11 and 16–19).
+- **The owner's part** is confirming the agent's definitions of §1 lines 16–19 and the PASS-to-INCONCLUSIVE rule
+  before day 0 (§2 step 1), the three day-0 lines of §1 (lines 1, 12 and 14), §2 (run) and the daily routine in §4.
 - **FACT vs UNKNOWN.**
   - Commands marked *(verified here)* were dry-run by the agent in a throwaway state directory on Linux.
   - Commands marked *(owner's machine)* need Binance access, a running Atlas or Windows, and are UNKNOWN until the owner
@@ -26,6 +28,10 @@ steps.
   - `python -m tools.incident_report detect` and the agent runner that `tools.start_atlas` starts beside Atlas append
     records under `governance/records/` **in the repository**, which makes the working tree dirty while the soak runs
     (see §2 step 1 and §4);
+  - `tools/fetch_historical_market_data.py` (end of run, §7) fetches public 1h bars from Binance (no key, no order
+    endpoint) and writes them to the market archive `market_data.sqlite3` in the market archive directory (by default
+    `data/market_archive` in the repository, which git ignores); `soak_report` reads that file immutably and creates no
+    side file;
   - the agent runner also writes under the state directory's `research/` folder (its heartbeat, usage ledger and
     research files, including `research/shadow/book_costs.csv`). Its `digital_twin` agent runs `tools/shadow_costs.py`
     (Shadow stage S1), which reads Binance's public order-book depth each cycle. It is observe-only: it sends no
@@ -44,8 +50,8 @@ record (§3); the run does not start until they have a value.
 | 2 | Minimum duration | 21 days |
 | 3 | Target closed trades | 100 |
 | 4 | Hard cap | day 42 |
-| 5 | PASS | ≥ 100 trades, E > 0, bootstrap 95 % lower bound of E > 0 |
-| 6 | INCONCLUSIVE | E > 0 with lower bound ≤ 0; or 30–99 trades with E > 0 |
+| 5 | PASS | ≥ 100 trades, E > 0, bootstrap 95 % lower bound of E > 0, **and** lines 16–18 |
+| 6 | INCONCLUSIVE | E > 0 with lower bound ≤ 0; or 30–99 trades with E > 0; or the PASS conditions on E hold but one of lines 16–18 or the archive check is not met |
 | 7 | FAIL | ≥ 30 trades and E ≤ 0 |
 | 8 | INSUFFICIENT | < 30 trades |
 | 9 | Optional minimum E% floor | none |
@@ -55,8 +61,44 @@ record (§3); the run does not start until they have a value.
 | 13 | Starting capital | the bootstrap default; *(verified here)* it creates `cash 10000.0` |
 | 14 | Evidence folder (outside the state directory and the repository) | *owner, on day 0*, e.g. `C:\AtlasState-soak-evidence` |
 | 15 | Day-28 venue-rule refresh if the run is still going | yes |
+| 16 | Benchmark (owner decision 2026-10-17: a PASS must beat the basket) | for every closed trade, the equal-weight basket of the trade universe (the 20 coins in `config/instrument_rules.json`) held over the trade's own `[opened_at, closed_at]`; excess = the trade's gross return − the basket's return. PASS needs a mean excess > 0, its bootstrap 95 % lower bound > 0 **and** its day-block lower bound > 0 (line 17's method applied to the excess). BTC alone is shown, not graded. |
+| 17 | Day-block bootstrap (owner decision 2026-10-17) | the bootstrap of line 5 repeated with whole UTC closing days resampled; its lower bound of E must be > 0 |
+| 18 | Edge not from a few trades (owner decision 2026-10-17) | E without the 3 best trades must be > 0 |
+| 19 | Drawdown stop (owner decision 2026-10-17) | realized net equity falls 10 % or more from its peak: stop (§6) |
 
 Notes on the table:
+- **Lines 16–19 (Task 016).** The owner chose the benchmark as a PASS condition, the robustness checks and the 10 %
+  threshold on 2026-10-17. The agent chose their exact definitions, which the owner confirms before day 0 (§2 step 1):
+  - the basket is the equal-weight mean over the trade universe, each coin's return taken over the trade's own
+    window; the comparison is not circular (the same coin over the same window would only measure the costs);
+  - **costs do not fully cancel.** Fees are on neither side (the trade side is gross of fees). The trade's gross
+    return does contain the 5 bps adverse paper slippage on each fill, about 10 bps a round trip, which the basket's
+    raw bar prices do not. The excess is therefore understated by about 0.1 percentage point per trade: a bias against
+    a PASS (it covers slippage only; a PASS is evidence, not a safety guarantee), and the bar is stricter than "beat a
+    passive basket". How large that is
+    compared with the edge being looked for is UNKNOWN. The owner either accepts it at the §2 step 1 confirmation or
+    asks for an equal slippage haircut on the basket (a code change, committed before day 0);
+  - the benchmark is graded on the day-block bound as well, because trades closed on one day in correlated coins are
+    not independent and a trade-level bootstrap alone would pass noise more often than 5 % of the time (the
+    review 44's simulation under an assumed common daily shock: 16–29 % trade-level against 6–9 % day-block; nothing
+    in the repository reproduces it, and whether real excesses cluster is UNKNOWN);
+  - prices are the archived 1h bars, interpolated linearly inside the hour; a missing bar is never guessed, and any
+    missing bar makes the benchmark UNAVAILABLE and a PASS impossible;
+  - the day-block bootstrap uses the same seed and 10,000 resamples as line 5, resampling UTC closing days;
+  - the drawdown is of **realized** net equity (starting capital plus net P&L in closing order); unrealized losses
+    are not in it, so the `/api/portfolio` equity and limits card stay part of the daily look. `--capital` must be
+    passed if line 13 is not the bootstrap default;
+  - **inputs.** The criteria are constants. The report has three input options: `--capital` (only if line 13 is not
+    the bootstrap default), `--instrument-rules` and `--market-archive` (not used in the soak: they would change the
+    basket or the price source). The report prints them ("inputs in effect") and the evidence record saves the
+    full command line of every report. A basket of fewer than 10 coins is refused;
+  - **few closing days.** The day-block bound rests on the number of distinct closing days, which the report prints.
+    With one closing day it equals E, with a few it is coarse. The verdict is only valid after line 2's minimum
+    duration, which the report does not enforce;
+  - **strictness.** A single missing hourly bar of any of the 20 coins inside any trade's window makes the benchmark
+    UNAVAILABLE and a PASS impossible, deliberately. Before day 0 the owner can fetch recent weeks for the universe
+    (`tools/fetch_historical_market_data.py`, §7 step 3 shows the form) and look for gaps, to decide whether a
+    gap-tolerant rule is wanted; none exists.
 - **Line 11: what `tools/soak_report.py` computes.**
   - The owner's formula: E = (sum of net profit after slippage and friction) / (total trades). That is the Task 014
     definition, the mean net P&L per closed trade.
@@ -106,11 +148,13 @@ Notes on the table:
 Run in PowerShell, in the repository on the owner's machine (`Atlas-test`), with Atlas **stopped**. The venue-rule
 refresh (step 5) must be at most 1 day before day 0.
 
-1. **Update the code to the pinned base.** The Task 015 plan, `tools/soak_report.py` and the v5.99 record are on the
-   branch once committed after the owner's sign-off.
-   - **Pre-condition:** the owner has confirmed, or replaced, the PASS-to-INCONCLUSIVE rule in the §1 line 11 note.
-     It was added after the owner's approval of the sheet. A replacement is committed before this step; the
-     confirmation is saved in the evidence record (§3).
+1. **Update the code to the pinned base.** This plan, `tools/soak_report.py` with the Task 016 criteria, and the
+   v5.99 and v5.100 records are on the branch once committed.
+   - **Pre-condition:** the owner has confirmed, or replaced, (a) the PASS-to-INCONCLUSIVE rule in the §1 line 11
+     note and (b) the exact definitions of §1 lines 16–19, including the slippage bias of the benchmark and the day-block
+     grading. Both were written by the agent after the owner's approval of the sheet (the owner chose the benchmark, the
+     checks and the 10 % threshold; the agent chose their definitions). A replacement is committed before this step;
+     the confirmation is saved in the evidence record (§3).
    ```
    git status --short
    ```
@@ -122,13 +166,15 @@ refresh (step 5) must be at most 1 day before day 0.
    git merge --no-edit origin/claude/exp001-on-owner-lineage
    git merge-base --is-ancestor 90ad404 HEAD; $LASTEXITCODE
    git log --oneline -1 -- tools/soak_report.py
+   Select-String -Path tools/soak_report.py -SimpleMatch "DRAWDOWN_STOP_PCT", "MIN_BASKET_COINS"
    git log --oneline -1
    ```
    - Save the `git diff --name-only` output: it is what the merge brings in.
    - If the merge reports a conflict, run `git merge --abort` and stop: the start waits for the owner.
    - The `$LASTEXITCODE` line must print `0` (the Task 014 commit is in the history).
-   - The `-- tools/soak_report.py` line must print the Task 015 commit ("add day-0 plan and soak_report tooling"):
-     sheet line 11 requires the script before day 0.
+   - The `-- tools/soak_report.py` line must print the Task 016 commit (its message names Task 016), or a later
+     commit to the script, and the `Select-String` line must find both names: sheet lines 11 and 16–19 require the
+     script with the Task 016 criteria before day 0. A script without them (the Task 015 version) stops the start.
    - Record the last commit.
 
 2. **Create and point at the soak state directory** (line 12). Do this in **every** console used during the soak.
@@ -229,7 +275,8 @@ refresh (step 5) must be at most 1 day before day 0.
 
 Save these as dated text files, as early as possible after step 9 (trades may already have happened by then):
 - sheet lines 1, 12 and 14 with their values, and this plan's commit (the rest of the sheet is fixed in §1);
-- the owner's confirmation (or the committed replacement) of the PASS-to-INCONCLUSIVE rule (§2 step 1);
+- the owner's confirmation (or the committed replacement) of the PASS-to-INCONCLUSIVE rule and of §1 lines 16–19
+  (§2 step 1);
 - the `git diff --name-only` from step 1, the pinned commit hash (step 6) and the empty `git status --short` from
   step 7;
 - the `show_config` output (step 4);
@@ -256,6 +303,11 @@ curl.exe -s http://127.0.0.1:8000/api/portfolio
 - Save each day's outputs to the evidence folder as `day-NN-*.txt`, and optionally a screenshot of `/system`.
 - **`soak_report` during the run is interim.** Its verdict line says so. The final verdict is computed once, at the
   end of the run (§7). Looking at interim figures does not change any criterion in §1.
+- **`soak_report` exit codes:** 0 normal, 2 refused or a usage error, **3 a STOP CONDITION (realized drawdown of
+  10 % or more, §6)**. Any other code (a crash) is reported to the owner as it stands. The command line of every
+  report, with its output, goes into the evidence folder. During the run the benchmark line reads UNAVAILABLE until the bars are fetched at the end (§7);
+  that is expected and only means no PASS can show yet. The drawdown, E, the lower bounds and the best-trades check
+  need no market data.
 - **A `soak_report` REFUSED (exit 2) or WARNING while Atlas runs is read again once, a minute later, before it is
   treated as real.** Atlas appends a closed position to the archive just before it saves the account, so a read in
   that moment can see one without the other. A REFUSED that stays is durable-state corruption (§6); a WARNING that
@@ -429,6 +481,7 @@ Stop with Ctrl+C in the `tools.start_atlas` console and do not restart until the
 | any `LIVE_DISABLED` / `LIVE_EXECUTION_BLOCKED` event | the daily audit-file search and the console (§4) |
 | durable-state corruption | startup refuses (fail-closed), the agreement check at drills, readiness `execution`, a `soak_report` REFUSED that stays on a second read (§4) |
 | daily loss beyond the RiskEngine limit (`max_daily_loss_pct = 0.05`) | `DAILY_LOSS_LIMIT_BREACHED` in the audit file; the `/api/portfolio` limits card (both daily, see §4 on the lag) |
+| realized drawdown of 10 % or more from the equity peak (§1 line 19) | `soak_report` prints `STOP CONDITION` and exits 3, at the daily run (unrealized losses are in `/api/portfolio`, not in this figure) |
 | refused venue-rule refresh at step 5 | the soak does not start (a refusal on day 28 does not stop the run; see above) |
 
 ## 7. End of run
@@ -436,16 +489,23 @@ Stop with Ctrl+C in the `tools.start_atlas` console and do not restart until the
 1. **Before stopping,** save the final `/api/readiness`, `/api/status`, `/api/portfolio`, `performance_report` and
    `reality_check` outputs: the web server stops with Atlas.
 2. Stop with Ctrl+C. Note the UTC time: it is the end.
-3. Compute E, E% and the 95 % lower bound (§1 line 11):
+3. Fetch the benchmark bars for the whole run (public data, no key; the owner's machine, with Binance access). Wait
+   until the hour in which the last trade closed has ended (an hourly bar is archived only once closed). Run
+   the report once; with the bars missing it prints the exact command, a `python tools/fetch_historical_market_data.py
+   --symbols ... --start ... --end ...` line covering the trade universe, BTCUSDT and the trades' span. Run that line,
+   then the report again. If it says the archive has an unfinished write-ahead log, let the fetch finish and run it
+   again.
+4. Compute E, E%, the lower bounds, the benchmark excess and the drawdown (§1 lines 11 and 16–19):
    ```
    python -m tools.soak_report --start <line 1> --end <end>
    ```
    It counts positions opened at or after line 1 and closed before the end, and lists the positions still open, which
    are excluded. With Atlas stopped the archive and the account cannot be caught mid-write, so a WARNING here stands:
    it is reported with the verdict, and a PASS is already reported as INCONCLUSIVE (§1, line 11 note).
-4. State the verdict against §1 lines 5–9, using only the pre-registered rules. Also report the drills: any FAIL,
-   UNMET or NOT EXERCISED item.
-5. Report to the owner. The soak result is evidence only. It moves nothing up the Paper → Shadow → Small Live ladder;
+5. State the verdict against §1 lines 5–9 and 16–19, using only the pre-registered rules. Also report the drills:
+   any FAIL, UNMET or NOT EXERCISED item. A report that shows PASS and also `STOP CONDITION` (exit 3) is read as a
+   run that hit its drawdown stop: both are reported, and the run ended at the stop, not by its plan.
+6. Report to the owner. The soak result is evidence only. It moves nothing up the Paper → Shadow → Small Live ladder;
    that is a separate governed decision.
 
 ## 8. What this plan does not do
