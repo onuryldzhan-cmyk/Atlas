@@ -53,11 +53,15 @@ def _overall(agent: str, findings: list[Finding], *, primary_only: tuple[str, ..
     total = sum(f.strength for f in used if f.stance is not Stance.NONE)
     if total <= 0:
         return SpecialistReport(agent, AgentStatus.OK, Stance.NONE, 0.0, tuple(findings))
-    strength = min(1.0, abs(net) / total * max(f.strength for f in used))
     if abs(net) / total < 0.2:
+        # A neutral view is as strong as its positive neutral evidence (review N2); bull and bear findings that
+        # merely cancel are not evidence of a range and give strength 0.
+        neutral = [f.strength for f in used if f.stance is Stance.NEUTRAL]
         stance = Stance.NEUTRAL
+        strength = min(1.0, sum(neutral) / total * max(neutral)) if neutral else 0.0
     else:
         stance = Stance.BULLISH if net > 0 else Stance.BEARISH
+        strength = min(1.0, abs(net) / total * max(f.strength for f in used))
     return SpecialistReport(agent, AgentStatus.OK, stance, round(strength, 4), tuple(findings))
 
 
@@ -316,7 +320,7 @@ NARRATIVE_SYSTEM = (
 
 
 NARRATIVE_KINDS = ("INTERPRETATION", "HYPOTHESIS")
-_NUMBER = re.compile(r"(?<![A-Za-z_])[-+]?\d+(?:[.,]\d+)*(?:\.\d+)?")
+_NUMBER = re.compile(r"(?<![A-Za-z_])[-+]?\d+(?:[.,]\d+)*(?:\.\d+)?\s*[kKmMbB]?(?![A-Za-z])")
 
 
 def _numbers_backed(statement: str, claims: tuple[Claim, ...]) -> bool:
@@ -324,10 +328,13 @@ def _numbers_backed(statement: str, claims: tuple[Claim, ...]) -> bool:
     within the model tolerance). Indicator periods in names (RSI(14), EMA20, 24h, 1d) are not free numbers."""
     from tools.unified_analysis.verification import MODEL_REL_TOL
 
-    text = re.sub(r"(?i)\b(rsi|ema|atr|sma)\s*\(?\s*\d+\s*\)?|\b\d+\s*(h|d|m|w|bar|bars)\b", " ", statement)
+    # only indicator periods (RSI(14), EMA20) and the analysed timeframes (1h, 4h, 1d, 24h) are not free numbers
+    text = re.sub(r"(?i)\b(rsi|ema|atr|sma)\s*\(?\s*\d+\s*\)?|\b(1h|4h|1d|24h)\b", " ", statement)
     for raw in _NUMBER.findall(text):
+        raw = raw.strip()
+        scale = {"k": 1e3, "m": 1e6, "b": 1e9}.get(raw[-1].lower(), 1.0) if raw[-1].isalpha() else 1.0
         try:
-            value = float(raw.replace(",", ""))
+            value = float((raw[:-1] if raw[-1].isalpha() else raw).replace(",", "").strip()) * scale
         except ValueError:
             return False
         if not any(abs(value - v) <= max(1e-9, MODEL_REL_TOL * abs(v)) or abs(value - 100 * v) <= max(1e-9, MODEL_REL_TOL * abs(100 * v))

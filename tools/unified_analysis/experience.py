@@ -128,6 +128,7 @@ class ExperienceLedger:
             "horizon_ms": report.horizon_hours * 3_600_000,
             "classification": report.classification.value, "confidence": str(report.confidence),
             "candidate": basis.get("candidate"), "candidate_confidence": basis.get("candidate_confidence"),
+            "risk_approved": report.risk.approved,
             "reference_close": report.reference_close,
             "invalidation": primary["invalidation"] if primary else [],
             "report_sha256": report_sha, "report": body})
@@ -255,10 +256,15 @@ def _non_overlapping(rows: Iterable[tuple[dict, dict]]) -> list[tuple[dict, dict
 
 
 def _key(prediction: Mapping[str, Any]) -> str | None:
+    """Emitted claims and capped candidates whose risk gate passed share one key (the same situations, held back
+    only by the cap, threshold or objections). A risk-rejected candidate is kept under its own ``:risk_rejected``
+    key (review N3): situations the class is never emitted in must not set the cap of approved results."""
     cls = scored_class(prediction)
     if cls is None:
         return None
     roster = (prediction.get("report") or {}).get("confidence_basis", {}).get("roster") or "live"
+    if prediction["classification"] == Classification.RISK_REJECTED.value or prediction.get("risk_approved") is False:
+        return f"{roster}:{cls}:risk_rejected"
     return f"{roster}:{cls}"
 
 
@@ -274,7 +280,7 @@ def calibration(records: list[dict[str, Any]], *, as_of_ms: int | None = None) -
              and (as_of_ms is None or int(r.get("through_ms", 0)) <= as_of_ms)]
     out: dict[str, dict[str, Any]] = {}
     for key in {k for k in (_key(p) for p, _ in pairs) if k is not None}:
-        cls = key.split(":", 1)[1]
+        cls = key.split(":")[1]
         rows = sorted(_non_overlapping((p, o) for p, o in pairs if _key(p) == key), key=lambda x: _entry_from(x[0]))
         n = len(rows)
         hits = sum(1 for _, o in rows if o["hit"])

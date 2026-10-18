@@ -75,19 +75,27 @@ it would have had in `confidence_basis.candidate_confidence`, so no change of cl
 
 1. **Fusion bound.** Confidence starts as the `SignalFusion` worst-case agreement bound: each missing source counts
    fully against.
-2. **Review penalty.** Then 0.10 is subtracted for each MAJOR objection. COUNTER_EVIDENCE is exempt, because the
-   fusion bound already counts it; penalising it twice would let the removal of an opposing source raise confidence.
+2. **Review penalty.** Then 0.10 is subtracted for each MAJOR objection. A COUNTER_EVIDENCE finding from a
+   specialist whose own view opposes the thesis is not penalised, because the fusion bound already counts it
+   against (penalising it again would let removing that specialist raise confidence). A counter finding from
+   inside a specialist that fusion counted *for* the thesis (e.g. a bearish 4h trend inside a bullish technical
+   view) is penalised, at most once per specialist.
 3. **Calibration cap.** Next, the confidence is capped from the candidate class's settled record:
-   - MEASURED: the Wilson 95 % lower bound of the hit rate;
-   - otherwise: the hit rate shrunk toward 0.50 with 10 pseudo-samples, never above 0.50 (no record = 0.50; a
-     losing record lowers it smoothly).
-   Calibration is keyed on the *candidate* (the class the evidence pointed to before the cap, the threshold and the
-   risk gate), so a capped class keeps accumulating a record instead of freezing at its first misses.
+   - always: the hit rate shrunk toward 0.50 with 10 pseudo-samples, never above 0.50 (no record = 0.50; a
+     losing record lowers it smoothly; one more hit never lowers it);
+   - MEASURED: the larger of that and the Wilson 95 % lower bound, so passing the walk-forward check never lowers
+     the cap.
+   Calibration is keyed on the scored class: the classification when it is a claim, otherwise the *candidate* the
+   evidence pointed to before the cap, the threshold or the objections, so a capped class keeps accumulating a
+   record instead of freezing at its first misses. A risk-rejected candidate is kept under its own
+   `<roster>:<class>:risk_rejected` key and never sets the cap of approved results.
 4. **Threshold.** Finally, a directional result below 0.20 becomes `INSUFFICIENT_EVIDENCE`.
 
 A `NEUTRAL_RANGE` needs a NEUTRAL primary scenario, a fusion that abstains on both directions, and a monotone
 neutral bound of at least 0.20. In that bound a neutral source counts +strength, a directional one -strength and a
-missing one -1, so moderate two-sided evidence is `INSUFFICIENT_EVIDENCE`, not a range. Confidence is never a
+missing one -1, so moderate two-sided evidence is `INSUFFICIENT_EVIDENCE`, not a range. A specialist's neutral view
+is as strong as its positive neutral evidence (an EMA stack mixed on every timeframe, a SIDEWAYS regime); bull and
+bear findings that merely cancel give it strength 0. Confidence is never a
 probability: `calibrated_probability` stays false.
 
 **Risk gate.** Any of the following rejects the result, whatever the fusion and the jury said:
@@ -172,10 +180,10 @@ The model calls' usage ledger is `<state>/research/ai_usage.json`, shared with t
 | Specialist raises or returns garbage | FAILED; missing source; recorded as a non-blocking check. |
 | Specialist states a wrong number | Blocking verification failure; `INSUFFICIENT_EVIDENCE`. |
 | Model unavailable, refusing, over budget, malformed, wrongly typed, or the call raises | Narrative ABSTAIN, court ABSTAINED; the deterministic result stands. |
-| Model invents a number, a fact or a citation | The finding or charge is dropped and recorded. Narrative findings are never scored, so the classification and confidence cannot move; only cited court charges can lower confidence. |
+| Model invents a number or a citation | The finding or charge is dropped and recorded. A number in a narrative statement (including 70k, 150 M) must match a recomputed claim; indicator periods and the analysed timeframes are exempt. Non-numeric free text ("whales accumulated") is **not** verified, and it is stored only as a labelled model INTERPRETATION or HYPOTHESIS. Narrative findings are never scored, so the classification and confidence cannot move; only cited court charges can lower confidence. |
 | Strong bull and strong bear evidence | `INSUFFICIENT_EVIDENCE` (contradiction). |
 | Ledger edited, reordered or torn, or an append fails | HALT (exit 3); nothing is appended. |
-| Re-run of a recorded analysis | Identical: no-op. Different: refused (exit 4); the first one stands, and the re-run's report is still saved as `<id>.rerun-<ms>.json`. |
+| Re-run of a recorded analysis | Identical: no-op. Different: refused (exit 4); the first one stands, and the re-run's report is still saved as `<id>.rerun-<ms>.json`. A live analysis records its decision time, so a second live run in the same hour always differs and is refused; only archive analyses re-run identically. |
 
 ## 9. Cost and latency
 

@@ -94,6 +94,28 @@ def assess_risk(snapshot: MarketSnapshot, reports: tuple[SpecialistReport, ...],
     return RiskAssessment(tuple(dict.fromkeys(rejections)), tuple(dict.fromkeys(warnings)))
 
 
+def _penalised_majors(review: ReviewResult, reports: tuple[SpecialistReport, ...], thesis: Stance) -> int:
+    """MAJOR objections that lower confidence (review N5).
+
+    A COUNTER_EVIDENCE finding from a specialist whose own view opposes the thesis is already inside the fusion
+    bound, so it is not penalised again (doing so would let removing that specialist lift confidence). A counter
+    finding from inside a specialist that fusion counted FOR the thesis is penalised, at most once per specialist:
+    removing that specialist costs fusion at least weight/total >= 0.125 > the 0.10 penalty, so NB-4 holds."""
+    stance = {r.agent: r.stance for r in reports if r.status is AgentStatus.OK}
+    opposite = Stance.BEARISH if thesis is Stance.BULLISH else Stance.BULLISH if thesis is Stance.BEARISH else None
+    majors, counter_agents = 0, set()
+    for o in review.objections:
+        if o.severity is not Severity.MAJOR:
+            continue
+        if o.category in PENALTY_EXEMPT:
+            agent = o.targets[0].split(":", 1)[0] if o.targets else ""
+            if opposite is not None and stance.get(agent) is not opposite:
+                counter_agents.add(agent)
+            continue
+        majors += 1
+    return majors + len(counter_agents)
+
+
 def neutral_bound(reports: tuple[SpecialistReport, ...], roster: str = "live") -> Decimal:
     """Worst-case agreement on "no directional edge", over the expected roster (the NB-4/NB-5 rule of SignalFusion
     applied to the range view): a NEUTRAL source counts +strength, a directional one -strength, a source with no
@@ -120,12 +142,16 @@ def calibration_cap(track: Mapping[str, Any]) -> tuple[Decimal, dict[str, Any]]:
     CAP_PRIOR_N pseudo-samples, never above UNCALIBRATED_CAP: no record = 0.50, a losing record lowers it smoothly,
     and one early miss cannot freeze the class at zero."""
     n, hits = int(track.get("n") or 0), int(track.get("hits") or 0)
-    if track.get("measured"):
-        cap = D(str(track["wilson_lower"])).quantize(D("0.000001"))
-        return cap, {"status": "MEASURED", "n": n, "hit_rate": track.get("hit_rate"), "wilson_lower": str(cap)}
     shrunk = (D(hits) + UNCALIBRATED_CAP * CAP_PRIOR_N) / (D(n) + CAP_PRIOR_N)
-    cap = min(UNCALIBRATED_CAP, shrunk).quantize(D("0.000001"))
-    return cap, {"status": "UNCALIBRATED", "n": n, "hits": hits, "cap": str(cap)}
+    base = min(UNCALIBRATED_CAP, shrunk).quantize(D("0.000001"))
+    if track.get("measured"):
+        # review N1: a measured record is never capped below the same record unmeasured, so one more hit, or
+        # passing the walk-forward check, can never lower the cap
+        wilson = D(str(track["wilson_lower"])).quantize(D("0.000001"))
+        cap = max(base, wilson)
+        return cap, {"status": "MEASURED", "n": n, "hit_rate": track.get("hit_rate"), "wilson_lower": str(wilson),
+                     "cap": str(cap)}
+    return base, {"status": "UNCALIBRATED", "n": n, "hits": hits, "cap": str(base)}
 
 
 def decide(snapshot: MarketSnapshot, reports: tuple[SpecialistReport, ...], scenarios: tuple[Scenario, ...],
@@ -165,9 +191,7 @@ def decide(snapshot: MarketSnapshot, reports: tuple[SpecialistReport, ...], scen
         if fusion.action is not expected:
             return Classification.INSUFFICIENT_EVIDENCE, D("0"), basis, risk, ("FUSION_SCENARIO_DISAGREE",)
         raw = fusion.confidence
-    # COUNTER_EVIDENCE is already inside the fusion bound; penalising it again would let the removal of an
-    # opposing source lift confidence by more than the fusion loses (NB-4).
-    majors = sum(1 for o in review.objections if o.severity is Severity.MAJOR and o.category not in PENALTY_EXEMPT)
+    majors = _penalised_majors(review, reports, chosen.stance)
     penalised = max(D("0"), raw - MAJOR_PENALTY * majors)
     cap, basis["calibration"] = calibration_cap((calibration or {}).get(f"{roster}:{target.value}") or {})
     candidate_confidence = min(penalised, cap)

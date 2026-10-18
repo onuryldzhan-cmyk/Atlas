@@ -272,3 +272,79 @@ def test_unified_analysis_and_the_gateway_are_outside_the_runtime_closure():
     closure = compute_runtime_closure(REPOSITORY_ROOT, ENTRY_POINTS)
     assert not any(str(m).startswith(("tools.unified_analysis", "tools/unified_analysis")) for m in closure)
     assert not any("ai_gateway" in str(m) for m in closure)
+
+
+# ---------------------------------------------------------------- re-audit N1-N5
+
+
+def _track(hits, n, measured, wilson=None):
+    from tools.unified_analysis.experience import wilson_lower
+
+    return {"n": n, "hits": hits, "measured": measured,
+            "wilson_lower": wilson if wilson is not None else round(wilson_lower(hits, n), 4)}
+
+
+def test_n1_one_more_hit_or_passing_walk_forward_never_lowers_the_cap():
+    before, _ = calibration_cap(_track(17, 29, False))
+    after, _ = calibration_cap(_track(18, 30, True))
+    failed_wf, _ = calibration_cap(_track(18, 30, False))
+    assert after >= before and after >= failed_wf
+    for n in range(1, 60):
+        for hits in range(n):
+            lower, _ = calibration_cap(_track(hits, n, False))
+            higher, _ = calibration_cap(_track(hits + 1, n, False))
+            assert higher >= lower
+
+
+def test_n2_the_default_roster_can_reach_a_range_view():
+    r = run_analysis(inputs(0.0, k=klines(0.0, vol=0.003, wiggle=1.3)))
+    assert r.classification is Classification.NEUTRAL_RANGE
+    assert Decimal(r.confidence_basis["neutral_bound"]) >= Decimal("0.2") and r.confidence == 0
+    names = [s.name for s in DEFAULT_SPECIALISTS]
+    for k in range(1, len(names) + 1):            # NB-4 on the range path: removal never raises the bound
+        for removed in itertools.combinations(names, k):
+            kept = tuple(s for s in DEFAULT_SPECIALISTS if s.name not in removed)
+            sub = run_analysis(inputs(0.0, k=klines(0.0, vol=0.003, wiggle=1.3)), specialists=kept)
+            if "neutral_bound" in sub.confidence_basis:
+                assert Decimal(sub.confidence_basis["neutral_bound"]) <= Decimal(r.confidence_basis["neutral_bound"])
+            assert sub.classification not in DIRECTIONAL
+
+
+def test_n3_risk_rejected_candidates_never_set_the_approved_cap():
+    recs = []
+    for i in range(40):
+        recs.append({"record_type": "PREDICTION", "analysis_id": f"r{i}", "symbol": "X", "cutoff_ms": i * 48 * H,
+                     "horizon_ms": 24 * H, "classification": "RISK_REJECTED", "candidate": "BULLISH_SETUP",
+                     "risk_approved": False, "report": {"confidence_basis": {"roster": "live"}}})
+        recs.append({"record_type": "OUTCOME", "analysis_id": f"r{i}", "hit": True, "through_ms": (i * 48 + 24) * H})
+    cal = calibration(recs)
+    assert "live:BULLISH_SETUP" not in cal and cal["live:BULLISH_SETUP:risk_rejected"]["n"] == 40
+
+
+@pytest.mark.parametrize("statement", ["target 250000 m", "market cap to 150 M", "200 bars of accumulation to 90000 d",
+                                       "rally to 70k next"])
+def test_n4_unit_suffixed_numbers_are_still_numbers(statement):
+    item = {"statement": statement, "kind": "INTERPRETATION", "stance": "BULLISH", "strength": 0.3,
+            "cites": ["technical:1h:trend"], "claims": []}
+    r = run_analysis(inputs(0.002), ask=FakeAsk(narrative={"findings": [item]}), max_inference_calls=1)
+    assert next(x for x in r.specialists if x.agent == "narrative").findings == ()
+
+
+def test_n4_indicator_periods_and_timeframes_are_not_free_numbers():
+    item = {"statement": "RSI(14) and EMA20 on 1h and 4h agree", "kind": "INTERPRETATION", "stance": "BULLISH",
+            "strength": 0.3, "cites": ["technical:1h:trend"], "claims": []}
+    r = run_analysis(inputs(0.002), ask=FakeAsk(narrative={"findings": [item]}), max_inference_calls=1)
+    assert next(x for x in r.specialists if x.agent == "narrative").findings
+
+
+def test_n5_counter_evidence_inside_a_supporting_specialist_is_penalised_once():
+    from tools.unified_analysis.contracts import Objection, ReviewResult, Severity, SpecialistReport, AgentStatus, Stance
+    from tools.unified_analysis.decision import _penalised_majors
+
+    reports = (SpecialistReport("technical", AgentStatus.OK, Stance.BULLISH, 0.6),
+               SpecialistReport("derivatives", AgentStatus.OK, Stance.BEARISH, 0.3))
+    obj = lambda target: Objection(f"o:{target}", "det", Severity.MAJOR, "COUNTER_EVIDENCE", "x", (target,))
+    review = ReviewResult((obj("technical:4h:trend"), obj("technical:1d:trend"), obj("derivatives:funding")), (),
+                          "NOT_RUN")
+    # two internal technical counters -> one penalty; the derivatives counter is inside fusion -> none
+    assert _penalised_majors(review, reports, Stance.BULLISH) == 1
