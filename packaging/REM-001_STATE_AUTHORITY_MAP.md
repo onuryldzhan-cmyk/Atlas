@@ -19,10 +19,10 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `ad092adf25cc68bb118d1ab89d0f6a9edd5e6eb7` |
-| generated_from_tree | `bf5f89016a1cb33f9a6bc4a60e2631bb4ccef3e8` |
+| generated_from_commit | `ba71ea1e64a862abe2ddc332ad7812dc696cfbfd` |
+| generated_from_tree | `7e6c90854f064e0e430a3c654f6e984cb3534699` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['atlas_finance/forex/instruments.py', 'core/application.py', 'core/atlas_config.py', 'core/market_loop.py', 'exchange/market_feed.py', 'main.py', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'tests/test_atlas_config.py', 'tests/test_task019_forex_wiring.py', 'tools/refresh_mt5_instrument_rules.py'] |
+| modified_tracked_paths_at_generation | ['atlas_finance/market_data/mt5_provider.py', 'core/application.py', 'core/atlas_config.py', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'tests/test_task019_forex_wiring.py', 'tests/test_task021_forex_spread_fill.py'] |
 
 ## What this artifact is, and what it is not
 

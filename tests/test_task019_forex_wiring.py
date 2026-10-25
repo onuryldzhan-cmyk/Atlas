@@ -35,10 +35,25 @@ def config(env, monkeypatch):
     return load_config(env, execution_mode="PAPER", paper_confidence_experiment=False)
 
 
-def test_the_market_defaults_to_crypto_and_accepts_forex(monkeypatch):
+def state_env(monkeypatch, tmp_path, *parts):
+    state = tmp_path.joinpath(*parts)
+    state.mkdir(parents=True)
+    for name in [n for n in __import__("os").environ if n.upper().startswith("ATLAS_")]:
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("ATLAS_STATE_DIRECTORY", str(state))
+    return {"ATLAS_STATE_DIRECTORY": str(state)}
+
+
+def load(env):
+    return load_config(env, execution_mode="PAPER", paper_confidence_experiment=False)
+
+
+def test_the_market_defaults_to_crypto_and_accepts_forex_in_its_own_state(monkeypatch, tmp_path):
+    # Task 021 (v5.104): forex never shares the crypto state - its own directory, named 'forex' in its path
     assert config({}, monkeypatch).market == "CRYPTO"
-    assert config({"ATLAS_MARKET": " forex "}, monkeypatch).market == "FOREX"
-    assert config({"ATLAS_MARKET": "forex"}, monkeypatch).describe()["market"] == "FOREX"
+    env = state_env(monkeypatch, tmp_path, "forex")
+    assert load({**env, "ATLAS_MARKET": " forex "}).market == "FOREX"
+    assert load({**env, "ATLAS_MARKET": "forex"}).describe()["market"] == "FOREX"
 
 
 def test_an_unknown_market_is_refused(monkeypatch):
@@ -46,18 +61,22 @@ def test_an_unknown_market_is_refused(monkeypatch):
         config({"ATLAS_MARKET": "STOCKS"}, monkeypatch)
 
 
-def test_the_binance_book_fill_is_refused_on_forex_even_with_a_valid_shadow_state(monkeypatch, tmp_path):
-    shadow = tmp_path / "shadow"
-    shadow.mkdir()
-    env = {"ATLAS_FILL_MODEL": "BOOK", "ATLAS_STATE_DIRECTORY": str(shadow)}
-    for name in [n for n in __import__("os").environ if n.upper().startswith("ATLAS_")]:
-        monkeypatch.delenv(name, raising=False)
-    monkeypatch.setenv("ATLAS_STATE_DIRECTORY", str(shadow))
-    assert load_config(env, execution_mode="PAPER", paper_confidence_experiment=False).fill_model == "BOOK"
-    with pytest.raises(AtlasConfigError) as refused:
-        load_config({**env, "ATLAS_MARKET": "FOREX"}, execution_mode="PAPER", paper_confidence_experiment=False)
-    assert refused.value.errors == ["ATLAS_MARKET=FOREX refuses ATLAS_FILL_MODEL=BOOK: the BOOK fill reads the "
-                                    "Binance order book"]
+def test_forex_never_shares_the_crypto_state(monkeypatch, tmp_path):
+    with pytest.raises(AtlasConfigError, match="needs its own ATLAS_STATE_DIRECTORY"):
+        config({"ATLAS_MARKET": "FOREX"}, monkeypatch)                      # the default (crypto) state
+    env = state_env(monkeypatch, tmp_path, "paper")
+    with pytest.raises(AtlasConfigError, match="folder named 'forex'"):
+        load({**env, "ATLAS_MARKET": "FOREX"})
+
+
+def test_the_forex_spread_fill_needs_a_forex_shadow_state(monkeypatch, tmp_path):
+    # Task 021: BOOK in FOREX is the spread fill from the MT5 quotes; it is a Shadow record, kept apart
+    env = state_env(monkeypatch, tmp_path, "forex", "shadow")
+    config_ = load({**env, "ATLAS_MARKET": "FOREX", "ATLAS_FILL_MODEL": "BOOK"})
+    assert (config_.market, config_.fill_model) == ("FOREX", "BOOK")
+    env = state_env(monkeypatch, tmp_path, "forex-only", "forex")
+    with pytest.raises(AtlasConfigError, match="'shadow'"):
+        load({**env, "ATLAS_MARKET": "FOREX", "ATLAS_FILL_MODEL": "BOOK"})
 
 
 # ---------------------------------------------------------------- the application in each market
@@ -92,7 +111,6 @@ def test_forex_reads_mt5_its_own_rules_usd_quotes_and_the_session(tmp_path):
 
 @pytest.mark.parametrize("kwargs, message", [
     ({"market": "stocks"}, "not one of"),
-    ({"market": "FOREX", "paper_fill_model": "BOOK"}, "refuses"),
     ({"market": "FOREX", "funding_sentiment": True}, "refuses"),
 ])
 def test_unknown_markets_and_binance_inputs_on_forex_are_refused(tmp_path, kwargs, message):

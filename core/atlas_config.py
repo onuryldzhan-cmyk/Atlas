@@ -170,8 +170,16 @@ def load_config(
     market = str(environ.get(MARKET_ENV, "CRYPTO")).strip().upper()
     if market not in MARKETS:
         errors.append(f"{MARKET_ENV} {market!r} is refused: use one of {sorted(MARKETS)}")
-    elif market == "FOREX" and fill_model == "BOOK":
-        errors.append(f"{MARKET_ENV}=FOREX refuses {FILL_MODEL_ENV}=BOOK: the BOOK fill reads the Binance order book")
+    elif market == "FOREX":
+        # Task 021 (registry v5.104): forex never shares the crypto state (positions, ledgers, journals). Like a
+        # Shadow state, a forex state directory is set explicitly and says so in its path (e.g. C:\AtlasState\forex).
+        # With BOOK (the spread fill from the MT5 quotes) the path also needs 'shadow' (e.g. ...\forex\shadow).
+        state = resolved.get("state_directory")
+        if not str(environ.get(STATE_DIRECTORY_ENV, "")).strip():
+            errors.append(f"{MARKET_ENV}=FOREX needs its own {STATE_DIRECTORY_ENV}; it never shares the crypto state")
+        elif state is not None and not any(part.lower() == "forex" for part in Path(state).parts):
+            errors.append(f"{MARKET_ENV}=FOREX needs a state directory with a folder named 'forex' in its path "
+                          f"(got {state}); the crypto state is never reused")
 
     if errors:
         raise AtlasConfigError(errors)

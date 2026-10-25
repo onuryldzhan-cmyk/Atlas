@@ -260,4 +260,42 @@ class Mt5MarketDataProvider:
         return candles
 
 
-__all__ = ["MAXIMUM_CANDLE_LIMIT", "PROVIDER_NAME", "TIMEFRAMES", "Mt5MarketDataProvider"]
+QUOTE_MAX_AGE_SECONDS = 60      # a fill quote older than this is not a price (Task 021)
+
+
+class Mt5QuoteFillProvider:
+    """PAPER fill price from the MT5 top of book: a BUY fills at the ask, a SELL at the bid (Task 021, v5.104).
+
+    The ``paper_fill_provider`` contract of ``ExecutionManager`` (the BOOK fill model): a callable
+    ``(symbol, side, quote_notional) -> Decimal | None`` that never raises; None rejects the order. The spread is
+    paid on every fill this way. MT5 exposes no depth here, so the notional is not walked through a book: the
+    top-of-book quote is used for any size (major-pair sizes at this capital are far below top-of-book liquidity -
+    an assumption, not a measurement). A quote older than QUOTE_MAX_AGE_SECONDS, or one that cannot be read, is no
+    price.
+    """
+
+    def __init__(self, provider: Mt5MarketDataProvider, *, clock: Callable[[], datetime] | None = None,
+                 max_age_seconds: float = QUOTE_MAX_AGE_SECONDS) -> None:
+        self._provider = provider
+        self._clock = clock or (lambda: datetime.now(UTC))
+        self._max_age = timedelta(seconds=float(max_age_seconds))
+
+    def __call__(self, symbol: str, side: str, notional: Decimal) -> Decimal | None:
+        try:
+            side = str(side).upper()
+            if side not in ("BUY", "SELL"):
+                return None
+            quote = self._provider.get_price(symbol)
+            observed = quote.source_timestamp
+            if observed is None or not (timedelta(0) - timedelta(seconds=MAX_CLOCK_LEAD_SECONDS)
+                                        <= self._clock() - observed <= self._max_age):
+                return None
+            value = quote.metadata["ask"] if side == "BUY" else quote.price
+            price = Decimal(str(value))
+            return price if price.is_finite() and price > 0 else None
+        except Exception:   # fail closed: any failure is "no price", and the order is rejected
+            return None
+
+
+__all__ = ["MAXIMUM_CANDLE_LIMIT", "PROVIDER_NAME", "QUOTE_MAX_AGE_SECONDS", "TIMEFRAMES", "Mt5MarketDataProvider",
+           "Mt5QuoteFillProvider"]

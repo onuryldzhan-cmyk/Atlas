@@ -16,35 +16,29 @@
     "analysis": "Static AST import resolution over git-tracked Python files, excluding imports guarded by if TYPE_CHECKING:. Third-party and stdlib targets resolve to nothing and carry no edge."
   },
   "source_identity": {
-    "generated_from_commit": "ad092adf25cc68bb118d1ab89d0f6a9edd5e6eb7",
-    "generated_from_tree": "bf5f89016a1cb33f9a6bc4a60e2631bb4ccef3e8",
+    "generated_from_commit": "ba71ea1e64a862abe2ddc332ad7812dc696cfbfd",
+    "generated_from_tree": "7e6c90854f064e0e430a3c654f6e984cb3534699",
     "tracked_working_tree_clean": false,
     "modified_tracked_paths_at_generation": [
-      "atlas_finance/forex/instruments.py",
+      "atlas_finance/market_data/mt5_provider.py",
       "core/application.py",
       "core/atlas_config.py",
-      "core/market_loop.py",
-      "exchange/market_feed.py",
-      "main.py",
       "packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md",
       "packaging/REM-001_STATE_AUTHORITY_MAP.md",
-      "packaging/atlas_architecture_map.json",
-      "packaging/atlas_runtime_closure.json",
-      "tests/test_atlas_config.py",
       "tests/test_task019_forex_wiring.py",
-      "tools/refresh_mt5_instrument_rules.py"
+      "tests/test_task021_forex_spread_fill.py"
     ]
   },
   "scope": {
     "universe": "ALL_GIT_TRACKED_PYTHON_FILES",
     "universe_note": "The tool's existing tracked-file definition, used unchanged. No source-scope classification (ACTIVE_CANDIDATE / TEST / TOOL / ARCHIVE / BACKUP / QUARANTINE / REPORT_COPY) is applied or implied: that classification requires the human review gate ARCH-001.2.1 reserves and belongs to Gate 1 deliverable 1.",
-    "modules_total": 1184,
+    "modules_total": 1185,
     "modules_runtime_reachable": 146,
-    "modules_outside_runtime_closure": 1038,
-    "edges_total": 2911,
-    "edges_import": 2101,
-    "edges_package_init": 810,
-    "edges_distinct_module_pairs": 2815,
+    "modules_outside_runtime_closure": 1039,
+    "edges_total": 2922,
+    "edges_import": 2108,
+    "edges_package_init": 814,
+    "edges_distinct_module_pairs": 2826,
     "edges_count_note": "edges_total counts (from, to, kind) triples. A pair can carry both kinds when a file both imports a package directly and references one of its submodules, so edges_distinct_module_pairs is the figure to use when counting dependencies between modules.",
     "parse_failures": 3
   },
@@ -4359,6 +4353,10 @@
       "runtime_reachable": false
     },
     {
+      "module": "tests/test_task021_forex_spread_fill.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/test_task_status.py",
       "runtime_reachable": false
     },
@@ -6591,6 +6589,11 @@
     {
       "from": "core/application.py",
       "to": "atlas_finance/market_data/funding_rate_provider.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/application.py",
+      "to": "atlas_finance/market_data/mt5_provider.py",
       "kind": "import"
     },
     {
@@ -17191,6 +17194,56 @@
     {
       "from": "tests/test_task019_forex_wiring.py",
       "to": "tools/refresh_mt5_instrument_rules.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task021_forex_spread_fill.py",
+      "to": "atlas_finance/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_task021_forex_spread_fill.py",
+      "to": "atlas_finance/market_data/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_task021_forex_spread_fill.py",
+      "to": "atlas_finance/market_data/mt5_provider.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task021_forex_spread_fill.py",
+      "to": "atlas_finance/market_data/order_book_provider.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task021_forex_spread_fill.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_task021_forex_spread_fill.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task021_forex_spread_fill.py",
+      "to": "core/execution_manager.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task021_forex_spread_fill.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_task021_forex_spread_fill.py",
+      "to": "tests/test_block5c_upstream_sizing_authority.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task021_forex_spread_fill.py",
+      "to": "tests/test_task018_forex_foundation.py",
       "kind": "import"
     },
     {
