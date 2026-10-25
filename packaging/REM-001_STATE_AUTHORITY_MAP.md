@@ -19,10 +19,10 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `24cc292897276c4e890fc2d5406606b7dd54b64a` |
-| generated_from_tree | `4617502ca1f4294dc598b242c65ae9dc0d2fe8ec` |
+| generated_from_commit | `6d6b846c8baea2bf0079e8ef0f4ddfb7d3db9856` |
+| generated_from_tree | `e5867cc6342ef3ee82f55e1d361f0a6c98fd2da7` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['docs/architecture/UNIFIED_ANALYSIS.md', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'tests/_task017_support.py', 'tests/test_task017_experience.py', 'tests/test_task017_review_regressions.py', 'tests/test_task017_unified_analysis.py', 'tools/ai_gateway.py', 'tools/unified_analysis/__init__.py', 'tools/unified_analysis/__main__.py', 'tools/unified_analysis/contracts.py', 'tools/unified_analysis/decision.py', 'tools/unified_analysis/experience.py', 'tools/unified_analysis/indicators.py', 'tools/unified_analysis/market_intelligence.py', 'tools/unified_analysis/pipeline.py', 'tools/unified_analysis/review.py', 'tools/unified_analysis/scenarios.py', 'tools/unified_analysis/specialists.py', 'tools/unified_analysis/verification.py'] |
+| modified_tracked_paths_at_generation | ['atlas_finance/forex/__init__.py', 'atlas_finance/forex/instruments.py', 'atlas_finance/forex/sessions.py', 'atlas_finance/market_data/mt5_provider.py', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'tests/test_task018_forex_foundation.py'] |
 
 ## What this artifact is, and what it is not
 
