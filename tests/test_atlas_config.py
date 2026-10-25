@@ -111,6 +111,8 @@ def test_every_allowlisted_variable_at_once_is_accepted(roots, tmp_path):
     # 2026-10-02: ATLAS_FILL_MODEL is the first allowlisted variable whose VALUE is validated
     # (LAST_PRICE or BOOK); "x" is rightly refused, so it gets its default. The name check stays.
     environ["ATLAS_FILL_MODEL"] = "LAST_PRICE"
+    # Task 019: ATLAS_MARKET is the second (CRYPTO or FOREX); the same pattern applies.
+    environ["ATLAS_MARKET"] = "CRYPTO"
     config = load_config(environ, execution_mode="PAPER", paper_confidence_experiment=True)
     assert config.execution_mode == "PAPER"
 

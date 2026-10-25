@@ -357,6 +357,12 @@ def resolve_log_directory() -> Path | None:
 DEFAULT_INSTRUMENT_RULES_PATH = (
     Path(__file__).resolve().parent.parent / "config" / "instrument_rules.json"
 )
+# Task 019 (registry v5.103): forex instrument rules, written by tools/refresh_mt5_instrument_rules.py from a
+# MetaTrader 5 demo terminal. The crypto file above is untouched until the crypto removal (Task 020).
+FOREX_INSTRUMENT_RULES_PATH = (
+    Path(__file__).resolve().parent.parent / "config" / "instrument_rules_mt5.json"
+)
+MARKETS = ("CRYPTO", "FOREX")
 
 RISK_ACCOUNTING_STATE_FILE = "risk_accounting_state.json"
 CAPITAL_RESERVATION_STATE_FILE = "capital_reservations.json"
@@ -556,6 +562,7 @@ class AtlasApplication:
         funding_sentiment: bool = False,
         fusion_full_weight_denominator: bool = False,
         paper_fill_model: str = "LAST_PRICE",
+        market: str = "CRYPTO",
     ) -> None:
         logger.info(
             "Initializing %s v%s",
@@ -563,7 +570,15 @@ class AtlasApplication:
             self.VERSION,
         )
 
-        self.exchange_name = str(exchange_name)
+        # Task 019 (registry v5.103): which market this run trades. FOREX reads MetaTrader 5 (demo only),
+        # the MT5 instrument rules and USD quotes, and stops routing while the forex market is closed.
+        self.market = str(market).strip().upper()
+        if self.market not in MARKETS:
+            raise ValueError(f"market {market!r} is not one of {MARKETS}")
+        self.exchange_name = "mt5" if self.market == "FOREX" else str(exchange_name)
+        self.instrument_rules_path = (
+            FOREX_INSTRUMENT_RULES_PATH if self.market == "FOREX" else DEFAULT_INSTRUMENT_RULES_PATH
+        )
         # Task 014 (registry v5.98): normalised exactly as ExecutionManager normalises it, and an unknown
         # mode is refused instead of being reported here while the manager silently runs PAPER. LIVE stays
         # constructible for tests; it has no authority (live_execution_enabled is never passed) and no adapter.
@@ -588,6 +603,9 @@ class AtlasApplication:
         self.paper_fill_model = str(paper_fill_model).strip().upper()
         if self.paper_fill_model not in ("LAST_PRICE", "BOOK"):
             raise ValueError("paper_fill_model must be LAST_PRICE or BOOK")
+        if self.market == "FOREX" and (self.paper_fill_model == "BOOK" or self.funding_sentiment):
+            # Both read Binance (its order book, its funding rate): crypto evidence is never forex evidence.
+            raise ValueError("FOREX refuses the BOOK fill model and funding sentiment (Binance-only inputs)")
         if not self.paper_slippage_bps.is_finite() or not Decimal("0") <= self.paper_slippage_bps <= Decimal("100"):
             raise ValueError("paper_slippage_bps must be within [0, 100]")
         # registry v5.01 EXP-001. Off unless the production entry point asks
@@ -596,6 +614,10 @@ class AtlasApplication:
         self.paper_confidence_experiment = paper_confidence_experiment is True
         self.paper_confidence_experiment_id = str(paper_confidence_experiment_id)
         self.symbols = list(symbols) if symbols else None
+        if self.symbols is None and self.market == "FOREX":
+            # never MarketLoop's crypto defaults on a forex feed
+            from atlas_finance.forex.instruments import FOREX_UNIVERSE
+            self.symbols = list(FOREX_UNIVERSE)
         self.market_interval = float(market_interval)
         # None means "resolve from the environment now", which is the
         # documented default path; an explicit argument always wins, so every
@@ -839,7 +861,9 @@ class AtlasApplication:
 
         # Sentiment evidence (registry v4.66). Construction performs no
         # I/O; the provider fetches lazily, caches, and fails closed.
-        self.sentiment_provider = FearGreedProvider()
+        # Task 019: the crypto Fear & Greed index is not forex evidence. In FOREX the source is absent, which
+        # fusion counts against a claim over the expected roster (NB-4/NB-5): less confidence, never more.
+        self.sentiment_provider = None if self.market == "FOREX" else FearGreedProvider()
 
         # Macro and market-risk evidence (registry v4.79). The Treasury
         # provider, like the sentiment provider, performs no I/O on
@@ -865,6 +889,10 @@ class AtlasApplication:
         # Audit F-3: fresh closed-candle marks for the risk engine's optional
         # unrealized daily-loss check (read-only; unused while the flag is off).
         self.execution.mark_price_provider = self.market_loop.mark_prices
+        if self.market == "FOREX":
+            from atlas_finance.forex.sessions import is_forex_market_open
+
+            self.market_loop.market_session_open = is_forex_market_open
         self.execution.paper_slippage_bps = self.paper_slippage_bps
         if self.paper_fill_model == "BOOK" and self.execution_mode == "PAPER":
             from atlas_finance.market_data.order_book_provider import OrderBookFillProvider
@@ -962,6 +990,8 @@ class AtlasApplication:
             ),
             count_unrealized_in_daily_loss=self.count_unrealized_in_daily_loss,
             sleeves_enabled=self.sleeves_enabled,
+            # Task 019: forex pairs are quoted in USD (EURUSD -> EUR exposure against USD)
+            **({"quote_currencies": ("USD",)} if self.market == "FOREX" else {}),
         )
 
         self.risk_engine = RiskEngine(
@@ -1169,13 +1199,13 @@ class AtlasApplication:
 
         try:
             self.instrument_ruleset = load_instrument_ruleset(
-                DEFAULT_INSTRUMENT_RULES_PATH
+                self.instrument_rules_path
             )
         except InstrumentRulesConfigError as exc:
             self.instrument_ruleset = None
             logger.error(
                 "Instrument rules unavailable path=%s error=%s",
-                DEFAULT_INSTRUMENT_RULES_PATH,
+                self.instrument_rules_path,
                 exc,
             )
             return

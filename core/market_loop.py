@@ -58,7 +58,7 @@ import traceback
 
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Any
+from typing import Any, Callable
 
 from atlas_security import sanitize_sensitive_data
 
@@ -179,6 +179,12 @@ class MarketLoop:
     # never gated here - reducing risk must not wait for a fresh feed.
     # Same bound as the fetch staleness above, so the two agree.
     BUY_MAX_CANDLE_AGE_SECONDS: float = STALENESS_THRESHOLD_SECONDS
+
+    # Task 019 (registry v5.103): the trading-session guard of a market that closes (forex: Sunday 17:00 to
+    # Friday 17:00 New York). None - the crypto default - means the market never closes and nothing changes.
+    # Set by the composition root in forex mode; while it reports the market closed, neither a BUY nor a SELL is
+    # routed (a paper fill at a weekend's stale price would be fiction). A guard that raises counts as closed.
+    market_session_open: Callable[[datetime], bool] | None = None
 
     # Candle age (registry v4.71): time from the newest closed candle's
     # own exchange close_time to the cycle's processing cutoff. This is
@@ -1216,6 +1222,41 @@ class MarketLoop:
                 "symbol": symbol,
                 "action": action,
             }
+
+        guard = self.market_session_open
+        if guard is not None:
+            try:
+                session_open = guard(processing_cutoff) is True
+            except Exception:
+                logger.exception("%s market session guard failed; treated as closed", symbol)
+                session_open = False
+            if not session_open:
+                self._increment_metric(
+                    "market_closed_skipped"
+                )
+
+                logger.info(
+                    "%s %s not routed: the market is closed",
+                    symbol,
+                    action,
+                )
+
+                result = {
+                    "status": "SKIPPED",
+                    "reason": "MARKET_CLOSED",
+                    "symbol": symbol,
+                    "action": action,
+                    "timestamp": datetime.now(
+                        UTC
+                    ).isoformat(),
+                }
+
+                with self.lock:
+                    self.last_executions[
+                        symbol
+                    ] = result
+
+                return result
 
         if action == "SELL" and self._sell_symbol_known_flat(symbol):
             # Registry v5.04: Atlas is LONG-only, so a SELL of a symbol the

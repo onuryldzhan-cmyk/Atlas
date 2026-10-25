@@ -58,6 +58,9 @@ from atlas_finance.market_data.models import (
     MarketCandle,
     MarketPrice,
 )
+from atlas_finance.market_data.mt5_provider import (
+    Mt5MarketDataProvider,
+)
 from atlas_finance.market_data.temporal import (
     to_milliseconds,
 )
@@ -82,6 +85,8 @@ class MarketFeed:
     SUPPORTED_EXCHANGES = {
         "binance",
         "binance_global",
+        # Task 019 (registry v5.103): forex through a MetaTrader 5 demo terminal.
+        "mt5",
     }
 
     def __init__(
@@ -105,7 +110,7 @@ class MarketFeed:
 
         if normalized_exchange not in self.SUPPORTED_EXCHANGES:
             raise ValueError(
-                "MarketFeed v2 supports public Binance Global data only. "
+                "MarketFeed v2 supports public Binance Global data and MetaTrader 5 (mt5) only. "
                 f"Unsupported exchange_name={exchange_name!r}."
             )
 
@@ -114,7 +119,11 @@ class MarketFeed:
         self.provider = (
             provider
             if provider is not None
-            else BinancePublicDataProvider()
+            else (
+                Mt5MarketDataProvider()
+                if normalized_exchange == "mt5"
+                else BinancePublicDataProvider()
+            )
         )
 
         self.service = MarketFeedService(
@@ -322,6 +331,31 @@ class MarketFeed:
         metadata = dict(
             candle.metadata or {}
         )
+
+        if metadata.get("volume_kind") == "TICK":
+            # Task 019: a forex (MT5) bar has no exchange volume - no quote
+            # volume, trade count or taker volumes exist over the counter.
+            # They are carried as absent (None), which the candle processor
+            # preserves as absence; never as a fabricated zero.
+            return [
+                MarketFeed._to_milliseconds(
+                    candle.open_time
+                ),
+                str(candle.open),
+                str(candle.high),
+                str(candle.low),
+                str(candle.close),
+                str(candle.volume),
+                MarketFeed._to_milliseconds(
+                    candle.close_time
+                    or candle.open_time
+                ),
+                None,
+                None,
+                None,
+                None,
+                "0",
+            ]
 
         return [
             MarketFeed._to_milliseconds(

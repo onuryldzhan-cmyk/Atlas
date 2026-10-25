@@ -46,6 +46,11 @@ FILL_MODELS = frozenset({"LAST_PRICE", "BOOK"})
 
 HEARTBEAT_FILE_ENV = "ATLAS_SUPERVISOR_HEARTBEAT_FILE"
 
+# Task 019 (registry v5.103): the market this run trades. CRYPTO stays the default until the crypto removal
+# (Task 020); FOREX reads a MetaTrader 5 demo terminal (Windows only). PAPER either way.
+MARKET_ENV = "ATLAS_MARKET"
+MARKETS = frozenset({"CRYPTO", "FOREX"})
+
 # Every ATLAS_* variable the runtime reads. Anything else with the prefix
 # is refused (owner decision, registry v5.20).
 RUNTIME_ATLAS_VARIABLES = frozenset({
@@ -57,6 +62,7 @@ RUNTIME_ATLAS_VARIABLES = frozenset({
     SUPERVISOR_RESTART_COUNT_ENV,
     HEARTBEAT_FILE_ENV,
     FILL_MODEL_ENV,
+    MARKET_ENV,
 })
 
 # Read only by development tools, never by the runtime; tolerated so a
@@ -85,6 +91,7 @@ class AtlasConfig:
     evidence_directory: Path
     log_directory: Path | None
     fill_model: str = "LAST_PRICE"
+    market: str = "CRYPTO"
 
     def describe(self) -> dict[str, str]:
         """Effective values for display. Holds no secrets by construction."""
@@ -97,6 +104,7 @@ class AtlasConfig:
             "evidence_directory": str(self.evidence_directory),
             "log_directory": str(self.log_directory) if self.log_directory else "(not configured)",
             "fill_model": self.fill_model,
+            "market": self.market,
         }
 
 
@@ -159,6 +167,12 @@ def load_config(
             errors.append(f"{FILL_MODEL_ENV}=BOOK (Shadow) needs a state directory with a folder named "
                           f"'shadow' in its path (got {state}); the Paper state is never reused")
 
+    market = str(environ.get(MARKET_ENV, "CRYPTO")).strip().upper()
+    if market not in MARKETS:
+        errors.append(f"{MARKET_ENV} {market!r} is refused: use one of {sorted(MARKETS)}")
+    elif market == "FOREX" and fill_model == "BOOK":
+        errors.append(f"{MARKET_ENV}=FOREX refuses {FILL_MODEL_ENV}=BOOK: the BOOK fill reads the Binance order book")
+
     if errors:
         raise AtlasConfigError(errors)
 
@@ -166,5 +180,6 @@ def load_config(
         execution_mode=mode,
         paper_confidence_experiment=bool(paper_confidence_experiment),
         fill_model=fill_model,
+        market=market,
         **resolved,
     )

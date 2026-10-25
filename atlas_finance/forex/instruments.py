@@ -22,6 +22,7 @@ ACCOUNT_CURRENCY = "USD"
 FOREX_UNIVERSE = ("EURUSD", "GBPUSD", "AUDUSD", "NZDUSD")
 
 _PAIR = re.compile(r"^[A-Z]{6}$")
+MT5_MIN_NOTIONAL = "0.01"   # not an MT5 concept: one cent, so min_quantity binds (Task 019)
 # fiat currencies only: metals (XAU, XAG), indices and crypto CFDs are not forex pairs
 FIAT_CURRENCIES = frozenset({"USD", "EUR", "GBP", "JPY", "CHF", "CAD", "AUD", "NZD", "SEK", "NOK", "DKK", "SGD",
                              "HKD", "TRY", "PLN", "MXN", "ZAR", "CNH", "CZK", "HUF"})
@@ -73,6 +74,24 @@ class ForexInstrument:
     def pip_value(self, units: Decimal) -> Decimal:
         """Value of one pip for ``units`` of base currency, in the quote currency (= account currency here)."""
         return Decimal(units) * self.pip_size
+
+    def instrument_rule_fields(self) -> dict[str, str]:
+        """The venue-neutral ``InstrumentRules`` fields for this pair, in base-currency units (Task 019).
+
+        quantity_step and min_quantity are the MT5 volume step and minimum in lots times the contract size; price_tick
+        is the point. MT5 has no minimum notional: the field is set to one cent of the quote currency, so the
+        minimum quantity is the bound that binds. Venue maxima are not returned (withheld, as for every venue).
+        """
+        return {
+            "venue": "MT5",
+            "symbol": self.symbol,
+            "base_asset": self.base,
+            "quote_asset": self.quote,
+            "quantity_step": format(self.volume_step * self.contract_size, "f"),
+            "min_quantity": format(self.volume_min * self.contract_size, "f"),
+            "min_notional": MT5_MIN_NOTIONAL,
+            "price_tick": format(self.point, "f"),
+        }
 
     @classmethod
     def from_symbol_info(cls, info: Any) -> ForexInstrument:

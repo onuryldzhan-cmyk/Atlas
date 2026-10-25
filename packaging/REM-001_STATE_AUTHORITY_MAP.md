@@ -19,10 +19,10 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `6d6b846c8baea2bf0079e8ef0f4ddfb7d3db9856` |
-| generated_from_tree | `e5867cc6342ef3ee82f55e1d361f0a6c98fd2da7` |
+| generated_from_commit | `ad092adf25cc68bb118d1ab89d0f6a9edd5e6eb7` |
+| generated_from_tree | `bf5f89016a1cb33f9a6bc4a60e2631bb4ccef3e8` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['atlas_finance/forex/__init__.py', 'atlas_finance/forex/instruments.py', 'atlas_finance/forex/sessions.py', 'atlas_finance/market_data/mt5_provider.py', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'tests/test_task018_forex_foundation.py'] |
+| modified_tracked_paths_at_generation | ['atlas_finance/forex/instruments.py', 'core/application.py', 'core/atlas_config.py', 'core/market_loop.py', 'exchange/market_feed.py', 'main.py', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'tests/test_atlas_config.py', 'tests/test_task019_forex_wiring.py', 'tools/refresh_mt5_instrument_rules.py'] |
 
 ## What this artifact is, and what it is not
 
@@ -60,11 +60,11 @@ observation.
 | field | value |
 | --- | --- |
 | entry_points | `main.py`, `web_app.py`, `atlas_service.py`, `atlas_supervisor.py` |
-| modules_in_runtime_closure | 142 |
+| modules_in_runtime_closure | 146 |
 | declared_state_file_constants | 10 |
-| persistence_sites | 93 |
-| modules_with_persistence_sites | 38 |
-| distinct_state_file_literals | 39 |
+| persistence_sites | 94 |
+| modules_with_persistence_sites | 39 |
+| distinct_state_file_literals | 40 |
 | parse_failures | 0 |
 
 ## Declared durable state surface
@@ -118,6 +118,7 @@ nothing is inferred from an absence.
 | `experiment_admissions.json` | `core/experiment_ledger.py` |
 | `governance/current/ATLAS_MILESTONE_REGISTRY_v5.85.json` | `core/policy_manifest.py` |
 | `instrument_rules.json` | `core/application.py` |
+| `instrument_rules_mt5.json` | `core/application.py` |
 | `market_loop_telemetry.jsonl` | `core/logger.py` |
 | `memory.jsonl` | `observability/governance_records.py` |
 | `memory_data/audit/atlas_audit_events.jsonl` | `core/audit_event_store.py` |
@@ -147,6 +148,7 @@ nothing is inferred from an absence.
 | `ai/core/atlas_reasoning_engine.py` | JSON_DUMP | 787 | `AtlasReasoningEngine::save` |
 | `ai/core/atlas_world_model.py` | OPEN_WRITE_MODE | 228 | `AtlasWorldModel::save` |
 | `ai/core/atlas_world_model.py` | JSON_DUMP | 229 | `AtlasWorldModel::save` |
+| `atlas_finance/forex/sessions.py` | ATOMIC_REPLACE | 50 | `next_forex_open` |
 | `atlas_finance/market_data/binance_public_provider.py` | ATOMIC_REPLACE | 1044 | `BinancePublicDataProvider::_normalize_symbol` |
 | `atlas_finance/market_data/binance_public_provider.py` | ATOMIC_REPLACE | 1044 | `BinancePublicDataProvider::_normalize_symbol` |
 | `atlas_finance/market_data/binance_public_provider.py` | ATOMIC_REPLACE | 1044 | `BinancePublicDataProvider::_normalize_symbol` |
@@ -213,7 +215,7 @@ nothing is inferred from an absence.
 | `data_layer/migrations.py` | ATOMIC_REPLACE | 146 | `apply_migrations` |
 | `data_layer/models.py` | ATOMIC_REPLACE | 54 | `utc_text` |
 | `data_layer/models.py` | ATOMIC_REPLACE | 61 | `utc_text` |
-| `main.py` | PATH_WRITE_TEXT | 624 | `AtlasProcess::_write_heartbeat` |
+| `main.py` | PATH_WRITE_TEXT | 634 | `AtlasProcess::_write_heartbeat` |
 | `observability/agent_states.py` | ATOMIC_REPLACE | 68 | `_age_s` |
 | `observability/agent_states.py` | ATOMIC_REPLACE | 71 | `_age_s` |
 | `observability/command_center.py` | ATOMIC_REPLACE | 88 | `_money` |

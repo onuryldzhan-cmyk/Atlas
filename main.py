@@ -35,7 +35,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from core.application import DEFAULT_INSTRUMENT_RULES_PATH, AtlasApplication, resolve_state_directory
+from core.application import (
+    DEFAULT_INSTRUMENT_RULES_PATH,
+    FOREX_INSTRUMENT_RULES_PATH,
+    AtlasApplication,
+    resolve_state_directory,
+)
 from core.atlas_config import AtlasConfigError, load_config
 from core.execution_manager import PAPER_FEE_RATE_PER_SIDE
 from core.audit_event_store import AuditChainIntegrityError
@@ -557,7 +562,12 @@ class AtlasProcess:
             # Order state machine stage 1 (owner approved 2026-10-01): observe and
             # report illegal transitions; never changes a result.
             order_lifecycle_observe=True,
-            symbols=trade_universe(),
+            # Task 019 (registry v5.103): ATLAS_MARKET=FOREX reads MetaTrader 5 and its own instrument rules.
+            market=getattr(self, "market", "CRYPTO"),
+            symbols=trade_universe(
+                FOREX_INSTRUMENT_RULES_PATH if getattr(self, "market", "CRYPTO") == "FOREX"
+                else DEFAULT_INSTRUMENT_RULES_PATH
+            ),
         )
 
         # Phase-2 G1: compare the constructed runtime policy with the
@@ -958,6 +968,7 @@ class AtlasProcess:
             return False
 
         self.paper_fill_model = config.fill_model
+        self.market = config.market
         logger.info(
             "Configuration valid | %s",
             " ".join(f"{k}={v}" for k, v in config.describe().items()),
