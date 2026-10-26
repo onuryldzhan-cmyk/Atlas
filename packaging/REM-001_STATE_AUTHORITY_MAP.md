@@ -19,10 +19,10 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `ba71ea1e64a862abe2ddc332ad7812dc696cfbfd` |
-| generated_from_tree | `7e6c90854f064e0e430a3c654f6e984cb3534699` |
+| generated_from_commit | `04b1e626f4c503f9151d2a75684f2e3a937f03aa` |
+| generated_from_tree | `f788c6e017d2336e96e09d84875011d9ed1dbd41` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['atlas_finance/market_data/mt5_provider.py', 'core/application.py', 'core/atlas_config.py', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'tests/test_task019_forex_wiring.py', 'tests/test_task021_forex_spread_fill.py'] |
+| modified_tracked_paths_at_generation | ['atlas_finance/forex/__init__.py', 'atlas_finance/forex/sessions.py', 'core/application.py', 'core/market_loop.py', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'tests/test_task022_weekend_entry_block.py'] |
 
 ## What this artifact is, and what it is not
 
@@ -148,7 +148,7 @@ nothing is inferred from an absence.
 | `ai/core/atlas_reasoning_engine.py` | JSON_DUMP | 787 | `AtlasReasoningEngine::save` |
 | `ai/core/atlas_world_model.py` | OPEN_WRITE_MODE | 228 | `AtlasWorldModel::save` |
 | `ai/core/atlas_world_model.py` | JSON_DUMP | 229 | `AtlasWorldModel::save` |
-| `atlas_finance/forex/sessions.py` | ATOMIC_REPLACE | 50 | `next_forex_open` |
+| `atlas_finance/forex/sessions.py` | ATOMIC_REPLACE | 60 | `next_forex_open` |
 | `atlas_finance/market_data/binance_public_provider.py` | ATOMIC_REPLACE | 1044 | `BinancePublicDataProvider::_normalize_symbol` |
 | `atlas_finance/market_data/binance_public_provider.py` | ATOMIC_REPLACE | 1044 | `BinancePublicDataProvider::_normalize_symbol` |
 | `atlas_finance/market_data/binance_public_provider.py` | ATOMIC_REPLACE | 1044 | `BinancePublicDataProvider::_normalize_symbol` |

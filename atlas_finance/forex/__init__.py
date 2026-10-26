@@ -11,7 +11,12 @@ from atlas_finance.forex.instruments import (
     ForexInstrument,
     ForexInstrumentError,
 )
-from atlas_finance.forex.sessions import is_forex_market_open, new_york_utc_offset_hours, next_forex_open
+from atlas_finance.forex.sessions import (
+    is_forex_market_open,
+    is_forex_pre_close,
+    new_york_utc_offset_hours,
+    next_forex_open,
+)
 
 __all__ = [
     "ACCOUNT_CURRENCY",
@@ -19,6 +24,7 @@ __all__ = [
     "ForexInstrument",
     "ForexInstrumentError",
     "is_forex_market_open",
+    "is_forex_pre_close",
     "new_york_utc_offset_hours",
     "next_forex_open",
 ]

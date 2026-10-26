@@ -890,9 +890,11 @@ class AtlasApplication:
         # unrealized daily-loss check (read-only; unused while the flag is off).
         self.execution.mark_price_provider = self.market_loop.mark_prices
         if self.market == "FOREX":
-            from atlas_finance.forex.sessions import is_forex_market_open
+            from atlas_finance.forex.sessions import is_forex_market_open, is_forex_pre_close
 
             self.market_loop.market_session_open = is_forex_market_open
+            # Task 022: no new forex risk in the last hour before the Friday close (owner 2026-10-26)
+            self.market_loop.market_entry_blocked = is_forex_pre_close
         self.execution.paper_slippage_bps = self.paper_slippage_bps
         if self.paper_fill_model == "BOOK" and self.execution_mode == "PAPER":
             if self.market == "FOREX":

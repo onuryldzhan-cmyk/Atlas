@@ -186,6 +186,12 @@ class MarketLoop:
     # routed (a paper fill at a weekend's stale price would be fiction). A guard that raises counts as closed.
     market_session_open: Callable[[datetime], bool] | None = None
 
+    # Task 022 (registry v5.105): the window before a market's weekly close in which no new risk is opened
+    # (forex: the last hour before Friday 17:00 New York). None - the crypto default - means no such window.
+    # Only a BUY is held back; a SELL (a reduction) is never blocked by it. A check that raises counts as "in the
+    # window" (fail closed).
+    market_entry_blocked: Callable[[datetime], bool] | None = None
+
     # Candle age (registry v4.71): time from the newest closed candle's
     # own exchange close_time to the cycle's processing cutoff. This is
     # a different measurement from the fetch-liveness staleness above
@@ -1244,6 +1250,40 @@ class MarketLoop:
                 result = {
                     "status": "SKIPPED",
                     "reason": "MARKET_CLOSED",
+                    "symbol": symbol,
+                    "action": action,
+                    "timestamp": datetime.now(
+                        UTC
+                    ).isoformat(),
+                }
+
+                with self.lock:
+                    self.last_executions[
+                        symbol
+                    ] = result
+
+                return result
+
+        blocked_check = self.market_entry_blocked
+        if action == "BUY" and blocked_check is not None:
+            try:
+                entry_blocked = blocked_check(processing_cutoff) is not False
+            except Exception:
+                logger.exception("%s pre-close check failed; no new risk", symbol)
+                entry_blocked = True
+            if entry_blocked:
+                self._increment_metric(
+                    "buy_pre_close_skipped"
+                )
+
+                logger.info(
+                    "%s BUY not routed: no new risk before the weekly close",
+                    symbol,
+                )
+
+                result = {
+                    "status": "SKIPPED",
+                    "reason": "PRE_CLOSE_NO_NEW_RISK",
                     "symbol": symbol,
                     "action": action,
                     "timestamp": datetime.now(

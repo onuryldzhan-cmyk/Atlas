@@ -43,6 +43,16 @@ def is_forex_market_open(moment: datetime) -> bool:
     return True
 
 
+PRE_CLOSE_MINUTES = 60   # Task 022 (registry v5.105): no new risk in the last hour of the forex week
+
+
+def is_forex_pre_close(moment: datetime, minutes: int = PRE_CLOSE_MINUTES) -> bool:
+    """True in the last ``minutes`` before the Friday 17:00 New York close, while the market is still open."""
+    if not is_forex_market_open(moment):
+        return False
+    return not is_forex_market_open(moment.astimezone(UTC) + timedelta(minutes=minutes))
+
+
 def next_forex_open(moment: datetime) -> datetime:
     """``moment`` itself when the market is open, else the next Sunday 17:00 New York time (in UTC)."""
     if is_forex_market_open(moment):
