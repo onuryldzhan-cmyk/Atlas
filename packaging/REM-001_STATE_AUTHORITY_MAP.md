@@ -19,10 +19,10 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `c1992d9b40964355c7c0801737de80301851e35b` |
-| generated_from_tree | `539f393d1c1ee9b81f27931e91e0e0be7f18f106` |
+| generated_from_commit | `d5fee3499c76095e2ed6c628628a37154d99d835` |
+| generated_from_tree | `a5388359ea41f3cff30f6d6a846a4d06d531c2e1` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['atlas_finance/forex/sessions.py', 'core/application.py', 'core/exit_guard.py', 'core/market_loop.py', 'core/policy_manifest.py', 'governance/current/ATLAS_MILESTONE_REGISTRY_v5.106.json', 'governance/policy/ATLAS_POLICY_MANIFEST_v3.json', 'packaging/REM-001_IMPORT_GRAPH.json', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/REM-001_STATE_AUTHORITY_MAP.md', 'tests/test_phase2_g1_policy_manifest.py', 'tests/test_phase2_g2_exp002_grant.py', 'tests/test_task023_policy_manifest_v3.py'] |
+| modified_tracked_paths_at_generation | ['tlas_finance/forex/sessions.py'] |
 
 ## What this artifact is, and what it is not
 
@@ -150,7 +150,7 @@ nothing is inferred from an absence.
 | `ai/core/atlas_reasoning_engine.py` | JSON_DUMP | 787 | `AtlasReasoningEngine::save` |
 | `ai/core/atlas_world_model.py` | OPEN_WRITE_MODE | 228 | `AtlasWorldModel::save` |
 | `ai/core/atlas_world_model.py` | JSON_DUMP | 229 | `AtlasWorldModel::save` |
-| `atlas_finance/forex/sessions.py` | ATOMIC_REPLACE | 61 | `next_forex_open` |
+| `atlas_finance/forex/sessions.py` | ATOMIC_REPLACE | 74 | `next_forex_open` |
 | `atlas_finance/market_data/binance_public_provider.py` | ATOMIC_REPLACE | 1044 | `BinancePublicDataProvider::_normalize_symbol` |
 | `atlas_finance/market_data/binance_public_provider.py` | ATOMIC_REPLACE | 1044 | `BinancePublicDataProvider::_normalize_symbol` |
 | `atlas_finance/market_data/binance_public_provider.py` | ATOMIC_REPLACE | 1044 | `BinancePublicDataProvider::_normalize_symbol` |
