@@ -44,6 +44,7 @@ def is_forex_market_open(moment: datetime) -> bool:
 
 
 PRE_CLOSE_MINUTES = 60   # Task 022 (registry v5.105): no new risk in the last hour of the forex week
+WEEKEND_CLOSE_MINUTES = 30   # Task 023 (policy manifest v3): open positions closed 30 minutes before the close
 
 
 def is_forex_pre_close(moment: datetime, minutes: int = PRE_CLOSE_MINUTES) -> bool:

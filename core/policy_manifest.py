@@ -33,8 +33,11 @@ from pathlib import Path
 from typing import Any
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
-MANIFEST_PATH = REPOSITORY_ROOT / "governance" / "policy" / "ATLAS_POLICY_MANIFEST_v2.json"
-EXPECTED_MANIFEST_VERSION = 2
+# Task 023 (registry v5.106): manifest v3 (forex) is the active manifest. v2 stays sealed and is still verified by
+# its own rules below when asked (``verify(..., path=MANIFEST_V2_PATH)``); nothing in v2's chain changes.
+MANIFEST_V2_PATH = REPOSITORY_ROOT / "governance" / "policy" / "ATLAS_POLICY_MANIFEST_v2.json"
+MANIFEST_PATH = REPOSITORY_ROOT / "governance" / "policy" / "ATLAS_POLICY_MANIFEST_v3.json"
+EXPECTED_MANIFEST_VERSION = 3
 
 # The governance binding this code expects. Changing the manifest's registry or
 # proposal is a governance act, so it also needs a code change here.
@@ -58,6 +61,17 @@ EXPECTED_GRANT_REGISTRY_PATH = "governance/current/ATLAS_MILESTONE_REGISTRY_v5.8
 # registry, alone or together with the manifest, is therefore GRANT_MISMATCH until a
 # governed change updates this constant (a new grant is a new successor registry).
 EXPECTED_GRANT_REGISTRY_SHA256 = "77f0c23ae150215dad6ef017eca8ca57b81d6c44e36c767a16278fc9efa2d0b8"
+
+# Manifest v3 (forex; owner 2026-10-26). Same one-way chain, anchored in code:
+#   code -> v5.106 (ratification record, pins manifest v3's bytes) -> manifest v3 -> v5.105 (its sealed base).
+# EXP-002's parameters are still compared with the sealed v5.85 grant (pinned above); only v5.85's own manifest
+# pin (which names v2) is not asked of v3, because v5.106 is the record that ratifies v3.
+V3_EXPECTED_REGISTRY_ID = "ATLAS_MILESTONE_REGISTRY_v5.105"
+V3_EXPECTED_PROPOSAL_ID = "FOREX-POLICY-MANIFEST-V3"
+V3_RATIFICATION_REGISTRY_ID = "ATLAS_MILESTONE_REGISTRY_v5.106"
+V3_RATIFICATION_REGISTRY_PATH = "governance/current/ATLAS_MILESTONE_REGISTRY_v5.106.json"
+V3_RATIFICATION_RECORD_KEY = "policy_manifest_v3_ratification"
+V3_RATIFICATION_REGISTRY_SHA256 = "146e680467194d10e2166d88a8ef766262a4c52ea5bc53dba64e97cdbaaeb4cf"
 
 MATCH = "MATCH"
 MISSING = "MISSING"
@@ -114,6 +128,14 @@ EXP002_SWITCHES = (
     "exp002_funding_sentiment_off",
 )
 CRITICAL_SWITCHES = BASE_SWITCHES + EXP002_SWITCHES
+
+# Manifest v3 adds the market and the forex switches (Task 023).
+FOREX_SWITCHES = (
+    "market",
+    "forex_paper_fee_rate",
+    "forex_weekend_close_minutes",
+)
+CRITICAL_SWITCHES_V3 = CRITICAL_SWITCHES + FOREX_SWITCHES
 
 _REQUIRED = ("manifest_version", "registry_id", "registry_path", "registry_sha256", "proposal_id",
              "owner_approval", "grant", "policy", "integrity")
@@ -178,6 +200,30 @@ def runtime_policy(application: Any) -> dict[str, Any]:
         "exit_guard_mode": read(lambda: str(guard.mode)),
         "exit_guard_rules": read(lambda: len(guard.rules)),
         **_exp002_runtime(application, read),
+        **_forex_runtime(application, guard, read),
+    }
+
+
+def _forex_runtime(application: Any, guard: Any, read) -> dict[str, Any]:
+    """Manifest v3's switches as the running application holds them (Task 023)."""
+
+    def weekend_minutes():
+        if str(application.market).upper() != "FOREX":
+            from atlas_finance.forex.sessions import WEEKEND_CLOSE_MINUTES
+            return int(WEEKEND_CLOSE_MINUTES)        # configured, unused outside FOREX
+        minutes = [rule.minutes for rule in guard.rules if rule.kind == "WEEKEND_CLOSE"]
+        if len(minutes) != 1:
+            raise ValueError("FOREX needs exactly one WEEKEND_CLOSE rule")
+        # review T023-F1: the rule only counts when the cycle actually runs this guard
+        runner = getattr(application.market_loop, "exit_guard_runner", None)
+        if runner is None or getattr(runner, "guard", None) is not guard:
+            raise ValueError("the FOREX weekend-close guard is not run from the cycle")
+        return int(minutes[0])
+
+    return {
+        "market": read(lambda: str(application.market).upper()),
+        "forex_paper_fee_rate": read(lambda: _decimal_text(application.paper_fee_rate)),
+        "forex_weekend_close_minutes": read(weekend_minutes),
     }
 
 
@@ -251,9 +297,16 @@ class PolicyManifestCheck:
                 "proposal_id": self.proposal_id, "owner_approval": self.owner_approval}
 
 
-def _matches(spec: Any, actual: Any) -> bool:
+def _matches(spec: Any, actual: Any, market: Any = None) -> bool:
     if actual == UNREADABLE:
         return False
+    if isinstance(spec, Mapping) and set(spec) == {"by_market"}:
+        # manifest v3: the value for the runtime's own market; an unknown market never matches
+        by_market = spec.get("by_market")
+        if not isinstance(by_market, Mapping) or not isinstance(market, str) or market not in by_market:
+            return False
+        chosen = by_market[market]
+        return not isinstance(chosen, Mapping) and type(actual) is type(chosen) and actual == chosen
     if isinstance(spec, Mapping):
         allowed = spec.get("one_of")
         return isinstance(allowed, list) and set(spec) == {"one_of"} and any(
@@ -305,12 +358,14 @@ def _same(a: Any, b: Any) -> bool:
     return type(a) is type(b) and a == b
 
 
-def verify(runtime: Mapping[str, Any], path: Path | str = MANIFEST_PATH, *,
+def verify(runtime: Mapping[str, Any], path: Path | str | None = None, *,
            repository_root: Path | str = REPOSITORY_ROOT) -> PolicyManifestCheck:
-    """Compare ``runtime`` with the manifest at ``path``. Never raises, never writes."""
+    """Compare ``runtime`` with the manifest at ``path`` (default: the active MANIFEST_PATH, read at call time).
+
+    Never raises, never writes."""
 
     runtime = dict(runtime)
-    path = Path(path)
+    path = Path(MANIFEST_PATH if path is None else path)
     try:
         if not path.is_file():
             return PolicyManifestCheck(MISSING, f"no manifest at {path}", runtime=runtime)
@@ -326,6 +381,8 @@ def verify(runtime: Mapping[str, Any], path: Path | str = MANIFEST_PATH, *,
     policy, integrity = manifest.get("policy"), manifest.get("integrity")
     if not isinstance(policy, dict) or not isinstance(integrity, dict):
         return PolicyManifestCheck(MALFORMED, "policy and integrity must be objects", **meta)
+    if manifest.get("manifest_version") == 3:
+        return _verify_v3(manifest, policy, integrity, runtime, path, Path(repository_root), meta)
     if set(policy) != set(CRITICAL_SWITCHES):
         missing = sorted(set(CRITICAL_SWITCHES) - set(policy))
         extra = sorted(set(policy) - set(CRITICAL_SWITCHES))
@@ -371,8 +428,112 @@ def verify(runtime: Mapping[str, Any], path: Path | str = MANIFEST_PATH, *,
     return PolicyManifestCheck(MATCH, "runtime policy matches the manifest", **meta)
 
 
+def _verify_v3(manifest: Mapping[str, Any], policy: Mapping[str, Any], integrity: Mapping[str, Any],
+               runtime: Mapping[str, Any], path: Path, root: Path, meta: dict[str, Any]) -> PolicyManifestCheck:
+    """Manifest v3 (Task 023): the v2 checks plus the forex switches, ratified by the v5.106 record. Reads only."""
+
+    if set(policy) != set(CRITICAL_SWITCHES_V3):
+        missing = sorted(set(CRITICAL_SWITCHES_V3) - set(policy))
+        extra = sorted(set(policy) - set(CRITICAL_SWITCHES_V3))
+        return PolicyManifestCheck(MALFORMED, f"switch coverage: missing={missing} unknown={extra}", **meta)
+    if integrity.get("algorithm") != "sha256" or integrity.get("digest") != integrity_digest(manifest):
+        return PolicyManifestCheck(INTEGRITY_FAILED, "manifest content does not match its integrity digest", **meta)
+    if policy.get("execution_mode") != "PAPER" or policy.get("live_execution_enabled") is not False:
+        return PolicyManifestCheck(LIVE_REFUSED, "a manifest may only describe PAPER with live execution disabled",
+                                   **meta)
+
+    if manifest.get("registry_id") != V3_EXPECTED_REGISTRY_ID:
+        return PolicyManifestCheck(REGISTRY_MISMATCH,
+                                   f"manifest names {manifest.get('registry_id')!r}, expected {V3_EXPECTED_REGISTRY_ID}",
+                                   **meta)
+    try:
+        registry = (root / str(manifest.get("registry_path"))).resolve()
+        if root.resolve() not in registry.parents or registry.stem != V3_EXPECTED_REGISTRY_ID:
+            return PolicyManifestCheck(REGISTRY_MISMATCH, "registry_path does not name the expected registry", **meta)
+        digest = file_sha256(registry.read_bytes())
+    except OSError:
+        return PolicyManifestCheck(REGISTRY_MISMATCH, "registry file unreadable", **meta)
+    if digest != manifest.get("registry_sha256"):
+        return PolicyManifestCheck(REGISTRY_MISMATCH, "registry file changed since the manifest pinned it", **meta)
+    if manifest.get("proposal_id") != V3_EXPECTED_PROPOSAL_ID:
+        return PolicyManifestCheck(PROPOSAL_MISMATCH,
+                                   f"manifest names {manifest.get('proposal_id')!r}, expected {V3_EXPECTED_PROPOSAL_ID}",
+                                   **meta)
+
+    ratification_failure = _verify_v3_ratification(manifest, path, root)
+    if ratification_failure is not None:
+        return PolicyManifestCheck(ratification_failure[0], ratification_failure[1], **meta)
+    exp002_failure = _verify_exp002_parameters(policy, root)
+    if exp002_failure is not None:
+        return PolicyManifestCheck(exp002_failure[0], exp002_failure[1], **meta)
+    meta["owner_approval"] = f"{OWNER_RATIFIED}:{V3_RATIFICATION_REGISTRY_ID}"
+
+    market = runtime.get("market")
+    mismatches = tuple((name, policy[name], runtime.get(name, UNREADABLE)) for name in CRITICAL_SWITCHES_V3
+                       if not _matches(policy[name], runtime.get(name, UNREADABLE), market))
+    if mismatches:
+        return PolicyManifestCheck(POLICY_MISMATCH, f"{len(mismatches)} switch(es) differ from the manifest",
+                                   mismatches, **meta)
+    return PolicyManifestCheck(MATCH, "runtime policy matches the manifest", **meta)
+
+
+def _verify_v3_ratification(manifest: Mapping[str, Any], manifest_path: Path, root: Path) -> tuple[str, str] | None:
+    """The v5.106 ratification record must exist, be RATIFIED, pin THIS manifest's bytes, and be the sealed file."""
+
+    ref = manifest.get("ratification")
+    if (not isinstance(ref, dict) or ref.get("registry_id") != V3_RATIFICATION_REGISTRY_ID
+            or ref.get("registry_path") != V3_RATIFICATION_REGISTRY_PATH):
+        return GRANT_MISSING, "manifest does not name the expected v3 ratification registry"
+    try:
+        registry = (root / V3_RATIFICATION_REGISTRY_PATH).resolve()     # the code's path, never the manifest's
+        if root.resolve() not in registry.parents or registry.stem != V3_RATIFICATION_REGISTRY_ID:
+            return GRANT_MISSING, "ratification registry path is outside the repository"
+        registry_bytes = registry.read_bytes()
+        record = json.loads(registry_bytes.decode("utf-8"))
+        manifest_bytes = manifest_path.read_bytes()
+    except Exception:  # unreadable or hostile input is never a pass
+        return GRANT_MISSING, "ratification registry or manifest unreadable"
+    ratification = record.get(V3_RATIFICATION_RECORD_KEY) if isinstance(record, dict) else None
+    if not isinstance(ratification, dict) or ratification.get("status") != "RATIFIED":
+        return GRANT_MISSING, "ratification registry holds no RATIFIED manifest v3 record"
+    pinned = ratification.get("manifest_pin")
+    if (not isinstance(pinned, dict) or pinned.get("manifest_file_sha256") != file_sha256(manifest_bytes)
+            or pinned.get("manifest_version") != 3):
+        return GRANT_MISMATCH, "ratification registry does not pin this manifest's bytes"
+    if ratification.get("live_effect") != "NONE":
+        return GRANT_MISMATCH, "ratification is not PAPER-only with no live effect"
+    if file_sha256(registry_bytes) != V3_RATIFICATION_REGISTRY_SHA256:
+        return GRANT_MISMATCH, "ratification registry differs from the sealed record pinned in code"
+    return None
+
+
+def _verify_exp002_parameters(policy: Mapping[str, Any], root: Path) -> tuple[str, str] | None:
+    """EXP-002's parameters in a v3 manifest must equal the sealed v5.85 grant (its manifest pin names v2)."""
+
+    try:
+        registry_bytes = (root / EXPECTED_GRANT_REGISTRY_PATH).read_bytes()
+        record = json.loads(registry_bytes.decode("utf-8"))
+    except Exception:
+        return GRANT_MISSING, "EXP-002 grant registry unreadable"
+    if file_sha256(registry_bytes) != EXPECTED_GRANT_REGISTRY_SHA256:
+        return GRANT_MISMATCH, "grant registry differs from the sealed record pinned in code"
+    grant = record.get(GRANT_RECORD_KEY) if isinstance(record, dict) else None
+    if not isinstance(grant, dict) or grant.get("grant_id") != EXPECTED_GRANT_ID or grant.get("status") != "GRANTED":
+        return GRANT_MISSING, "grant registry holds no GRANTED EXP-002 grant"
+    parameters = grant.get("parameters")
+    if (not isinstance(parameters, dict) or set(parameters) != set(EXP002_SWITCHES)
+            or any(not _same(parameters[k], policy.get(k)) for k in EXP002_SWITCHES)):
+        return GRANT_MISMATCH, "manifest EXP-002 parameters differ from the registry grant"
+    if grant.get("live_effect") != "NONE" or parameters.get("exp002_paper_only") is not True:
+        return GRANT_MISMATCH, "grant is not PAPER-only with no live effect"
+    return None
+
+
 __all__ = [
-    "BASE_SWITCHES", "BLOCK_NEW_RISK", "CRITICAL_SWITCHES", "EXP002_SWITCHES", "EXPECTED_GRANT_ID",
+    "BASE_SWITCHES", "BLOCK_NEW_RISK", "CRITICAL_SWITCHES", "CRITICAL_SWITCHES_V3", "EXP002_SWITCHES",
+    "FOREX_SWITCHES", "MANIFEST_V2_PATH", "V3_EXPECTED_PROPOSAL_ID", "V3_EXPECTED_REGISTRY_ID",
+    "V3_RATIFICATION_RECORD_KEY", "V3_RATIFICATION_REGISTRY_ID", "V3_RATIFICATION_REGISTRY_PATH",
+    "V3_RATIFICATION_REGISTRY_SHA256", "EXPECTED_GRANT_ID",
     "EXPECTED_GRANT_REGISTRY_ID", "EXPECTED_GRANT_REGISTRY_SHA256", "GRANT_MISMATCH", "GRANT_MISSING", "OWNER_RATIFIED", "EXPECTED_PROPOSAL_ID", "EXPECTED_REGISTRY_ID", "INTEGRITY_FAILED",
     "LIVE_REFUSED", "MALFORMED", "MANIFEST_PATH", "MATCH", "MISSING", "POLICY_MISMATCH", "PROPOSAL_MISMATCH",
     "PolicyManifestCheck", "REGISTRY_MISMATCH", "file_sha256", "integrity_digest", "runtime_policy", "verify",

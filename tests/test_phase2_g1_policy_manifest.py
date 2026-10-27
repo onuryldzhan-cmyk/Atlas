@@ -21,6 +21,14 @@ from tests.test_block5c_upstream_sizing_authority import application, execution_
 ROOT = Path(__file__).resolve().parents[1]
 
 
+
+@pytest.fixture(autouse=True)
+def _the_sealed_v2_chain(monkeypatch):
+    """Task 023 (registry v5.106): this module pins the sealed manifest v2 chain; the active manifest is v3
+    (tests/test_task023_policy_manifest_v3.py). Every check here still runs against v2's own file and rules."""
+    monkeypatch.setattr(pm, "MANIFEST_PATH", pm.MANIFEST_V2_PATH)
+
+
 def manifest() -> dict:
     return json.loads(pm.MANIFEST_PATH.read_text(encoding="utf-8"))
 
@@ -204,7 +212,8 @@ def test_runtime_policy_reads_the_application_and_a_test_app_does_not_match():
     with tempfile.TemporaryDirectory() as d:
         app = application(Path(d))
         runtime = pm.runtime_policy(app)
-    assert set(runtime) == set(pm.CRITICAL_SWITCHES)
+    # Task 023: the runtime also reads manifest v3's forex switches; it still covers every v2 switch
+    assert set(pm.CRITICAL_SWITCHES) <= set(runtime) and set(runtime) == set(pm.CRITICAL_SWITCHES_V3)
     assert runtime["execution_mode"] == "PAPER" and runtime["live_execution_enabled"] is False
     assert pm.verify(runtime).status == pm.POLICY_MISMATCH
 

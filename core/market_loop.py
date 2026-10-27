@@ -192,6 +192,11 @@ class MarketLoop:
     # window" (fail closed).
     market_entry_blocked: Callable[[datetime], bool] | None = None
 
+    # Task 023 (registry v5.106, policy manifest v3): the exit guard's run for this market, called once at the start
+    # of every cycle - before any symbol's decision, so a protective exit precedes new-risk decisions. None (crypto)
+    # means the guard is not run from the cycle. A runner that raises is logged; the cycle continues.
+    exit_guard_runner: Callable[[datetime], Any] | None = None
+
     # Candle age (registry v4.71): time from the newest closed candle's
     # own exchange close_time to the cycle's processing cutoff. This is
     # a different measurement from the fetch-liveness staleness above
@@ -586,6 +591,13 @@ class MarketLoop:
         """
 
         processing_cutoff = self._processing_cutoff()
+
+        runner = self.exit_guard_runner
+        if runner is not None:
+            try:
+                runner(processing_cutoff)
+            except Exception:
+                logger.exception("exit guard run failed this cycle")
 
         # Review 17 F2: observe-only regime fetches wait until every symbol of the cycle
         # has been routed, so no symbol's execution waits on another symbol's regime I/O.

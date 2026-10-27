@@ -849,7 +849,9 @@ class AtlasApplication:
 
         # Phase-2 B2: Brain-independent reduce-only exit path. Inert by
         # default (OBSERVE, no rules); ENFORCE or any rule is an owner
-        # decision. It is not yet invoked from MarketLoop's cycle.
+        # decision. In CRYPTO it is not invoked from MarketLoop's cycle; in
+        # FOREX policy manifest v3 (owner 2026-10-26) replaces it with the
+        # weekend-close guard (_attach_forex_weekend_close).
         self.exit_guard = ExitGuard(
             self.execution,
             self.portfolio_foundation,
@@ -895,6 +897,9 @@ class AtlasApplication:
             self.market_loop.market_session_open = is_forex_market_open
             # Task 022: no new forex risk in the last hour before the Friday close (owner 2026-10-26)
             self.market_loop.market_entry_blocked = is_forex_pre_close
+            # Task 023 (policy manifest v3): close every open forex position in the last 30 minutes before the
+            # Friday close, through the exit guard's reduce-only path (ENFORCE, this one rule only)
+            self._attach_forex_weekend_close()
         self.execution.paper_slippage_bps = self.paper_slippage_bps
         if self.paper_fill_model == "BOOK" and self.execution_mode == "PAPER":
             if self.market == "FOREX":
@@ -973,6 +978,30 @@ class AtlasApplication:
     # =========================================================
     # CANONICAL FINANCIAL RISK SERVICES
     # =========================================================
+
+    def _attach_forex_weekend_close(self) -> None:
+        """FOREX only: the exit guard in ENFORCE with the single WEEKEND_CLOSE rule, run once per cycle."""
+        from atlas_finance.forex.sessions import WEEKEND_CLOSE_MINUTES, is_forex_pre_close
+        from core.exit_guard import ENFORCE, RULE_WEEKEND_CLOSE, ExitRule, Mark
+
+        # the window is computed from the rule's own minutes (review T023-F1)
+        rule = ExitRule("forex-weekend-close", RULE_WEEKEND_CLOSE, None, minutes=WEEKEND_CLOSE_MINUTES,
+                        in_window=is_forex_pre_close)
+        self.exit_guard = ExitGuard(self.execution, self.portfolio_foundation, rules=(rule,), mode=ENFORCE)
+        guard, loop = self.exit_guard, self.market_loop
+
+        def run(cutoff: datetime) -> Any:
+            # Each mark carries its own last closed candle's open time (review T023-F2), so the guard's own age
+            # check (0 <= age <= max_price_age_seconds) refuses a stale or a future-stamped candle; a missing or
+            # refused mark is EXIT_PENDING_PRICE, never a sale at a guessed price.
+            marks = {}
+            for symbol, rows in dict(loop.recent_candles).items():
+                if rows and rows[-1][4] > 0:
+                    marks[symbol] = Mark(Decimal(str(rows[-1][4])), rows[-1][0] / 1000)
+            return guard.run_once(marks)
+
+        run.guard = guard          # read by core.policy_manifest: the runner must belong to this guard
+        self.market_loop.exit_guard_runner = run
 
     def _build_financial_services(self) -> None:
         """

@@ -47,6 +47,7 @@ import threading
 import time
 
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any, Callable, Mapping
 
@@ -60,6 +61,9 @@ PROTECTIVE_EXIT = "PROTECTIVE_EXIT"
 _PRIORITY_ORDER = {SAFETY_EXIT: 0, PROTECTIVE_EXIT: 1}
 
 RULE_MAX_LOSS_PCT = "MAX_LOSS_PCT"
+# Task 023 (registry v5.106, policy manifest v3): close every open position inside a market's pre-close window
+# (forex: the last ``minutes`` before the Friday 17:00 New York close). Owner 2026-10-26: 30 minutes, FOREX only.
+RULE_WEEKEND_CLOSE = "WEEKEND_CLOSE"
 
 EXIT_TRIGGERED = "EXIT_TRIGGERED"
 EXIT_PENDING_PRICE = "EXIT_PENDING_PRICE"
@@ -79,22 +83,40 @@ class ExitRule:
 
     MAX_LOSS_PCT: exit when (mark - average_entry) / average_entry is at or
     below ``-threshold`` (threshold 0.05 = a 5% loss).
+
+    WEEKEND_CLOSE: exit when ``in_window(now, minutes)`` is True, ``now`` being the guard's clock as an aware UTC
+    datetime and ``minutes`` this rule's own value, so the window is always the pinned one (forex:
+    atlas_finance.forex.sessions.is_forex_pre_close). ``threshold`` is unused (None). A
+    window check that raises or answers anything but False counts as inside the window: the rule only ever
+    reduces risk, so an unsure answer exits.
     """
 
     rule_id: str
     kind: str
-    threshold: Decimal
+    threshold: Decimal | None
     priority: str = PROTECTIVE_EXIT
+    minutes: int | None = None
+    in_window: Callable[[datetime, int], Any] | None = field(default=None, compare=False)
 
     def __post_init__(self) -> None:
         if not str(self.rule_id).strip():
             raise ValueError("rule_id is required")
-        if self.kind != RULE_MAX_LOSS_PCT:
+        if self.kind == RULE_MAX_LOSS_PCT:
+            if not isinstance(self.threshold, Decimal) or not (
+                Decimal("0") < self.threshold < Decimal("1")
+            ):
+                raise ValueError("threshold must be a Decimal in (0, 1)")
+            if self.minutes is not None or self.in_window is not None:
+                raise ValueError("MAX_LOSS_PCT takes no minutes or window")
+        elif self.kind == RULE_WEEKEND_CLOSE:
+            if self.threshold is not None:
+                raise ValueError("WEEKEND_CLOSE takes no threshold")
+            if isinstance(self.minutes, bool) or not isinstance(self.minutes, int) or not 1 <= self.minutes <= 120:
+                raise ValueError("WEEKEND_CLOSE minutes must be an integer from 1 to 120")
+            if not callable(self.in_window):
+                raise ValueError("WEEKEND_CLOSE needs an in_window(now, minutes) check")
+        else:
             raise ValueError(f"unsupported exit rule kind: {self.kind}")
-        if not isinstance(self.threshold, Decimal) or not (
-            Decimal("0") < self.threshold < Decimal("1")
-        ):
-            raise ValueError("threshold must be a Decimal in (0, 1)")
         if self.priority not in _PRIORITY_ORDER:
             raise ValueError(f"unsupported exit priority: {self.priority}")
 
@@ -247,7 +269,13 @@ class ExitGuard:
         durable_mark = _decimal(position.get("mark_price"))
 
         for rule in self.rules:
-            if change <= -rule.threshold:
+            if rule.kind == RULE_WEEKEND_CLOSE:
+                triggered = self._in_window(rule, now)
+                detail = {"change": format(change, "f"), "window_minutes": rule.minutes}
+            else:
+                triggered = change <= -rule.threshold
+                detail = {"change": format(change, "f"), "threshold": format(rule.threshold, "f")}
+            if triggered:
                 if durable_mark is None or durable_mark <= 0:
                     return ExitIntent(symbol, EXIT_POSITION_INVALID, position_id)
                 return ExitIntent(
@@ -256,11 +284,18 @@ class ExitGuard:
                     base_quantity=base, price=price,
                     request_id=self._request_id(position, rule),
                     exposure_quote=base * durable_mark,
-                    detail={"change": format(change, "f"),
-                            "threshold": format(rule.threshold, "f")},
+                    detail=detail,
                 )
 
         return ExitIntent(symbol, EXIT_NOT_TRIGGERED, position_id, base_quantity=base, price=price)
+
+    @staticmethod
+    def _in_window(rule: ExitRule, now: float) -> bool:
+        try:
+            return rule.in_window(datetime.fromtimestamp(float(now), UTC), rule.minutes) is not False
+        except Exception:
+            logger.exception("ExitGuard window check %s failed; treated as inside the window", rule.rule_id)
+            return True
 
     @staticmethod
     def _request_id(position: Mapping[str, Any], rule: ExitRule) -> str:
@@ -367,7 +402,8 @@ class ExitGuard:
                 "mode": self.mode,
                 "rules": [
                     {"rule_id": r.rule_id, "kind": r.kind,
-                     "threshold": format(r.threshold, "f"), "priority": r.priority}
+                     "threshold": None if r.threshold is None else format(r.threshold, "f"),
+                     "minutes": r.minutes, "priority": r.priority}
                     for r in self.rules
                 ],
                 "max_price_age_seconds": self.max_price_age_seconds,

@@ -16,29 +16,35 @@
     "analysis": "Static AST import resolution over git-tracked Python files, excluding imports guarded by if TYPE_CHECKING:. Third-party and stdlib targets resolve to nothing and carry no edge."
   },
   "source_identity": {
-    "generated_from_commit": "04b1e626f4c503f9151d2a75684f2e3a937f03aa",
-    "generated_from_tree": "f788c6e017d2336e96e09d84875011d9ed1dbd41",
+    "generated_from_commit": "c1992d9b40964355c7c0801737de80301851e35b",
+    "generated_from_tree": "539f393d1c1ee9b81f27931e91e0e0be7f18f106",
     "tracked_working_tree_clean": false,
     "modified_tracked_paths_at_generation": [
-      "atlas_finance/forex/__init__.py",
       "atlas_finance/forex/sessions.py",
       "core/application.py",
+      "core/exit_guard.py",
       "core/market_loop.py",
+      "core/policy_manifest.py",
+      "governance/current/ATLAS_MILESTONE_REGISTRY_v5.106.json",
+      "governance/policy/ATLAS_POLICY_MANIFEST_v3.json",
+      "packaging/REM-001_IMPORT_GRAPH.json",
       "packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md",
       "packaging/REM-001_STATE_AUTHORITY_MAP.md",
-      "tests/test_task022_weekend_entry_block.py"
+      "tests/test_phase2_g1_policy_manifest.py",
+      "tests/test_phase2_g2_exp002_grant.py",
+      "tests/test_task023_policy_manifest_v3.py"
     ]
   },
   "scope": {
     "universe": "ALL_GIT_TRACKED_PYTHON_FILES",
     "universe_note": "The tool's existing tracked-file definition, used unchanged. No source-scope classification (ACTIVE_CANDIDATE / TEST / TOOL / ARCHIVE / BACKUP / QUARANTINE / REPORT_COPY) is applied or implied: that classification requires the human review gate ARCH-001.2.1 reserves and belongs to Gate 1 deliverable 1.",
-    "modules_total": 1186,
+    "modules_total": 1187,
     "modules_runtime_reachable": 146,
-    "modules_outside_runtime_closure": 1040,
-    "edges_total": 2932,
-    "edges_import": 2113,
-    "edges_package_init": 819,
-    "edges_distinct_module_pairs": 2836,
+    "modules_outside_runtime_closure": 1041,
+    "edges_total": 2950,
+    "edges_import": 2124,
+    "edges_package_init": 826,
+    "edges_distinct_module_pairs": 2853,
     "edges_count_note": "edges_total counts (from, to, kind) triples. A pair can carry both kinds when a file both imports a package directly and references one of its submodules, so edges_distinct_module_pairs is the figure to use when counting dependencies between modules.",
     "parse_failures": 3
   },
@@ -4361,6 +4367,10 @@
       "runtime_reachable": false
     },
     {
+      "module": "tests/test_task023_policy_manifest_v3.py",
+      "runtime_reachable": false
+    },
+    {
       "module": "tests/test_task_status.py",
       "runtime_reachable": false
     },
@@ -7288,6 +7298,21 @@
     {
       "from": "core/paper_execution_engine.py",
       "to": "core/execution_models.py",
+      "kind": "import"
+    },
+    {
+      "from": "core/policy_manifest.py",
+      "to": "atlas_finance/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "core/policy_manifest.py",
+      "to": "atlas_finance/forex/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "core/policy_manifest.py",
+      "to": "atlas_finance/forex/sessions.py",
       "kind": "import"
     },
     {
@@ -17298,6 +17323,81 @@
     {
       "from": "tests/test_task022_weekend_entry_block.py",
       "to": "tests/test_block5c_upstream_sizing_authority.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task023_policy_manifest_v3.py",
+      "to": "atlas_finance/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_task023_policy_manifest_v3.py",
+      "to": "atlas_finance/forex/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_task023_policy_manifest_v3.py",
+      "to": "atlas_finance/forex/sessions.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task023_policy_manifest_v3.py",
+      "to": "core/__init__.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task023_policy_manifest_v3.py",
+      "to": "core/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_task023_policy_manifest_v3.py",
+      "to": "core/application.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task023_policy_manifest_v3.py",
+      "to": "core/exit_guard.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task023_policy_manifest_v3.py",
+      "to": "core/market_loop.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task023_policy_manifest_v3.py",
+      "to": "core/policy_manifest.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task023_policy_manifest_v3.py",
+      "to": "main.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task023_policy_manifest_v3.py",
+      "to": "tests/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_task023_policy_manifest_v3.py",
+      "to": "tests/intelligence/__init__.py",
+      "kind": "package_init"
+    },
+    {
+      "from": "tests/test_task023_policy_manifest_v3.py",
+      "to": "tests/intelligence/test_task009_regime_tracking.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task023_policy_manifest_v3.py",
+      "to": "tests/test_block5c_upstream_sizing_authority.py",
+      "kind": "import"
+    },
+    {
+      "from": "tests/test_task023_policy_manifest_v3.py",
+      "to": "tests/test_phase2_g2_exp002_grant.py",
       "kind": "import"
     },
     {

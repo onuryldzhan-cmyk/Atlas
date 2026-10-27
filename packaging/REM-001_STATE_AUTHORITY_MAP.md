@@ -19,10 +19,10 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `04b1e626f4c503f9151d2a75684f2e3a937f03aa` |
-| generated_from_tree | `f788c6e017d2336e96e09d84875011d9ed1dbd41` |
+| generated_from_commit | `c1992d9b40964355c7c0801737de80301851e35b` |
+| generated_from_tree | `539f393d1c1ee9b81f27931e91e0e0be7f18f106` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['atlas_finance/forex/__init__.py', 'atlas_finance/forex/sessions.py', 'core/application.py', 'core/market_loop.py', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'tests/test_task022_weekend_entry_block.py'] |
+| modified_tracked_paths_at_generation | ['atlas_finance/forex/sessions.py', 'core/application.py', 'core/exit_guard.py', 'core/market_loop.py', 'core/policy_manifest.py', 'governance/current/ATLAS_MILESTONE_REGISTRY_v5.106.json', 'governance/policy/ATLAS_POLICY_MANIFEST_v3.json', 'packaging/REM-001_IMPORT_GRAPH.json', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/REM-001_STATE_AUTHORITY_MAP.md', 'tests/test_phase2_g1_policy_manifest.py', 'tests/test_phase2_g2_exp002_grant.py', 'tests/test_task023_policy_manifest_v3.py'] |
 
 ## What this artifact is, and what it is not
 
@@ -64,7 +64,7 @@ observation.
 | declared_state_file_constants | 10 |
 | persistence_sites | 94 |
 | modules_with_persistence_sites | 39 |
-| distinct_state_file_literals | 40 |
+| distinct_state_file_literals | 42 |
 | parse_failures | 0 |
 
 ## Declared durable state surface
@@ -100,6 +100,7 @@ nothing is inferred from an absence.
 | `.json` | `atlas_org/security_review.py`, `core/execution_idempotency_store.py`, `core/execution_transaction_journal.py` |
 | `/openapi.json` | `web_app.py` |
 | `ATLAS_POLICY_MANIFEST_v2.json` | `core/policy_manifest.py` |
+| `ATLAS_POLICY_MANIFEST_v3.json` | `core/policy_manifest.py` |
 | `atlas_memory.json` | `ai/core/atlas_memory_core.py` |
 | `atlas_reasoning.json` | `ai/core/atlas_reasoning_engine.py` |
 | `atlas_runtime_closure.json` | `observability/security_view.py` |
@@ -116,6 +117,7 @@ nothing is inferred from an absence.
 | `execution_idempotency.jsonl` | `core/application.py` |
 | `execution_transaction_journal.jsonl` | `core/application.py` |
 | `experiment_admissions.json` | `core/experiment_ledger.py` |
+| `governance/current/ATLAS_MILESTONE_REGISTRY_v5.106.json` | `core/policy_manifest.py` |
 | `governance/current/ATLAS_MILESTONE_REGISTRY_v5.85.json` | `core/policy_manifest.py` |
 | `instrument_rules.json` | `core/application.py` |
 | `instrument_rules_mt5.json` | `core/application.py` |
@@ -148,7 +150,7 @@ nothing is inferred from an absence.
 | `ai/core/atlas_reasoning_engine.py` | JSON_DUMP | 787 | `AtlasReasoningEngine::save` |
 | `ai/core/atlas_world_model.py` | OPEN_WRITE_MODE | 228 | `AtlasWorldModel::save` |
 | `ai/core/atlas_world_model.py` | JSON_DUMP | 229 | `AtlasWorldModel::save` |
-| `atlas_finance/forex/sessions.py` | ATOMIC_REPLACE | 60 | `next_forex_open` |
+| `atlas_finance/forex/sessions.py` | ATOMIC_REPLACE | 61 | `next_forex_open` |
 | `atlas_finance/market_data/binance_public_provider.py` | ATOMIC_REPLACE | 1044 | `BinancePublicDataProvider::_normalize_symbol` |
 | `atlas_finance/market_data/binance_public_provider.py` | ATOMIC_REPLACE | 1044 | `BinancePublicDataProvider::_normalize_symbol` |
 | `atlas_finance/market_data/binance_public_provider.py` | ATOMIC_REPLACE | 1044 | `BinancePublicDataProvider::_normalize_symbol` |

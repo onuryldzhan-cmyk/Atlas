@@ -33,6 +33,14 @@ V1 = "governance/policy/ATLAS_POLICY_MANIFEST_v1.json"
 V2 = "governance/policy/ATLAS_POLICY_MANIFEST_v2.json"
 
 
+
+@pytest.fixture(autouse=True)
+def _the_sealed_v2_chain(monkeypatch):
+    """Task 023 (registry v5.106): this module pins the sealed manifest v2 chain; the active manifest is v3
+    (tests/test_task023_policy_manifest_v3.py). Every check here still runs against v2's own file and rules."""
+    monkeypatch.setattr(pm, "MANIFEST_PATH", pm.MANIFEST_V2_PATH)
+
+
 def load(rel: str) -> dict:
     return json.loads((ROOT / rel).read_text(encoding="utf-8"))
 
@@ -398,7 +406,9 @@ def test_real_application_built_exactly_as_main_py_matches_registry_and_manifest
 
     kwargs = production_kwargs(tmp_path, monkeypatch)
     app = real_app(tmp_path, kwargs)
-    check = main.apply_policy_manifest(app)
+    # production_kwargs undoes every monkeypatch (incl. the module's v2 pin), so the v2 file is named here;
+    # the same check against the active v3 is in tests/test_task023_policy_manifest_v3.py
+    check = main.apply_policy_manifest(app, pm.MANIFEST_V2_PATH)
     assert check.status == pm.MATCH and not check.block_new_risk
     assert check.owner_approval == "OWNER_RATIFIED_VIA_REGISTRY:ATLAS_MILESTONE_REGISTRY_v5.85"
     assert app.execution.policy_manifest_block is None
