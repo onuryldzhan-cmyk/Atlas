@@ -1,0 +1,136 @@
+{
+  "manifest_version": 4,
+  "title": "Atlas runtime policy manifest v4 (forex: leverage 1:2 margin book and a 100 % stop-out)",
+  "effective_state": "EFFECTIVE_FOR_COMPARISON_ONLY",
+  "note": "Successor of v3 (kept unchanged, sealed). Adds the account leverage, as the RiskPolicy and the durable book each hold it (CRYPTO 1, FOREX 2), and the stop-out margin level (1 = 100 %); FOREX runs the exit guard in ENFORCE with two rules, STOP_OUT (SAFETY_EXIT) and WEEKEND_CLOSE (30 minutes). Read-only reference: core/policy_manifest.py compares the running application with it and any difference, or a missing/mismatching ratification, is BLOCK_NEW_RISK. Nothing is applied from this file and it can never enable live trading. Owner values 2026-10-26: leverage 1:2, stop-out 100 %.",
+  "registry_id": "ATLAS_MILESTONE_REGISTRY_v5.107",
+  "registry_path": "governance/current/ATLAS_MILESTONE_REGISTRY_v5.107.json",
+  "registry_sha256": "4c144dab3e6ee7a15e40730848312a1f55c2eae67a9f8ecdd505b0f0d46e706e",
+  "proposal_id": "FOREX-POLICY-MANIFEST-V4",
+  "owner_approval": "SEE_REGISTRY: ratification is recorded in ATLAS_MILESTONE_REGISTRY_v5.108 (this field is informational and is not trusted by the check)",
+  "policy": {
+    "execution_mode": "PAPER",
+    "live_execution_enabled": false,
+    "execution_minimum_confidence": "60",
+    "risk_policy_version": "phase3-risk-v1",
+    "global_minimum_confidence": "0.6",
+    "paper_confidence_experiment": true,
+    "paper_confidence_experiment_id": "EXP-002",
+    "paper_fee_rate": "0.001",
+    "paper_slippage_bps": "5",
+    "count_unrealized_in_daily_loss": true,
+    "sleeves_enabled": true,
+    "funding_sentiment": false,
+    "fusion_full_weight_denominator": false,
+    "order_lifecycle_observe": true,
+    "paper_fill_model": {
+      "one_of": [
+        "LAST_PRICE",
+        "BOOK"
+      ]
+    },
+    "exit_guard_mode": {
+      "by_market": {
+        "CRYPTO": "OBSERVE",
+        "FOREX": "ENFORCE"
+      }
+    },
+    "exit_guard_rules": {
+      "by_market": {
+        "CRYPTO": 0,
+        "FOREX": 2
+      }
+    },
+    "exp002_enabled": true,
+    "exp002_experiment_id": "EXP-002",
+    "exp002_buckets": [
+      "MEDIUM"
+    ],
+    "exp002_minimum_confidence": "0.62",
+    "exp002_global_minimum_confidence": "0.6",
+    "exp002_max_admissions": 30,
+    "exp002_starts_at": "2026-10-02T00:00:00+00:00",
+    "exp002_ends_at": "2026-10-16T00:00:00+00:00",
+    "exp002_sizing_mode": "HIGH_BUCKET_LIMITS",
+    "exp002_sizing_max_allocation_pct": "0.1",
+    "exp002_sizing_exposure_ceiling_pct": "0.2",
+    "exp002_medium_default_floor": "0.7",
+    "exp002_paper_only": true,
+    "exp002_funding_sentiment_off": true,
+    "market": {
+      "one_of": [
+        "CRYPTO",
+        "FOREX"
+      ]
+    },
+    "forex_paper_fee_rate": "0.001",
+    "forex_weekend_close_minutes": 30,
+    "risk_leverage": {
+      "by_market": {
+        "CRYPTO": 1,
+        "FOREX": 2
+      }
+    },
+    "book_leverage": {
+      "by_market": {
+        "CRYPTO": 1,
+        "FOREX": 2
+      }
+    },
+    "forex_stop_out_margin_level": "1"
+  },
+  "sources": {
+    "execution_mode": "main.py EXECUTION_MODE; core/atlas_config.py refuses anything but PAPER (live_authority=DENIED)",
+    "live_execution_enabled": "ExecutionManager default; live_authority=DENIED in the registry authority_state",
+    "execution_minimum_confidence": "ExecutionManager default floor (0-100 consensus scale)",
+    "risk_policy_version": "core/risk_engine.py RiskPolicy.version",
+    "global_minimum_confidence": "core/risk_engine.py RiskPolicy default (0-1 consensus scale; Phase-2 E1: not a probability)",
+    "paper_confidence_experiment": "main.py call site; EXP-002 switched on by the owner 2026-10-01 (main.py comment) - registry record UNKNOWN",
+    "paper_confidence_experiment_id": "main.py call site (EXP-001 stopped, registry v5.71)",
+    "paper_fee_rate": "main.py PAPER_FEE_RATE_PER_SIDE (registry v5.23)",
+    "paper_slippage_bps": "main.py call site; owner switch-on 2026-10-01 (F-4)",
+    "count_unrealized_in_daily_loss": "main.py call site; owner switch-on 2026-10-01 (F-3)",
+    "sleeves_enabled": "main.py call site; owner switch-on 2026-10-01 (S1)",
+    "funding_sentiment": "not passed by main.py (default off)",
+    "fusion_full_weight_denominator": "not passed by main.py (default off; owner decision pending per fusion dissent design)",
+    "order_lifecycle_observe": "main.py call site; owner approved 2026-10-01 (observe only)",
+    "paper_fill_model": "operator choice via ATLAS_FILL_MODEL (Shadow S2, owner approval 2026-10-02); validated by core/atlas_config.py",
+    "exit_guard_mode": "CRYPTO unchanged (OBSERVE). FOREX: ENFORCE so the weekend-close rule submits a reduce-only full-exit SELL through ExecutionManager (needs the 'by_market' matcher in core/policy_manifest.py and the exit guard invoked from MarketLoop's cycle).",
+    "exit_guard_rules": "core/application.py: CRYPTO none; FOREX two, STOP_OUT (Task 025) and WEEKEND_CLOSE (Task 023)",
+    "exp002_enabled": "core/risk_engine.py EXP002_PAPER_CONFIDENCE_EXPERIMENT / RiskPolicy buckets / EXPERIMENT_SIZING_BUCKET (as attached by core/application.py); authorised by GRANT-EXP002-PAPER-CONFIDENCE-EXPERIMENT in registry v5.85",
+    "exp002_experiment_id": "core/risk_engine.py EXP002_PAPER_CONFIDENCE_EXPERIMENT / RiskPolicy buckets / EXPERIMENT_SIZING_BUCKET (as attached by core/application.py); authorised by GRANT-EXP002-PAPER-CONFIDENCE-EXPERIMENT in registry v5.85",
+    "exp002_buckets": "core/risk_engine.py EXP002_PAPER_CONFIDENCE_EXPERIMENT / RiskPolicy buckets / EXPERIMENT_SIZING_BUCKET (as attached by core/application.py); authorised by GRANT-EXP002-PAPER-CONFIDENCE-EXPERIMENT in registry v5.85",
+    "exp002_minimum_confidence": "core/risk_engine.py EXP002_PAPER_CONFIDENCE_EXPERIMENT / RiskPolicy buckets / EXPERIMENT_SIZING_BUCKET (as attached by core/application.py); authorised by GRANT-EXP002-PAPER-CONFIDENCE-EXPERIMENT in registry v5.85",
+    "exp002_global_minimum_confidence": "core/risk_engine.py EXP002_PAPER_CONFIDENCE_EXPERIMENT / RiskPolicy buckets / EXPERIMENT_SIZING_BUCKET (as attached by core/application.py); authorised by GRANT-EXP002-PAPER-CONFIDENCE-EXPERIMENT in registry v5.85",
+    "exp002_max_admissions": "core/risk_engine.py EXP002_PAPER_CONFIDENCE_EXPERIMENT / RiskPolicy buckets / EXPERIMENT_SIZING_BUCKET (as attached by core/application.py); authorised by GRANT-EXP002-PAPER-CONFIDENCE-EXPERIMENT in registry v5.85",
+    "exp002_starts_at": "core/risk_engine.py EXP002_PAPER_CONFIDENCE_EXPERIMENT / RiskPolicy buckets / EXPERIMENT_SIZING_BUCKET (as attached by core/application.py); authorised by GRANT-EXP002-PAPER-CONFIDENCE-EXPERIMENT in registry v5.85",
+    "exp002_ends_at": "core/risk_engine.py EXP002_PAPER_CONFIDENCE_EXPERIMENT / RiskPolicy buckets / EXPERIMENT_SIZING_BUCKET (as attached by core/application.py); authorised by GRANT-EXP002-PAPER-CONFIDENCE-EXPERIMENT in registry v5.85",
+    "exp002_sizing_mode": "core/risk_engine.py EXP002_PAPER_CONFIDENCE_EXPERIMENT / RiskPolicy buckets / EXPERIMENT_SIZING_BUCKET (as attached by core/application.py); authorised by GRANT-EXP002-PAPER-CONFIDENCE-EXPERIMENT in registry v5.85",
+    "exp002_sizing_max_allocation_pct": "core/risk_engine.py EXP002_PAPER_CONFIDENCE_EXPERIMENT / RiskPolicy buckets / EXPERIMENT_SIZING_BUCKET (as attached by core/application.py); authorised by GRANT-EXP002-PAPER-CONFIDENCE-EXPERIMENT in registry v5.85",
+    "exp002_sizing_exposure_ceiling_pct": "core/risk_engine.py EXP002_PAPER_CONFIDENCE_EXPERIMENT / RiskPolicy buckets / EXPERIMENT_SIZING_BUCKET (as attached by core/application.py); authorised by GRANT-EXP002-PAPER-CONFIDENCE-EXPERIMENT in registry v5.85",
+    "exp002_medium_default_floor": "core/risk_engine.py EXP002_PAPER_CONFIDENCE_EXPERIMENT / RiskPolicy buckets / EXPERIMENT_SIZING_BUCKET (as attached by core/application.py); authorised by GRANT-EXP002-PAPER-CONFIDENCE-EXPERIMENT in registry v5.85",
+    "exp002_paper_only": "core/risk_engine.py EXP002_PAPER_CONFIDENCE_EXPERIMENT / RiskPolicy buckets / EXPERIMENT_SIZING_BUCKET (as attached by core/application.py); authorised by GRANT-EXP002-PAPER-CONFIDENCE-EXPERIMENT in registry v5.85",
+    "exp002_funding_sentiment_off": "core/risk_engine.py EXP002_PAPER_CONFIDENCE_EXPERIMENT / RiskPolicy buckets / EXPERIMENT_SIZING_BUCKET (as attached by core/application.py); authorised by GRANT-EXP002-PAPER-CONFIDENCE-EXPERIMENT in registry v5.85",
+    "market": "core/atlas_config.py ATLAS_MARKET (registry v5.103); pinned so the market is part of the check.",
+    "forex_paper_fee_rate": "Forex commission per side. 0.001 (= the v2 paper_fee_rate) until the real commission is measured on the owner's MT5 demo account (owner 2026-10-26); the measured value replaces it only through a new ratified manifest.",
+    "forex_weekend_close_minutes": "Open forex positions are closed this many minutes before the Friday 17:00 New York close (owner 2026-10-26); new entries already stop 60 minutes before (Task 022).",
+    "risk_leverage": "core/risk_engine.py RiskPolicy.leverage as core/application.py builds it; every notional exposure ceiling is measured against total_capital x leverage, every loss limit against total_capital and equity (Task 025, owner 2026-10-26 '1:2')",
+    "book_leverage": "core/execution_portfolio_foundation.py: the leverage the durable book must carry (schema 3 margin book in FOREX; schema 2 cash book in CRYPTO); a book that disagrees is not ready",
+    "forex_stop_out_margin_level": "core/exit_guard.py STOP_OUT threshold (atlas_finance.forex.STOP_OUT_MARGIN_LEVEL): every position is closed, largest loss first, when the margin level is at or below 100 % (owner 2026-10-26 '%100')"
+  },
+  "supersedes": "governance/policy/ATLAS_POLICY_MANIFEST_v3.json",
+  "grant": {
+    "grant_id": "GRANT-EXP002-PAPER-CONFIDENCE-EXPERIMENT",
+    "grant_registry_id": "ATLAS_MILESTONE_REGISTRY_v5.85",
+    "grant_registry_path": "governance/current/ATLAS_MILESTONE_REGISTRY_v5.85.json"
+  },
+  "ratification": {
+    "registry_id": "ATLAS_MILESTONE_REGISTRY_v5.108",
+    "registry_path": "governance/current/ATLAS_MILESTONE_REGISTRY_v5.108.json",
+    "record_key": "policy_manifest_v4_ratification"
+  },
+  "integrity": {
+    "algorithm": "sha256",
+    "digest": "ef5689b4703d40e040c9998c0f5efb7e40e0ae5007699098e3e5d2c2902013d7"
+  }
+}
