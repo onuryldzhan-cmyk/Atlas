@@ -383,6 +383,13 @@ class RiskPolicy:
     kelly_fraction: Decimal | None = None
     volatility_target: Decimal | None = None
     drawdown_sizing: bool = False
+    # Task 025 (registry v5.108, policy manifest v4): account leverage L of a margin book (forex PAPER only;
+    # owner 2026-10-26 '1:2'). Every notional exposure ceiling below is measured against exposure_capital
+    # (total_capital x L); every loss limit (daily loss, drawdown) stays on total_capital and equity, and the
+    # Kelly / volatility-target ceilings stay unscaled, so leverage can only widen position size, never a loss
+    # limit. The default 1 keeps every formula and decision byte-identical. A request's own ``leverage`` field is
+    # a separate thing and must still be 1 (LEVERAGE_NOT_PERMITTED).
+    leverage: int = 1
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "total_capital", decimal_value(self.total_capital, "total_capital", allow_zero=False))
@@ -447,6 +454,8 @@ class RiskPolicy:
         object.__setattr__(self, "quote_currencies", quotes)
         if not isinstance(self.drawdown_sizing, bool):
             raise ValueError("drawdown_sizing must be a bool")
+        if isinstance(self.leverage, bool) or not isinstance(self.leverage, int) or not 1 <= self.leverage <= 5:
+            raise ValueError("leverage must be an integer from 1 to 5")
 
     @property
     def reserved_capital(self) -> Decimal:
@@ -461,6 +470,22 @@ class RiskPolicy:
             context.prec = RISK_CONTEXT_PRECISION
             context.rounding = ROUND_HALF_EVEN
             return self.total_capital - self.reserved_capital
+
+    @property
+    def exposure_capital(self) -> Decimal:
+        """The base of every notional exposure ceiling: total_capital x leverage (Task 025)."""
+        with localcontext() as context:
+            context.prec = RISK_CONTEXT_PRECISION
+            context.rounding = ROUND_HALF_EVEN
+            return self.total_capital * self.leverage
+
+    @property
+    def allocatable_exposure(self) -> Decimal:
+        """allocatable_capital x leverage: the open-notional bound (Task 025)."""
+        with localcontext() as context:
+            context.prec = RISK_CONTEXT_PRECISION
+            context.rounding = ROUND_HALF_EVEN
+            return self.allocatable_capital * self.leverage
 
 
 @dataclass(frozen=True)
@@ -513,14 +538,15 @@ def derive_buy_capacity_limits(
     with localcontext() as context:
         context.prec = RISK_CONTEXT_PRECISION
         context.rounding = ROUND_HALF_EVEN
+        base = policy.exposure_capital   # Task 025: total_capital x leverage (== total_capital at 1)
         return BuyCapacityLimits(
-            max_position=policy.total_capital * policy.max_position_pct,
-            bucket_allocation=policy.total_capital * bucket_policy.max_allocation_pct,
-            per_symbol=policy.total_capital * policy.per_symbol_pct - symbol_exposure,
-            concentration=policy.total_capital * policy.concentration_pct - symbol_exposure,
-            bucket_exposure_ceiling=policy.total_capital * bucket_policy.exposure_ceiling_pct - symbol_exposure,
-            portfolio_exposure=policy.total_capital * policy.portfolio_exposure_pct - committed_quote,
-            allocatable_capital=policy.allocatable_capital - committed_quote,
+            max_position=base * policy.max_position_pct,
+            bucket_allocation=base * bucket_policy.max_allocation_pct,
+            per_symbol=base * policy.per_symbol_pct - symbol_exposure,
+            concentration=base * policy.concentration_pct - symbol_exposure,
+            bucket_exposure_ceiling=base * bucket_policy.exposure_ceiling_pct - symbol_exposure,
+            portfolio_exposure=base * policy.portfolio_exposure_pct - committed_quote,
+            allocatable_capital=policy.allocatable_exposure - committed_quote,
         )
 
 
@@ -550,7 +576,7 @@ def sizing_ceiling(policy: RiskPolicy, signal: SizingSignal | None, *,
     with localcontext() as context:
         context.prec = RISK_CONTEXT_PRECISION
         context.rounding = ROUND_HALF_EVEN
-        ceiling = policy.total_capital * policy.max_position_pct
+        ceiling = policy.exposure_capital * policy.max_position_pct   # Task 025: x leverage; Kelly/vol unscaled
         detail["position_cap"] = _fmt(ceiling)
         if policy.kelly_fraction is not None:
             try:
@@ -836,7 +862,7 @@ class RiskEngine:
                 used += p.quote_exposure
         with localcontext() as context:
             context.prec = RISK_CONTEXT_PRECISION
-            if used + allocation > equity * share:
+            if used + allocation > equity * self.policy.leverage * share:   # Task 025: notional, x leverage
                 return "SLEEVE_FULL"
         return None
 
@@ -883,7 +909,7 @@ class RiskEngine:
                 context.rounding = ROUND_HALF_EVEN
                 # A position whose group is unknown counts against every group (NB-4).
                 used = sum((p.quote_exposure for p in state.positions if key_of(p.symbol) in (group, None)), ZERO)
-                limit = policy.total_capital * pct
+                limit = policy.exposure_capital * pct   # Task 025: notional, x leverage
             if used + allocation > limit:
                 return breached, {label: group, "open_exposure": _fmt(used),
                                   "requested_allocation": _fmt(allocation), "limit": _fmt(limit)}
@@ -898,7 +924,7 @@ class RiskEngine:
             drawdown_amount = max(state.peak_equity - state.current_equity, ZERO)
             drawdown_pct = drawdown_amount / state.peak_equity if state.peak_equity > ZERO else ZERO
             gross = state.committed_quote
-            available = max(self.policy.allocatable_capital - gross, ZERO)
+            available = max(self.policy.allocatable_exposure - gross, ZERO)
         level = self._drawdown_level(drawdown_pct)
         return RiskDecision(status, reason, allocation, gross, available,
                             self.policy.reserved_capital, state.realized_daily_pnl,

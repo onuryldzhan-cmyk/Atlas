@@ -360,7 +360,8 @@ def test_a_marginal_regime_halves_the_proposed_size():
         ready = True
 
         def snapshot(self):
-            return {"positions": {}, "cash": Decimal("10000"), "gross_exposure": Decimal("0")}
+            return {"positions": {}, "cash": Decimal("10000"), "spendable_cash": Decimal("10000"),   # Task 025
+                    "gross_exposure": Decimal("0")}
 
     class Ledger:
         ready = True
@@ -837,7 +838,8 @@ class _Manager:
             ready = True
 
             def snapshot(self):
-                return {"positions": {}, "cash": Decimal("10000"), "gross_exposure": Decimal("0")}
+                return {"positions": {}, "cash": Decimal("10000"), "spendable_cash": Decimal("10000"),   # Task 025
+                    "gross_exposure": Decimal("0")}
 
         class Ledger:
             ready = True

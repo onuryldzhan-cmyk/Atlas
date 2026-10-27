@@ -62,7 +62,8 @@ def runtime_for(market: str) -> dict:
 
 
 def test_v3_is_the_active_manifest_and_v2_stays_sealed():
-    assert pm.MANIFEST_PATH == ROOT / V3 and pm.EXPECTED_MANIFEST_VERSION == 3
+    # Task 025 (registry v5.108): v4 is now the active manifest; v3 stays sealed and verifiable by its own rules.
+    assert pm.MANIFEST_V3_PATH == ROOT / V3 and pm.MANIFEST_PATH == ROOT / "governance/policy/ATLAS_POLICY_MANIFEST_v4.json"
     assert pm.MANIFEST_V2_PATH == ROOT / "governance/policy/ATLAS_POLICY_MANIFEST_v2.json"
     v2 = json.loads(pm.MANIFEST_V2_PATH.read_text(encoding="utf-8"))
     assert v2["manifest_version"] == 2 and v2["policy"]["exit_guard_mode"] == "OBSERVE"
@@ -70,7 +71,7 @@ def test_v3_is_the_active_manifest_and_v2_stays_sealed():
 
 @pytest.mark.parametrize("market", ["CRYPTO", "FOREX"])
 def test_the_committed_v3_chain_verifies_for_both_markets(market):
-    check = pm.verify(runtime_for(market))
+    check = pm.verify(runtime_for(market), pm.MANIFEST_V3_PATH)
     assert check.status == pm.MATCH and not check.block_new_risk, check.to_dict()
     assert check.registry_id == pm.V3_EXPECTED_REGISTRY_ID and check.proposal_id == pm.V3_EXPECTED_PROPOSAL_ID
     assert check.owner_approval == f"{pm.OWNER_RATIFIED}:{pm.V3_RATIFICATION_REGISTRY_ID}"
@@ -106,7 +107,7 @@ def test_the_ratification_registry_pins_these_bytes_and_is_sealed_in_code():
 ])
 def test_a_switch_that_differs_for_its_market_blocks_new_risk(market, switch, value):
     runtime = {**runtime_for(market), switch: value}
-    check = pm.verify(runtime)
+    check = pm.verify(runtime, pm.MANIFEST_V3_PATH)
     assert check.status == pm.POLICY_MISMATCH and check.block_new_risk
     assert [m[0] for m in check.mismatches] == [switch]
 
@@ -114,7 +115,7 @@ def test_a_switch_that_differs_for_its_market_blocks_new_risk(market, switch, va
 @pytest.mark.parametrize("market", ["STOCKS", None, pm.UNREADABLE, 1])
 def test_an_unknown_or_unreadable_market_never_matches(market):
     runtime = {**runtime_for("CRYPTO"), "market": market}
-    check = pm.verify(runtime)
+    check = pm.verify(runtime, pm.MANIFEST_V3_PATH)
     assert check.status == pm.POLICY_MISMATCH
     assert {"market", "exit_guard_mode", "exit_guard_rules"} <= {m[0] for m in check.mismatches}
 
@@ -222,8 +223,14 @@ def test_the_application_built_as_main_py_matches_v3(tmp_path, monkeypatch, mark
         assert app.execution.policy_manifest_block is None
         runtime = pm.runtime_policy(app)
         assert runtime["market"] == market and runtime["forex_weekend_close_minutes"] == 30
-        expected = ("ENFORCE", 1) if market == "FOREX" else ("OBSERVE", 0)
+        # Task 025: FOREX adds the STOP_OUT rule (manifest v4), so the sealed v3 now differs on that one switch
+        expected = ("ENFORCE", 2) if market == "FOREX" else ("OBSERVE", 0)
         assert (runtime["exit_guard_mode"], runtime["exit_guard_rules"]) == expected
+        v3 = pm.verify(runtime, pm.MANIFEST_V3_PATH)
+        if market == "FOREX":
+            assert v3.status == pm.POLICY_MISMATCH and [m[0] for m in v3.mismatches] == ["exit_guard_rules"]
+        else:
+            assert v3.status == pm.MATCH
     finally:
         app.stop()
 
@@ -370,8 +377,9 @@ def test_only_forex_runs_the_weekend_close_guard(tmp_path, market):
     try:
         guard = app.exit_guard
         if market == "FOREX":
-            assert guard.mode == ENFORCE and [r.kind for r in guard.rules] == [RULE_WEEKEND_CLOSE]
-            assert guard.rules[0].minutes == 30 and app.market_loop.exit_guard_runner is not None
+            # Task 025: the STOP_OUT rule (SAFETY_EXIT) is ordered ahead of the weekend close
+            assert guard.mode == ENFORCE and [r.kind for r in guard.rules] == ["STOP_OUT", RULE_WEEKEND_CLOSE]
+            assert guard.rules[1].minutes == 30 and app.market_loop.exit_guard_runner is not None
         else:
             assert guard.mode == OBSERVE and guard.rules == () and app.market_loop.exit_guard_runner is None
     finally:

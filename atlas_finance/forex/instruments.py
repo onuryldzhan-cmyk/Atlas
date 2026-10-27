@@ -18,6 +18,10 @@ from decimal import ROUND_DOWN, Decimal, InvalidOperation
 from typing import Any
 
 ACCOUNT_CURRENCY = "USD"
+# Task 025 (registry v5.108, policy manifest v4), owner 2026-10-26: account leverage 1:2 ('1:2 (Önerilen)') and a
+# stop-out at a 100 % margin level ('%100 (Önerilen)'). PAPER only.
+FOREX_LEVERAGE = 2
+STOP_OUT_MARGIN_LEVEL = Decimal("1")
 # USD-quoted majors: notional in the account currency, deep liquidity, tight spreads
 FOREX_UNIVERSE = ("EURUSD", "GBPUSD", "AUDUSD", "NZDUSD")
 

@@ -213,7 +213,7 @@ def test_runtime_policy_reads_the_application_and_a_test_app_does_not_match():
         app = application(Path(d))
         runtime = pm.runtime_policy(app)
     # Task 023: the runtime also reads manifest v3's forex switches; it still covers every v2 switch
-    assert set(pm.CRITICAL_SWITCHES) <= set(runtime) and set(runtime) == set(pm.CRITICAL_SWITCHES_V3)
+    assert set(pm.CRITICAL_SWITCHES) <= set(runtime) and set(runtime) == set(pm.CRITICAL_SWITCHES_V4)   # Task 025: the v4 runtime keys
     assert runtime["execution_mode"] == "PAPER" and runtime["live_execution_enabled"] is False
     assert pm.verify(runtime).status == pm.POLICY_MISMATCH
 

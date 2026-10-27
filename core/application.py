@@ -979,15 +979,26 @@ class AtlasApplication:
     # CANONICAL FINANCIAL RISK SERVICES
     # =========================================================
 
+    def _book_leverage(self) -> int:
+        """The account leverage of this market's durable book: FOREX_LEVERAGE in FOREX (Task 025), else 1."""
+        if self.market == "FOREX":
+            from atlas_finance.forex.instruments import FOREX_LEVERAGE
+            return FOREX_LEVERAGE
+        return 1
+
     def _attach_forex_weekend_close(self) -> None:
-        """FOREX only: the exit guard in ENFORCE with the single WEEKEND_CLOSE rule, run once per cycle."""
+        """FOREX only: the exit guard in ENFORCE with the STOP_OUT and WEEKEND_CLOSE rules, run once per cycle."""
+        from atlas_finance.forex.instruments import STOP_OUT_MARGIN_LEVEL
         from atlas_finance.forex.sessions import WEEKEND_CLOSE_MINUTES, is_forex_pre_close
-        from core.exit_guard import ENFORCE, RULE_WEEKEND_CLOSE, ExitRule, Mark
+        from core.exit_guard import ENFORCE, RULE_STOP_OUT, RULE_WEEKEND_CLOSE, SAFETY_EXIT, ExitRule, Mark
 
         # the window is computed from the rule's own minutes (review T023-F1)
         rule = ExitRule("forex-weekend-close", RULE_WEEKEND_CLOSE, None, minutes=WEEKEND_CLOSE_MINUTES,
                         in_window=is_forex_pre_close)
-        self.exit_guard = ExitGuard(self.execution, self.portfolio_foundation, rules=(rule,), mode=ENFORCE)
+        # Task 025: the margin book's stop-out at a 100 % margin level, ahead of the weekend close (SAFETY_EXIT)
+        stop_out = ExitRule("forex-stop-out", RULE_STOP_OUT, STOP_OUT_MARGIN_LEVEL, priority=SAFETY_EXIT)
+        self.exit_guard = ExitGuard(self.execution, self.portfolio_foundation, rules=(stop_out, rule),
+                                    mode=ENFORCE)
         guard, loop = self.exit_guard, self.market_loop
 
         def run(cutoff: datetime) -> Any:
@@ -1029,7 +1040,8 @@ class AtlasApplication:
             count_unrealized_in_daily_loss=self.count_unrealized_in_daily_loss,
             sleeves_enabled=self.sleeves_enabled,
             # Task 019: forex pairs are quoted in USD (EURUSD -> EUR exposure against USD)
-            **({"quote_currencies": ("USD",)} if self.market == "FOREX" else {}),
+            # Task 025: forex is a margin book at the pinned leverage (policy manifest v4)
+            **({"quote_currencies": ("USD",), "leverage": self._book_leverage()} if self.market == "FOREX" else {}),
         )
 
         self.risk_engine = RiskEngine(
@@ -1068,6 +1080,9 @@ class AtlasApplication:
             closed_archive=ClosedPositionArchiveStore(
                 self.state_directory / EXECUTION_CLOSED_POSITIONS_FILE,
             ),
+            # Task 025: a FOREX book must be the schema 3 margin book at this leverage, a CRYPTO book the schema 2
+            # cash book; any other book is not ready (FINANCIAL_LEVERAGE_CONFLICT), so no new risk.
+            leverage=self._book_leverage(),
         )
 
         logger.info(

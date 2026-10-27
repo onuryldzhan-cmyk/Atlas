@@ -581,6 +581,7 @@ def reconcile(
             FinancialStateStore(directory / financial_state_file),
             applied_archive=applied_store,
             closed_archive=ClosedPositionArchiveStore(directory / closed_file),
+            leverage=None,   # Task 025: operator recovery keeps the book's own leverage (schema 2 or 3)
         )
         book_ready = foundation.ready
 
@@ -951,7 +952,7 @@ def _classify_paper_recovery(
         # The book is not mid-transition: whether this request was applied
         # is answered by the applied-execution authority directly.
         foundation = ExecutionPortfolioFoundation(
-            store, applied_archive=applied_store, closed_archive=closed_store,
+            store, applied_archive=applied_store, closed_archive=closed_store, leverage=None,
         )
         if not foundation.ready:
             raise _RecoveryRefused("RECOVERY_AUTHORITY_UNREADABLE")
@@ -1599,7 +1600,7 @@ def _execute_recovery(
             )
         if plan.risk_accounting is RiskAccounting.RECORD:
             after = completed if completed is not None else ExecutionPortfolioFoundation(
-                store, applied_archive=applied_store, closed_archive=closed_store,
+                store, applied_archive=applied_store, closed_archive=closed_store, leverage=None,
             ).snapshot()
             _book_risk_accounting(
                 plan, journal=journal, directory=directory, audit_file=audit_file,
@@ -1672,6 +1673,7 @@ def _verify_recovery(
             FinancialStateStore(directory / financial_state_file),
             applied_archive=applied_store,
             closed_archive=ClosedPositionArchiveStore(directory / closed_file),
+            leverage=None,   # Task 025: operator recovery keeps the book's own leverage (schema 2 or 3)
         )
         if not foundation.ready:
             return failed

@@ -81,7 +81,8 @@ def _load_book(state_dir: Path):
     foundation = ExecutionPortfolioFoundation(
         FinancialStateStore(copy / names[0]),
         applied_archive=AppliedExecutionArchiveStore(copy / names[1]),
-        closed_archive=ClosedPositionArchiveStore(copy / names[2]))
+        closed_archive=ClosedPositionArchiveStore(copy / names[2]),
+        leverage=None)   # Task 025: read the book at its own leverage (schema 2 cash book or schema 3 margin book)
     return foundation, copy
 
 
@@ -99,14 +100,19 @@ def check_financial_state(state_dir: Path) -> list[dict[str, Any]]:
         problems = []
         for key in ("cash", "fees", "reserved_capital"):
             if Decimal(str(snap[key])) < 0:
-                problems.append(f"{key} is negative ({snap[key]})")
+                # Task 025: a margin book may record negative cash after a loss larger than the account - real,
+                # not corrupt, but still a finding
+                deficit = key == "cash" and snap.get("leverage", 1) > 1
+                problems.append(f"cash is negative ({snap[key]}): margin deficit after a loss larger than the account"
+                                if deficit else f"{key} is negative ({snap[key]})")
         for symbol, pos in snap["positions"].items():
             qty, cost, avg = (Decimal(str(pos[k])) for k in ("base_quantity", "cost_quote", "average_entry_price"))
             if qty <= 0 or cost <= 0 or avg <= 0:
                 problems.append(f"{symbol}: non-positive quantity/cost/price")
             elif abs(avg * qty - cost) > max(cost * Decimal("0.000001"), Decimal("0.00000001")):
                 problems.append(f"{symbol}: average entry x quantity != cost")
-        starting = snap["cash"] + snap["committed_capital"] + snap["fees"] - snap["realized_gross_pnl"]
+        # Task 025: the cash a position holds back is its margin (== its cost in a cash book, so unchanged there)
+        starting = snap["cash"] + snap["used_margin"] + snap["fees"] - snap["realized_gross_pnl"]
         if starting <= 0:
             problems.append(f"starting capital from the book identity is not positive ({starting})")
         results = [_result("financial_state", "FAIL" if problems else "OK",

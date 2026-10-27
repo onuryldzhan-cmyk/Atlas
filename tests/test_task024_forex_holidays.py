@@ -102,7 +102,7 @@ def test_the_forex_application_s_loop_gates_see_the_holiday(tmp_path):
     try:
         assert app.market_loop.market_session_open(at("2026-12-25T15:00:00")) is False
         assert app.market_loop.market_entry_blocked(at("2026-12-24T21:15:00")) is True
-        rule = app.market_loop.exit_guard_runner.guard.rules[0]
+        rule = next(r for r in app.market_loop.exit_guard_runner.guard.rules if r.kind == "WEEKEND_CLOSE")
         assert rule.in_window(at("2026-12-24T21:45:00"), rule.minutes) is True
     finally:
         app.stop()

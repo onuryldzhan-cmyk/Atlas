@@ -36,8 +36,11 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 # Task 023 (registry v5.106): manifest v3 (forex) is the active manifest. v2 stays sealed and is still verified by
 # its own rules below when asked (``verify(..., path=MANIFEST_V2_PATH)``); nothing in v2's chain changes.
 MANIFEST_V2_PATH = REPOSITORY_ROOT / "governance" / "policy" / "ATLAS_POLICY_MANIFEST_v2.json"
-MANIFEST_PATH = REPOSITORY_ROOT / "governance" / "policy" / "ATLAS_POLICY_MANIFEST_v3.json"
-EXPECTED_MANIFEST_VERSION = 3
+# Task 025 (registry v5.108): manifest v4 (forex leverage and stop-out) is the active manifest. v3 stays sealed and
+# is still verified by its own rules when named (``MANIFEST_V3_PATH``).
+MANIFEST_V3_PATH = REPOSITORY_ROOT / "governance" / "policy" / "ATLAS_POLICY_MANIFEST_v3.json"
+MANIFEST_PATH = REPOSITORY_ROOT / "governance" / "policy" / "ATLAS_POLICY_MANIFEST_v4.json"
+EXPECTED_MANIFEST_VERSION = 4
 
 # The governance binding this code expects. Changing the manifest's registry or
 # proposal is a governance act, so it also needs a code change here.
@@ -72,6 +75,15 @@ V3_RATIFICATION_REGISTRY_ID = "ATLAS_MILESTONE_REGISTRY_v5.106"
 V3_RATIFICATION_REGISTRY_PATH = "governance/current/ATLAS_MILESTONE_REGISTRY_v5.106.json"
 V3_RATIFICATION_RECORD_KEY = "policy_manifest_v3_ratification"
 V3_RATIFICATION_REGISTRY_SHA256 = "146e680467194d10e2166d88a8ef766262a4c52ea5bc53dba64e97cdbaaeb4cf"
+
+# Manifest v4 (Task 025: forex leverage 1:2 and a 100 % stop-out; owner 2026-10-26/27). The same one-way chain:
+#   code -> v5.108 (ratification record, pins manifest v4's bytes) -> manifest v4 -> v5.107 (its sealed base).
+V4_EXPECTED_REGISTRY_ID = "ATLAS_MILESTONE_REGISTRY_v5.107"
+V4_EXPECTED_PROPOSAL_ID = "FOREX-POLICY-MANIFEST-V4"
+V4_RATIFICATION_REGISTRY_ID = "ATLAS_MILESTONE_REGISTRY_v5.108"
+V4_RATIFICATION_REGISTRY_PATH = "governance/current/ATLAS_MILESTONE_REGISTRY_v5.108.json"
+V4_RATIFICATION_RECORD_KEY = "policy_manifest_v4_ratification"
+V4_RATIFICATION_REGISTRY_SHA256 = "174a14018b819cd36a478ea21dc00e28b67d7d4a8e70ed1a8391c18628bdfb2b"
 
 MATCH = "MATCH"
 MISSING = "MISSING"
@@ -137,6 +149,41 @@ FOREX_SWITCHES = (
 )
 CRITICAL_SWITCHES_V3 = CRITICAL_SWITCHES + FOREX_SWITCHES
 
+# Manifest v4 adds the account leverage, as the RiskPolicy and the durable book each hold it, and the stop-out
+# margin level (Task 025).
+LEVERAGE_SWITCHES = (
+    "risk_leverage",
+    "book_leverage",
+    "forex_stop_out_margin_level",
+)
+CRITICAL_SWITCHES_V4 = CRITICAL_SWITCHES_V3 + LEVERAGE_SWITCHES
+
+
+@dataclass(frozen=True)
+class _Successor:
+    """One forex successor manifest's governance binding (v3, v4), all pinned here in reviewed code."""
+
+    version: int
+    switches: tuple[str, ...]
+    base_registry_id: str
+    proposal_id: str
+    ratification_registry_id: str
+    ratification_registry_path: str
+    ratification_record_key: str
+
+    @property
+    def ratification_registry_sha256(self) -> str:
+        # read from the module constant at call time, so the pin lives in exactly one place
+        return str(globals()[f"V{self.version}_RATIFICATION_REGISTRY_SHA256"])
+
+
+_SUCCESSORS = {
+    3: _Successor(3, CRITICAL_SWITCHES_V3, V3_EXPECTED_REGISTRY_ID, V3_EXPECTED_PROPOSAL_ID,
+                  V3_RATIFICATION_REGISTRY_ID, V3_RATIFICATION_REGISTRY_PATH, V3_RATIFICATION_RECORD_KEY),
+    4: _Successor(4, CRITICAL_SWITCHES_V4, V4_EXPECTED_REGISTRY_ID, V4_EXPECTED_PROPOSAL_ID,
+                  V4_RATIFICATION_REGISTRY_ID, V4_RATIFICATION_REGISTRY_PATH, V4_RATIFICATION_RECORD_KEY),
+}
+
 _REQUIRED = ("manifest_version", "registry_id", "registry_path", "registry_sha256", "proposal_id",
              "owner_approval", "grant", "policy", "integrity")
 
@@ -201,6 +248,34 @@ def runtime_policy(application: Any) -> dict[str, Any]:
         "exit_guard_rules": read(lambda: len(guard.rules)),
         **_exp002_runtime(application, read),
         **_forex_runtime(application, guard, read),
+        **_leverage_runtime(application, guard, read),
+    }
+
+
+def _leverage_runtime(application: Any, guard: Any, read) -> dict[str, Any]:
+    """Manifest v4's switches as the running application holds them (Task 025)."""
+
+    def stop_out_level():
+        if str(application.market).upper() != "FOREX":
+            from atlas_finance.forex.instruments import STOP_OUT_MARGIN_LEVEL
+            return _decimal_text(STOP_OUT_MARGIN_LEVEL)     # configured, unused outside FOREX
+        levels = [rule.threshold for rule in guard.rules if rule.kind == "STOP_OUT"]
+        if len(levels) != 1 or guard.mode != "ENFORCE":
+            raise ValueError("FOREX needs exactly one STOP_OUT rule in ENFORCE")
+        runner = getattr(application.market_loop, "exit_guard_runner", None)
+        if runner is None or getattr(runner, "guard", None) is not guard:
+            raise ValueError("the FOREX stop-out guard is not run from the cycle")
+        return _decimal_text(levels[0])
+
+    def int_value(value):
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise ValueError("leverage is not an integer")
+        return value
+
+    return {
+        "risk_leverage": read(lambda: int_value(application.risk_policy.leverage)),
+        "book_leverage": read(lambda: int_value(application.portfolio_foundation.expected_leverage)),
+        "forex_stop_out_margin_level": read(stop_out_level),
     }
 
 
@@ -381,8 +456,11 @@ def verify(runtime: Mapping[str, Any], path: Path | str | None = None, *,
     policy, integrity = manifest.get("policy"), manifest.get("integrity")
     if not isinstance(policy, dict) or not isinstance(integrity, dict):
         return PolicyManifestCheck(MALFORMED, "policy and integrity must be objects", **meta)
-    if manifest.get("manifest_version") == 3:
-        return _verify_v3(manifest, policy, integrity, runtime, path, Path(repository_root), meta)
+    successor = _SUCCESSORS.get(manifest.get("manifest_version")) \
+        if isinstance(manifest.get("manifest_version"), int) and not isinstance(manifest.get("manifest_version"), bool) \
+        else None
+    if successor is not None:
+        return _verify_successor(successor, manifest, policy, integrity, runtime, path, Path(repository_root), meta)
     if set(policy) != set(CRITICAL_SWITCHES):
         missing = sorted(set(CRITICAL_SWITCHES) - set(policy))
         extra = sorted(set(policy) - set(CRITICAL_SWITCHES))
@@ -428,13 +506,15 @@ def verify(runtime: Mapping[str, Any], path: Path | str | None = None, *,
     return PolicyManifestCheck(MATCH, "runtime policy matches the manifest", **meta)
 
 
-def _verify_v3(manifest: Mapping[str, Any], policy: Mapping[str, Any], integrity: Mapping[str, Any],
-               runtime: Mapping[str, Any], path: Path, root: Path, meta: dict[str, Any]) -> PolicyManifestCheck:
-    """Manifest v3 (Task 023): the v2 checks plus the forex switches, ratified by the v5.106 record. Reads only."""
+def _verify_successor(spec: _Successor, manifest: Mapping[str, Any], policy: Mapping[str, Any],
+                      integrity: Mapping[str, Any], runtime: Mapping[str, Any], path: Path, root: Path,
+                      meta: dict[str, Any]) -> PolicyManifestCheck:
+    """Manifest v3 (Task 023) and v4 (Task 025): the v2 checks plus the version's own switches, ratified by the
+    record pinned in code for that version. Reads only."""
 
-    if set(policy) != set(CRITICAL_SWITCHES_V3):
-        missing = sorted(set(CRITICAL_SWITCHES_V3) - set(policy))
-        extra = sorted(set(policy) - set(CRITICAL_SWITCHES_V3))
+    if set(policy) != set(spec.switches):
+        missing = sorted(set(spec.switches) - set(policy))
+        extra = sorted(set(policy) - set(spec.switches))
         return PolicyManifestCheck(MALFORMED, f"switch coverage: missing={missing} unknown={extra}", **meta)
     if integrity.get("algorithm") != "sha256" or integrity.get("digest") != integrity_digest(manifest):
         return PolicyManifestCheck(INTEGRITY_FAILED, "manifest content does not match its integrity digest", **meta)
@@ -442,34 +522,34 @@ def _verify_v3(manifest: Mapping[str, Any], policy: Mapping[str, Any], integrity
         return PolicyManifestCheck(LIVE_REFUSED, "a manifest may only describe PAPER with live execution disabled",
                                    **meta)
 
-    if manifest.get("registry_id") != V3_EXPECTED_REGISTRY_ID:
+    if manifest.get("registry_id") != spec.base_registry_id:
         return PolicyManifestCheck(REGISTRY_MISMATCH,
-                                   f"manifest names {manifest.get('registry_id')!r}, expected {V3_EXPECTED_REGISTRY_ID}",
+                                   f"manifest names {manifest.get('registry_id')!r}, expected {spec.base_registry_id}",
                                    **meta)
     try:
         registry = (root / str(manifest.get("registry_path"))).resolve()
-        if root.resolve() not in registry.parents or registry.stem != V3_EXPECTED_REGISTRY_ID:
+        if root.resolve() not in registry.parents or registry.stem != spec.base_registry_id:
             return PolicyManifestCheck(REGISTRY_MISMATCH, "registry_path does not name the expected registry", **meta)
         digest = file_sha256(registry.read_bytes())
     except OSError:
         return PolicyManifestCheck(REGISTRY_MISMATCH, "registry file unreadable", **meta)
     if digest != manifest.get("registry_sha256"):
         return PolicyManifestCheck(REGISTRY_MISMATCH, "registry file changed since the manifest pinned it", **meta)
-    if manifest.get("proposal_id") != V3_EXPECTED_PROPOSAL_ID:
+    if manifest.get("proposal_id") != spec.proposal_id:
         return PolicyManifestCheck(PROPOSAL_MISMATCH,
-                                   f"manifest names {manifest.get('proposal_id')!r}, expected {V3_EXPECTED_PROPOSAL_ID}",
+                                   f"manifest names {manifest.get('proposal_id')!r}, expected {spec.proposal_id}",
                                    **meta)
 
-    ratification_failure = _verify_v3_ratification(manifest, path, root)
+    ratification_failure = _verify_ratification(spec, manifest, path, root)
     if ratification_failure is not None:
         return PolicyManifestCheck(ratification_failure[0], ratification_failure[1], **meta)
     exp002_failure = _verify_exp002_parameters(policy, root)
     if exp002_failure is not None:
         return PolicyManifestCheck(exp002_failure[0], exp002_failure[1], **meta)
-    meta["owner_approval"] = f"{OWNER_RATIFIED}:{V3_RATIFICATION_REGISTRY_ID}"
+    meta["owner_approval"] = f"{OWNER_RATIFIED}:{spec.ratification_registry_id}"
 
     market = runtime.get("market")
-    mismatches = tuple((name, policy[name], runtime.get(name, UNREADABLE)) for name in CRITICAL_SWITCHES_V3
+    mismatches = tuple((name, policy[name], runtime.get(name, UNREADABLE)) for name in spec.switches
                        if not _matches(policy[name], runtime.get(name, UNREADABLE), market))
     if mismatches:
         return PolicyManifestCheck(POLICY_MISMATCH, f"{len(mismatches)} switch(es) differ from the manifest",
@@ -477,32 +557,33 @@ def _verify_v3(manifest: Mapping[str, Any], policy: Mapping[str, Any], integrity
     return PolicyManifestCheck(MATCH, "runtime policy matches the manifest", **meta)
 
 
-def _verify_v3_ratification(manifest: Mapping[str, Any], manifest_path: Path, root: Path) -> tuple[str, str] | None:
-    """The v5.106 ratification record must exist, be RATIFIED, pin THIS manifest's bytes, and be the sealed file."""
+def _verify_ratification(spec: _Successor, manifest: Mapping[str, Any], manifest_path: Path,
+                         root: Path) -> tuple[str, str] | None:
+    """The version's ratification record must exist, be RATIFIED, pin THIS manifest's bytes, and be the sealed file."""
 
     ref = manifest.get("ratification")
-    if (not isinstance(ref, dict) or ref.get("registry_id") != V3_RATIFICATION_REGISTRY_ID
-            or ref.get("registry_path") != V3_RATIFICATION_REGISTRY_PATH):
-        return GRANT_MISSING, "manifest does not name the expected v3 ratification registry"
+    if (not isinstance(ref, dict) or ref.get("registry_id") != spec.ratification_registry_id
+            or ref.get("registry_path") != spec.ratification_registry_path):
+        return GRANT_MISSING, f"manifest does not name the expected v{spec.version} ratification registry"
     try:
-        registry = (root / V3_RATIFICATION_REGISTRY_PATH).resolve()     # the code's path, never the manifest's
-        if root.resolve() not in registry.parents or registry.stem != V3_RATIFICATION_REGISTRY_ID:
+        registry = (root / spec.ratification_registry_path).resolve()     # the code's path, never the manifest's
+        if root.resolve() not in registry.parents or registry.stem != spec.ratification_registry_id:
             return GRANT_MISSING, "ratification registry path is outside the repository"
         registry_bytes = registry.read_bytes()
         record = json.loads(registry_bytes.decode("utf-8"))
         manifest_bytes = manifest_path.read_bytes()
     except Exception:  # unreadable or hostile input is never a pass
         return GRANT_MISSING, "ratification registry or manifest unreadable"
-    ratification = record.get(V3_RATIFICATION_RECORD_KEY) if isinstance(record, dict) else None
+    ratification = record.get(spec.ratification_record_key) if isinstance(record, dict) else None
     if not isinstance(ratification, dict) or ratification.get("status") != "RATIFIED":
-        return GRANT_MISSING, "ratification registry holds no RATIFIED manifest v3 record"
+        return GRANT_MISSING, f"ratification registry holds no RATIFIED manifest v{spec.version} record"
     pinned = ratification.get("manifest_pin")
     if (not isinstance(pinned, dict) or pinned.get("manifest_file_sha256") != file_sha256(manifest_bytes)
-            or pinned.get("manifest_version") != 3):
+            or pinned.get("manifest_version") != spec.version):
         return GRANT_MISMATCH, "ratification registry does not pin this manifest's bytes"
     if ratification.get("live_effect") != "NONE":
         return GRANT_MISMATCH, "ratification is not PAPER-only with no live effect"
-    if file_sha256(registry_bytes) != V3_RATIFICATION_REGISTRY_SHA256:
+    if file_sha256(registry_bytes) != spec.ratification_registry_sha256:
         return GRANT_MISMATCH, "ratification registry differs from the sealed record pinned in code"
     return None
 
@@ -530,8 +611,10 @@ def _verify_exp002_parameters(policy: Mapping[str, Any], root: Path) -> tuple[st
 
 
 __all__ = [
-    "BASE_SWITCHES", "BLOCK_NEW_RISK", "CRITICAL_SWITCHES", "CRITICAL_SWITCHES_V3", "EXP002_SWITCHES",
-    "FOREX_SWITCHES", "MANIFEST_V2_PATH", "V3_EXPECTED_PROPOSAL_ID", "V3_EXPECTED_REGISTRY_ID",
+    "BASE_SWITCHES", "BLOCK_NEW_RISK", "CRITICAL_SWITCHES", "CRITICAL_SWITCHES_V3", "CRITICAL_SWITCHES_V4",
+    "EXP002_SWITCHES", "FOREX_SWITCHES", "LEVERAGE_SWITCHES", "MANIFEST_V2_PATH", "MANIFEST_V3_PATH",
+    "V4_EXPECTED_PROPOSAL_ID", "V4_EXPECTED_REGISTRY_ID", "V4_RATIFICATION_RECORD_KEY", "V4_RATIFICATION_REGISTRY_ID",
+    "V4_RATIFICATION_REGISTRY_PATH", "V4_RATIFICATION_REGISTRY_SHA256", "V3_EXPECTED_PROPOSAL_ID", "V3_EXPECTED_REGISTRY_ID",
     "V3_RATIFICATION_RECORD_KEY", "V3_RATIFICATION_REGISTRY_ID", "V3_RATIFICATION_REGISTRY_PATH",
     "V3_RATIFICATION_REGISTRY_SHA256", "EXPECTED_GRANT_ID",
     "EXPECTED_GRANT_REGISTRY_ID", "EXPECTED_GRANT_REGISTRY_SHA256", "GRANT_MISMATCH", "GRANT_MISSING", "OWNER_RATIFIED", "EXPECTED_PROPOSAL_ID", "EXPECTED_REGISTRY_ID", "INTEGRITY_FAILED",

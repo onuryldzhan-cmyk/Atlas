@@ -2347,7 +2347,7 @@ class MarketLoop:
                 else Decimal("0")
             )
 
-            free_capital = snapshot["cash"] - ledger.active_reserved_capital(
+            free_capital = snapshot["spendable_cash"] - ledger.active_reserved_capital(   # Task 025
                 exclude=request_id
             )
 

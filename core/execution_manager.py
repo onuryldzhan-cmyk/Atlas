@@ -3580,7 +3580,9 @@ class ExecutionManager:
         if self.portfolio_foundation is None or self.reservation_ledger is None:
             return None
 
-        cash = Decimal(str(self.portfolio_foundation.snapshot()["cash"]))
+        # Task 025: ``spendable_cash`` is the cash itself for a cash book; a margin book subtracts any
+        # unrealized loss from it.
+        cash = Decimal(str(self.portfolio_foundation.snapshot()["spendable_cash"]))
 
         return cash - self.reservation_ledger.active_reserved_capital(
             exclude=exclude

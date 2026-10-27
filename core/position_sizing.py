@@ -189,7 +189,10 @@ class PositionSizingService:
             # deploy. It is bounded downward by every canonical capacity
             # ceiling above and by the durable cash itself, never raised to
             # meet any of them.
-            candidate = inputs.durable_free_quote_capital * basis_pct
+            # Task 025: a margin book (policy.leverage L > 1) sizes the notional at L x that share; the
+            # durable cash still bounds the notional below, so a position never outgrows the cash that funds
+            # its admission. At L = 1 this is the historical formula, byte-identical.
+            candidate = inputs.durable_free_quote_capital * basis_pct * self.policy.leverage
 
             proposed = min(candidate, *capacity.as_tuple(), inputs.durable_free_quote_capital)
 
