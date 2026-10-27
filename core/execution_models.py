@@ -123,6 +123,34 @@ def normalize_symbol(
     return normalized
 
 
+# Task 026 (registry v5.109, policy manifest v5): the side of the position an order acts on. ``action`` stays
+# the venue side (BUY lifts the ask, SELL hits the bid); ``position_side`` says what the order does to risk.
+# LONG: BUY opens or adds, SELL reduces (every crypto order). SHORT (forex margin book only): SELL opens, BUY
+# reduces (covers). LONG is never serialized, so every existing payload is byte-identical.
+POSITION_SIDES = ("LONG", "SHORT")
+
+
+def normalize_position_side(value: Any) -> str:
+    side = "LONG" if value is None else str(value).strip().upper()
+    if side not in POSITION_SIDES:
+        raise ValueError(f"Unsupported position side: {side}")
+    return side
+
+
+def opens_risk(action: Any, position_side: Any) -> bool:
+    """True for an order that opens or adds exposure: BUY on the LONG side, SELL on the SHORT side."""
+    action = str(action).strip().upper()
+    side = normalize_position_side(position_side)
+    return (action, side) in (("BUY", "LONG"), ("SELL", "SHORT"))
+
+
+def reduces_risk(action: Any, position_side: Any) -> bool:
+    """True for an order that reduces exposure: SELL on the LONG side, BUY on the SHORT side (a cover)."""
+    action = str(action).strip().upper()
+    side = normalize_position_side(position_side)
+    return (action, side) in (("SELL", "LONG"), ("BUY", "SHORT"))
+
+
 def normalize_action(
     action: str,
 ) -> str:
@@ -348,6 +376,9 @@ class ExecutionRequest:
 
     time_in_force: str = "GTC"
     reduce_only: bool = False
+    # Task 026: which position side this order acts on (see POSITION_SIDES). ExecutionManager re-derives it
+    # from the durable book, like ``reduce_only``; a caller's value is never trusted.
+    position_side: str = "LONG"
 
     #: The risk-approved quote allocation, in quote currency, as an exact
     #: ``Decimal``. This is the single financially authoritative allocation on
@@ -383,6 +414,10 @@ class ExecutionRequest:
 
         self.action = normalize_action(
             self.action
+        )
+
+        self.position_side = normalize_position_side(
+            self.position_side
         )
 
         self.price = float(
@@ -682,6 +717,10 @@ class ExecutionRequest:
                 "f",
             )
 
+        # Task 026: LONG is the default and is never written, so every existing payload stays byte-identical.
+        if payload.get("position_side") == "LONG":
+            del payload["position_side"]
+
         return payload
 
     @classmethod
@@ -821,6 +860,8 @@ class ExecutionResult:
 
     idempotency_key: str | None = None
     provenance_ref: str | None = None
+    # Task 026: the position side the fill settled against (see POSITION_SIDES); LONG is never serialized.
+    position_side: str = "LONG"
 
     def __post_init__(
         self,
@@ -854,6 +895,10 @@ class ExecutionResult:
             self.action = normalize_action(
                 self.action
             )
+
+        self.position_side = normalize_position_side(
+            self.position_side
+        )
 
         if self.filled_price is not None:
             self.filled_price = float(
@@ -1142,6 +1187,10 @@ class ExecutionResult:
             value = payload.get(field_name)
             if value is not None:
                 payload[field_name] = format(value, "f")
+
+        # Task 026: LONG is the default and is never written, so every existing payload stays byte-identical.
+        if payload.get("position_side") == "LONG":
+            del payload["position_side"]
 
         return payload
 

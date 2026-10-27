@@ -196,6 +196,10 @@ class MarketLoop:
     # of every cycle - before any symbol's decision, so a protective exit precedes new-risk decisions. None (crypto)
     # means the guard is not run from the cycle. A runner that raises is logged; the cycle continues.
     exit_guard_runner: Callable[[datetime], Any] | None = None
+    # Task 026 (registry v5.109): True when the risk policy allows shorts (FOREX margin book). A SELL of a symbol
+    # the book shows as not held then opens a short instead of being treated as HOLD, and every new-risk gate
+    # (pre-close, fresh data, sizing) applies to it as to a BUY; a BUY of a held short is a cover, not new risk.
+    shorts_enabled: bool = False
 
     # Candle age (registry v4.71): time from the newest closed candle's
     # own exchange close_time to the cycle's processing cutoff. This is
@@ -1276,8 +1280,9 @@ class MarketLoop:
 
                 return result
 
+        new_risk = self._opens_new_risk(symbol, action)   # Task 026: a short opens with a SELL
         blocked_check = self.market_entry_blocked
-        if action == "BUY" and blocked_check is not None:
+        if new_risk and blocked_check is not None:
             try:
                 entry_blocked = blocked_check(processing_cutoff) is not False
             except Exception:
@@ -1310,7 +1315,7 @@ class MarketLoop:
 
                 return result
 
-        if action == "SELL" and self._sell_symbol_known_flat(symbol):
+        if action == "SELL" and not new_risk and self._sell_symbol_known_flat(symbol):
             # Registry v5.04: Atlas is LONG-only, so a SELL of a symbol the
             # durable book shows as not held has nothing to act on. It is
             # treated as HOLD instead of being routed into a rejection.
@@ -1341,7 +1346,7 @@ class MarketLoop:
 
             return result
 
-        if action == "BUY":
+        if new_risk:
             age, age_status = self._candle_age(
                 closed_candles[-1] if closed_candles else None,
                 processing_cutoff,
@@ -1384,7 +1389,16 @@ class MarketLoop:
 
                 return result
 
-        if action == "BUY" and self.regime_gate.enabled:
+        if new_risk and action == "SELL" and self.regime_gate.enabled:
+            # Task 026: the regime gate is built for longs; while it is on, no short is opened.
+            self._increment_metric("short_regime_gate_skipped")
+            result = {"status": "SKIPPED", "reason": "REGIME_GATE_LONG_ONLY", "symbol": symbol, "action": action,
+                      "timestamp": datetime.now(UTC).isoformat()}
+            with self.lock:
+                self.last_executions[symbol] = result
+            return result
+
+        if new_risk and action == "BUY" and self.regime_gate.enabled:
             vetoed = self._regime_gate_buy(
                 symbol,
                 normalized_decision,
@@ -2305,7 +2319,8 @@ class MarketLoop:
         """
         sizer = self.position_sizing_service
 
-        if action != "BUY" or sizer is None:
+        # Task 026: every new-risk order is sized - a BUY of a long, a SELL that opens a short
+        if sizer is None or not self._opens_new_risk(str(decision.get("symbol") or ""), action):
             return None
 
         manager = self.execution
@@ -2968,6 +2983,36 @@ class MarketLoop:
     # =========================================================
     # METRICS
     # =========================================================
+
+    def _held_side(self, symbol: str) -> str | None:
+        """The durable book's side for ``symbol``; None when not held; "UNKNOWN" when the book cannot be read."""
+        foundation = getattr(self.execution, "portfolio_foundation", None)
+        if foundation is None or getattr(foundation, "ready", False) is not True:
+            return "UNKNOWN"
+        try:
+            positions = foundation.snapshot()["positions"]
+        except Exception:
+            return "UNKNOWN"
+        if not isinstance(positions, dict):
+            return "UNKNOWN"
+        wanted = str(symbol).strip().upper()
+        for key, item in positions.items():
+            if str(key).strip().upper() == wanted:
+                return "SHORT" if isinstance(item, dict) and item.get("side") == "SHORT" else "LONG"
+        return None
+
+    def _opens_new_risk(self, symbol: str, action: str) -> bool:
+        """Task 026: True for an order that adds exposure.
+
+        BUY: unless the book shows a short held (a cover) - an unreadable book counts as new risk, so every
+        new-risk gate still applies. SELL: only when shorts are enabled and the book positively shows the symbol
+        not held. Without shorts this is exactly the historical ``action == "BUY"``."""
+        action = str(action).strip().upper()
+        if action == "BUY":
+            return not (self.shorts_enabled and self._held_side(symbol) == "SHORT")
+        if action == "SELL":
+            return self.shorts_enabled is True and self._sell_symbol_known_flat(symbol)
+        return False
 
     def _sell_symbol_known_flat(
         self,

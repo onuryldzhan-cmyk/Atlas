@@ -24,6 +24,11 @@ a realized loss larger than the account can leave the cash negative (recorded, n
 refused). Equity is cash + used margin + unrealized P&L. Schema 2 (every crypto book) is unchanged and is never
 migrated: a schema 2 book loaded where leverage is expected, or a schema 3 book where it is not, is refused
 (FINANCIAL_LEVERAGE_CONFLICT).
+
+Task 026 (registry v5.109) adds short positions to the margin book only: a position with ``side`` "SHORT" is
+opened by a SELL and reduced by a BUY (``ExecutionResult.position_side``), reserves margin exactly like a LONG,
+and its P&L is cost - notional (entry - exit per unit). ``base_quantity`` stays positive for both sides, so every
+exposure figure is the absolute notional. A position without ``side`` is LONG; a cash book never holds a short.
 """
 from __future__ import annotations
 
@@ -37,12 +42,27 @@ from pathlib import Path
 import re
 from typing import Any, Callable
 
-from core.execution_models import ExecutionResult
+from core.execution_models import ExecutionResult, opens_risk, reduces_risk
 
 D = Decimal
 SCHEMA_VERSION = 2
 MARGIN_SCHEMA_VERSION = 3   # Task 025: the margin book (forex PAPER state only)
 MAX_LEVERAGE = 5
+
+
+def position_side(item: dict[str, Any]) -> str:
+    """LONG unless the position is a margin-book short (Task 026)."""
+    return "SHORT" if item.get("side") == "SHORT" else "LONG"
+
+
+def position_unrealized(item: dict[str, Any], mark: Decimal | None = None) -> Decimal:
+    """Unrealized gross P&L of one durable position at ``mark`` (default: its durable mark).
+
+    LONG: base x mark - cost. SHORT (Task 026): cost - base x mark."""
+    price = D(str(item["mark_price"] if mark is None else mark))
+    value = D(str(item["base_quantity"])) * price
+    cost = D(str(item["cost_quote"]))
+    return cost - value if position_side(item) == "SHORT" else value - cost
 
 
 def book_leverage(state: dict[str, Any]) -> int:
@@ -96,6 +116,19 @@ def _utc(value: str) -> str:
 # duplicating the pattern, the same precedent set by its reuse of
 # ``SETTLEMENT_CONTEXT_PRECISION``.
 _POSITION_IDENTITY_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+
+
+def mint_position_id(symbol: str, request_id: str, side: str = "LONG") -> str:
+    """``mint_long_position_id`` for a LONG; ``short:<symbol>:<digest>`` for a margin-book SHORT (Task 026)."""
+    if side == "LONG":
+        return mint_long_position_id(symbol, request_id)
+    if side != "SHORT":
+        raise ValueError("INVALID_POSITION_IDENTITY")
+    digest = hashlib.sha256(str(request_id).encode("utf-8")).hexdigest()
+    candidate = f"short:{symbol}:{digest}"
+    if not _POSITION_IDENTITY_PATTERN.fullmatch(candidate):
+        raise ValueError("INVALID_POSITION_IDENTITY")
+    return candidate
 
 
 def mint_long_position_id(symbol: str, request_id: str) -> str:
@@ -380,8 +413,11 @@ def validate_closed_position_record(record: dict[str, Any]) -> None:
     ``_close`` actually produces for a full exit is checked for presence and
     type/range correctness.
     """
-    # Task 025: a margin-book (schema 3) full exit also carries the position's ``margin``.
-    if not isinstance(record, dict) or set(record) - {"margin"} != set(_CLOSED_POSITION_REQUIRED_FIELDS):
+    # Task 025: a margin-book (schema 3) full exit also carries the position's ``margin``; Task 026: a short's
+    # also carries ``side`` "SHORT".
+    if not isinstance(record, dict) or set(record) - {"margin", "side"} != set(_CLOSED_POSITION_REQUIRED_FIELDS):
+        raise ValueError("CORRUPT_CLOSED_POSITION_RECORD")
+    if "side" in record and (record["side"] != "SHORT" or "margin" not in record):
         raise ValueError("CORRUPT_CLOSED_POSITION_RECORD")
     position_id = record["position_id"]
     if not isinstance(position_id, str) or not _POSITION_IDENTITY_PATTERN.fullmatch(position_id):
@@ -616,7 +652,9 @@ class ExecutionPortfolioFoundation:
                 _decimal(item[name], name, allow_zero=name == "entry_fees")
             if margin_book:
                 _decimal(item["margin"], "margin", allow_zero=False)
-            elif "margin" in item:
+                if "side" in item and item["side"] != "SHORT":   # Task 026: absent = LONG
+                    raise ValueError("CORRUPT_FINANCIAL_STATE")
+            elif "margin" in item or "side" in item:
                 raise ValueError("CORRUPT_FINANCIAL_STATE")
         for checkpoint, keys in (
             (state["applied_checkpoint"], ("sequence", "execution_id", "idempotency_key")),
@@ -667,13 +705,7 @@ class ExecutionPortfolioFoundation:
         # recovery. Both methods only read the durable indexes and write the
         # private candidate copy.
         candidate = json.loads(json.dumps(self._state))
-        closed_record: dict[str, Any] | None = None
-        if result.action == "BUY":
-            self._open(candidate, result, expected_position_version)
-        elif result.action == "SELL":
-            closed_record = self._close(candidate, result, expected_position_version)
-        else:
-            raise ValueError("LONG_ONLY_ACTION_REJECTED")
+        closed_record = self._settle(candidate, result, expected_position_version)
 
         transition = dict(self._state)
         transition["transition"] = {"execution_id": result.execution_id, "idempotency_key": identity,
@@ -726,6 +758,23 @@ class ExecutionPortfolioFoundation:
         self._applied_tail = applied_record
         return self.snapshot()
 
+    def _settle(self, state: dict[str, Any], result: ExecutionResult,
+                expected: int | None) -> dict[str, Any] | None:
+        """Route a confirmed fill: open/add (BUY LONG, SELL SHORT) or reduce (SELL LONG, BUY SHORT).
+
+        Task 026: a short is only ever settled in a margin book; anything else is refused before any write."""
+        side = result.position_side
+        if side == "SHORT" and book_leverage(state) == 1:
+            raise ValueError("SHORT_NOT_PERMITTED_IN_CASH_BOOK")
+        if result.action not in ("BUY", "SELL"):
+            raise ValueError("LONG_ONLY_ACTION_REJECTED")
+        if opens_risk(result.action, side):
+            self._open(state, result, expected)
+            return None
+        if reduces_risk(result.action, side):
+            return self._close(state, result, expected)
+        raise ValueError("LONG_ONLY_ACTION_REJECTED")   # unreachable: every (action, side) pair is one of the two
+
     def _open(self, state: dict[str, Any], result: ExecutionResult, expected: int | None) -> None:
         """Apply a confirmed BUY, whole open or an add to an existing LONG.
 
@@ -745,6 +794,8 @@ class ExecutionPortfolioFoundation:
             if current is not None:
                 if current["position_id"] != result.position_id:
                     raise ValueError("DUPLICATE_OPEN_POSITION")
+                if position_side(current) != result.position_side:
+                    raise ValueError("POSITION_SIDE_CONFLICT")   # Task 026: never adds across sides
                 if expected is None or expected != current["version"]:
                     raise ValueError("STALE_POSITION_MUTATION")
                 base = D(current["base_quantity"]) + result.filled_base_quantity
@@ -781,6 +832,8 @@ class ExecutionPortfolioFoundation:
         }
         if leverage > 1:
             state["positions"][result.symbol]["margin"] = format(margin, "f")
+            if result.position_side == "SHORT":
+                state["positions"][result.symbol]["side"] = "SHORT"
 
     def _close(self, state: dict[str, Any], result: ExecutionResult, expected: int | None) -> dict[str, Any] | None:
         """Apply a confirmed LONG reduction, whole or partial.
@@ -823,6 +876,8 @@ class ExecutionPortfolioFoundation:
         current = state["positions"].get(result.symbol)
         if current is None or current["position_id"] != result.position_id:
             raise ValueError("POSITION_NOT_FOUND")
+        if position_side(current) != result.position_side:
+            raise ValueError("POSITION_SIDE_CONFLICT")   # Task 026
         if expected is None or expected != current["version"]:
             raise ValueError("STALE_POSITION_MUTATION")
         held, sold = D(current["base_quantity"]), result.filled_base_quantity
@@ -842,6 +897,8 @@ class ExecutionPortfolioFoundation:
                 basis = cost - released
                 remaining_entry_fees = entry_fees - released_entry_fees
             gross = result.filled_quote_notional - released
+            if position_side(current) == "SHORT":
+                gross = released - result.filled_quote_notional   # Task 026: a short gains when it buys back lower
             if margin_book:
                 # Task 025: the released margin comes back with the realized gross P&L, minus the fee. Released
                 # and remaining margin are complements, like the cost basis above.
@@ -911,7 +968,7 @@ class ExecutionPortfolioFoundation:
             context.prec = SETTLEMENT_CONTEXT_PRECISION
             context.rounding = ROUND_HALF_EVEN
             exposure = sum((D(p["base_quantity"]) * D(p["mark_price"]) for p in self._state["positions"].values()), D("0"))
-            unrealized = sum((D(p["base_quantity"]) * D(p["mark_price"]) - D(p["cost_quote"]) for p in self._state["positions"].values()), D("0"))
+            unrealized = sum((position_unrealized(p) for p in self._state["positions"].values()), D("0"))
             cash, fees = D(self._state["cash"]), D(self._state["fees"])
             committed = sum((D(p["cost_quote"]) for p in self._state["positions"].values()), D("0"))
             realized_net = D(self._state["realized_gross_pnl"]) - fees
@@ -1181,12 +1238,7 @@ def complete_interrupted_transition(
     expected_version = None if current is None else current["version"]
     closed_record: dict[str, Any] | None = None
     try:
-        if evidence.action == "BUY":
-            view._open(candidate, evidence, expected_version)
-        elif evidence.action == "SELL":
-            closed_record = view._close(candidate, evidence, expected_version)
-        else:
-            raise ValueError("LONG_ONLY_ACTION_REJECTED")
+        closed_record = view._settle(candidate, evidence, expected_version)
     except Exception as exc:
         raise InterruptedTransitionError("TRANSITION_EVIDENCE_INVALID") from exc
 

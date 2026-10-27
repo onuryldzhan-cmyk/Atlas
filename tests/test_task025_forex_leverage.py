@@ -487,17 +487,19 @@ def test_the_application_built_as_main_py_matches_v4(tmp_path, monkeypatch, mark
     app = AtlasApplication(**{**kwargs, "state_directory": seed_state(tmp_path / "state", leverage=leverage),
                               "market": market})
     try:
-        check = main.apply_policy_manifest(app)
+        assert main.apply_policy_manifest(app).status == pm.MATCH        # the active manifest (v5, Task 026)
+        runtime = pm.runtime_policy(app)
+        check = pm.verify(runtime, pm.MANIFEST_V4_PATH)                   # v4 stays sealed and verifiable
         assert check.status == pm.MATCH, check.to_dict()
         assert check.owner_approval == f"{pm.OWNER_RATIFIED}:{pm.V4_RATIFICATION_REGISTRY_ID}"
-        runtime = pm.runtime_policy(app)
         assert (runtime["risk_leverage"], runtime["book_leverage"]) == (leverage, leverage)
         assert runtime["forex_stop_out_margin_level"] == "1"
         assert runtime["exit_guard_rules"] == (2 if market == "FOREX" else 0)
         for switch, value in (("risk_leverage", 3), ("book_leverage", 1 if market == "FOREX" else 2),
                               ("forex_stop_out_margin_level", "0.5"), ("exit_guard_rules", 1)):
-            bad = pm.verify({**runtime, switch: value})
-            assert bad.status == pm.POLICY_MISMATCH and [m[0] for m in bad.mismatches] == [switch]
+            for path in (pm.MANIFEST_V4_PATH, None):                        # v4 and the active manifest
+                bad = pm.verify({**runtime, switch: value}, path)
+                assert bad.status == pm.POLICY_MISMATCH and [m[0] for m in bad.mismatches] == [switch]
     finally:
         app.stop()
 
@@ -521,7 +523,8 @@ def test_a_forex_stop_out_that_is_not_run_or_not_enforced_blocks_new_risk(tmp_pa
 
 
 def test_v4_is_active_and_its_chain_is_sealed():
-    assert pm.MANIFEST_PATH == ROOT / V4 and pm.EXPECTED_MANIFEST_VERSION == 4
+    # Task 026 (registry v5.109): v5 is now active; v4 stays sealed and verifiable by its own rules
+    assert pm.MANIFEST_V4_PATH == ROOT / V4 and pm.MANIFEST_PATH == ROOT / "governance/policy/ATLAS_POLICY_MANIFEST_v5.json"
     manifest = json.loads((ROOT / V4).read_text(encoding="utf-8"))
     policy = manifest["policy"]
     assert set(policy) == set(pm.CRITICAL_SWITCHES_V4) == set(pm.CRITICAL_SWITCHES_V3) | set(pm.LEVERAGE_SWITCHES)
@@ -585,7 +588,7 @@ def test_the_manifest_reads_the_leverage_the_application_really_holds(tmp_path):
         app.portfolio_foundation.expected_leverage = 4
         runtime = pm.runtime_policy(app)
         assert (runtime["risk_leverage"], runtime["book_leverage"]) == (3, 4)
-        app.risk_policy = dataclasses.replace(app.risk_policy, leverage=1)
+        app.risk_policy = dataclasses.replace(app.risk_policy, leverage=1, shorts_enabled=False)   # Task 026
         app.portfolio_foundation.expected_leverage = True                               # not an integer
         runtime = pm.runtime_policy(app)
         assert (runtime["risk_leverage"], runtime["book_leverage"]) == (1, pm.UNREADABLE)

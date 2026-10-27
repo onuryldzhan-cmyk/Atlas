@@ -390,6 +390,11 @@ class RiskPolicy:
     # limit. The default 1 keeps every formula and decision byte-identical. A request's own ``leverage`` field is
     # a separate thing and must still be 1 (LEVERAGE_NOT_PERMITTED).
     leverage: int = 1
+    # Task 026 (registry v5.109, policy manifest v5): short selling on a margin book (forex PAPER only; owner
+    # 2026-10-26 'Short eklensin', 2026-10-27 'Kaldıraç ve short onaylı'). Off by default: a request to open a
+    # short (SELL on the SHORT side) is refused as SHORT_NOT_PERMITTED. A short passes every new-risk gate a long
+    # does; covering it (BUY on the SHORT side) is a reduction.
+    shorts_enabled: bool = False
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "total_capital", decimal_value(self.total_capital, "total_capital", allow_zero=False))
@@ -456,6 +461,10 @@ class RiskPolicy:
             raise ValueError("drawdown_sizing must be a bool")
         if isinstance(self.leverage, bool) or not isinstance(self.leverage, int) or not 1 <= self.leverage <= 5:
             raise ValueError("leverage must be an integer from 1 to 5")
+        if not isinstance(self.shorts_enabled, bool):
+            raise ValueError("shorts_enabled must be a bool")
+        if self.shorts_enabled and self.leverage == 1:
+            raise ValueError("shorts need a margin book (leverage above 1)")
 
     @property
     def reserved_capital(self) -> Decimal:
@@ -628,11 +637,15 @@ class PositionExposure:
     # UNKNOWN (positions opened before the bucket was recorded); UNKNOWN counts
     # against every sleeve (audit F-1), so it can only refuse more.
     risk_bucket: str | None = None
+    # Task 026: LONG or SHORT; the quantities stay positive, so quote_exposure is the absolute notional.
+    side: str = "LONG"
 
     def __post_init__(self) -> None:
         symbol = str(self.symbol).strip().upper()
         if not symbol:
             raise ValueError("position symbol is required")
+        if self.side not in ("LONG", "SHORT"):
+            raise ValueError("position side must be LONG or SHORT")
         base = decimal_value(self.base_quantity, "base_quantity", allow_zero=False)
         price = decimal_value(self.execution_price, "execution_price", allow_zero=False)
         quote = decimal_value(self.quote_exposure, "quote_exposure", allow_zero=False)
@@ -710,6 +723,8 @@ class RiskRequest:
     # This symbol's return correlation with each other symbol; None/missing = unknown.
     return_correlations: Mapping[str, Decimal] | None = None
     sizing_signal: SizingSignal | None = None
+    # Task 026: the position side the order acts on (LONG: BUY opens, SELL reduces; SHORT: SELL opens, BUY covers).
+    position_side: str = "LONG"
 
 
 @dataclass(frozen=True)
@@ -965,8 +980,11 @@ class RiskEngine:
             return reject("RISK_ACCOUNTING_DAY_RECONCILIATION_REQUIRED", True)
         symbol = str(request.symbol).strip().upper()
         action = str(request.action).strip().upper()
-        reducing = bool(request.reduce_only) and action == "SELL"
-        if not symbol or action not in {"BUY", "SELL"}:
+        side = str(request.position_side).strip().upper()
+        # Task 026: the reducing order is SELL for a long, BUY for a short (a cover); the opening one the other.
+        reducing_action = "BUY" if side == "SHORT" else "SELL"
+        reducing = bool(request.reduce_only) and action == reducing_action
+        if not symbol or action not in {"BUY", "SELL"} or side not in {"LONG", "SHORT"}:
             return reject("INVALID_REQUEST")
         try:
             confidence = (
@@ -997,15 +1015,20 @@ class RiskEngine:
         with localcontext() as context:
             context.prec = RISK_CONTEXT_PRECISION
             context.rounding = ROUND_HALF_EVEN
+            # Task 026: a reduction is measured only against the position on its own side
+            same_side = [p for p in symbol_positions if p.side == side]
+            side_exposure = sum((p.quote_exposure for p in same_side), ZERO)
             symbol_exposure = sum((p.quote_exposure for p in symbol_positions), ZERO)
         if reducing:
-            if not symbol_positions or allocation > symbol_exposure:
+            if not same_side or allocation > side_exposure:
                 return reject("INVALID_RISK_REDUCTION")
             self.approved_count += 1
             return self._decision(RiskDecisionStatus.APPROVE, "RISK_REDUCTION_APPROVED", state,
                                   allocation=allocation)
-        if action != "BUY":
-            return reject("NON_RISK_REDUCING_SELL")
+        if action == reducing_action:
+            return reject("NON_RISK_REDUCING_COVER" if side == "SHORT" else "NON_RISK_REDUCING_SELL")
+        if side == "SHORT" and not self.policy.shorts_enabled:
+            return reject("SHORT_NOT_PERMITTED")
 
         # New or increasing risk: CRITICAL is a valid upstream state that has
         # no executable bucket by policy, so it is rejected on its own terms

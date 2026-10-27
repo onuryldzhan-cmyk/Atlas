@@ -174,6 +174,7 @@ def main(argv: list[str] | None = None) -> int:
 
     total_cost = Decimal("0")
     total_value = Decimal("0")
+    total_pnl_open = Decimal("0")
     priced_all = True
 
     for symbol in sorted(positions):
@@ -184,7 +185,8 @@ def main(argv: list[str] | None = None) -> int:
         approval = entry_approval(approvals.get(symbol, []), position.get("opened_at"), position.get("position_id"))
         price = None if args.no_price else live_price(symbol)
 
-        print(f"{symbol}")
+        short = position.get("side") == "SHORT"   # Task 026
+        print(f"{symbol}{'  (SHORT)' if short else ''}")
         print(f"  opened_at:   {position.get('opened_at')}")
         print(f"  quantity:    {base}")
         print(f"  entry price: {entry}")
@@ -202,16 +204,17 @@ def main(argv: list[str] | None = None) -> int:
             print("  price now:   unavailable")
         else:
             value = base * price
-            pnl = value - cost
+            pnl = cost - value if short else value - cost
             pct = (pnl / cost * 100) if cost else Decimal("0")
             total_value += value
+            total_pnl_open += pnl
             print(f"  price now:   {price}")
             print(f"  P&L:         {pnl:.2f} ({pct:.2f}%)  [fees on exit not included]")
         print()
 
     print(f"total cost: {total_cost:.2f}")
     if positions and priced_all:
-        total_pnl = total_value - total_cost
+        total_pnl = total_pnl_open   # Task 026: a short's P&L is cost - value
         print(f"total value now: {total_value:.2f}  unrealized P&L: {total_pnl:.2f}")
     elif positions:
         print("total P&L: not shown - at least one price was unavailable")

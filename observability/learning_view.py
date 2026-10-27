@@ -45,7 +45,8 @@ ENVIRONMENT = "PAPER"
 def _net(record: dict[str, Any]) -> Decimal:
     entry = Decimal(str(record["cost_quote"]))
     gross = Decimal(str(record["gross_pnl"]))
-    return gross - FEE_RATE_PER_SIDE * (entry + max(entry + gross, Decimal("0")))
+    exit_value = entry - gross if record.get("side") == "SHORT" else entry + gross   # Task 026: a short
+    return gross - FEE_RATE_PER_SIDE * (entry + max(exit_value, Decimal("0")))
 
 
 def regime_timeline(memory_records: Iterable[dict[str, Any]]) -> list[tuple[str, dict[str, str]]]:

@@ -8,6 +8,7 @@ places no orders.
 from atlas_finance.forex.instruments import (
     ACCOUNT_CURRENCY,
     FOREX_LEVERAGE,
+    FOREX_SHORTS_ENABLED,
     FOREX_UNIVERSE,
     STOP_OUT_MARGIN_LEVEL,
     ForexInstrument,
@@ -23,6 +24,7 @@ from atlas_finance.forex.sessions import (
 __all__ = [
     "ACCOUNT_CURRENCY",
     "FOREX_LEVERAGE",
+    "FOREX_SHORTS_ENABLED",
     "FOREX_UNIVERSE",
     "ForexInstrument",
     "ForexInstrumentError",

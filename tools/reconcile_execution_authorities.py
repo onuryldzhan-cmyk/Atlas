@@ -198,7 +198,13 @@ from core.capital_reservation import (  # noqa: E402
 )
 from core.execution_idempotency_store import ExecutionIdempotencyStore  # noqa: E402
 from core.execution_manager import ExecutionManager  # noqa: E402
-from core.execution_models import ExecutionRequest, ExecutionResult  # noqa: E402
+from core.execution_models import (  # noqa: E402
+    ExecutionRequest,
+    ExecutionResult,
+    normalize_position_side,
+    opens_risk,
+    reduces_risk,
+)
 from core.execution_portfolio_foundation import (  # noqa: E402
     SETTLEMENT_CONTEXT_PRECISION,
     AppliedExecutionArchiveConflictError,
@@ -761,8 +767,12 @@ def _verify_repair(
         if isinstance(entry, Mapping)
         and str(entry.get("state", "")).strip().upper() == CommitOutcome.COMMITTED.value
     ]
+    # Task 026: the adapter's domain is a LONG open (a BUY on the LONG side); a short open (a SELL) or a cover
+    # (a BUY on the SHORT side) is outside it exactly as a SELL is.
     committed_actions = {
-        str(result.get("action", "")).strip().upper() for result in committed_results
+        (str(result.get("action", "")).strip().upper(),
+         str(result.get("position_side") or "LONG").strip().upper())
+        for result in committed_results
     }
     # A result recovered from applied-execution evidence (F-1) deliberately
     # carries no fill figures - they were never durably recorded and are not
@@ -774,7 +784,7 @@ def _verify_repair(
         == RecoveryClass.COMMIT_APPLIED_EVIDENCE.value
         for result in committed_results
     )
-    if committed_actions <= {"BUY"} and not recovered_present:
+    if committed_actions <= {("BUY", "LONG")} and not recovered_present:
         try:
             CanonicalExecutionEvidenceAdapter(verified_journal, verified)()
         except IntegrityViolation:
@@ -930,7 +940,12 @@ def _classify_paper_recovery(
     symbol = str(request.get("symbol", "")).strip().upper()
     if action not in ("BUY", "SELL") or not symbol:
         raise _RecoveryRefused("RECOVERY_EVIDENCE_AMBIGUOUS")
-    reservation_required = action == "BUY" and not bool(request.get("reduce_only"))
+    # Task 026: the prepared request carries its position side (absent = LONG); a short opens with a SELL
+    try:
+        side = normalize_position_side(request.get("position_side"))
+    except ValueError:
+        raise _RecoveryRefused("RECOVERY_EVIDENCE_AMBIGUOUS") from None
+    reservation_required = opens_risk(action, side) and not bool(request.get("reduce_only"))
 
     ledger = _reservation_ledger(directory, reservation_file, reservation_archive_file)
     reservation = ledger.get(request_id) if ledger is not None else None
@@ -995,7 +1010,7 @@ def _classify_paper_recovery(
             accounting, redo = _plan_risk_accounting(
                 directory=directory, audit_file=audit_file, risk_state_file=risk_state_file,
                 request_id=request_id, action=action, symbol=symbol,
-                execution_id=applied.execution_id, rederivation=False,
+                execution_id=applied.execution_id, rederivation=False, position_side=side,
             )
             _require_redo_book(foundation, applied_store, request_id, redo)
             return _RecoveryPlan(
@@ -1027,7 +1042,7 @@ def _classify_paper_recovery(
         accounting, redo = _plan_risk_accounting(
             directory=directory, audit_file=audit_file, risk_state_file=risk_state_file,
             request_id=request_id, action=action, symbol=symbol,
-            execution_id=applied.execution_id, rederivation=False,
+            execution_id=applied.execution_id, rederivation=False, position_side=side,
         )
         _require_redo_book(foundation, applied_store, request_id, redo)
         return _RecoveryPlan(
@@ -1089,7 +1104,7 @@ def _classify_paper_recovery(
     accounting, _ = _plan_risk_accounting(
         directory=directory, audit_file=audit_file, risk_state_file=risk_state_file,
         request_id=request_id, action=action, symbol=symbol,
-        execution_id=transition.execution_id, rederivation=True,
+        execution_id=transition.execution_id, rederivation=True, position_side=side,
     )
     accounting_before = None
     if accounting is RiskAccounting.RECORD:
@@ -1302,6 +1317,7 @@ def _plan_risk_accounting(
     symbol: str,
     execution_id: str,
     rederivation: bool,
+    position_side: str = "LONG",
 ) -> tuple[RiskAccounting, Mapping[str, Any] | None]:
     """Whether a recovered COMMITTED request's realized result is booked.
 
@@ -1312,7 +1328,7 @@ def _plan_risk_accounting(
     write-ahead record against the stored state (see the module docstring).
     Refuses rather than guessing, and before anything is written.
     """
-    if action != "SELL":
+    if not reduces_risk(action, position_side):   # Task 026: a cover (BUY on the SHORT side) is booked too
         return RiskAccounting.NOT_APPLICABLE, None
 
     audit_path = directory / audit_file
@@ -1509,7 +1525,9 @@ def _book_risk_accounting(
                 success=True, status="PAPER_EXECUTED",
                 execution_id=str(redo["execution_id"]),
                 position_id=str(redo["position_id"]),
-                symbol=request.symbol, action="SELL",
+                # Task 026: a cover is a BUY on the SHORT side
+                symbol=request.symbol, action="BUY" if request.position_side == "SHORT" else "SELL",
+                position_side=request.position_side,
             )
             before = _redo_before(after, redo, request.symbol)
         else:

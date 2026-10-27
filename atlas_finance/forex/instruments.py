@@ -22,6 +22,9 @@ ACCOUNT_CURRENCY = "USD"
 # stop-out at a 100 % margin level ('%100 (Önerilen)'). PAPER only.
 FOREX_LEVERAGE = 2
 STOP_OUT_MARGIN_LEVEL = Decimal("1")
+# Task 026 (registry v5.109, policy manifest v5), owner 2026-10-26 'Short eklensin', 2026-10-27 'Kaldıraç ve short
+# onaylı': a SELL of a pair not held opens a short on the margin book. PAPER only.
+FOREX_SHORTS_ENABLED = True
 # USD-quoted majors: notional in the account currency, deep liquidity, tight spreads
 FOREX_UNIVERSE = ("EURUSD", "GBPUSD", "AUDUSD", "NZDUSD")
 

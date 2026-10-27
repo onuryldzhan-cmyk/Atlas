@@ -36,11 +36,13 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 # Task 023 (registry v5.106): manifest v3 (forex) is the active manifest. v2 stays sealed and is still verified by
 # its own rules below when asked (``verify(..., path=MANIFEST_V2_PATH)``); nothing in v2's chain changes.
 MANIFEST_V2_PATH = REPOSITORY_ROOT / "governance" / "policy" / "ATLAS_POLICY_MANIFEST_v2.json"
-# Task 025 (registry v5.108): manifest v4 (forex leverage and stop-out) is the active manifest. v3 stays sealed and
-# is still verified by its own rules when named (``MANIFEST_V3_PATH``).
+# Task 025 (registry v5.108): manifest v4 (forex leverage and stop-out). Task 026 (registry v5.109): manifest v5
+# (forex short selling) is the active manifest. v3 and v4 stay sealed and are still verified by their own rules
+# when named (``MANIFEST_V3_PATH``, ``MANIFEST_V4_PATH``).
 MANIFEST_V3_PATH = REPOSITORY_ROOT / "governance" / "policy" / "ATLAS_POLICY_MANIFEST_v3.json"
-MANIFEST_PATH = REPOSITORY_ROOT / "governance" / "policy" / "ATLAS_POLICY_MANIFEST_v4.json"
-EXPECTED_MANIFEST_VERSION = 4
+MANIFEST_V4_PATH = REPOSITORY_ROOT / "governance" / "policy" / "ATLAS_POLICY_MANIFEST_v4.json"
+MANIFEST_PATH = REPOSITORY_ROOT / "governance" / "policy" / "ATLAS_POLICY_MANIFEST_v5.json"
+EXPECTED_MANIFEST_VERSION = 5
 
 # The governance binding this code expects. Changing the manifest's registry or
 # proposal is a governance act, so it also needs a code change here.
@@ -84,6 +86,15 @@ V4_RATIFICATION_REGISTRY_ID = "ATLAS_MILESTONE_REGISTRY_v5.108"
 V4_RATIFICATION_REGISTRY_PATH = "governance/current/ATLAS_MILESTONE_REGISTRY_v5.108.json"
 V4_RATIFICATION_RECORD_KEY = "policy_manifest_v4_ratification"
 V4_RATIFICATION_REGISTRY_SHA256 = "174a14018b819cd36a478ea21dc00e28b67d7d4a8e70ed1a8391c18628bdfb2b"
+
+# Manifest v5 (Task 026: forex short selling; owner 2026-10-26/27). The same one-way chain:
+#   code -> v5.109 (ratification record, pins manifest v5's bytes) -> manifest v5 -> v5.108 (its sealed base).
+V5_EXPECTED_REGISTRY_ID = "ATLAS_MILESTONE_REGISTRY_v5.108"
+V5_EXPECTED_PROPOSAL_ID = "FOREX-POLICY-MANIFEST-V5"
+V5_RATIFICATION_REGISTRY_ID = "ATLAS_MILESTONE_REGISTRY_v5.109"
+V5_RATIFICATION_REGISTRY_PATH = "governance/current/ATLAS_MILESTONE_REGISTRY_v5.109.json"
+V5_RATIFICATION_RECORD_KEY = "policy_manifest_v5_ratification"
+V5_RATIFICATION_REGISTRY_SHA256 = "6ed0a22e1f31c7c13aa151c31ea4566812a39f5c3f948bfabff98a6bd4b2027a"
 
 MATCH = "MATCH"
 MISSING = "MISSING"
@@ -158,6 +169,12 @@ LEVERAGE_SWITCHES = (
 )
 CRITICAL_SWITCHES_V4 = CRITICAL_SWITCHES_V3 + LEVERAGE_SWITCHES
 
+# Manifest v5 adds whether shorts are allowed, as the RiskPolicy and the MarketLoop must both hold it (Task 026).
+SHORT_SWITCHES = (
+    "shorts_enabled",
+)
+CRITICAL_SWITCHES_V5 = CRITICAL_SWITCHES_V4 + SHORT_SWITCHES
+
 
 @dataclass(frozen=True)
 class _Successor:
@@ -182,6 +199,8 @@ _SUCCESSORS = {
                   V3_RATIFICATION_REGISTRY_ID, V3_RATIFICATION_REGISTRY_PATH, V3_RATIFICATION_RECORD_KEY),
     4: _Successor(4, CRITICAL_SWITCHES_V4, V4_EXPECTED_REGISTRY_ID, V4_EXPECTED_PROPOSAL_ID,
                   V4_RATIFICATION_REGISTRY_ID, V4_RATIFICATION_REGISTRY_PATH, V4_RATIFICATION_RECORD_KEY),
+    5: _Successor(5, CRITICAL_SWITCHES_V5, V5_EXPECTED_REGISTRY_ID, V5_EXPECTED_PROPOSAL_ID,
+                  V5_RATIFICATION_REGISTRY_ID, V5_RATIFICATION_REGISTRY_PATH, V5_RATIFICATION_RECORD_KEY),
 }
 
 _REQUIRED = ("manifest_version", "registry_id", "registry_path", "registry_sha256", "proposal_id",
@@ -249,7 +268,16 @@ def runtime_policy(application: Any) -> dict[str, Any]:
         **_exp002_runtime(application, read),
         **_forex_runtime(application, guard, read),
         **_leverage_runtime(application, guard, read),
+        "shorts_enabled": read(lambda: _shorts_runtime(application)),
     }
+
+
+def _shorts_runtime(application: Any) -> bool:
+    """Manifest v5's ``shorts_enabled`` (Task 026): the RiskPolicy's value, which the MarketLoop must share."""
+    policy, loop = application.risk_policy.shorts_enabled, application.market_loop.shorts_enabled
+    if not isinstance(policy, bool) or policy is not loop:
+        raise ValueError("the RiskPolicy and the MarketLoop disagree about shorts")
+    return policy
 
 
 def _leverage_runtime(application: Any, guard: Any, read) -> dict[str, Any]:
@@ -614,7 +642,9 @@ __all__ = [
     "BASE_SWITCHES", "BLOCK_NEW_RISK", "CRITICAL_SWITCHES", "CRITICAL_SWITCHES_V3", "CRITICAL_SWITCHES_V4",
     "EXP002_SWITCHES", "FOREX_SWITCHES", "LEVERAGE_SWITCHES", "MANIFEST_V2_PATH", "MANIFEST_V3_PATH",
     "V4_EXPECTED_PROPOSAL_ID", "V4_EXPECTED_REGISTRY_ID", "V4_RATIFICATION_RECORD_KEY", "V4_RATIFICATION_REGISTRY_ID",
-    "V4_RATIFICATION_REGISTRY_PATH", "V4_RATIFICATION_REGISTRY_SHA256", "V3_EXPECTED_PROPOSAL_ID", "V3_EXPECTED_REGISTRY_ID",
+    "V4_RATIFICATION_REGISTRY_PATH", "V4_RATIFICATION_REGISTRY_SHA256", "CRITICAL_SWITCHES_V5", "SHORT_SWITCHES",
+    "MANIFEST_V4_PATH", "V5_EXPECTED_PROPOSAL_ID", "V5_EXPECTED_REGISTRY_ID", "V5_RATIFICATION_RECORD_KEY",
+    "V5_RATIFICATION_REGISTRY_ID", "V5_RATIFICATION_REGISTRY_PATH", "V5_RATIFICATION_REGISTRY_SHA256", "V3_EXPECTED_PROPOSAL_ID", "V3_EXPECTED_REGISTRY_ID",
     "V3_RATIFICATION_RECORD_KEY", "V3_RATIFICATION_REGISTRY_ID", "V3_RATIFICATION_REGISTRY_PATH",
     "V3_RATIFICATION_REGISTRY_SHA256", "EXPECTED_GRANT_ID",
     "EXPECTED_GRANT_REGISTRY_ID", "EXPECTED_GRANT_REGISTRY_SHA256", "GRANT_MISMATCH", "GRANT_MISSING", "OWNER_RATIFIED", "EXPECTED_PROPOSAL_ID", "EXPECTED_REGISTRY_ID", "INTEGRITY_FAILED",

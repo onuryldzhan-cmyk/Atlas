@@ -165,7 +165,9 @@ def in_window(records: list[dict[str, Any]], start: datetime, end: datetime | No
 
 def exit_fee(record: dict[str, Any]) -> Decimal:
     """The paper exit fee as booked: rate x exit notional, rounded up to PAPER_FEE_QUANTUM (never under-charged)."""
-    exit_notional = Decimal(str(record["cost_quote"])) + Decimal(str(record["gross_pnl"]))
+    # Task 026: a short's exit (buy-back) notional is cost - gross
+    sign = -1 if record.get("side") == "SHORT" else 1
+    exit_notional = Decimal(str(record["cost_quote"])) + sign * Decimal(str(record["gross_pnl"]))
     return (PAPER_FEE_RATE_PER_SIDE * max(exit_notional, Decimal("0"))).quantize(PAPER_FEE_QUANTUM, rounding=ROUND_UP)
 
 

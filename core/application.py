@@ -897,6 +897,9 @@ class AtlasApplication:
             self.market_loop.market_session_open = is_forex_market_open
             # Task 022: no new forex risk in the last hour before the Friday close (owner 2026-10-26)
             self.market_loop.market_entry_blocked = is_forex_pre_close
+            # Task 026 (policy manifest v5): the loop opens a short on a SELL of a pair not held, exactly when the
+            # RiskPolicy allows shorts; policy_manifest checks that the two agree
+            self.market_loop.shorts_enabled = self.risk_policy.shorts_enabled
             # Task 023 (policy manifest v3): close every open forex position in the last 30 minutes before the
             # Friday close, through the exit guard's reduce-only path (ENFORCE, this one rule only)
             self._attach_forex_weekend_close()
@@ -979,6 +982,11 @@ class AtlasApplication:
     # CANONICAL FINANCIAL RISK SERVICES
     # =========================================================
 
+    @staticmethod
+    def _forex_shorts_enabled() -> bool:
+        from atlas_finance.forex.instruments import FOREX_SHORTS_ENABLED
+        return FOREX_SHORTS_ENABLED is True
+
     def _book_leverage(self) -> int:
         """The account leverage of this market's durable book: FOREX_LEVERAGE in FOREX (Task 025), else 1."""
         if self.market == "FOREX":
@@ -1041,7 +1049,9 @@ class AtlasApplication:
             sleeves_enabled=self.sleeves_enabled,
             # Task 019: forex pairs are quoted in USD (EURUSD -> EUR exposure against USD)
             # Task 025: forex is a margin book at the pinned leverage (policy manifest v4)
-            **({"quote_currencies": ("USD",), "leverage": self._book_leverage()} if self.market == "FOREX" else {}),
+            # Task 026: and allows shorts on that margin book (policy manifest v5)
+            **({"quote_currencies": ("USD",), "leverage": self._book_leverage(),
+                "shorts_enabled": self._forex_shorts_enabled()} if self.market == "FOREX" else {}),
         )
 
         self.risk_engine = RiskEngine(

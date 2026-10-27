@@ -78,11 +78,16 @@ from core.execution_models import (
     ExecutionRequest,
     ExecutionResult,
     normalize_risk,
+    opens_risk,
+    reduces_risk,
 )
 from core.execution_portfolio_foundation import (
     SETTLEMENT_CONTEXT_PRECISION,
     ExecutionPortfolioFoundation,
     mint_long_position_id,
+    mint_position_id,
+    position_side,
+    position_unrealized,
 )
 from core.fee_accounting import FeeNormalizer, FeeRejected
 from core.instrument_rules import (
@@ -3156,8 +3161,11 @@ class ExecutionManager:
         # Phase-2 B1: confidence is a new-risk admission criterion. A SELL
         # that reduces a held position is never refused for low confidence;
         # one that is not a reduction is refused by RiskEngine regardless.
+        # Task 026: new risk is a BUY on the LONG side or a SELL on the SHORT
+        # side, so the side is derived from the durable book before this gate.
+        request.position_side = self._book_position_side(request)
         if (
-            request.action == "BUY"
+            opens_risk(request.action, request.position_side)
             and request.confidence < self.minimum_confidence
         ):
             return {
@@ -3250,7 +3258,8 @@ class ExecutionManager:
             mark = Decimal(str(position["mark_price"]))
             exposures.append(
                 PositionExposure(symbol, base, mark, base * mark,
-                                 risk_bucket=self._recorded_risk_bucket(position.get("position_id")))
+                                 risk_bucket=self._recorded_risk_bucket(position.get("position_id")),
+                                 side=position_side(position))   # Task 026
             )
 
         return tuple(exposures)
@@ -3443,7 +3452,8 @@ class ExecutionManager:
         """
         side = "BUY" if str(request.action).upper().endswith("BUY") else "SELL"
         try:
-            if side == "BUY":
+            # Task 026: a short opens with a SELL and covers with a BUY; an object with no side is a long
+            if opens_risk(side, getattr(request, "position_side", "LONG")):
                 notional = request.approved_quote_allocation
             else:
                 foundation = getattr(self, "portfolio_foundation", None)
@@ -3502,8 +3512,12 @@ class ExecutionManager:
                     # Audit F-C: measured against what the position really cost (cost
                     # basis + entry fees) and net of the fee a close would pay, so
                     # the figure can only be more conservative than before.
-                    cost = Decimal(str(held["cost_quote"])) + Decimal(str(held.get("entry_fees") or "0"))
-                    total += value - cost - value * Decimal(str(getattr(self, "paper_fee_rate", 0)))
+                    # Task 026: a short's gross is cost - value.
+                    gross = position_unrealized(held, Decimal(str(price)))
+                    fees = Decimal(str(held.get("entry_fees") or "0"))
+                    total += gross - fees - value * Decimal(str(getattr(self, "paper_fee_rate", 0)))
+                elif p.side == "SHORT":
+                    total += p.quote_exposure - value
                 else:
                     total += value - p.quote_exposure
             return total if total.is_finite() else None
@@ -3511,15 +3525,16 @@ class ExecutionManager:
             logger.warning("mark-to-market unavailable; unrealized P&L unknown", exc_info=True)
             return None
 
-    @staticmethod
     def _derive_reduce_only(
+        self,
         request: ExecutionRequest,
         state: RiskState,
     ) -> bool:
         """Derive risk-reduction intent from authoritative held-position state.
 
-        Atlas is LONG-only, so exposure can only fall by selling a symbol that
-        is actually held. A SELL against a held position is therefore handed to
+        Exposure can only fall by reducing a position that is actually held: a
+        SELL of a held LONG, or (Task 026, forex margin book) a BUY of a held
+        SHORT. A SELL against a held position is therefore handed to
         ``RiskEngine`` as reduce-only, and the engine keeps sole authority over
         whether the requested size is a *valid* reduction: an over-sized one
         still fails closed as ``INVALID_RISK_REDUCTION``. A SELL against a
@@ -3527,7 +3542,7 @@ class ExecutionManager:
         refused by the engine as ``NON_RISK_REDUCING_SELL``, an unsized one by
         ``risk_check`` as ``NO_POSITION_TO_SELL``.
 
-        A BUY can never reduce exposure, so it derives False unconditionally.
+        A BUY of a LONG side never reduces exposure, so it derives False.
         That also stops a caller-supplied flag from waiving the capital
         reservation the BUY path requires.
 
@@ -3535,15 +3550,31 @@ class ExecutionManager:
         logged and then discarded, because held-position state - not caller
         intent - decides whether exposure is being reduced.
         """
-        if str(request.action).strip().upper() != "SELL":
-            return False
-
+        # Task 026: the side is decided by the same durable position state - a held position's own side,
+        # else SHORT for a SELL when the policy allows shorts, else LONG - and is written on the request.
         symbol = str(request.symbol).strip().upper()
+        held = [position for position in state.positions if position.symbol == symbol]
+        request.position_side = held[0].side if held else self._flat_position_side(request)
+        return bool(held) and reduces_risk(request.action, request.position_side)
 
-        return any(
-            position.symbol == symbol
-            for position in state.positions
-        )
+    def _flat_position_side(self, request: ExecutionRequest) -> str:
+        """SHORT for a SELL of a symbol not held when the risk policy allows shorts (Task 026), else LONG."""
+        policy = getattr(self.risk_engine, "policy", None)
+        if str(request.action).strip().upper() == "SELL" and getattr(policy, "shorts_enabled", False) is True:
+            return "SHORT"
+        return "LONG"
+
+    def _book_position_side(self, request: ExecutionRequest) -> str:
+        """The side ``_derive_reduce_only`` will derive, read from the durable book before risk evaluation.
+
+        A book that cannot be read answers LONG; risk admission then refuses on the book's own state."""
+        foundation = self.portfolio_foundation
+        try:
+            held = foundation.snapshot()["positions"].get(str(request.symbol).strip().upper()) \
+                if foundation is not None and foundation.ready else None
+        except Exception:
+            held = None
+        return position_side(held) if held is not None else self._flat_position_side(request)
 
     # =========================================================
     # REQUESTED ALLOCATION (PRE-RISK)
@@ -3594,7 +3625,8 @@ class ExecutionManager:
         found not held. A malformed ``amount`` (non-numeric, NaN, negative) is
         deliberately not "unsized", so its pre-existing refusal is unchanged."""
 
-        if str(request.action).strip().upper() != "SELL" or request.reduce_only:
+        if (str(request.action).strip().upper() != "SELL" or request.reduce_only
+                or request.position_side == "SHORT"):   # Task 026: an unsized short is UNSIZED_REQUEST_REJECTED
             return False
 
         if request.proposed_quote_allocation is not None:
@@ -3680,7 +3712,7 @@ class ExecutionManager:
                 Decimal("0"),
             )
 
-        if str(request.action).strip().upper() == "BUY":
+        if opens_risk(request.action, request.position_side):   # Task 026: a short opens with a SELL
             return None
 
         return Decimal("0")
@@ -3708,6 +3740,12 @@ class ExecutionManager:
         consumer downstream reads, which is what makes it the only amount
         execution can commit. CapitalManager takes no part in any of this.
         """
+
+        # Task 026 (review F2): the new-risk gates in _risk_preconditions read the
+        # position side, so it is derived from the durable book here, before any
+        # gate, whoever built the request; _derive_reduce_only re-derives it from
+        # the risk state the engine evaluates.
+        request.position_side = self._book_position_side(request)
 
         # T-0014: each gate is one _risk_* helper, called in the order below; a
         # helper returns the refusal that ends the evaluation or _CONTINUE.
@@ -3740,7 +3778,7 @@ class ExecutionManager:
         # check above, and the executable-quantum and durable-capital checks
         # below - all of which run before any capital is reserved.
 
-        if request.action == "BUY" and not request.reduce_only:
+        if opens_risk(request.action, request.position_side) and not request.reduce_only:   # Task 026
             terminal = self._risk_buy_fill_bounds(
                 request,
                 canonical,
@@ -3819,11 +3857,11 @@ class ExecutionManager:
         # Phase-2 A3 (after the rollover housekeeping, so a failed refusal
         # audit is still retried on the next request):
         # while audit persistence is not provably healthy no new
-        # risk is admitted. Atlas is LONG-only, so a BUY is the only request
-        # that can add exposure; a SELL is either a reduction (allowed, B1)
-        # or refused by RiskEngine as NON_RISK_REDUCING_SELL.
+        # risk is admitted. New risk is a BUY on the LONG side or, on a forex
+        # margin book, a SELL on the SHORT side (Task 026); every other order is
+        # a reduction (allowed, B1) or refused by RiskEngine.
         audit_state = self.audit_persistence_state()
-        if str(request.action).strip().upper() == "BUY":
+        if opens_risk(request.action, request.position_side):   # Task 026: a short opens with a SELL
             # Phase-2 G1: runtime policy differs from the governance manifest.
             policy_block = getattr(self, "policy_manifest_block", None)
             if policy_block:
@@ -3944,6 +3982,7 @@ class ExecutionManager:
                         execution_price=Decimal(str(request.price)),
                         risk_bucket=request.risk,
                         reduce_only=request.reduce_only,
+                        position_side=request.position_side,   # Task 026
                     ),
                     risk_state,
                 )
@@ -4011,7 +4050,7 @@ class ExecutionManager:
         # Every reject-capable compatibility gate must run before capital is
         # reserved and admission is recorded, so a rejection here never
         # leaves a reservation or admission behind (Block-2 M-1).
-        if request.action == "BUY":
+        if opens_risk(request.action, request.position_side):   # Task 026
             allowed = self._can_open_position(
                 request.symbol
             )
@@ -4370,6 +4409,7 @@ class ExecutionManager:
             str(Decimal(str(request.confidence))),
             request.risk,
             str(bool(request.reduce_only)),
+            request.position_side,   # Task 026
             rules.digest if rules is not None else "NO_INSTRUMENT_RULES",
             request.mode,
         )
@@ -4562,7 +4602,7 @@ class ExecutionManager:
             if self.reservation_ledger is not None
             else None
         )
-        reservation_required = request.action == "BUY" and not request.reduce_only
+        reservation_required = opens_risk(request.action, request.position_side) and not request.reduce_only
         if reservation_required and (
             reservation is None or reservation.status.value != "RESERVED"
         ):
@@ -4624,7 +4664,7 @@ class ExecutionManager:
                 reservation_confirmed=True,
                 expected_position_version=expected_version,
             )
-            if evidence.action == "SELL" and not finalized["replayed"]:
+            if reduces_risk(evidence.action, evidence.position_side) and not finalized["replayed"]:   # Task 026
                 self._record_realized_risk_accounting(
                     request=request,
                     evidence=evidence,
@@ -4959,7 +4999,7 @@ class ExecutionManager:
         if position is None:
             event = "CLOSE"
 
-        elif action == "SELL":
+        elif reduces_risk(action, request.position_side):   # Task 026: a cover is a BUY
             event = "REDUCE"
 
         else:
@@ -5073,6 +5113,7 @@ class ExecutionManager:
             execution_id=execution_id,
             symbol=request.symbol,
             action=request.action,
+            position_side=request.position_side,   # Task 026
             filled_price=filled_price,
             filled_amount=0.0,
             mode=self.MODE_PAPER,
@@ -5097,13 +5138,15 @@ class ExecutionManager:
             provenance_ref=f"transaction-journal:{request.request_id}",
         )
 
-        if request.action == "BUY":
+        # Task 026: the opening executor sizes from the approved allocation and mints the position; the
+        # reducing one sizes from the held position. A short opens with a SELL and covers with a BUY.
+        if opens_risk(request.action, request.position_side):
             self._execute_paper_buy(
                 request=request,
                 result=result,
             )
 
-        elif request.action == "SELL":
+        elif reduces_risk(request.action, request.position_side):
             self._execute_paper_sell(
                 request=request,
                 result=result,
@@ -5361,7 +5404,7 @@ class ExecutionManager:
             preflight_position = self.portfolio_foundation.snapshot()["positions"].get(request.symbol)
             if preflight_position is None:
                 try:
-                    mint_long_position_id(request.symbol, request.request_id)
+                    mint_position_id(request.symbol, request.request_id, request.position_side)
                 except ValueError:
                     self._mark_result_failure(
                         result=result,
@@ -5558,7 +5601,7 @@ class ExecutionManager:
             existing = self.portfolio_foundation.snapshot()["positions"].get(request.symbol)
             result.position_id = (
                 existing["position_id"] if existing is not None
-                else mint_long_position_id(request.symbol, request.request_id)
+                else mint_position_id(request.symbol, request.request_id, request.position_side)
             )
             position = None
             if self.position_risk_buckets is not None:

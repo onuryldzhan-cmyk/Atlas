@@ -62,8 +62,9 @@ def runtime_for(market: str) -> dict:
 
 
 def test_v3_is_the_active_manifest_and_v2_stays_sealed():
-    # Task 025 (registry v5.108): v4 is now the active manifest; v3 stays sealed and verifiable by its own rules.
-    assert pm.MANIFEST_V3_PATH == ROOT / V3 and pm.MANIFEST_PATH == ROOT / "governance/policy/ATLAS_POLICY_MANIFEST_v4.json"
+    # Task 025/026 (registry v5.108/v5.109): a successor is now the active manifest; v3 stays sealed and verifiable
+    # by its own rules.
+    assert pm.MANIFEST_V3_PATH == ROOT / V3 and pm.MANIFEST_PATH == ROOT / "governance/policy/ATLAS_POLICY_MANIFEST_v5.json"
     assert pm.MANIFEST_V2_PATH == ROOT / "governance/policy/ATLAS_POLICY_MANIFEST_v2.json"
     v2 = json.loads(pm.MANIFEST_V2_PATH.read_text(encoding="utf-8"))
     assert v2["manifest_version"] == 2 and v2["policy"]["exit_guard_mode"] == "OBSERVE"

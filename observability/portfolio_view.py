@@ -58,7 +58,9 @@ def build(snapshot: dict[str, Any], prices: dict[str, Any], price_time: Any,
     realized_net = _d(snapshot.get("realized_net_pnl"))
     if None in (cash, fees, committed, realized_gross, realized_net):
         return {"available": False, "reason": "PORTFOLIO_SNAPSHOT_INCOMPLETE"}
-    starting = cash + committed + fees - realized_gross
+    # Task 025/026: the cash a position holds back is its margin (== its cost in a cash book)
+    held_back = _d(snapshot.get("used_margin")) if snapshot.get("used_margin") is not None else committed
+    starting = cash + held_back + fees - realized_gross if held_back is not None else None
     age = _age_seconds(price_time, now)
     stale = age is None or age > STALE_AFTER_S
 
@@ -67,7 +69,8 @@ def build(snapshot: dict[str, Any], prices: dict[str, Any], price_time: Any,
         qty, cost = _d(pos.get("base_quantity")), _d(pos.get("cost_quote"))
         avg = _d(pos.get("average_entry_price"))
         price = _d(prices.get(symbol))
-        row = {"symbol": symbol, "quantity": str(qty) if qty is not None else None,
+        row = {"symbol": symbol, "side": "SHORT" if pos.get("side") == "SHORT" else "LONG",
+               "quantity": str(qty) if qty is not None else None,
                "average_entry_price": str(avg) if avg is not None else None,
                "cost": _fmt(cost), "opened_at": pos.get("opened_at")}
         if qty is None or cost is None or price is None or price <= 0:
@@ -75,7 +78,7 @@ def build(snapshot: dict[str, Any], prices: dict[str, Any], price_time: Any,
             row.update(price=None, market_value=None, unrealized_pnl=None, unrealized_pct=None)
         else:
             value = qty * price
-            pnl = value - cost
+            pnl = cost - value if pos.get("side") == "SHORT" else value - cost   # Task 026: a short
             market_value += value
             unrealized += pnl
             row.update(price=str(price), market_value=_fmt(value), unrealized_pnl=_fmt(pnl),

@@ -51,7 +51,8 @@ ASSUMED_FEE_RATE_PER_SIDE = Decimal("0.001")
 
 def estimated_fees(record: dict) -> Decimal:
     entry = Decimal(str(record.get("cost_quote", "0")))
-    exit_value = entry + Decimal(str(record["gross_pnl"]))
+    gross = Decimal(str(record["gross_pnl"]))
+    exit_value = entry - gross if record.get("side") == "SHORT" else entry + gross   # Task 026: a short
     return ASSUMED_FEE_RATE_PER_SIDE * (entry + max(exit_value, Decimal("0")))
 
 

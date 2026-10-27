@@ -16,7 +16,8 @@ RiskEngine's reduction checks all apply exactly as for any other SELL.
 
 What it never does
 ------------------
-- open, add to, or resize risk (it only ever emits a full-exit SELL)
+- open, add to, or resize risk (it only ever emits a full exit: a SELL for a LONG, a BUY for a margin-book
+  SHORT - Task 026)
 - generate alpha: there are no built-in rules; every rule is owner-supplied
 - sell on a stale or missing price: that is EXIT_PENDING_PRICE
 - bypass ExecutionManager, RiskEngine, idempotency or audit
@@ -291,7 +292,8 @@ class ExitGuard:
             durable = _decimal(position.get("mark_price"))
             if base is None or durable is None:
                 raise ValueError("position figures unreadable")
-            equity += base * (price - durable)
+            sign = -1 if position.get("side") == "SHORT" else 1     # Task 026: a short gains as the price falls
+            equity += sign * base * (price - durable)
         return equity / used
 
     def _evaluate_position(
@@ -321,7 +323,9 @@ class ExitGuard:
                 detail={"max_price_age_seconds": self.max_price_age_seconds},
             )
 
-        change = (price - entry) / entry
+        short = position.get("side") == "SHORT"
+        # Task 026: the change is in the position's own favour, so a short's loss is a rising price
+        change = (entry - price) / entry if short else (price - entry) / entry
 
         durable_mark = _decimal(position.get("mark_price"))
 
@@ -329,7 +333,7 @@ class ExitGuard:
             if rule.kind == RULE_STOP_OUT:
                 triggered, detail = self._stop_out_triggered(rule, stop_out)
                 detail.update(change=format(change, "f"), rule_kind=RULE_STOP_OUT,
-                              loss_quote=format(max(base * (entry - price), Decimal("0")), "f"))
+                              loss_quote=format(max(-change * entry * base, Decimal("0")), "f"))
             elif rule.kind == RULE_WEEKEND_CLOSE:
                 triggered = self._in_window(rule, now)
                 detail = {"change": format(change, "f"), "window_minutes": rule.minutes}
@@ -345,7 +349,7 @@ class ExitGuard:
                     base_quantity=base, price=price,
                     request_id=self._request_id(position, rule),
                     exposure_quote=base * durable_mark,
-                    detail=detail,
+                    detail={**detail, **({"position_side": "SHORT"} if short else {})},
                 )
 
         return ExitIntent(symbol, EXIT_NOT_TRIGGERED, position_id, base_quantity=base, price=price)
@@ -432,9 +436,10 @@ class ExitGuard:
         assert price is not None and exposure is not None
 
         try:
+            # Task 026: a short is closed by buying it back; ExecutionManager re-derives the side from the book
             decision = ExecutionRequest(
                 intent.symbol,
-                "SELL",
+                "BUY" if intent.detail.get("position_side") == "SHORT" else "SELL",
                 float(price),
                 format(exposure, "f"),
                 # Confidence is irrelevant to a reduction (Phase-2 B1) and is

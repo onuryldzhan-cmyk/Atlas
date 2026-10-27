@@ -19,10 +19,10 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `83bc25cf27945473981b1652f464e15b8eaf6c7a` |
-| generated_from_tree | `dc87041d2371415734036e95fe5ee4e76978c167` |
+| generated_from_commit | `42d45f7decd620e03856790a72bf75b8d5de5920` |
+| generated_from_tree | `e014eb9ec5b92fa215fe50dfaf3fa13986f8544f` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['atlas_finance/forex/instruments.py', 'core/application.py', 'core/execution_manager.py', 'core/execution_portfolio_foundation.py', 'core/exit_guard.py', 'core/financial_state_bootstrap.py', 'core/market_loop.py', 'core/policy_manifest.py', 'core/position_sizing.py', 'core/risk_engine.py', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/REM-001_STATE_AUTHORITY_MAP.md', 'tests/intelligence/test_task009_regime_tracking.py', 'tests/test_block5c_upstream_sizing_authority.py', 'tests/test_phase2_g1_policy_manifest.py', 'tests/test_task023_policy_manifest_v3.py', 'tests/test_task024_forex_holidays.py', 'tlas_finance/forex/__init__.py', 'tools/bootstrap_financial_state.py', 'tools/data_health_check.py', 'tools/reconcile_execution_authorities.py'] |
+| modified_tracked_paths_at_generation | ['atlas_finance/forex/__init__.py', 'atlas_finance/forex/instruments.py', 'core/application.py', 'core/execution_manager.py', 'core/execution_models.py', 'core/execution_portfolio_foundation.py', 'core/exit_guard.py', 'core/market_loop.py', 'core/policy_manifest.py', 'core/risk_engine.py', 'core/valuation_snapshot.py', 'i/core/intelligence/trade_evidence.py', 'observability/learning_view.py', 'observability/portfolio_view.py', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/REM-001_STATE_AUTHORITY_MAP.md', 'tests/test_phase2_g1_policy_manifest.py', 'tests/test_task023_policy_manifest_v3.py', 'tests/test_task025_forex_leverage.py', 'tools/exp001_report.py', 'tools/paper_position_report.py', 'tools/reconcile_execution_authorities.py', 'tools/soak_report.py'] |
 
 ## What this artifact is, and what it is not
 
@@ -64,7 +64,7 @@ observation.
 | declared_state_file_constants | 10 |
 | persistence_sites | 94 |
 | modules_with_persistence_sites | 39 |
-| distinct_state_file_literals | 44 |
+| distinct_state_file_literals | 46 |
 | parse_failures | 0 |
 
 ## Declared durable state surface
@@ -102,6 +102,7 @@ nothing is inferred from an absence.
 | `ATLAS_POLICY_MANIFEST_v2.json` | `core/policy_manifest.py` |
 | `ATLAS_POLICY_MANIFEST_v3.json` | `core/policy_manifest.py` |
 | `ATLAS_POLICY_MANIFEST_v4.json` | `core/policy_manifest.py` |
+| `ATLAS_POLICY_MANIFEST_v5.json` | `core/policy_manifest.py` |
 | `atlas_memory.json` | `ai/core/atlas_memory_core.py` |
 | `atlas_reasoning.json` | `ai/core/atlas_reasoning_engine.py` |
 | `atlas_runtime_closure.json` | `observability/security_view.py` |
@@ -120,6 +121,7 @@ nothing is inferred from an absence.
 | `experiment_admissions.json` | `core/experiment_ledger.py` |
 | `governance/current/ATLAS_MILESTONE_REGISTRY_v5.106.json` | `core/policy_manifest.py` |
 | `governance/current/ATLAS_MILESTONE_REGISTRY_v5.108.json` | `core/policy_manifest.py` |
+| `governance/current/ATLAS_MILESTONE_REGISTRY_v5.109.json` | `core/policy_manifest.py` |
 | `governance/current/ATLAS_MILESTONE_REGISTRY_v5.85.json` | `core/policy_manifest.py` |
 | `instrument_rules.json` | `core/application.py` |
 | `instrument_rules_mt5.json` | `core/application.py` |
@@ -187,13 +189,13 @@ nothing is inferred from an absence.
 | `core/durable_append_contract.py` | FSYNC | 380 | `DurableAppendWriter::_resolve_failure` |
 | `core/durable_append_contract.py` | FSYNC | 426 | `DurableAppendWriter::_write_marker` |
 | `core/execution_idempotency_store.py` | UNLINK | 878 | `ExecutionIdempotencyStore::reset` |
-| `core/execution_manager.py` | ATOMIC_REPLACE | 7150 | `ExecutionManager::_normalize_confidence` |
+| `core/execution_manager.py` | ATOMIC_REPLACE | 7193 | `ExecutionManager::_normalize_confidence` |
 | `core/execution_models.py` | ATOMIC_REPLACE | 96 | `normalize_timestamp` |
-| `core/execution_portfolio_foundation.py` | ATOMIC_REPLACE | 84 | `_utc` |
-| `core/execution_portfolio_foundation.py` | FSYNC | 208 | `FinancialStateStore::save` |
-| `core/execution_portfolio_foundation.py` | ATOMIC_REPLACE | 209 | `FinancialStateStore::save` |
-| `core/execution_portfolio_foundation.py` | FSYNC | 282 | `AppliedExecutionArchiveStore::append` |
-| `core/execution_portfolio_foundation.py` | FSYNC | 449 | `ClosedPositionArchiveStore::append` |
+| `core/execution_portfolio_foundation.py` | ATOMIC_REPLACE | 104 | `_utc` |
+| `core/execution_portfolio_foundation.py` | FSYNC | 241 | `FinancialStateStore::save` |
+| `core/execution_portfolio_foundation.py` | ATOMIC_REPLACE | 242 | `FinancialStateStore::save` |
+| `core/execution_portfolio_foundation.py` | FSYNC | 315 | `AppliedExecutionArchiveStore::append` |
+| `core/execution_portfolio_foundation.py` | FSYNC | 485 | `ClosedPositionArchiveStore::append` |
 | `core/execution_transaction_journal.py` | UNLINK | 968 | `ExecutionTransactionJournal::reset` |
 | `core/experiment_ledger.py` | OPEN_WRITE_MODE | 69 | `ExperimentAdmissionLedger::record` |
 | `core/experiment_ledger.py` | JSON_DUMP | 70 | `ExperimentAdmissionLedger::record` |

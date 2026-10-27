@@ -140,7 +140,9 @@ def build_valuation_snapshot(
             continue
 
         value = price * base
-        net = value - paid - value * fee_rate
+        # Task 026 (registry v5.109): a margin-book short gains as the price falls: cost - value, less fees
+        gross = cost - value if position.get("side") == "SHORT" else value - cost
+        net = gross - fees - value * fee_rate
         market_value += value
         unrealized += net
         per_position[symbol] = {"market_value": value, "unrealized_net": net}
