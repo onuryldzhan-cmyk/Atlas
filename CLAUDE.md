@@ -1,7 +1,7 @@
 # Atlas — Project Instructions for Claude Code
 
 ## What Atlas is
-Atlas is an AI-native crypto investment/research/execution platform. Long-term evolution: **Atlas AI → Atlas Platform → Atlas OS → Atlas Corporation**, eventually front-ended by a lightweight observability panel now, and a 3D "Atlas HQ" command center later. Root project: `Project_Atlas_AI`, entry point `main.py`; `core/application.py` hosts the actual `AtlasApplication` class (not the root entrypoint itself).
+Atlas is an AI-native forex investment/research/execution platform (owner decision 2026-10-25: crypto → forex; registry v5.102). The market is MetaTrader 5, with demo accounts and market data only. CRYPTO remains in the code as the default `ATLAS_MARKET` until Task 020 removes it, after the owner's MT5 verification. Long-term evolution: **Atlas AI → Atlas Platform → Atlas OS → Atlas Corporation**, eventually front-ended by a lightweight observability panel now, and a 3D "Atlas HQ" command center later. Root project: `Project_Atlas_AI`, entry point `main.py`; `core/application.py` hosts the actual `AtlasApplication` class (not the root entrypoint itself).
 
 Mission: a self-improving multi-agent system that continuously proposes and validates its own improvements — but **capability is never authority**. A research agent can research but not spend capital. A code agent can write code but not solo-deploy to production. A risk agent can reject a trade but never change strategy alone.
 
@@ -21,7 +21,7 @@ Mission: a self-improving multi-agent system that continuously proposes and vali
 **Golden rule:** never optimize for "how quickly can I produce code" — optimize for "how safely and correctly can I improve Atlas." The best implementation is the smallest correct, maintainable, testable, secure, architecturally-consistent change that solves the actual problem.
 
 ## Priority orders
-- **Decision priority (runtime):** SAFETY → SECURITY → GOVERNANCE → RISK → CAPITAL → AI DECISION → EXECUTION. Flow is always Decision → Risk → Capital → Execution Manager → Exchange; AI decisions can never bypass Risk, Capital, or Execution Manager gates.
+- **Decision priority (runtime):** SAFETY → SECURITY → GOVERNANCE → RISK → CAPITAL → AI DECISION → EXECUTION. Flow is always Decision → Risk → Capital → Execution Manager → Venue (MT5 demo, market data only; PAPER fills); AI decisions can never bypass Risk, Capital, or Execution Manager gates.
 - **Top-level principle priority:** Security → Correctness → Architecture → Test → Governance → Autonomy → Features.
 - **Next-task selection priority:** BLOCKER → CORRECTNESS → SECURITY → DATA INTEGRITY → RISK → EXECUTION → ARCHITECTURE → TEST → OBSERVABILITY → LEARNING → SELF-IMPROVEMENT → UI → FUTURE FEATURES.
 - **Development priority order (roadmap-level):** Core architecture → Correctness → Safety → Data → Decision intelligence → Risk → Execution → Learning → Self-improvement → Governance → Observability → UI → Autonomous organization. UI work (including the observability panel and eventual Atlas HQ) never delays Core.
@@ -67,6 +67,18 @@ Decision-intelligence work must test missing evidence, missing agents, conflicti
 ## Financial / migration safety
 Every migration-touching change must be checked for: **idempotency, resume, retry, sequence, ordering, duplicates, partial state, conflicts, rollback/recovery.** Corrupted state must be detected and halted, never silently continued through.
 
+**Forex invariants (Tasks 018–026; registry v5.102–v5.109; policy manifest v5).** Never weaken any of these without a new ratified manifest:
+- FOREX uses its own state directory, named `forex` (and `shadow` for the BOOK fill), and never shares the crypto state.
+- The FOREX book is the schema 3 margin book at leverage 2, created with `tools/bootstrap_financial_state --leverage 2`. It is never migrated from a crypto book.
+- Margin = notional / 2. New risk spends only cash less any unrealized loss.
+- Loss limits (daily loss, drawdown, Kelly/volatility) are never scaled by leverage. Only notional exposure ceilings are.
+- Stop-out at a margin level of 100 % or below: everything is closed, largest loss first, never on a stale price.
+- The session is open Sunday 17:00 to Friday 17:00 New York time. Christmas and New Year are closed.
+- No new risk in the last 60 minutes before a close. Open positions are closed 30 minutes before a close.
+- Shorts exist only on the margin book. A SELL of a pair not held opens a short, and a BUY covers it.
+- A short passes every new-risk gate a long does. A cover is never blocked by a new-risk gate.
+- CRYPTO never shorts.
+
 ## Context discipline (stay narrow)
 Do not scan the whole repository by default — inspect only files directly relevant to the current task. Prefer targeted search over broad recursive reads. Do not read generated, cache, vendor, environment, build, or large-output directories unless required. Do not dump large files, diffs, logs, or test output into chat.
 
@@ -104,7 +116,7 @@ ROLE → CONTEXT → CURRENT STATE → OBJECTIVE → SCOPE → OUT OF SCOPE → 
 For every step, state (a) which model tier to use for that step, and (b) whether a context `/clear` is needed at that point. Don't re-ask the agent to re-inspect/re-verify/re-test anything already confirmed as evidence in the current session — reference the already-established fact directly.
 
 ## Directory map
-`ai`, `analysis`, `analytics`, `config`, `core`, `data`, `data_layer`, `database`, `learning`, `execution`, `risk`, `memory`, `events`, `tests`
+`ai`, `analysis`, `analytics`, `atlas_finance` (`forex/`: instruments and sessions; `market_data/mt5_provider.py`), `config`, `core`, `data`, `data_layer`, `database`, `learning`, `execution`, `risk`, `memory`, `events`, `governance`, `tests`
 
 ## Current authority state
 `production_authority=NONE`, `live_authority=DENIED`, `autonomous_deployment_authority=DENIED`. AI proposes; the system validates; policy constrains; risk controls; execution applies; audit records.

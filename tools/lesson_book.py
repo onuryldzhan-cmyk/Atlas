@@ -110,7 +110,9 @@ def live_rows(closed: list[dict], approvals: dict[str, list[dict]], regime_recor
                 regime = json.loads(r.get("body") or "{}").get("coins", {}).get(rec["symbol"], {}).get("regime", "UNKNOWN")
             except (TypeError, ValueError):
                 regime = "UNKNOWN"
-        out.append({"action": "BUY", "symbol": rec["symbol"], "time": opened, "confidence": str(conf),
+        # Task 027 (review T026-F5): a forex short entered with a SELL; net_live is already its own after-fee result
+        action = "SELL" if rec.get("side") == "SHORT" else "BUY"
+        out.append({"action": action, "symbol": rec["symbol"], "time": opened, "confidence": str(conf),
                     "regime": regime, "bucket": str(rec.get("bucket") or ""), "net_live": format(net, "f")})
     return out
 

@@ -291,6 +291,8 @@ class AtlasBrain:
             fusion = getattr(self.intelligence, "agents", None)
             if fusion is not None and getattr(self, "fusion_full_weight_denominator", False):
                 fusion.full_weight_denominator = True
+            # Task 027: FOREX hands the brain its short-entry check (None in crypto)
+            self.intelligence.short_entry_check = getattr(self, "short_entry_check", None)
 
             logger.info(
                 "Intelligence Brain connected",

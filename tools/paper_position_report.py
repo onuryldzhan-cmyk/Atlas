@@ -45,7 +45,8 @@ UNATTRIBUTED = "UNATTRIBUTED"
 EXACT = "EXACT"
 LEGACY_TIMESTAMP = "LEGACY_TIMESTAMP"
 LEGACY_WINDOW = timedelta(minutes=3)
-_CANONICAL_POSITION_ID = re.compile(r"^long:(?P<symbol>[A-Za-z0-9._-]+):[0-9a-f]{64}$")
+# Task 027 (review T026-F5): a forex short's identity is ``short:<symbol>:<digest>`` (mint_position_id)
+_CANONICAL_POSITION_ID = re.compile(r"^(?P<side>long|short):(?P<symbol>[A-Za-z0-9._-]+):[0-9a-f]{64}$")
 
 
 def is_canonical_position_id(position_id: Any) -> bool:
@@ -57,13 +58,13 @@ def is_canonical_position_id(position_id: Any) -> bool:
 def opened_by(position_id: Any, request_id: Any) -> bool:
     """Exactly: did the request ``request_id`` open the position ``position_id``?"""
 
-    from core.execution_portfolio_foundation import mint_long_position_id
+    from core.execution_portfolio_foundation import mint_position_id
 
     match = _CANONICAL_POSITION_ID.fullmatch(position_id) if isinstance(position_id, str) else None
     if match is None or not isinstance(request_id, str) or not request_id:
         return False
     try:
-        return mint_long_position_id(match.group("symbol"), request_id) == position_id
+        return mint_position_id(match.group("symbol"), request_id, match.group("side").upper()) == position_id
     except ValueError:
         return False
 
@@ -77,7 +78,8 @@ def _when(value: Any) -> datetime | None:
 
 
 def approvals_by_symbol(audit_path: Path) -> dict[str, list[dict]]:
-    """Every RISK_APPROVED BUY per symbol, oldest first."""
+    """Every RISK_APPROVED BUY per symbol, oldest first; Task 027: and every RISK_APPROVED SELL (a SELL that opened
+    a forex short is attributed exactly by its position_id; SELL approvals never take part in a LEGACY match)."""
 
     found: dict[str, list[dict]] = {}
     if not audit_path.exists():
@@ -93,7 +95,7 @@ def approvals_by_symbol(audit_path: Path) -> dict[str, list[dict]]:
                 continue
             aggregate = str(event.get("aggregate_id", ""))
             symbol, _, rest = aggregate.partition("|")
-            if not rest.endswith("|BUY"):
+            if not rest.endswith(("|BUY", "|SELL")):
                 continue
             payload = event.get("payload") or {}
             details = payload.get("details") or {}
@@ -103,6 +105,7 @@ def approvals_by_symbol(audit_path: Path) -> dict[str, list[dict]]:
                 "confidence": payload.get("confidence"),
                 "risk": payload.get("risk"),
                 "request_id": aggregate,
+                "action": "SELL" if rest.endswith("|SELL") else "BUY",
                 "risk_approval_event_id": event.get("event_id"),
             })
     return found
@@ -141,6 +144,8 @@ def entry_approval(approvals: list[dict], opened_at: str | None, position_id: st
         return None
     candidates = []
     for approval in approvals:
+        if approval.get("action", "BUY") != "BUY":   # Task 027: a legacy record is a crypto long
+            continue
         moment = _when(approval.get("timestamp"))
         if moment is not None and abs(moment - opened) <= LEGACY_WINDOW:
             candidates.append(approval)
@@ -196,7 +201,7 @@ def main(argv: list[str] | None = None) -> int:
                   f"experiment={approval.get('experiment_id') or 'none (policy floor)'} "
                   f"[{approval['attribution']}]")
         else:
-            print(f"  admitted:    {UNATTRIBUTED} - no RISK_APPROVED BUY matches this position exactly")
+            print(f"  admitted:    {UNATTRIBUTED} - no RISK_APPROVED BUY/SELL matches this position exactly")
 
         total_cost += cost
         if price is None:

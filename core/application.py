@@ -900,6 +900,10 @@ class AtlasApplication:
             # Task 026 (policy manifest v5): the loop opens a short on a SELL of a pair not held, exactly when the
             # RiskPolicy allows shorts; policy_manifest checks that the two agree
             self.market_loop.shorts_enabled = self.risk_policy.shorts_enabled
+            # Task 027 (review T026-F3): the brain's memory caution also applies to a SELL that opens a short
+            if self.market_loop.shorts_enabled:
+                loop = self.market_loop
+                self.brain.short_entry_check = lambda symbol: loop._opens_new_risk(symbol, "SELL")
             # Task 023 (policy manifest v3): close every open forex position in the last 30 minutes before the
             # Friday close, through the exit guard's reduce-only path (ENFORCE, this one rule only)
             self._attach_forex_weekend_close()

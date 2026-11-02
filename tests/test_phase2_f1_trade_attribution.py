@@ -84,9 +84,12 @@ def test_legacy_record_uses_the_explicit_fallback_only_when_unambiguous():
 
 
 def test_partial_chain_malformed_ids_are_never_exact():
-    for bad in ("long:BTCUSDT:abc", "", None, 7, "short:BTCUSDT:" + "a" * 64):
+    for bad in ("long:BTCUSDT:abc", "", None, 7, "flat:BTCUSDT:" + "a" * 64, "short:BTCUSDT:abc"):
         assert not ppr.is_canonical_position_id(bad)
         assert ppr.opened_by(bad, rid("c1")) is False
+    # Task 027: a forex short identity is canonical (Task 026), but a digest it was not minted from never matches
+    forged_short = "short:BTCUSDT:" + "a" * 64
+    assert ppr.is_canonical_position_id(forged_short) and ppr.opened_by(forged_short, rid("c1")) is False
     assert ppr.opened_by(pid("c1"), None) is False and ppr.opened_by(pid("c1"), "") is False
     assert ppr.opened_by(pid("c1"), rid("c1")) is True and ppr.opened_by(pid("c1"), rid("c2")) is False
 

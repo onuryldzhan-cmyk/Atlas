@@ -19,10 +19,10 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `42d45f7decd620e03856790a72bf75b8d5de5920` |
-| generated_from_tree | `e014eb9ec5b92fa215fe50dfaf3fa13986f8544f` |
+| generated_from_commit | `9b1c5f2b73184910a6edb501d5aeb7f3a559a4cb` |
+| generated_from_tree | `2fc91711071381642f9e95e2bf9f9f2d50f2837c` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['atlas_finance/forex/__init__.py', 'atlas_finance/forex/instruments.py', 'core/application.py', 'core/execution_manager.py', 'core/execution_models.py', 'core/execution_portfolio_foundation.py', 'core/exit_guard.py', 'core/market_loop.py', 'core/policy_manifest.py', 'core/risk_engine.py', 'core/valuation_snapshot.py', 'i/core/intelligence/trade_evidence.py', 'observability/learning_view.py', 'observability/portfolio_view.py', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/REM-001_STATE_AUTHORITY_MAP.md', 'tests/test_phase2_g1_policy_manifest.py', 'tests/test_task023_policy_manifest_v3.py', 'tests/test_task025_forex_leverage.py', 'tools/exp001_report.py', 'tools/paper_position_report.py', 'tools/reconcile_execution_authorities.py', 'tools/soak_report.py'] |
+| modified_tracked_paths_at_generation | ['LAUDE.md', 'ai/core/atlas_brain.py', 'core/application.py', 'core/brain.py', 'core/paper_trader.py', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/REM-001_STATE_AUTHORITY_MAP.md', 'tests/test_phase2_f1_trade_attribution.py', 'tools/lesson_book.py', 'tools/paper_position_report.py'] |
 
 ## What this artifact is, and what it is not
 
@@ -204,11 +204,11 @@ nothing is inferred from an absence.
 | `core/experiment_ledger.py` | FSYNC | 80 | `ExperimentAdmissionLedger::record` |
 | `core/instance_lock.py` | OPEN_WRITE_MODE | 90 | `acquire` |
 | `core/logger.py` | OPEN_WRITE_MODE | 91 | `_TelemetryFileWriter::__init__` |
-| `core/paper_trader.py` | ATOMIC_REPLACE | 791 | `PaperTrader::_load_failed` |
-| `core/paper_trader.py` | OPEN_WRITE_MODE | 839 | `PaperTrader::save` |
-| `core/paper_trader.py` | JSON_DUMP | 852 | `PaperTrader::save` |
-| `core/paper_trader.py` | FSYNC | 874 | `PaperTrader::save` |
-| `core/paper_trader.py` | ATOMIC_REPLACE | 879 | `PaperTrader::save` |
+| `core/paper_trader.py` | ATOMIC_REPLACE | 794 | `PaperTrader::_load_failed` |
+| `core/paper_trader.py` | OPEN_WRITE_MODE | 842 | `PaperTrader::save` |
+| `core/paper_trader.py` | JSON_DUMP | 855 | `PaperTrader::save` |
+| `core/paper_trader.py` | FSYNC | 877 | `PaperTrader::save` |
+| `core/paper_trader.py` | ATOMIC_REPLACE | 882 | `PaperTrader::save` |
 | `core/position_risk_buckets.py` | FSYNC | 81 | `PositionRiskBucketStore::record` |
 | `core/position_risk_buckets.py` | PATH_WRITE_TEXT | 107 | `repair_unfinished_tail` |
 | `core/position_risk_buckets.py` | PATH_WRITE_TEXT | 108 | `repair_unfinished_tail` |

@@ -494,7 +494,7 @@ class AtlasBrain:
             # ConfidenceEngine results belong in metadata only.
             # =================================================
 
-            memory_adjustment = self._memory_buy_caution(decision, memory_result)  # BRAIN-MEM-001
+            memory_adjustment = self._memory_caution(decision, memory_result)  # BRAIN-MEM-001
 
             confidence_explanation = (
                 self._safe_confidence_explanation(
@@ -1565,21 +1565,44 @@ class AtlasBrain:
             2,
         )
 
+    # Task 027 (registry v5.110, review T026-F3): set by the composition root in FOREX when shorts are enabled.
+    # Answers whether a SELL of ``symbol`` opens new risk (a short). None - the crypto default - means a SELL
+    # always reduces exposure. A check that raises counts as new risk, so the caution applies (fail closed).
+    short_entry_check: Any = None
+
+    def _memory_caution(self, decision: Any, memory_result: Any) -> dict[str, Any] | None:
+        """BRAIN-MEM-001 for this brain: a BUY, or (Task 027) a SELL that opens a short."""
+        return self._memory_buy_caution(decision, memory_result, sell_opens_risk=self._sell_opens_risk(decision))
+
+    def _sell_opens_risk(self, decision: Any) -> bool:
+        check = self.short_entry_check
+        if check is None or str(getattr(decision, "action", "")).upper().split(".")[-1] != "SELL":
+            return False
+        try:
+            return check(str(getattr(decision, "symbol", "") or "")) is not False
+        except Exception:
+            logger.exception("short-entry check failed; the SELL is treated as new risk")
+            return True
+
     # BRAIN-MEM-001 (owner-approved plan v2): a coin whose own closed trades
     # prove a losing book (>= 10 trades, negative net expectancy after fees)
     # gets up to 5 points less BUY confidence. Caution only: never raised,
-    # never applied to SELL (which reduces exposure), 0 on missing data.
+    # 0 on missing data. Never applied to a SELL that reduces exposure; Task 027:
+    # applied to a SELL that opens a short (``sell_opens_risk``), as to a BUY.
     @staticmethod
     def _memory_buy_caution(
         decision: Any,
         memory_result: Any,
+        *,
+        sell_opens_risk: bool = False,
     ) -> dict[str, Any] | None:
         effect = memory_result.get("effect") if isinstance(memory_result, dict) else None
+        action = str(getattr(decision, "action", "")).upper().split(".")[-1]
         if (
             not isinstance(effect, (int, float))
             or isinstance(effect, bool)
             or effect >= 0
-            or str(getattr(decision, "action", "")).upper().split(".")[-1] != "BUY"
+            or not (action == "BUY" or (action == "SELL" and sell_opens_risk is True))
         ):
             return None
         before = float(decision.confidence)

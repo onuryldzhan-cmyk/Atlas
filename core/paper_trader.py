@@ -472,13 +472,12 @@ class PaperTrader:
     ):
 
 
+        # Task 027 (review T026-F4): a mirrored forex short gains as the price falls
+        move = position["current_price"] - position["entry_price"]
+
         return round(
 
-            position["current_price"]
-
-            -
-
-            position["entry_price"],
+            -move if position.get("side") == "SHORT" else move,
 
             4
 
@@ -627,6 +626,10 @@ class PaperTrader:
 
             "mirrored_from":
             "execution_financial_state",
+
+            # Task 027 (review T026-F4): only a margin-book short carries a side, so every LONG record (and every
+            # crypto record) keeps exactly its historical shape.
+            **({"side": "SHORT"} if position.get("side") == "SHORT" else {}),
 
         }
 
