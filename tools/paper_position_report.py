@@ -155,6 +155,14 @@ def entry_approval(approvals: list[dict], opened_at: str | None, position_id: st
 
 
 def live_price(symbol: str) -> Decimal | None:
+    # Task 028 (registry v5.111): the live lookup is the crypto (Binance) ticker. A FOREX run (ATLAS_MARKET=FOREX)
+    # never asks it - a forex pair there would be a wrong or missing price - and reports the price as unavailable.
+    import os
+
+    from core.atlas_config import MARKET_ENV
+
+    if str(os.environ.get(MARKET_ENV, "CRYPTO")).strip().upper() == "FOREX":
+        return None
     try:
         with urllib.request.urlopen(TICKER_URL.format(symbol=symbol), timeout=5) as response:
             return Decimal(json.loads(response.read())["price"])

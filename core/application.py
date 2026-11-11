@@ -998,11 +998,22 @@ class AtlasApplication:
             return FOREX_LEVERAGE
         return 1
 
+    # Task 028: an exit the guard cannot price for this many cycles in a row raises an alert (see the runner).
+    PENDING_PRICE_ALERT_CYCLES = 3
+
     def _attach_forex_weekend_close(self) -> None:
         """FOREX only: the exit guard in ENFORCE with the STOP_OUT and WEEKEND_CLOSE rules, run once per cycle."""
         from atlas_finance.forex.instruments import STOP_OUT_MARGIN_LEVEL
         from atlas_finance.forex.sessions import WEEKEND_CLOSE_MINUTES, is_forex_pre_close
-        from core.exit_guard import ENFORCE, RULE_STOP_OUT, RULE_WEEKEND_CLOSE, SAFETY_EXIT, ExitRule, Mark
+        from core.exit_guard import (
+            ENFORCE,
+            EXIT_PENDING_PRICE,
+            RULE_STOP_OUT,
+            RULE_WEEKEND_CLOSE,
+            SAFETY_EXIT,
+            ExitRule,
+            Mark,
+        )
 
         # the window is computed from the rule's own minutes (review T023-F1)
         rule = ExitRule("forex-weekend-close", RULE_WEEKEND_CLOSE, None, minutes=WEEKEND_CLOSE_MINUTES,
@@ -1021,9 +1032,46 @@ class AtlasApplication:
             for symbol, rows in dict(loop.recent_candles).items():
                 if rows and rows[-1][4] > 0:
                     marks[symbol] = Mark(Decimal(str(rows[-1][4])), rows[-1][0] / 1000)
-            return guard.run_once(marks)
+            outcomes = guard.run_once(marks)
+            try:
+                _alert_pending(cutoff, outcomes)
+            except Exception:
+                # review T028-F1: the exits above are already submitted; an alert failure is reported as such
+                logger.exception("pending-price alert failed; the exit guard's run is unaffected")
+            return outcomes
+
+        streaks: dict[str, int] = {}
+
+        def _alert_pending(cutoff: datetime, outcomes: Any) -> None:
+            # Task 028 (registry v5.111, review T023-F4): a position the guard cannot price is EXIT_PENDING_PRICE,
+            # which holds it (never a sale at a guessed price). That is safe once, but it must not go unnoticed:
+            # a symbol pending for PENDING_PRICE_ALERT_CYCLES cycles in a row, or pending at all inside the
+            # weekend close-out window, raises an alert (metric, warning, EXIT_GUARD_PRICE_UNAVAILABLE event).
+            # Observability only: nothing here changes what the guard submits.
+            pending = {str(item.get("symbol")) for item in outcomes or ()
+                       if isinstance(item, dict) and item.get("state") == EXIT_PENDING_PRICE}
+            for symbol in list(streaks):
+                if symbol not in pending:
+                    del streaks[symbol]
+            for symbol in pending:
+                streaks[symbol] = streaks.get(symbol, 0) + 1
+            try:
+                in_window = is_forex_pre_close(cutoff, WEEKEND_CLOSE_MINUTES) is not False
+            except Exception:
+                in_window = True          # unsure: treated as inside the window, so the alert is not missed
+            alerted = sorted(s for s in pending if in_window or streaks[s] >= self.PENDING_PRICE_ALERT_CYCLES)
+            if not alerted:
+                return
+            loop._increment_metric("exit_pending_price_alerts")
+            logger.warning("Exit guard cannot price %s (in close-out window: %s); positions are held, not sold",
+                           alerted, in_window)
+            loop.publish("EXIT_GUARD_PRICE_UNAVAILABLE", {
+                "symbols": alerted, "consecutive_cycles": {s: streaks[s] for s in alerted},
+                "in_close_out_window": in_window,
+            })
 
         run.guard = guard          # read by core.policy_manifest: the runner must belong to this guard
+        run.pending_streaks = streaks
         self.market_loop.exit_guard_runner = run
 
     def _build_financial_services(self) -> None:
