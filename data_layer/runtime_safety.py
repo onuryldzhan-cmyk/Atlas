@@ -81,7 +81,21 @@ class FinancialRuntimeSafetyService:
         for request_id, entry in entries.items():
             if not isinstance(entry, dict):
                 return False
-            if str(entry.get("state", "")).upper() == "COMMITTED" and request_id not in completed:
+            if str(entry.get("state", "")).strip().upper() == "COMMITTED" and request_id not in completed:
+                return False
+        # The reverse direction (registry v5.13): every execution the
+        # idempotency authority records as COMMITTED must still have its
+        # COMMITTED journal entry. Without this, an emptied or deleted
+        # journal read as a clean new one and trading silently continued.
+        # Rejected requests never reach the journal and carry no
+        # commit_outcome, so they are not required to appear in it.
+        for request_id, result in completed.items():
+            if not isinstance(result, dict):
+                continue
+            if str(result.get("commit_outcome", "")).strip().upper() != "COMMITTED":
+                continue
+            entry = entries.get(request_id)
+            if not isinstance(entry, dict) or str(entry.get("state", "")).strip().upper() != "COMMITTED":
                 return False
         return True
 

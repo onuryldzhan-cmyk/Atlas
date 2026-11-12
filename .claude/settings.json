@@ -22,7 +22,9 @@
       "Edit(./build/**)",
       "Edit(./dist/**)",
       "Edit(./coverage/**)",
-      "Edit(./.pytest_cache/**)"
+      "Edit(./.pytest_cache/**)",
+      "Read(~/.atlas/**)",
+      "Edit(~/.atlas/**)"
     ]
   }
 }

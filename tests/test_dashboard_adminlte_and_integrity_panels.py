@@ -130,7 +130,8 @@ def test_vendored_files_match_recorded_provenance() -> None:
     checked = 0
 
     for asset in manifest["assets"]:
-        assert asset["license"] == "MIT"
+        # permissive licenses only; Apache-2.0 added for lightweight-charts (v5.72, owner-approved adoption)
+        assert asset["license"] in ("MIT", "Apache-2.0")
 
         for relative, record in asset["files"].items():
             digest = hashlib.sha256((VENDOR_DIR / relative).read_bytes()).hexdigest()
@@ -138,8 +139,21 @@ def test_vendored_files_match_recorded_provenance() -> None:
             assert record["modified"] is False
             checked += 1
 
-    assert checked == 7
+    # 9 -> 12 on 2026-10-02: three.js r185 (module, core, LICENSE) vendored for the owner-approved 3D HQ.
+    assert checked == 12
+    assert "MIT License" in (VENDOR_DIR / "three-0.185.1" / "LICENSE").read_text(encoding="utf-8")
     assert "MIT License" in (VENDOR_DIR / "adminlte-4.9.1" / "LICENSE").read_text(encoding="utf-8")
+    assert "Apache License" in (VENDOR_DIR / "lightweight-charts-4.2.3" / "LICENSE").read_text(encoding="utf-8")
+
+
+def test_lightweight_charts_makes_no_network_request_and_runs_no_dynamic_code() -> None:
+    script = (VENDOR_DIR / "lightweight-charts-4.2.3" / "lightweight-charts.standalone.production.js").read_text(encoding="utf-8")
+    for forbidden in ("fetch(", "XMLHttpRequest", "WebSocket", "sendBeacon", "EventSource", "importScripts",
+                      "Worker(", "import(", "eval(", "new Function", "document.cookie", "window.open", "localStorage"):
+        assert forbidden not in script, forbidden
+    urls = set(re.findall(r"""https?://[^\s"'<>)]+""", script))
+    assert {u.split("?")[0] for u in urls} <= {"http://www.w3.org/2000/svg", "https://www.apache.org/licenses/LICENSE-2.0",
+                                               "https://www.tradingview.com/"}
 
 
 def test_vendored_stylesheet_makes_no_network_request() -> None:
@@ -496,11 +510,63 @@ def test_risk_accounting_reports_current_day_and_committed_rollover(tmp_path: Pa
     assert EQUITY_LEAK not in response.text
 
 
-def test_risk_accounting_states_refusals_are_not_audited(tmp_path: Path) -> None:
+def _append_rollover_refusal(
+    audit: AuditEventStore, reason: str, from_day: date, to_day: date,
+) -> None:
+    audit.append(
+        event_type=web_app.RISK_DAY_ROLLOVER_REFUSED,
+        source="ExecutionManager",
+        aggregate_type="risk_accounting_state",
+        aggregate_id=to_day.isoformat(),
+        payload={
+            "mode": "PAPER",
+            "reason": reason,
+            "from_accounting_day_utc": from_day.isoformat(),
+            "to_accounting_day_utc": to_day.isoformat(),
+        },
+        correlation_id=to_day.isoformat(),
+    )
+
+
+def test_risk_accounting_reports_no_refusal_when_none_recorded(tmp_path: Path) -> None:
     payload = _client(_risk_runtime(tmp_path, day=_today())).get("/api/risk-accounting").json()
 
     assert payload["refusal_reason"] is None
-    assert payload["refusal_reason_source"] == "NOT_AUDITED_WARNING_LOG_ONLY"
+    assert payload["refusal_reason_source"] == "NO_REFUSAL_RECORDED"
+
+
+def test_risk_accounting_surfaces_the_real_refusal_reason_from_the_audit_trail(
+    tmp_path: Path,
+) -> None:
+    today = _today()
+    stale = today - timedelta(days=1)
+    runtime = _risk_runtime(tmp_path, day=stale)
+    _append_rollover_refusal(runtime.audit_store, "UNRESOLVED_JOURNAL_ENTRY", stale, today)
+
+    payload = _client(runtime).get("/api/risk-accounting").json()
+
+    assert payload["refusal_reason"] == "UNRESOLVED_JOURNAL_ENTRY"
+    assert payload["refusal_reason_source"] == "AUDIT_TRAIL"
+
+
+def test_risk_accounting_ignores_a_refusal_for_an_already_resolved_transition(
+    tmp_path: Path,
+) -> None:
+    today = _today()
+    # The state has since rolled forward to today, so a refusal logged for
+    # an earlier transition must not be shown as if it still applies.
+    runtime = _risk_runtime(tmp_path, day=today)
+    _append_rollover_refusal(
+        runtime.audit_store,
+        "UNRESOLVED_JOURNAL_ENTRY",
+        today - timedelta(days=2),
+        today - timedelta(days=1),
+    )
+
+    payload = _client(runtime).get("/api/risk-accounting").json()
+
+    assert payload["refusal_reason"] is None
+    assert payload["refusal_reason_source"] == "NO_REFUSAL_RECORDED"
 
 
 def test_risk_accounting_reports_a_stale_day_and_no_rollover_yet(tmp_path: Path) -> None:

@@ -1,0 +1,3 @@
+# AI-001 advisory agents only (tools/ai_gateway.py). The trading runtime never imports this.
+# Install on the owner machine:  python -m pip install -r requirements-ai.txt
+anthropic

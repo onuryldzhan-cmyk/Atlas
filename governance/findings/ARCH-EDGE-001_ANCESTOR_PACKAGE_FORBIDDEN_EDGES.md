@@ -16,6 +16,107 @@
 | Production effect | NONE |
 | Live effect | NONE |
 
+## CI build-criteria configuration — 2026-09-27, registry v4.90
+
+**This section is additive.** Everything below it, including the Group B2
+permanent-closure section, the phase (i) resolution update, the supersession
+annotation, the 2026-09-21 resolution update, and the original record beneath
+that, is preserved unchanged. Nothing has been deleted or rewritten.
+
+**Authority.** `governance/current/ATLAS_MILESTONE_REGISTRY_v4.90.json`,
+`GRANT-CI-B2-BUILD-CRITERIA`.
+
+**STATUS: hosted CI's aggregate build pass/fail criteria now account for the
+permanently-accepted Group B2 case. The architecture gate itself, the test
+file, and every exception mechanism are unchanged.**
+
+### What this is, and what it is not
+
+An earlier task prompt the same day asked to make CI pass by adding a
+`pytest.mark.xfail` (or an equivalent `permitted_exceptions` entry) to
+`tests/architecture/test_forbidden_layer_imports.py`. That was refused and
+reported as a CONFLICT rather than implemented: both routes are exactly the
+"any other means" `GRANT-B2-PERMANENT-CLOSURE` (registry v4.63, above)
+explicitly forbids without a new owner decision that supersedes it, and this
+record does not supersede it.
+
+What this record authorizes instead is narrower and does not touch the test
+at all: hosted CI's *own build-status verdict* — not the test, not the
+architecture gate, not `packaging/atlas_architecture_map.json` — now accounts
+for the case Group B2's permanent closure already, deliberately, made
+permanent. A new script,
+[`tools/ci_check_known_accepted_b2_failure.py`](../../tools/ci_check_known_accepted_b2_failure.py),
+reads the JUnit XML `reports/observability/test_results.junit.xml` (already
+produced as a side effect of any complete full-suite run by the existing
+`conftest.py` hook) and independently re-derives the violation set using the
+same `tools.build_architecture_inventory` functions the test itself calls,
+rather than parsing or trusting pytest's own failure text. The aggregate
+`.github/workflows/atlas_ci_cd.yml` build is reported PASSING only when the
+suite's sole failing/erroring testcase is exactly
+`test_forbidden_layer_imports` and the re-derived edge set is exactly the two
+edges below — nothing more, nothing less — and FAILING for anything else: a
+different test failing, an additional failure alongside it, this same test
+failing for a different reason (e.g. an unassigned module), or the edge set
+gaining or losing a member.
+
+`tests/architecture/test_forbidden_layer_imports.py` itself is unmodified and
+its own JUnit output still reports this test as failed, exactly as before
+this record. No entry was added to `permitted_exceptions`. No
+`xfail`/`skip` marker was added anywhere. Only the CI pipeline's own
+aggregate pass/fail verdict changed.
+
+### Discrimination evidence
+
+A new test file,
+[`tests/architecture/test_ci_known_accepted_b2_check.py`](../../tests/architecture/test_ci_known_accepted_b2_check.py)
+(11 tests, pure functions, no real pytest re-run and no real
+architecture-map mutation), proves the check script discriminates rather
+than merely proving it passes on the current, expected state: a clean suite,
+exactly the known case, a different test failing, the known test plus one
+unrelated additional failure, the known test failing on an unassigned module
+instead of the edge assertion, one unexpected extra edge, and one missing
+known edge are each told apart and produce the correct PASS or FAIL.
+
+The script was also run end to end (not just its unit-tested pure
+functions): against the real, already-committed
+`reports/observability/test_results.junit.xml` from the most recent full
+local suite run (commit `0923805`, `pytest_exit_code: 1`), it printed PASS,
+citing `GRANT-B2-PERMANENT-CLOSURE`; against a synthetic JUnit XML with an
+injected second failure, it printed FAIL (`found 2 failing/erroring
+testcases`) and exited 1.
+
+`tests/architecture` was independently re-run for this record (via the
+project's `atlas-test-runner` agent, not text-scraped from an earlier
+session): **55 passed, 1 failed**, the single failure being
+`test_forbidden_layer_imports` reporting exactly the two known edges below
+and nothing else — unchanged from every prior recorded run since registry
+v4.29. The full `tests/` suite was not re-run for this record: registry
+v4.89's `execution_audit_trail_completeness_result` already established
+**3225 passed, 1 failed** (same single-failure identity) at commit `0923805`,
+two commits behind this record's HEAD (`2beafdb`), and neither intervening
+commit touches the architecture map, `atlas_finance`, or the test suite; per
+the project's evidence-non-reproduction convention this is reused rather
+than re-derived, and the architecture-subset re-run above independently
+reconfirms the one fact this change could plausibly have disturbed.
+
+### What this record does not do
+
+- It does **not** supersede, weaken, or reopen `GRANT-B2-PERMANENT-CLOSURE`.
+  That decision and its stated reasoning (below) stand exactly as recorded;
+  the gate remains, and is intended to remain, permanently red on these two
+  edges at the test level.
+- It does **not** modify `tests/architecture/test_forbidden_layer_imports.py`
+  or any other test file.
+- It does **not** add or modify any `permitted_exceptions` entry in
+  `packaging/atlas_architecture_map.json`.
+- It does **not** add any `pytest.mark.xfail`, `pytest.mark.skip`, or
+  equivalent marker anywhere.
+- It does **not** touch `feat/block3-execution-safety`.
+- It does **not** attempt to fix, reclassify, or extract the
+  `atlas_finance`/`atlas_finance.market_data` ancestor-package edges.
+
+---
+
 ## Group B2 permanent closure — 2026-09-23, registry v4.63
 
 **This section is additive.** Everything below it, including the Group B2

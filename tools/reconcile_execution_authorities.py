@@ -198,7 +198,13 @@ from core.capital_reservation import (  # noqa: E402
 )
 from core.execution_idempotency_store import ExecutionIdempotencyStore  # noqa: E402
 from core.execution_manager import ExecutionManager  # noqa: E402
-from core.execution_models import ExecutionRequest, ExecutionResult  # noqa: E402
+from core.execution_models import (  # noqa: E402
+    ExecutionRequest,
+    ExecutionResult,
+    normalize_position_side,
+    opens_risk,
+    reduces_risk,
+)
 from core.execution_portfolio_foundation import (  # noqa: E402
     SETTLEMENT_CONTEXT_PRECISION,
     AppliedExecutionArchiveConflictError,
@@ -581,6 +587,7 @@ def reconcile(
             FinancialStateStore(directory / financial_state_file),
             applied_archive=applied_store,
             closed_archive=ClosedPositionArchiveStore(directory / closed_file),
+            leverage=None,   # Task 025: operator recovery keeps the book's own leverage (schema 2 or 3)
         )
         book_ready = foundation.ready
 
@@ -760,8 +767,12 @@ def _verify_repair(
         if isinstance(entry, Mapping)
         and str(entry.get("state", "")).strip().upper() == CommitOutcome.COMMITTED.value
     ]
+    # Task 026: the adapter's domain is a LONG open (a BUY on the LONG side); a short open (a SELL) or a cover
+    # (a BUY on the SHORT side) is outside it exactly as a SELL is.
     committed_actions = {
-        str(result.get("action", "")).strip().upper() for result in committed_results
+        (str(result.get("action", "")).strip().upper(),
+         str(result.get("position_side") or "LONG").strip().upper())
+        for result in committed_results
     }
     # A result recovered from applied-execution evidence (F-1) deliberately
     # carries no fill figures - they were never durably recorded and are not
@@ -773,7 +784,7 @@ def _verify_repair(
         == RecoveryClass.COMMIT_APPLIED_EVIDENCE.value
         for result in committed_results
     )
-    if committed_actions <= {"BUY"} and not recovered_present:
+    if committed_actions <= {("BUY", "LONG")} and not recovered_present:
         try:
             CanonicalExecutionEvidenceAdapter(verified_journal, verified)()
         except IntegrityViolation:
@@ -929,7 +940,12 @@ def _classify_paper_recovery(
     symbol = str(request.get("symbol", "")).strip().upper()
     if action not in ("BUY", "SELL") or not symbol:
         raise _RecoveryRefused("RECOVERY_EVIDENCE_AMBIGUOUS")
-    reservation_required = action == "BUY" and not bool(request.get("reduce_only"))
+    # Task 026: the prepared request carries its position side (absent = LONG); a short opens with a SELL
+    try:
+        side = normalize_position_side(request.get("position_side"))
+    except ValueError:
+        raise _RecoveryRefused("RECOVERY_EVIDENCE_AMBIGUOUS") from None
+    reservation_required = opens_risk(action, side) and not bool(request.get("reduce_only"))
 
     ledger = _reservation_ledger(directory, reservation_file, reservation_archive_file)
     reservation = ledger.get(request_id) if ledger is not None else None
@@ -951,7 +967,7 @@ def _classify_paper_recovery(
         # The book is not mid-transition: whether this request was applied
         # is answered by the applied-execution authority directly.
         foundation = ExecutionPortfolioFoundation(
-            store, applied_archive=applied_store, closed_archive=closed_store,
+            store, applied_archive=applied_store, closed_archive=closed_store, leverage=None,
         )
         if not foundation.ready:
             raise _RecoveryRefused("RECOVERY_AUTHORITY_UNREADABLE")
@@ -994,7 +1010,7 @@ def _classify_paper_recovery(
             accounting, redo = _plan_risk_accounting(
                 directory=directory, audit_file=audit_file, risk_state_file=risk_state_file,
                 request_id=request_id, action=action, symbol=symbol,
-                execution_id=applied.execution_id, rederivation=False,
+                execution_id=applied.execution_id, rederivation=False, position_side=side,
             )
             _require_redo_book(foundation, applied_store, request_id, redo)
             return _RecoveryPlan(
@@ -1026,7 +1042,7 @@ def _classify_paper_recovery(
         accounting, redo = _plan_risk_accounting(
             directory=directory, audit_file=audit_file, risk_state_file=risk_state_file,
             request_id=request_id, action=action, symbol=symbol,
-            execution_id=applied.execution_id, rederivation=False,
+            execution_id=applied.execution_id, rederivation=False, position_side=side,
         )
         _require_redo_book(foundation, applied_store, request_id, redo)
         return _RecoveryPlan(
@@ -1088,7 +1104,7 @@ def _classify_paper_recovery(
     accounting, _ = _plan_risk_accounting(
         directory=directory, audit_file=audit_file, risk_state_file=risk_state_file,
         request_id=request_id, action=action, symbol=symbol,
-        execution_id=transition.execution_id, rederivation=True,
+        execution_id=transition.execution_id, rederivation=True, position_side=side,
     )
     accounting_before = None
     if accounting is RiskAccounting.RECORD:
@@ -1187,6 +1203,16 @@ def _derive_paper_result(
     ):
         raise unavailable
 
+    # Registry v5.23: re-derive with the paper fee rate the original
+    # execution recorded on its approval; absent means the historical
+    # fee-free contract. A malformed rate makes derivation unavailable.
+    try:
+        paper_fee_rate = Decimal(str(details.get("paper_fee_rate", "0")))
+    except Exception as exc:
+        raise unavailable from exc
+    if not paper_fee_rate.is_finite() or not Decimal("0") <= paper_fee_rate < Decimal("1"):
+        raise unavailable
+
     try:
         request = ExecutionRequest.from_dict(dict(request_payload))
     except Exception as exc:
@@ -1199,6 +1225,7 @@ def _derive_paper_result(
             scratch_path = Path(scratch)
             manager = ExecutionManager(
                 mode=ExecutionManager.MODE_PAPER,
+                paper_fee_rate=paper_fee_rate,
                 idempotency_store=ExecutionIdempotencyStore(scratch_path / "idempotency.jsonl"),
                 transaction_journal=ExecutionTransactionJournal(scratch_path / "journal.jsonl"),
                 audit_store=AuditEventStore(scratch_path / "audit.jsonl"),
@@ -1290,6 +1317,7 @@ def _plan_risk_accounting(
     symbol: str,
     execution_id: str,
     rederivation: bool,
+    position_side: str = "LONG",
 ) -> tuple[RiskAccounting, Mapping[str, Any] | None]:
     """Whether a recovered COMMITTED request's realized result is booked.
 
@@ -1300,7 +1328,7 @@ def _plan_risk_accounting(
     write-ahead record against the stored state (see the module docstring).
     Refuses rather than guessing, and before anything is written.
     """
-    if action != "SELL":
+    if not reduces_risk(action, position_side):   # Task 026: a cover (BUY on the SHORT side) is booked too
         return RiskAccounting.NOT_APPLICABLE, None
 
     audit_path = directory / audit_file
@@ -1497,7 +1525,9 @@ def _book_risk_accounting(
                 success=True, status="PAPER_EXECUTED",
                 execution_id=str(redo["execution_id"]),
                 position_id=str(redo["position_id"]),
-                symbol=request.symbol, action="SELL",
+                # Task 026: a cover is a BUY on the SHORT side
+                symbol=request.symbol, action="BUY" if request.position_side == "SHORT" else "SELL",
+                position_side=request.position_side,
             )
             before = _redo_before(after, redo, request.symbol)
         else:
@@ -1588,7 +1618,7 @@ def _execute_recovery(
             )
         if plan.risk_accounting is RiskAccounting.RECORD:
             after = completed if completed is not None else ExecutionPortfolioFoundation(
-                store, applied_archive=applied_store, closed_archive=closed_store,
+                store, applied_archive=applied_store, closed_archive=closed_store, leverage=None,
             ).snapshot()
             _book_risk_accounting(
                 plan, journal=journal, directory=directory, audit_file=audit_file,
@@ -1661,6 +1691,7 @@ def _verify_recovery(
             FinancialStateStore(directory / financial_state_file),
             applied_archive=applied_store,
             closed_archive=ClosedPositionArchiveStore(directory / closed_file),
+            leverage=None,   # Task 025: operator recovery keeps the book's own leverage (schema 2 or 3)
         )
         if not foundation.ready:
             return failed

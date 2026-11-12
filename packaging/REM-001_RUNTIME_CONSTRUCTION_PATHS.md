@@ -12,17 +12,18 @@ Command: `python -m tools.build_rem001_gate1_maps construction --write`
 | authorization_id | REM-001-GATE1-MECHANICAL |
 | granted_by_registry | `governance/current/ATLAS_MILESTONE_REGISTRY_v4.32.json` |
 | decision_record | `governance/ATLAS_BASELINE_IDENTITY_AND_GATE1_SCOPE_DECISION_v1.0.md` |
-| finding | GOV-DRIFT-005 (OPEN, not resolved by this artifact) |
+| regeneration_recorded_by | `governance/current/ATLAS_MILESTONE_REGISTRY_v4.93.json` (`rem001_d4_generator_recovery_and_regeneration`) |
+| finding | GOV-DRIFT-005 (not resolved by this artifact; its current status is recorded in the latest governance registry) |
 | scope | Read-only analysis and artifact emission. This file is not a certification, does not advance `gate_1_state`, and carries no approval. |
 
 ## Source identity
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `db8bdf3f22e05a730ca6c3a8ec4eae51f8b66d4b` |
-| generated_from_tree | `6e4b60a9cd88d2d65d70717ef3509af092aa5e19` |
-| tracked_working_tree_clean | True |
-| modified_tracked_paths_at_generation | none |
+| generated_from_commit | `49edbac13388229efb7cbdb8a4ded76fadc03b81` |
+| generated_from_tree | `e57aa425f1eb543c42d59b6ef75b3f523f95abaa` |
+| tracked_working_tree_clean | False |
+| modified_tracked_paths_at_generation | ['ackaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/REM-001_STATE_AUTHORITY_MAP.md'] |
 
 ## Analysis
 
@@ -54,15 +55,15 @@ below: it counted pattern hits, these count resolved call sites.
 
 | field | value |
 | --- | --- |
-| entry_points | `main.py`, `web_app.py` |
+| entry_points | `main.py`, `web_app.py`, `atlas_service.py`, `atlas_supervisor.py` |
 | composition_root_canonical | `core/application.py` (ADR-0001) |
-| modules_in_runtime_closure | 105 |
-| classes_defined_in_closure | 368 |
-| construction_sites | 277 |
-| modules_constructing | 33 |
-| classes_constructed | 117 |
-| construction_edges | 86 |
-| ambiguous_class_names | 2 |
+| modules_in_runtime_closure | 146 |
+| classes_defined_in_closure | 453 |
+| construction_sites | 333 |
+| modules_constructing | 39 |
+| classes_constructed | 136 |
+| construction_edges | 106 |
+| ambiguous_class_names | 5 |
 | parse_failures | 0 |
 
 ### Ambiguous class names
@@ -73,6 +74,9 @@ contribute no construction edge.
 
 - `AtlasBrain` — `ai/core/atlas_brain.py`, `core/brain.py`
 - `Decision` — `ai/core/atlas_reasoning_engine.py`, `core/decision.py`
+- `RiskLevel` — `atlas_org/permissions.py`, `core/decision.py`
+- `_Continue` — `core/execution_manager.py`, `core/market_loop.py`
+- `_TransportError` — `atlas_finance/market_data/fear_greed_provider.py`, `atlas_finance/market_data/treasury_yield_provider.py`
 
 ## Canonical construction chain (ADR-0001)
 
@@ -91,93 +95,122 @@ classes and their observed constructors:
 
 | constructing module | class | defining module | line | enclosing scope |
 | --- | --- | --- | --- | --- |
-| `ai/core/atlas_brain.py` | `Action` | `core/decision_intelligence.py` | 810 | `AtlasBrain::_build_phase5_agent_evidence` |
-| `ai/core/atlas_brain.py` | `AdvisoryRiskScorer` | `ai/core/intelligence/risk_engine.py` | 210 | `AtlasBrain::initialize_modules` |
-| `ai/core/atlas_brain.py` | `AgentFusion` | `ai/core/intelligence/agent_fusion.py` | 198 | `AtlasBrain::initialize_modules` |
-| `ai/core/atlas_brain.py` | `AtlasMemoryCore` | `ai/core/atlas_memory_core.py` | 186 | `AtlasBrain::initialize_modules` |
-| `ai/core/atlas_brain.py` | `AtlasReasoningEngine` | `ai/core/atlas_reasoning_engine.py` | 190 | `AtlasBrain::initialize_modules` |
-| `ai/core/atlas_brain.py` | `AtlasWorldModel` | `ai/core/atlas_world_model.py` | 194 | `AtlasBrain::initialize_modules` |
-| `ai/core/atlas_brain.py` | `ConfidenceEngine` | `ai/core/intelligence/confidence/confidence_engine.py` | 208 | `AtlasBrain::initialize_modules` |
-| `ai/core/atlas_brain.py` | `DecisionBuilder` | `ai/core/intelligence/decision_builder.py` | 212 | `AtlasBrain::initialize_modules` |
-| `ai/core/atlas_brain.py` | `Evidence` | `core/decision_intelligence.py` | 857 | `AtlasBrain::_build_phase5_agent_evidence` |
-| `ai/core/atlas_brain.py` | `FusionPolicy` | `core/decision_intelligence.py` | 714 | `AtlasBrain::_build_phase5_shadow_proposal` |
-| `ai/core/atlas_brain.py` | `MemoryAdapter` | `ai/core/intelligence/memory_adapter.py` | 204 | `AtlasBrain::initialize_modules` |
-| `ai/core/atlas_brain.py` | `ReasoningAdapter` | `ai/core/intelligence/reasoning_adapter.py` | 200 | `AtlasBrain::initialize_modules` |
-| `ai/core/atlas_brain.py` | `SignalFusion` | `core/decision_intelligence.py` | 721 | `AtlasBrain::_build_phase5_shadow_proposal` |
-| `ai/core/intelligence/decision_builder.py` | `Decision` | `UNKNOWN` | 84 | `DecisionBuilder::create` |
-| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 569 | `BinancePublicDataProvider::get_candles` |
-| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 893 | `BinancePublicDataProvider::_parse_candle` |
-| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 902 | `BinancePublicDataProvider::_parse_candle` |
-| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 911 | `BinancePublicDataProvider::_parse_candle` |
-| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 917 | `BinancePublicDataProvider::_parse_candle` |
-| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 1361 | `BinancePublicDataProvider::_milliseconds_to_datetime` |
-| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 1367 | `BinancePublicDataProvider::_milliseconds_to_datetime` |
-| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 1382 | `BinancePublicDataProvider::_milliseconds_to_datetime` |
-| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleLimitError` | `atlas_finance/market_data/exceptions.py` | 1083 | `BinancePublicDataProvider::_validate_candle_limit` |
-| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleLimitError` | `atlas_finance/market_data/exceptions.py` | 1093 | `BinancePublicDataProvider::_validate_candle_limit` |
-| `atlas_finance/market_data/binance_public_provider.py` | `InvalidSymbolError` | `atlas_finance/market_data/exceptions.py` | 1006 | `BinancePublicDataProvider::_normalize_symbol` |
-| `atlas_finance/market_data/binance_public_provider.py` | `InvalidSymbolError` | `atlas_finance/market_data/exceptions.py` | 1028 | `BinancePublicDataProvider::_normalize_symbol` |
-| `atlas_finance/market_data/binance_public_provider.py` | `InvalidSymbolError` | `atlas_finance/market_data/exceptions.py` | 1035 | `BinancePublicDataProvider::_normalize_symbol` |
-| `atlas_finance/market_data/binance_public_provider.py` | `InvalidTimeframeError` | `atlas_finance/market_data/exceptions.py` | 1051 | `BinancePublicDataProvider::_normalize_timeframe` |
-| `atlas_finance/market_data/binance_public_provider.py` | `InvalidTimeframeError` | `atlas_finance/market_data/exceptions.py` | 1061 | `BinancePublicDataProvider::_normalize_timeframe` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketCandle` | `atlas_finance/market_data/models.py` | 927 | `BinancePublicDataProvider::_parse_candle` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1109 | `BinancePublicDataProvider::_validate_base_url` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1123 | `BinancePublicDataProvider::_validate_base_url` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1144 | `BinancePublicDataProvider::_validate_retry_attempts` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1149 | `BinancePublicDataProvider::_validate_retry_attempts` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1170 | `BinancePublicDataProvider::_validate_maximum_candle_limit` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1176 | `BinancePublicDataProvider::_validate_maximum_candle_limit` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1198 | `BinancePublicDataProvider::_validate_positive_float` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1208 | `BinancePublicDataProvider::_validate_positive_float` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1230 | `BinancePublicDataProvider::_validate_non_negative_float` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1240 | `BinancePublicDataProvider::_validate_non_negative_float` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConnectionError` | `atlas_finance/market_data/exceptions.py` | 323 | `BinancePublicDataProvider::connect` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConnectionError` | `atlas_finance/market_data/exceptions.py` | 345 | `BinancePublicDataProvider::connect` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConnectionError` | `atlas_finance/market_data/exceptions.py` | 719 | `BinancePublicDataProvider::_perform_get` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConnectionError` | `atlas_finance/market_data/exceptions.py` | 992 | `BinancePublicDataProvider::_ensure_available` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRateLimitError` | `atlas_finance/market_data/exceptions.py` | 754 | `BinancePublicDataProvider::_validate_response` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 528 | `BinancePublicDataProvider::get_candles` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 677 | `BinancePublicDataProvider::_request_json` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 725 | `BinancePublicDataProvider::_perform_get` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 761 | `BinancePublicDataProvider::_validate_response` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 778 | `BinancePublicDataProvider::_validate_response` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 1323 | `BinancePublicDataProvider::_datetime_to_milliseconds` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 1328 | `BinancePublicDataProvider::_datetime_to_milliseconds` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 1339 | `BinancePublicDataProvider::_datetime_to_milliseconds` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataResponseError` | `atlas_finance/market_data/exceptions.py` | 410 | `BinancePublicDataProvider::get_price` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataResponseError` | `atlas_finance/market_data/exceptions.py` | 430 | `BinancePublicDataProvider::get_price` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataResponseError` | `atlas_finance/market_data/exceptions.py` | 541 | `BinancePublicDataProvider::get_candles` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataResponseError` | `atlas_finance/market_data/exceptions.py` | 626 | `BinancePublicDataProvider::_request_json` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataResponseError` | `atlas_finance/market_data/exceptions.py` | 813 | `BinancePublicDataProvider::_parse_candle` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataResponseError` | `atlas_finance/market_data/exceptions.py` | 820 | `BinancePublicDataProvider::_parse_candle` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataTimeoutError` | `atlas_finance/market_data/exceptions.py` | 712 | `BinancePublicDataProvider::_perform_get` |
-| `atlas_finance/market_data/binance_public_provider.py` | `MarketPrice` | `atlas_finance/market_data/models.py` | 446 | `BinancePublicDataProvider::get_price` |
-| `atlas_finance/market_data/market_feed_service.py` | `InvalidCandleLimitError` | `atlas_finance/market_data/exceptions.py` | 1795 | `MarketFeedService::_validate_limit` |
-| `atlas_finance/market_data/market_feed_service.py` | `InvalidCandleLimitError` | `atlas_finance/market_data/exceptions.py` | 1808 | `MarketFeedService::_validate_limit` |
-| `atlas_finance/market_data/market_feed_service.py` | `InvalidSymbolError` | `atlas_finance/market_data/exceptions.py` | 1714 | `MarketFeedService::_normalize_symbol` |
-| `atlas_finance/market_data/market_feed_service.py` | `InvalidSymbolError` | `atlas_finance/market_data/exceptions.py` | 1736 | `MarketFeedService::_normalize_symbol` |
-| `atlas_finance/market_data/market_feed_service.py` | `InvalidTimeframeError` | `atlas_finance/market_data/exceptions.py` | 1750 | `MarketFeedService::_normalize_timeframe` |
-| `atlas_finance/market_data/market_feed_service.py` | `InvalidTimeframeError` | `atlas_finance/market_data/exceptions.py` | 1757 | `MarketFeedService::_normalize_timeframe` |
-| `atlas_finance/market_data/market_feed_service.py` | `InvalidTimeframeError` | `atlas_finance/market_data/exceptions.py` | 1773 | `MarketFeedService::_normalize_timeframe` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 378 | `MarketFeedService::__init__` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1693 | `MarketFeedService::_validate_failure_threshold` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1699 | `MarketFeedService::_validate_failure_threshold` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketDataError` | `atlas_finance/market_data/exceptions.py` | 1825 | `MarketFeedService::_validate_price_result` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketDataError` | `atlas_finance/market_data/exceptions.py` | 1831 | `MarketFeedService::_validate_price_result` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketDataError` | `atlas_finance/market_data/exceptions.py` | 1842 | `MarketFeedService::_validate_price_result` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketDataError` | `atlas_finance/market_data/exceptions.py` | 1857 | `MarketFeedService::_validate_candle_results` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketDataError` | `atlas_finance/market_data/exceptions.py` | 1873 | `MarketFeedService::_validate_candle_results` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketDataError` | `atlas_finance/market_data/exceptions.py` | 1882 | `MarketFeedService::_validate_candle_results` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketDataError` | `atlas_finance/market_data/exceptions.py` | 1891 | `MarketFeedService::_validate_candle_results` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketDataError` | `atlas_finance/market_data/exceptions.py` | 1901 | `MarketFeedService::_validate_candle_results` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketDataProviderUnavailableError` | `atlas_finance/market_data/exceptions.py` | 510 | `MarketFeedService::_on_start` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketDataRequestStatistics` | `atlas_finance/market_data/models.py` | 265 | `_MutableRequestStatistics::snapshot` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketDataServiceNotRunningError` | `atlas_finance/market_data/exceptions.py` | 1674 | `MarketFeedService::_require_running` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketDataServiceShutdownError` | `atlas_finance/market_data/exceptions.py` | 625 | `MarketFeedService::_on_stop` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketDataServiceStartupError` | `atlas_finance/market_data/exceptions.py` | 572 | `MarketFeedService::_on_start` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketFeedSnapshot` | `atlas_finance/market_data/models.py` | 919 | `MarketFeedService::market_feed_snapshot` |
-| `atlas_finance/market_data/market_feed_service.py` | `MarketFeedStatistics` | `atlas_finance/market_data/models.py` | 842 | `MarketFeedService::statistics` |
-| `atlas_finance/market_data/market_feed_service.py` | `ServiceIdentity` | `atlas_os/contracts.py` | 366 | `MarketFeedService::__init__` |
+| `ai/core/atlas_brain.py` | `Action` | `core/decision_intelligence.py` | 907 | `AtlasBrain::_build_phase5_agent_evidence` |
+| `ai/core/atlas_brain.py` | `AdvisoryRiskScorer` | `ai/core/intelligence/risk_engine.py` | 263 | `AtlasBrain::initialize_modules` |
+| `ai/core/atlas_brain.py` | `AgentFusion` | `ai/core/intelligence/agent_fusion.py` | 248 | `AtlasBrain::initialize_modules` |
+| `ai/core/atlas_brain.py` | `AtlasMemoryCore` | `ai/core/atlas_memory_core.py` | 236 | `AtlasBrain::initialize_modules` |
+| `ai/core/atlas_brain.py` | `AtlasReasoningEngine` | `ai/core/atlas_reasoning_engine.py` | 240 | `AtlasBrain::initialize_modules` |
+| `ai/core/atlas_brain.py` | `AtlasWorldModel` | `ai/core/atlas_world_model.py` | 244 | `AtlasBrain::initialize_modules` |
+| `ai/core/atlas_brain.py` | `ClaimSource` | `data_layer/contracts.py` | 1328 | `AtlasBrain::_record_one_agent_claim` |
+| `ai/core/atlas_brain.py` | `ConfidenceEngine` | `ai/core/intelligence/confidence/confidence_engine.py` | 261 | `AtlasBrain::initialize_modules` |
+| `ai/core/atlas_brain.py` | `DecisionBuilder` | `ai/core/intelligence/decision_builder.py` | 265 | `AtlasBrain::initialize_modules` |
+| `ai/core/atlas_brain.py` | `Evidence` | `core/decision_intelligence.py` | 954 | `AtlasBrain::_build_phase5_agent_evidence` |
+| `ai/core/atlas_brain.py` | `FusionPolicy` | `core/decision_intelligence.py` | 811 | `AtlasBrain::_build_phase5_shadow_proposal` |
+| `ai/core/atlas_brain.py` | `MemoryAdapter` | `ai/core/intelligence/memory_adapter.py` | 254 | `AtlasBrain::initialize_modules` |
+| `ai/core/atlas_brain.py` | `ReasoningAdapter` | `ai/core/intelligence/reasoning_adapter.py` | 250 | `AtlasBrain::initialize_modules` |
+| `ai/core/atlas_brain.py` | `SignalFusion` | `core/decision_intelligence.py` | 818 | `AtlasBrain::_build_phase5_shadow_proposal` |
+| `ai/core/intelligence/decision_builder.py` | `Decision` | `UNKNOWN` | 90 | `DecisionBuilder::create` |
+| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 573 | `BinancePublicDataProvider::get_candles` |
+| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 926 | `BinancePublicDataProvider::_parse_candle` |
+| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 935 | `BinancePublicDataProvider::_parse_candle` |
+| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 944 | `BinancePublicDataProvider::_parse_candle` |
+| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 950 | `BinancePublicDataProvider::_parse_candle` |
+| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 1394 | `BinancePublicDataProvider::_milliseconds_to_datetime` |
+| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 1400 | `BinancePublicDataProvider::_milliseconds_to_datetime` |
+| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 1415 | `BinancePublicDataProvider::_milliseconds_to_datetime` |
+| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleLimitError` | `atlas_finance/market_data/exceptions.py` | 1116 | `BinancePublicDataProvider::_validate_candle_limit` |
+| `atlas_finance/market_data/binance_public_provider.py` | `InvalidCandleLimitError` | `atlas_finance/market_data/exceptions.py` | 1126 | `BinancePublicDataProvider::_validate_candle_limit` |
+| `atlas_finance/market_data/binance_public_provider.py` | `InvalidSymbolError` | `atlas_finance/market_data/exceptions.py` | 1039 | `BinancePublicDataProvider::_normalize_symbol` |
+| `atlas_finance/market_data/binance_public_provider.py` | `InvalidSymbolError` | `atlas_finance/market_data/exceptions.py` | 1061 | `BinancePublicDataProvider::_normalize_symbol` |
+| `atlas_finance/market_data/binance_public_provider.py` | `InvalidSymbolError` | `atlas_finance/market_data/exceptions.py` | 1068 | `BinancePublicDataProvider::_normalize_symbol` |
+| `atlas_finance/market_data/binance_public_provider.py` | `InvalidTimeframeError` | `atlas_finance/market_data/exceptions.py` | 1084 | `BinancePublicDataProvider::_normalize_timeframe` |
+| `atlas_finance/market_data/binance_public_provider.py` | `InvalidTimeframeError` | `atlas_finance/market_data/exceptions.py` | 1094 | `BinancePublicDataProvider::_normalize_timeframe` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketCandle` | `atlas_finance/market_data/models.py` | 960 | `BinancePublicDataProvider::_parse_candle` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1142 | `BinancePublicDataProvider::_validate_base_url` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1156 | `BinancePublicDataProvider::_validate_base_url` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1177 | `BinancePublicDataProvider::_validate_retry_attempts` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1182 | `BinancePublicDataProvider::_validate_retry_attempts` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1203 | `BinancePublicDataProvider::_validate_maximum_candle_limit` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1209 | `BinancePublicDataProvider::_validate_maximum_candle_limit` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1231 | `BinancePublicDataProvider::_validate_positive_float` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1241 | `BinancePublicDataProvider::_validate_positive_float` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1263 | `BinancePublicDataProvider::_validate_non_negative_float` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1273 | `BinancePublicDataProvider::_validate_non_negative_float` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConnectionError` | `atlas_finance/market_data/exceptions.py` | 327 | `BinancePublicDataProvider::connect` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConnectionError` | `atlas_finance/market_data/exceptions.py` | 349 | `BinancePublicDataProvider::connect` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConnectionError` | `atlas_finance/market_data/exceptions.py` | 736 | `BinancePublicDataProvider::_perform_get` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataConnectionError` | `atlas_finance/market_data/exceptions.py` | 1025 | `BinancePublicDataProvider::_ensure_available` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRateLimitError` | `atlas_finance/market_data/exceptions.py` | 608 | `BinancePublicDataProvider::_request_json` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRateLimitError` | `atlas_finance/market_data/exceptions.py` | 787 | `BinancePublicDataProvider::_validate_response` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 532 | `BinancePublicDataProvider::get_candles` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 694 | `BinancePublicDataProvider::_request_json` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 742 | `BinancePublicDataProvider::_perform_get` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 794 | `BinancePublicDataProvider::_validate_response` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 811 | `BinancePublicDataProvider::_validate_response` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 1356 | `BinancePublicDataProvider::_datetime_to_milliseconds` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 1361 | `BinancePublicDataProvider::_datetime_to_milliseconds` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 1372 | `BinancePublicDataProvider::_datetime_to_milliseconds` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataResponseError` | `atlas_finance/market_data/exceptions.py` | 414 | `BinancePublicDataProvider::get_price` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataResponseError` | `atlas_finance/market_data/exceptions.py` | 434 | `BinancePublicDataProvider::get_price` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataResponseError` | `atlas_finance/market_data/exceptions.py` | 545 | `BinancePublicDataProvider::get_candles` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataResponseError` | `atlas_finance/market_data/exceptions.py` | 643 | `BinancePublicDataProvider::_request_json` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataResponseError` | `atlas_finance/market_data/exceptions.py` | 846 | `BinancePublicDataProvider::_parse_candle` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataResponseError` | `atlas_finance/market_data/exceptions.py` | 853 | `BinancePublicDataProvider::_parse_candle` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketDataTimeoutError` | `atlas_finance/market_data/exceptions.py` | 729 | `BinancePublicDataProvider::_perform_get` |
+| `atlas_finance/market_data/binance_public_provider.py` | `MarketPrice` | `atlas_finance/market_data/models.py` | 450 | `BinancePublicDataProvider::get_price` |
+| `atlas_finance/market_data/market_feed_service.py` | `InvalidCandleLimitError` | `atlas_finance/market_data/exceptions.py` | 1863 | `MarketFeedService::_validate_limit` |
+| `atlas_finance/market_data/market_feed_service.py` | `InvalidCandleLimitError` | `atlas_finance/market_data/exceptions.py` | 1876 | `MarketFeedService::_validate_limit` |
+| `atlas_finance/market_data/market_feed_service.py` | `InvalidSymbolError` | `atlas_finance/market_data/exceptions.py` | 1782 | `MarketFeedService::_normalize_symbol` |
+| `atlas_finance/market_data/market_feed_service.py` | `InvalidSymbolError` | `atlas_finance/market_data/exceptions.py` | 1804 | `MarketFeedService::_normalize_symbol` |
+| `atlas_finance/market_data/market_feed_service.py` | `InvalidTimeframeError` | `atlas_finance/market_data/exceptions.py` | 1818 | `MarketFeedService::_normalize_timeframe` |
+| `atlas_finance/market_data/market_feed_service.py` | `InvalidTimeframeError` | `atlas_finance/market_data/exceptions.py` | 1825 | `MarketFeedService::_normalize_timeframe` |
+| `atlas_finance/market_data/market_feed_service.py` | `InvalidTimeframeError` | `atlas_finance/market_data/exceptions.py` | 1841 | `MarketFeedService::_normalize_timeframe` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 379 | `MarketFeedService::__init__` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1761 | `MarketFeedService::_validate_failure_threshold` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 1767 | `MarketFeedService::_validate_failure_threshold` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketDataError` | `atlas_finance/market_data/exceptions.py` | 1893 | `MarketFeedService::_validate_price_result` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketDataError` | `atlas_finance/market_data/exceptions.py` | 1899 | `MarketFeedService::_validate_price_result` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketDataError` | `atlas_finance/market_data/exceptions.py` | 1910 | `MarketFeedService::_validate_price_result` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketDataError` | `atlas_finance/market_data/exceptions.py` | 1925 | `MarketFeedService::_validate_candle_results` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketDataError` | `atlas_finance/market_data/exceptions.py` | 1941 | `MarketFeedService::_validate_candle_results` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketDataError` | `atlas_finance/market_data/exceptions.py` | 1950 | `MarketFeedService::_validate_candle_results` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketDataError` | `atlas_finance/market_data/exceptions.py` | 1959 | `MarketFeedService::_validate_candle_results` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketDataError` | `atlas_finance/market_data/exceptions.py` | 1969 | `MarketFeedService::_validate_candle_results` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketDataProviderUnavailableError` | `atlas_finance/market_data/exceptions.py` | 518 | `MarketFeedService::_on_start` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketDataRequestStatistics` | `atlas_finance/market_data/models.py` | 266 | `_MutableRequestStatistics::snapshot` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketDataServiceNotRunningError` | `atlas_finance/market_data/exceptions.py` | 1742 | `MarketFeedService::_require_running` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketDataServiceShutdownError` | `atlas_finance/market_data/exceptions.py` | 633 | `MarketFeedService::_on_stop` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketDataServiceStartupError` | `atlas_finance/market_data/exceptions.py` | 580 | `MarketFeedService::_on_start` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketFeedSnapshot` | `atlas_finance/market_data/models.py` | 927 | `MarketFeedService::market_feed_snapshot` |
+| `atlas_finance/market_data/market_feed_service.py` | `MarketFeedStatistics` | `atlas_finance/market_data/models.py` | 850 | `MarketFeedService::statistics` |
+| `atlas_finance/market_data/market_feed_service.py` | `ServiceIdentity` | `atlas_os/contracts.py` | 367 | `MarketFeedService::__init__` |
+| `atlas_finance/market_data/mt5_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 245 | `Mt5MarketDataProvider::get_candles` |
+| `atlas_finance/market_data/mt5_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 248 | `Mt5MarketDataProvider::get_candles` |
+| `atlas_finance/market_data/mt5_provider.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 251 | `Mt5MarketDataProvider::get_candles` |
+| `atlas_finance/market_data/mt5_provider.py` | `InvalidCandleLimitError` | `atlas_finance/market_data/exceptions.py` | 229 | `Mt5MarketDataProvider::get_candles` |
+| `atlas_finance/market_data/mt5_provider.py` | `InvalidPriceError` | `atlas_finance/market_data/exceptions.py` | 214 | `Mt5MarketDataProvider::get_price` |
+| `atlas_finance/market_data/mt5_provider.py` | `InvalidPriceError` | `atlas_finance/market_data/exceptions.py` | 216 | `Mt5MarketDataProvider::get_price` |
+| `atlas_finance/market_data/mt5_provider.py` | `InvalidSymbolError` | `atlas_finance/market_data/exceptions.py` | 149 | `Mt5MarketDataProvider::connect` |
+| `atlas_finance/market_data/mt5_provider.py` | `InvalidSymbolError` | `atlas_finance/market_data/exceptions.py` | 152 | `Mt5MarketDataProvider::connect` |
+| `atlas_finance/market_data/mt5_provider.py` | `InvalidSymbolError` | `atlas_finance/market_data/exceptions.py` | 156 | `Mt5MarketDataProvider::connect` |
+| `atlas_finance/market_data/mt5_provider.py` | `InvalidSymbolError` | `atlas_finance/market_data/exceptions.py` | 194 | `Mt5MarketDataProvider::_require` |
+| `atlas_finance/market_data/mt5_provider.py` | `InvalidTimeframeError` | `atlas_finance/market_data/exceptions.py` | 227 | `Mt5MarketDataProvider::get_candles` |
+| `atlas_finance/market_data/mt5_provider.py` | `MarketCandle` | `atlas_finance/market_data/models.py` | 254 | `Mt5MarketDataProvider::get_candles` |
+| `atlas_finance/market_data/mt5_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 81 | `_load_mt5` |
+| `atlas_finance/market_data/mt5_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 94 | `Mt5MarketDataProvider::__init__` |
+| `atlas_finance/market_data/mt5_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 96 | `Mt5MarketDataProvider::__init__` |
+| `atlas_finance/market_data/mt5_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 143 | `Mt5MarketDataProvider::connect` |
+| `atlas_finance/market_data/mt5_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 173 | `Mt5MarketDataProvider::_measure_offset` |
+| `atlas_finance/market_data/mt5_provider.py` | `MarketDataConfigurationError` | `atlas_finance/market_data/exceptions.py` | 184 | `Mt5MarketDataProvider::_measure_offset` |
+| `atlas_finance/market_data/mt5_provider.py` | `MarketDataConnectionError` | `atlas_finance/market_data/exceptions.py` | 137 | `Mt5MarketDataProvider::connect` |
+| `atlas_finance/market_data/mt5_provider.py` | `MarketDataConnectionError` | `atlas_finance/market_data/exceptions.py` | 141 | `Mt5MarketDataProvider::connect` |
+| `atlas_finance/market_data/mt5_provider.py` | `MarketDataProviderUnavailableError` | `atlas_finance/market_data/exceptions.py` | 191 | `Mt5MarketDataProvider::_require` |
+| `atlas_finance/market_data/mt5_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 210 | `Mt5MarketDataProvider::get_price` |
+| `atlas_finance/market_data/mt5_provider.py` | `MarketDataRequestError` | `atlas_finance/market_data/exceptions.py` | 233 | `Mt5MarketDataProvider::get_candles` |
+| `atlas_finance/market_data/mt5_provider.py` | `MarketDataResponseError` | `atlas_finance/market_data/exceptions.py` | 200 | `Mt5MarketDataProvider::_to_utc` |
+| `atlas_finance/market_data/mt5_provider.py` | `MarketDataResponseError` | `atlas_finance/market_data/exceptions.py` | 253 | `Mt5MarketDataProvider::get_candles` |
+| `atlas_finance/market_data/mt5_provider.py` | `MarketPrice` | `atlas_finance/market_data/models.py` | 219 | `Mt5MarketDataProvider::get_price` |
+| `atlas_org/tasks.py` | `Capability` | `atlas_org/permissions.py` | 73 | `_new_task` |
 | `atlas_os/audit/audit_log.py` | `ServiceIdentity` | `atlas_os/contracts.py` | 310 | `AuditLogService::__init__` |
 | `atlas_os/configuration/configuration_service.py` | `ServiceIdentity` | `atlas_os/contracts.py` | 460 | `ConfigurationService::__init__` |
 | `atlas_os/events/event_bus.py` | `ServiceIdentity` | `atlas_os/contracts.py` | 310 | `EventBusService::__init__` |
@@ -201,79 +234,100 @@ classes and their observed constructors:
 | `atlas_os/services/dependency_manager.py` | `DuplicateServiceError` | `atlas_os/services/registry.py` | 300 | `DependencyServiceManager::register` |
 | `atlas_os/services/dependency_manager.py` | `ServiceNotFoundError` | `atlas_os/services/registry.py` | 1225 | `DependencyServiceManager::_require_registered_key` |
 | `atlas_os/services/dependency_manager.py` | `ServiceRegistry` | `atlas_os/services/registry.py` | 217 | `DependencyServiceManager::__init__` |
-| `core/application.py` | `AppliedExecutionArchiveStore` | `core/execution_portfolio_foundation.py` | 465 | `AtlasApplication::_build_financial_services` |
-| `core/application.py` | `AtlasBrain` | `UNKNOWN` | 281 | `AtlasApplication::_build_services` |
-| `core/application.py` | `AtlasController` | `core/controller/atlas_controller.py` | 359 | `AtlasApplication::_build_services` |
-| `core/application.py` | `AtlasLogger` | `core/logger.py` | 240 | `AtlasApplication::_build_infrastructure` |
-| `core/application.py` | `AtlasRuntime` | `core/runtime.py` | 241 | `AtlasApplication::_build_infrastructure` |
-| `core/application.py` | `AuditEventStore` | `core/audit_event_store.py` | 509 | `AtlasApplication::_build_execution_durability` |
-| `core/application.py` | `CapabilityGateway` | `core/tool_gateway_contracts.py` | 400 | `AtlasApplication::_build_capability_gateway` |
-| `core/application.py` | `CapitalManager` | `portfolio/capital_manager.py` | 260 | `AtlasApplication::_build_services` |
-| `core/application.py` | `CapitalReservationLedger` | `core/capital_reservation.py` | 451 | `AtlasApplication::_build_financial_services` |
-| `core/application.py` | `ClosedPositionArchiveStore` | `core/execution_portfolio_foundation.py` | 468 | `AtlasApplication::_build_financial_services` |
-| `core/application.py` | `EventBus` | `core/event_bus.py` | 242 | `AtlasApplication::_build_infrastructure` |
-| `core/application.py` | `ExecutionIdempotencyStore` | `core/execution_idempotency_store.py` | 501 | `AtlasApplication::_build_execution_durability` |
-| `core/application.py` | `ExecutionManager` | `core/execution_manager.py` | 323 | `AtlasApplication::_build_services` |
-| `core/application.py` | `ExecutionPortfolioFoundation` | `core/execution_portfolio_foundation.py` | 461 | `AtlasApplication::_build_financial_services` |
-| `core/application.py` | `ExecutionTransactionJournal` | `core/execution_transaction_journal.py` | 505 | `AtlasApplication::_build_execution_durability` |
-| `core/application.py` | `FinancialStateStore` | `core/execution_portfolio_foundation.py` | 462 | `AtlasApplication::_build_financial_services` |
-| `core/application.py` | `JsonReservationStore` | `core/capital_reservation.py` | 452 | `AtlasApplication::_build_financial_services` |
-| `core/application.py` | `JsonRiskStateStore` | `core/risk_state_store.py` | 447 | `AtlasApplication::_build_financial_services` |
-| `core/application.py` | `LifecycleManager` | `core/lifecycle.py` | 244 | `AtlasApplication::_build_infrastructure` |
-| `core/application.py` | `LocalCapabilityProbeAdapter` | `core/local_capability_adapter.py` | 404 | `AtlasApplication::_build_capability_gateway` |
-| `core/application.py` | `MarketFeed` | `exchange/market_feed.py` | 289 | `AtlasApplication::_build_services` |
-| `core/application.py` | `MarketLoop` | `core/market_loop.py` | 345 | `AtlasApplication::_build_services` |
-| `core/application.py` | `PaperTrader` | `core/paper_trader.py` | 267 | `AtlasApplication::_build_services` |
-| `core/application.py` | `PositionController` | `core/position_controller.py` | 273 | `AtlasApplication::_build_services` |
-| `core/application.py` | `PositionSizingService` | `core/position_sizing.py` | 443 | `AtlasApplication::_build_financial_services` |
-| `core/application.py` | `ReservationArchiveStore` | `core/capital_reservation.py` | 456 | `AtlasApplication::_build_financial_services` |
-| `core/application.py` | `RiskEngine` | `core/risk_engine.py` | 435 | `AtlasApplication::_build_financial_services` |
-| `core/application.py` | `RiskPolicy` | `core/risk_engine.py` | 427 | `AtlasApplication::_build_financial_services` |
-| `core/application.py` | `Scheduler` | `core/scheduler.py` | 243 | `AtlasApplication::_build_infrastructure` |
-| `core/application.py` | `ServiceContainer` | `core/service_container.py` | 245 | `AtlasApplication::_build_infrastructure` |
-| `core/application.py` | `UnconfiguredPolicyGate` | `core/local_capability_adapter.py` | 398 | `AtlasApplication::_build_capability_gateway` |
-| `core/application.py` | `VenueRuleFreshnessPolicy` | `core/venue_rule_freshness.py` | 207 | `AtlasApplication::__init__` |
-| `core/application.py` | `VenueRuleFreshnessService` | `core/venue_rule_freshness.py` | 547 | `AtlasApplication::_build_instrument_rules` |
+| `atlas_service.py` | `AtlasProcess` | `main.py` | 427 | `build_process` |
+| `core/application.py` | `AppliedExecutionArchiveStore` | `core/execution_portfolio_foundation.py` | 1171 | `AtlasApplication::_build_financial_services` |
+| `core/application.py` | `AtlasBrain` | `UNKNOWN` | 776 | `AtlasApplication::_build_services` |
+| `core/application.py` | `AtlasController` | `core/controller/atlas_controller.py` | 938 | `AtlasApplication::_build_services` |
+| `core/application.py` | `AtlasLogger` | `core/logger.py` | 715 | `AtlasApplication::_build_infrastructure` |
+| `core/application.py` | `AtlasRuntime` | `core/runtime.py` | 719 | `AtlasApplication::_build_infrastructure` |
+| `core/application.py` | `AuditEventStore` | `core/audit_event_store.py` | 1218 | `AtlasApplication::_build_execution_durability` |
+| `core/application.py` | `CapabilityGateway` | `core/tool_gateway_contracts.py` | 979 | `AtlasApplication::_build_capability_gateway` |
+| `core/application.py` | `CapitalManager` | `portfolio/capital_manager.py` | 738 | `AtlasApplication::_build_services` |
+| `core/application.py` | `CapitalReservationLedger` | `core/capital_reservation.py` | 1157 | `AtlasApplication::_build_financial_services` |
+| `core/application.py` | `ClosedPositionArchiveStore` | `core/execution_portfolio_foundation.py` | 1174 | `AtlasApplication::_build_financial_services` |
+| `core/application.py` | `EventBus` | `core/event_bus.py` | 720 | `AtlasApplication::_build_infrastructure` |
+| `core/application.py` | `EvidenceStore` | `data_layer/evidence_store.py` | 772 | `AtlasApplication::_build_services` |
+| `core/application.py` | `ExecutionIdempotencyStore` | `core/execution_idempotency_store.py` | 1210 | `AtlasApplication::_build_execution_durability` |
+| `core/application.py` | `ExecutionManager` | `core/execution_manager.py` | 830 | `AtlasApplication::_build_services` |
+| `core/application.py` | `ExecutionPortfolioFoundation` | `core/execution_portfolio_foundation.py` | 1167 | `AtlasApplication::_build_financial_services` |
+| `core/application.py` | `ExecutionTransactionJournal` | `core/execution_transaction_journal.py` | 1214 | `AtlasApplication::_build_execution_durability` |
+| `core/application.py` | `ExitGuard` | `core/exit_guard.py` | 855 | `AtlasApplication::_build_services` |
+| `core/application.py` | `ExitGuard` | `core/exit_guard.py` | 1024 | `AtlasApplication::_attach_forex_weekend_close` |
+| `core/application.py` | `ExitRule` | `core/exit_guard.py` | 1020 | `AtlasApplication::_attach_forex_weekend_close` |
+| `core/application.py` | `ExitRule` | `core/exit_guard.py` | 1023 | `AtlasApplication::_attach_forex_weekend_close` |
+| `core/application.py` | `ExperimentAdmissionLedger` | `core/experiment_ledger.py` | 1272 | `AtlasApplication::_attach_paper_confidence_experiment` |
+| `core/application.py` | `FearGreedProvider` | `atlas_finance/market_data/fear_greed_provider.py` | 868 | `AtlasApplication::_build_services` |
+| `core/application.py` | `FinancialStateStore` | `core/execution_portfolio_foundation.py` | 1168 | `AtlasApplication::_build_financial_services` |
+| `core/application.py` | `FundingRateProvider` | `atlas_finance/market_data/funding_rate_provider.py` | 928 | `AtlasApplication::_build_services` |
+| `core/application.py` | `JsonReservationStore` | `core/capital_reservation.py` | 1158 | `AtlasApplication::_build_financial_services` |
+| `core/application.py` | `JsonRiskStateStore` | `core/risk_state_store.py` | 1153 | `AtlasApplication::_build_financial_services` |
+| `core/application.py` | `LifecycleManager` | `core/lifecycle.py` | 722 | `AtlasApplication::_build_infrastructure` |
+| `core/application.py` | `LocalCapabilityProbeAdapter` | `core/local_capability_adapter.py` | 983 | `AtlasApplication::_build_capability_gateway` |
+| `core/application.py` | `Mark` | `core/exit_guard.py` | 1035 | `AtlasApplication::_attach_forex_weekend_close::run` |
+| `core/application.py` | `MarketFeed` | `exchange/market_feed.py` | 790 | `AtlasApplication::_build_services` |
+| `core/application.py` | `MarketLoop` | `core/market_loop.py` | 879 | `AtlasApplication::_build_services` |
+| `core/application.py` | `MarketRiskRegimeProvider` | `core/market_risk_regime.py` | 877 | `AtlasApplication::_build_services` |
+| `core/application.py` | `Mt5QuoteFillProvider` | `atlas_finance/market_data/mt5_provider.py` | 917 | `AtlasApplication::_build_services` |
+| `core/application.py` | `OrderBookFillProvider` | `atlas_finance/market_data/order_book_provider.py` | 921 | `AtlasApplication::_build_services` |
+| `core/application.py` | `PaperTrader` | `core/paper_trader.py` | 746 | `AtlasApplication::_build_services` |
+| `core/application.py` | `PositionController` | `core/position_controller.py` | 752 | `AtlasApplication::_build_services` |
+| `core/application.py` | `PositionRiskBucketStore` | `core/position_risk_buckets.py` | 932 | `AtlasApplication::_build_services` |
+| `core/application.py` | `PositionSizingService` | `core/position_sizing.py` | 1149 | `AtlasApplication::_build_financial_services` |
+| `core/application.py` | `ReservationArchiveStore` | `core/capital_reservation.py` | 1162 | `AtlasApplication::_build_financial_services` |
+| `core/application.py` | `RiskEngine` | `core/risk_engine.py` | 1141 | `AtlasApplication::_build_financial_services` |
+| `core/application.py` | `RiskPolicy` | `core/risk_engine.py` | 1126 | `AtlasApplication::_build_financial_services` |
+| `core/application.py` | `Scheduler` | `core/scheduler.py` | 721 | `AtlasApplication::_build_infrastructure` |
+| `core/application.py` | `ServiceContainer` | `core/service_container.py` | 723 | `AtlasApplication::_build_infrastructure` |
+| `core/application.py` | `TreasuryYieldProvider` | `atlas_finance/market_data/treasury_yield_provider.py` | 876 | `AtlasApplication::_build_services` |
+| `core/application.py` | `UnconfiguredPolicyGate` | `core/local_capability_adapter.py` | 977 | `AtlasApplication::_build_capability_gateway` |
+| `core/application.py` | `VenueRuleFreshnessPolicy` | `core/venue_rule_freshness.py` | 673 | `AtlasApplication::__init__` |
+| `core/application.py` | `VenueRuleFreshnessService` | `core/venue_rule_freshness.py` | 1343 | `AtlasApplication::_build_instrument_rules` |
+| `core/audit_event_store.py` | `DurableAppendWriter` | `core/durable_append_contract.py` | 131 | `AuditEventStore::__init__` |
+| `core/durable_append_log.py` | `DurableAppendWriter` | `core/durable_append_contract.py` | 126 | `DurableAppendLog::__init__` |
 | `core/execution_idempotency_store.py` | `DurableAppendLog` | `core/durable_append_log.py` | 151 | `ExecutionIdempotencyStore::__init__` |
-| `core/execution_idempotency_store.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 291 | `ExecutionIdempotencyStore::load` |
-| `core/execution_idempotency_store.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 303 | `ExecutionIdempotencyStore::load` |
-| `core/execution_idempotency_store.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 315 | `ExecutionIdempotencyStore::load` |
-| `core/execution_idempotency_store.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 337 | `ExecutionIdempotencyStore::load` |
-| `core/execution_idempotency_store.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 350 | `ExecutionIdempotencyStore::load` |
-| `core/execution_manager.py` | `AuditEventStore` | `core/audit_event_store.py` | 387 | `ExecutionManager::__init__` |
-| `core/execution_manager.py` | `ExecutionIdempotencyStore` | `core/execution_idempotency_store.py` | 344 | `ExecutionManager::__init__` |
-| `core/execution_manager.py` | `ExecutionRequest` | `core/execution_models.py` | 2134 | `ExecutionManager::build_request` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 3462 | `ExecutionManager::paper_execute` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 4856 | `ExecutionManager::_block_live_dispatch` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 4916 | `ExecutionManager::live_execute` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5007 | `ExecutionManager::live_execute` |
-| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5278 | `ExecutionManager::_failure_result` |
-| `core/execution_manager.py` | `ExecutionTransactionJournal` | `core/execution_transaction_journal.py` | 363 | `ExecutionManager::__init__` |
-| `core/execution_manager.py` | `FinancialRuntimeSafetyService` | `data_layer/runtime_safety.py` | 374 | `ExecutionManager::__init__` |
-| `core/execution_manager.py` | `FinancialRuntimeSafetyService` | `data_layer/runtime_safety.py` | 450 | `ExecutionManager::_assess_financial_readiness` |
-| `core/execution_manager.py` | `PositionExposure` | `core/risk_engine.py` | 2424 | `ExecutionManager::_derived_position_exposures` |
-| `core/execution_manager.py` | `RiskRequest` | `core/risk_engine.py` | 2766 | `ExecutionManager::risk_check` |
-| `core/execution_manager.py` | `RiskState` | `core/risk_engine.py` | 2500 | `ExecutionManager::_derive_risk_state` |
-| `core/execution_manager.py` | `VenueRuleFreshnessService` | `core/venue_rule_freshness.py` | 278 | `ExecutionManager::__init__` |
+| `core/execution_idempotency_store.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 302 | `ExecutionIdempotencyStore::load` |
+| `core/execution_idempotency_store.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 314 | `ExecutionIdempotencyStore::load` |
+| `core/execution_idempotency_store.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 326 | `ExecutionIdempotencyStore::load` |
+| `core/execution_idempotency_store.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 348 | `ExecutionIdempotencyStore::load` |
+| `core/execution_idempotency_store.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 361 | `ExecutionIdempotencyStore::load` |
+| `core/execution_manager.py` | `AuditEventStore` | `core/audit_event_store.py` | 462 | `ExecutionManager::__init__` |
+| `core/execution_manager.py` | `ExecutionIdempotencyStore` | `core/execution_idempotency_store.py` | 419 | `ExecutionManager::__init__` |
+| `core/execution_manager.py` | `ExecutionRequest` | `core/execution_models.py` | 2961 | `ExecutionManager::build_request` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 5109 | `ExecutionManager::paper_execute` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6442 | `ExecutionManager::_block_live_dispatch` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6502 | `ExecutionManager::live_execute` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6593 | `ExecutionManager::live_execute` |
+| `core/execution_manager.py` | `ExecutionResult` | `core/execution_models.py` | 6847 | `ExecutionManager::_failure_result` |
+| `core/execution_manager.py` | `ExecutionTransactionJournal` | `core/execution_transaction_journal.py` | 438 | `ExecutionManager::__init__` |
+| `core/execution_manager.py` | `FinancialRuntimeSafetyService` | `data_layer/runtime_safety.py` | 449 | `ExecutionManager::__init__` |
+| `core/execution_manager.py` | `FinancialRuntimeSafetyService` | `data_layer/runtime_safety.py` | 525 | `ExecutionManager::_assess_financial_readiness` |
+| `core/execution_manager.py` | `PositionExposure` | `core/risk_engine.py` | 3260 | `ExecutionManager::_derived_position_exposures` |
+| `core/execution_manager.py` | `RestoredRiskState` | `core/risk_state_store.py` | 4768 | `ExecutionManager::_record_realized_risk_accounting` |
+| `core/execution_manager.py` | `RiskRequest` | `core/risk_engine.py` | 3977 | `ExecutionManager::_risk_canonical_verdict` |
+| `core/execution_manager.py` | `RiskState` | `core/risk_engine.py` | 3371 | `ExecutionManager::_derive_risk_state` |
+| `core/execution_manager.py` | `VenueRuleFreshnessService` | `core/venue_rule_freshness.py` | 344 | `ExecutionManager::__init__` |
 | `core/execution_transaction_journal.py` | `DurableAppendLog` | `core/durable_append_log.py` | 174 | `ExecutionTransactionJournal::__init__` |
-| `core/execution_transaction_journal.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 283 | `ExecutionTransactionJournal::load` |
-| `core/execution_transaction_journal.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 295 | `ExecutionTransactionJournal::load` |
-| `core/execution_transaction_journal.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 307 | `ExecutionTransactionJournal::load` |
-| `core/execution_transaction_journal.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 328 | `ExecutionTransactionJournal::load` |
-| `core/execution_transaction_journal.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 397 | `ExecutionTransactionJournal::_require_legal_transition` |
-| `core/execution_transaction_journal.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 414 | `ExecutionTransactionJournal::_require_legal_transition` |
+| `core/execution_transaction_journal.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 294 | `ExecutionTransactionJournal::load` |
+| `core/execution_transaction_journal.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 306 | `ExecutionTransactionJournal::load` |
+| `core/execution_transaction_journal.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 319 | `ExecutionTransactionJournal::load` |
+| `core/execution_transaction_journal.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 340 | `ExecutionTransactionJournal::load` |
+| `core/execution_transaction_journal.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 409 | `ExecutionTransactionJournal::_require_legal_transition` |
+| `core/execution_transaction_journal.py` | `DurableAppendLogCorruptError` | `core/durable_append_log.py` | 426 | `ExecutionTransactionJournal::_require_legal_transition` |
+| `core/exit_guard.py` | `ExecutionRequest` | `core/execution_models.py` | 469 | `ExitGuard::_submit` |
 | `core/local_capability_adapter.py` | `CostMetadata` | `core/model_provider_contracts.py` | 147 | `LocalCapabilityProbeAdapter::free_cost` |
 | `core/local_capability_adapter.py` | `PolicyDecision` | `core/operational_contracts.py` | 82 | `UnconfiguredPolicyGate::evaluate` |
 | `core/local_capability_adapter.py` | `ToolDescriptor` | `core/tool_gateway_contracts.py` | 128 | `LocalCapabilityProbeAdapter` |
 | `core/local_capability_adapter.py` | `ToolInvocationResult` | `core/tool_gateway_contracts.py` | 156 | `LocalCapabilityProbeAdapter::invoke` |
 | `core/local_capability_adapter.py` | `ToolInvocationResult` | `core/tool_gateway_contracts.py` | 175 | `LocalCapabilityProbeAdapter::invoke` |
-| `core/market_loop.py` | `CandleProcessor` | `core/candle_processor.py` | 137 | `MarketLoop::__init__` |
-| `core/market_loop.py` | `DecisionAdapter` | `core/decision_adapter.py` | 140 | `MarketLoop::__init__` |
-| `core/market_loop.py` | `SizingInputs` | `core/position_sizing.py` | 1429 | `MarketLoop::_apply_position_sizing` |
-| `core/market_loop.py` | `TechnicalAnalyzer` | `core/technical_analyzer.py` | 138 | `MarketLoop::__init__` |
-| `core/market_loop.py` | `WorldAnalysisEngine` | `analysis/world_analysis_engine.py` | 139 | `MarketLoop::__init__` |
-| `core/model_provider_contracts.py` | `OperationResult` | `core/operational_contracts.py` | 479 | `ModelInvocationResult::to_operation_result` |
-| `core/position_sizing.py` | `RiskBucket` | `core/risk_engine.py` | 162 | `PositionSizingService::propose` |
+| `core/market_loop.py` | `CandleProcessor` | `core/candle_processor.py` | 294 | `MarketLoop::__init__` |
+| `core/market_loop.py` | `DecisionAdapter` | `core/decision_adapter.py` | 297 | `MarketLoop::__init__` |
+| `core/market_loop.py` | `MarketCycleTracker` | `core/market_cycle.py` | 280 | `MarketLoop::__init__` |
+| `core/market_loop.py` | `RegimeGateConfig` | `core/market_cycle.py` | 272 | `MarketLoop::__init__` |
+| `core/market_loop.py` | `SizingInputs` | `core/position_sizing.py` | 2369 | `MarketLoop::_apply_position_sizing` |
+| `core/market_loop.py` | `TechnicalAnalyzer` | `core/technical_analyzer.py` | 295 | `MarketLoop::__init__` |
+| `core/market_loop.py` | `WorldAnalysisEngine` | `analysis/world_analysis_engine.py` | 296 | `MarketLoop::__init__` |
+| `core/model_provider_contracts.py` | `OperationResult` | `core/operational_contracts.py` | 483 | `ModelInvocationResult::to_operation_result` |
+| `core/position_sizing.py` | `RiskBucket` | `core/risk_engine.py` | 169 | `PositionSizingService::propose` |
 | `core/tool_gateway_contracts.py` | `CapabilityClass` | `core/model_provider_contracts.py` | 120 | `ToolDescriptor::__post_init__` |
 | `core/tool_gateway_contracts.py` | `InvocationOutcome` | `core/model_provider_contracts.py` | 222 | `ToolInvocationResult::__post_init__` |
 | `core/tool_gateway_contracts.py` | `ModelInvocationResult` | `core/model_provider_contracts.py` | 460 | `CapabilityGateway::invoke_model::denied` |
@@ -294,12 +348,32 @@ classes and their observed constructors:
 | `data_layer/canonical_evidence.py` | `IntegrityViolation` | `data_layer/contracts.py` | 78 | `CanonicalExecutionEvidenceAdapter::__call__` |
 | `data_layer/canonical_evidence.py` | `IntegrityViolation` | `data_layer/contracts.py` | 80 | `CanonicalExecutionEvidenceAdapter::__call__` |
 | `data_layer/canonical_evidence.py` | `IntegrityViolation` | `data_layer/contracts.py` | 84 | `CanonicalExecutionEvidenceAdapter::__call__` |
-| `data_layer/config.py` | `SQLiteStorage` | `data_layer/sqlite.py` | 74 | `create_storage` |
-| `data_layer/config.py` | `StorageConfigurationError` | `data_layer/contracts.py` | 62 | `load_storage_configuration` |
-| `data_layer/config.py` | `StorageConfigurationError` | `data_layer/contracts.py` | 66 | `load_storage_configuration` |
-| `data_layer/config.py` | `StorageConfigurationError` | `data_layer/contracts.py` | 68 | `load_storage_configuration` |
-| `data_layer/config.py` | `StorageConfigurationError` | `data_layer/contracts.py` | 76 | `create_storage` |
-| `data_layer/config.py` | `StorageConfigurationError` | `data_layer/contracts.py` | 79 | `create_storage` |
+| `data_layer/evidence_store.py` | `ClaimSource` | `data_layer/contracts.py` | 877 | `EvidenceStore::sources_for` |
+| `data_layer/evidence_store.py` | `IntegrityViolation` | `data_layer/contracts.py` | 265 | `_confidence_text` |
+| `data_layer/evidence_store.py` | `IntegrityViolation` | `data_layer/contracts.py` | 267 | `_confidence_text` |
+| `data_layer/evidence_store.py` | `IntegrityViolation` | `data_layer/contracts.py` | 271 | `_confidence_text` |
+| `data_layer/evidence_store.py` | `IntegrityViolation` | `data_layer/contracts.py` | 273 | `_confidence_text` |
+| `data_layer/evidence_store.py` | `IntegrityViolation` | `data_layer/contracts.py` | 275 | `_confidence_text` |
+| `data_layer/evidence_store.py` | `IntegrityViolation` | `data_layer/contracts.py` | 287 | `_utc_text` |
+| `data_layer/evidence_store.py` | `IntegrityViolation` | `data_layer/contracts.py` | 307 | `_canonical_json` |
+| `data_layer/evidence_store.py` | `IntegrityViolation` | `data_layer/contracts.py` | 316 | `_required_text` |
+| `data_layer/evidence_store.py` | `IntegrityViolation` | `data_layer/contracts.py` | 324 | `_enum_value` |
+| `data_layer/evidence_store.py` | `IntegrityViolation` | `data_layer/contracts.py` | 575 | `EvidenceStore::record_claim` |
+| `data_layer/evidence_store.py` | `IntegrityViolation` | `data_layer/contracts.py` | 577 | `EvidenceStore::record_claim` |
+| `data_layer/evidence_store.py` | `IntegrityViolation` | `data_layer/contracts.py` | 581 | `EvidenceStore::record_claim` |
+| `data_layer/evidence_store.py` | `IntegrityViolation` | `data_layer/contracts.py` | 583 | `EvidenceStore::record_claim` |
+| `data_layer/evidence_store.py` | `IntegrityViolation` | `data_layer/contracts.py` | 602 | `EvidenceStore::record_claim` |
+| `data_layer/evidence_store.py` | `IntegrityViolation` | `data_layer/contracts.py` | 678 | `EvidenceStore::record_claim` |
+| `data_layer/evidence_store.py` | `IntegrityViolation` | `data_layer/contracts.py` | 722 | `EvidenceStore::link` |
+| `data_layer/evidence_store.py` | `IntegrityViolation` | `data_layer/contracts.py` | 769 | `EvidenceStore::link` |
+| `data_layer/evidence_store.py` | `IntegrityViolation` | `data_layer/contracts.py` | 817 | `EvidenceStore::set_status` |
+| `data_layer/evidence_store.py` | `Migration` | `data_layer/migrations.py` | 229 | `<module>` |
+| `data_layer/evidence_store.py` | `StorageError` | `data_layer/contracts.py` | 471 | `EvidenceStore::open` |
+| `data_layer/evidence_store.py` | `StorageError` | `data_layer/contracts.py` | 500 | `EvidenceStore::open` |
+| `data_layer/evidence_store.py` | `StorageError` | `data_layer/contracts.py` | 521 | `EvidenceStore::_connect` |
+| `data_layer/evidence_store.py` | `StorageError` | `data_layer/contracts.py` | 691 | `EvidenceStore::record_claim` |
+| `data_layer/evidence_store.py` | `StorageError` | `data_layer/contracts.py` | 778 | `EvidenceStore::link` |
+| `data_layer/evidence_store.py` | `StorageError` | `data_layer/contracts.py` | 843 | `EvidenceStore::set_status` |
 | `data_layer/migrations.py` | `MigrationError` | `data_layer/contracts.py` | 90 | `validate_migrations` |
 | `data_layer/migrations.py` | `MigrationError` | `data_layer/contracts.py` | 92 | `validate_migrations` |
 | `data_layer/migrations.py` | `MigrationError` | `data_layer/contracts.py` | 94 | `validate_migrations` |
@@ -343,31 +417,17 @@ classes and their observed constructors:
 | `data_layer/projection_replay.py` | `PositionRecord` | `data_layer/models.py` | 59 | `_position_projection` |
 | `data_layer/runtime_safety.py` | `CanonicalExecutionEvidenceAdapter` | `data_layer/canonical_evidence.py` | 50 | `FinancialRuntimeSafetyService::__init__` |
 | `data_layer/runtime_safety.py` | `RecoveryDecision` | `data_layer/recovery.py` | 58 | `FinancialRuntimeSafetyService::__init__` |
-| `data_layer/runtime_safety.py` | `RecoveryDecision` | `data_layer/recovery.py` | 157 | `FinancialRuntimeSafetyService::assess` |
-| `data_layer/runtime_safety.py` | `RecoveryDecision` | `data_layer/recovery.py` | 174 | `FinancialRuntimeSafetyService::assess` |
-| `data_layer/runtime_safety.py` | `RecoveryEvidence` | `data_layer/recovery.py` | 130 | `FinancialRuntimeSafetyService::_base_evidence` |
-| `data_layer/sqlite.py` | `ConcurrencyConflict` | `data_layer/contracts.py` | 114 | `SQLiteOrderRepository::transition` |
-| `data_layer/sqlite.py` | `ConcurrencyConflict` | `data_layer/contracts.py` | 121 | `SQLiteOrderRepository::transition` |
-| `data_layer/sqlite.py` | `ConcurrencyConflict` | `data_layer/contracts.py` | 244 | `SQLitePositionRepository::put_cas` |
-| `data_layer/sqlite.py` | `ConcurrencyConflict` | `data_layer/contracts.py` | 248 | `SQLitePositionRepository::put_cas` |
-| `data_layer/sqlite.py` | `ConcurrencyConflict` | `data_layer/contracts.py` | 261 | `SQLitePositionRepository::put_cas` |
-| `data_layer/sqlite.py` | `ExecutionRecord` | `data_layer/models.py` | 153 | `SQLiteExecutionRepository::_record` |
-| `data_layer/sqlite.py` | `IntegrityViolation` | `data_layer/contracts.py` | 29 | `_translate_integrity` |
-| `data_layer/sqlite.py` | `IntegrityViolation` | `data_layer/contracts.py` | 110 | `SQLiteOrderRepository::transition` |
-| `data_layer/sqlite.py` | `IntegrityViolation` | `data_layer/contracts.py` | 401 | `SQLiteStorage::_validate_financial_rows` |
-| `data_layer/sqlite.py` | `IntegrityViolation` | `data_layer/contracts.py` | 406 | `SQLiteStorage::_validate_financial_rows` |
-| `data_layer/sqlite.py` | `IntegrityViolation` | `data_layer/contracts.py` | 413 | `SQLiteStorage::_validate_financial_rows` |
-| `data_layer/sqlite.py` | `OrderRecord` | `data_layer/models.py` | 95 | `SQLiteOrderRepository::get` |
-| `data_layer/sqlite.py` | `PositionRecord` | `data_layer/models.py` | 211 | `SQLitePositionRepository::_record` |
-| `data_layer/sqlite.py` | `StorageError` | `data_layer/contracts.py` | 360 | `SQLiteStorage::_connect` |
-| `data_layer/sqlite.py` | `StorageError` | `data_layer/contracts.py` | 383 | `SQLiteStorage::open` |
-| `data_layer/sqlite.py` | `StorageError` | `data_layer/contracts.py` | 423 | `SQLiteStorage::unit_of_work` |
-| `data_layer/sqlite.py` | `TransactionStateError` | `data_layer/contracts.py` | 276 | `SQLiteUnitOfWork::_require_active` |
-| `data_layer/sqlite.py` | `TransactionStateError` | `data_layer/contracts.py` | 283 | `SQLiteUnitOfWork::__enter__` |
-| `exchange/market_feed.py` | `BinancePublicDataProvider` | `atlas_finance/market_data/binance_public_provider.py` | 117 | `MarketFeed::__init__` |
-| `exchange/market_feed.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 369 | `MarketFeed::_require_metadata` |
-| `exchange/market_feed.py` | `MarketFeedService` | `atlas_finance/market_data/market_feed_service.py` | 120 | `MarketFeed::__init__` |
-| `main.py` | `AtlasApplication` | `core/application.py` | 345 | `AtlasProcess::start` |
+| `data_layer/runtime_safety.py` | `RecoveryDecision` | `data_layer/recovery.py` | 171 | `FinancialRuntimeSafetyService::assess` |
+| `data_layer/runtime_safety.py` | `RecoveryDecision` | `data_layer/recovery.py` | 188 | `FinancialRuntimeSafetyService::assess` |
+| `data_layer/runtime_safety.py` | `RecoveryEvidence` | `data_layer/recovery.py` | 144 | `FinancialRuntimeSafetyService::_base_evidence` |
+| `exchange/market_feed.py` | `BinancePublicDataProvider` | `atlas_finance/market_data/binance_public_provider.py` | 125 | `MarketFeed::__init__` |
+| `exchange/market_feed.py` | `InvalidCandleError` | `atlas_finance/market_data/exceptions.py` | 427 | `MarketFeed::_require_metadata` |
+| `exchange/market_feed.py` | `MarketFeedService` | `atlas_finance/market_data/market_feed_service.py` | 129 | `MarketFeed::__init__` |
+| `exchange/market_feed.py` | `Mt5MarketDataProvider` | `atlas_finance/market_data/mt5_provider.py` | 123 | `MarketFeed::__init__` |
+| `main.py` | `AtlasApplication` | `core/application.py` | 545 | `AtlasProcess::start` |
+| `observability/governance_records.py` | `ProposalLogError` | `atlas_org/proposals.py` | 27 | `_load` |
+| `observability/governance_records.py` | `ProposalLogError` | `atlas_org/proposals.py` | 30 | `_load` |
+| `observability/governance_records.py` | `ProposalLogError` | `atlas_org/proposals.py` | 34 | `_load` |
 
 ## Classification fields deliberately absent
 

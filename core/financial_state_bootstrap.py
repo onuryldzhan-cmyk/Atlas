@@ -120,6 +120,7 @@ def bootstrap_financial_state(
     financial_state_file: str = DEFAULT_FINANCIAL_STATE_FILE,
     applied_executions_file: str = DEFAULT_APPLIED_EXECUTIONS_FILE,
     closed_positions_file: str = DEFAULT_CLOSED_POSITIONS_FILE,
+    leverage: int = 1,
 ) -> FinancialStateBootstrapResult:
     """Explicitly create or validate durable financial state.
 
@@ -141,6 +142,11 @@ def bootstrap_financial_state(
     With `verify_only=True` nothing is ever created: an absent store is
     reported INVALID_EXISTING/STATE_ABSENT and every present store is still
     validated normally.
+
+    `leverage` (Task 025) is the account leverage of the financial book: 1
+    (the default) creates and expects the schema 2 cash book; 2..5 creates and
+    expects the schema 3 margin book (forex PAPER only). An existing book with
+    another leverage is INVALID_EXISTING / FINANCIAL_LEVERAGE_CONFLICT.
     """
     initial_capital = Decimal(str(initial_capital))
     if initial_capital <= 0:
@@ -165,7 +171,7 @@ def bootstrap_financial_state(
         ),
         _bootstrap_financial_state(
             directory / financial_state_file, directory / applied_executions_file,
-            directory / closed_positions_file, initial_capital, verify_only,
+            directory / closed_positions_file, initial_capital, verify_only, leverage,
         ),
     ]
 
@@ -372,6 +378,7 @@ _FINANCIAL_FOUNDATION_FIXED_REASONS = frozenset((
     "CORRUPT_FINANCIAL_STATE",
     "DUPLICATE_POSITION_STATE",
     "CORRUPT_CHECKPOINT_STATE",
+    "FINANCIAL_LEVERAGE_CONFLICT",
     # Raised directly by FinancialStateStore.load() itself (not archive
     # hydration) - already fixed, data-free tokens ADR-0005 documents by
     # name; must pass through unchanged rather than collapse into the
@@ -409,7 +416,7 @@ def _classify_financial_foundation_reason(raw_reason: str) -> str:
 
 def _bootstrap_financial_state(
     path: Path, applied_executions_path: Path, closed_positions_path: Path,
-    initial_capital: Decimal, verify_only: bool = False,
+    initial_capital: Decimal, verify_only: bool = False, leverage: int = 1,
 ) -> StoreBootstrapResult:
     """Validate the v2 working file and, cross-store, its two sidecars.
 
@@ -433,7 +440,7 @@ def _bootstrap_financial_state(
             )
     else:
         try:
-            store.initialize(initial_capital)
+            store.initialize(initial_capital, leverage=leverage)
             return StoreBootstrapResult(
                 "execution_financial_state", str(path), BootstrapOutcome.CREATED,
                 "BOOTSTRAP_CREATED",
@@ -474,6 +481,7 @@ def _bootstrap_financial_state(
         store,
         applied_archive=AppliedExecutionArchiveStore(applied_executions_path),
         closed_archive=ClosedPositionArchiveStore(closed_positions_path),
+        leverage=leverage,
     )
     if not foundation.ready:
         return StoreBootstrapResult(

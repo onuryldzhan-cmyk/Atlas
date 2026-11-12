@@ -264,6 +264,17 @@ class ExecutionIdempotencyStore:
 
                     return {}
 
+                # Phase-2 A2: pin the verified (empty) offset now, so a later
+                # foreign write is detected instead of being read lazily.
+                try:
+                    self._log.read()
+                except Exception as exc:
+                    self.completed_requests = {}
+                    self._durable_requests = {}
+                    self.loaded = False
+                    self._record_error(phase="load", error=exc)
+                    return {}
+
                 self.completed_requests = {}
                 self._durable_requests = {}
                 self.loaded = True
@@ -860,9 +871,18 @@ class ExecutionIdempotencyStore:
 
             if delete_file:
                 try:
+                    # Re-review 2026-10-03 (LOW): never destroy a file an
+                    # unresolved indeterminate write flagged for investigation.
+                    self._log._writer.check_recovery_marker()
+
                     self.file_path.unlink(
                         missing_ok=True
                     )
+
+                    # Audit 2026-10-03 F4: re-pin the writer at the now-empty
+                    # file, or the next append would see a size mismatch and
+                    # poison the store until restart.
+                    self._log.read()
 
                     self._durable_requests = {}
 

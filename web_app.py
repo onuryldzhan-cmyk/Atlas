@@ -17,12 +17,15 @@ from __future__ import annotations
 
 import json
 import logging
+import math
+import re
 from datetime import UTC, datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Callable
 
 from fastapi import FastAPI, Request, Response
+from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import (
     FileResponse,
     HTMLResponse,
@@ -32,10 +35,12 @@ from fastapi.responses import (
 from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 
-from observability import panel_sources
+from observability.organization import organization_public
+from observability import agent_states, command_center, experience_view, governance_records, learning_view, panel_sources, portfolio_view, readiness, research_view, roadmap_view, security_view
 from observability.panel_router import (
     build_observability_router,
     is_loopback_request,
+    is_same_origin_request,
 )
 
 
@@ -184,11 +189,25 @@ PUBLIC_VENUE_RULES_KEYS = (
 )
 
 # Audit event types ExecutionManager writes for the automatic PAPER
-# risk-accounting day rollover (registry v4.81). Mirrored as literals rather
-# than imported: web_app is L5 and may not import core.execution_manager.
+# risk-accounting day rollover (registry v4.81; refusal event added in
+# v4.88). Mirrored as literals rather than imported: web_app is L5 and may
+# not import core.execution_manager.
 RISK_DAY_ROLLOVER_PREPARED = "RISK_ACCOUNTING_DAY_ROLLOVER_PREPARED"
 RISK_DAY_ROLLOVER_COMMITTED = "RISK_ACCOUNTING_DAY_ROLLOVER_COMMITTED"
+RISK_DAY_ROLLOVER_REFUSED = "RISK_ACCOUNTING_DAY_ROLLOVER_REFUSED"
 RISK_ACCOUNTING_AGGREGATE = "risk_accounting_state"
+
+# Audit event types ExecutionManager writes per execution request, used by
+# the execution-gates panel to show each symbol's latest risk-stage outcome.
+# RISK_REJECTED / RISK_APPROVED carry no symbol or confidence of their own;
+# both are chained (causation_id) to the request's EXECUTION_REQUEST_VALIDATED
+# event, which does. Literals for the same L5 reason as above.
+EXECUTION_REQUEST_AGGREGATE = "execution_request"
+EXECUTION_REQUEST_VALIDATED = "EXECUTION_REQUEST_VALIDATED"
+RISK_STAGE_OUTCOMES = {
+    "RISK_REJECTED": "REJECTED",
+    "RISK_APPROVED": "APPROVED",
+}
 
 # Only the tail of the append-only audit log is scanned for rollover
 # events, so a 30s poll never reads an unbounded file. The audit store's
@@ -212,6 +231,45 @@ VENDORED_ASSETS = {
         BASE_DIR / "static" / "vendor" / "chartjs-4.5.1" / "chart.umd.min.js",
         "text/javascript",
     ),
+    # Apache-2.0 + TradingView attribution (kept on via attributionLogo), v5.72
+    "lightweight-charts.js": (
+        BASE_DIR / "static" / "vendor" / "lightweight-charts-4.2.3" / "lightweight-charts.standalone.production.js",
+        "text/javascript",
+    ),
+    # MIT, owner-approved 2026-10-02 for the 3D Atlas HQ; ES modules (the first imports the second)
+    "three.module.min.js": (
+        BASE_DIR / "static" / "vendor" / "three-0.185.1" / "three.module.min.js",
+        "text/javascript",
+    ),
+    "three.core.min.js": (
+        BASE_DIR / "static" / "vendor" / "three-0.185.1" / "three.core.min.js",
+        "text/javascript",
+    ),
+}
+
+# Defense-in-depth response headers applied to every response this
+# application serves (registry v4.86/v4.87 backlog item A2). script-src and
+# style-src keep 'unsafe-inline' because templates/dashboard.html renders
+# inline <script> blocks and inline style="" attributes with no nonce
+# infrastructure yet; tightening that is a separate, larger change. Every
+# other directive is as strict as the current templates and vendored
+# /assets allow: no third-party origins, no framing, no plugins.
+SECURITY_HEADERS: dict[str, str] = {
+    "Content-Security-Policy": (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; "
+        "font-src 'self'; "
+        "connect-src 'self'; "
+        "object-src 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'; "
+        "frame-ancestors 'none'"
+    ),
+    "X-Frame-Options": "DENY",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
 }
 
 NON_LOOPBACK_RESPONSE = {
@@ -352,6 +410,488 @@ def _safe_runtime_health(
     }
 
 
+# =====================================================================
+# /api/status ALLOWLIST
+# =====================================================================
+#
+# AtlasApplication.status() is the console's view and carries operator-
+# only detail: str(error) and a full traceback in errors.latest (file
+# paths, exchange error text), the raw execution halt_reason (which can
+# embed an execution_id, idempotency_key or position_id), audit-failure
+# records, and per-symbol signal/execution snapshots. /api/status is an
+# HTTP body, so it is rebuilt here from an explicit allowlist instead of
+# being returned verbatim; status() itself is left unchanged for the
+# console.
+#
+# Fail closed throughout: a key not named below is dropped, a value of the
+# wrong type or shape is published as null, and strings are only published
+# when they match a narrow pattern that cannot carry a path, a URL, a
+# sentence or a traceback. Error records reduce to a category and an
+# exception type name. The halt reason is published only as health()'s
+# already-classified execution_halt_reason - the same allowlist code
+# /api/health publishes - and never from execution.operational_state.
+
+_STATUS_CODE_PATTERN = re.compile(r"[A-Z][A-Z0-9_]{0,63}")
+_STATUS_IDENTIFIER_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.\-]{0,63}")
+_STATUS_TIMESTAMP_PATTERN = re.compile(
+    r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?(Z|[+\-]\d{2}:\d{2})?"
+)
+
+
+def _status_bool(value: Any) -> bool | None:
+    return value if isinstance(value, bool) else None
+
+
+def _status_number(value: Any) -> int | float | str | None:
+    """Finite int/float as-is; a finite Decimal as its exact string form."""
+
+    if isinstance(value, bool):
+        return None
+
+    if isinstance(value, int):
+        return value
+
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+
+    if isinstance(value, Decimal):
+        return format(value, "f") if value.is_finite() else None
+
+    return None
+
+
+def _status_pattern(pattern: re.Pattern[str]) -> Callable[[Any], str | None]:
+    def sanitize(value: Any) -> str | None:
+        if isinstance(value, str) and pattern.fullmatch(value):
+            return value
+
+        return None
+
+    return sanitize
+
+
+_status_code = _status_pattern(_STATUS_CODE_PATTERN)
+_status_identifier = _status_pattern(_STATUS_IDENTIFIER_PATTERN)
+
+
+def _status_timestamp(value: Any) -> str | None:
+    if isinstance(value, datetime):
+        value = value.isoformat()
+
+    if isinstance(value, str) and _STATUS_TIMESTAMP_PATTERN.fullmatch(value):
+        return value
+
+    return None
+
+
+def _status_identifier_list(value: Any) -> list[str | None] | None:
+    if not isinstance(value, (list, tuple)):
+        return None
+
+    return [_status_identifier(item) for item in value[:256]]
+
+
+def _status_error_record(value: Any) -> dict[str, Any] | None:
+    """Reduce an error record to its category and exception type name.
+
+    Never the message, the traceback, a request id or anything else the
+    record carries. The field names differ between services (phase/stage,
+    type/error_type, time/timestamp), so each is read from either.
+    """
+
+    if not isinstance(value, dict):
+        return None
+
+    return {
+        "category": _status_identifier(
+            value.get("phase", value.get("stage")),
+        ),
+        "type": _status_identifier(
+            value.get("type", value.get("error_type")),
+        ),
+        "time": _status_timestamp(
+            value.get("time", value.get("timestamp")),
+        ),
+    }
+
+
+def _status_mapping(
+    key_sanitizer: Callable[[Any], str | None],
+    value_spec: Any,
+) -> Callable[[Any], dict[str, Any] | None]:
+    """A dict with data-dependent keys (symbols, journal states)."""
+
+    def sanitize(value: Any) -> dict[str, Any] | None:
+        if not isinstance(value, dict):
+            return None
+
+        result: dict[str, Any] = {}
+
+        for key, item in list(value.items())[:256]:
+            safe_key = key_sanitizer(key)
+
+            if safe_key is not None:
+                result[safe_key] = _apply_status_spec(value_spec, item)
+
+        return result
+
+    return sanitize
+
+
+def _apply_status_spec(spec: Any, value: Any) -> Any:
+    """Apply a nested allowlist: a dict of key -> spec, or a leaf callable."""
+
+    if callable(spec):
+        return spec(value)
+
+    if not isinstance(value, dict):
+        return None
+
+    return {
+        key: _apply_status_spec(child_spec, value.get(key))
+        for key, child_spec in spec.items()
+        if key in value
+    }
+
+
+_STATUS_ERRORS_SPEC = {
+    "count": _status_number,
+    "latest": _status_error_record,
+}
+
+_STATUS_BRAIN_SPEC = {
+    "name": _status_identifier,
+    "version": _status_identifier,
+    "initialized": _status_bool,
+    "running": _status_bool,
+    "intelligence_loaded": _status_bool,
+    "cycles": _status_number,
+    "errors": _status_number,
+    "rejections": _status_number,
+    "created_at": _status_timestamp,
+    "started_at": _status_timestamp,
+    "stopped_at": _status_timestamp,
+    "last_error": _status_error_record,
+}
+
+_STATUS_EXECUTION_SPEC = {
+    "name": _status_identifier,
+    "version": _status_identifier,
+    "mode": _status_code,
+    "running": _status_bool,
+    "minimum_confidence": _status_number,
+    "live_execution_enabled": _status_bool,
+    # halt_reason and last_audit_failure deliberately absent - see above.
+    "operational_state": {
+        "audit_runtime_state": _status_code,
+        "execution_halted": _status_bool,
+        "recovery_required": _status_bool,
+        "audit_incident_count": _status_number,
+    },
+    # source (a URL) deliberately absent.
+    "venue_rules": {
+        "status": _status_code,
+        "venue": _status_code,
+        "schema_version": _status_identifier,
+        "symbol_count": _status_number,
+        "source_version": _status_identifier,
+        "observed_at": _status_timestamp,
+        "age_seconds": _status_number,
+        "maximum_age_seconds": _status_number,
+        "evaluated_at": _status_timestamp,
+        "reason": _status_code,
+    },
+    "transaction_journal": {
+        "name": _status_identifier,
+        "version": _status_identifier,
+        "loaded": _status_bool,
+        "load_failed": _status_bool,
+        "migration_required": _status_bool,
+        "entries": _status_number,
+        "unresolved_entries": _status_number,
+        "state_counts": _status_mapping(_status_code, _status_number),
+        "last_loaded_at": _status_timestamp,
+        "last_saved_at": _status_timestamp,
+        "statistics": _status_mapping(_status_identifier, _status_number),
+    },
+    "durable_financial_state": {
+        "ready": _status_bool,
+        "recovery_required": _status_bool,
+        "reason": _status_code,
+    },
+    "history": _status_number,
+    "rejections": _status_number,
+    "errors": _STATUS_ERRORS_SPEC,
+    "statistics": _status_mapping(_status_identifier, _status_number),
+    "dependencies": _status_mapping(_status_identifier, _status_bool),
+}
+
+# last_signals / last_agent_evidence / last_executions /
+# last_processed_candles deliberately absent: per-symbol snapshots with
+# free-form content (execution ids among them). /api/signals and
+# /api/trades are the operator surfaces for that detail.
+_STATUS_MARKET_LOOP_SPEC = {
+    "name": _status_identifier,
+    "version": _status_identifier,
+    "running": _status_bool,
+    "thread_alive": _status_bool,
+    "started_at": _status_timestamp,
+    "stopped_at": _status_timestamp,
+    "symbols": _status_identifier_list,
+    "symbol_count": _status_number,
+    "interval": _status_number,
+    "last_cycle": _status_timestamp,
+    "last_cycle_duration": _status_number,
+    "metrics": _status_mapping(_status_identifier, _status_number),
+    "market_data_staleness": _status_mapping(
+        _status_identifier,
+        {
+            "seconds_since_last_success": _status_number,
+            "stale": _status_bool,
+        },
+    ),
+    "errors": _STATUS_ERRORS_SPEC,
+    "dependencies": _status_mapping(_status_identifier, _status_bool),
+    # Task 013 (registry v5.97): Brain decision contract rejections - reason codes and counts only,
+    # never the rejected decision or its detail text.
+    "decision_contract": {
+        "rejections_by_reason": _status_mapping(_status_code, _status_number),
+        "last_rejection": {
+            "reason": _status_code,
+            "at": _status_timestamp,
+        },
+    },
+}
+
+# Task 013 (registry v5.97): the market feed's lifecycle state and DEGRADED -> recovered transitions.
+# Counts, a state code and timestamps only; the provider's error text is never published.
+_STATUS_MARKET_FEED_SPEC = {
+    "state": _status_code,
+    "consecutive_failures": _status_number,
+    "degradations": _status_number,
+    "recoveries": _status_number,
+    "last_degraded_at": _status_timestamp,
+    "last_recovered_at": _status_timestamp,
+}
+
+# Keys every AtlasApplication._safe_status fallback can produce in place of
+# a service's own status(). status_error (str(exc)) deliberately absent.
+_STATUS_SERVICE_FALLBACK_SPEC = {
+    "available": _status_bool,
+    "status_supported": _status_bool,
+    "healthy": _status_bool,
+}
+
+
+def _status_service(spec: dict[str, Any]) -> dict[str, Any]:
+    return {**_STATUS_SERVICE_FALLBACK_SPEC, **spec}
+
+
+_STATUS_RESPONSE_SPEC = {
+    "application": {
+        "name": _status_identifier,
+        "version": _status_identifier,
+        "initialized": _status_bool,
+        "running": _status_bool,
+        "created_at": _status_timestamp,
+        "started_at": _status_timestamp,
+        "stopped_at": _status_timestamp,
+        "execution_mode": _status_code,
+        "exchange": _status_identifier,
+    },
+    "runtime": _status_service(
+        {
+            "state": _status_code,
+            "healthy": _status_bool,
+            "started_at": _status_timestamp,
+            "last_transition": _status_timestamp,
+            "reason": _status_code,
+            "version": _status_identifier,
+            "emergency_mode": _status_bool,
+        }
+    ),
+    "brain": _status_service(_STATUS_BRAIN_SPEC),
+    "execution": _status_service(_STATUS_EXECUTION_SPEC),
+    "market_feed": _status_service(_STATUS_MARKET_FEED_SPEC),
+    "market_loop": _status_service(_STATUS_MARKET_LOOP_SPEC),
+    "controller": _status_service(
+        {
+            "name": _status_identifier,
+            "version": _status_identifier,
+            "state": _status_code,
+            "running": _status_bool,
+            "created_at": _status_timestamp,
+            "started_at": _status_timestamp,
+            "stopped_at": _status_timestamp,
+            "timestamp": _status_timestamp,
+            "start_count": _status_number,
+            "stop_count": _status_number,
+            "errors": _status_number,
+            "last_error": _status_error_record,
+            "brain": _status_service(_STATUS_BRAIN_SPEC),
+            "market_loop": _status_service(_STATUS_MARKET_LOOP_SPEC),
+            "execution": _status_service(_STATUS_EXECUTION_SPEC),
+        }
+    ),
+    "capital": _status_service(
+        {
+            "version": _status_identifier,
+            "capital": _status_number,
+            "portfolio_value": _status_number,
+            "available": {
+                "total": _status_number,
+                "used": _status_number,
+                "available": _status_number,
+                "positions": _status_number,
+            },
+            "positions": _status_number,
+            "risk_usage": _status_mapping(_status_identifier, _status_number),
+        }
+    ),
+    "position_controller": _status_service(
+        {
+            "name": _status_identifier,
+            "version": _status_identifier,
+            "active": _status_number,
+            "closed": _status_number,
+            "symbols": _status_identifier_list,
+            "total_exposure": _status_number,
+            "unrealized_pnl": _status_number,
+            "realized_pnl": _status_number,
+            "open_count": _status_number,
+            "close_count": _status_number,
+            "update_count": _status_number,
+            "rejected_count": _status_number,
+            "error_count": _status_number,
+            "last_error": _status_error_record,
+        }
+    ),
+    "services": {
+        "registered": _status_identifier_list,
+        "started": _status_identifier_list,
+    },
+    # health() is already the /api/health contract; it is still passed
+    # through its own allowlist here rather than trusted wholesale.
+    "health": {
+        "healthy": _status_bool,
+        "running": _status_bool,
+        "execution_halted": _status_bool,
+        "execution_recovery_required": _status_bool,
+        "execution_halt_reason": _status_code,
+        "supervised": _status_bool,
+        "supervisor_epoch": _status_identifier,
+        "supervisor_restart_count": _status_number,
+        "runtime_state": _status_code,
+        "error_count": _status_number,
+        "market_data_stale": _status_bool,
+        "market_data_stale_reason": _status_code,
+        "market_loop_thread_alive": _status_bool,
+        # Phase-2 D1 tri-state signals: constant codes, booleans, numbers.
+        "system_health": {
+            "system_state": _status_code,
+            "process_alive": _status_code,
+            "loop_progressing": _status_code,
+            "loop_progress_age_seconds": _status_number,
+            "loop_stall_after_seconds": _status_number,
+            "market_data_healthy": _status_code,
+            "execution_healthy": _status_code,
+            "audit_healthy": _status_code,
+            "brain_healthy": _status_code,
+            "system_ready": _status_bool,
+            "safe_to_trade": _status_bool,
+            "safe_to_reduce": _status_bool,
+        },
+    },
+    "errors": _STATUS_ERRORS_SPEC,
+}
+
+
+def _public_runtime_status(status: dict[str, Any]) -> dict[str, Any]:
+    """Rebuild status() for /api/status from the allowlist above."""
+
+    return _apply_status_spec(_STATUS_RESPONSE_SPEC, status)
+
+
+def _safe_runtime_status(
+    runtime: Any | None,
+) -> dict[str, Any]:
+    """
+    Return AtlasApplication.status(), rebuilt from the /api/status
+    allowlist above, without allowing a raising runtime to break the
+    route. Same exception-handling contract as _safe_runtime_health - only
+    the exception's class name is published, never str(exc).
+
+    The loopback guard is not treated as a reason to publish status()
+    verbatim: an HTTP body is copied, cached and pasted in ways a console
+    line is not, so this route publishes no more than the allowlist names.
+    A result that still cannot be encoded as strict JSON is reported with
+    the same RUNTIME_STATUS_FAILED shape as a raising status() rather than
+    becoming a 500.
+    """
+
+    if runtime is None:
+        return {
+            "available": False,
+            "reason": "RUNTIME_NOT_ATTACHED",
+        }
+
+    status_method = getattr(
+        runtime,
+        "status",
+        None,
+    )
+
+    if not callable(status_method):
+        return {
+            "available": True,
+            "reason": "RUNTIME_STATUS_UNAVAILABLE",
+        }
+
+    try:
+        result = status_method()
+    except Exception as exc:
+        logger.exception(
+            "Runtime status call failed",
+        )
+
+        logger.debug(
+            "Runtime status error: %s",
+            exc,
+        )
+
+        return {
+            "available": True,
+            "reason": "RUNTIME_STATUS_FAILED",
+            "error_type": type(exc).__name__,
+        }
+
+    if not isinstance(result, dict):
+        return {
+            "available": True,
+            "reason": "INVALID_RUNTIME_STATUS_RESULT",
+            "result_type": type(result).__name__,
+        }
+
+    try:
+        public = _public_runtime_status(result)
+
+        # The same strict encoding JSONResponse applies, run here so a
+        # value it would reject is caught inside this function.
+        json.dumps(public, allow_nan=False)
+    except Exception as exc:
+        logger.exception(
+            "Runtime status could not be made publishable",
+        )
+
+        return {
+            "available": True,
+            "reason": "RUNTIME_STATUS_FAILED",
+            "error_type": type(exc).__name__,
+        }
+
+    return public
+
+
 def _resolve_brain(
     runtime: Any | None,
 ) -> Any | None:
@@ -489,7 +1029,32 @@ def _public_signal(
 
     payload["agents"] = agents
 
+    # Which past experience shaped this decision (BRAIN-MEM-001): the caution
+    # record only, with a fixed key set; None when memory changed nothing.
+    adjustment = metadata.get("memory_adjustment")
+    payload["memory"] = (
+        {key: adjustment.get(key) for key in ("reason", "confidence_before", "confidence_after", "trades", "net_expectancy")}
+        if isinstance(adjustment, dict) else None
+    )
+
     return payload
+
+
+def _account_totals(portfolio_foundation: Any) -> dict[str, str] | None:
+    """Account-level realized net P&L and fees from the durable book, or None."""
+
+    snapshot = getattr(portfolio_foundation, "snapshot", None)
+    if not callable(snapshot):
+        return None
+    try:
+        snap = snapshot()
+        return {
+            "realized_net_pnl": str(Decimal(str(snap["realized_net_pnl"]))),
+            "fees": str(Decimal(str(snap["fees"]))),
+        }
+    except Exception:
+        logger.debug("Account totals unavailable", exc_info=True)
+        return None
 
 
 def _public_trade(
@@ -643,6 +1208,76 @@ def _latest_rollover(
     }
 
 
+def _latest_rollover_refusal(
+    lines: list[str],
+    *,
+    stored_day: str | None,
+    today: str,
+) -> dict[str, Any] | None:
+    """
+    The most recent RISK_ACCOUNTING_DAY_ROLLOVER_REFUSED record that
+    explains why the rollover from ``stored_day`` to ``today`` is still
+    refused, or None.
+
+    A refusal is only reported when its payload names exactly this
+    transition (``from_accounting_day_utc == stored_day`` and
+    ``to_accounting_day_utc == today``). A refusal left over from an
+    earlier, since-resolved transition - or one for a day pair that is not
+    the currently stored day - is never shown as if it were still active;
+    that would misreport a resolved state as an ongoing one.
+    """
+
+    if stored_day is None:
+        return None
+
+    latest: dict[str, Any] | None = None
+
+    for line in lines:
+        line = line.strip()
+
+        if not line:
+            continue
+
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+
+        if (
+            not isinstance(event, dict)
+            or event.get("aggregate_type") != RISK_ACCOUNTING_AGGREGATE
+            or event.get("event_type") != RISK_DAY_ROLLOVER_REFUSED
+        ):
+            continue
+
+        payload = event.get("payload")
+
+        if not isinstance(payload, dict):
+            continue
+
+        if (
+            payload.get("from_accounting_day_utc") == stored_day
+            and payload.get("to_accounting_day_utc") == today
+        ):
+            latest = event
+
+    if latest is None:
+        return None
+
+    payload = latest.get("payload")
+    reason = payload.get("reason") if isinstance(payload, dict) else None
+
+    if not isinstance(reason, str):
+        return None
+
+    timestamp = latest.get("timestamp")
+
+    return {
+        "reason": reason,
+        "refused_at": timestamp if isinstance(timestamp, str) else None,
+    }
+
+
 def _risk_accounting_payload(
     runtime: Any | None,
 ) -> tuple[int, dict[str, Any]]:
@@ -695,9 +1330,12 @@ def _risk_accounting_payload(
     audit_store = _resolve_attr(runtime, "audit_store")
     audit_path = getattr(audit_store, "file_path", None)
     rollover: dict[str, Any]
+    refusal_reason: str | None = None
+    refusal_reason_source: str
 
     if not isinstance(audit_path, Path):
         rollover = {"available": False, "reason": "AUDIT_STORE_UNAVAILABLE"}
+        refusal_reason_source = "AUDIT_STORE_UNAVAILABLE"
     else:
         try:
             lines, truncated = _read_audit_tail_lines(audit_path)
@@ -708,6 +1346,7 @@ def _risk_accounting_payload(
                 "reason": "AUDIT_LOG_UNREADABLE",
                 "error_type": type(exc).__name__,
             }
+            refusal_reason_source = "AUDIT_LOG_UNREADABLE"
         else:
             rollover = {
                 "available": True,
@@ -715,18 +1354,27 @@ def _risk_accounting_payload(
                 "scan_truncated": truncated,
                 "scan_limit_bytes": AUDIT_SCAN_MAX_BYTES,
             }
+            refusal = _latest_rollover_refusal(
+                lines,
+                stored_day=day.get("accounting_day_utc"),
+                today=today.isoformat(),
+            )
+            if refusal is not None:
+                refusal_reason = refusal["reason"]
+                refusal_reason_source = "AUDIT_TRAIL"
+            else:
+                refusal_reason_source = "NO_REFUSAL_RECORDED"
 
     return 200, {
         "available": True,
         "today_utc": today.isoformat(),
         "accounting_day": day,
         "rollover": rollover,
-        # A refused automatic rollover is logged as a WARNING by
-        # ExecutionManager but is not written to the audit log (registry
-        # v4.81), so its reason cannot be sourced from there. Stated
-        # explicitly instead of left blank.
-        "refusal_reason": None,
-        "refusal_reason_source": "NOT_AUDITED_WARNING_LOG_ONLY",
+        # v4.88 wired ExecutionManager's rollover-refusal audit event, so the
+        # reason is now sourced from the audit trail instead of the
+        # WARNING-log-only state left by v4.81 (registry v4.88 CONFLICT).
+        "refusal_reason": refusal_reason,
+        "refusal_reason_source": refusal_reason_source,
     }
 
 
@@ -785,6 +1433,362 @@ def _system_integrity_payload(
     }
 
 
+def _confidence_pct(value: Any) -> float | None:
+    """A RiskPolicy 0-1 Decimal as a 0-100 display number, or None."""
+
+    if not isinstance(value, Decimal) or not value.is_finite():
+        return None
+
+    return float(value * 100)
+
+
+def _risk_policy_gates(
+    runtime: Any | None,
+) -> dict[str, Any]:
+    """
+    The per-bucket confidence floors of the RiskPolicy instance the running
+    RiskEngine evaluates against (AtlasApplication shares one instance
+    between RiskEngine and PositionSizingService). Read, never copied from
+    a default: a policy built with different buckets is shown as built.
+
+    ``required_confidence_pct`` mirrors core/risk_engine.py's BUY check,
+    ``confidence < max(global_minimum_confidence, bucket.minimum_confidence)``,
+    so it is the floor that bucket actually enforces.
+    """
+
+    # Reads runtime.risk_policy, not runtime.risk_engine.policy. They are
+    # the same instance today (core/application.py:768-778 constructs one
+    # RiskPolicy and passes it into RiskEngine) but that identity isn't
+    # enforced here, so a future divergence between the two attributes
+    # would go unnoticed by this read.
+    policy = _resolve_attr(runtime, "risk_policy")
+    version = getattr(policy, "version", None)
+    global_pct = _confidence_pct(
+        getattr(policy, "global_minimum_confidence", None)
+    )
+    buckets = getattr(policy, "buckets", None)
+
+    if (
+        not isinstance(version, str)
+        or global_pct is None
+        or not isinstance(buckets, dict)
+        or not buckets
+    ):
+        return {"available": False, "reason": "RISK_POLICY_UNAVAILABLE"}
+
+    published: dict[str, Any] = {}
+
+    for key, bucket_policy in buckets.items():
+        name = getattr(key, "value", key)
+        bucket_pct = _confidence_pct(
+            getattr(bucket_policy, "minimum_confidence", None)
+        )
+
+        if not isinstance(name, str) or bucket_pct is None:
+            return {"available": False, "reason": "RISK_POLICY_MALFORMED"}
+
+        published[name] = {
+            "minimum_confidence_pct": bucket_pct,
+            "required_confidence_pct": max(global_pct, bucket_pct),
+        }
+
+    return {
+        "available": True,
+        "version": version,
+        "global_minimum_confidence_pct": global_pct,
+        "buckets": published,
+    }
+
+
+def _experiment_gate(
+    runtime: Any | None,
+    risk_policy: dict[str, Any],
+) -> dict[str, Any]:
+    """
+    The paper confidence-floor experiment attached to the running
+    RiskEngine (EXP-001, registry v5.01), read from
+    ``RiskEngine.experiment_status()``. While it is active it replaces the
+    policy floor for its buckets with
+    ``max(global_minimum_confidence, experiment.minimum_confidence)`` -
+    the same expression as ``RiskEngine._experiment_floor`` - so the page
+    must not show the policy floor as the one being enforced.
+
+    Anything unreadable is reported as unavailable, never as "no
+    experiment": the page then keeps saying the floor is unknown.
+    """
+
+    engine = _resolve_attr(runtime, "risk_engine")
+    status_reader = getattr(engine, "experiment_status", None)
+
+    if not callable(status_reader):
+        return {"available": False, "reason": "RISK_ENGINE_UNAVAILABLE"}
+
+    try:
+        status = status_reader()
+    except Exception:
+        logger.exception("Experiment status is unreadable")
+        return {"available": False, "reason": "EXPERIMENT_STATUS_UNREADABLE"}
+
+    if status is None:
+        return {"available": True, "attached": False}
+
+    if not isinstance(status, dict):
+        return {"available": False, "reason": "EXPERIMENT_STATUS_MALFORMED"}
+
+    if risk_policy.get("available") is not True:
+        return {"available": False, "reason": "RISK_POLICY_UNAVAILABLE"}
+
+    try:
+        minimum_pct = _confidence_pct(Decimal(str(status.get("minimum_confidence"))))
+    except (InvalidOperation, ValueError):
+        minimum_pct = None
+
+    global_pct = risk_policy.get("global_minimum_confidence_pct")
+    buckets = status.get("buckets")
+
+    if (
+        minimum_pct is None
+        or not isinstance(global_pct, (int, float))
+        or not isinstance(buckets, list)
+        or not all(isinstance(name, str) for name in buckets)
+        or not isinstance(status.get("active"), bool)
+    ):
+        return {"available": False, "reason": "EXPERIMENT_STATUS_MALFORMED"}
+
+    return {
+        "available": True,
+        "attached": True,
+        "experiment_id": str(status.get("experiment_id")),
+        "active": status["active"],
+        "closed_reason": status.get("closed_reason"),
+        "buckets": buckets,
+        "required_confidence_pct": max(global_pct, minimum_pct),
+        "admissions": status.get("admissions"),
+        "max_admissions": status.get("max_admissions"),
+        "starts_at": status.get("starts_at"),
+        "ends_at": status.get("ends_at"),
+    }
+
+
+def _latest_risk_decisions(
+    lines: list[str],
+) -> dict[str, dict[str, Any]]:
+    """
+    Each symbol's most recent risk-stage outcome in the scanned audit tail.
+
+    A RISK_REJECTED / RISK_APPROVED event is attributed to a symbol only
+    through its causation link to an EXECUTION_REQUEST_VALIDATED event in
+    the same window; an outcome whose validation event is outside the
+    window (or malformed) is skipped rather than attributed by parsing its
+    request id. Only codes, the action, the confidence and the timestamp
+    are published; the allocation and equity figures in the details stay
+    out.
+    """
+
+    validated: dict[str, dict[str, Any]] = {}
+    latest: dict[str, dict[str, Any]] = {}
+
+    for line in lines:
+        line = line.strip()
+
+        if not line:
+            continue
+
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+
+        if (
+            not isinstance(event, dict)
+            or event.get("aggregate_type") != EXECUTION_REQUEST_AGGREGATE
+        ):
+            continue
+
+        event_type = event.get("event_type")
+        payload = event.get("payload")
+
+        if not isinstance(payload, dict):
+            continue
+
+        if event_type == EXECUTION_REQUEST_VALIDATED:
+            event_id = event.get("event_id")
+            symbol = payload.get("symbol")
+            action = payload.get("action")
+            confidence = payload.get("confidence")
+
+            if (
+                isinstance(event_id, str)
+                and isinstance(symbol, str)
+                and isinstance(action, str)
+                and isinstance(confidence, (int, float))
+                and not isinstance(confidence, bool)
+                and math.isfinite(confidence)
+            ):
+                validated[event_id] = {
+                    "symbol": symbol,
+                    "action": action,
+                    "confidence": confidence,
+                }
+
+            continue
+
+        outcome = RISK_STAGE_OUTCOMES.get(event_type)
+
+        if outcome is None:
+            continue
+
+        cause = event.get("causation_id")
+        origin = validated.get(cause) if isinstance(cause, str) else None
+
+        if origin is None:
+            continue
+
+        reason = payload.get("reason") if outcome == "REJECTED" else event_type
+        timestamp = event.get("timestamp")
+
+        latest[origin["symbol"]] = {
+            "outcome": outcome,
+            "reason": reason if isinstance(reason, str) else None,
+            "action": origin["action"],
+            "confidence": origin["confidence"],
+            "decided_at": timestamp if isinstance(timestamp, str) else None,
+        }
+
+    return latest
+
+
+def _execution_gates_payload(
+    runtime: Any | None,
+) -> tuple[int, dict[str, Any]]:
+    """
+    The two confidence gates a BUY passes on its way to execution, and each
+    symbol's latest risk-stage outcome. Read-only throughout.
+
+    ExecutionManager checks its flat ``minimum_confidence`` (0-100) first;
+    RiskEngine then applies the per-bucket floor (0-1, converted here to
+    0-100). They are published separately so the page never presents one
+    as the other.
+    """
+
+    if runtime is None:
+        return 503, {"available": False, "reason": "RUNTIME_NOT_ATTACHED"}
+
+    execution = _resolve_attr(runtime, "execution")
+    execution_minimum = getattr(execution, "minimum_confidence", None)
+
+    if (
+        not isinstance(execution_minimum, (int, float))
+        or isinstance(execution_minimum, bool)
+        or not math.isfinite(execution_minimum)
+    ):
+        execution_minimum = None
+
+    audit_store = _resolve_attr(runtime, "audit_store")
+    audit_path = getattr(audit_store, "file_path", None)
+    decisions: dict[str, Any]
+
+    if not isinstance(audit_path, Path):
+        decisions = {"available": False, "reason": "AUDIT_STORE_UNAVAILABLE"}
+    else:
+        try:
+            lines, truncated = _read_audit_tail_lines(audit_path)
+        except (OSError, UnicodeDecodeError) as exc:
+            logger.exception("Audit log is unreadable")
+            decisions = {
+                "available": False,
+                "reason": "AUDIT_LOG_UNREADABLE",
+                "error_type": type(exc).__name__,
+            }
+        else:
+            decisions = {
+                "available": True,
+                "by_symbol": _latest_risk_decisions(lines),
+                "scan_truncated": truncated,
+            }
+
+    risk_policy = _risk_policy_gates(runtime)
+
+    return 200, {
+        "available": True,
+        "execution_minimum_confidence": execution_minimum,
+        "risk_policy": risk_policy,
+        "experiment": _experiment_gate(runtime, risk_policy),
+        "latest_risk_decisions": decisions,
+    }
+
+
+def _learning_payload(runtime: Any, memory: dict) -> dict:
+    """Experiences and lessons from the closed-position archive plus memory records (read-only)."""
+    archive = getattr(_resolve_attr(runtime, "portfolio_foundation"), "closed_archive", None)
+    load_index = getattr(archive, "load_index", None)
+    if not callable(load_index):
+        return {"available": False, "reason": "CLOSED_ARCHIVE_UNAVAILABLE"}
+    try:
+        records = getattr(load_index(), "by_position_id", None) or {}
+    except Exception as exc:
+        return {"available": False, "reason": "CLOSED_ARCHIVE_UNREADABLE", "error_type": type(exc).__name__}
+    closed = [dict(r, position_id=pid) for pid, r in records.items() if isinstance(r, dict)]
+    return learning_view.build(closed, memory.get("records") or [] if isinstance(memory, dict) else [])
+
+
+def _quote_assets(runtime: Any) -> dict[str, str]:
+    """symbol -> quote asset from the loaded instrument rules (empty when not attached)."""
+    rules = _resolve_attr(runtime, "instrument_ruleset")
+    table = getattr(rules, "rules", None)
+    if table is None or not hasattr(table, "items"):
+        return {}
+    return {str(sym): str(getattr(r, "quote_asset", "")) for sym, r in table.items() if getattr(r, "quote_asset", "")}
+
+
+def _limits_payload(runtime: Any, unrealized: Any) -> dict:
+    """Read-only FTMO-style limits card from the durable risk-accounting file and the live policy."""
+    store = _resolve_attr(runtime, "risk_state_store")
+    policy = _resolve_attr(runtime, "risk_policy")
+    path = getattr(store, "path", None)
+    if path is None or policy is None:
+        return {"available": False, "reason": "RISK_STATE_NOT_ATTACHED"}
+    try:
+        state = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {"available": False, "reason": "RISK_STATE_UNREADABLE"}
+    limits = {"total_capital": getattr(policy, "total_capital", None),
+              "max_daily_loss_pct": getattr(policy, "max_daily_loss_pct", None),
+              "drawdown_warning_pct": getattr(policy, "drawdown_warning_pct", None),
+              "drawdown_restrict_pct": getattr(policy, "drawdown_restrict_pct", None),
+              "drawdown_halt_pct": getattr(policy, "drawdown_halt_pct", None)}
+    return portfolio_view.limits_card(state, limits, unrealized)
+
+
+def _candles_payload(market_loop: Any, symbol: str) -> dict[str, Any]:
+    """Chart data for one symbol; unknown or malformed input is reported, never guessed."""
+
+    symbol = str(symbol or "").strip().upper()
+    if not symbol or not symbol.isalnum() or len(symbol) > 20:
+        return {"available": False, "reason": "INVALID_SYMBOL"}
+    reader = getattr(market_loop, "candles", None)
+    if not callable(reader):
+        return {"available": False, "reason": "MARKET_LOOP_NOT_ATTACHED"}
+    try:
+        rows = reader(symbol)
+        candles = [{"time": int(t) // 1000, "open": o, "high": h, "low": lo, "close": c} for t, o, h, lo, c in rows]
+    except Exception:
+        logger.exception("Candle read failed")
+        return {"available": False, "reason": "CANDLES_UNREADABLE"}
+    if not candles:
+        return {"available": False, "reason": "NO_CANDLES_YET", "symbol": symbol}
+    return {"available": True, "symbol": symbol, "interval": "1m", "candles": candles}
+
+
+def _response_json(response: Any) -> Any:
+    """The JSON body of an in-process JSONResponse, or None."""
+
+    try:
+        return json.loads(response.body)
+    except (AttributeError, ValueError):
+        return None
+
+
 def create_app(
     *,
     runtime: Any | None = None,
@@ -803,6 +1807,12 @@ def create_app(
             "Lifecycle-safe Atlas monitoring and control interface"
         ),
         version="2.0",
+        # The auto-mounted /docs, /redoc and /openapi.json below reuse
+        # is_loopback_request instead of FastAPI's unguarded defaults, so
+        # those defaults are switched off here.
+        docs_url=None,
+        redoc_url=None,
+        openapi_url=None,
     )
 
     templates = Jinja2Templates(
@@ -811,6 +1821,64 @@ def create_app(
 
     application.state.atlas_runtime = runtime
     application.state.price_provider = price_provider
+
+    @application.middleware("http")
+    async def _apply_security_headers(
+        request: Request,
+        call_next: Callable[[Request], Any],
+    ) -> Response:
+        response = await call_next(request)
+
+        for name, value in SECURITY_HEADERS.items():
+            response.headers[name] = value
+
+        return response
+
+    _register_page_routes(application, templates)
+    api_signals = _register_status_routes(application)
+    _register_evidence_routes(application)
+    _register_runtime_routes(application, api_signals)
+    _register_panel_routes(application)
+
+    return application
+
+
+def _register_page_routes(application: FastAPI, templates: Jinja2Templates) -> None:
+    """T-0016: part of create_app, moved verbatim; routes register in the original order."""
+    @application.get("/openapi.json", include_in_schema=False)
+    async def openapi_schema(request: Request) -> Response:
+        if not is_loopback_request(request):
+            return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+
+        return JSONResponse(application.openapi())
+
+    @application.get(
+        "/docs",
+        response_class=HTMLResponse,
+        include_in_schema=False,
+    )
+    async def swagger_docs(request: Request) -> Response:
+        if not is_loopback_request(request):
+            return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+
+        return get_swagger_ui_html(
+            openapi_url="/openapi.json",
+            title=f"{application.title} - Swagger UI",
+        )
+
+    @application.get(
+        "/redoc",
+        response_class=HTMLResponse,
+        include_in_schema=False,
+    )
+    async def redoc_docs(request: Request) -> Response:
+        if not is_loopback_request(request):
+            return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+
+        return get_redoc_html(
+            openapi_url="/openapi.json",
+            title=f"{application.title} - ReDoc",
+        )
 
     # Read-only observability panels (test results artifact, GOV-DRIFT
     # status). Mounting only registers routes: no file is read here, so
@@ -848,6 +1916,48 @@ def create_app(
                 ),
             },
         )
+
+    @application.get(
+        "/agents",
+        response_class=HTMLResponse,
+    )
+    async def agents_page(
+        request: Request,
+    ) -> Response:
+        # Registry v5.29: the organization / agents page. Static shell; all
+        # data comes from the read-only /api/organization, /api/signals and
+        # /api/agent-evidence endpoints it polls. Guarded like every page.
+        if not is_loopback_request(request):
+            return JSONResponse(
+                status_code=403,
+                content=NON_LOOPBACK_RESPONSE,
+            )
+
+        return templates.TemplateResponse(
+            request=request,
+            name="agents.html",
+            context={},
+        )
+
+    # Registry v5.40 (owner: a simple start page, details on other pages).
+    for _path, _template in (("/home", "home.html"), ("/trading", "trading.html"), ("/governance", "governance.html"),
+                             ("/system", "system.html"), ("/security", "security.html"),
+                             ("/roadmap", "roadmap.html"), ("/research", "research.html"),
+                             ("/decisions", "decisions.html"), ("/postmortem", "postmortem.html")):
+        async def _static_page(request: Request, _template=_template) -> Response:
+            if not is_loopback_request(request):
+                return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+            return templates.TemplateResponse(request=request, name=_template, context={})
+
+        application.add_api_route(_path, _static_page, methods=["GET"], response_class=HTMLResponse)
+
+    @application.get("/hq", response_class=HTMLResponse)
+    async def hq_page(request: Request) -> Response:
+        # Registry v5.38: Atlas HQ. Static shell; the 3D view is presentation
+        # only and every value comes from the read-only APIs it polls.
+        if not is_loopback_request(request):
+            return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+        return templates.TemplateResponse(request=request, name="hq.html", context={})
 
     @application.get(
         "/dashboard",
@@ -901,6 +2011,9 @@ def create_app(
             },
         )
 
+
+def _register_status_routes(application: FastAPI) -> Callable[[Request], Any]:
+    """T-0016: part of create_app, moved verbatim; routes register in the original order."""
     @application.get(
         "/api/health",
         response_class=JSONResponse,
@@ -927,6 +2040,28 @@ def create_app(
         return JSONResponse(
             status_code=status_code,
             content=health,
+        )
+
+    @application.get(
+        "/api/status",
+        response_class=JSONResponse,
+    )
+    async def api_status(
+        request: Request,
+    ) -> JSONResponse:
+        if not is_loopback_request(request):
+            return JSONResponse(
+                status_code=403,
+                content=NON_LOOPBACK_RESPONSE,
+            )
+
+        status = _safe_runtime_status(
+            application.state.atlas_runtime
+        )
+
+        return JSONResponse(
+            status_code=200,
+            content=status,
         )
 
     @application.get(
@@ -1128,6 +2263,11 @@ def create_app(
                 },
             )
 
+    return api_signals
+
+
+def _register_evidence_routes(application: FastAPI) -> None:
+    """T-0016: part of create_app, moved verbatim; routes register in the original order."""
     @application.get(
         "/api/trades",
         response_class=JSONResponse,
@@ -1286,21 +2426,229 @@ def create_app(
                 },
             )
 
+        content = {
+            "available": True,
+            "total_trades": total_trades,
+            "wins": wins,
+            "losses": losses,
+            "win_rate": win_rate,
+            "total_gross_pnl": str(total_gross_pnl),
+            "recent_trades": [
+                _public_trade(record) for record in recent
+            ],
+        }
+        # Registry v5.24 (owner, recommended option): account-level realized
+        # net P&L and total fees only - aggregates the operator already sees
+        # in tools/exp001_report. Per-position cost, fees and prices stay off
+        # the web surface. Present only when the durable book can be read;
+        # never a placeholder.
+        account = _account_totals(portfolio_foundation)
+        if account is not None:
+            content["account"] = account
         return JSONResponse(
             status_code=200,
-            content={
-                "available": True,
-                "total_trades": total_trades,
-                "wins": wins,
-                "losses": losses,
-                "win_rate": win_rate,
-                "total_gross_pnl": str(total_gross_pnl),
-                "recent_trades": [
-                    _public_trade(record) for record in recent
-                ],
-            },
+            content=content,
         )
 
+    @application.get(
+        "/api/organization",
+        response_class=JSONResponse,
+    )
+    async def api_organization(
+        request: Request,
+    ) -> JSONResponse:
+        # Registry v5.25: the Atlas organization roster (every corporate unit
+        # and agent from the owner's vision documents) with its real status.
+        # Static, read-only data; ACTIVE only where running code backs it.
+        if not is_loopback_request(request):
+            return JSONResponse(
+                status_code=403,
+                content=NON_LOOPBACK_RESPONSE,
+            )
+        return JSONResponse(
+            status_code=200,
+            content=organization_public(),
+        )
+
+    # Registry v5.34 (owner: "Önce yönetişim temeli"): proposals, Atlas
+    # Memory and agent permissions. Read-only replays of the hash-chained
+    # logs in governance/records/; a corrupted log reads as unavailable.
+    for path, reader in (
+        ("/api/proposals", governance_records.read_proposals),
+        ("/api/memory", governance_records.read_memory),
+        ("/api/permissions", governance_records.read_permissions),
+        ("/api/tasks", governance_records.read_tasks),
+        ("/api/security", security_view.read_security),
+        ("/api/roadmap", roadmap_view.read_roadmap),
+        ("/api/research", research_view.read_research),
+    ):
+        async def _governance_route(request: Request, _reader=reader) -> JSONResponse:
+            if not is_loopback_request(request):
+                return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+            return JSONResponse(status_code=200, content=await run_in_threadpool(_reader))
+
+        application.add_api_route(path, _governance_route, methods=["GET"],
+                                  response_class=JSONResponse)
+
+
+def _register_runtime_routes(application: FastAPI, api_signals: Callable[[Request], Any]) -> None:
+    """T-0016: part of create_app, moved verbatim; routes register in the original order."""
+    # Experience agent summary (2026-10-02): reads only the state.json the
+    # agent writes under the running runtime's state directory (read-only).
+    @application.get("/api/experience", response_class=JSONResponse)
+    async def api_experience(request: Request) -> JSONResponse:
+        if not is_loopback_request(request):
+            return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+        path = experience_view.state_path_for(
+            _resolve_attr(application.state.atlas_runtime, "state_directory"))
+        return JSONResponse(status_code=200, content=await run_in_threadpool(experience_view.read_experience, path))
+
+    # Price chart (v5.72): the market loop's last closed candles for one coin,
+    # read-only; the chart overlays Atlas's own trades from /api/trades.
+    @application.get("/api/candles", response_class=JSONResponse)
+    async def api_candles(request: Request, symbol: str = "") -> JSONResponse:
+        if not is_loopback_request(request):
+            return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+        return JSONResponse(status_code=200, content=_candles_payload(
+            _resolve_attr(application.state.atlas_runtime, "market_loop"), symbol))
+
+    # Atlas HQ backbone: every agent's state, room and hand-offs, derived only
+    # from the recorded logs and the running market loop (read-only).
+    @application.get("/api/agent-states", response_class=JSONResponse)
+    async def api_agent_states(request: Request) -> JSONResponse:
+        if not is_loopback_request(request):
+            return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+        signals = _response_json(await api_signals(request))
+
+        def _build() -> dict:
+            return agent_states.build(governance_records.read_tasks(), governance_records.read_proposals(),
+                                      governance_records.read_memory(), signals)
+
+        return JSONResponse(status_code=200, content=await run_in_threadpool(_build))
+
+    # Owner specification 2026-09-30: experiences, lessons, contradictions (read-only, derived).
+    # Atlas Event Contract v1 (owner architecture 2026-10-01): governance logs as
+    # contract events. Read-only, loopback-only, every event backed by a record.
+    @application.get("/api/events", response_class=JSONResponse)
+    async def api_events(request: Request) -> JSONResponse:
+        if not is_loopback_request(request):
+            return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+
+        def _build() -> dict:
+            from observability.event_contract import events_from_records
+
+            memory, proposals = governance_records.read_memory(), governance_records.read_proposals()
+            out = events_from_records(memory.get("records") or [] if isinstance(memory, dict) else [],
+                                      proposals.get("proposals") or [] if isinstance(proposals, dict) and proposals.get("available") else [])
+            out["events"] = out["events"][-200:]
+            out["available"] = True
+            return out
+
+        return JSONResponse(status_code=200, content=await run_in_threadpool(_build))
+
+    @application.get("/api/learning", response_class=JSONResponse)
+    async def api_learning(request: Request) -> JSONResponse:
+        if not is_loopback_request(request):
+            return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+
+        def _build() -> dict:
+            return _learning_payload(application.state.atlas_runtime, governance_records.read_memory())
+
+        return JSONResponse(status_code=200, content=await run_in_threadpool(_build))
+
+    # Registry v5.37: Command Center brief and Atlas Chat. Both only read
+    # the payloads above (health, account totals, proposals, tasks, memory);
+    # the chat is deterministic and cannot act.
+    def _command_center_brief(signals: dict | None = None) -> dict:
+        runtime = application.state.atlas_runtime
+        tasks_view, proposals_view, memory_view = (governance_records.read_tasks(), governance_records.read_proposals(),
+                                                   governance_records.read_memory())
+        return command_center.compose(
+            health=_safe_runtime_health(runtime),
+            account=_account_totals(_resolve_attr(runtime, "portfolio_foundation")),
+            proposals=proposals_view,
+            tasks=tasks_view,
+            memory=memory_view,
+            portfolio=_portfolio_payload(),
+            agent_states=agent_states.build(tasks_view, proposals_view, memory_view, signals),
+        )
+
+    # Registry v5.40 (owner: real-time capital and P/L, not fake data): the
+    # durable PAPER book valued at MarketLoop's latest real prices. Read-only:
+    # snapshot() and status() are the runtime's own public accessors.
+    def _portfolio_payload() -> dict:
+        runtime = application.state.atlas_runtime
+        foundation = _resolve_attr(runtime, "portfolio_foundation")
+        snapshot_method = getattr(foundation, "snapshot", None)
+        if not callable(snapshot_method):
+            return {"available": False, "reason": "PORTFOLIO_FOUNDATION_NOT_ATTACHED"}
+        try:
+            snapshot = snapshot_method()
+        except Exception as exc:
+            logger.debug("Portfolio snapshot unavailable", exc_info=True)
+            return {"available": False, "reason": "PORTFOLIO_SNAPSHOT_FAILED", "error_type": type(exc).__name__}
+        prices, signals, price_time = {}, {}, None
+        market_loop = _resolve_attr(runtime, "market_loop")
+        loop_status = getattr(market_loop, "status", None)
+        if callable(loop_status):
+            try:
+                status = loop_status()
+                price_time = status.get("last_cycle")
+                for symbol, decision in (status.get("last_signals") or {}).items():
+                    if isinstance(decision, dict) and decision.get("price") is not None:
+                        prices[symbol] = decision["price"]
+                        signals[symbol] = {k: decision.get(k) for k in PUBLIC_SIGNAL_KEYS}
+            except Exception:
+                logger.debug("Market loop status unavailable for portfolio", exc_info=True)
+        payload = portfolio_view.build(snapshot, prices, price_time, quote_assets=_quote_assets(runtime))
+        if payload.get("available"):
+            # Every scanned coin with its latest real price and the loop's decision.
+            payload["market"] = [{"symbol": sym, "price": str(prices[sym]), **signals[sym]} for sym in sorted(prices)]
+            payload["limits"] = _limits_payload(runtime, payload.get("unrealized_pnl"))
+        return payload
+
+    # Registry v5.58 (master command §24/§26): liveness and readiness.
+    @application.get("/api/liveness", response_class=JSONResponse)
+    async def api_liveness(request: Request) -> JSONResponse:
+        if not is_loopback_request(request):
+            return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+        # The web process answered: that is all liveness claims.
+        return JSONResponse(status_code=200, content={"alive": True, "at": datetime.now(UTC).isoformat()})
+
+    @application.get("/api/readiness", response_class=JSONResponse)
+    async def api_readiness(request: Request) -> JSONResponse:
+        if not is_loopback_request(request):
+            return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+        result = readiness.evaluate(_safe_runtime_status(application.state.atlas_runtime))
+        return JSONResponse(status_code=200 if result["ready"] else 503, content=result)
+
+    @application.get("/api/portfolio", response_class=JSONResponse)
+    async def api_portfolio(request: Request) -> JSONResponse:
+        if not is_loopback_request(request):
+            return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+        return JSONResponse(status_code=200, content=await run_in_threadpool(_portfolio_payload))
+
+    @application.get("/api/command-center", response_class=JSONResponse)
+    async def api_command_center(request: Request) -> JSONResponse:
+        if not is_loopback_request(request):
+            return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+        signals = _response_json(await api_signals(request))
+        brief = await run_in_threadpool(_command_center_brief, signals)
+        brief.pop("_proposals", None)
+        brief.pop("_portfolio", None)
+        return JSONResponse(status_code=200, content=brief)
+
+    @application.get("/api/chat", response_class=JSONResponse)
+    async def api_chat(request: Request, q: str = "") -> JSONResponse:
+        if not is_loopback_request(request):
+            return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+        signals = _response_json(await api_signals(request))
+        brief = await run_in_threadpool(_command_center_brief, signals)
+        return JSONResponse(status_code=200, content=command_center.answer(q[:500], brief))
+
+
+def _register_panel_routes(application: FastAPI) -> None:
+    """T-0016: part of create_app, moved verbatim; routes register in the original order."""
     @application.get(
         "/api/agent-evidence",
         response_class=JSONResponse,
@@ -1433,6 +2781,38 @@ def create_app(
         return JSONResponse(status_code=200, content=payload)
 
     @application.get(
+        "/api/execution-gates",
+        response_class=JSONResponse,
+    )
+    async def api_execution_gates(
+        request: Request,
+    ) -> JSONResponse:
+        if not is_loopback_request(request):
+            return JSONResponse(
+                status_code=403,
+                content=NON_LOOPBACK_RESPONSE,
+            )
+
+        try:
+            status_code, payload = await run_in_threadpool(
+                _execution_gates_payload,
+                application.state.atlas_runtime,
+            )
+        except Exception as exc:
+            logger.exception("Execution gates panel read failed")
+
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "available": False,
+                    "reason": "PANEL_READ_FAILED",
+                    "error_type": type(exc).__name__,
+                },
+            )
+
+        return JSONResponse(status_code=status_code, content=payload)
+
+    @application.get(
         "/assets/{asset_name}",
     )
     async def vendored_asset(
@@ -1462,19 +2842,27 @@ def create_app(
         "/login",
         response_class=RedirectResponse,
     )
-    async def login() -> RedirectResponse:
+    async def login(request: Request) -> Response:
         """
         Temporary dashboard redirect.
 
-        Authentication must be implemented before external exposure.
+        Authentication must be implemented before external exposure. Guarded
+        like every other route here, plus an Origin check: POST is the one
+        state-changing method this application exposes, so it is the one
+        route where a mismatched Origin - not just a mismatched Host - must
+        be refused.
         """
+
+        if not is_loopback_request(request):
+            return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
+
+        if not is_same_origin_request(request):
+            return JSONResponse(status_code=403, content=NON_LOOPBACK_RESPONSE)
 
         return RedirectResponse(
             url="/dashboard",
             status_code=303,
         )
-
-    return application
 
 
 app = create_app()

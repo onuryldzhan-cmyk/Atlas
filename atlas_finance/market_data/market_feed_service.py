@@ -70,6 +70,7 @@ from atlas_os import (
     EventSeverity,
     MetricsService,
     ServiceIdentity,
+    ServiceState,
 )
 
 from atlas_finance.market_data.contracts import (
@@ -439,6 +440,13 @@ class MarketFeedService(
         self._consecutive_failures = 0
 
         self._degradation_active = False
+
+        # Task 013 (registry v5.97): observation only - how often the provider degraded and
+        # recovered, and when. Read by health details; never read by any decision.
+        self._degradations = 0
+        self._recoveries = 0
+        self._last_degraded_at: datetime | None = None
+        self._last_recovered_at: datetime | None = None
 
         logger.info(
             "%s v%s initialized with provider %s.",
@@ -1010,6 +1018,19 @@ class MarketFeedService(
                     .last_failure_at
                     else None
                 ),
+                # Task 013 (registry v5.97): DEGRADED -> recovered transitions.
+                "degradations": self._degradations,
+                "recoveries": self._recoveries,
+                "last_degraded_at": (
+                    self._last_degraded_at.isoformat()
+                    if self._last_degraded_at
+                    else None
+                ),
+                "last_recovered_at": (
+                    self._last_recovered_at.isoformat()
+                    if self._last_recovered_at
+                    else None
+                ),
             }
         )
 
@@ -1155,9 +1176,7 @@ class MarketFeedService(
             correlation_id=correlation_id,
         )
 
-        if was_degraded:
-            self.recover()
-
+        if self._recover_if_degraded():
             self._publish_event(
                 (
                     MarketFeedEventType
@@ -1282,9 +1301,7 @@ class MarketFeedService(
             correlation_id=correlation_id,
         )
 
-        if was_degraded:
-            self.recover()
-
+        if self._recover_if_degraded():
             self._publish_event(
                 (
                     MarketFeedEventType
@@ -1482,10 +1499,11 @@ class MarketFeedService(
                 "request failures."
             )
 
-            self.mark_degraded(
+            newly_degraded = self._degrade_if_still_failing(
                 reason
             )
 
+        if newly_degraded:
             self._publish_event(
                 (
                     MarketFeedEventType
@@ -1667,10 +1685,60 @@ class MarketFeedService(
     # VALIDATION
     # =====================================================
 
+    def _recover_if_degraded(
+        self,
+    ) -> bool:
+        """Task 010 (reviews 20 F-6, 21 L-3): a success recovers a DEGRADED service.
+
+        Decided and applied under the one service lock (BaseAtlasService uses the same RLock), so it
+        recovers only a degradation no newer failure streak still owns: a success racing a failure
+        can neither raise, nor leave the service stuck in DEGRADED, nor clear a degradation that
+        failures after it re-established. A stop() racing it waits for the lock and finds the
+        state already settled.
+        """
+
+        with self._lock:
+            if (
+                self._degradation_active
+                or self.state != ServiceState.DEGRADED
+            ):
+                return False
+
+            self.recover()  # cannot raise: the state was checked under this same lock
+            self._recoveries += 1
+            self._last_recovered_at = utc_now()
+
+            return True
+
+    def _degrade_if_still_failing(
+        self,
+        reason: str,
+    ) -> bool:
+        """Task 010 (review 21 L-3): mark DEGRADED only while this failure streak is still current."""
+
+        with self._lock:
+            if (
+                not self._degradation_active
+                or self.state != ServiceState.RUNNING
+            ):
+                return False
+
+            self.mark_degraded(  # cannot raise: the state was checked under this same lock
+                reason
+            )
+            self._degradations += 1
+            self._last_degraded_at = utc_now()
+
+            return True
+
     def _require_running(
         self,
     ) -> None:
-        if not self.is_running:
+        # Task 010 (registry v5.94): a DEGRADED service is still operational (BaseAtlasService
+        # health: "operational but degraded"), so it keeps serving requests and the next success
+        # recovers it. Refusing it, as before, latched the feed until restart: no request could
+        # succeed, so recover() was never reached and every later BUY and SELL decision stopped.
+        if self.state not in (ServiceState.RUNNING, ServiceState.DEGRADED):
             raise MarketDataServiceNotRunningError(
                 "MarketFeedService must be running "
                 "before market data can be requested."

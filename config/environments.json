@@ -1,0 +1,14 @@
+{
+  "schema_version": "1",
+  "current": "PAPER",
+  "environments": {
+    "DEVELOPMENT": {"real_money": false, "market_data": "fixtures or replay", "state_directory": "temporary", "may_submit_orders": false, "entry": "tests / tools"},
+    "TEST": {"real_money": false, "market_data": "fixtures", "state_directory": "pytest tmp_path", "may_submit_orders": false, "entry": "pytest"},
+    "PAPER": {"real_money": false, "market_data": "Binance public (live)", "state_directory": "ATLAS_STATE_DIRECTORY", "may_submit_orders": false, "entry": "main.py (EXECUTION_MODE=PAPER)"},
+    "SHADOW": {"real_money": false, "market_data": "live", "state_directory": "separate", "may_submit_orders": false, "entry": "NOT IMPLEMENTED (CLAUDE.md ladder stage)"},
+    "PRODUCTION_CANDIDATE": {"real_money": false, "market_data": "live", "state_directory": "separate", "may_submit_orders": false, "entry": "NOT IMPLEMENTED: requires release gate + independent audit"},
+    "PRODUCTION": {"real_money": true, "market_data": "live", "state_directory": "separate", "may_submit_orders": true, "entry": "DENIED: live_authority=DENIED, production_authority=NONE"}
+  },
+  "release_gate": ["BUILD", "TEST", "SECURITY", "INTEGRATION", "PAPER", "SHADOW", "REVIEW", "INDEPENDENT_AUDIT", "OWNER_APPROVAL", "RELEASE"],
+  "rollback_rule": "application rollback (git revision) never rewrites financial state; financial recovery uses the journal + state_backup restore"
+}

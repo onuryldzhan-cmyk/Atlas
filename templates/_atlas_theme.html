@@ -1,0 +1,94 @@
+{#
+  Shared Atlas operator theme (registry v5.49; Dashboard v1 palette, owner
+  2026-10-01). Included by every operator page. Principles taken from
+  professional trading terminals: a fixed key-figure strip, tabular
+  right-aligned numerals, colour only where it carries meaning, 6-8 px
+  radius, hairline borders, minimal shadow. No glass, no neon, no 3D, no
+  purple AI colour (v5.77 look removed). Dark only. Pure CSS; fonts fall
+  back to system fonts (no CDN).
+#}
+<style>
+    :root {
+        /* Dashboard v1 palette (owner 2026-10-01) */
+        --atlas-bg: #0B0D10;
+        --atlas-panel: #11151A;      /* surface */
+        --atlas-panel-2: #171C22;    /* elevated */
+        --atlas-line: #242A31;       /* border */
+        --atlas-text: #F1F3F5;
+        --atlas-muted: #8B949E;      /* secondary text */
+        --atlas-accent: #5B8CFF;     /* Atlas blue */
+        --atlas-up: #35C98B;         /* success */
+        --atlas-down: #E56B6F;       /* danger */
+        --atlas-warn: #E5B95C;       /* warning */
+        --atlas-info: #6EA8FE;
+        --atlas-radius: 7px;
+        --atlas-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        /* Semantic aliases kept for existing pages; each maps onto the palette above. */
+        --atlas-ai: var(--atlas-accent);
+        --atlas-market: var(--atlas-info);
+        --atlas-profit: var(--atlas-up);
+        --atlas-risk: var(--atlas-down);
+        --atlas-warning: var(--atlas-warn);
+        --atlas-governance: var(--atlas-accent);
+    }
+    .text-bg-primary { background-color: var(--atlas-ai) !important; }
+    .text-bg-info { background-color: var(--atlas-info) !important; color: #0B0D10 !important; }
+    .text-bg-success { background-color: var(--atlas-profit) !important; }
+    .text-bg-danger { background-color: var(--atlas-risk) !important; }
+    .text-bg-warning { background-color: var(--atlas-warning) !important; color: #0B0D10 !important; }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+    html, body { background: var(--atlas-bg) !important; color: var(--atlas-text); }
+    body { font-family: "Inter", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; font-size: 14px; letter-spacing: .005em; }
+    .navbar { background: var(--atlas-panel) !important; border-bottom: 1px solid var(--atlas-line) !important; min-height: 48px; }
+    .navbar-brand { font-size: 15px; letter-spacing: .04em; }
+    .navbar-brand .text-primary { color: var(--atlas-accent) !important; }
+    .atlas-nav a { text-decoration: none !important; white-space: nowrap; color: var(--atlas-muted) !important; padding: .3rem .65rem !important; border-radius: 4px !important; font-size: 13px; }
+    .atlas-subnav { padding-top: 4px; border-top: 1px solid var(--atlas-line); margin-top: 4px; }
+    .atlas-subnav a { text-decoration: none !important; font-size: 12px; color: var(--atlas-muted) !important; padding: .2rem .6rem; border-radius: 4px; white-space: nowrap; }
+    .atlas-subnav a.active, .atlas-subnav a:hover { color: var(--atlas-text) !important; background: var(--atlas-panel-2); }
+    .atlas-nav a.active { color: var(--atlas-text) !important; background: var(--atlas-panel-2) !important; box-shadow: inset 0 -2px 0 var(--atlas-accent); }
+    .atlas-nav a:hover { color: var(--atlas-text) !important; }
+    .pane, .kpi, .card-body, td { overflow-wrap: anywhere; }
+    /* AdminLTE KPI boxes: calm panels with a colored status edge instead of full-color blocks */
+    .small-box { background: var(--atlas-panel) !important; color: var(--atlas-text) !important; border: 1px solid var(--atlas-line) !important; border-left-width: 4px !important; box-shadow: none !important; }
+    .small-box.text-bg-success { border-left-color: var(--atlas-up) !important; }
+    .small-box.text-bg-warning { border-left-color: var(--atlas-warn) !important; }
+    .small-box.text-bg-danger { border-left-color: var(--atlas-down) !important; }
+    .small-box.text-bg-secondary, .small-box.text-bg-info, .small-box.text-bg-primary { border-left-color: var(--atlas-line) !important; }
+    .small-box h3 { font-size: 1.35rem !important; font-weight: 600 !important; }
+    .small-box p, .small-box .kpi-note { color: var(--atlas-muted) !important; }
+    .pane, .kpi { background: var(--atlas-panel) !important; border: 1px solid var(--atlas-line) !important; border-radius: var(--atlas-radius) !important; box-shadow: none !important; }
+    .pane h2, .kpi .label, .label { font-size: 12px !important; font-weight: 600; letter-spacing: .02em !important; text-transform: none !important; color: var(--atlas-muted) !important; }
+    .kpi .value { font-size: 24px !important; font-weight: 600 !important; }
+    .value, .num, td.text-end, .kv b, .big, .sym { font-family: var(--atlas-mono); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+    .up { color: var(--atlas-up) !important; } .down { color: var(--atlas-down) !important; }
+    .table { --bs-table-bg: transparent !important; --bs-table-color: var(--atlas-text); }
+    table { --bs-table-bg: transparent; --bs-table-striped-bg: rgba(255,255,255,.015); }
+    .table > :not(caption) > * > * { border-bottom-color: var(--atlas-line) !important; padding: .4rem .55rem; }
+    .table thead th { font-size: 12px; font-weight: 600; letter-spacing: .02em; text-transform: none; color: var(--atlas-muted); border-bottom: 1px solid var(--atlas-line) !important; }
+    .table tbody tr:hover > * { background: var(--atlas-panel-2) !important; }
+    .badge { font-weight: 600; letter-spacing: .03em; border-radius: 4px; }
+    .btn { border-radius: 4px; }
+    .form-control, .form-select { background: var(--atlas-bg) !important; border-color: var(--atlas-line) !important; color: var(--atlas-text) !important; border-radius: 4px; }
+    .form-control:focus { border-color: var(--atlas-accent) !important; box-shadow: none !important; }
+    .kv { border-bottom: 1px solid var(--atlas-line) !important; }
+    .muted, .text-body-secondary { color: var(--atlas-muted) !important; }
+    a { color: var(--atlas-accent); }
+</style>
+<script>
+/* Shared polling (2026-10-02, pattern from TanStack Query / SWR defaults):
+   no polling while the tab is hidden, no overlapping requests (a tick is
+   skipped while the previous call is still running), and one immediate
+   refresh when the tab becomes visible again. Read-only pages only. */
+window.atlasPoll = function (fn, ms) {
+    let busy = false;
+    const tick = async () => {
+        if (busy || document.hidden) return;
+        busy = true;
+        const cap = new Promise((r) => setTimeout(r, Math.max(3 * ms, 15000)));  // a hung request must not stop polling
+        try { await Promise.race([fn(), cap]); } catch (e) { /* the page renders its own error state */ } finally { busy = false; }
+    };
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
+    return setInterval(tick, ms);
+};
+</script>

@@ -259,6 +259,17 @@ class ExecutionTransactionJournal:
 
                     return False
 
+                # Phase-2 A2: pin the verified (empty) offset now, so a later
+                # foreign write is detected instead of being read lazily.
+                try:
+                    self._log.read()
+                except Exception as exc:
+                    self.entries = {}
+                    self.loaded = False
+                    self.load_failed = True
+                    self._record_error(phase="load", error=exc)
+                    return False
+
                 self.entries = {}
                 self.loaded = True
                 self.load_failed = False
@@ -950,9 +961,18 @@ class ExecutionTransactionJournal:
 
             if delete_file:
                 try:
+                    # Re-review 2026-10-03 (LOW): never destroy a file an
+                    # unresolved indeterminate write flagged for investigation.
+                    self._log._writer.check_recovery_marker()
+
                     self.file_path.unlink(
                         missing_ok=True
                     )
+
+                    # Audit 2026-10-03 F4: re-pin the writer at the now-empty
+                    # file, or the next append would see a size mismatch and
+                    # poison the store until restart.
+                    self._log.read()
 
                     return True
 

@@ -78,7 +78,7 @@ from .intelligence.confidence.confidence_engine import ConfidenceEngine
 from .intelligence.decision_builder import DecisionBuilder
 from .intelligence.memory_adapter import MemoryAdapter
 from .intelligence.reasoning_adapter import ReasoningAdapter
-from .intelligence.risk_engine import AdvisoryRiskScorer
+from .intelligence.risk_engine import AdvisoryRiskScorer, regime_risk_result
 
 from core.decision_intelligence import (
     Action,
@@ -94,6 +94,11 @@ from core.decision_intelligence import (
 # contracts, never from the store: this layer may describe a source but must
 # not reach the infrastructure that persists it.
 from data_layer.contracts import ClaimSource
+
+import logging as _logging
+
+# Diagnostics go to the log, not stdout (registry v5.50: 20 coins x every cycle flooded the console).
+_log = _logging.getLogger(__name__)
 
 
 logger = logging.getLogger(
@@ -201,7 +206,7 @@ class AtlasBrain:
 
         self.status = self.STATUS_ACTIVE
 
-        print(
+        _log.debug(
             f"[ATLAS BRAIN] Intelligence Brain "
             f"v{self.VERSION} active"
         )
@@ -247,7 +252,10 @@ class AtlasBrain:
             )
 
             self.memory = MemoryAdapter(
-                self.memory_core
+                self.memory_core,
+                closed_trades_reader=self.config.get(
+                    "closed_trades_reader"
+                ),
             )
 
             self.confidence = ConfidenceEngine()
@@ -256,7 +264,7 @@ class AtlasBrain:
 
             self.builder = DecisionBuilder()
 
-            print(
+            _log.debug(
                 "[ATLAS BRAIN] All intelligence modules loaded"
             )
 
@@ -277,7 +285,7 @@ class AtlasBrain:
                 "Atlas intelligence initialization failed"
             )
 
-            print(
+            _log.debug(
                 f"[ATLAS INIT ERROR] {exc}"
             )
 
@@ -319,15 +327,15 @@ class AtlasBrain:
             self._validate_pipeline()
 
             print()
-            print(
+            _log.debug(
                 "=" * 60
             )
-            print(
+            _log.debug(
                 f"ATLAS INTELLIGENCE "
                 f"v{self.VERSION} : "
                 f"{normalized_symbol}"
             )
-            print(
+            _log.debug(
                 "=" * 60
             )
 
@@ -361,7 +369,7 @@ class AtlasBrain:
             # MEMORY ANALYSIS
             # =================================================
 
-            memory_result = self.memory.analyze()
+            memory_result = self.memory.analyze(normalized_symbol)
 
             # =================================================
             # AGENT FUSION
@@ -435,7 +443,7 @@ class AtlasBrain:
                 )
             )
 
-            print(
+            _log.debug(
                 f"[CONFIDENCE] "
                 f"{intermediate_confidence}%"
             )
@@ -444,8 +452,16 @@ class AtlasBrain:
             # RISK ANALYSIS
             # =================================================
 
-            risk_result = self.risk.calculate(
+            # Advisory score kept for audit only (metadata["advisory_risk"]).
+            advisory_risk_result = self.risk.calculate(
                 confidence=confidence_result.value
+            )
+
+            # Registry v5.22: the bucket-selecting risk_level comes from
+            # the measured volatility regime (fail-closed to HIGH).
+            risk_result = regime_risk_result(
+                market_data,
+                normalized_symbol,
             )
 
             # =================================================
@@ -478,6 +494,8 @@ class AtlasBrain:
             # ConfidenceEngine results belong in metadata only.
             # =================================================
 
+            memory_adjustment = self._memory_caution(decision, memory_result)  # BRAIN-MEM-001
+
             confidence_explanation = (
                 self._safe_confidence_explanation(
                     confidence_result
@@ -488,6 +506,7 @@ class AtlasBrain:
                 {
                     "brain_version": self.VERSION,
                     "brain_session_id": self.session_id,
+                    "advisory_risk": advisory_risk_result.to_dict(),
                     "analysis_timestamp": datetime.now(
                         UTC
                     ).isoformat(),
@@ -498,6 +517,7 @@ class AtlasBrain:
                     "confidence_explanation": (
                         confidence_explanation
                     ),
+                    "memory_adjustment": memory_adjustment,
                     "final_confidence": (
                         float(
                             decision.confidence
@@ -551,7 +571,7 @@ class AtlasBrain:
                 normalized_symbol,
             )
 
-            print(
+            _log.debug(
                 f"[ATLAS ERROR] {exc}"
             )
 
@@ -612,7 +632,7 @@ class AtlasBrain:
             except TypeError:
                 related_count = 0
 
-            print(
+            _log.debug(
                 f"[WORLD] "
                 f"{related_count} related assets"
             )
@@ -627,7 +647,7 @@ class AtlasBrain:
                 symbol,
             )
 
-            print(
+            _log.debug(
                 f"[WORLD ERROR] {exc}"
             )
 
@@ -663,6 +683,11 @@ class AtlasBrain:
         independent Phase-5 research/shadow metric and must not be read
         as a reproduction of production conviction - the two can and do
         diverge materially on identical agent input.
+
+        Missing agents (absent, malformed, stale) stay in the denominator:
+        the policy roster is AgentFusion.WEIGHTS, and SignalFusion counts a
+        missing agent as fully against the result, so a surviving subset can
+        never read as full agreement (P4-CLOSURE-004 F-1, NB-5).
 
         HOLD evidence contributes zero to SignalFusion's signed numerator
         (BUY is positive conviction, SELL is negative) but still
@@ -779,10 +804,14 @@ class AtlasBrain:
             if not evidence:
                 return None
 
+            # Expected roster, not the agents that happened to answer
+            # (P4-CLOSURE-004 F-1, NB-5): a missing or rejected agent stays
+            # in the denominator and counts against the result, never as
+            # agreement. Equal weight per agent is unchanged.
             policy = FusionPolicy(
                 weights={
-                    item.source: Decimal("1")
-                    for item in evidence
+                    f"agent:{name}": Decimal("1")
+                    for name in AgentFusion.WEIGHTS
                 }
             )
 
@@ -1535,6 +1564,57 @@ class AtlasBrain:
             ),
             2,
         )
+
+    # Task 027 (registry v5.110, review T026-F3): set by the composition root in FOREX when shorts are enabled.
+    # Answers whether a SELL of ``symbol`` opens new risk (a short). None - the crypto default - means a SELL
+    # always reduces exposure. A check that raises counts as new risk, so the caution applies (fail closed).
+    short_entry_check: Any = None
+
+    def _memory_caution(self, decision: Any, memory_result: Any) -> dict[str, Any] | None:
+        """BRAIN-MEM-001 for this brain: a BUY, or (Task 027) a SELL that opens a short."""
+        return self._memory_buy_caution(decision, memory_result, sell_opens_risk=self._sell_opens_risk(decision))
+
+    def _sell_opens_risk(self, decision: Any) -> bool:
+        check = self.short_entry_check
+        if check is None or str(getattr(decision, "action", "")).upper().split(".")[-1] != "SELL":
+            return False
+        try:
+            return check(str(getattr(decision, "symbol", "") or "")) is not False
+        except Exception:
+            logger.exception("short-entry check failed; the SELL is treated as new risk")
+            return True
+
+    # BRAIN-MEM-001 (owner-approved plan v2): a coin whose own closed trades
+    # prove a losing book (>= 10 trades, negative net expectancy after fees)
+    # gets up to 5 points less BUY confidence. Caution only: never raised,
+    # 0 on missing data. Never applied to a SELL that reduces exposure; Task 027:
+    # applied to a SELL that opens a short (``sell_opens_risk``), as to a BUY.
+    @staticmethod
+    def _memory_buy_caution(
+        decision: Any,
+        memory_result: Any,
+        *,
+        sell_opens_risk: bool = False,
+    ) -> dict[str, Any] | None:
+        effect = memory_result.get("effect") if isinstance(memory_result, dict) else None
+        action = str(getattr(decision, "action", "")).upper().split(".")[-1]
+        if (
+            not isinstance(effect, (int, float))
+            or isinstance(effect, bool)
+            or effect >= 0
+            or not (action == "BUY" or (action == "SELL" and sell_opens_risk is True))
+        ):
+            return None
+        before = float(decision.confidence)
+        penalty = min(abs(float(effect)), 0.05) * 100
+        decision.confidence = round(max(0.0, before - penalty), 2)
+        return {
+            "reason": "LOSING_BOOK_AFTER_FEES",
+            "confidence_before": before,
+            "confidence_after": float(decision.confidence),
+            "trades": memory_result.get("trades"),
+            "net_expectancy": memory_result.get("net_expectancy"),
+        }
 
     def _safe_confidence_explanation(
         self,

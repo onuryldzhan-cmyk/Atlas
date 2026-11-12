@@ -106,6 +106,9 @@ class ExecutionSafetyGate:
     VERSION = "1.0"
 
     MODE_PAPER = "PAPER"
+    # Task 008: the reason ExchangeManager refuses new orders for a venue pair whose
+    # earlier order outcome stayed ambiguous after a reconciliation attempt.
+    HALT_VENUE_PAIR = "HALT_VENUE_PAIR"
     MODE_LIVE = "LIVE"
 
     def __init__(

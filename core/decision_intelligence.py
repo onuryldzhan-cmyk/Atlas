@@ -134,10 +134,41 @@ class FusionResult:
     reason_codes: tuple[str, ...]
     disagreement: Decimal
     calibrated_probability: bool = False
+    # Availability against the expected roster (the policy's configured
+    # sources), kept separate from what was observed (P4-CLOSURE-004 F-1).
+    expected_sources: tuple[str, ...] = ()
+    missing_sources: tuple[str, ...] = ()
+    coverage: Decimal = D("1")
 
 
 class SignalFusion:
-    """Deterministic, one-source-one-vote evidence fusion."""
+    """Deterministic, one-source-one-vote evidence fusion.
+
+    **Expected roster (NB-5).** The denominator is the total weight of every
+    source the policy is configured to expect, never only the weight of the
+    evidence that happened to arrive. An expected source with no accepted
+    evidence (absent, stale, invalid, wrong symbol) is *missing*.
+
+    **Missing is never agreement; removal never raises (NB-4).** Each
+    direction's score is a worst-case bound over every vote a missing source
+    could have cast: a missing source is counted as fully against that
+    direction (``-weight``). Present evidence contributes its signed vote
+    (``+score*w`` for, ``-score*w`` against, ``0`` for HOLD/ABSTAIN), which
+    is always >= ``-w``. Removing any item therefore replaces a term with one
+    that is no larger, for both directions at once: no confidence rises and
+    no decision becomes more permissive when evidence is removed. With the
+    full roster present the bound equals the previous signed mean exactly,
+    so complete evidence behaves as before.
+
+    **Precondition: one item per source.** A second item from a source is
+    rejected as DUPLICATE_SOURCE, so removing the first lets the second count
+    and the NB-4 guarantee above does not hold for such input. The Phase-5
+    caller (``AtlasBrain._build_phase5_shadow_proposal``) sends exactly one
+    item per agent (review N-3). The "never more permissive" part also
+    assumes ``decision_threshold > 0``: at exactly 0 a zero net already
+    resolves to SELL, as it did before this change (review NF-8); the
+    Phase-5 caller uses the default 0.20.
+    """
 
     def __init__(self, policy: FusionPolicy):
         self.policy = policy
@@ -158,22 +189,38 @@ class SignalFusion:
                 rejected.append((item.evidence_id, quality.value)); continue
             seen_sources.add(item.source); accepted.append(item)
 
+        weights = self.policy.weights
+        expected = tuple(sorted(weights))
+        present = {x.source for x in accepted}
+        missing = tuple(source for source in expected if source not in present)
+        expected_weight = sum(weights.values(), D("0"))  # NB-5 denominator
+        accepted_weight = sum((weights[x.source] for x in accepted), D("0"))
+        coverage = (accepted_weight / expected_weight).quantize(D("0.000001"))
+        availability = {"expected_sources": expected, "missing_sources": missing, "coverage": coverage}
+
         if len(accepted) < self.policy.minimum_sources:
             return FusionResult(Action.ABSTAIN, D("0"), tuple(accepted), tuple(rejected),
-                                ("INSUFFICIENT_VALID_EVIDENCE",), D("1"))
+                                ("INSUFFICIENT_VALID_EVIDENCE",), D("1"), **availability)
         signed = {Action.BUY: D("1"), Action.SELL: D("-1"), Action.HOLD: D("0"), Action.ABSTAIN: D("0")}
-        total_weight = sum((self.policy.weights[x.source] for x in accepted), D("0"))
-        net = sum((signed[x.action] * x.score * self.policy.weights[x.source] for x in accepted), D("0")) / total_weight
-        confidence = min(D("1"), abs(net)).quantize(D("0.000001"))
+        present_net = sum((signed[x.action] * x.score * weights[x.source] for x in accepted), D("0"))
+        missing_weight = expected_weight - accepted_weight
+        # Worst-case bounds: every missing source counted as fully against.
+        buy_bound = (present_net - missing_weight) / expected_weight
+        sell_bound = (-present_net - missing_weight) / expected_weight
+        bound = max(buy_bound, sell_bound)
+        confidence = max(D("0"), min(D("1"), bound)).quantize(D("0.000001"))
         directional = {x.action for x in accepted if x.action in (Action.BUY, Action.SELL)}
         disagreement = (D("1") - confidence).quantize(D("0.000001")) if len(directional) > 1 else D("0")
-        if abs(net) < self.policy.decision_threshold:
+        if bound < self.policy.decision_threshold:
             action = Action.ABSTAIN
-            reasons = ("CONTRADICTORY_OR_WEAK_EVIDENCE",)
+            reasons: tuple[str, ...] = ("CONTRADICTORY_OR_WEAK_EVIDENCE",)
         else:
-            action = Action.BUY if net > 0 else Action.SELL
+            action = Action.BUY if present_net > 0 else Action.SELL
             reasons = ("FUSED_EVIDENCE",)
-        return FusionResult(action, confidence, tuple(accepted), tuple(rejected), reasons, disagreement)
+        if missing:
+            reasons = reasons + ("EXPECTED_SOURCES_MISSING",)
+        return FusionResult(action, confidence, tuple(accepted), tuple(rejected), reasons, disagreement,
+                            **availability)
 
 
 @dataclass(frozen=True)
@@ -322,7 +369,13 @@ class CanonicalDecision:
     def from_fusion(cls, symbol: str, fusion: FusionResult, *, timestamp: datetime,
                     market_context: Mapping[str, str] | None = None) -> "CanonicalDecision":
         timestamp = _utc(timestamp, "timestamp")
-        market_context = market_context or {}
+        market_context = dict(market_context or {})
+        if fusion.missing_sources:
+            # Availability stays visible in the audit trail (F-1): which
+            # expected sources were absent and the observed coverage.
+            market_context["missing_expected_sources"] = json.dumps(
+                list(fusion.missing_sources), separators=(",", ":"))
+            market_context["expected_source_coverage"] = str(fusion.coverage)
         models = sorted({(x.model_provider, x.model_name) for x in fusion.evidence if x.model_provider and x.model_name})
         strategies = sorted({x.source for x in fusion.evidence})
         payload = {

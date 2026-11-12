@@ -21,7 +21,9 @@ Responsibilities
 
 from __future__ import annotations
 
+import json
 import logging
+import os
 import signal
 import sys
 import threading
@@ -30,14 +32,116 @@ import traceback
 
 from collections.abc import Callable
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
-from core.application import AtlasApplication
+from core.application import (
+    DEFAULT_INSTRUMENT_RULES_PATH,
+    FOREX_INSTRUMENT_RULES_PATH,
+    AtlasApplication,
+    resolve_state_directory,
+)
+from core.atlas_config import AtlasConfigError, load_config
+from core.execution_manager import PAPER_FEE_RATE_PER_SIDE
+from core.audit_event_store import AuditChainIntegrityError
+from core import instance_lock
+from core.instance_lock import INSTANCE_LOCK_FILE_NAME, InstanceLockHeldError
+from core.instrument_rules import InstrumentRulesConfigError, load_instrument_ruleset
 
 
 LOGGER_NAME = "AtlasAI.Main"
 
 logger = logging.getLogger(LOGGER_NAME)
+
+# Same string as atlas_supervisor.ENV_HEARTBEAT_FILE, defined independently
+# here rather than imported - atlas_supervisor.py must import nothing from
+# Atlas (see its docstring), so a shared constant module is not an option;
+# this is the same cross-process-literal precedent core.application's
+# SUPERVISOR_EPOCH_ENV already follows for ENV_EPOCH.
+HEARTBEAT_FILE_ENV = "ATLAS_SUPERVISOR_HEARTBEAT_FILE"
+
+# Fixed, not configurable (CFG-001): core/atlas_config.load_config refuses
+# any mode but PAPER while live authority is DENIED.
+EXECUTION_MODE = "PAPER"
+
+# Registry v5.41 (owner: 20 coins, real data only): Atlas scans and may trade
+# exactly the symbols that have a real Binance venue rule in
+# config/instrument_rules.json, written only by
+# tools/refresh_venue_instrument_rules.py from Binance's exchangeInfo. A coin
+# without a real rule is never scanned; nothing is invented.
+MAX_TRADE_UNIVERSE = 20
+
+
+def trade_universe(path: Path | str = DEFAULT_INSTRUMENT_RULES_PATH) -> list[str] | None:
+    """The configured symbols, or None to keep MarketLoop's defaults.
+
+    None when the rules file cannot be read: AtlasApplication then loads it
+    itself and halts execution fail-closed exactly as before this change.
+    """
+
+    try:
+        symbols = sorted(load_instrument_ruleset(path).symbols)
+    except InstrumentRulesConfigError:
+        return None
+    if len(symbols) > MAX_TRADE_UNIVERSE:
+        raise ValueError(f"{len(symbols)} symbols in {path}: at most {MAX_TRADE_UNIVERSE} (owner decision v5.41)")
+    return symbols or None
+def apply_policy_manifest(application, path: Path | str | None = None):
+    """Phase-2 G1: verify the runtime policy against the manifest; block new risk on any mismatch.
+
+    Read-only towards configuration: the only effect is ExecutionManager's
+    policy_manifest_block (new BUYs refused, reduce-only exits per B1).
+    """
+
+    from core import policy_manifest
+
+    check = policy_manifest.verify(
+        policy_manifest.runtime_policy(application),
+        policy_manifest.MANIFEST_PATH if path is None else path,
+    )
+    application.execution.set_policy_manifest_block(check.block_reason)
+    if check.block_new_risk:
+        logger.critical("Policy manifest %s: %s - BLOCK_NEW_RISK (exits stay possible) %s",
+                        check.status, check.detail, check.to_dict()["mismatches"])
+    else:
+        logger.info("Policy manifest MATCH (registry %s, proposal %s, owner approval %s)",
+                    check.registry_id, check.proposal_id, check.owner_approval)
+    return check
+
+
+# EXP-001 stopped early by the owner on 2026-09-29 (registry v5.71): 16 trades,
+# 6/16 winners after fees, gross -74.48, net -99.30; back to the policy floor.
+# 2026-10-01: owner switched on EXP-002 ("Sadece EXP-002"), approved by the
+# independent audit docs/audits/INDEPENDENT_AUDIT_FUNDING_SENTIMENT_EXP002_2026-10-01.md
+# with funding sentiment OFF: MEDIUM only, floor 0.62, 30 admissions, 2026-10-02..16, PAPER.
+PAPER_CONFIDENCE_EXPERIMENT = True
+PAPER_CONFIDENCE_EXPERIMENT_ID = "EXP-002"
+
+# Minimum spacing between two "heartbeat write failed" announcements, so a
+# target that flaps between failing and working cannot flood the log.
+HEARTBEAT_FAILURE_LOG_INTERVAL_SECONDS = 300.0
+
+# While AtlasApplication.stop() flushes financial state the main loop no
+# longer ticks, so a stop slower than the supervisor's staleness window would
+# read as a hang and get the process killed mid-flush. A background writer
+# keeps the heartbeat fresh during stop(), but only for this long: a stop()
+# that is itself hung must still become visible to the supervisor.
+SHUTDOWN_HEARTBEAT_MAX_SECONDS = 120.0
+SHUTDOWN_HEARTBEAT_INTERVAL_SECONDS = 1.0
+
+# Registry v5.15 (owner: panel and trading decoupled). With a restart hook,
+# a failed or dead operator panel never stops trading; it is retried at
+# this interval until it serves again.
+SUBORDINATE_RESTART_INTERVAL_SECONDS = 30.0
+
+# Exit codes atlas_supervisor.py must NOT restart on (it keeps its own copy,
+# checked equal by tests). A restart cannot fix either condition: corrupted
+# durable state fails the same check again, and a second instance on the
+# same state root is exactly what corrupts it. Chosen outside what Windows
+# and the C runtime produce on their own (abort() exits 3 on Windows).
+INTEGRITY_HALT_EXIT_CODE = 75
+ALREADY_RUNNING_EXIT_CODE = 76
+
 
 
 # ============================================================
@@ -297,12 +401,20 @@ class AtlasProcess:
         on_started: Callable[[AtlasApplication], None] | None = None,
         on_stopping: Callable[[], None] | None = None,
         is_subordinate_alive: Callable[[], bool] | None = None,
+        restart_subordinate: Callable[[], None] | None = None,
     ) -> None:
         self.application: AtlasApplication | None = None
 
         self.on_started = on_started
         self.on_stopping = on_stopping
         self.is_subordinate_alive = is_subordinate_alive
+        # When set, the subordinate (the operator panel) is decoupled from
+        # trading: a start failure or a death is logged and retried instead
+        # of ending the process. When None, the original contract holds.
+        self.restart_subordinate = restart_subordinate
+        self._subordinate_down = False
+        self._subordinate_next_retry_at = 0.0
+        self._subordinate_restart_thread: threading.Thread | None = None
 
         # Latches once so a permanently failing liveness probe cannot fill
         # the runtime log with one traceback per second.
@@ -317,6 +429,27 @@ class AtlasProcess:
         ).isoformat()
 
         self.exit_code = 0
+
+        # Read once at construction, like the supervisor provenance
+        # variables in core.application: the value cannot change during a
+        # process lifetime. Absent means atlas_supervisor.py has hung-child
+        # detection disabled (or this process was not launched by it at
+        # all), and no heartbeat is written - matching exactly what an
+        # unsupervised or directly-run process has always done.
+        self._heartbeat_file = self._resolve_heartbeat_file()
+        self._instance_lock: Any = None
+
+        # Write-failure logging state for _write_heartbeat: logged on the
+        # transition into failure and back out, never per tick.
+        self._heartbeat_failing = False
+        self._heartbeat_failure_announced = False
+        self._heartbeat_failure_logged_at: float | None = None
+
+    @staticmethod
+    def _resolve_heartbeat_file() -> Path | None:
+        raw = os.environ.get(HEARTBEAT_FILE_ENV)
+
+        return Path(raw) if raw else None
 
     # --------------------------------------------------------
     # SIGNALS
@@ -399,13 +532,56 @@ class AtlasProcess:
         Construct and start Atlas.
         """
 
+        if not self._validate_configuration():
+            return False
+
+        if not self._acquire_instance_lock():
+            return False
+
         logger.info(
             "Constructing AtlasApplication"
         )
 
         self.application = AtlasApplication(
-            execution_mode="PAPER",
+            execution_mode=EXECUTION_MODE,
+            # EXP-001 stopped by the owner (v5.71). EXP-002 switched on by the
+            # owner 2026-10-01; experiments stay literals at this one call site.
+            paper_confidence_experiment=True,
+            paper_confidence_experiment_id="EXP-002",
+            paper_fee_rate=PAPER_FEE_RATE_PER_SIDE,
+            # Owner switch-on 2026-10-01 ("Aç onayı da veriyorum") after the
+            # independent audits: F-3 (unrealized loss in the daily loss limit),
+            # S1 capital sleeves, F-4 5 bp adverse PAPER slippage. Literals at
+            # this one call site, like the experiment flag above.
+            count_unrealized_in_daily_loss=True,
+            sleeves_enabled=True,
+            paper_slippage_bps="5",
+            # Shadow stage S2: the operator chooses with ATLAS_FILL_MODEL (validated
+            # in core/atlas_config.py; BOOK needs its own 'shadow' state directory).
+            paper_fill_model=getattr(self, "paper_fill_model", "LAST_PRICE"),
+            # Order state machine stage 1 (owner approved 2026-10-01): observe and
+            # report illegal transitions; never changes a result.
+            order_lifecycle_observe=True,
+            # Task 019 (registry v5.103): ATLAS_MARKET=FOREX reads MetaTrader 5 and its own instrument rules.
+            market=getattr(self, "market", "CRYPTO"),
+            symbols=trade_universe(
+                FOREX_INSTRUMENT_RULES_PATH if getattr(self, "market", "CRYPTO") == "FOREX"
+                else DEFAULT_INSTRUMENT_RULES_PATH
+            ),
         )
+
+        # Phase-2 G1: compare the constructed runtime policy with the
+        # governance manifest before anything trades. A mismatch blocks new
+        # risk only; nothing from the manifest is ever applied.
+        try:
+            apply_policy_manifest(self.application)
+        except Exception as exc:
+            # The check could not even be applied: governance cannot be
+            # enforced, so Atlas does not start (fail-closed, never skipped).
+            self.exit_code = 1
+            self.shutdown_reason = f"Policy manifest check could not be applied: {exc!r}"
+            logger.critical(self.shutdown_reason)
+            return False
 
         logger.info(
             "Starting AtlasApplication"
@@ -434,6 +610,102 @@ class AtlasProcess:
     # MAIN LOOP
     # --------------------------------------------------------
 
+    def _write_heartbeat(self) -> None:
+        """Prove the main loop is still ticking, for atlas_supervisor.py.
+
+        Best-effort by design: a failure to write this file must never slow
+        down or interrupt the shutdown-detection loop below, which is what
+        actually keeps Atlas supervised correctly. Overwritten every tick,
+        so its mtime alone - which is all the supervisor reads - is the
+        whole signal; the content carries nothing.
+
+        Not silent, though: a failure is logged once when it starts and once
+        when writing recovers, never per tick, and a new failure is not
+        announced again within HEARTBEAT_FAILURE_LOG_INTERVAL_SECONDS of the
+        previous announcement, so a flapping target cannot flood the log.
+        Each announcement is a single in-memory log call, never a retry or
+        a wait.
+        """
+
+        if self._heartbeat_file is None:
+            return
+
+        try:
+            self._heartbeat_file.write_text(
+                json.dumps(
+                    {
+                        "written_at": time.time(),
+                        **self._loop_progress_payload(),
+                    }
+                ),
+                encoding="utf-8",
+            )
+        except OSError as exc:
+            if self._heartbeat_failing:
+                return
+
+            self._heartbeat_failing = True
+
+            now = time.monotonic()
+            last = self._heartbeat_failure_logged_at
+
+            if (
+                last is None
+                or now - last >= HEARTBEAT_FAILURE_LOG_INTERVAL_SECONDS
+            ):
+                self._heartbeat_failure_logged_at = now
+                self._heartbeat_failure_announced = True
+
+                logger.warning(
+                    "Supervisor heartbeat write failed (%s) for %s; the "
+                    "supervisor may treat Atlas as hung if this persists. "
+                    "Further failures are not logged until writing recovers",
+                    type(exc).__name__,
+                    self._heartbeat_file,
+                )
+
+            return
+
+        if self._heartbeat_failing:
+            self._heartbeat_failing = False
+
+            if self._heartbeat_failure_announced:
+                self._heartbeat_failure_announced = False
+
+                logger.info(
+                    "Supervisor heartbeat write recovered for %s",
+                    self._heartbeat_file,
+                )
+
+    def _loop_progress_payload(self) -> dict:
+        """Phase-2 D1: MarketLoop progress for the supervisor's stall check.
+
+        Reads one plain attribute without taking any lock, so the heartbeat
+        tick can never block behind a busy market cycle. Absent or unreadable
+        progress is reported as null (unknown), never as fresh.
+        """
+
+        try:
+            loop = getattr(self.application, "market_loop", None)
+            progress = getattr(loop, "last_loop_progress_monotonic", None)
+            interval = getattr(loop, "interval", None)
+
+            return {
+                "loop_progress_age_seconds": (
+                    round(time.monotonic() - progress, 3)
+                    if isinstance(progress, (int, float))
+                    else None
+                ),
+                "loop_interval_seconds": (
+                    interval if isinstance(interval, (int, float)) else None
+                ),
+            }
+        except Exception:
+            return {
+                "loop_progress_age_seconds": None,
+                "loop_interval_seconds": None,
+            }
+
     def run_forever(self) -> None:
         """
         Keep the primary process alive until shutdown is requested.
@@ -453,6 +725,8 @@ class AtlasProcess:
         while not self.shutdown_event.wait(
             timeout=1.0
         ):
+            self._write_heartbeat()
+
             if self.application is None:
                 self.exit_code = 1
                 self.shutdown_reason = (
@@ -472,7 +746,11 @@ class AtlasProcess:
 
                 break
 
-            if not self._subordinate_alive():
+            if self._subordinate_down or not self._subordinate_alive():
+                if self.restart_subordinate is not None:
+                    self._handle_subordinate_down()
+                    continue
+
                 self.exit_code = 1
                 self.shutdown_reason = (
                     "Subordinate component stopped unexpectedly"
@@ -483,6 +761,66 @@ class AtlasProcess:
                 )
 
                 break
+
+    def _handle_subordinate_down(self) -> None:
+        """Keep trading while the panel is down; retry it on an interval.
+
+        Never raises, never stops the process, and never blocks the main
+        loop: the restart runs on a worker thread, so the supervisor
+        heartbeat and signal handling keep their one-second tick even while
+        a restart waits out its start/stop timeouts (registry v5.15).
+        """
+
+        now = time.monotonic()
+
+        if not self._subordinate_down:
+            self._subordinate_down = True
+            self._subordinate_next_retry_at = (
+                now + SUBORDINATE_RESTART_INTERVAL_SECONDS
+            )
+            logger.critical(
+                "Operator panel stopped unexpectedly; trading continues and "
+                "the panel is retried every %.0fs",
+                SUBORDINATE_RESTART_INTERVAL_SECONDS,
+            )
+            return
+
+        worker = self._subordinate_restart_thread
+
+        if worker is not None and worker.is_alive():
+            return
+
+        if now < self._subordinate_next_retry_at:
+            return
+
+        self._subordinate_next_retry_at = (
+            now + SUBORDINATE_RESTART_INTERVAL_SECONDS
+        )
+
+        worker = threading.Thread(
+            target=self._restart_subordinate_once,
+            name="atlas-panel-restart",
+            daemon=True,
+        )
+        self._subordinate_restart_thread = worker
+        worker.start()
+
+    def _restart_subordinate_once(self) -> None:
+        """One restart attempt, on the worker thread. Never raises."""
+
+        try:
+            self.restart_subordinate()
+        except Exception as exc:
+            logger.warning(
+                "Operator panel restart failed (%s: %s); retrying in %.0fs",
+                type(exc).__name__,
+                exc,
+                SUBORDINATE_RESTART_INTERVAL_SECONDS,
+            )
+            return
+
+        self._subordinate_down = False
+        logger.info("Operator panel restarted and serving again")
 
     def _subordinate_alive(self) -> bool:
         """
@@ -585,7 +923,16 @@ class AtlasProcess:
             "Stopping AtlasApplication"
         )
 
-        stopped = self.application.stop()
+        finished = threading.Event()
+        keeper = self._start_shutdown_heartbeat(finished)
+
+        try:
+            stopped = self.application.stop()
+        finally:
+            finished.set()
+
+            if keeper is not None:
+                keeper.join(timeout=SHUTDOWN_HEARTBEAT_INTERVAL_SECONDS * 2)
 
         if not stopped:
             self.exit_code = max(
@@ -598,6 +945,113 @@ class AtlasProcess:
             )
 
         return stopped
+
+    def _validate_configuration(self) -> bool:
+        """CFG-001: validate every setting at once, before any state is touched.
+
+        Invalid -> exit 1 (owner decision, registry v5.20), with every
+        problem logged, so one run shows the operator everything to fix.
+        """
+
+        try:
+            config = load_config(
+                os.environ,
+                execution_mode=EXECUTION_MODE,
+                paper_confidence_experiment=PAPER_CONFIDENCE_EXPERIMENT,
+            )
+        except AtlasConfigError as exc:
+            self.exit_code = 1
+            self.shutdown_reason = f"Invalid configuration ({len(exc.errors)} problem(s))"
+            logger.critical(self.shutdown_reason)
+            for problem in exc.errors:
+                logger.critical("  config: %s", problem)
+            return False
+
+        self.paper_fill_model = config.fill_model
+        self.market = config.market
+        logger.info(
+            "Configuration valid | %s",
+            " ".join(f"{k}={v}" for k, v in config.describe().items()),
+        )
+
+        return True
+
+    def _acquire_instance_lock(self) -> bool:
+        """Hold the state-root lock (core/instance_lock.py) for this process.
+
+        Held elsewhere -> ALREADY_RUNNING_EXIT_CODE, which the supervisor
+        does not restart on. Any other failure to take it is a normal
+        startup failure (exit 1) - never "run anyway without a lock".
+        AtlasApplication takes the same lock again (shared within this
+        process), so paths that bypass this method are refused too.
+        """
+
+        try:
+            root = resolve_state_directory()
+            instance_lock.acquire(root)
+        except InstanceLockHeldError as exc:
+            self.exit_code = ALREADY_RUNNING_EXIT_CODE
+            self.shutdown_reason = str(exc)
+            logger.critical(self.shutdown_reason)
+            return False
+        except Exception as exc:
+            self.exit_code = 1
+            self.shutdown_reason = f"Instance lock unavailable: {exc}"
+            logger.critical(self.shutdown_reason)
+            return False
+
+        self._instance_lock = root
+
+        return True
+
+    def _release_instance_lock(self) -> None:
+        """Drop this process's reference to the state-root lock."""
+
+        root = self._instance_lock
+
+        if root is None:
+            return
+
+        self._instance_lock = None
+        instance_lock.release(root)
+
+    def _start_shutdown_heartbeat(
+        self,
+        finished: threading.Event,
+    ) -> threading.Thread | None:
+        """Keep the supervisor heartbeat fresh while stop() runs, bounded.
+
+        Writes every SHUTDOWN_HEARTBEAT_INTERVAL_SECONDS until ``finished``
+        is set or SHUTDOWN_HEARTBEAT_MAX_SECONDS have passed, whichever is
+        first. The bound is deliberate: a hung stop() must still go stale.
+        """
+
+        if self._heartbeat_file is None:
+            return None
+
+        def keep_alive() -> None:
+            deadline = time.monotonic() + SHUTDOWN_HEARTBEAT_MAX_SECONDS
+
+            while time.monotonic() < deadline:
+                self._write_heartbeat()
+
+                if finished.wait(timeout=SHUTDOWN_HEARTBEAT_INTERVAL_SECONDS):
+                    return
+
+            logger.warning(
+                "Shutdown still running after %.0fs; supervisor heartbeat "
+                "no longer refreshed",
+                SHUTDOWN_HEARTBEAT_MAX_SECONDS,
+            )
+
+        keeper = threading.Thread(
+            target=keep_alive,
+            name="atlas-shutdown-heartbeat",
+            daemon=True,
+        )
+        keeper.start()
+
+        return keeper
 
     # --------------------------------------------------------
     # COMPOSITION HOOKS
@@ -670,7 +1124,22 @@ class AtlasProcess:
             if not self.start():
                 return self.exit_code
 
-            self._notify_started()
+            try:
+                self._notify_started()
+            except Exception:
+                if self.restart_subordinate is None:
+                    raise
+
+                logger.critical(
+                    "Operator panel failed to start; trading continues "
+                    "without it and the panel is retried every %.0fs",
+                    SUBORDINATE_RESTART_INTERVAL_SECONDS,
+                    exc_info=True,
+                )
+                self._subordinate_down = True
+                self._subordinate_next_retry_at = (
+                    time.monotonic() + SUBORDINATE_RESTART_INTERVAL_SECONDS
+                )
 
             self.run_forever()
 
@@ -684,7 +1153,12 @@ class AtlasProcess:
             )
 
         except Exception as exc:
-            self.exit_code = 1
+            if isinstance(exc, AuditChainIntegrityError):
+                self.exit_code = INTEGRITY_HALT_EXIT_CODE
+            elif isinstance(exc, InstanceLockHeldError):
+                self.exit_code = ALREADY_RUNNING_EXIT_CODE
+            else:
+                self.exit_code = 1
 
             self.shutdown_reason = (
                 f"Fatal error: {exc}"
@@ -711,6 +1185,8 @@ class AtlasProcess:
                 logger.exception(
                     "Fatal error during Atlas shutdown"
                 )
+
+            self._release_instance_lock()
 
             logger.info(
                 "Atlas process finished | "

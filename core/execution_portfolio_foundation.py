@@ -16,6 +16,19 @@ themselves are O(1) appends, and rebuilding their in-memory indexes at
 startup is O(history) once, not on every mutation. There is no runtime
 auto-migration from schema_version 1 - see ``FinancialStateMigrationRequiredError``
 and ``tools/migrate_execution_financial_state.py``.
+
+Task 025 (registry v5.108) adds schema_version 3, the margin book, for forex PAPER state only: the working file
+carries the account ``leverage`` L (2..5) and every position its ``margin`` (notional / L). A BUY debits margin + fee
+instead of notional + fee; a reduction credits the released margin plus the realized gross P&L minus the fee, so
+a realized loss larger than the account can leave the cash negative (recorded, never hidden; new risk is then
+refused). Equity is cash + used margin + unrealized P&L. Schema 2 (every crypto book) is unchanged and is never
+migrated: a schema 2 book loaded where leverage is expected, or a schema 3 book where it is not, is refused
+(FINANCIAL_LEVERAGE_CONFLICT).
+
+Task 026 (registry v5.109) adds short positions to the margin book only: a position with ``side`` "SHORT" is
+opened by a SELL and reduced by a BUY (``ExecutionResult.position_side``), reserves margin exactly like a LONG,
+and its P&L is cost - notional (entry - exit per unit). ``base_quantity`` stays positive for both sides, so every
+exposure figure is the absolute notional. A position without ``side`` is LONG; a cash book never holds a short.
 """
 from __future__ import annotations
 
@@ -29,10 +42,37 @@ from pathlib import Path
 import re
 from typing import Any, Callable
 
-from core.execution_models import ExecutionResult
+from core.execution_models import ExecutionResult, opens_risk, reduces_risk
 
 D = Decimal
 SCHEMA_VERSION = 2
+MARGIN_SCHEMA_VERSION = 3   # Task 025: the margin book (forex PAPER state only)
+MAX_LEVERAGE = 5
+
+
+def position_side(item: dict[str, Any]) -> str:
+    """LONG unless the position is a margin-book short (Task 026)."""
+    return "SHORT" if item.get("side") == "SHORT" else "LONG"
+
+
+def position_unrealized(item: dict[str, Any], mark: Decimal | None = None) -> Decimal:
+    """Unrealized gross P&L of one durable position at ``mark`` (default: its durable mark).
+
+    LONG: base x mark - cost. SHORT (Task 026): cost - base x mark."""
+    price = D(str(item["mark_price"] if mark is None else mark))
+    value = D(str(item["base_quantity"])) * price
+    cost = D(str(item["cost_quote"]))
+    return cost - value if position_side(item) == "SHORT" else value - cost
+
+
+def book_leverage(state: dict[str, Any]) -> int:
+    """The account leverage a working state carries: 1 for schema 2, the stored L for schema 3."""
+    if state.get("schema_version") == MARGIN_SCHEMA_VERSION:
+        value = state.get("leverage")
+        if isinstance(value, bool) or not isinstance(value, int) or not 2 <= value <= MAX_LEVERAGE:
+            raise ValueError("CORRUPT_FINANCIAL_STATE")
+        return value
+    return 1
 
 # Block 5E: the fixed precision the whole confirmed-execution settlement
 # slice - BUY debit/fee accumulation, SELL gross P&L/cash/fee accumulation,
@@ -76,6 +116,19 @@ def _utc(value: str) -> str:
 # duplicating the pattern, the same precedent set by its reuse of
 # ``SETTLEMENT_CONTEXT_PRECISION``.
 _POSITION_IDENTITY_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+
+
+def mint_position_id(symbol: str, request_id: str, side: str = "LONG") -> str:
+    """``mint_long_position_id`` for a LONG; ``short:<symbol>:<digest>`` for a margin-book SHORT (Task 026)."""
+    if side == "LONG":
+        return mint_long_position_id(symbol, request_id)
+    if side != "SHORT":
+        raise ValueError("INVALID_POSITION_IDENTITY")
+    digest = hashlib.sha256(str(request_id).encode("utf-8")).hexdigest()
+    candidate = f"short:{symbol}:{digest}"
+    if not _POSITION_IDENTITY_PATTERN.fullmatch(candidate):
+        raise ValueError("INVALID_POSITION_IDENTITY")
+    return candidate
 
 
 def mint_long_position_id(symbol: str, request_id: str) -> str:
@@ -143,15 +196,20 @@ class FinancialStateStore:
     def __init__(self, path: str | Path):
         self.path = Path(path)
 
-    def initialize(self, initial_cash: Decimal) -> None:
+    def initialize(self, initial_cash: Decimal, *, leverage: int = 1) -> None:
+        if isinstance(leverage, bool) or not isinstance(leverage, int) or not 1 <= leverage <= MAX_LEVERAGE:
+            raise ValueError("leverage must be an integer from 1 to 5")
         if self.path.exists():
             raise FileExistsError(self.path)
-        self.save({
+        payload = {
             "schema_version": SCHEMA_VERSION, "transition": None,
             "cash": format(initial_cash, "f"), "reserved_capital": "0",
             "realized_gross_pnl": "0", "fees": "0", "positions": {},
             "applied_checkpoint": None, "closed_checkpoint": None,
-        })
+        }
+        if leverage > 1:   # Task 025: the margin book; leverage 1 stays schema 2, byte-identical
+            payload.update(schema_version=MARGIN_SCHEMA_VERSION, leverage=leverage)
+        self.save(payload)
 
     def load(self, *, allow_transition: bool = False) -> dict[str, Any]:
         """Load the working state; a pending transition marker refuses by default.
@@ -167,7 +225,7 @@ class FinancialStateStore:
         schema = payload.get("schema_version")
         if schema == 1:
             raise FinancialStateMigrationRequiredError("FINANCIAL_MIGRATION_REQUIRED")
-        if schema != SCHEMA_VERSION:
+        if schema not in (SCHEMA_VERSION, MARGIN_SCHEMA_VERSION):
             raise RuntimeError("FINANCIAL_STATE_RECOVERY_REQUIRED")
         if payload.get("transition") is not None and not allow_transition:
             raise RuntimeError("FINANCIAL_TRANSITION_RECOVERY_REQUIRED")
@@ -355,7 +413,11 @@ def validate_closed_position_record(record: dict[str, Any]) -> None:
     ``_close`` actually produces for a full exit is checked for presence and
     type/range correctness.
     """
-    if not isinstance(record, dict) or set(record) != set(_CLOSED_POSITION_REQUIRED_FIELDS):
+    # Task 025: a margin-book (schema 3) full exit also carries the position's ``margin``; Task 026: a short's
+    # also carries ``side`` "SHORT".
+    if not isinstance(record, dict) or set(record) - {"margin", "side"} != set(_CLOSED_POSITION_REQUIRED_FIELDS):
+        raise ValueError("CORRUPT_CLOSED_POSITION_RECORD")
+    if "side" in record and (record["side"] != "SHORT" or "margin" not in record):
         raise ValueError("CORRUPT_CLOSED_POSITION_RECORD")
     position_id = record["position_id"]
     if not isinstance(position_id, str) or not _POSITION_IDENTITY_PATTERN.fullmatch(position_id):
@@ -370,6 +432,8 @@ def validate_closed_position_record(record: dict[str, Any]) -> None:
         for name in _CLOSED_POSITION_POSITIVE_DECIMAL_FIELDS:
             _decimal(record[name], name, allow_zero=False)
         _decimal(record["entry_fees"], "entry_fees", allow_zero=True)
+        if "margin" in record:
+            _decimal(record["margin"], "margin", allow_zero=False)
         gross_pnl = D(str(record["gross_pnl"]))
         if not gross_pnl.is_finite():
             raise ValueError("CORRUPT_CLOSED_POSITION_RECORD")
@@ -471,13 +535,20 @@ class ClosedPositionArchiveStore:
 
 
 class ExecutionPortfolioFoundation:
-    """Idempotent durable LONG lifecycle and portfolio accounting."""
+    """Idempotent durable LONG lifecycle and portfolio accounting.
+
+    ``leverage`` is the account leverage the caller expects the book to carry (1: a schema 2 cash book; 2..5: a
+    schema 3 margin book). A book that disagrees is not ready (FINANCIAL_LEVERAGE_CONFLICT). ``None`` accepts the
+    book's own value and is for operator recovery only; the runtime always passes its pinned value.
+    """
     def __init__(self, store: FinancialStateStore, *,
                  applied_archive: AppliedExecutionArchiveStore,
-                 closed_archive: ClosedPositionArchiveStore):
+                 closed_archive: ClosedPositionArchiveStore,
+                 leverage: int | None = 1):
         self.store = store
         self.applied_archive = applied_archive
         self.closed_archive = closed_archive
+        self.expected_leverage = leverage   # read by core.policy_manifest (manifest v4 book_leverage)
         self._recovery_reason: str | None = None
         self._applied_by_execution_id: dict[str, AppliedExecutionRecord] = {}
         self._applied_by_idempotency_key: dict[str, AppliedExecutionRecord] = {}
@@ -487,6 +558,8 @@ class ExecutionPortfolioFoundation:
         try:
             self._state = store.load()
             self._validate_state(self._state)
+            if leverage is not None and book_leverage(self._state) != leverage:
+                raise RuntimeError("FINANCIAL_LEVERAGE_CONFLICT")
             self._hydrate_sidecars()
         except Exception as exc:
             self._state = {}
@@ -538,6 +611,10 @@ class ExecutionPortfolioFoundation:
         live_ids = {item["position_id"] for item in self._state["positions"].values()}
         if live_ids & closed_index.by_position_id.keys():
             raise RuntimeError("FINANCIAL_CLOSED_POSITION_LIVE_CONFLICT")
+        # Task 025 (review LOW-1): a margin book's closed records carry ``margin``, a cash book's never do.
+        margin_book = book_leverage(self._state) > 1
+        if any(("margin" in record) != margin_book for record in closed_index.by_position_id.values()):
+            raise RuntimeError("FINANCIAL_CLOSED_AUTHORITY_CORRUPT")
 
         self._applied_by_execution_id = dict(applied_index.by_execution_id)
         self._applied_by_idempotency_key = dict(applied_index.by_idempotency_key)
@@ -555,9 +632,16 @@ class ExecutionPortfolioFoundation:
 
     @staticmethod
     def _validate_state(state: dict[str, Any]) -> None:
+        margin_book = book_leverage(state) > 1
+        if margin_book and set(state) != {"schema_version", "transition", "cash", "reserved_capital",
+                                          "realized_gross_pnl", "fees", "positions", "applied_checkpoint",
+                                          "closed_checkpoint", "leverage"}:
+            raise ValueError("CORRUPT_FINANCIAL_STATE")
         for name in ("cash", "reserved_capital", "realized_gross_pnl", "fees"):
             value = D(str(state[name]))
-            if not value.is_finite() or (name != "realized_gross_pnl" and value < 0):
+            # Task 025: a margin book's cash may go below zero after a realized loss larger than the account.
+            negative_allowed = name == "realized_gross_pnl" or (margin_book and name == "cash")
+            if not value.is_finite() or (not negative_allowed and value < 0):
                 raise ValueError("CORRUPT_FINANCIAL_STATE")
         seen: set[str] = set()
         for symbol, item in state["positions"].items():
@@ -566,6 +650,12 @@ class ExecutionPortfolioFoundation:
             seen.update((symbol, item["position_id"]))
             for name in ("base_quantity", "cost_quote", "entry_fees", "average_entry_price", "mark_price"):
                 _decimal(item[name], name, allow_zero=name == "entry_fees")
+            if margin_book:
+                _decimal(item["margin"], "margin", allow_zero=False)
+                if "side" in item and item["side"] != "SHORT":   # Task 026: absent = LONG
+                    raise ValueError("CORRUPT_FINANCIAL_STATE")
+            elif "margin" in item or "side" in item:
+                raise ValueError("CORRUPT_FINANCIAL_STATE")
         for checkpoint, keys in (
             (state["applied_checkpoint"], ("sequence", "execution_id", "idempotency_key")),
             (state["closed_checkpoint"], ("sequence", "position_id")),
@@ -583,7 +673,13 @@ class ExecutionPortfolioFoundation:
         candidate = dict(self._state)
         candidate["reserved_capital"] = format(_decimal(value, "reserved_capital"), "f")
         if self.available_capital(candidate) < 0:
-            raise ValueError("NEGATIVE_AVAILABLE_CAPITAL")
+            # Task 029 (registry v5.112, review R-1): a margin book may carry negative cash after a loss larger
+            # than the account. A reservation that does not grow must then still be accepted, or every remaining
+            # exit would fail in finalization and the positions would be trapped. New risk stays refused: its own
+            # settlement needs cash (INSUFFICIENT_CASH), and admission needs free capital.
+            grows = D(candidate["reserved_capital"]) > D(str(self._state["reserved_capital"]))
+            if book_leverage(candidate) == 1 or grows:
+                raise ValueError("NEGATIVE_AVAILABLE_CAPITAL")
         self.store.save(candidate); self._state = candidate
 
     def apply_confirmed(self, result: ExecutionResult, *, risk_authorized: bool,
@@ -615,13 +711,7 @@ class ExecutionPortfolioFoundation:
         # recovery. Both methods only read the durable indexes and write the
         # private candidate copy.
         candidate = json.loads(json.dumps(self._state))
-        closed_record: dict[str, Any] | None = None
-        if result.action == "BUY":
-            self._open(candidate, result, expected_position_version)
-        elif result.action == "SELL":
-            closed_record = self._close(candidate, result, expected_position_version)
-        else:
-            raise ValueError("LONG_ONLY_ACTION_REJECTED")
+        closed_record = self._settle(candidate, result, expected_position_version)
 
         transition = dict(self._state)
         transition["transition"] = {"execution_id": result.execution_id, "idempotency_key": identity,
@@ -674,6 +764,23 @@ class ExecutionPortfolioFoundation:
         self._applied_tail = applied_record
         return self.snapshot()
 
+    def _settle(self, state: dict[str, Any], result: ExecutionResult,
+                expected: int | None) -> dict[str, Any] | None:
+        """Route a confirmed fill: open/add (BUY LONG, SELL SHORT) or reduce (SELL LONG, BUY SHORT).
+
+        Task 026: a short is only ever settled in a margin book; anything else is refused before any write."""
+        side = result.position_side
+        if side == "SHORT" and book_leverage(state) == 1:
+            raise ValueError("SHORT_NOT_PERMITTED_IN_CASH_BOOK")
+        if result.action not in ("BUY", "SELL"):
+            raise ValueError("LONG_ONLY_ACTION_REJECTED")
+        if opens_risk(result.action, side):
+            self._open(state, result, expected)
+            return None
+        if reduces_risk(result.action, side):
+            return self._close(state, result, expected)
+        raise ValueError("LONG_ONLY_ACTION_REJECTED")   # unreachable: every (action, side) pair is one of the two
+
     def _open(self, state: dict[str, Any], result: ExecutionResult, expected: int | None) -> None:
         """Apply a confirmed BUY, whole open or an add to an existing LONG.
 
@@ -693,6 +800,8 @@ class ExecutionPortfolioFoundation:
             if current is not None:
                 if current["position_id"] != result.position_id:
                     raise ValueError("DUPLICATE_OPEN_POSITION")
+                if position_side(current) != result.position_side:
+                    raise ValueError("POSITION_SIDE_CONFLICT")   # Task 026: never adds across sides
                 if expected is None or expected != current["version"]:
                     raise ValueError("STALE_POSITION_MUTATION")
                 base = D(current["base_quantity"]) + result.filled_base_quantity
@@ -704,7 +813,14 @@ class ExecutionPortfolioFoundation:
                 if expected not in (None, 0): raise ValueError("STALE_POSITION_MUTATION")
                 base, cost, version, opened_at, fees = (result.filled_base_quantity,
                     result.filled_quote_notional, 1, _utc(str(result.timestamp)), result.fee_amount)
-            debit = result.filled_quote_notional + result.fee_amount
+            leverage = book_leverage(state)
+            if leverage == 1:
+                debit = result.filled_quote_notional + result.fee_amount
+            else:
+                # Task 025: the margin book reserves notional / L and pays the fee; nothing else leaves cash.
+                added_margin = result.filled_quote_notional / leverage
+                margin = added_margin + (D(current["margin"]) if current is not None else D("0"))
+                debit = added_margin + result.fee_amount
             cash = D(state["cash"])
             if debit > cash: raise ValueError("INSUFFICIENT_CASH")
             new_cash = cash - debit
@@ -720,6 +836,10 @@ class ExecutionPortfolioFoundation:
             "entry_fees": format(fees, "f"), "average_entry_price": format(average_entry_price, "f"),
             "mark_price": format(result.execution_price, "f"), "version": version, "opened_at": opened_at,
         }
+        if leverage > 1:
+            state["positions"][result.symbol]["margin"] = format(margin, "f")
+            if result.position_side == "SHORT":
+                state["positions"][result.symbol]["side"] = "SHORT"
 
     def _close(self, state: dict[str, Any], result: ExecutionResult, expected: int | None) -> dict[str, Any] | None:
         """Apply a confirmed LONG reduction, whole or partial.
@@ -762,6 +882,8 @@ class ExecutionPortfolioFoundation:
         current = state["positions"].get(result.symbol)
         if current is None or current["position_id"] != result.position_id:
             raise ValueError("POSITION_NOT_FOUND")
+        if position_side(current) != result.position_side:
+            raise ValueError("POSITION_SIDE_CONFLICT")   # Task 026
         if expected is None or expected != current["version"]:
             raise ValueError("STALE_POSITION_MUTATION")
         held, sold = D(current["base_quantity"]), result.filled_base_quantity
@@ -769,6 +891,7 @@ class ExecutionPortfolioFoundation:
             raise ValueError("REDUCTION_EXCEEDS_POSITION")
         cost = D(current["cost_quote"])
         entry_fees = D(current["entry_fees"])
+        margin_book = book_leverage(state) > 1
         with localcontext() as context:
             context.prec = SETTLEMENT_CONTEXT_PRECISION
             context.rounding = ROUND_HALF_EVEN
@@ -780,7 +903,17 @@ class ExecutionPortfolioFoundation:
                 basis = cost - released
                 remaining_entry_fees = entry_fees - released_entry_fees
             gross = result.filled_quote_notional - released
-            new_cash = D(state["cash"]) + result.filled_quote_notional - result.fee_amount
+            if position_side(current) == "SHORT":
+                gross = released - result.filled_quote_notional   # Task 026: a short gains when it buys back lower
+            if margin_book:
+                # Task 025: the released margin comes back with the realized gross P&L, minus the fee. Released
+                # and remaining margin are complements, like the cost basis above.
+                margin = D(current["margin"])
+                released_margin = margin if sold == held else margin * sold / held
+                remaining_margin = margin - released_margin
+                new_cash = D(state["cash"]) + released_margin + gross - result.fee_amount
+            else:
+                new_cash = D(state["cash"]) + result.filled_quote_notional - result.fee_amount
             new_fees = D(state["fees"]) + result.fee_amount
             new_realized_gross_pnl = D(state["realized_gross_pnl"]) + gross
             if sold != held:
@@ -796,6 +929,8 @@ class ExecutionPortfolioFoundation:
                 "average_entry_price": format(average_entry_price, "f"),
                 "mark_price": format(result.execution_price, "f"),
                 "version": current["version"] + 1}
+            if margin_book:
+                state["positions"][result.symbol]["margin"] = format(remaining_margin, "f")
             return None
         if result.position_id in self._closed_by_position_id:
             # Block 5G/5I: a lifetime archives exactly once. The immutable
@@ -839,12 +974,24 @@ class ExecutionPortfolioFoundation:
             context.prec = SETTLEMENT_CONTEXT_PRECISION
             context.rounding = ROUND_HALF_EVEN
             exposure = sum((D(p["base_quantity"]) * D(p["mark_price"]) for p in self._state["positions"].values()), D("0"))
-            unrealized = sum((D(p["base_quantity"]) * D(p["mark_price"]) - D(p["cost_quote"]) for p in self._state["positions"].values()), D("0"))
+            unrealized = sum((position_unrealized(p) for p in self._state["positions"].values()), D("0"))
             cash, fees = D(self._state["cash"]), D(self._state["fees"])
             committed = sum((D(p["cost_quote"]) for p in self._state["positions"].values()), D("0"))
             realized_net = D(self._state["realized_gross_pnl"]) - fees
-            equity = cash + exposure
+            leverage = book_leverage(self._state)
+            if leverage == 1:
+                equity = cash + exposure
+                used_margin, spendable, margin_level = committed, cash, None
+            else:
+                # Task 025: equity = cash + used margin + unrealized P&L. New risk may spend only cash less any
+                # unrealized loss (a paper gain never funds a new position).
+                used_margin = sum((D(p["margin"]) for p in self._state["positions"].values()), D("0"))
+                equity = cash + used_margin + unrealized
+                spendable = cash + min(unrealized, D("0"))
+                margin_level = equity / used_margin if used_margin > 0 else None
         return {"ready": True, "recovery_required": False, "cash": cash,
+            "leverage": leverage, "used_margin": used_margin, "spendable_cash": spendable,
+            "margin_level": margin_level,
             "reserved_capital": D(self._state["reserved_capital"]),
             "committed_capital": committed,
             "gross_exposure": exposure, "realized_gross_pnl": D(self._state["realized_gross_pnl"]),
@@ -873,6 +1020,7 @@ class ExecutionPortfolioFoundation:
         view.store = None  # type: ignore[assignment]
         view.applied_archive = None  # type: ignore[assignment]
         view.closed_archive = None  # type: ignore[assignment]
+        view.expected_leverage = None
         view._recovery_reason = None
         view._state = json.loads(json.dumps(transition.pre_state))
         view._applied_by_execution_id = dict(transition.applied_by_execution_id)
@@ -1028,6 +1176,7 @@ def _open_foundation(
 ) -> ExecutionPortfolioFoundation:
     foundation = ExecutionPortfolioFoundation(
         store, applied_archive=applied_archive, closed_archive=closed_archive,
+        leverage=None,   # Task 025: operator recovery keeps the book's own leverage (schema 2 or 3)
     )
     if not foundation.ready:
         raise InterruptedTransitionError("POST_RESOLUTION_NOT_READY")
@@ -1095,12 +1244,7 @@ def complete_interrupted_transition(
     expected_version = None if current is None else current["version"]
     closed_record: dict[str, Any] | None = None
     try:
-        if evidence.action == "BUY":
-            view._open(candidate, evidence, expected_version)
-        elif evidence.action == "SELL":
-            closed_record = view._close(candidate, evidence, expected_version)
-        else:
-            raise ValueError("LONG_ONLY_ACTION_REJECTED")
+        closed_record = view._settle(candidate, evidence, expected_version)
     except Exception as exc:
         raise InterruptedTransitionError("TRANSITION_EVIDENCE_INVALID") from exc
 

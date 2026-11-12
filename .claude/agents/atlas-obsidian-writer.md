@@ -2,16 +2,7 @@
 name: atlas-obsidian-writer
 description: Read/write interface to the "Atlas Memory" Obsidian vault. Use when a task needs to read or update notes in the vault (checkpoints, governance records, research notes). It has full read and write access to the vault only — nothing else. Invoke it to read or change vault content; do not use it for anything outside the vault.
 mcpServers:
-  - obsidian-vault:
-      type: stdio
-      command: cmd
-      args:
-        - /c
-        - npx
-        - -y
-        - "@modelcontextprotocol/server-filesystem@2026.7.10"
-        - "C:\\Users\\HUAWEİ\\OneDrive\\Masaüstü\\ATLAS_CODEX_COMPLETE_LATEST_STATE_2026-07-30\\Atlas Memory"
-      env: {}
+  - obsidian-vault
 tools: mcp__obsidian-vault__read_file, mcp__obsidian-vault__read_text_file, mcp__obsidian-vault__read_media_file, mcp__obsidian-vault__read_multiple_files, mcp__obsidian-vault__write_file, mcp__obsidian-vault__edit_file, mcp__obsidian-vault__create_directory, mcp__obsidian-vault__move_file, mcp__obsidian-vault__list_directory, mcp__obsidian-vault__list_directory_with_sizes, mcp__obsidian-vault__directory_tree, mcp__obsidian-vault__search_files, mcp__obsidian-vault__get_file_info, mcp__obsidian-vault__list_allowed_directories
 model: sonnet
 ---

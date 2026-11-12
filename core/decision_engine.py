@@ -279,7 +279,7 @@ class DecisionEngine:
 
             reasoning=(
 
-                "High probability market opportunity"
+                "High-consensus market opportunity (consensus, not a win probability)"
 
             ),
 

@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+{#
+  Atlas HQ (registry v5.38). Loopback-only, read-only presentation.
+  3D = identity, 2D panels = operations (owner's design, 2026-09-29).
+  The 3D view is three.js r185 (vendored, hash-pinned, owner-approved 2026-10-02) with the
+  dependency-free Canvas projection kept as the fallback when WebGL or the module is
+  unavailable. Neither holds business logic: every colour and number comes from the read-only
+  /api/organization, /api/tasks, /api/permissions, /api/command-center and
+  /api/chat endpoints. The page works with the 3D view switched off.
+#}
+<html lang="tr" data-bs-theme="dark" data-lte-color-mode="off">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Atlas HQ</title>
+    <link rel="stylesheet" href="/assets/adminlte.min.css">
+    <style>
+        body { background: #0b0f17; }
+        .atlas-nav a { color: var(--bs-secondary-color); text-decoration: none; padding: .35rem .75rem; border-radius: .4rem; }
+        .atlas-nav a.active, .atlas-nav a:hover { color: var(--bs-body-color); background: var(--bs-tertiary-bg); }
+        .hq-grid { display: grid; grid-template-columns: 260px 1fr 280px; gap: 12px; padding: 12px; }
+        @media (max-width: 1100px) { .hq-grid { grid-template-columns: 1fr; } }
+        .pane { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 12px; }
+        #org-list { max-height: 560px; overflow-y: auto; }
+        .pane h2 { font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; color: var(--bs-secondary-color); margin-bottom: .6rem; }
+        #hq-canvas, #hq-gl { width: 100%; height: 520px; display: block; border-radius: 10px; background: radial-gradient(ellipse at center, #121a2b 0%, #070a10 70%); cursor: pointer; }
+        .unit-row { display: flex; justify-content: space-between; gap: 6px; font-size: .82rem; padding: 3px 4px; border-radius: 5px; cursor: pointer; }
+        .unit-row:hover, .unit-row.sel { background: rgba(255,255,255,.06); }
+        .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+        .kv { display: flex; justify-content: space-between; font-size: .85rem; padding: 2px 0; }
+        .bottom { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 0 12px 12px; }
+        @media (max-width: 900px) { .bottom { grid-template-columns: 1fr 1fr; } }
+        .big { font-size: 1.4rem; font-weight: 700; }
+    </style>
+    {% include "_atlas_theme.html" %}
+</head>
+<body>
+<nav class="navbar bg-body border-bottom px-3">
+    <span class="navbar-brand fw-bold"><span class="text-primary">ATLAS</span> HQ</span>
+    <div class="atlas-nav d-flex flex-wrap gap-1">
+        <a href="/home">Başlangıç</a>
+        <a href="/trading">Trading</a>
+        <a href="/agents">Ajanlar</a>
+        <a href="/governance">Hafıza</a>
+        <a href="/system">Sistem</a>
+        <a href="/hq" class="active" aria-current="page">Atlas HQ</a>
+    </div>
+    <span class="small"><span id="hq-health">…</span> · <span id="hq-clock"></span> · <span id="hq-fresh" class="text-body-secondary">veri: bekleniyor</span>
+        <button id="toggle-3d" class="btn btn-sm btn-outline-secondary ms-2" type="button">3D: açık</button></span>
+</nav>
+
+<div class="hq-grid">
+    <aside class="pane">
+        <h2>Ajanlar (canlı durum)</h2>
+        <div id="org-list">Yükleniyor...</div>
+    </aside>
+    <main class="pane">
+        <canvas id="hq-canvas" aria-label="Atlas HQ 3D görünüm" role="img"></canvas>
+        <canvas id="hq-gl" aria-label="Atlas HQ 3D görünüm (WebGL)" role="img" hidden></canvas>
+        <div id="hq-3d-off" class="text-body-secondary small p-4" hidden>3D kapalı. Tüm bilgiler yan ve alt panellerde.</div>
+        <div id="hq-conn" class="alert alert-danger py-1 small mt-2" hidden>BAĞLANTI YOK: ajan durumu okunamadı. Sahne boş bırakıldı, aktivite uydurulmaz.</div>
+        <div id="unit-detail" class="small mt-2 text-body-secondary">Bir ajana (3D) ya da soldaki listeye tıklayın.</div>
+    </main>
+    <aside class="pane">
+        <h2>Trading (PAPER)</h2>
+        <div id="trading">Yükleniyor...</div>
+        <h2 class="mt-3">Yetki sınırı</h2>
+        <div class="small">Canlı para: <span class="badge text-bg-dark">KAPALI</span><br>İşlem & deploy yetkisi hiçbir yapay zekâ birimine verilemez.</div>
+    </aside>
+</div>
+
+<div class="bottom">
+    <div class="pane" style="grid-column:1/-1"><h2>Canlı aktivite (yalnız kayıtlı olaylar)</h2>
+        <div class="small mb-1"><label><input type="checkbox" class="feed-cat" value="RUNTIME" checked> Çalışma</label>
+            <label class="ms-2"><input type="checkbox" class="feed-cat" value="GOVERNANCE" checked> Yönetim</label>
+            <label class="ms-2"><input type="checkbox" class="feed-cat" value="SECURITY" checked> Güvenlik</label>
+            <label class="ms-2"><input type="checkbox" class="feed-cat" value="TRADE" checked> İşlem</label></div>
+        <div id="activity" class="small">Yükleniyor...</div></div>
+    <div class="pane" style="grid-column:1/-1"><h2>Ajan operasyon tablosu</h2><div id="ops-table" class="small table-responsive">Yükleniyor...</div></div>
+    <div class="pane"><h2>Kararınızı bekleyen</h2><div id="b-proposals" class="big">…</div><a href="/governance" class="small">Öneriler →</a></div>
+    <div class="pane"><h2>Görevler</h2><div id="b-tasks" class="big">…</div></div>
+    <div class="pane"><h2>Sistem</h2><div id="b-health" class="big">…</div></div>
+    <div class="pane"><h2>Çalışan ajan</h2><div id="b-agents" class="big">…</div></div>
+</div>
+<div class="px-3 pb-3">
+    <div class="pane">
+        <h2>Atlas Chat</h2>
+        <div class="input-group input-group-sm mb-2">
+            <input id="chat-input" type="text" autocomplete="off" maxlength="500" class="form-control" placeholder="Atlas, bugün ne oldu?" aria-label="Atlas'a sor">
+            <button id="chat-send" class="btn btn-primary" type="button">Sor</button>
+        </div>
+        <div id="chat-log" class="small"></div>
+        <div class="small text-body-secondary">Kural tabanlı; yalnız gerçek durumdan cevap verir, hiçbir şeyi değiştiremez.</div>
+    </div>
+</div>
+
+<script>
+(() => {
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const getJSON = async (url) => { try { const r = await fetch(url); return await r.json(); } catch (e) { return { available: false, reason: 'network error' }; } };
+    // Presentation colours only; every state comes from /api/agent-states (recorded evidence).
+    const STATE = { WORKING: '#3b82f6', REVIEWING: '#a855f7', WAITING: '#06b6d4', WAITING_FOR_HUMAN: '#f59e0b',
+        BLOCKED: '#ef4444', ERROR: '#ef4444', IDLE: '#22c55e', OFFLINE: '#475569' };
+    const STATE_TR = { WORKING: 'çalışıyor', REVIEWING: 'inceliyor', WAITING: 'bekliyor', WAITING_FOR_HUMAN: 'onayınızı bekliyor',
+        BLOCKED: 'engelli', ERROR: 'hata', IDLE: 'hazır', OFFLINE: 'iz yok' };
+    // Room layout (presentation): command in the centre, wings around it.
+    const ROOM_POS = { command: [0, 0], research: [-4, -2.6], memory: [-4, 2.6], dev: [4, -2.6], security: [4, 2.6],
+        quant: [0, 4.2], review: [2.2, -4.2], governance: [-2.2, -4.2], system: [0, -5.4] };
+    let agents = [], flows = [], rooms = {}, perms = {}, selected = null, show3d = true;
+    // Atlas Event Contract v1 (/api/events): every event is backed by a governance record.
+    let contractEvents = [], contractSkipped = 0;
+    let lastOk = null;
+    setInterval(() => {
+        const el = document.getElementById('hq-fresh');
+        if (!el) return;
+        const age = lastOk == null ? null : Math.round((Date.now() - lastOk) / 1000);
+        el.textContent = (age == null ? 'veri: henüz okunamadı' : `veri ${age} sn önce`) + (contractSkipped ? ` · ${contractSkipped} kayıt sözleşmeye uymadı` : '');
+        el.style.color = age == null || age > 30 ? 'var(--atlas-warn, #E5B95C)' : '';
+    }, 1000);
+
+    function renderOrg() {
+        const order = ['WAITING_FOR_HUMAN', 'ERROR', 'BLOCKED', 'WORKING', 'REVIEWING', 'WAITING', 'IDLE', 'OFFLINE'];
+        const sorted = [...agents].sort((a, b) => order.indexOf(a.state) - order.indexOf(b.state));
+        document.getElementById('org-list').innerHTML = sorted.map((a) =>
+            `<div class="unit-row${selected === a.id ? ' sel' : ''}" data-unit="${esc(a.id)}"><span><span class="dot" style="background:${STATE[a.state]}"></span>${esc(a.name)}</span>` +
+            `<span class="text-body-secondary">${esc(STATE_TR[a.state] || a.state)}</span></div>`).join('') || '<span class="text-body-secondary">Ajan durumu okunamadı.</span>';
+    }
+
+    let activity = [];
+    // Records are stored in UTC; show the operator's local time.
+    const localTime = (at, n) => { const d = new Date(at); return isNaN(d) ? String(at).slice(0, n).replace('T', ' ')
+        : d.toLocaleString('tr-TR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: n > 16 ? '2-digit' : undefined }); };
+    const CAT = { RUNTIME: 'info', GOVERNANCE: 'primary', SECURITY: 'danger', TRADE: 'success' };
+    function renderActivity() {
+        const on = [...document.querySelectorAll('.feed-cat')].filter((c) => c.checked).map((c) => c.value);
+        const rows = activity.filter((e) => on.includes(e.category));
+        document.getElementById('activity').innerHTML = rows.length ? rows.map((e) =>
+            `<div>${esc(localTime(e.at, 19))} <span class="badge text-bg-${CAT[e.category] || 'secondary'}">${esc(e.category)}</span> <b>${esc(e.agent)}</b> ${esc(e.text)}</div>`).join('')
+            : '<span class="text-body-secondary">AKTİVİTE YOK: kayıtlı olay bulunmadı.</span>';
+    }
+    function renderOps() {
+        document.getElementById('ops-table').innerHTML = agents.length ? '<table class="table table-sm mb-0"><thead><tr><th>Ajan</th><th>Oda</th><th>Durum</th><th>Şu an</th><th>Kaynak</th></tr></thead><tbody>' +
+            agents.map((a) => `<tr><td>${esc(a.name)}</td><td>${esc(a.room_name)}</td><td style="color:${STATE[a.state]}">${esc(STATE_TR[a.state] || a.state)}</td><td>${esc(a.doing)}</td><td>${esc(a.source || '—')}</td></tr>`).join('') + '</tbody></table>'
+            : '<span class="text-body-secondary">Ajan durumu okunamadı.</span>';
+    }
+    document.querySelectorAll('.feed-cat').forEach((c) => c.addEventListener('change', renderActivity));
+    if (!window.CanvasRenderingContext2D) { show3d = false; }
+
+    function renderDetail() {
+        const a = agents.find((x) => x.id === selected);
+        if (!a) return;
+        const caps = (perms[a.id] || {}).capabilities || [];
+        const out = flows.filter((f) => f.from === a.id).map((f) => `→ ${esc(f.to)} (${esc(f.label)})`);
+        const inn = flows.filter((f) => f.to === a.id).map((f) => `← ${esc(f.from)} (${esc(f.label)})`);
+        document.getElementById('unit-detail').innerHTML =
+            `<div class="text-body"><b>${esc(a.name)}</b> · ${esc(a.room_name)} · <span style="color:${STATE[a.state]}">${esc(STATE_TR[a.state] || a.state)}</span></div>` +
+            `<div>Şu an: ${esc(a.doing)}</div><div class="text-body-secondary">Kaynak kayıt: ${esc(a.source || 'yok')}</div>` +
+            `<div>İş akışı: ${[...inn, ...out].join(' · ') || 'yok'}</div>` +
+            `<div>Yetkiler: ${caps.length ? caps.map((c) => `<span class="badge text-bg-secondary">${esc(c)}</span>`).join(' ') : 'kayıtlı yetki yok'}</div>` +
+            `<div class="mt-1"><b>Geçmiş</b>${(a.history || []).length ? (a.history || []).map((e) => `<div>${esc(localTime(e.at, 16))} · ${esc(e.category)} · ${esc(e.text)}</div>`).join('') : ' <span class="text-body-secondary">kayıtlı olay yok</span>'}</div>` +
+            `<div class="mt-1"><b>Olaylar (atlas.event.v1)</b>${(() => { const mine = contractEvents.filter((e) => e.agent.id === a.id).slice(-5).reverse();
+                return mine.length ? mine.map((e) => `<div>${esc(localTime(e.timestamp, 19))} · ${esc(e.event_type)} · kayıt ${esc(e.payload.source || '?')}</div>`).join('')
+                    : ' <span class="text-body-secondary">bu ajan için olay yok (hareket uydurulmaz)</span>'; })()}</div>` +
+            `<div class="text-body-secondary">Maliyet: kural tabanlı ajanlar model çağırmaz; yapay zekâ danışmanlarının (CEO, model konseyi) çağrı sayısı ve harcaması her ajan döngüsü kaydında (AC-…) ve <a href="/agents">Ajanlar</a> sayfasında.</div>` +
+            `<div class="text-body-secondary">Hiçbir ajan para harcayamaz, yayına alamaz ya da kendi kararını onaylayamaz.</div>`;
+    }
+
+    // ------------------------------------------------------------ 3D view (dependency-free canvas)
+    const canvas = document.getElementById('hq-canvas');
+    const ctx = canvas.getContext('2d');
+    let angle = 0.35, spots = [];
+
+    function project(x, y, z, w, h) {
+        const cos = Math.cos(angle), sin = Math.sin(angle);
+        const rx = x * cos - z * sin, rz = x * sin + z * cos;
+        const tilt = 0.9, ry = y * Math.cos(tilt) - rz * Math.sin(tilt), dz = y * Math.sin(tilt) + rz * Math.cos(tilt);
+        const scale = Math.min(w, h * 1.6) * 0.78 / (dz + 13);
+        return { x: w / 2 + rx * scale, y: h * 0.47 + ry * scale, s: scale, depth: dz };
+    }
+
+    function agentPos(a) {
+        const members = agents.filter((x) => x.room === a.room);
+        const i = members.indexOf(a), n = members.length, [rx, rz] = ROOM_POS[a.room] || [0, 0];
+        const ang = n > 1 ? (i / n) * Math.PI * 2 : 0, r = n > 1 ? Math.min(1.05, 0.35 + 0.12 * n) : 0;
+        return [rx + Math.cos(ang) * r, rz + Math.sin(ang) * r];
+    }
+
+    function draw(t) {
+        const d = devicePixelRatio;
+        // Resize the backing store only when the element changed size: assigning width/height
+        // reallocates and clears it, which every-frame assignment did 60 times a second.
+        const w = Math.round(canvas.clientWidth * d), h = Math.round(canvas.clientHeight * d);
+        if (canvas.width !== w) canvas.width = w;
+        if (canvas.height !== h) canvas.height = h;
+        ctx.clearRect(0, 0, w, h);
+        // floor grid
+        ctx.strokeStyle = 'rgba(148,163,184,.07)'; ctx.lineWidth = 1;
+        for (let i = -7; i <= 7; i++) {
+            let a = project(i, 1, -7, w, h), b = project(i, 1, 7, w, h); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+            a = project(-7, 1, i, w, h); b = project(7, 1, i, w, h); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+        }
+        // rooms (floor plates + name)
+        Object.entries(ROOM_POS).forEach(([id, [x, z]]) => {
+            const c = [[-1.35, -1.35], [1.35, -1.35], [1.35, 1.35], [-1.35, 1.35]].map(([dx, dz]) => project(x + dx, 1, z + dz, w, h));
+            const busy = agents.some((a) => a.room === id && ['WORKING', 'REVIEWING', 'WAITING_FOR_HUMAN', 'ERROR', 'BLOCKED'].includes(a.state));
+            ctx.fillStyle = busy ? 'rgba(59,130,246,.10)' : 'rgba(148,163,184,.05)';
+            ctx.strokeStyle = busy ? 'rgba(96,165,250,.55)' : 'rgba(148,163,184,.22)';
+            ctx.beginPath(); c.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.closePath(); ctx.fill(); ctx.stroke();
+            const lp = project(x, 1, z + 1.6, w, h);
+            ctx.fillStyle = '#64748b'; ctx.font = `600 ${10 * d}px system-ui`; ctx.textAlign = 'center';
+            ctx.fillText((rooms[id] || id).toLocaleUpperCase('tr-TR'), lp.x, lp.y);
+        });
+        // flows: a packet travels along each recorded hand-off
+        const pos = {}; agents.forEach((a) => { pos[a.id] = agentPos(a); });
+        flows.forEach((f, k) => {
+            const A = pos[f.from], B = pos[f.to]; if (!A || !B) return;
+            const a = project(A[0], 0.2, A[1], w, h), b = project(B[0], 0.2, B[1], w, h);
+            ctx.strokeStyle = f.kind === 'proposal' ? 'rgba(245,158,11,.35)' : f.kind === 'vote' ? 'rgba(34,197,94,.18)' : 'rgba(96,165,250,.28)';
+            ctx.lineWidth = d; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+            if (show3d) {
+                const u = ((t / 2400) + k * 0.17) % 1;
+                ctx.fillStyle = f.kind === 'proposal' ? '#f59e0b' : f.kind === 'vote' ? '#22c55e' : '#60a5fa';
+                ctx.beginPath(); ctx.arc(a.x + (b.x - a.x) * u, a.y + (b.y - a.y) * u, 2.2 * d, 0, Math.PI * 2); ctx.fill();
+            }
+        });
+        // agents as figures standing in their room
+        spots = agents.map((a) => {
+            const [x, z] = pos[a.id], foot = project(x, 1, z, w, h), head = project(x, -0.35, z, w, h);
+            return { a, foot, head, depth: foot.depth };
+        }).sort((p, q) => q.depth - p.depth);
+        spots.forEach(({ a, foot, head }) => {
+            const c = STATE[a.state] || STATE.OFFLINE, r = Math.max(4 * d, foot.s * 0.16);
+            const active = ['WORKING', 'REVIEWING'].includes(a.state), alert = ['ERROR', 'BLOCKED', 'WAITING_FOR_HUMAN'].includes(a.state);
+            ctx.globalAlpha = a.state === 'OFFLINE' ? 0.4 : 1;
+            ctx.strokeStyle = c; ctx.lineWidth = 2 * d; ctx.beginPath(); ctx.moveTo(foot.x, foot.y); ctx.lineTo(head.x, head.y + r); ctx.stroke();
+            if (alert || active) {
+                ctx.strokeStyle = c; ctx.globalAlpha = 0.35 + 0.35 * Math.abs(Math.sin(t / (alert ? 250 : 600)));
+                ctx.beginPath(); ctx.arc(head.x, head.y, r * 1.9, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
+            }
+            ctx.fillStyle = c; ctx.beginPath(); ctx.arc(head.x, head.y, r, 0, Math.PI * 2); ctx.fill();
+            if (a.id === selected) { ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 2 * d; ctx.beginPath(); ctx.arc(head.x, head.y, r * 1.5, 0, Math.PI * 2); ctx.stroke(); }
+            ctx.fillStyle = '#cbd5e1'; ctx.font = `${10 * d}px system-ui`; ctx.textAlign = 'center';
+            if (a.state !== 'OFFLINE' || a.id === selected) ctx.fillText(a.name, head.x, head.y - r - 4 * d);
+            ctx.globalAlpha = 1;
+        });
+    }
+
+    // One animation loop at most (toggling quickly used to start a second one), and none at all when
+    // the operator's system asks for reduced motion: then a still frame is drawn on each data refresh.
+    const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let frame = null;
+    // Set by the three.js module once WebGL is up: the canvas fallback then stops drawing.
+    let webgl = false;
+    const glCanvas = document.getElementById('hq-gl');
+    const notify = (name) => window.dispatchEvent(new Event(name));
+    function loop(t) {
+        frame = null;
+        if (!show3d || webgl) return;
+        draw(t);
+        if (!reduceMotion) { angle += 0.0008; frame = requestAnimationFrame(loop); }
+    }
+    function startLoop() { if (frame == null && show3d) frame = requestAnimationFrame(loop); }
+
+    canvas.addEventListener('click', (e) => {
+        const r = canvas.getBoundingClientRect();
+        const x = (e.clientX - r.left) * devicePixelRatio, y = (e.clientY - r.top) * devicePixelRatio;
+        const hit = [...spots].reverse().find(({ head }) => Math.hypot(x - head.x, y - head.y) < 16 * devicePixelRatio);
+        if (hit) { selected = hit.a.id; renderOrg(); renderDetail(); notify('atlas-hq-data'); }
+    });
+    document.getElementById('org-list').addEventListener('click', (e) => {
+        const row = e.target.closest('[data-unit]');
+        if (row) { selected = row.getAttribute('data-unit'); renderOrg(); renderDetail(); notify('atlas-hq-data'); }
+    });
+    document.getElementById('toggle-3d').addEventListener('click', (e) => {
+        show3d = !show3d;
+        canvas.hidden = !show3d || webgl; glCanvas.hidden = !show3d || !webgl; document.getElementById('hq-3d-off').hidden = show3d;
+        e.target.textContent = '3D: ' + (show3d ? 'açık' : 'kapalı');
+        startLoop(); notify('atlas-hq-3d');
+    });
+
+    // ------------------------------------------------------------ data
+    async function refresh() {
+        const [st, permissions, cc, tr] = await Promise.all([
+            getJSON('/api/agent-states'), getJSON('/api/permissions'), getJSON('/api/command-center'), getJSON('/api/trades')]);
+        const ev = await getJSON('/api/events');
+        contractEvents = ev.available ? (ev.events || []) : []; contractSkipped = ev.available ? (ev.skipped || 0) : 0;
+        // Stale indicator (reference-repo pattern P2/P4, ideas only): when the data was last read, and how many
+        // records did not fit the event contract (skipped, never coerced).
+        if (st.available) lastOk = Date.now();
+        agents = st.available ? st.agents : []; flows = st.available ? [...(st.flows || [])] : []; rooms = st.available ? st.rooms : {};
+        // Collaboration lines from real handoffs only (collaboration.handoff, each backed by a record).
+        // 2026-10-02: added after the reassignment above; before, they were pushed into the previous
+        // array and discarded on every refresh, so no handoff line was ever drawn.
+        contractEvents.filter((e) => e.event_type === 'collaboration.handoff').forEach((e) => {
+            const from = e.agent.id, to = e.payload.to;
+            if (agents.some((x) => x.id === from) && agents.some((x) => x.id === to)
+                && !flows.some((f) => f.from === from && f.to === to)) flows.push({ from, to, label: `${e.payload.label} (${e.payload.source})` });
+        });
+        perms = {}; (permissions.units || []).forEach((p) => { perms[p.id] = p; });
+        if (!selected && agents.length) selected = (agents.find((a) => a.state === 'WAITING_FOR_HUMAN') || agents[0]).id;
+        document.getElementById('hq-conn').hidden = !!st.available;
+        activity = st.available ? (st.activity || []) : [];
+        // Timeline (task 19): real closed trades from the durable archive, opened and closed as two events.
+        (tr && Array.isArray(tr.recent_trades) ? tr.recent_trades : []).forEach((t) => {
+            if (t.opened_at) activity.push({ at: t.opened_at, agent: 'execution', category: 'TRADE', text: `${t.symbol} pozisyon açıldı` });
+            if (t.closed_at) activity.push({ at: t.closed_at, agent: 'execution', category: 'TRADE', text: `${t.symbol} kapandı, brüt ${t.gross_pnl}` });
+        });
+        activity.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+        renderOrg(); renderDetail(); renderActivity(); renderOps();
+        if (reduceMotion) startLoop();  // still frame with the fresh data
+        notify('atlas-hq-data');
+        if (cc.available) {
+            const healthy = cc.health.healthy === true;
+            document.getElementById('hq-health').innerHTML = `<span class="badge text-bg-${healthy ? 'success' : 'danger'}">SYSTEM ${esc(healthy ? 'ONLINE' : (cc.health.state || 'UNKNOWN'))}</span>`;
+            document.getElementById('b-health').textContent = healthy ? 'Sağlıklı' : (cc.health.state || 'bilinmiyor');
+            document.getElementById('b-proposals').textContent = cc.proposals.available ? cc.proposals.awaiting_owner.length : 'okunamadı';
+            const tc = cc.tasks.counts || {};
+            document.getElementById('b-tasks').textContent = cc.tasks.available ? `${tc.IN_PROGRESS || 0} sürüyor / ${tc.BLOCKED || 0} engelli` : 'okunamadı';
+            document.getElementById('b-agents').textContent = agents.filter((a) => ['WORKING', 'REVIEWING'].includes(a.state)).length + ' / ' + agents.length;
+            const t = cc.trading;
+            document.getElementById('trading').innerHTML = t.available
+                ? `<div class="kv"><span>Net gerçekleşen P/L</span><b>${esc(t.realized_net_pnl)}</b></div><div class="kv"><span>Ödenen ücret</span><b>${esc(t.fees)}</b></div><div class="kv"><span>Mod</span><b>PAPER</b></div><a class="small" href="/dashboard">Pozisyonlar ve işlemler →</a>`
+                : `<div class="text-body-secondary small">Portföy bağlı değil (${esc(t.reason)}). Değer uydurulmaz.</div>`;
+        }
+    }
+
+    async function ask() {
+        const input = document.getElementById('chat-input'), q = input.value.trim();
+        if (!q) return;
+        const data = await getJSON('/api/chat?q=' + encodeURIComponent(q));
+        document.getElementById('chat-log').insertAdjacentHTML('afterbegin',
+            `<div class="mb-2"><div><b>Sen:</b> ${esc(q)}</div><div><b>Atlas:</b> ${esc(data.answer || data.reason || 'cevap yok')}</div></div>`);
+        input.value = '';
+    }
+    document.getElementById('chat-send').addEventListener('click', ask);
+    document.getElementById('chat-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') ask(); });
+
+    setInterval(() => { document.getElementById('hq-clock').textContent = new Date().toLocaleTimeString('tr-TR'); }, 1000);
+    // Read-only view of the page state for the three.js module below; select() is the only action,
+    // the same one a click on the agent list performs.
+    window.atlasHQ = {
+        view: () => ({ agents, flows, rooms, selected, show3d, reduceMotion, ROOM_POS, STATE }),
+        agentPos,
+        select: (id) => { selected = id; renderOrg(); renderDetail(); notify('atlas-hq-data'); },
+        useWebGL: () => { webgl = true; canvas.hidden = true; glCanvas.hidden = !show3d; },
+    };
+    refresh(); atlasPoll(refresh, 10000);
+    startLoop();
+})();
+</script>
+<script type="module">
+// Atlas HQ in three.js. Presentation only: draws the page's own state (window.atlasHQ.view()),
+// fetches nothing, writes nothing. Any failure (no WebGL, module not loaded) leaves the canvas view.
+import * as THREE from '/assets/three.module.min.js';
+
+const hq = window.atlasHQ, el = document.getElementById('hq-gl');
+let renderer = null;
+try { renderer = new THREE.WebGLRenderer({ canvas: el, antialias: true, alpha: true }); } catch (e) { renderer = null; }
+if (hq && renderer) {
+    hq.useWebGL();
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.Fog(0x070a10, 18, 34);
+    const camera = new THREE.PerspectiveCamera(42, 2, 0.1, 100);
+    scene.add(new THREE.HemisphereLight(0xbcd2ff, 0x0b0f17, 1.4));
+    const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(6, 12, 4); scene.add(sun);
+    const grid = new THREE.GridHelper(16, 16, 0x1e293b, 0x111827); scene.add(grid);
+    const ACTIVE = ['WORKING', 'REVIEWING'], ALERT = ['ERROR', 'BLOCKED', 'WAITING_FOR_HUMAN'];
+    const FLOW = { proposal: 0xf59e0b, vote: 0x22c55e };
+
+    // Text labels as sprites drawn on a small canvas (no font files, no network).
+    function label(text, color, size) {
+        const c = document.createElement('canvas'), g = c.getContext('2d'), px = 48;
+        g.font = `600 ${px}px system-ui`; c.width = Math.ceil(g.measureText(text).width) + 16; c.height = px + 16;
+        g.font = `600 ${px}px system-ui`; g.fillStyle = color; g.textBaseline = 'middle'; g.fillText(text, 8, c.height / 2);
+        const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+        const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+        s.scale.set(size * c.width / c.height, size, 1); return s;
+    }
+
+    let world = new THREE.Group(), pulses = [], packets = [], picks = [], signature = '';
+    scene.add(world);
+    function dispose(obj) {
+        obj.traverse((o) => { o.geometry?.dispose(); const m = o.material; if (m) { m.map?.dispose(); m.dispose(); } });
+    }
+    function build(v) {
+        scene.remove(world); dispose(world); world = new THREE.Group(); pulses = []; packets = []; picks = [];
+        Object.entries(v.ROOM_POS).forEach(([id, [x, z]]) => {
+            const busy = v.agents.some((a) => a.room === id && [...ACTIVE, ...ALERT].includes(a.state));
+            const plate = new THREE.Mesh(new THREE.BoxGeometry(2.7, 0.06, 2.7),
+                new THREE.MeshStandardMaterial({ color: busy ? 0x1d3a6e : 0x1a2233, transparent: true, opacity: 0.75 }));
+            plate.position.set(x, 0.03, z); world.add(plate);
+            const edge = new THREE.LineSegments(new THREE.EdgesGeometry(plate.geometry),
+                new THREE.LineBasicMaterial({ color: busy ? 0x60a5fa : 0x334155 }));
+            edge.position.copy(plate.position); world.add(edge);
+            const name = label((v.rooms[id] || id).toLocaleUpperCase('tr-TR'), '#64748b', 0.32);
+            name.position.set(x, 0.12, z + 1.6); world.add(name);
+        });
+        const pos = {}; v.agents.forEach((a) => { pos[a.id] = hq.agentPos(a); });
+        v.flows.forEach((f, k) => {
+            const A = pos[f.from], B = pos[f.to]; if (!A || !B) return;
+            const color = FLOW[f.kind] ?? 0x60a5fa, a = new THREE.Vector3(A[0], 0.25, A[1]), b = new THREE.Vector3(B[0], 0.25, B[1]);
+            world.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([a, b]),
+                new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.45 })));
+            const p = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 8), new THREE.MeshBasicMaterial({ color }));
+            world.add(p); packets.push({ p, a, b, k });
+        });
+        v.agents.forEach((a) => {
+            const [x, z] = pos[a.id], color = new THREE.Color(v.STATE[a.state] || v.STATE.OFFLINE), off = a.state === 'OFFLINE';
+            const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: ACTIVE.includes(a.state) ? 0.45 : 0.12,
+                transparent: off, opacity: off ? 0.4 : 1, roughness: 0.5 });
+            const fig = new THREE.Group(); fig.position.set(x, 0, z);
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.16, 0.55, 16), mat); body.position.y = 0.33;
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 20, 14), mat); head.position.y = 0.76;
+            body.userData.agentId = head.userData.agentId = a.id; picks.push(body, head); fig.add(body, head);
+            if (ACTIVE.includes(a.state) || ALERT.includes(a.state)) {
+                const ring = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.02, 8, 40), new THREE.MeshBasicMaterial({ color, transparent: true }));
+                ring.rotation.x = Math.PI / 2; ring.position.y = 0.04; fig.add(ring); pulses.push({ ring, fast: ALERT.includes(a.state) });
+            }
+            if (a.id === v.selected) {
+                const sel = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.025, 8, 48), new THREE.MeshBasicMaterial({ color: 0xe2e8f0 }));
+                sel.rotation.x = Math.PI / 2; sel.position.y = 0.05; fig.add(sel);
+            }
+            if (!off || a.id === v.selected) { const n = label(a.name, '#cbd5e1', 0.22); n.position.y = 1.12; fig.add(n); }
+            world.add(fig);
+        });
+        scene.add(world);
+    }
+
+    // Orbit by drag (no OrbitControls: it is not in the vendored core), slow auto-turn unless reduced motion.
+    let yaw = 0.35, pitch = 0.78, dist = 15.5, drag = null, frame = null;
+    function placeCamera() {
+        camera.position.set(Math.sin(yaw) * Math.cos(pitch) * dist, Math.sin(pitch) * dist, Math.cos(yaw) * Math.cos(pitch) * dist);
+        camera.lookAt(0, 0, 0);
+    }
+    function resize() {
+        const w = el.clientWidth, h = el.clientHeight;
+        if (!w || !h) return;
+        const d = Math.min(devicePixelRatio || 1, 2), cur = renderer.getSize(new THREE.Vector2());
+        if (cur.x !== w || cur.y !== h || renderer.getPixelRatio() !== d) {  // reallocate only on change
+            renderer.setPixelRatio(d); renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+        }
+    }
+    function render(t) {
+        const v = hq.view();
+        const sig = JSON.stringify([v.agents.map((a) => [a.id, a.state, a.room, a.name]), v.flows.map((f) => [f.from, f.to, f.kind]), v.rooms, v.selected]);
+        if (sig !== signature) { signature = sig; build(v); }
+        resize();
+        if (!v.reduceMotion) {
+            pulses.forEach(({ ring, fast }) => { const k = Math.abs(Math.sin(t / (fast ? 250 : 600))); ring.material.opacity = 0.3 + 0.5 * k; ring.scale.setScalar(1 + 0.25 * k); });
+            packets.forEach(({ p, a, b, k }) => p.position.lerpVectors(a, b, ((t / 2400) + k * 0.17) % 1));
+        } else packets.forEach(({ p, a, b }) => p.position.lerpVectors(a, b, 0.5));
+        placeCamera(); renderer.render(scene, camera);
+    }
+    function loop(t) {
+        frame = null;
+        const v = hq.view();
+        if (!v.show3d) return;
+        render(t);
+        if (!v.reduceMotion) { if (!drag) yaw += 0.0008; frame = requestAnimationFrame(loop); }
+    }
+    const kick = () => { if (frame == null) frame = requestAnimationFrame(loop); };
+    window.addEventListener('atlas-hq-data', kick);
+    window.addEventListener('atlas-hq-3d', kick);
+    window.addEventListener('resize', kick);
+
+    const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+    el.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY, yaw, pitch, moved: 0 }; el.setPointerCapture(e.pointerId); });
+    el.addEventListener('pointermove', (e) => {
+        if (!drag) return;
+        const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.moved = Math.max(drag.moved, Math.hypot(dx, dy));
+        yaw = drag.yaw - dx * 0.006; pitch = Math.min(1.35, Math.max(0.25, drag.pitch + dy * 0.004)); kick();
+    });
+    el.addEventListener('pointerup', (e) => {
+        const click = drag && drag.moved < 4; drag = null;
+        if (!click) return;
+        const r = el.getBoundingClientRect();
+        ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+        ray.setFromCamera(ndc, camera);
+        const hit = ray.intersectObjects(picks, false)[0];
+        if (hit) hq.select(hit.object.userData.agentId);
+    });
+    el.addEventListener('wheel', (e) => { e.preventDefault(); dist = Math.min(26, Math.max(8, dist + e.deltaY * 0.01)); kick(); }, { passive: false });
+    kick();
+}
+</script>
+</body>
+</html>

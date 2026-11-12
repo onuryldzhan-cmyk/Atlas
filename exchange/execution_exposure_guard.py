@@ -20,6 +20,7 @@ portfolio snapshot.
 from __future__ import annotations
 
 import math
+import threading
 
 from dataclasses import dataclass
 from typing import Any, Mapping
@@ -108,6 +109,14 @@ class ExecutionExposureGuard:
         self._total_exposure = 0.0
         self._symbol_exposures: dict[str, float] = {}
         self._open_positions = 0
+
+        # Task 010 (registry v5.94): notional held by open BUY orders, keyed by client order id.
+        # A reservation is taken atomically with its own check against the snapshot AND every
+        # other open reservation, and released when the order is terminal (filled, cancelled,
+        # rejected, expired) or proven never dispatched. Fills reach the snapshot only through
+        # update_portfolio, as before.
+        self._lock = threading.RLock()
+        self._reservations: dict[str, tuple[str, float, bool]] = {}
 
     @staticmethod
     def _normalize_number(
@@ -288,6 +297,22 @@ class ExecutionExposureGuard:
         symbol_exposures: Any,
         open_positions: Any,
     ) -> dict[str, Any]:
+        with self._lock:
+            return self._update_portfolio(
+                cash=cash,
+                total_exposure=total_exposure,
+                symbol_exposures=symbol_exposures,
+                open_positions=open_positions,
+            )
+
+    def _update_portfolio(
+        self,
+        *,
+        cash: Any,
+        total_exposure: Any,
+        symbol_exposures: Any,
+        open_positions: Any,
+    ) -> dict[str, Any]:
         normalized_cash = self._normalize_number(
             cash
         )
@@ -371,6 +396,76 @@ class ExecutionExposureGuard:
         order_notional: Any,
         opens_new_position: Any,
     ) -> dict[str, Any]:
+        with self._lock:
+            return self._authorize(
+                symbol=symbol,
+                order_notional=order_notional,
+                opens_new_position=opens_new_position,
+            )
+
+    def reserve(
+        self,
+        key: str,
+        *,
+        symbol: Any,
+        order_notional: Any,
+        opens_new_position: Any,
+    ) -> dict[str, Any]:
+        """Task 010: check a BUY against the snapshot plus every open reservation, then hold it."""
+        with self._lock:
+            if key in self._reservations:
+                return ExposureDecision(allowed=True, status="AUTHORIZED", reason="RESERVATION_HELD").to_dict()
+            normalized_symbol = str(symbol if symbol is not None else "").strip().upper()
+            held = [entry for entry in self._reservations.values()]
+            decision = self._authorize(
+                symbol=symbol,
+                order_notional=order_notional,
+                opens_new_position=opens_new_position,
+                reserved_symbol=sum(n for s, n, _ in held if s == normalized_symbol),
+                reserved_total=sum(n for _, n, _ in held),
+                reserved_positions=sum(1 for _, _, opens in held if opens),
+            )
+            if decision.get("allowed") is True:
+                self._reservations[key] = (normalized_symbol, float(self._normalize_number(order_notional)),
+                                           opens_new_position)
+            return decision
+
+    def restore_reservation(
+        self,
+        key: str,
+        *,
+        symbol: Any,
+        order_notional: Any,
+        opens_new_position: Any,
+    ) -> None:
+        """Task 010: re-hold an order that was open before a restart (no check: it may already be live)."""
+        normalized_symbol = str(symbol if symbol is not None else "").strip().upper()
+        notional = self._normalize_number(order_notional)
+        if not normalized_symbol or notional is None or notional <= 0 or not isinstance(opens_new_position, bool):
+            raise ValueError("an open order's reservation cannot be restored from invalid fields")
+        with self._lock:
+            self._reservations[key] = (normalized_symbol, float(notional), opens_new_position)
+
+    def release(self, key: str) -> bool:
+        """Task 010: release an order's reservation (terminal or never dispatched); idempotent."""
+        with self._lock:
+            return self._reservations.pop(key, None) is not None
+
+    def reservations(self) -> dict[str, dict[str, Any]]:
+        with self._lock:
+            return {key: {"symbol": s, "order_notional": n, "opens_new_position": o}
+                    for key, (s, n, o) in self._reservations.items()}
+
+    def _authorize(
+        self,
+        *,
+        symbol: Any,
+        order_notional: Any,
+        opens_new_position: Any,
+        reserved_symbol: float = 0.0,
+        reserved_total: float = 0.0,
+        reserved_positions: int = 0,
+    ) -> dict[str, Any]:
         if not self._portfolio_available:
             return ExposureDecision(
                 allowed=False,
@@ -423,6 +518,7 @@ class ExecutionExposureGuard:
 
         projected_symbol_exposure = (
             current_symbol_exposure
+            + reserved_symbol
             + normalized_notional
         )
 
@@ -435,6 +531,7 @@ class ExecutionExposureGuard:
 
         projected_total_exposure = (
             self._total_exposure
+            + reserved_total
             + normalized_notional
         )
 
@@ -447,7 +544,7 @@ class ExecutionExposureGuard:
 
         if (
             opens_new_position
-            and self._open_positions >= self.max_open_positions
+            and self._open_positions + reserved_positions >= self.max_open_positions
         ):
             return ExposureDecision(
                 allowed=False,
@@ -457,6 +554,7 @@ class ExecutionExposureGuard:
 
         projected_cash = (
             self._cash
+            - reserved_total
             - normalized_notional
         )
 
@@ -476,7 +574,11 @@ class ExecutionExposureGuard:
     def status(
         self,
     ) -> dict[str, Any]:
+        with self._lock:
+            reserved = list(self._reservations.values())
         return {
+            "reservations": len(reserved),
+            "reserved_notional": sum(n for _, n, _ in reserved),
             "name": "ExecutionExposureGuard",
             "version": self.VERSION,
             "portfolio_available": self._portfolio_available,

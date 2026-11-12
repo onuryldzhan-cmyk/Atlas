@@ -61,6 +61,8 @@ from typing import Any
 
 import pytest
 
+from tests._market_clock import pin_clock_to_feed
+
 import core.position_sizing as position_sizing_module
 from core.application import (
     CAPITAL_RESERVATION_STATE_FILE,
@@ -118,7 +120,7 @@ def held_position(symbol: str, base: str, price: str) -> dict[str, Any]:
 
 
 def seed_state(state_dir, *, cash="10000", positions=(), pnl="0",
-               peak="10000", equity="10000"):
+               peak="10000", equity="10000", leverage=1):
     state_dir.mkdir(parents=True, exist_ok=True)
 
     JsonReservationStore(state_dir / CAPITAL_RESERVATION_STATE_FILE).initialize_empty()
@@ -130,12 +132,15 @@ def seed_state(state_dir, *, cash="10000", positions=(), pnl="0",
     )
 
     store = FinancialStateStore(state_dir / EXECUTION_FINANCIAL_STATE_FILE)
-    store.initialize(D(cash))
+    store.initialize(D(cash), leverage=leverage)   # Task 025: leverage 2 seeds the forex margin book
 
     if positions:
         payload = store.load()
         for symbol, base, price in positions:
             payload["positions"][symbol] = held_position(symbol, base, price)
+            if leverage > 1:
+                held = payload["positions"][symbol]
+                held["margin"] = format(D(held["cost_quote"]) / leverage, "f")
         store.save(payload)
 
     return state_dir
@@ -721,6 +726,7 @@ def execution_enabled_loop(app: AtlasApplication, action: str, *, risk: str = "M
     loop.market_feed = OfflineMarketFeed(epoch)
     loop.symbols = ["BTCUSDT"]
     assert loop.execution is app.execution
+    pin_clock_to_feed(loop)
     return loop
 
 

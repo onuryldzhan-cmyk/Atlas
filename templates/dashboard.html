@@ -75,6 +75,26 @@
         .dist-table th, .dist-table td { padding: .2rem .35rem; text-align: right; white-space: nowrap; }
         .dist-table th:first-child, .dist-table td:first-child { text-align: left; }
 
+        /* Section structure: sub-panels and nested collapsible sub-sections */
+        .subpanel { height: 100%; padding: .75rem; border: 1px solid var(--bs-border-color-translucent); border-radius: .375rem; background: var(--bs-body-bg); }
+        .subpanel-title { font-size: .7rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--bs-secondary-color); margin-bottom: .5rem; }
+        details.atlas-sub { border: 1px solid var(--bs-border-color-translucent); border-radius: .375rem; }
+        details.atlas-sub > summary { cursor: pointer; padding: .45rem .75rem; font-size: .8rem; font-weight: 600; user-select: none; }
+        details.atlas-sub[open] > summary { border-bottom: 1px solid var(--bs-border-color-translucent); }
+        details.atlas-sub > .atlas-sub-body { padding: .75rem; }
+        details.atlas-sub.atlas-sub-tight > summary { padding: .3rem .5rem; font-size: .75rem; }
+        details.atlas-sub.atlas-sub-tight > .atlas-sub-body { padding: .25rem .5rem .5rem; }
+
+        /* Execution gates: the two confidence floors a BUY must clear */
+        .gate-legend { padding: .6rem .75rem; border-radius: .375rem; background: var(--bs-tertiary-bg); line-height: 1.7; }
+        .gate-bar { position: relative; }
+        .gate-marker { position: absolute; top: -.2rem; width: 2px; height: .9rem; margin-left: -1px; background: var(--bs-body-color); opacity: .75; }
+        .gate-marker.gate-bucket { background: var(--atlas-warn); opacity: 1; }
+        .gate-block { margin-top: .5rem; padding: .45rem .55rem; border-radius: .3rem; border-left: 3px solid var(--atlas-neutral); background: var(--bs-tertiary-bg); font-size: .75rem; }
+        .gate-block.gate-pass { border-left-color: var(--atlas-ok); }
+        .gate-block.gate-fail { border-left-color: var(--atlas-error); }
+        .gate-block.gate-unknown { border-left-color: var(--atlas-warn); }
+
         /* Known limitations */
         .limitation-callout { height: 100%; display: flex; gap: .75rem; padding: 1rem; }
         .limitation-callout svg { flex-shrink: 0; width: 22px; height: 22px; fill: currentColor; margin-top: .1rem; }
@@ -86,8 +106,13 @@
         #trade-log .log-time { color: #6e7681; }
         #trade-log .log-muted { color: #8b949e; }
     </style>
+    {% include "_atlas_theme.html" %}
 </head>
 <body class="layout-fixed bg-body-tertiary">
+{% set atlas_active = "portfolio" %}
+<div class="atlas-shell">
+{% include "_atlas_sidebar.html" %}
+<div class="atlas-main">
 {#
   Inline SVG icons: no icon font or external sprite is loaded.
 #}
@@ -105,7 +130,11 @@
     <nav class="app-header navbar navbar-expand bg-body">
         <div class="container-fluid flex-wrap gap-1">
             <span class="navbar-brand fw-bold text-primary">ATLAS AI <span class="fw-light text-body">Terminal</span></span>
-            <span class="ms-auto small text-body-secondary">
+    <span class="atlas-subnav d-flex flex-wrap gap-1 w-100">
+        <a href="/agents">Ajanlar ve görevler</a>
+        <a href="/dashboard" class="active">Operasyon paneli</a>
+    </span>
+            <span class="ms-auto small text-body-secondary d-none d-xxl-inline">
                 Loopback-only operator panel &mdash; no authentication &middot;
                 referans sembol <span class="text-body">{{ symbol }}</span> (binance_global)
             </span>
@@ -191,9 +220,31 @@
                     </div>
                 </div>
 
-                <div class="card card-primary card-outline mb-4">
+                {#
+                  Page structure: four top-level sections, each an AdminLTE
+                  card that collapses as a whole. Sub-panels inside a section
+                  are .subpanel blocks; sub-content that is secondary to its
+                  parent (agent breakdown, decision log, known limitations)
+                  is a nested <details> that collapses on its own.
+                #}
+                <section class="card card-dark card-outline mb-4" aria-labelledby="section-command-title">
                     <div class="card-header">
-                        <h3 class="card-title">Otonom Kararlar (5 Sembol)</h3>
+                        <h3 id="section-command-title" class="card-title">Komuta Merkezi &amp; Atlas Chat</h3>
+                    </div>
+                    <div class="card-body">
+                        <div id="command-strip" class="d-flex flex-wrap gap-2 mb-3">Yükleniyor...</div>
+                        <div id="chat-box" class="input-group input-group-sm mb-2">
+                            <input id="chat-input" type="text" autocomplete="off" class="form-control" maxlength="500" placeholder="Atlas, bugün ne oldu? · öneriler · öneri P-0001 · görevler · ajanlar · sistem sağlığı · trading" aria-label="Atlas'a sor">
+                            <button id="chat-send" class="btn btn-primary" type="button">Sor</button>
+                        </div>
+                        <div id="chat-log" class="small"></div>
+                        <div class="small text-body-secondary mt-2">Atlas Chat kural tabanlıdır (yapay zekâ değildir): yalnız panelin okuduğu gerçek durumdan cevap verir, hiçbir şeyi değiştiremez ve onay veremez.</div>
+                    </div>
+                </section>
+
+                <section class="card card-primary card-outline mb-4" aria-labelledby="section-decisions-title">
+                    <div class="card-header">
+                        <h3 id="section-decisions-title" class="card-title">Otonom Kararlar &amp; Execution Eşikleri</h3>
                         <div class="card-tools">
                             <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" title="Daralt">
                                 <svg data-lte-icon="collapse"><use href="#icon-minus"/></svg><svg data-lte-icon="expand"><use href="#icon-plus"/></svg>
@@ -201,30 +252,22 @@
                         </div>
                     </div>
                     <div class="card-body">
+                        <div id="execution-gates-legend" class="gate-legend small mb-3">Eşikler yükleniyor...</div>
                         <div id="signals-grid" class="row g-3">
                             <div class="col-12 text-body-secondary small">Analiz ediliyor...</div>
                         </div>
+                        <details class="atlas-sub mt-3">
+                            <summary>Karar günlüğü <span class="text-body-secondary fw-normal">({{ symbol }}, bu sekme)</span></summary>
+                            <div class="atlas-sub-body">
+                                <div id="trade-log" class="font-monospace small"><div class="log-line"><span class="log-prompt">&gt;</span> <span class="log-muted">Bot izleme modunda...</span></div></div>
+                            </div>
+                        </details>
                     </div>
-                </div>
+                </section>
 
-                <div class="row">
-                    <div class="col-12 col-lg-6">
-                        <div class="card card-info card-outline mb-4">
-                            <div class="card-header"><h3 class="card-title">Risk Accounting</h3></div>
-                            <div id="risk-accounting-panel" class="card-body panel-body">Yükleniyor...</div>
-                        </div>
-                    </div>
-                    <div class="col-12 col-lg-6">
-                        <div class="card card-info card-outline mb-4">
-                            <div class="card-header"><h3 class="card-title">System Integrity</h3></div>
-                            <div id="system-integrity-panel" class="card-body panel-body">Yükleniyor...</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card card-warning card-outline mb-4">
+                <section class="card card-info card-outline mb-4" aria-labelledby="section-execution-title">
                     <div class="card-header">
-                        <h3 class="card-title">Bilinen Kısıtlar <span id="known-limitations-count" class="badge text-bg-warning ms-1"></span></h3>
+                        <h3 id="section-execution-title" class="card-title">Execution &amp; Risk</h3>
                         <div class="card-tools">
                             <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" title="Daralt">
                                 <svg data-lte-icon="collapse"><use href="#icon-minus"/></svg><svg data-lte-icon="expand"><use href="#icon-plus"/></svg>
@@ -232,55 +275,150 @@
                         </div>
                     </div>
                     <div class="card-body">
-                        <div id="known-limitations-panel" class="row g-3 panel-body">
-                            <div class="col-12 text-body-secondary">Yükleniyor...</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-12 col-md-6 col-xl-3">
-                        <div class="card mb-4">
-                            <div class="card-header"><h3 class="card-title">Execution / Sağlık Durumu</h3></div>
-                            <div id="execution-health-panel" class="card-body panel-body">Yükleniyor...</div>
-                        </div>
-                    </div>
-                    <div class="col-12 col-md-6 col-xl-3">
-                        <div class="card mb-4">
-                            <div class="card-header"><h3 class="card-title">Performans (Win Rate)</h3></div>
-                            <div id="trade-history-panel" class="card-body panel-body">Yükleniyor...</div>
-                        </div>
-                    </div>
-                    <div class="col-12 col-xl-6">
-                        <div class="card mb-4">
-                            <div class="card-header"><h3 class="card-title">Telemetri (S-3 / M-2)</h3></div>
-                            <div id="telemetry-panel" class="card-body panel-body">Yükleniyor...</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-12 col-xl-6">
-                        <div class="card mb-4">
-                            <div class="card-header"><h3 class="card-title">Otonom İşlem Geçmişi</h3></div>
-                            <div class="card-body">
-                                <div id="trade-log" class="font-monospace small"><div class="log-line"><span class="log-prompt">&gt;</span> <span class="log-muted">Bot izleme modunda...</span></div></div>
+                        <div class="row g-3">
+                            <div class="col-12 col-md-6 col-xl-4">
+                                <div class="subpanel">
+                                    <h4 class="subpanel-title">Execution / Sağlık Durumu</h4>
+                                    <div id="execution-health-panel" class="panel-body">Yükleniyor...</div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6 col-xl-4">
+                                <div class="subpanel">
+                                    <h4 class="subpanel-title">Risk Accounting</h4>
+                                    <div id="risk-accounting-panel" class="panel-body">Yükleniyor...</div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6 col-xl-4">
+                                <div class="subpanel">
+                                    <h4 class="subpanel-title">Performans (Win Rate)</h4>
+                                    <div id="trade-history-panel" class="panel-body">Yükleniyor...</div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <div class="col-12 col-md-6 col-xl-3">
-                        <div class="card mb-4">
-                            <div class="card-header"><h3 class="card-title">Test Sonuçları</h3></div>
-                            <div id="test-results-panel" class="card-body panel-body">Yükleniyor...</div>
+                </section>
+
+                <section class="card card-success card-outline mb-4" aria-labelledby="section-performance-title">
+                    <div class="card-header">
+                        <h3 id="section-performance-title" class="card-title">Portföy Performansı (kapanan işlemler)</h3>
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" title="Daralt">
+                                <svg data-lte-icon="collapse"><use href="#icon-minus"/></svg><svg data-lte-icon="expand"><use href="#icon-plus"/></svg>
+                            </button>
                         </div>
                     </div>
-                    <div class="col-12 col-md-6 col-xl-3">
-                        <div class="card mb-4">
-                            <div class="card-header"><h3 class="card-title">Governance (GOV-DRIFT)</h3></div>
-                            <div id="governance-panel" class="card-body panel-body">Yükleniyor...</div>
+                    <div class="card-body">
+                        <div id="performance-kpis" class="row g-2 mb-3">Yükleniyor...</div>
+                        <div class="row g-3">
+                            <div class="col-12 col-xl-6">
+                                <div class="subpanel">
+                                    <h4 class="subpanel-title">Kümülatif brüt P&amp;L</h4>
+                                    <div style="position:relative;height:220px"><canvas id="performance-equity-chart" aria-label="Kümülatif brüt kâr/zarar grafiği" role="img"></canvas></div>
+                                    <div id="performance-chart-note" class="small text-body-secondary"></div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-xl-6">
+                                <div class="subpanel">
+                                    <h4 class="subpanel-title">Son kapanan işlemler</h4>
+                                    <div id="performance-trades" class="table-responsive" style="max-height:260px">Yükleniyor...</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="small text-body-secondary mt-2">Grafik ve tablo brüttür (fiyat farkı); "net P&amp;L" hesabın tüm ücretler düşülmüş gerçekleşen sonucudur. Ayrıntılı rapor: <span class="font-monospace">python -m tools.exp001_report</span>. Bu panel yalnız okur.</div>
+                    </div>
+                </section>
+
+                <section class="card card-danger card-outline mb-4" aria-labelledby="section-proposals-title">
+                    <div class="card-header">
+                        <h3 id="section-proposals-title" class="card-title">Öneriler &amp; Kararınızı Bekleyenler</h3>
+                    </div>
+                    <div class="card-body">
+                        <div id="proposals-summary" class="mb-2">Yükleniyor...</div>
+                        <div id="proposals-list" class="row g-2"></div>
+                        <h4 class="h6 mt-3">Görevler (Atlas Manager) &amp; ajan durumları</h4>
+                        <div id="tasks-agents" class="d-flex flex-wrap gap-1 mb-2"></div>
+                        <div id="tasks-list">Yükleniyor...</div>
+                        <h4 class="h6 mt-3">Atlas Hafızası (son kayıtlar)</h4>
+                        <div id="memory-list">Yükleniyor...</div>
+                        <div class="small text-body-secondary mt-2">Kaynak: <span class="font-monospace">governance/records/*.jsonl</span> (her okumada hash zinciri doğrulanır; bozuk kayıt gösterilmez). Bir ajanın <b>tavsiyesi</b> onay değildir: yalnız siz onaylarsınız (<span class="font-monospace">python -m tools.atlas_org_cli proposal-event ... --actor owner --owner-confirm ID</span>). Bu panel yalnız okur.</div>
+                    </div>
+                </section>
+
+                <section class="card card-primary card-outline mb-4" aria-labelledby="section-org-title">
+                    <div class="card-header">
+                        <h3 id="section-org-title" class="card-title">Atlas Organizasyonu (kurumsal yapı &amp; ajanlar)</h3>
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" title="Daralt">
+                                <svg data-lte-icon="collapse"><use href="#icon-minus"/></svg><svg data-lte-icon="expand"><use href="#icon-plus"/></svg>
+                            </button>
                         </div>
                     </div>
-                </div>
+                    <div class="card-body">
+                        <div id="org-summary" class="mb-2">Yükleniyor...</div>
+                        <div id="org-hierarchy" class="d-flex flex-wrap align-items-center gap-1 mb-3"></div>
+                        <div class="btn-group btn-group-sm mb-3" role="group" aria-label="Durum filtresi">
+                            <button type="button" class="btn btn-outline-secondary active" data-org-filter="ALL">Tümü</button>
+                            <button type="button" class="btn btn-outline-success" data-org-filter="ACTIVE">Aktif</button>
+                            <button type="button" class="btn btn-outline-warning" data-org-filter="PARTIAL">Kısmi</button>
+                            <button type="button" class="btn btn-outline-secondary" data-org-filter="PLANNED">Planlı</button>
+                        </div>
+                        <div id="org-units" class="row g-2"></div>
+                        <div class="small text-body-secondary mt-2">Kaynak: docs/vision. <b>Aktif</b> = çalışan kodla destekleniyor (dosyalar listelenir), <b>Kısmi</b> = bir parçası var, <b>Planlı</b> = yol haritasındaki fazı. Hiçbir yapay zekâ birimi işlem açamaz; yalnız deterministik risk/sermaye zinciri (PAPER) onay verir, canlı para KAPALI.</div>
+                    </div>
+                </section>
+
+                <section class="card card-warning card-outline mb-4" aria-labelledby="section-integrity-title">
+                    <div class="card-header">
+                        <h3 id="section-integrity-title" class="card-title">System Integrity</h3>
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" title="Daralt">
+                                <svg data-lte-icon="collapse"><use href="#icon-minus"/></svg><svg data-lte-icon="expand"><use href="#icon-plus"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-12 col-md-6 col-xl-4">
+                                <div class="subpanel">
+                                    <h4 class="subpanel-title">Venue Kuralları &amp; Registry</h4>
+                                    <div id="system-integrity-panel" class="panel-body">Yükleniyor...</div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6 col-xl-4">
+                                <div class="subpanel">
+                                    <h4 class="subpanel-title">Governance (GOV-DRIFT)</h4>
+                                    <div id="governance-panel" class="panel-body">Yükleniyor...</div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6 col-xl-4">
+                                <div class="subpanel">
+                                    <h4 class="subpanel-title">Test Sonuçları</h4>
+                                    <div id="test-results-panel" class="panel-body">Yükleniyor...</div>
+                                </div>
+                            </div>
+                        </div>
+                        <details class="atlas-sub mt-3">
+                            <summary>Bilinen Kısıtlar <span id="known-limitations-count" class="badge text-bg-warning ms-1"></span></summary>
+                            <div class="atlas-sub-body">
+                                <div id="known-limitations-panel" class="row g-3 panel-body">
+                                    <div class="col-12 text-body-secondary">Yükleniyor...</div>
+                                </div>
+                            </div>
+                        </details>
+                    </div>
+                </section>
+
+                <section class="card card-secondary card-outline mb-4" aria-labelledby="section-telemetry-title">
+                    <div class="card-header">
+                        <h3 id="section-telemetry-title" class="card-title">Telemetri (S-3 / M-2)</h3>
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse" title="Daralt">
+                                <svg data-lte-icon="collapse"><use href="#icon-minus"/></svg><svg data-lte-icon="expand"><use href="#icon-plus"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="telemetry-panel" class="card-body panel-body">Yükleniyor...</div>
+                </section>
 
             </div>
         </div>
@@ -469,7 +607,9 @@
             technical: 'Teknik',
             macro: 'Makro',
             sentiment: 'Sentiment',
-            risk: 'Risk',
+            // The Risk agent votes on the volatility regime. It is not the
+            // RiskEngine risk bucket shown on each card; the label says so.
+            risk: 'Risk (volatilite)',
             momentum: 'Momentum',
         };
 
@@ -516,7 +656,7 @@
                     `<div class="agent-detail">eğri: ${curve}, 10Y-2Y ${num(evidence.curve_spread_bp)} bp</div>` +
                     `<div class="agent-detail">gözlem: ${esc(evidence.observed_date)}</div>`;
             }
-            return `<div class="agent-detail">rejim: ${esc(evidence.regime)} &middot; vol ${num(evidence.realized_volatility, 3)}</div>` +
+            return `<div class="agent-detail">volatilite rejimi: ${esc(evidence.regime)} &middot; vol ${num(evidence.realized_volatility, 3)}</div>` +
                 renderRegimeGauge(evidence) +
                 `<div class="agent-detail">p20 ${num(evidence.p20, 3)} / p80 ${num(evidence.p80, 3)}</div>`;
         }
@@ -540,19 +680,216 @@
         // Confidence is on the 0-100 execution scale (MarketLoop normalises
         // it). The bar is clamped to that range; the label is the value as
         // published.
-        function renderConfidence(signal, tone) {
+        // Each marker is a gate threshold on the same 0-100 scale: the
+        // execution gate (neutral) and the card's risk-bucket gate (warn).
+        function renderConfidence(signal, tone, markers) {
             const value = signal.confidence;
             const known = isNumber(value);
             const width = known ? Math.max(0, Math.min(100, value)) : 0;
+            const ticks = (markers || [])
+                .filter((marker) => isNumber(marker.value))
+                .map((marker) => `<div class="gate-marker ${marker.cls}" style="left:${Math.max(0, Math.min(100, marker.value))}%" ` +
+                    `title="${esc(marker.label)} ≥ ${num(marker.value)}"></div>`)
+                .join('');
             return `<div class="d-flex justify-content-between small mb-1">` +
-                `<span class="text-body-secondary">confidence</span>` +
+                `<span class="text-body-secondary" title="weighted agent consensus, not a win probability">confidence (consensus)</span>` +
                 `<span class="font-monospace">${known ? `${esc(value)} / 100` : 'UNKNOWN'}</span></div>` +
-                `<div class="progress progress-sm" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${width}">` +
-                `<div class="progress-bar bg-${tone}" style="width:${width}%"></div></div>`;
+                `<div class="gate-bar"><div class="progress progress-sm" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${width}">` +
+                `<div class="progress-bar bg-${tone}" style="width:${width}%"></div></div>${ticks}</div>`;
         }
 
-        function renderSignalCard(signal, evidence, collapsed) {
+        // ---------------------------------------------------------------
+        // Execution gates (/api/execution-gates)
+        // ---------------------------------------------------------------
+
+        // A BUY clears two confidence floors on its way to execution:
+        // ExecutionManager's flat minimum_confidence, then RiskEngine's
+        // per-bucket floor for the decision's risk bucket. Both come from
+        // the running instances; nothing here is a hardcoded threshold.
+        // null until the first read.
+        let executionGates = null;
+
+        function executionMinimum() {
+            const value = executionGates && executionGates.execution_minimum_confidence;
+            return isNumber(value) ? value : null;
+        }
+
+        // { known: false, reason } when the policy is not readable;
+        // { known: true, bucket: null } when the policy has no bucket for
+        // this level (RiskEngine rejects new risk there);
+        // { known: true, bucket } otherwise.
+        function bucketGate(level) {
+            if (!executionGates) return { known: false, reason: 'yükleniyor' };
+            if (executionGates.available !== true) return { known: false, reason: executionGates.reason };
+            const policy = executionGates.risk_policy || {};
+            if (policy.available !== true) return { known: false, reason: policy.reason };
+            const bucket = policy.buckets && typeof level === 'string' ? policy.buckets[level] : undefined;
+            return { known: true, bucket: bucket && isNumber(bucket.required_confidence_pct) ? bucket : null };
+        }
+
+        // The paper confidence-floor experiment (EXP-001) replaces the policy
+        // floor for its buckets while it is active; /api/execution-gates
+        // publishes the floor it actually enforces. null = not applicable.
+        function experimentFloor(level) {
+            const exp = executionGates && executionGates.experiment;
+            if (!exp || exp.available !== true || exp.attached !== true || exp.active !== true) return null;
+            if (!Array.isArray(exp.buckets) || !exp.buckets.includes(level)) return null;
+            return isNumber(exp.required_confidence_pct) ? exp : null;
+        }
+
+        function renderExperimentLegend() {
+            const exp = executionGates && executionGates.experiment;
+            if (!exp) return '';
+            if (exp.available !== true) {
+                return `<div>${badge('unavailable', STATUS_TONE.warn)} deney durumu okunamadı: ${esc(exp.reason)} &mdash; aşağıdaki bucket eşikleri gerçek eşik olmayabilir</div>`;
+            }
+            if (exp.attached !== true) return '';
+            const state = exp.active === true
+                ? badge('AKTİF', STATUS_TONE.warn)
+                : badge('KAPALI', STATUS_TONE.neutral);
+            return `<div>${state} <span class="fw-semibold">${esc(exp.experiment_id)}</span> (PAPER): ` +
+                `${esc((exp.buckets || []).join(', '))} bucket'larında eşik <span class="font-monospace">&ge; ${num(exp.required_confidence_pct)}</span>` +
+                ` &middot; kullanılan <span class="font-monospace">${esc(exp.admissions)}/${esc(exp.max_admissions)}</span>` +
+                ` &middot; bitiş <span class="font-monospace">${esc(exp.ends_at)}</span>` +
+                (exp.closed_reason ? ` &middot; kapanma: ${esc(exp.closed_reason)}` : '') + `</div>`;
+        }
+
+        function renderGateLegend() {
+            const el = document.getElementById('execution-gates-legend');
+            if (!executionGates) return;
+            if (executionGates.available !== true) {
+                el.innerHTML = `${badge('unavailable', STATUS_TONE.warn)} <span class="text-body-secondary">${esc(executionGates.reason)}</span>`;
+                return;
+            }
+            const execMin = executionMinimum();
+            const policy = executionGates.risk_policy || {};
+            const bucketsHtml = policy.available === true
+                ? Object.keys(policy.buckets || {})
+                    .map((name) => `<span class="font-monospace">${esc(name)} &ge; ${num(policy.buckets[name].required_confidence_pct)}</span>`)
+                    .join(' &middot; ') + ` <span class="text-body-secondary">(policy ${esc(policy.version)})</span>`
+                : `${badge('unavailable', STATUS_TONE.warn)} ${esc(policy.reason)}`;
+            el.innerHTML =
+                `<div class="fw-semibold">BUY'ın execute edilmesi için iki ayrı confidence eşiği geçilmeli:</div>` +
+                `<div>&#9312; execution gate (ExecutionManager): <span class="font-monospace">${execMin === null ? 'n/a' : `&ge; ${num(execMin)}`}</span> &mdash; her bucket için aynı</div>` +
+                `<div>&#9313; risk bucket gate (RiskEngine): ${bucketsHtml}</div>` +
+                renderExperimentLegend() +
+                `<div class="text-body-secondary">Kartlardaki &ldquo;risk bucket&rdquo; &#9313; eşiğini seçer. Risk ajanının &ldquo;volatilite rejimi&rdquo; bir ajan oyudur; risk bucket değildir.</div>`;
+        }
+
+        // The latest risk-stage outcome ExecutionManager recorded in the
+        // audit trail for this symbol. It belongs to the decision it names
+        // (action, confidence, time), which may be an earlier cycle than
+        // the one shown on the card. executionGates itself is only
+        // refreshed on the 30s slow-panel cadence (setInterval(
+        // updateSlowPanels, 30000) below), so this line can lag the 5s
+        // signal grid by up to that long; a failed refresh replaces it
+        // with "unavailable" rather than keeping a stale value.
+        function renderLatestRiskDecision(symbol) {
+            const decisions = executionGates && executionGates.available === true
+                ? executionGates.latest_risk_decisions : null;
+            if (!decisions) return '';
+            if (decisions.available !== true) {
+                return `<div class="agent-detail mt-1">son risk kararı: unavailable (${esc(decisions.reason)})</div>`;
+            }
+            const decision = decisions.by_symbol ? decisions.by_symbol[symbol] : undefined;
+            if (!decision) {
+                return `<div class="agent-detail mt-1">son risk kararı: audit kaydında yok` +
+                    `${decisions.scan_truncated ? ' (taranan son bölümde)' : ''}</div>`;
+            }
+            const tone = decision.outcome === 'APPROVED' ? STATUS_TONE.ok : STATUS_TONE.error;
+            const explain = decision.reason === 'CONFIDENCE_BELOW_POLICY'
+                ? `<div class="agent-detail">execution gate geçildi, ancak confidence risk bucket eşiğinin altında kaldığı için RiskEngine reddetti</div>`
+                : '';
+            return `<div class="mt-1"><span class="text-body-secondary">son risk kararı (audit):</span> ` +
+                `${badge(decision.outcome, tone)} <span class="font-monospace">${esc(decision.reason)}</span></div>` +
+                `<div class="agent-detail">${esc(decision.action)} @ confidence ${num(decision.confidence)} &middot; ${esc(decision.decided_at)}</div>` +
+                explain;
+        }
+
+        // Returns { html, blocked, markers }. blocked is true for a BUY or
+        // SELL whose confidence is below a known floor it must clear: that
+        // action is not executed at this confidence. HOLD/WAIT/etc. never
+        // reach ExecutionManager's confidence gate at all
+        // (core/execution_manager.py NON_EXECUTION_ACTIONS, checked before
+        // the minimum_confidence gate), so they are never marked blocked.
+        function assessRiskGate(signal) {
+            const level = signal.risk_level;
+            const confidence = signal.confidence;
+            const execMin = executionMinimum();
+            const gate = bucketGate(level);
+            const isBuy = signal.action === 'BUY';
+            const isSell = signal.action === 'SELL';
+            const markers = [{ value: execMin, label: 'execution gate', cls: '' }];
+            let cls = 'gate-unknown';
+            let line;
+            let blocked = false;
+
+            // ExecutionManager's flat minimum_confidence (the execution
+            // gate) applies to BUY and SELL alike, independent of whether
+            // the BUY-only risk-bucket gate is known. When it's known and
+            // confidence is known and below it, that action is not
+            // executed regardless of the risk-bucket gate's state.
+            const execGateFails = (isBuy || isSell) && execMin !== null
+                && isNumber(confidence) && confidence < execMin;
+            const execGateNote = `execution gate: confidence <span class="font-monospace">${num(confidence)}</span>` +
+                ` &mdash; gereken &ge; ${num(execMin)}, execute edilmez`;
+
+            if (!gate.known) {
+                if (execGateFails) {
+                    cls = 'gate-fail';
+                    blocked = true;
+                    line = `${execGateNote} (risk bucket eşiği ayrıca bilinmiyor: ${esc(gate.reason)})`;
+                } else {
+                    line = `bucket eşiği bilinmiyor: ${esc(gate.reason)}`;
+                }
+            } else if (!gate.bucket) {
+                cls = isBuy || execGateFails ? 'gate-fail' : 'gate-unknown';
+                blocked = isBuy || execGateFails;
+                line = `RiskEngine politikasında bu seviye için bucket yok &mdash; yeni risk (BUY) execute edilmez` +
+                    (!isBuy && execGateFails ? ` &mdash; ${execGateNote}` : '');
+            } else {
+                const policyRequired = gate.bucket.required_confidence_pct;
+                const exp = experimentFloor(level);
+                const required = exp ? exp.required_confidence_pct : policyRequired;
+                const floor = execMin === null ? required : Math.max(required, execMin);
+                markers.push({ value: required, label: exp ? `${exp.experiment_id} ${level}` : `risk bucket ${level}`, cls: 'gate-bucket' });
+                const requirement = `BUY execute için confidence <span class="font-monospace">&ge; ${num(required)}</span> gerekli` +
+                    (exp ? ` <span class="text-body-secondary">(${esc(exp.experiment_id)} deneyi, PAPER; politika &ge; ${num(policyRequired)})</span>` : '');
+                if (!isBuy) {
+                    cls = execGateFails ? 'gate-fail' : 'gate-unknown';
+                    blocked = execGateFails;
+                    line = `${requirement} &mdash; bu eşik yalnız BUY (yeni risk) için uygulanır; bu karar ${esc(signal.action)}` +
+                        (execGateFails ? ` &mdash; ${execGateNote}` : '');
+                } else if (!isNumber(confidence)) {
+                    line = `${requirement}, mevcut confidence bilinmiyor`;
+                } else if (confidence < floor) {
+                    cls = 'gate-fail';
+                    blocked = true;
+                    const culprit = confidence < required ? 'risk bucket eşiğinin' : 'execution gate eşiğinin';
+                    line = `${requirement}, şu an <span class="font-monospace">${num(confidence)}</span> &mdash; ${culprit} altında, execute edilmez`;
+                } else if (execMin === null) {
+                    // Only the bucket floor is known to be cleared; the
+                    // execution gate is unreadable, so no pass is claimed.
+                    line = `${requirement}, şu an <span class="font-monospace">${num(confidence)}</span> &mdash; risk bucket eşiği geçildi, execution gate eşiği bilinmiyor`;
+                } else {
+                    cls = 'gate-pass';
+                    line = `${requirement}, şu an <span class="font-monospace">${num(confidence)}</span> &mdash; confidence eşikleri geçildi (diğer risk/capital kontrolleri ayrıca uygulanır)`;
+                }
+            }
+
+            const html = `<div class="gate-block ${cls}">` +
+                `<div class="d-flex justify-content-between align-items-center gap-2 mb-1">` +
+                `<span class="fw-semibold">risk bucket <span class="fw-normal text-body-secondary">(RiskEngine)</span></span>` +
+                `<span class="badge text-bg-${STATUS_TONE.neutral}">${esc(level)}</span></div>` +
+                `<div>${line}</div>` +
+                renderLatestRiskDecision(signal.symbol) +
+                `</div>`;
+            return { html, blocked, markers };
+        }
+
+        function renderSignalCard(signal, evidence, collapsed, agentsOpen) {
             const tone = actionTone(signal.action);
+            const gate = assessRiskGate(signal);
             const agentRows = Object.keys(AGENT_LABELS)
                 .map((name) => renderAgentRow(
                     name,
@@ -560,14 +897,18 @@
                     evidence ? evidence[name] : null,
                 ))
                 .join('');
+            const blockedBadge = gate.blocked
+                ? ` <span class="badge text-bg-${STATUS_TONE.error} ms-1 fw-normal" title="confidence bu karar için gereken eşiğin altında">execute edilmez</span>`
+                : '';
             return `<div class="col-12 col-md-6 col-xxl"><div class="card card-${tone} h-100 mb-0${collapsed ? ' collapsed-card' : ''}" data-symbol="${esc(signal.symbol)}">` +
                 `<div class="card-header"><h3 class="card-title fw-bold">${esc(signal.symbol)} ` +
-                `<span class="ms-1 fw-normal">${esc(signal.action)}</span></h3>${collapseButton()}</div>` +
+                `<span class="ms-1 fw-normal">${esc(signal.action)}</span>${blockedBadge}</h3>${collapseButton()}</div>` +
                 `<div class="card-body p-3">` +
-                renderConfidence(signal, tone) +
-                `<div class="d-flex justify-content-between small mt-2"><span class="text-body-secondary">risk</span>` +
-                `<span class="badge badge-excluded">${esc(signal.risk_level)}</span></div>` +
-                `<div class="mt-2 small">${agentRows}</div>` +
+                renderConfidence(signal, tone, gate.markers) +
+                gate.html +
+                `<details class="atlas-sub atlas-sub-tight mt-2" data-agents-for="${esc(signal.symbol)}"${agentsOpen ? ' open' : ''}>` +
+                `<summary>Ajan oyları &amp; kanıt</summary>` +
+                `<div class="atlas-sub-body small">${agentRows}</div></details>` +
                 `</div></div></div>`;
         }
 
@@ -637,11 +978,22 @@
                     Array.from(grid.querySelectorAll('.card.collapsed-card[data-symbol], .card.collapsing-card[data-symbol]'))
                         .map((card) => card.getAttribute('data-symbol'))
                 );
+                // Same for each card's nested agent breakdown, which is
+                // open unless the operator closed it.
+                const agentsClosed = new Set(
+                    Array.from(grid.querySelectorAll('details[data-agents-for]:not([open])'))
+                        .map((details) => details.getAttribute('data-agents-for'))
+                );
 
                 const html = displaySymbols.map((symbol) => {
                     const signal = signals[symbol];
                     if (!signal) return renderPendingCard(symbol);
-                    return renderSignalCard(signal, evidence[symbol], collapsed.has(String(signal.symbol)));
+                    return renderSignalCard(
+                        signal,
+                        evidence[symbol],
+                        collapsed.has(String(signal.symbol)),
+                        !agentsClosed.has(String(signal.symbol)),
+                    );
                 }).join('');
                 grid.innerHTML = html;
 
@@ -756,8 +1108,304 @@
                 `${badge('unavailable', STATUS_TONE.warn)} <span class="text-body-secondary">${esc(payload.reason || payload.state)}</span>`;
         }
 
+        // ---------------------------------------------------------------
+        // Portfolio performance (read-only, from /api/trades)
+        // ---------------------------------------------------------------
+        function toNum(value) {
+            const n = Number(value);
+            return value !== null && value !== undefined && value !== '' && isFinite(n) ? n : null;
+        }
+
+        function hoursBetween(a, b) {
+            const ms = Date.parse(b) - Date.parse(a);
+            return isFinite(ms) ? ms / 3600000 : null;
+        }
+
+        function pnlSpan(value, digits) {
+            const n = toNum(value);
+            if (n === null) return '<span class="text-body-secondary">n/a</span>';
+            const tone = n > 0 ? 'text-success' : n < 0 ? 'text-danger' : '';
+            return `<span class="font-monospace ${tone}">${n > 0 ? '+' : ''}${n.toFixed(digits)}</span>`;
+        }
+
+        function kpi(label, valueHtml) {
+            return `<div class="col-6 col-md-4 col-xl-2"><div class="subpanel text-center py-2">` +
+                `<div class="small text-body-secondary">${label}</div><div class="fs-5 fw-bold">${valueHtml}</div></div></div>`;
+        }
+
+        function renderPerformance(payload) {
+            const trades = (Array.isArray(payload.recent_trades) ? payload.recent_trades : [])
+                .filter((t) => toNum(t.gross_pnl) !== null)
+                .sort((a, b) => String(a.closed_at).localeCompare(String(b.closed_at)));
+            const pnls = trades.map((t) => toNum(t.gross_pnl));
+            const durations = trades.map((t) => hoursBetween(t.opened_at, t.closed_at)).filter((h) => h !== null);
+            const avg = pnls.length ? pnls.reduce((x, y) => x + y, 0) / pnls.length : null;
+            const avgHours = durations.length ? durations.reduce((x, y) => x + y, 0) / durations.length : null;
+            const winRate = isNumber(payload.win_rate) ? `${esc(payload.win_rate)}%` : 'n/a';
+
+            document.getElementById('performance-kpis').innerHTML =
+                kpi('işlem', `<span class="font-monospace">${esc(payload.total_trades)}</span>`) +
+                kpi('win rate', winRate) +
+                kpi('toplam brüt P&amp;L', pnlSpan(payload.total_gross_pnl, 2)) +
+                kpi('ort. işlem', pnlSpan(avg, 2)) +
+                kpi('en iyi / en kötü', pnls.length
+                    ? `${pnlSpan(Math.max(...pnls), 2)} / ${pnlSpan(Math.min(...pnls), 2)}` : 'n/a') +
+                kpi('ort. süre', avgHours === null ? 'n/a' : `<span class="font-monospace">${avgHours.toFixed(1)} sa</span>`) +
+                // account-level net after fees (registry v5.24); n/a when the book is unreadable
+                kpi('net P&amp;L (ücret sonrası)', payload.account ? pnlSpan(payload.account.realized_net_pnl, 2) : 'n/a') +
+                kpi('toplam ücret', payload.account && toNum(payload.account.fees) !== null
+                    ? `<span class="font-monospace">${toNum(payload.account.fees).toFixed(2)}</span>` : 'n/a');
+
+            let running = 0;
+            const cumulative = pnls.map((p) => (running += p));
+            const note = document.getElementById('performance-chart-note');
+            if (!trades.length) {
+                drawChart('performance-equity-chart', { type: 'line', data: { labels: [], datasets: [] } });
+                note.textContent = 'Henüz kapanan işlem yok.';
+            } else {
+                const drawn = drawChart('performance-equity-chart', {
+                    type: 'line',
+                    data: {
+                        labels: trades.map((t) => String(t.closed_at).slice(5, 16).replace('T', ' ')),
+                        datasets: [{
+                            label: 'kümülatif brüt P&L',
+                            data: cumulative,
+                            borderColor: cssVar('--bs-success'),
+                            backgroundColor: 'transparent',
+                            pointRadius: 3,
+                            tension: 0.15,
+                        }],
+                    },
+                    options: { maintainAspectRatio: false, plugins: { legend: { display: false } } },
+                });
+                note.textContent = drawn
+                    ? `Son ${trades.length} kapanan işlem (API en fazla 50 döndürür).`
+                    : 'Grafik kütüphanesi yüklenemedi; rakamlar tabloda.';
+            }
+
+            const rows = trades.slice().reverse().map((t) => {
+                const h = hoursBetween(t.opened_at, t.closed_at);
+                return `<tr><td class="fw-bold">${esc(t.symbol)}</td>` +
+                    `<td class="font-monospace small">${esc(String(t.opened_at).slice(0, 16).replace('T', ' '))}</td>` +
+                    `<td class="font-monospace small">${esc(String(t.closed_at).slice(0, 16).replace('T', ' '))}</td>` +
+                    `<td class="font-monospace small text-end">${h === null ? 'n/a' : h.toFixed(1) + ' sa'}</td>` +
+                    `<td class="text-end">${pnlSpan(t.gross_pnl, 2)}</td></tr>`;
+            }).join('');
+            document.getElementById('performance-trades').innerHTML = trades.length
+                ? `<table class="table table-sm table-striped mb-0"><thead><tr><th>sembol</th><th>açılış (UTC)</th>` +
+                  `<th>kapanış (UTC)</th><th class="text-end">süre</th><th class="text-end">brüt P&amp;L</th></tr></thead>` +
+                  `<tbody>${rows}</tbody></table>`
+                : '<span class="text-body-secondary">Henüz kapanan işlem yok.</span>';
+        }
+
+        // ---------------------------------------------------------------
+        // Command Center strip + Atlas Chat (read-only, registry v5.37)
+        // ---------------------------------------------------------------
+        function updateCommandCenter() {
+            fetchPanel('/api/command-center', 'command-strip', (b) => {
+                const tile = (label, value, tone) => `<div class="subpanel px-3 py-2"><div class="small text-body-secondary">${esc(label)}</div>${badge(value, tone)}</div>`;
+                const waiting = b.proposals.available ? b.proposals.awaiting_owner.length : null;
+                const tc = b.tasks.counts || {};
+                document.getElementById('command-strip').innerHTML = [
+                    tile('Sistem', b.health.healthy === true ? 'SAĞLIKLI' : (b.health.state || 'BİLİNMİYOR'), b.health.healthy === true ? 'success' : 'danger'),
+                    tile('Kararınızı bekleyen', waiting === null ? 'okunamadı' : `${waiting} öneri`, waiting ? 'danger' : 'success'),
+                    tile('Görevler', b.tasks.available ? `${tc.IN_PROGRESS || 0} sürüyor · ${tc.BLOCKED || 0} engelli` : 'okunamadı', (tc.BLOCKED || 0) ? 'warning' : 'info'),
+                    tile('Çalışan ajan', `${b.agents.working.length}`, b.agents.working.length ? 'primary' : 'secondary'),
+                    tile('Trading', b.trading.available ? `PAPER · net ${b.trading.realized_net_pnl}` : 'PAPER · bağlı değil', 'secondary'),
+                    tile('Canlı para', 'KAPALI', 'dark'),
+                ].join('');
+            });
+        }
+
+        async function askAtlas() {
+            const input = document.getElementById('chat-input');
+            const q = input.value.trim();
+            if (!q) return;
+            const log = document.getElementById('chat-log');
+            let text;
+            let navigate = null;
+            try {
+                const res = await fetch('/api/chat?q=' + encodeURIComponent(q));
+                const data = await res.json();
+                text = data.answer || 'cevap yok';
+                navigate = data.navigate;
+            } catch (error) {
+                text = 'Bağlantı hatası.';
+            }
+            log.insertAdjacentHTML('afterbegin', `<div class="mb-2"><div><b>Sen:</b> ${esc(q)}</div><div><b>Atlas:</b> ${esc(text)}</div></div>`);
+            input.value = '';
+            if (navigate && navigate.startsWith('/')) {
+                window.location.href = navigate;
+            } else if (navigate) {
+                const target = document.getElementById('section-proposals-title');
+                if (target) target.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+        document.getElementById('chat-send').addEventListener('click', askAtlas);
+        document.getElementById('chat-input').addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') askAtlas();
+        });
+
+        // ---------------------------------------------------------------
+        // Proposals and Atlas Memory (read-only, registry v5.34)
+        // ---------------------------------------------------------------
+        const PROPOSAL_TONE = {
+            DRAFT: 'secondary', UNDER_REVIEW: 'info', REVISION_REQUIRED: 'warning',
+            READY_FOR_OWNER: 'danger', APPROVED: 'success', REJECTED: 'dark',
+            APPLIED: 'primary', ROLLED_BACK: 'warning', SUPERSEDED: 'secondary',
+        };
+        const PROPOSAL_LABEL = {
+            DRAFT: 'Taslak', UNDER_REVIEW: 'İncelemede', REVISION_REQUIRED: 'Düzeltme gerekli',
+            READY_FOR_OWNER: 'ONAYINIZI BEKLİYOR', APPROVED: 'Sahip onayladı', REJECTED: 'Sahip reddetti',
+            APPLIED: 'Uygulandı', ROLLED_BACK: 'Geri alındı', SUPERSEDED: 'Yerine yenisi geldi',
+        };
+
+        function securityChecks(reviews) {
+            const r = reviews.filter((x) => x.kind === 'SECURITY').pop();
+            if (!r || !r.checks) return '';
+            const tone = { PASS: 'success', REVIEW: 'warning', FAIL: 'danger' };
+            return '<div><b>Güvenlik kontrolleri:</b> ' + Object.keys(r.checks).map((k) =>
+                badge(`${k}: ${r.checks[k]}`, tone[r.checks[k]] || 'secondary')).join(' ') + '</div>';
+        }
+
+        function renderProposal(p) {
+            const reviews = Array.isArray(p.reviews) ? p.reviews.filter((r) => r.revision === p.revision) : [];
+            const check = (kind) => {
+                const r = reviews.filter((x) => x.kind === kind).pop();
+                return r ? `${badge(r.verdict, r.verdict === 'PASS' ? 'success' : 'danger')} <span class="text-body-secondary">(tavsiye: ${esc(r.reviewer)})</span>` : badge('yok', 'secondary');
+            };
+            const tests = p.tests && p.tests.revision === p.revision
+                ? badge(`${p.tests.passed} geçti / ${p.tests.failed} kaldı`, p.tests.failed === 0 ? 'success' : 'danger')
+                : badge('yok', 'secondary');
+            const decision = p.owner_decision
+                ? `<div class="fw-bold mt-1">Sahip kararı: ${esc(p.owner_decision.decision)} (${esc(p.owner_decision.at)}) ` +
+                  (p.owner_decision.verified === true ? badge('imza doğrulandı', 'success') : badge('imza bu makinede doğrulanamadı', 'warning')) + `</div>` : '';
+            const files = (Array.isArray(p.affected_files) ? p.affected_files : []).map((f) => `<span class="font-monospace">${esc(f)}</span>`).join(', ');
+            const history = (Array.isArray(p.history) ? p.history : []).map((h) =>
+                `<li>#${esc(h.seq)} ${esc(h.event)} — ${esc(h.actor)} → ${esc(h.status)} <span class="text-body-secondary">${esc(h.at)}</span></li>`).join('');
+            return `<div class="col-12 col-xl-6"><div class="subpanel h-100">` +
+                `<div class="d-flex justify-content-between gap-2"><span class="fw-bold">${esc(p.id)} — ${esc(p.title)}</span>` +
+                `${badge(PROPOSAL_LABEL[p.status] || p.status, PROPOSAL_TONE[p.status] || 'secondary')}</div>` +
+                `<div class="small">Öneren: ${esc(p.author)} · Risk: ${esc(p.risk_level)} · Revizyon ${esc(p.revision)}</div>` +
+                `<div class="small mt-1">Kod incelemesi: ${check('CODE')}<br>Güvenlik incelemesi: ${check('SECURITY')}<br>Testler: ${tests}</div>` +
+                decision +
+                `<details class="small mt-1"><summary>ayrıntılar</summary>` +
+                `<div><b>Problem:</b> ${esc(p.problem)}</div><div><b>Gerekçe:</b> ${esc(p.motivation)}</div>` +
+                `<div><b>Değişiklik:</b> ${esc(p.proposed_changes)}</div><div><b>Dosyalar:</b> ${files || '-'}</div>` +
+                `<div><b>Geri alma planı:</b> ${esc(p.rollback_plan)}</div>` + securityChecks(reviews) +
+                `<ol class="mb-0">${history}</ol></details>` +
+                `</div></div>`;
+        }
+
+        function updateProposals() {
+            fetchPanel('/api/proposals', 'proposals-summary', (payload) => {
+                const items = Array.isArray(payload.proposals) ? payload.proposals : [];
+                const waiting = Array.isArray(payload.awaiting_owner) ? payload.awaiting_owner.length : 0;
+                document.getElementById('proposals-summary').innerHTML = items.length
+                    ? `${badge(`${waiting} öneri kararınızı bekliyor`, waiting ? 'danger' : 'success')} &nbsp; toplam ${items.length}`
+                    : '<span class="text-body-secondary">Henüz kayıtlı öneri yok.</span>';
+                document.getElementById('proposals-list').innerHTML = items.map(renderProposal).join('');
+            });
+            fetchPanel('/api/tasks', 'tasks-list', (payload) => {
+                const agents = payload.agents || {};
+                const tone = { WORKING: 'primary', WAITING: 'info', BLOCKED: 'danger', IDLE: 'secondary' };
+                document.getElementById('tasks-agents').innerHTML = Object.keys(agents).sort().map((id) =>
+                    badge(`${id}: ${agents[id].status}${agents[id].current_task ? ' (' + agents[id].current_task + ')' : ''}`,
+                        tone[agents[id].status] || 'secondary')).join(' ');
+                const items = (Array.isArray(payload.tasks) ? payload.tasks : []).slice(0, 10);
+                document.getElementById('tasks-list').innerHTML = items.length
+                    ? '<ul class="small mb-0">' + items.map((t) => {
+                        const done = t.steps.filter((s) => s.status === 'DONE').length;
+                        const c = t.completeness || {};
+                        const flags = (c.conflicts && c.conflicts.length ? ' ' + badge('çelişki', 'danger') : '') +
+                            (t.proposal_id ? ' → öneri ' + esc(t.proposal_id) : '');
+                        return `<li>${badge(t.status, t.status === 'DONE' ? 'success' : t.status === 'BLOCKED' ? 'danger' : 'info')} ` +
+                            `<b>${esc(t.id)}</b> ${badge(t.category, 'light')} ${esc(t.request)} — adım ${done}/${t.steps.length}${flags}</li>`;
+                    }).join('') + '</ul>'
+                    : '<span class="text-body-secondary">Henüz görev yok. (Atlas Manager kural tabanlıdır; yapay zekâ değildir.)</span>';
+            });
+            fetchPanel('/api/memory', 'memory-list', (payload) => {
+                const records = (Array.isArray(payload.records) ? payload.records : []).slice(0, 10);
+                document.getElementById('memory-list').innerHTML = records.length
+                    ? '<ul class="small mb-0">' + records.map((r) =>
+                        `<li>${badge(r.authority, r.authority === 'AUTHORITATIVE' ? 'primary' : 'secondary')} ${badge(r.type, 'light')} ` +
+                        `<b>${esc(r.title)}</b> — ${esc(r.author)}, ${esc(r.created_at)} <span class="text-body-secondary">(kaynak: ${esc(r.source)}${r.status === 'HISTORICAL' ? ', eski sürüm' : ''})</span></li>`).join('') + '</ul>'
+                    : '<span class="text-body-secondary">Henüz hafıza kaydı yok.</span>';
+            });
+        }
+
+        // ---------------------------------------------------------------
+        // Organization roster (read-only, /api/organization)
+        // ---------------------------------------------------------------
+        const ORG_STATUS = {
+            ACTIVE: { label: 'Aktif', tone: 'success' },
+            PARTIAL: { label: 'Kısmi', tone: 'warning' },
+            PLANNED: { label: 'Planlı', tone: 'secondary' },
+        };
+        const ORG_TIER_LABEL = {
+            OWNER: 'Owner', CEO_AI: 'CEO AI', DIRECTOR_AI: 'Director AI',
+            EXECUTIVE_ASSISTANT: 'Executive Assistant', DEPARTMENT: 'Departmanlar',
+            WORKER_AGENT: 'Worker Agents', SPECIALIZED_UNIT: 'Specialized AI Units', MICRO_AGENT: 'Micro Agents',
+        };
+        let orgFilter = 'ALL';
+        let orgPayload = null;
+
+        function orgStatusBadge(status) {
+            const meta = ORG_STATUS[status] || { label: status, tone: 'secondary' };
+            return badge(meta.label, meta.tone);
+        }
+
+        function renderOrgUnit(unit) {
+            const list = (items) => (Array.isArray(items) ? items : []).map((x) => `<li>${esc(x)}</li>`).join('');
+            const code = Array.isArray(unit.implemented_by) && unit.implemented_by.length
+                ? `<div class="small text-body-secondary mt-1">kod: ${unit.implemented_by.map((p) => `<span class="font-monospace">${esc(p)}</span>`).join(', ')}</div>`
+                : '';
+            const phase = unit.phase === null || unit.phase === undefined ? '' : ` <span class="small text-body-secondary">Faz ${esc(unit.phase)}</span>`;
+            return `<div class="col-12 col-md-6 col-xl-4" data-org-status="${esc(unit.status)}"><div class="subpanel h-100">` +
+                `<div class="d-flex justify-content-between align-items-start gap-2"><span class="fw-bold">${esc(unit.name)}</span>` +
+                `<span class="text-nowrap">${orgStatusBadge(unit.status)}${phase}</span></div>` +
+                `<div class="small text-body-secondary">${esc(ORG_TIER_LABEL[unit.tier] || unit.tier)}</div>` +
+                `<div class="small mt-1">${esc(unit.mission)}</div>` +
+                `<details class="small mt-1"><summary>yetki sınırları</summary>` +
+                `<div class="text-success">yapabilir:</div><ul class="mb-1">${list(unit.can)}</ul>` +
+                `<div class="text-danger">yapamaz:</div><ul class="mb-0">${list(unit.cannot)}</ul></details>` +
+                code + `</div></div>`;
+        }
+
+        function renderOrganization(payload) {
+            orgPayload = payload;
+            const units = Array.isArray(payload.units) ? payload.units : [];
+            const counts = payload.counts || {};
+            document.getElementById('org-summary').innerHTML =
+                `<span class="fw-bold">${units.length} birim</span> &nbsp;` +
+                ['ACTIVE', 'PARTIAL', 'PLANNED'].map((s) => `${orgStatusBadge(s)} ${esc(counts[s] ?? 0)}`).join(' &nbsp;');
+            const tiers = Array.isArray(payload.tiers) ? payload.tiers : [];
+            document.getElementById('org-hierarchy').innerHTML = tiers.map((tier) => {
+                const members = units.filter((u) => u.tier === tier);
+                const active = members.filter((u) => u.status === 'ACTIVE').length;
+                return `<span class="badge text-bg-${active ? 'success' : 'secondary'} fw-normal">` +
+                    `${esc(ORG_TIER_LABEL[tier] || tier)} <span class="opacity-75">${active}/${members.length}</span></span>`;
+            }).join('<span class="text-body-secondary">&rarr;</span>');
+            const shown = orgFilter === 'ALL' ? units : units.filter((u) => u.status === orgFilter);
+            document.getElementById('org-units').innerHTML = shown.map(renderOrgUnit).join('') ||
+                '<div class="text-body-secondary">Bu filtrede birim yok.</div>';
+        }
+
+        function updateOrganization() {
+            fetchPanel('/api/organization', 'org-summary', renderOrganization);
+        }
+
+        document.addEventListener('click', (event) => {
+            const button = event.target.closest('[data-org-filter]');
+            if (!button) return;
+            orgFilter = button.getAttribute('data-org-filter');
+            document.querySelectorAll('[data-org-filter]').forEach((b) => b.classList.toggle('active', b === button));
+            if (orgPayload) renderOrganization(orgPayload);
+        });
+
         function updateTradeHistoryPanel() {
             fetchPanel('/api/trades', 'trade-history-panel', (payload) => {
+                renderPerformance(payload);
                 const winRateKnown = isNumber(payload.win_rate);
                 const winRate = payload.win_rate === null || payload.win_rate === undefined
                     ? 'n/a' : `${esc(payload.win_rate)}%`;
@@ -766,7 +1414,9 @@
                       `<div class="progress-bar bg-${STATUS_TONE.ok}" style="width:${Math.max(0, Math.min(100, payload.win_rate))}%"></div></div>`
                     : '';
                 const pnl = payload.total_gross_pnl;
-                const pnlTone = isNumber(pnl) && pnl > 0 ? 'text-success' : isNumber(pnl) && pnl < 0 ? 'text-danger' : '';
+                // total_gross_pnl is a decimal string; parse it for the tone only.
+                const pnlValue = toNum(pnl);
+                const pnlTone = pnlValue !== null && pnlValue > 0 ? 'text-success' : pnlValue !== null && pnlValue < 0 ? 'text-danger' : '';
                 document.getElementById('trade-history-panel').innerHTML =
                     `<div class="d-flex align-items-baseline gap-2 mb-1"><span class="fs-4 fw-bold">${winRate}</span>` +
                     `<span class="small text-body-secondary">win rate (${esc(payload.wins)}W / ${esc(payload.losses)}L)</span></div>` +
@@ -803,13 +1453,19 @@
                 }
                 html += kv('son rollover', rolloverHtml);
 
-                // Refusals are not audited (registry v4.81): say so rather
-                // than render an empty field that reads as "no refusal".
+                // v4.88 wired the refusal audit event: the real reason is
+                // shown when the audit trail has one for the currently
+                // stored day, and an honest "no refusal recorded" state
+                // otherwise, rather than a fabricated or stale value.
                 const refusal = payload.refusal_reason
                     ? esc(payload.refusal_reason)
-                    : payload.refusal_reason_source === 'NOT_AUDITED_WARNING_LOG_ONLY'
-                        ? 'audit log\'a yazılmıyor &mdash; yalnızca WARNING log satırında'
-                        : 'n/a';
+                    : payload.refusal_reason_source === 'NO_REFUSAL_RECORDED'
+                        ? 'reddetme kaydı yok'
+                        : payload.refusal_reason_source === 'AUDIT_STORE_UNAVAILABLE'
+                            ? 'audit store kullanılamıyor'
+                            : payload.refusal_reason_source === 'AUDIT_LOG_UNREADABLE'
+                                ? 'audit log okunamıyor'
+                                : 'n/a';
                 html += kv('reddetme sebebi', `<span class="text-body-secondary">${refusal}</span>`);
                 document.getElementById('risk-accounting-panel').innerHTML = html;
             });
@@ -1014,9 +1670,29 @@
             }
         }
 
+        // The gates change only when the policy, the execution config or
+        // the audit trail does, so they are read on the slow cadence and
+        // the 5s signal grid renders from the last read.
+        async function updateExecutionGates() {
+            try {
+                const res = await fetch('/api/execution-gates');
+                const payload = await res.json();
+                executionGates = payload && typeof payload === 'object'
+                    ? payload : { available: false, reason: 'UNKNOWN' };
+            } catch (error) {
+                executionGates = { available: false, reason: 'network error' };
+            }
+            try {
+                renderGateLegend();
+            } catch (error) {
+                renderUnavailable('execution-gates-legend', 'render error');
+            }
+        }
+
         renderPriceSparkline();
-        setInterval(updateSignalsGrid, 5000);
+        atlasPoll(updateSignalsGrid, 5000);
         updateSignalsGrid();
+        updateOrganization();
         function updateSlowPanels() {
             updateTestResultsPanel();
             updateGovernancePanel();
@@ -1025,9 +1701,16 @@
             updateRiskAccountingPanel();
             updateSystemIntegrityPanel();
             updateTelemetryPanel();
+            updateProposals();
+            updateCommandCenter();
+            return updateExecutionGates();
         }
-        setInterval(updateSlowPanels, 30000);
-        updateSlowPanels();
+        atlasPoll(updateSlowPanels, 30000);
+        // Re-render the grid once the first gates read lands, instead of
+        // waiting up to 5s with "yükleniyor" thresholds on every card.
+        updateSlowPanels().then(updateSignalsGrid);
     </script>
+</div>
+</div>
 </body>
 </html>

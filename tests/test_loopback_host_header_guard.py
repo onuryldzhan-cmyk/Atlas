@@ -81,21 +81,58 @@ WEB_APP_GUARDED_ROUTES = [
     "/",
     "/dashboard",
     "/api/health",
+    "/api/status",
     "/api/analysis",
     "/api/signals",
     "/api/trades",
     "/api/agent-evidence",
+    "/api/organization",
+    "/api/proposals",
+    "/api/memory",
+    "/api/permissions",
+    "/api/tasks",
+    "/api/command-center",
+    "/api/chat",
+    "/api/portfolio",
+    "/agents",
+    "/hq",
+    "/home",
+    "/trading",
+    "/governance",
+    "/system",
+    "/security",
+    "/api/security",
+    "/roadmap",
+    "/api/roadmap",
+    "/research",
+    "/decisions",
+    "/postmortem",  # Dashboard v2 post-mortem page (2026-10-01), read-only
+    "/api/agent-states",
+    "/api/learning",
+    "/api/events",  # Atlas Event Contract v1 (2026-10-01), read-only
+    "/api/candles",
+    "/api/research",
+    "/api/experience",
+    "/api/liveness",
+    "/api/readiness",
     "/api/risk-accounting",
     "/api/system-integrity",
+    "/api/execution-gates",
     "/assets/chart.umd.min.js",
     "/api/observability/test-results",
     "/api/observability/governance",
     "/api/observability/telemetry-summary",
+    "/docs",
+    "/redoc",
+    "/openapi.json",
 ]
 
-# FastAPI's own schema/documentation routes are not operator routes and are
-# not behind the guard (pre-existing; recorded as a deferred finding).
-FRAMEWORK_ROUTES = {"/docs", "/docs/oauth2-redirect", "/openapi.json", "/redoc"}
+# FastAPI's own schema/documentation routes are switched off via
+# docs_url=None/redoc_url=None/openapi_url=None in create_app(); this
+# application defines its own guarded /docs, /redoc and /openapi.json
+# instead (registry v4.86/v4.87 A2 backlog closure), so no auto-created
+# oauth2-redirect route exists to exempt here.
+FRAMEWORK_ROUTES: set[str] = set()
 
 
 def _request(

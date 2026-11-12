@@ -17,6 +17,7 @@ Responsibilities:
 from __future__ import annotations
 
 
+import math
 from datetime import datetime
 
 
@@ -25,6 +26,11 @@ from core.decision import (
     Decision,
     DecisionAction
 )
+
+import logging as _logging
+
+# Diagnostics go to the log, not stdout (registry v5.50: 20 coins x every cycle flooded the console).
+_log = _logging.getLogger(__name__)
 
 
 
@@ -43,7 +49,7 @@ class DecisionBuilder:
     def __init__(self):
 
 
-        print(
+        _log.debug(
             "[DECISION] Decision Builder v10.0 initialized"
         )
 
@@ -158,6 +164,15 @@ class DecisionBuilder:
 
 
 
+                # Phase-2 E1: what the confidence number means.
+                "confidence_semantics":
+
+                    self._confidence_semantics(
+                        fusion
+                    ),
+
+
+
                 "risk":
 
                     risk.to_dict(),
@@ -195,7 +210,7 @@ class DecisionBuilder:
 
 
 
-        print(
+        _log.debug(
 
             f"[DECISION] "
             f"{symbol} | "
@@ -244,6 +259,28 @@ class DecisionBuilder:
             return "FUSED_EVIDENCE"
 
         return reason
+
+
+    @staticmethod
+    def _confidence_semantics(
+        fusion
+    ):
+        """Phase-2 E1: consensus and coverage, never a fabricated probability."""
+
+        from ai.core.intelligence.agent_fusion import CONFIDENCE_SEMANTICS
+
+        def number(value):
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                return None
+            return round(float(value), 4) if math.isfinite(value) else None
+
+        return {
+            "meaning": CONFIDENCE_SEMANTICS,
+            "consensus": number(getattr(fusion, "confidence", None)),
+            "coverage": number(getattr(fusion, "coverage", None)),
+            "calibrated_p_win": None,
+            "calibration_ref": None,
+        }
 
 
     @staticmethod

@@ -22,6 +22,7 @@ import logging
 
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
@@ -153,6 +154,87 @@ def is_loopback_request(request: Request) -> bool:
     return peer == IN_PROCESS_TEST_PEER and request.headers.getlist(
         "host"
     ) == [IN_PROCESS_TEST_HOST_HEADER]
+
+
+def _in_process_test_request(request: Request) -> bool:
+    """Return True only for the in-process TestClient peer+Host pair.
+
+    Factored out of ``is_loopback_request`` so ``is_same_origin_request``
+    below can grant the identical narrow carve-out for the Origin header
+    without duplicating the peer/Host comparison.
+    """
+
+    client = request.client
+    peer = (client.host if client is not None else "") or ""
+
+    return peer.strip().lower() == IN_PROCESS_TEST_PEER and request.headers.getlist(
+        "host"
+    ) == [IN_PROCESS_TEST_HOST_HEADER]
+
+
+def _origin_header_name(request: Request) -> str | None:
+    """Return the lower-cased hostname of the single Origin header, or None.
+
+    None covers a missing Origin header, a repeated one, an empty value, or
+    one that does not parse as ``scheme://host[:port]`` with a hostname -
+    the same fail-closed shape ``_host_header_name`` holds for Host. Any
+    port is accepted and ignored, exactly as for the Host header: the
+    hostname is what defeats a cross-origin request, and a local
+    port-forward legitimately changes the port. An IPv6 hostname is
+    re-bracketed so it compares equal to the bracketed form used in
+    ``LOOPBACK_HOST_HEADER_NAMES``.
+    """
+
+    values = request.headers.getlist("origin")
+
+    if len(values) != 1:
+        return None
+
+    raw = values[0].strip()
+
+    if not raw:
+        return None
+
+    try:
+        parsed = urlsplit(raw)
+        hostname = parsed.hostname
+    except ValueError:
+        return None
+
+    if not hostname:
+        return None
+
+    hostname = hostname.lower()
+
+    return f"[{hostname}]" if ":" in hostname else hostname
+
+
+def is_same_origin_request(request: Request) -> bool:
+    """Return True when a non-GET request's Origin header names a loopback host.
+
+    Applies to state-changing requests (POST and beyond) the same
+    ``LOOPBACK_HOST_HEADER_NAMES`` allowlist the Host header is already
+    checked against. This closes the gap where a hostile page on another
+    local port passes the Host check (the request still targets
+    ``127.0.0.1``/``localhost``) - browser same-origin policy already stops
+    it from reading the response, but this makes the server itself refuse
+    the request rather than relying on that alone.
+
+    A missing, repeated, empty or unparsable Origin header fails closed,
+    matching the posture ``_host_header_name`` already holds for Host: a
+    same-origin browser request always carries an Origin header on a
+    non-GET request, so its absence means the request did not come from a
+    browser applying same-origin rules, or is malformed.
+    """
+
+    origin_name = _origin_header_name(request)
+
+    if origin_name in LOOPBACK_HOST_HEADER_NAMES:
+        return True
+
+    return origin_name == IN_PROCESS_TEST_HOST_HEADER and _in_process_test_request(
+        request
+    )
 
 
 def _respond(payload: dict[str, Any]) -> JSONResponse:

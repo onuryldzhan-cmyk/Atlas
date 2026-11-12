@@ -50,6 +50,7 @@ Responsibilities
 from __future__ import annotations
 
 import json
+import math
 import logging
 import threading
 import time
@@ -57,7 +58,7 @@ import traceback
 
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Any
+from typing import Any, Callable
 
 from atlas_security import sanitize_sensitive_data
 
@@ -75,7 +76,9 @@ from core.candle_processor import (
     CandleContractError,
     CandleProcessor,
 )
+from core.brain_decision_contract import BrainDecisionPayload, ContractViolation
 from core.decision_adapter import DecisionAdapter
+from core.market_cycle import MarketCycleTracker, RegimeGateConfig, permission
 from core.execution_models import normalize_risk
 from core.position_sizing import PositionSizingService, SizingInputs, SizingStatus
 from core.technical_analyzer import TechnicalAnalyzer
@@ -116,6 +119,18 @@ _EPOCH = datetime(
 )
 
 
+class _Continue:
+    """Marker a MarketLoop ``_symbol_*`` phase returns to let process_symbol go on (T-0015).
+
+    None cannot be the marker: process_symbol returns None as a real result ("skip this symbol").
+    """
+
+    __slots__ = ()
+
+
+_CONTINUE = _Continue()
+
+
 class MarketLoop:
     """
     Continuous Atlas market intelligence and execution loop.
@@ -153,9 +168,38 @@ class MarketLoop:
     HEALTH_ERROR_RECOVERY_SECONDS: float = 300.0
 
     # A symbol is reported stale in status()/health() when no market-data
-    # fetch has succeeded for it within this many seconds. Observability
-    # only: this never gates or blocks trading/decisions.
+    # fetch has succeeded for it within this many seconds. That fetch-
+    # liveness flag is observability only and never gates trading. The same
+    # 180s value is, separately, the BUY candle-age limit below (v5.14).
     STALENESS_THRESHOLD_SECONDS: float = 180.0
+
+    # Registry v5.14 (owner: "ikisini de değiştir"): new risk needs fresh
+    # data. A BUY is routed only when the newest closed candle's measured
+    # age is within this bound; an unmeasurable age refuses too. SELL is
+    # never gated here - reducing risk must not wait for a fresh feed.
+    # Same bound as the fetch staleness above, so the two agree.
+    BUY_MAX_CANDLE_AGE_SECONDS: float = STALENESS_THRESHOLD_SECONDS
+
+    # Task 019 (registry v5.103): the trading-session guard of a market that closes (forex: Sunday 17:00 to
+    # Friday 17:00 New York). None - the crypto default - means the market never closes and nothing changes.
+    # Set by the composition root in forex mode; while it reports the market closed, neither a BUY nor a SELL is
+    # routed (a paper fill at a weekend's stale price would be fiction). A guard that raises counts as closed.
+    market_session_open: Callable[[datetime], bool] | None = None
+
+    # Task 022 (registry v5.105): the window before a market's weekly close in which no new risk is opened
+    # (forex: the last hour before Friday 17:00 New York). None - the crypto default - means no such window.
+    # Only a BUY is held back; a SELL (a reduction) is never blocked by it. A check that raises counts as "in the
+    # window" (fail closed).
+    market_entry_blocked: Callable[[datetime], bool] | None = None
+
+    # Task 023 (registry v5.106, policy manifest v3): the exit guard's run for this market, called once at the start
+    # of every cycle - before any symbol's decision, so a protective exit precedes new-risk decisions. None (crypto)
+    # means the guard is not run from the cycle. A runner that raises is logged; the cycle continues.
+    exit_guard_runner: Callable[[datetime], Any] | None = None
+    # Task 026 (registry v5.109): True when the risk policy allows shorts (FOREX margin book). A SELL of a symbol
+    # the book shows as not held then opens a short instead of being treated as HOLD, and every new-risk gate
+    # (pre-close, fresh data, sizing) applies to it as to a BUY; a BUY of a held short is a cover, not new risk.
+    shorts_enabled: bool = False
 
     # Candle age (registry v4.71): time from the newest closed candle's
     # own exchange close_time to the cycle's processing cutoff. This is
@@ -190,6 +234,9 @@ class MarketLoop:
         sentiment_provider: Any | None = None,
         macro_provider: Any | None = None,
         market_risk_provider: Any | None = None,
+        regime_observation: bool = False,
+        regime_gate: RegimeGateConfig | None = None,
+        regime_feed: Any | None = None,
     ) -> None:
         self.brain = brain
         self.market_feed = market_feed
@@ -209,6 +256,31 @@ class MarketLoop:
         # fusion-input vote only and has no connection to RiskEngine.
         self.macro_provider = macro_provider
         self.market_risk_provider = market_risk_provider
+
+        # Task 009 (registry v5.93): closed 1H/4H/1D regime tracking (core.market_cycle). With
+        # regime_observation False and no enabled gate (the defaults) nothing is fetched, no
+        # metric or status key appears, and every decision is byte-identical. Observation only
+        # records the regime; the BUY gate (regime_gate.enabled, default OFF, switched on only
+        # after evidence measured on the runtime rule and an owner signature) can only turn a
+        # BUY into a skip or shrink its proposed size - never create, enlarge or touch a SELL.
+        # Review 17: regime bars come from a dedicated regime_feed, never market_feed, so a
+        # regime fetch failure can never count toward (or latch) the 1m feed's degradation.
+        if regime_gate is not None and not isinstance(regime_gate, RegimeGateConfig):
+            raise ValueError("regime_gate must be a RegimeGateConfig")
+        if not isinstance(regime_observation, bool):
+            raise ValueError("regime_observation must be a bool")
+        self.regime_gate = regime_gate if regime_gate is not None else RegimeGateConfig()
+        if (regime_observation or self.regime_gate.enabled) and (
+            regime_feed is None or regime_feed is market_feed
+        ):
+            raise ValueError("regime tracking needs its own regime_feed, separate from market_feed")
+        self.regime_feed = regime_feed
+        self._deferred_regime_observations: list[tuple[str, dict[str, Any], datetime]] | None = None
+        self.market_cycle = (
+            MarketCycleTracker(self._fetch_regime_bars, self.regime_gate)
+            if regime_observation or self.regime_gate.enabled
+            else None
+        )
 
         self.symbols = self._normalize_symbols(
             symbols or self.DEFAULT_SYMBOLS
@@ -233,6 +305,10 @@ class MarketLoop:
         self.stopped_at: str | None = None
         self.last_cycle: str | None = None
         self.last_cycle_duration = 0.0
+
+        # Phase-2 D1: monotonic time the worker last finished a cycle. This,
+        # not thread liveness, is what "the loop is progressing" means.
+        self.last_loop_progress_monotonic: float | None = None
 
         # Latest candle-age measurement per symbol (registry v4.71).
         # Not fetch liveness: see CANDLE_AGE_MEASURED above. Each entry
@@ -264,6 +340,10 @@ class MarketLoop:
         #     "BTCUSDT": "open:1785160800000"
         # }
         self.last_processed_candles: dict[str, str] = {}
+        # Observation only (registry v5.72): the last closed candles per
+        # symbol, as immutable (open_time_ms, open, high, low, close) tuples
+        # for the read-only price chart. Never read by the decision path.
+        self.recent_candles: dict[str, tuple[tuple[int, float, float, float, float], ...]] = {}
 
         # Last time a market-data fetch actually delivered candles for
         # each symbol, independent of whether those candles were new.
@@ -300,6 +380,8 @@ class MarketLoop:
             "decisions_normalized": 0,
             "decisions_rejected": 0,
             "hold_decisions": 0,
+            "sell_without_position_skipped": 0,
+            "buy_stale_data_skipped": 0,
             "duplicate_decisions_skipped": 0,
             "duplicate_executions_skipped": 0,
             "execution_requests": 0,
@@ -312,6 +394,11 @@ class MarketLoop:
         }
 
         self.errors: list[dict[str, Any]] = []
+
+        # Task 013 (registry v5.97): observation only - contract rejections per reason code and the
+        # latest one, for the readiness check and the /system page. Never read by the decision path.
+        self._contract_rejections: dict[str, int] = {}
+        self._last_contract_rejection: dict[str, str] | None = None
 
         logger.info(
             "Atlas Market Loop v%s initialized",
@@ -477,6 +564,8 @@ class MarketLoop:
                     UTC
                 ).isoformat()
 
+                self.last_loop_progress_monotonic = time.monotonic()
+
             # After the duration is measured, so writing telemetry is
             # never inside the timed region.
             self._emit_cycle_telemetry(
@@ -507,13 +596,39 @@ class MarketLoop:
 
         processing_cutoff = self._processing_cutoff()
 
-        for symbol in tuple(self.symbols):
+        runner = self.exit_guard_runner
+        if runner is not None:
+            try:
+                runner(processing_cutoff)
+            except Exception:
+                logger.exception("exit guard run failed this cycle")
+
+        # Review 17 F2: observe-only regime fetches wait until every symbol of the cycle
+        # has been routed, so no symbol's execution waits on another symbol's regime I/O.
+        if self.market_cycle is not None and not self.regime_gate.enabled:
+            self._deferred_regime_observations = []
+
+        try:
+            for symbol in tuple(self.symbols):
+                if not self.running:
+                    break
+
+                self.process_symbol(
+                    symbol,
+                    processing_cutoff=processing_cutoff,
+                )
+        finally:
+            deferred = self._deferred_regime_observations or []
+            self._deferred_regime_observations = None
+
+        for symbol, decision, cutoff in deferred:
             if not self.running:
                 break
 
-            self.process_symbol(
+            self._observe_regime(
                 symbol,
-                processing_cutoff=processing_cutoff,
+                decision,
+                cutoff,
             )
 
     @staticmethod
@@ -559,255 +674,31 @@ class MarketLoop:
             processing_cutoff = self._processing_cutoff()
 
         try:
-            candles = self._load_candles(
-                symbol
-            )
-
-            if not candles:
-                self._increment_metric(
-                    "symbols_skipped"
-                )
-                return None
-
-            # Recorded only once real bars are in hand, never merely
-            # because the provider call did not raise. A provider that
-            # keeps returning [] - a delisted symbol, a silently failing
-            # API, empty-response rate limiting - must not refresh
-            # freshness, or staleness reporting would render the absence
-            # of data as positive evidence of data (NB-4).
-            with self.lock:
-                self.last_symbol_fetch_success_at[
-                    symbol
-                ] = datetime.now(
-                    UTC
-                )
-
-            normalized_candles = self.processor.normalize(
-                candles,
-                processing_cutoff=processing_cutoff,
-            )
-
-            if not normalized_candles:
-                self._increment_metric(
-                    "symbols_skipped"
-                )
-                return None
-
-            closed_candles = self.processor.closed_candles(
-                normalized_candles
-            )
-
-            # Measured before any skip below, so a duplicate or
-            # insufficient-history cycle still records how old the
-            # newest closed candle is. Never raises.
-            self._record_candle_age(
+            # T-0015: the phases are _symbol_* helpers; each returns its
+            # terminal result (None is a real 'skip' result here) or _CONTINUE.
+            closed_candles, terminal = self._symbol_closed_candles(
                 symbol,
-                closed_candles,
                 processing_cutoff,
             )
 
-            open_candle_count = (
-                len(normalized_candles)
-                - len(closed_candles)
-            )
+            if not isinstance(terminal, _Continue):
+                return terminal
 
-            if open_candle_count > 0:
-                self._increment_metric(
-                    "open_candles_excluded",
-                    open_candle_count,
-                )
-
-            if not closed_candles:
-                logger.info(
-                    "%s skipped: no closed candles available",
-                    symbol,
-                )
-
-                self._increment_metric(
-                    "symbols_skipped"
-                )
-
-                return {
-                    "status": "SKIPPED",
-                    "reason": "NO_CLOSED_CANDLES",
-                    "symbol": symbol,
-                }
-
-            if len(closed_candles) < 50:
-                logger.warning(
-                    "%s skipped: insufficient closed candles=%s",
-                    symbol,
-                    len(closed_candles),
-                )
-
-                self._increment_metric(
-                    "symbols_skipped"
-                )
-
-                return {
-                    "status": "SKIPPED",
-                    "reason": "INSUFFICIENT_CLOSED_CANDLES",
-                    "symbol": symbol,
-                    "candle_count": len(
-                        closed_candles
-                    ),
-                }
-
-            candle_identity = (
-                self.processor.latest_closed_identity(
-                    closed_candles
-                )
-            )
-
-            if candle_identity is None:
-                logger.warning(
-                    "%s skipped: closed candle identity unavailable",
-                    symbol,
-                )
-
-                self._increment_metric(
-                    "symbols_skipped"
-                )
-
-                return {
-                    "status": "SKIPPED",
-                    "reason": "CANDLE_IDENTITY_UNAVAILABLE",
-                    "symbol": symbol,
-                }
-
-            with self.lock:
-                previous_identity = (
-                    self.last_processed_candles.get(
-                        symbol
-                    )
-                )
-
-            self._check_backfill_gap(
+            candle_identity, terminal = self._symbol_new_candle_identity(
                 symbol,
-                previous_identity=previous_identity,
-                closed_candles=closed_candles,
+                closed_candles,
             )
 
-            if previous_identity == candle_identity:
-                self._increment_metric(
-                    "duplicate_candles_skipped"
-                )
+            if not isinstance(terminal, _Continue):
+                return terminal
 
-                logger.debug(
-                    "%s duplicate closed candle skipped | %s",
-                    symbol,
-                    candle_identity,
-                )
-
-                return {
-                    "status": "SKIPPED",
-                    "reason": "DUPLICATE_CLOSED_CANDLE",
-                    "symbol": symbol,
-                    "candle_identity": candle_identity,
-                }
-
-            analysis = self.technical.analyze(
-                closed_candles
-            )
-
-            if not isinstance(
-                analysis,
-                dict,
-            ):
-                logger.warning(
-                    "%s skipped: invalid technical analysis",
-                    symbol,
-                )
-
-                self._increment_metric(
-                    "symbols_skipped"
-                )
-
-                return None
-
-            price = self.processor.latest_closed_price(
-                closed_candles
-            )
-
-            price = self._safe_float(
-                price
-            )
-
-            if price <= 0:
-                logger.warning(
-                    "%s skipped: invalid price=%s",
-                    symbol,
-                    price,
-                )
-
-                self._increment_metric(
-                    "symbols_skipped"
-                )
-
-                return None
-
-            score = self.calculate_score(
-                analysis
-            )
-
-            market_data = self.world.build_market_data(
+            normalized_decision, market_data, terminal = self._symbol_decide(
                 symbol,
-                price,
-                analysis,
-                score,
-                sentiment_input=self._sentiment_input(),
-                macro_input=self._macro_input(),
-                market_risk_input=self._market_risk_input(
-                    closed_candles
-                ),
+                closed_candles,
             )
 
-            raw_decision = self.brain.analyze_and_decide(
-                symbol,
-                market_data,
-            )
-
-            self._increment_metric(
-                "decisions_received"
-            )
-
-            normalized_decision = (
-                self.normalize_decision(
-                    raw_decision=raw_decision,
-                    symbol=symbol,
-                    price=price,
-                    market_data=market_data,
-                )
-            )
-
-            if normalized_decision is None:
-                self._increment_metric(
-                    "decisions_rejected"
-                )
-
-                logger.warning(
-                    "%s decision normalization failed",
-                    symbol,
-                )
-
-                self.publish(
-                    "DECISION_NORMALIZATION_FAILED",
-                    {
-                        "symbol": symbol,
-                        "raw_decision": self._safe_payload(
-                            raw_decision
-                        ),
-                        "timestamp": datetime.now(
-                            UTC
-                        ).isoformat(),
-                    },
-                )
-
-                return None
-
-            self._increment_metric(
-                "decisions_normalized"
-            )
+            if not isinstance(terminal, _Continue):
+                return terminal
 
             # Mark the candle only after Brain output has been
             # normalized successfully. Failed cycles may retry.
@@ -848,68 +739,37 @@ class MarketLoop:
                 normalized_decision,
             )
 
-            action = normalized_decision.get(
-                "action",
-                "HOLD",
+            # Review 16 L1 / review 17 F2: the gate needs the regime before the BUY checks;
+            # observation alone runs after routing (inside run_cycle, after every symbol of
+            # the cycle), so its network I/O never sits before a routing in the same cycle.
+            observe_late = (
+                self.market_cycle is not None
+                and not self.regime_gate.enabled
             )
 
-            if action in self.NON_EXECUTION_ACTIONS:
-                self._increment_metric(
-                    "hold_decisions"
-                )
-
-                logger.info(
-                    "%s decision HOLD | execution skipped",
+            if self.market_cycle is not None and not observe_late:
+                self._observe_regime(
                     symbol,
+                    normalized_decision,
+                    processing_cutoff,
                 )
 
-                result = {
-                    "status": "SKIPPED",
-                    "reason": "NON_EXECUTION_ACTION",
-                    "symbol": symbol,
-                    "action": action,
-                    "timestamp": datetime.now(
-                        UTC
-                    ).isoformat(),
-                }
+            terminal = self._symbol_execution_gate(
+                symbol,
+                normalized_decision,
+                closed_candles,
+                processing_cutoff,
+            )
 
-                with self.lock:
-                    self.last_executions[
-                        symbol
-                    ] = result
+            if not isinstance(terminal, _Continue):
+                if observe_late:
+                    self._observe_regime_late(
+                        symbol,
+                        normalized_decision,
+                        processing_cutoff,
+                    )
 
-                return result
-
-            if action not in self.VALID_EXECUTION_ACTIONS:
-                self._increment_metric(
-                    "decisions_rejected"
-                )
-
-                logger.warning(
-                    "%s invalid normalized action: %s",
-                    symbol,
-                    action,
-                )
-
-                return {
-                    "status": "REJECTED",
-                    "reason": "INVALID_NORMALIZED_ACTION",
-                    "symbol": symbol,
-                    "action": action,
-                }
-
-            if self.execution is None:
-                logger.warning(
-                    "%s execution skipped: manager unavailable",
-                    symbol,
-                )
-
-                return {
-                    "status": "SKIPPED",
-                    "reason": "EXECUTION_MANAGER_UNAVAILABLE",
-                    "symbol": symbol,
-                    "action": action,
-                }
+                return terminal
 
             market_state = self.world.build_market_state(
                 market_data
@@ -928,6 +788,13 @@ class MarketLoop:
             self._increment_metric(
                 "symbols_scanned"
             )
+
+            if observe_late:
+                self._observe_regime_late(
+                    symbol,
+                    normalized_decision,
+                    processing_cutoff,
+                )
 
             return result
 
@@ -970,6 +837,736 @@ class MarketLoop:
             )
 
             return None
+
+    def _symbol_closed_candles(
+        self,
+        symbol: str,
+        processing_cutoff: datetime,
+    ) -> tuple[Any, Any]:
+        """Load, normalize and keep only closed candles; at least 50 are required."""
+
+        candles = self._load_candles(
+            symbol
+        )
+
+        if not candles:
+            self._increment_metric(
+                "symbols_skipped"
+            )
+            return None, None
+
+        # Recorded only once real bars are in hand, never merely
+        # because the provider call did not raise. A provider that
+        # keeps returning [] - a delisted symbol, a silently failing
+        # API, empty-response rate limiting - must not refresh
+        # freshness, or staleness reporting would render the absence
+        # of data as positive evidence of data (NB-4).
+        with self.lock:
+            self.last_symbol_fetch_success_at[
+                symbol
+            ] = datetime.now(
+                UTC
+            )
+
+        normalized_candles = self.processor.normalize(
+            candles,
+            processing_cutoff=processing_cutoff,
+        )
+
+        if not normalized_candles:
+            self._increment_metric(
+                "symbols_skipped"
+            )
+            return None, None
+
+        closed_candles = self.processor.closed_candles(
+            normalized_candles
+        )
+
+        # Measured before any skip below, so a duplicate or
+        # insufficient-history cycle still records how old the
+        # newest closed candle is. Never raises.
+        self._record_candle_age(
+            symbol,
+            closed_candles,
+            processing_cutoff,
+        )
+
+        open_candle_count = (
+            len(normalized_candles)
+            - len(closed_candles)
+        )
+
+        if open_candle_count > 0:
+            self._increment_metric(
+                "open_candles_excluded",
+                open_candle_count,
+            )
+
+        if not closed_candles:
+            logger.info(
+                "%s skipped: no closed candles available",
+                symbol,
+            )
+
+            self._increment_metric(
+                "symbols_skipped"
+            )
+
+            return None, {
+                "status": "SKIPPED",
+                "reason": "NO_CLOSED_CANDLES",
+                "symbol": symbol,
+            }
+
+        if len(closed_candles) < 50:
+            logger.warning(
+                "%s skipped: insufficient closed candles=%s",
+                symbol,
+                len(closed_candles),
+            )
+
+            self._increment_metric(
+                "symbols_skipped"
+            )
+
+            return None, {
+                "status": "SKIPPED",
+                "reason": "INSUFFICIENT_CLOSED_CANDLES",
+                "symbol": symbol,
+                "candle_count": len(
+                    closed_candles
+                ),
+            }
+
+        return closed_candles, _CONTINUE
+
+    def _symbol_new_candle_identity(
+        self,
+        symbol: str,
+        closed_candles: Any,
+    ) -> tuple[Any, Any]:
+        """Remember the bars, identify the newest closed candle and skip one already processed."""
+
+        self._remember_candles(symbol, closed_candles)
+        candle_identity = (
+            self.processor.latest_closed_identity(
+                closed_candles
+            )
+        )
+
+        if candle_identity is None:
+            logger.warning(
+                "%s skipped: closed candle identity unavailable",
+                symbol,
+            )
+
+            self._increment_metric(
+                "symbols_skipped"
+            )
+
+            return None, {
+                "status": "SKIPPED",
+                "reason": "CANDLE_IDENTITY_UNAVAILABLE",
+                "symbol": symbol,
+            }
+
+        with self.lock:
+            previous_identity = (
+                self.last_processed_candles.get(
+                    symbol
+                )
+            )
+
+        self._check_backfill_gap(
+            symbol,
+            previous_identity=previous_identity,
+            closed_candles=closed_candles,
+        )
+
+        if previous_identity == candle_identity:
+            self._increment_metric(
+                "duplicate_candles_skipped"
+            )
+
+            logger.debug(
+                "%s duplicate closed candle skipped | %s",
+                symbol,
+                candle_identity,
+            )
+
+            return None, {
+                "status": "SKIPPED",
+                "reason": "DUPLICATE_CLOSED_CANDLE",
+                "symbol": symbol,
+                "candle_identity": candle_identity,
+            }
+
+        return candle_identity, _CONTINUE
+
+    def _symbol_decide(
+        self,
+        symbol: str,
+        closed_candles: Any,
+    ) -> tuple[Any, Any, Any]:
+        """Technical analysis, world market data and the Brain's decision, normalized."""
+
+        analysis = self.technical.analyze(
+            closed_candles
+        )
+
+        if not isinstance(
+            analysis,
+            dict,
+        ):
+            logger.warning(
+                "%s skipped: invalid technical analysis",
+                symbol,
+            )
+
+            self._increment_metric(
+                "symbols_skipped"
+            )
+
+            return None, None, None
+
+        price = self.processor.latest_closed_price(
+            closed_candles
+        )
+
+        price = self._safe_float(
+            price
+        )
+
+        if price <= 0:
+            logger.warning(
+                "%s skipped: invalid price=%s",
+                symbol,
+                price,
+            )
+
+            self._increment_metric(
+                "symbols_skipped"
+            )
+
+            return None, None, None
+
+        score = self.calculate_score(
+            analysis
+        )
+
+        market_data = self.world.build_market_data(
+            symbol,
+            price,
+            analysis,
+            score,
+            sentiment_input=self._with_funding(self._sentiment_input(), symbol),
+            macro_input=self._macro_input(),
+            market_risk_input=self._market_risk_input(
+                closed_candles
+            ),
+        )
+
+        raw_decision = self.brain.analyze_and_decide(
+            symbol,
+            market_data,
+        )
+
+        self._increment_metric(
+            "decisions_received"
+        )
+
+        normalized_decision = (
+            self.normalize_decision(
+                raw_decision=raw_decision,
+                symbol=symbol,
+                price=price,
+                market_data=market_data,
+            )
+        )
+
+        if normalized_decision is None:
+            self._increment_metric(
+                "decisions_rejected"
+            )
+
+            logger.warning(
+                "%s decision normalization failed",
+                symbol,
+            )
+
+            self.publish(
+                "DECISION_NORMALIZATION_FAILED",
+                {
+                    "symbol": symbol,
+                    "raw_decision": self._safe_payload(
+                        raw_decision
+                    ),
+                    "timestamp": datetime.now(
+                        UTC
+                    ).isoformat(),
+                },
+            )
+
+            return None, None, None
+
+        self._increment_metric(
+            "decisions_normalized"
+        )
+
+        # Task 012 (registry v5.96): the typed Brain -> MarketLoop contract. A decision that
+        # breaks it is dropped fail-closed before any execution gate, like a failed
+        # normalization, so the candle is retried next cycle. A valid decision passes unchanged.
+        try:
+            BrainDecisionPayload.from_decision(
+                normalized_decision,
+                expected_symbol=symbol,
+                now=self._decision_contract_now(),
+            )
+        except ContractViolation as violation:
+            self._increment_metric(
+                "decisions_rejected"
+            )
+            self._increment_metric(
+                "decision_contract_rejected"
+            )
+
+            with self.lock:
+                self._contract_rejections[violation.code] = (
+                    self._contract_rejections.get(violation.code, 0) + 1
+                )
+                self._last_contract_rejection = {
+                    "reason": violation.code,
+                    "at": datetime.now(UTC).isoformat(),
+                }
+
+            logger.warning(
+                "%s decision rejected by the Brain decision contract: %s",
+                symbol,
+                violation,
+            )
+
+            self.publish(
+                "DECISION_CONTRACT_REJECTED",
+                {
+                    "symbol": symbol,
+                    "reason": violation.code,
+                    "detail": str(violation),
+                    "decision": self._safe_payload(
+                        normalized_decision
+                    ),
+                    "timestamp": datetime.now(
+                        UTC
+                    ).isoformat(),
+                },
+            )
+
+            return None, None, None
+
+        return normalized_decision, market_data, _CONTINUE
+
+    @staticmethod
+    def _decision_contract_now() -> datetime:
+        """The clock the decision contract's staleness rule reads (a seam for tests)."""
+
+        return datetime.now(
+            UTC
+        )
+
+    def _symbol_execution_gate(
+        self,
+        symbol: str,
+        normalized_decision: dict[str, Any],
+        closed_candles: Any,
+        processing_cutoff: datetime,
+    ) -> Any:
+        """HOLD, invalid action, missing manager, SELL of a flat symbol and stale-data BUY end the cycle here."""
+
+        action = normalized_decision.get(
+            "action",
+            "HOLD",
+        )
+
+        if action in self.NON_EXECUTION_ACTIONS:
+            self._increment_metric(
+                "hold_decisions"
+            )
+
+            logger.info(
+                "%s decision HOLD | execution skipped",
+                symbol,
+            )
+
+            result = {
+                "status": "SKIPPED",
+                "reason": "NON_EXECUTION_ACTION",
+                "symbol": symbol,
+                "action": action,
+                "timestamp": datetime.now(
+                    UTC
+                ).isoformat(),
+            }
+
+            with self.lock:
+                self.last_executions[
+                    symbol
+                ] = result
+
+            return result
+
+        if action not in self.VALID_EXECUTION_ACTIONS:
+            self._increment_metric(
+                "decisions_rejected"
+            )
+
+            logger.warning(
+                "%s invalid normalized action: %s",
+                symbol,
+                action,
+            )
+
+            return {
+                "status": "REJECTED",
+                "reason": "INVALID_NORMALIZED_ACTION",
+                "symbol": symbol,
+                "action": action,
+            }
+
+        if self.execution is None:
+            logger.warning(
+                "%s execution skipped: manager unavailable",
+                symbol,
+            )
+
+            return {
+                "status": "SKIPPED",
+                "reason": "EXECUTION_MANAGER_UNAVAILABLE",
+                "symbol": symbol,
+                "action": action,
+            }
+
+        guard = self.market_session_open
+        if guard is not None:
+            try:
+                session_open = guard(processing_cutoff) is True
+            except Exception:
+                logger.exception("%s market session guard failed; treated as closed", symbol)
+                session_open = False
+            if not session_open:
+                self._increment_metric(
+                    "market_closed_skipped"
+                )
+
+                logger.info(
+                    "%s %s not routed: the market is closed",
+                    symbol,
+                    action,
+                )
+
+                result = {
+                    "status": "SKIPPED",
+                    "reason": "MARKET_CLOSED",
+                    "symbol": symbol,
+                    "action": action,
+                    "timestamp": datetime.now(
+                        UTC
+                    ).isoformat(),
+                }
+
+                with self.lock:
+                    self.last_executions[
+                        symbol
+                    ] = result
+
+                return result
+
+        new_risk = self._opens_new_risk(symbol, action)   # Task 026: a short opens with a SELL
+        blocked_check = self.market_entry_blocked
+        if new_risk and blocked_check is not None:
+            try:
+                entry_blocked = blocked_check(processing_cutoff) is not False
+            except Exception:
+                logger.exception("%s pre-close check failed; no new risk", symbol)
+                entry_blocked = True
+            if entry_blocked:
+                self._increment_metric(
+                    "buy_pre_close_skipped"
+                )
+
+                logger.info(
+                    "%s BUY not routed: no new risk before the weekly close",
+                    symbol,
+                )
+
+                result = {
+                    "status": "SKIPPED",
+                    "reason": "PRE_CLOSE_NO_NEW_RISK",
+                    "symbol": symbol,
+                    "action": action,
+                    "timestamp": datetime.now(
+                        UTC
+                    ).isoformat(),
+                }
+
+                with self.lock:
+                    self.last_executions[
+                        symbol
+                    ] = result
+
+                return result
+
+        if action == "SELL" and not new_risk and self._sell_symbol_known_flat(symbol):
+            # Registry v5.04: Atlas is LONG-only, so a SELL of a symbol the
+            # durable book shows as not held has nothing to act on. It is
+            # treated as HOLD instead of being routed into a rejection.
+            self._increment_metric(
+                "sell_without_position_skipped"
+            )
+
+            logger.info(
+                "%s decision SELL with no held position | treated as HOLD, "
+                "execution skipped",
+                symbol,
+            )
+
+            result = {
+                "status": "SKIPPED",
+                "reason": "NO_POSITION_TO_SELL",
+                "symbol": symbol,
+                "action": action,
+                "timestamp": datetime.now(
+                    UTC
+                ).isoformat(),
+            }
+
+            with self.lock:
+                self.last_executions[
+                    symbol
+                ] = result
+
+            return result
+
+        if new_risk:
+            age, age_status = self._candle_age(
+                closed_candles[-1] if closed_candles else None,
+                processing_cutoff,
+            )
+
+            if (
+                age_status != self.CANDLE_AGE_MEASURED
+                or age is None
+                or age > self.BUY_MAX_CANDLE_AGE_SECONDS
+            ):
+                self._increment_metric(
+                    "buy_stale_data_skipped"
+                )
+
+                logger.warning(
+                    "%s BUY not routed: market data not fresh "
+                    "(candle_age=%s status=%s limit=%ss)",
+                    symbol,
+                    age,
+                    age_status,
+                    self.BUY_MAX_CANDLE_AGE_SECONDS,
+                )
+
+                result = {
+                    "status": "SKIPPED",
+                    "reason": "STALE_MARKET_DATA",
+                    "symbol": symbol,
+                    "action": action,
+                    "candle_age_seconds": age,
+                    "candle_age_status": age_status,
+                    "timestamp": datetime.now(
+                        UTC
+                    ).isoformat(),
+                }
+
+                with self.lock:
+                    self.last_executions[
+                        symbol
+                    ] = result
+
+                return result
+
+        if new_risk and action == "SELL" and self.regime_gate.enabled:
+            # Task 026: the regime gate is built for longs; while it is on, no short is opened.
+            self._increment_metric("short_regime_gate_skipped")
+            result = {"status": "SKIPPED", "reason": "REGIME_GATE_LONG_ONLY", "symbol": symbol, "action": action,
+                      "timestamp": datetime.now(UTC).isoformat()}
+            with self.lock:
+                self.last_executions[symbol] = result
+            return result
+
+        if new_risk and action == "BUY" and self.regime_gate.enabled:
+            vetoed = self._regime_gate_buy(
+                symbol,
+                normalized_decision,
+            )
+
+            if vetoed is not None:
+                return vetoed
+
+        return _CONTINUE
+
+    # =========================================================
+    # MARKET REGIME (Task 009, registry v5.93)
+    # =========================================================
+
+    def _fetch_regime_bars(
+        self,
+        symbol: str,
+        interval: str,
+        limit: int,
+    ) -> Any:
+        """Closed higher-timeframe bars from the dedicated regime feed (core.market_cycle filters them)."""
+
+        candles_method = getattr(
+            self.regime_feed,
+            "candles",
+            None,
+        )
+
+        if not callable(
+            candles_method
+        ):
+            raise AttributeError(
+                "regime_feed does not provide candles()"
+            )
+
+        return candles_method(
+            symbol,
+            interval=interval,
+            limit=limit,
+        )
+
+    def _observe_regime_late(
+        self,
+        symbol: str,
+        normalized_decision: dict[str, Any],
+        processing_cutoff: datetime,
+    ) -> None:
+        """Observe-only: defer to the end of a running cycle, else observe now (direct callers)."""
+
+        deferred = self._deferred_regime_observations
+
+        if deferred is not None:
+            deferred.append(
+                (symbol, normalized_decision, processing_cutoff)
+            )
+            return
+
+        self._observe_regime(
+            symbol,
+            normalized_decision,
+            processing_cutoff,
+        )
+
+    def _observe_regime(
+        self,
+        symbol: str,
+        normalized_decision: dict[str, Any],
+        processing_cutoff: datetime,
+    ) -> None:
+        """Record this cycle's regime; never raises; observation alone never touches the decision."""
+
+        try:
+            snapshot = self.market_cycle.observe(
+                symbol,
+                int(processing_cutoff.timestamp() * 1000),
+            )
+        except Exception as exc:
+            self._record_error(
+                phase="market_regime",
+                error=exc,
+            )
+            snapshot = {
+                "regime": "UNKNOWN",
+                "anchor_reason": f"OBSERVER_ERROR:{type(exc).__name__}",
+            }
+
+        if self.regime_gate.enabled:
+            # Only the gate counts and annotates; observation alone leaves the decision and
+            # the metrics untouched (its state lives in market_cycle and status()).
+            self._increment_metric(
+                "regime_observations"
+            )
+
+            metadata = normalized_decision.setdefault(
+                "metadata",
+                {},
+            )
+
+            if isinstance(metadata, dict):
+                metadata["market_regime"] = snapshot.get(
+                    "regime",
+                    "UNKNOWN",
+                )
+
+    def _regime_gate_buy(
+        self,
+        symbol: str,
+        normalized_decision: dict[str, Any],
+    ) -> dict[str, Any] | None:
+        """BUY permissibility under the symbol's regime; a refusal is a SKIPPED result."""
+
+        snapshot = (
+            self.market_cycle.snapshot(symbol)
+            if self.market_cycle is not None
+            else None
+        ) or {"regime": "UNKNOWN"}
+
+        regime = str(snapshot.get("regime", "UNKNOWN"))
+
+        verdict = permission(
+            self.regime_gate.archetype,
+            regime,
+        )
+
+        if not verdict.allowed:
+            self._increment_metric(
+                "buy_regime_vetoed"
+            )
+
+            logger.info(
+                "%s BUY not routed: regime %s refuses %s (%s)",
+                symbol,
+                regime,
+                self.regime_gate.archetype,
+                verdict.reason,
+            )
+
+            result = {
+                "status": "SKIPPED",
+                "reason": verdict.reason,
+                "symbol": symbol,
+                "action": "BUY",
+                "market_regime": regime,
+                "strategy_archetype": self.regime_gate.archetype,
+                "timestamp": datetime.now(
+                    UTC
+                ).isoformat(),
+            }
+
+            with self.lock:
+                self.last_executions[
+                    symbol
+                ] = result
+
+            return result
+
+        metadata = normalized_decision.setdefault(
+            "metadata",
+            {},
+        )
+
+        if isinstance(metadata, dict):
+            metadata["regime_scale"] = format(
+                verdict.scale,
+                "f",
+            )
+
+        return None
 
     # =========================================================
     # CANDLE LOADING
@@ -1654,6 +2251,35 @@ class MarketLoop:
     # POSITION SIZING (Block 5C)
     # =========================================================
 
+    def _sizing_risk_bucket(
+        self,
+        risk_bucket: str,
+        decision: Any,
+    ) -> str:
+        """Bucket whose limits size this BUY (registry v5.22).
+
+        Asks the canonical RiskEngine (RiskEngine.sizing_bucket) so the
+        proposal matches what evaluate() will approve: an experiment-only
+        admission is sized as EXPERIMENT_SIZING_BUCKET. Non-executable or
+        unsupported levels pass through unchanged (the sizer refuses them).
+        Any failure sizes as HIGH - the strictest executable bucket.
+        """
+
+        if risk_bucket not in ("LOW", "MEDIUM", "HIGH"):
+            return risk_bucket
+
+        engine = getattr(self.execution, "risk_engine", None)
+        sizing_bucket = getattr(engine, "sizing_bucket", None)
+
+        if not callable(sizing_bucket):
+            return risk_bucket
+
+        try:
+            confidence = Decimal(str(decision.get("confidence"))) / Decimal("100")
+            return sizing_bucket(risk_bucket, confidence).value
+        except Exception:
+            return "HIGH"
+
     def _apply_position_sizing(
         self,
         action: str,
@@ -1693,7 +2319,8 @@ class MarketLoop:
         """
         sizer = self.position_sizing_service
 
-        if action != "BUY" or sizer is None:
+        # Task 026: every new-risk order is sized - a BUY of a long, a SELL that opens a short
+        if sizer is None or not self._opens_new_risk(str(decision.get("symbol") or ""), action):
             return None
 
         manager = self.execution
@@ -1735,18 +2362,21 @@ class MarketLoop:
                 else Decimal("0")
             )
 
-            free_capital = snapshot["cash"] - ledger.active_reserved_capital(
+            free_capital = snapshot["spendable_cash"] - ledger.active_reserved_capital(   # Task 025
                 exclude=request_id
             )
 
             inputs = SizingInputs(
                 request_id=request_id,
                 symbol=symbol,
-                risk_bucket=normalize_risk(
-                    decision.get(
-                        "risk",
-                        decision.get("risk_level"),
-                    )
+                risk_bucket=self._sizing_risk_bucket(
+                    normalize_risk(
+                        decision.get(
+                            "risk",
+                            decision.get("risk_level"),
+                        )
+                    ),
+                    decision,
                 ),
                 durable_free_quote_capital=free_capital,
                 symbol_exposure=symbol_exposure,
@@ -1787,6 +2417,35 @@ class MarketLoop:
 
             return None
 
+        proposed_allocation = proposal.proposed_quote_allocation
+
+        if self.regime_gate.enabled:
+            # Task 009: a marginal regime only ever shrinks the proposal (scale in (0, 1]);
+            # the gate already refused every BUY whose regime scale is 0.
+            try:
+                scale = Decimal(str(metadata.get("regime_scale")))
+            except Exception:
+                scale = Decimal("0")
+
+            if not scale.is_finite() or scale <= 0 or scale > 1:
+                logger.warning(
+                    "%s BUY sizing refused: invalid regime scale %r",
+                    symbol,
+                    metadata.get("regime_scale"),
+                )
+
+                request = manager.build_request(decision)
+
+                return manager.reject(
+                    "REGIME_SCALE_INVALID",
+                    request,
+                    details={"regime_scale": str(metadata.get("regime_scale"))},
+                )
+
+            if scale < 1:
+                proposed_allocation = proposed_allocation * scale
+                metadata["regime_scaled_allocation"] = format(proposed_allocation, "f")
+
         # A prior admission for this exact request identity already reserved
         # a specific amount. If today's inputs price the same request
         # differently, that is stale or conflicting replay input, and it
@@ -1796,14 +2455,14 @@ class MarketLoop:
 
         if (
             existing_reservation is not None
-            and existing_reservation.amount != proposal.proposed_quote_allocation
+            and existing_reservation.amount != proposed_allocation
         ):
             logger.warning(
                 "%s sizing replay conflict request_id=%s reserved=%s proposed=%s",
                 symbol,
                 request_id,
                 format(existing_reservation.amount, "f"),
-                format(proposal.proposed_quote_allocation, "f"),
+                format(proposed_allocation, "f"),
             )
 
             request = manager.build_request(decision)
@@ -1814,7 +2473,7 @@ class MarketLoop:
                 details={
                     "reserved_amount": format(existing_reservation.amount, "f"),
                     "proposed_amount": format(
-                        proposal.proposed_quote_allocation, "f"
+                        proposed_allocation, "f"
                     ),
                 },
             )
@@ -1823,7 +2482,7 @@ class MarketLoop:
         # (Block 5C B1) so it reaches ``risk_check`` without crossing the
         # lossy ``amount`` float mirror. ``amount`` itself is deliberately
         # left untouched: it stays compatibility-only and non-authoritative.
-        decision["proposed_quote_allocation"] = proposal.proposed_quote_allocation
+        decision["proposed_quote_allocation"] = proposed_allocation
 
         return None
 
@@ -1944,6 +2603,18 @@ class MarketLoop:
     # =========================================================
     # SENTIMENT INPUT (registry v4.66)
     # =========================================================
+
+    def _with_funding(self, sentiment: dict[str, Any] | None, symbol: str) -> dict[str, Any] | None:
+        """Add this coin's funding-rate reading (design C) when a provider is attached. Never raises."""
+        provider = getattr(self, "funding_provider", None)
+        if provider is None or not isinstance(sentiment, dict):
+            return sentiment
+        try:
+            reading = provider.rate(symbol)
+        except Exception:
+            logger.debug("funding rate unavailable for %s", symbol, exc_info=True)
+            return sentiment
+        return {**sentiment, "funding": dict(reading) if isinstance(reading, dict) else None}
 
     def _sentiment_input(self) -> dict[str, Any] | None:
         """
@@ -2165,6 +2836,55 @@ class MarketLoop:
             "reason": reason if isinstance(reason, str) else "UNSPECIFIED",
         }
 
+    RECENT_CANDLE_LIMIT = 240
+
+    def _remember_candles(self, symbol: str, closed_candles: Any) -> None:
+        """Keep a small immutable copy for the chart; never raises, never blocks a decision."""
+        try:
+            rows = []
+            for c in list(closed_candles)[-self.RECENT_CANDLE_LIMIT:]:
+                rows.append((int(c["open_time"]), float(c["open"]), float(c["high"]),
+                             float(c["low"]), float(c["close"])))
+            self.recent_candles[symbol] = tuple(rows)
+        except Exception:
+            logger.debug("recent candle snapshot skipped for %s", symbol, exc_info=True)
+
+    def _telemetry_decision(self, symbol: str) -> dict[str, Any] | None:
+        decision = self.last_signals.get(symbol)
+        if not isinstance(decision, dict):
+            return None
+        meta = decision.get("metadata") if isinstance(decision.get("metadata"), dict) else {}
+        agents = meta.get("agents") if isinstance(meta.get("agents"), dict) else {}
+        votes = {name: str(v.get("action")) for name, v in agents.items() if isinstance(v, dict) and v.get("action") is not None}
+        conf = decision.get("confidence")
+        finite = isinstance(conf, (int, float)) and not isinstance(conf, bool) and math.isfinite(conf)  # audit A-4
+        # Phase-2 F1: the decision's canonical request_id (MarketLoop's
+        # symbol|candle|action fingerprint, set when it reached execution) so
+        # attribution joins on identity, not time; None when it never did.
+        request_id = decision.get("request_id")
+        return {"action": str(decision.get("action")), "confidence": conf if finite else None,
+                "votes": votes, "request_id": request_id if isinstance(request_id, str) and request_id else None}
+
+    def mark_prices(self, max_age_s: float = 300.0, now_ms: int | None = None) -> dict[str, Decimal]:
+        """Last closed-candle close per symbol, only when fresh (audit F-3 mark-to-market).
+
+        A symbol with no candle or a stale one is left out; the caller treats
+        a missing price as unknown, never as zero.
+        """
+        now = now_ms if now_ms is not None else int(time.time() * 1000)
+        out: dict[str, Decimal] = {}
+        for symbol, rows in dict(self.recent_candles).items():
+            if not rows:
+                continue
+            open_time, close = rows[-1][0], rows[-1][4]
+            if now - open_time <= max_age_s * 1000 and close > 0:
+                out[symbol] = Decimal(str(close))
+        return out
+
+    def candles(self, symbol: str) -> tuple[tuple[int, float, float, float, float], ...]:
+        """Read-only view of the last closed candles for one symbol (empty if none)."""
+        return self.recent_candles.get(str(symbol).upper(), ())
+
     @staticmethod
     def _agent_evidence_snapshot(
         market_data: Any,
@@ -2263,6 +2983,74 @@ class MarketLoop:
     # =========================================================
     # METRICS
     # =========================================================
+
+    def _held_side(self, symbol: str) -> str | None:
+        """The durable book's side for ``symbol``; None when not held; "UNKNOWN" when the book cannot be read."""
+        foundation = getattr(self.execution, "portfolio_foundation", None)
+        if foundation is None or getattr(foundation, "ready", False) is not True:
+            return "UNKNOWN"
+        try:
+            positions = foundation.snapshot()["positions"]
+        except Exception:
+            return "UNKNOWN"
+        if not isinstance(positions, dict):
+            return "UNKNOWN"
+        wanted = str(symbol).strip().upper()
+        for key, item in positions.items():
+            if str(key).strip().upper() == wanted:
+                return "SHORT" if isinstance(item, dict) and item.get("side") == "SHORT" else "LONG"
+        return None
+
+    def _opens_new_risk(self, symbol: str, action: str) -> bool:
+        """Task 026: True for an order that adds exposure.
+
+        BUY: unless the book shows a short held (a cover) - an unreadable book counts as new risk, so every
+        new-risk gate still applies. SELL: only when shorts are enabled and the book positively shows the symbol
+        not held. Without shorts this is exactly the historical ``action == "BUY"``."""
+        action = str(action).strip().upper()
+        if action == "BUY":
+            return not (self.shorts_enabled and self._held_side(symbol) == "SHORT")
+        if action == "SELL":
+            return self.shorts_enabled is True and self._sell_symbol_known_flat(symbol)
+        return False
+
+    def _sell_symbol_known_flat(
+        self,
+        symbol: str,
+    ) -> bool:
+        """
+        True only when the durable book positively shows ``symbol`` not held.
+
+        Any doubt - no manager, no foundation, a foundation not ready, an
+        unreadable or malformed snapshot - returns False, so the SELL is
+        routed to ExecutionManager, which refuses it fail-closed itself.
+        """
+
+        foundation = getattr(
+            self.execution,
+            "portfolio_foundation",
+            None,
+        )
+
+        if foundation is None or getattr(foundation, "ready", False) is not True:
+            return False
+
+        try:
+            positions = foundation.snapshot()["positions"]
+        except Exception:
+            logger.exception(
+                "%s position lookup failed; SELL routed to execution",
+                symbol,
+            )
+            return False
+
+        if not isinstance(positions, dict):
+            return False
+
+        # Compare on normalized keys: a position stored under a differently
+        # cased key must still count as held, so an exit is never skipped.
+        wanted = str(symbol).strip().upper()
+        return all(str(key).strip().upper() != wanted for key in positions)
 
     def _increment_metric(
         self,
@@ -2427,8 +3215,10 @@ class MarketLoop:
         a lifetime-cumulative counter for other consumers and is
         reported unchanged below.
 
-        market_data_stale is reported only - it never affects healthy
-        and never gates or blocks trading/decisions.
+        market_data_stale (fetch liveness) is reported only - it never
+        affects healthy and is not itself a trading gate. New risk is gated
+        separately on the newest closed candle's age in process_symbol
+        (BUY_MAX_CANDLE_AGE_SECONDS, registry v5.14).
         """
 
         with self.lock:
@@ -2452,10 +3242,19 @@ class MarketLoop:
                 for entry in staleness.values()
             )
 
+            progress_at = self.last_loop_progress_monotonic
+
             return {
                 "healthy": healthy,
                 "running": self.running,
                 "thread_alive": thread_alive,
+                # Phase-2 D1: None until the first cycle completes.
+                "loop_progress_age_seconds": (
+                    None
+                    if progress_at is None
+                    else round(time.monotonic() - progress_at, 3)
+                ),
+                "loop_interval_seconds": self.interval,
                 "version": self.VERSION,
                 "errors": self.metrics[
                     "errors"
@@ -2749,6 +3548,9 @@ class MarketLoop:
                     "processing_cutoff": measurement[
                         "processing_cutoff"
                     ],
+                    # Agent attribution (owner MEGA 1 §11): the decision and
+                    # each agent's vote, observation only; None when absent.
+                    "decision": self._telemetry_decision(symbol),
                 }
 
                 telemetry_logger.info(
@@ -2833,7 +3635,7 @@ class MarketLoop:
                 and self.thread.is_alive()
             )
 
-            return {
+            payload = {
                 "name": self.NAME,
                 "version": self.VERSION,
                 "running": self.running,
@@ -2896,6 +3698,20 @@ class MarketLoop:
                     "decision_adapter": True,
                 },
             }
+
+        # Task 009: present only when regime tracking is on, so the default status is unchanged.
+        if self.market_cycle is not None:
+            payload["market_regime"] = self.market_cycle.status()
+
+        # Task 013: present only after a contract rejection, so the default status is unchanged.
+        with self.lock:
+            if self._contract_rejections:
+                payload["decision_contract"] = {
+                    "rejections_by_reason": dict(self._contract_rejections),
+                    "last_rejection": dict(self._last_contract_rejection or {}),
+                }
+
+        return payload
 
     # =========================================================
     # REPRESENTATION

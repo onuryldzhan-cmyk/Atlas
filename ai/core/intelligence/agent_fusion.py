@@ -28,9 +28,14 @@ from __future__ import annotations
 
 
 from dataclasses import dataclass
-from typing import Dict
+from typing import Dict, Optional
 
 from analysis.evidence_status import MarketDataEvidenceStatus
+
+import logging as _logging
+
+# Diagnostics go to the log, not stdout (registry v5.50: 20 coins x every cycle flooded the console).
+_log = _logging.getLogger(__name__)
 
 
 
@@ -39,6 +44,13 @@ from analysis.evidence_status import MarketDataEvidenceStatus
 # =====================================================
 # RESULT MODEL
 # =====================================================
+
+
+# Phase-2 E1: what ``confidence`` means. It is the winning bucket's weighted
+# share over the full expected roster (NB-5), with absent agents charged as
+# non-support (NB-4): agreement among agents, not P(win). No calibration model
+# exists, so ``calibrated_p_win`` is reported as None (unknown), never derived.
+CONFIDENCE_SEMANTICS = "WEIGHTED_CONSENSUS_NOT_PROBABILITY"
 
 
 @dataclass
@@ -63,6 +75,11 @@ class AgentFusionResult:
     reason: str = "FUSED_EVIDENCE"
 
 
+    # Phase-2 E1: configured weight that took part / full roster weight.
+    # None when the constructor did not supply it (unknown, never assumed).
+    coverage: Optional[float] = None
+
+
 
     def to_dict(self):
 
@@ -85,7 +102,32 @@ class AgentFusionResult:
 
 
             "reason":
-                self.reason
+                self.reason,
+
+
+            # Phase-2 E1: explicit semantics; "confidence" stays as the
+            # backward-compatible alias of "consensus".
+            "consensus":
+                round(
+                    self.confidence,
+                    3
+                ),
+
+
+            "coverage":
+                self.coverage,
+
+
+            "confidence_semantics":
+                CONFIDENCE_SEMANTICS,
+
+
+            "calibrated_p_win":
+                None,
+
+
+            "calibration_ref":
+                None
 
         }
 
@@ -157,11 +199,14 @@ class AgentFusion:
     # participating configured agents closes this categorically (no
     # 2-source combination can ever satisfy it) without touching
     # WEIGHTS, confidence scaling, or the execution gate. Accepted
-    # consequence: since macro/sentiment/market_risk currently have no
-    # provider, technical+momentum is the only combination ever
-    # reachable today, so this floor is never cleared until a genuine
-    # third evidence source exists - this is an intentional, accepted
-    # fail-closed state, not a bug.
+    # consequence (as written when no other provider existed): with only
+    # technical+momentum this floor is never cleared until a genuine
+    # third evidence source exists - an intentional, accepted fail-closed
+    # state, not a bug. [Comment updated 2026-10-02, no behaviour change:
+    # registry v4.66 (Fear & Greed sentiment) and v4.79 (Treasury macro,
+    # volatility market_risk) have since added providers; see
+    # analysis/world_analysis_engine.py. Sentiment votes only in its
+    # fear/greed band, so the floor is still not always reachable.]
 
     MIN_PARTICIPATING_AGENTS = 3
 
@@ -259,7 +304,7 @@ class AgentFusion:
 
 
 
-        print(
+        _log.debug(
             "[AGENTS] Agent Fusion Engine v10.0 initialized"
         )
 
@@ -338,7 +383,7 @@ class AgentFusion:
 
                 unavailable[agent_name] = reason
 
-                print(
+                _log.debug(
                     f"[AGENT] {agent_name}: "
                     f"EXCLUDED status={reason}"
                 )
@@ -361,7 +406,7 @@ class AgentFusion:
                     "SCORE_MISSING_DESPITE_AVAILABLE_STATUS"
                 )
 
-                print(
+                _log.debug(
                     f"[AGENT] {agent_name}: "
                     f"EXCLUDED status=SCORE_MISSING_DESPITE_AVAILABLE_STATUS"
                 )
@@ -383,7 +428,7 @@ class AgentFusion:
                     "SCORE_OUT_OF_CONTRACT_RANGE"
                 )
 
-                print(
+                _log.debug(
                     f"[AGENT] {agent_name}: "
                     f"EXCLUDED status=SCORE_OUT_OF_CONTRACT_RANGE"
                 )
@@ -408,7 +453,7 @@ class AgentFusion:
 
             }
 
-            print(
+            _log.debug(
 
                 f"[AGENT] {agent_name}: "
                 f"{action} "
@@ -491,7 +536,7 @@ class AgentFusion:
                 momentum_unavailable_reason
             )
 
-            print(
+            _log.debug(
                 f"[AGENT] momentum: "
                 f"EXCLUDED status={momentum_unavailable_reason}"
             )
@@ -519,7 +564,7 @@ class AgentFusion:
 
             }
 
-            print(
+            _log.debug(
 
                 f"[AGENT] momentum: "
                 f"{momentum_action} "
@@ -543,11 +588,150 @@ class AgentFusion:
 
 
 
+    # Audit 2026-10-01 F-1 fix, OFF by default (set per instance by the composition root).
+    full_weight_denominator = False
+
     def fuse(
         self,
         signals
     ):
+        """Fuse agent votes into one action and an availability-adjusted confidence.
 
+        T-0001 (2026-10-02): split into the helpers below with no behaviour
+        change (pinned by tests/test_agent_fusion_refactor_golden.py).
+        """
+
+        signals = self._usable_signals(
+            signals
+        )
+
+        available_weight, total_configured_weight, sufficient = (
+            self._evidence_coverage(
+                signals
+            )
+        )
+
+        if not sufficient:
+
+            return AgentFusionResult(
+
+                action="HOLD",
+
+                confidence=0.0,
+
+                scores={},
+
+                reason="INSUFFICIENT_EVIDENCE",
+
+                coverage=self._coverage_ratio(
+                    available_weight,
+                    total_configured_weight,
+                ),
+
+            )
+
+        buy, sell, hold = self._bucket_masses(
+            signals
+        )
+
+        total = (
+
+            buy +
+
+            sell +
+
+            hold
+
+        )
+
+        if total == 0:
+
+            return AgentFusionResult(
+
+                action="HOLD",
+
+                confidence=0.0,
+
+                scores={},
+
+                coverage=self._coverage_ratio(
+                    available_weight,
+                    total_configured_weight,
+                ),
+
+            )
+
+        scores = {
+
+            "BUY":
+                round(
+                    buy/total,
+                    3
+                ),
+
+            "SELL":
+                round(
+                    sell/total,
+                    3
+                ),
+
+            "HOLD":
+                round(
+                    hold/total,
+                    3
+                )
+
+        }
+
+        action, winning_mass = self._select_winner(
+            buy,
+            sell,
+            hold,
+        )
+
+        confidence = self._availability_confidence(
+            winning_mass,
+            total,
+            available_weight,
+            total_configured_weight,
+        )
+
+        return AgentFusionResult(
+
+            action=action,
+
+            confidence=confidence,
+
+            scores=scores,
+
+            coverage=self._coverage_ratio(
+                available_weight,
+                total_configured_weight,
+            ),
+
+        )
+
+
+    @staticmethod
+    def _coverage_ratio(
+        available_weight,
+        total_configured_weight,
+    ):
+        """Phase-2 E1: participating configured weight / full roster weight (display only)."""
+
+        if total_configured_weight <= 0:
+            return 0.0
+
+        return round(
+            available_weight / total_configured_weight,
+            4,
+        )
+
+
+    def _usable_signals(
+        self,
+        signals
+    ):
 
         # -------------------------------------------------
         # SCORE RANGE GUARD (Package 4 red team)
@@ -574,7 +758,7 @@ class AgentFusion:
         # so the reported confidence is now bounded to [0, 1] by the
         # arithmetic itself rather than by a downstream clamp.
 
-        signals = {
+        return {
 
             name: data
 
@@ -593,6 +777,12 @@ class AgentFusion:
 
         }
 
+
+    def _evidence_coverage(
+        self,
+        signals
+    ):
+        """(available_weight, total_configured_weight, passes the floor)."""
 
         # -------------------------------------------------
         # MINIMUM-EVIDENCE FLOOR (Step 2B)
@@ -636,27 +826,22 @@ class AgentFusion:
 
         )
 
-        if (
+        sufficient = not (
 
             participating_count < self.MIN_PARTICIPATING_AGENTS
 
             or weight_coverage < self.MIN_WEIGHT_COVERAGE
 
-        ):
+        )
 
-            return AgentFusionResult(
-
-                action="HOLD",
-
-                confidence=0.0,
-
-                scores={},
-
-                reason="INSUFFICIENT_EVIDENCE",
-
-            )
+        return available_weight, total_configured_weight, sufficient
 
 
+    def _bucket_masses(
+        self,
+        signals
+    ):
+        """Weighted BUY / SELL / HOLD mass of the usable signals."""
 
         buy = 0
 
@@ -664,110 +849,39 @@ class AgentFusion:
 
         hold = 0
 
-
-
-
         for name, data in signals.items():
-
 
             weight = self.WEIGHTS.get(
                 name,
                 0
             )
 
-
             score = data["score"]
-
 
             action = data["action"]
 
-
-
-
             if action == "BUY":
-
 
                 buy += score * weight
 
-
-
             elif action == "SELL":
-
 
                 sell += (1-score) * weight
 
-
-
             else:
-
 
                 hold += 0.5 * weight
 
+        return buy, sell, hold
 
 
-
-
-
-        total = (
-
-            buy +
-
-            sell +
-
-            hold
-
-        )
-
-
-
-        if total == 0:
-
-
-            return AgentFusionResult(
-
-                action="HOLD",
-
-                confidence=0.0,
-
-                scores={}
-
-            )
-
-
-
-
-
-        scores = {
-
-
-            "BUY":
-
-                round(
-                    buy/total,
-                    3
-                ),
-
-
-
-            "SELL":
-
-                round(
-                    sell/total,
-                    3
-                ),
-
-
-
-            "HOLD":
-
-                round(
-                    hold/total,
-                    3
-                )
-
-        }
-
-
+    def _select_winner(
+        self,
+        buy,
+        sell,
+        hold,
+    ):
+        """(winning action, its quantized mass)."""
 
         # -------------------------------------------------
         # WINNER-SELECTION AUTHORITY (M-2)
@@ -833,7 +947,22 @@ class AgentFusion:
 
         )
 
+        # The same quantized mass that selected `action` above is
+        # returned as the confidence numerator. Reading it from `quantized_mass` rather than
+        # re-quantizing a second copy is what makes "the winner" and
+        # "the numerator" one value by construction instead of two
+        # values that happen to agree.
 
+        return action, quantized_mass[action]
+
+
+    def _availability_confidence(
+        self,
+        winning_mass,
+        total,
+        available_weight,
+        total_configured_weight,
+    ):
 
         # -------------------------------------------------
         # AVAILABILITY-ADJUSTED CONFIDENCE (M-2, supersedes Step 2C)
@@ -910,35 +1039,28 @@ class AgentFusion:
 
         )
 
-        # The same quantized mass that selected `action` above is the
-        # numerator here. Reading it from `quantized_mass` rather than
-        # re-quantizing a second copy is what makes "the winner" and
-        # "the numerator" one value by construction instead of two
-        # values that happen to agree.
+        # proposals/2026-10-01_fusion_dissent_confidence_DESIGN.md (audit F-1):
+        # with FULL_WEIGHT_DENOMINATOR every expected agent is charged its full
+        # configured weight, so a dissenting or neutral vote counts exactly like
+        # an abstention for the winner (never more), and agreeing evidence can
+        # only add. NB-4 and NB-5 still hold: the denominator is the full roster.
+        # Default False keeps today's decisions byte-identical until the owner
+        # switches it on (after audit).
+        denominator = (
+            total_configured_weight
+            if self.full_weight_denominator
+            else total + missing_weight
+        )
 
-        winning_mass = quantized_mass[action]
-
-        confidence = round(
+        return round(
 
             winning_mass
             / round(
-                total + missing_weight,
+                denominator,
                 self.MASS_PRECISION,
             ),
 
             4,
-
-        )
-
-
-
-        return AgentFusionResult(
-
-            action=action,
-
-            confidence=confidence,
-
-            scores=scores
 
         )
 

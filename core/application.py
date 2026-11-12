@@ -51,6 +51,7 @@ AtlasApplication
 
 from __future__ import annotations
 
+import functools
 import logging
 import os
 import re
@@ -59,8 +60,13 @@ import traceback
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
+from collections.abc import Mapping
 from typing import Any
 
+from core import instance_lock
+from core.exit_guard import ExitGuard
+from core.system_health import assess as assess_system_health
+from core.experiment_ledger import EXPERIMENT_LEDGER_FILE, ExperimentAdmissionLedger
 from core.logger import AtlasLogger
 from core.runtime import AtlasRuntime
 from core.event_bus import EventBus
@@ -92,7 +98,12 @@ from portfolio.capital_manager import CapitalManager
 from core.position_controller import PositionController
 from core.paper_trader import PaperTrader
 
-from core.risk_engine import RiskEngine, RiskPolicy
+from core.risk_engine import (
+    EXP001_PAPER_CONFIDENCE_EXPERIMENT,
+    PAPER_CONFIDENCE_EXPERIMENTS,
+    RiskEngine,
+    RiskPolicy,
+)
 from core.position_sizing import PositionSizingService
 from core.capital_reservation import (
     CapitalReservationLedger,
@@ -346,6 +357,12 @@ def resolve_log_directory() -> Path | None:
 DEFAULT_INSTRUMENT_RULES_PATH = (
     Path(__file__).resolve().parent.parent / "config" / "instrument_rules.json"
 )
+# Task 019 (registry v5.103): forex instrument rules, written by tools/refresh_mt5_instrument_rules.py from a
+# MetaTrader 5 demo terminal. The crypto file above is untouched until the crypto removal (Task 020).
+FOREX_INSTRUMENT_RULES_PATH = (
+    Path(__file__).resolve().parent.parent / "config" / "instrument_rules_mt5.json"
+)
+MARKETS = ("CRYPTO", "FOREX")
 
 RISK_ACCOUNTING_STATE_FILE = "risk_accounting_state.json"
 CAPITAL_RESERVATION_STATE_FILE = "capital_reservations.json"
@@ -367,6 +384,23 @@ EXECUTION_TRANSACTION_JOURNAL_FILE = "execution_transaction_journal.jsonl"
 EXECUTION_AUDIT_EVENT_FILE = "audit/atlas_audit_events.jsonl"
 
 PAPER_TRADE_BOOK_FILE = "paper_trades.json"
+
+
+def count_experiment_admissions(audit_store: AuditEventStore, experiment_id: str) -> int:
+    """Count RISK_APPROVED audit events tagged with ``experiment_id``.
+
+    Raises if the log cannot be read, so the caller can fail closed.
+    """
+
+    count = 0
+
+    for event in audit_store.query(event_type="RISK_APPROVED"):
+        details = event.payload.get("details")
+
+        if isinstance(details, Mapping) and details.get("experiment_id") == experiment_id:
+            count += 1
+
+    return count
 
 
 # =============================================================
@@ -419,6 +453,80 @@ def _read_supervisor_restart_count() -> int | None:
     return count if count >= 0 else None
 
 
+# =============================================================
+# EXECUTION HALT-REASON CLASSIFICATION
+# =============================================================
+#
+# ExecutionManager.halt_reason (read via execution.status()'s
+# operational_state) is sometimes a fixed module-level constant and
+# sometimes a portfolio-foundation diagnostic that embeds a raw
+# execution_id, idempotency_key, position_id, or archive line number - see
+# health()'s docstring and test_health_never_publishes_the_halt_reason.
+# health() must never publish that diagnostic text verbatim.
+#
+# This allowlist is the fail-closed alternative: only these exact,
+# already-public constant codes are ever published on health()'s "reason"
+# field. Anything else - including the diagnostic text, and including any
+# genuinely-safe constant this list has not yet caught up with - is
+# reported as the generic unclassified code instead. A false negative here
+# (a safe constant reported as unclassified) only costs a less specific
+# reason; a false positive would leak a secret, so the list is deliberately
+# an allowlist rather than a denylist.
+_SAFE_EXECUTION_HALT_REASON_CODES = frozenset(
+    {
+        "UNRESOLVED_TRANSACTION",
+        "EXECUTION_INTERRUPTED_AFTER_SIDE_EFFECT",
+        "DURABLE_FINANCIAL_FINALIZATION_FAILED",
+        "CAPITAL_RESERVATION_COMMIT_FAILED",
+        "CAPITAL_RESERVATION_RELEASE_FAILED",
+        "SOURCE_DISAGREEMENT",
+        "INSTRUMENT_RULES_UNAVAILABLE",
+        "INSTRUMENT_RULES_POSITION_MISALIGNED",
+        "VENUE_UPPER_BOUNDS_UNAVAILABLE",
+        "VENUE_RULES_STALE",
+        "FINANCIAL_STATE_RECOVERY_REQUIRED",
+    }
+)
+
+UNCLASSIFIED_EXECUTION_HALT_REASON = "EXECUTION_HALT_REASON_UNCLASSIFIED"
+
+
+def _classify_execution_halt_reason(raw: Any) -> str:
+    """Map a raw execution halt_reason onto a safe-to-publish code.
+
+    Only an exact match against the allowlist above is ever returned
+    verbatim; everything else - a non-string, an unrecognised constant, or
+    free-form diagnostic text - collapses to the generic unclassified code.
+    """
+
+    if isinstance(raw, str) and raw in _SAFE_EXECUTION_HALT_REASON_CODES:
+        return raw
+
+    return UNCLASSIFIED_EXECUTION_HALT_REASON
+
+
+def _release_instance_lock_on_failed_init(init):
+    """Give back the state-root lock when construction fails after taking it.
+
+    A failed __init__ never reaches stop(), so without this a long-lived
+    process (a tool, a test, a rebuild after a failure) would keep the
+    reference - and the OS lock - for good.
+    """
+
+    @functools.wraps(init)
+    def wrapper(self, *args, **kwargs):
+        try:
+            init(self, *args, **kwargs)
+        except BaseException:
+            root = getattr(self, "_instance_lock_root", None)
+            self._instance_lock_root = None
+            if root is not None:
+                instance_lock.release(root)
+            raise
+
+    return wrapper
+
+
 class AtlasApplication:
     """
     Central Atlas composition root.
@@ -432,6 +540,7 @@ class AtlasApplication:
     VERSION = "13.0"
     NAME = "AtlasApplication"
 
+    @_release_instance_lock_on_failed_init
     def __init__(
         self,
         *,
@@ -443,6 +552,17 @@ class AtlasApplication:
         evidence_directory: str | Path | None = None,
         venue_rule_freshness_policy: VenueRuleFreshnessPolicy | None = None,
         log_directory: str | Path | None = None,
+        paper_confidence_experiment: bool = False,
+        paper_confidence_experiment_id: str = "EXP-001",
+        paper_fee_rate: Decimal | str = "0",
+        count_unrealized_in_daily_loss: bool = False,
+        sleeves_enabled: bool = False,
+        paper_slippage_bps: Decimal | str = "0",
+        order_lifecycle_observe: bool = False,
+        funding_sentiment: bool = False,
+        fusion_full_weight_denominator: bool = False,
+        paper_fill_model: str = "LAST_PRICE",
+        market: str = "CRYPTO",
     ) -> None:
         logger.info(
             "Initializing %s v%s",
@@ -450,9 +570,54 @@ class AtlasApplication:
             self.VERSION,
         )
 
-        self.exchange_name = str(exchange_name)
-        self.execution_mode = str(execution_mode).upper()
+        # Task 019 (registry v5.103): which market this run trades. FOREX reads MetaTrader 5 (demo only),
+        # the MT5 instrument rules and USD quotes, and stops routing while the forex market is closed.
+        self.market = str(market).strip().upper()
+        if self.market not in MARKETS:
+            raise ValueError(f"market {market!r} is not one of {MARKETS}")
+        self.exchange_name = "mt5" if self.market == "FOREX" else str(exchange_name)
+        self.instrument_rules_path = (
+            FOREX_INSTRUMENT_RULES_PATH if self.market == "FOREX" else DEFAULT_INSTRUMENT_RULES_PATH
+        )
+        # Task 014 (registry v5.98): normalised exactly as ExecutionManager normalises it, and an unknown
+        # mode is refused instead of being reported here while the manager silently runs PAPER. LIVE stays
+        # constructible for tests; it has no authority (live_execution_enabled is never passed) and no adapter.
+        self.execution_mode = str(execution_mode).strip().upper()
+        if self.execution_mode not in ("PAPER", "LIVE"):
+            raise ValueError(f"execution_mode {execution_mode!r} is not PAPER or LIVE")
+        # Registry v5.23: 0 by default (historical fee-free paper, kept for
+        # every test and tool that builds the application); main.py passes
+        # PAPER_FEE_RATE_PER_SIDE for the real runtime.
+        self.paper_fee_rate = Decimal(str(paper_fee_rate))
+        # Owner switches F-3, S1 and F-4 (2026-10-01). Off for every test or
+        # tool that builds the application; main.py turns them on for the real
+        # runtime, the same opt-in pattern as paper_fee_rate.
+        self.count_unrealized_in_daily_loss = bool(count_unrealized_in_daily_loss)
+        self.sleeves_enabled = bool(sleeves_enabled)
+        self.paper_slippage_bps = Decimal(str(paper_slippage_bps))
+        self.order_lifecycle_observe = bool(order_lifecycle_observe)
+        self.funding_sentiment = bool(funding_sentiment)
+        self.fusion_full_weight_denominator = bool(fusion_full_weight_denominator)
+        # Shadow stage S2 (owner approval 2026-10-02): BOOK prices PAPER fills against
+        # the live order book (core/atlas_config.py validates it and its own state dir).
+        self.paper_fill_model = str(paper_fill_model).strip().upper()
+        if self.paper_fill_model not in ("LAST_PRICE", "BOOK"):
+            raise ValueError("paper_fill_model must be LAST_PRICE or BOOK")
+        if self.market == "FOREX" and self.funding_sentiment:
+            # The funding rate is Binance's: crypto evidence is never forex evidence.
+            raise ValueError("FOREX refuses funding sentiment (a Binance-only input)")
+        if not self.paper_slippage_bps.is_finite() or not Decimal("0") <= self.paper_slippage_bps <= Decimal("100"):
+            raise ValueError("paper_slippage_bps must be within [0, 100]")
+        # registry v5.01 EXP-001. Off unless the production entry point asks
+        # for it, so a bare or test-built application keeps default floors
+        # regardless of the calendar date. Honoured in PAPER only.
+        self.paper_confidence_experiment = paper_confidence_experiment is True
+        self.paper_confidence_experiment_id = str(paper_confidence_experiment_id)
         self.symbols = list(symbols) if symbols else None
+        if self.symbols is None and self.market == "FOREX":
+            # never MarketLoop's crypto defaults on a forex feed
+            from atlas_finance.forex.instruments import FOREX_UNIVERSE
+            self.symbols = list(FOREX_UNIVERSE)
         self.market_interval = float(market_interval)
         # None means "resolve from the environment now", which is the
         # documented default path; an explicit argument always wins, so every
@@ -463,6 +628,13 @@ class AtlasApplication:
             if state_directory is None
             else Path(state_directory)
         )
+
+        # One process per state root (core/instance_lock.py, registry
+        # v5.08): taken before any durable store is opened, so a tool or a
+        # second launch that builds an AtlasApplication directly is refused
+        # here, not only the main entry point. Shared within a process.
+        instance_lock.acquire(self.state_directory)
+        self._instance_lock_root: Path | None = self.state_directory
 
         # Resolved for provenance and for the startup log only: nothing in
         # AtlasApplication opens the market archive. Resolving it here anyway
@@ -605,7 +777,11 @@ class AtlasApplication:
             event_bus=self.event_bus,
             state_directory=self.state_directory,
             evidence_store=self.evidence_store,
+            closed_positions_path=(
+                self.state_directory / EXECUTION_CLOSED_POSITIONS_FILE
+            ),
         )
+        self.brain.fusion_full_weight_denominator = self.fusion_full_weight_denominator
 
         # -----------------------------------------------------
         # Market data
@@ -628,6 +804,12 @@ class AtlasApplication:
         self._build_execution_durability()
 
         # -----------------------------------------------------
+        # EXP-001 paper confidence experiment (registry v5.01)
+        # -----------------------------------------------------
+
+        self._attach_paper_confidence_experiment()
+
+        # -----------------------------------------------------
         # Venue instrument precision (Block 5D)
         # -----------------------------------------------------
 
@@ -646,6 +828,8 @@ class AtlasApplication:
         )
 
         self.execution = ExecutionManager(
+            # registry v5.23: per-side paper fee, opted in by main.py only
+            paper_fee_rate=self.paper_fee_rate,
             capital_manager=self.capital,
             position_controller=self.position_controller,
             paper_trader=self.paper_trader,
@@ -663,13 +847,25 @@ class AtlasApplication:
             configured_symbols=configured_symbols,
         )
 
+        # Phase-2 B2: Brain-independent reduce-only exit path. Inert by
+        # default (OBSERVE, no rules); ENFORCE or any rule is an owner
+        # decision. In CRYPTO it is not invoked from MarketLoop's cycle; in
+        # FOREX policy manifest v3 (owner 2026-10-26) replaces it with the
+        # weekend-close guard (_attach_forex_weekend_close).
+        self.exit_guard = ExitGuard(
+            self.execution,
+            self.portfolio_foundation,
+        )
+
         # -----------------------------------------------------
         # Market loop
         # -----------------------------------------------------
 
         # Sentiment evidence (registry v4.66). Construction performs no
         # I/O; the provider fetches lazily, caches, and fails closed.
-        self.sentiment_provider = FearGreedProvider()
+        # Task 019: the crypto Fear & Greed index is not forex evidence. In FOREX the source is absent, which
+        # fusion counts against a claim over the expected roster (NB-4/NB-5): less confidence, never more.
+        self.sentiment_provider = None if self.market == "FOREX" else FearGreedProvider()
 
         # Macro and market-risk evidence (registry v4.79). The Treasury
         # provider, like the sentiment provider, performs no I/O on
@@ -692,6 +888,48 @@ class AtlasApplication:
             macro_provider=self.macro_provider,
             market_risk_provider=self.market_risk_provider,
         )
+        # Audit F-3: fresh closed-candle marks for the risk engine's optional
+        # unrealized daily-loss check (read-only; unused while the flag is off).
+        self.execution.mark_price_provider = self.market_loop.mark_prices
+        if self.market == "FOREX":
+            from atlas_finance.forex.sessions import is_forex_market_open, is_forex_pre_close
+
+            self.market_loop.market_session_open = is_forex_market_open
+            # Task 022: no new forex risk in the last hour before the Friday close (owner 2026-10-26)
+            self.market_loop.market_entry_blocked = is_forex_pre_close
+            # Task 026 (policy manifest v5): the loop opens a short on a SELL of a pair not held, exactly when the
+            # RiskPolicy allows shorts; policy_manifest checks that the two agree
+            self.market_loop.shorts_enabled = self.risk_policy.shorts_enabled
+            # Task 027 (review T026-F3): the brain's memory caution also applies to a SELL that opens a short
+            if self.market_loop.shorts_enabled:
+                loop = self.market_loop
+                self.brain.short_entry_check = lambda symbol: loop._opens_new_risk(symbol, "SELL")
+            # Task 023 (policy manifest v3): close every open forex position in the last 30 minutes before the
+            # Friday close, through the exit guard's reduce-only path (ENFORCE, this one rule only)
+            self._attach_forex_weekend_close()
+        self.execution.paper_slippage_bps = self.paper_slippage_bps
+        if self.paper_fill_model == "BOOK" and self.execution_mode == "PAPER":
+            if self.market == "FOREX":
+                # Task 021 (registry v5.104): the forex spread cost model - a BUY fills at the MT5 ask, a SELL
+                # at the bid, from the feed's own (demo-only) provider; no quote means the order is rejected.
+                from atlas_finance.market_data.mt5_provider import Mt5QuoteFillProvider
+
+                self.execution.paper_fill_provider = Mt5QuoteFillProvider(self.market_feed.provider)
+            else:
+                from atlas_finance.market_data.order_book_provider import OrderBookFillProvider
+
+                self.execution.paper_fill_provider = OrderBookFillProvider()
+        # Order state machine stage 1: observe only (owner approved 2026-10-01).
+        self.execution.order_lifecycle_observe = self.order_lifecycle_observe
+        # Design C: Binance funding rate as sentiment evidence when Fear & Greed is
+        # neutral. OFF unless main.py turns it on (after audit + owner).
+        if self.funding_sentiment:
+            from atlas_finance.market_data.funding_rate_provider import FundingRateProvider
+            self.market_loop.funding_provider = FundingRateProvider()
+        # S1 step 2: record each position's risk bucket in a sidecar (decisions
+        # are unchanged while sleeves_enabled stays False).
+        from core.position_risk_buckets import POSITION_RISK_BUCKETS_FILE, PositionRiskBucketStore
+        self.execution.position_risk_buckets = PositionRiskBucketStore(self.state_directory / POSITION_RISK_BUCKETS_FILE)
 
         # -----------------------------------------------------
         # Controller
@@ -748,6 +986,126 @@ class AtlasApplication:
     # CANONICAL FINANCIAL RISK SERVICES
     # =========================================================
 
+    @staticmethod
+    def _forex_shorts_enabled() -> bool:
+        from atlas_finance.forex.instruments import FOREX_SHORTS_ENABLED
+        return FOREX_SHORTS_ENABLED is True
+
+    def _book_leverage(self) -> int:
+        """The account leverage of this market's durable book: FOREX_LEVERAGE in FOREX (Task 025), else 1."""
+        if self.market == "FOREX":
+            from atlas_finance.forex.instruments import FOREX_LEVERAGE
+            return FOREX_LEVERAGE
+        return 1
+
+    # Task 028: an exit the guard cannot price for this many cycles in a row raises an alert (see the runner).
+    PENDING_PRICE_ALERT_CYCLES = 3
+    PENDING_PRICE_ALERT_REPEAT_CYCLES = 60
+
+    def _attach_forex_weekend_close(self) -> None:
+        """FOREX only: the exit guard in ENFORCE with the STOP_OUT and WEEKEND_CLOSE rules, run once per cycle."""
+        from atlas_finance.forex.instruments import STOP_OUT_MARGIN_LEVEL
+        from atlas_finance.forex.sessions import WEEKEND_CLOSE_MINUTES, is_forex_pre_close
+        from core.exit_guard import (
+            ENFORCE,
+            EXIT_PENDING_PRICE,
+            RULE_STOP_OUT,
+            RULE_WEEKEND_CLOSE,
+            SAFETY_EXIT,
+            ExitRule,
+            Mark,
+        )
+
+        # the window is computed from the rule's own minutes (review T023-F1)
+        rule = ExitRule("forex-weekend-close", RULE_WEEKEND_CLOSE, None, minutes=WEEKEND_CLOSE_MINUTES,
+                        in_window=is_forex_pre_close)
+        # Task 025: the margin book's stop-out at a 100 % margin level, ahead of the weekend close (SAFETY_EXIT)
+        stop_out = ExitRule("forex-stop-out", RULE_STOP_OUT, STOP_OUT_MARGIN_LEVEL, priority=SAFETY_EXIT)
+        self.exit_guard = ExitGuard(self.execution, self.portfolio_foundation, rules=(stop_out, rule),
+                                    mode=ENFORCE)
+        guard, loop = self.exit_guard, self.market_loop
+
+        def run(cutoff: datetime) -> Any:
+            # Each mark carries its own last closed candle's open time (review T023-F2), so the guard's own age
+            # check (0 <= age <= max_price_age_seconds) refuses a stale or a future-stamped candle; a missing or
+            # refused mark is EXIT_PENDING_PRICE, never a sale at a guessed price.
+            marks = {}
+            for symbol, rows in dict(loop.recent_candles).items():
+                if rows and rows[-1][4] > 0:
+                    marks[symbol] = Mark(Decimal(str(rows[-1][4])), rows[-1][0] / 1000)
+            outcomes = guard.run_once(marks)
+            # review T028-F1: the exits above are already submitted; an alert failure is reported as such. Each
+            # alert has its own guard, so one failing never costs the other (audit T029-F6).
+            for name, alert in (("pending-price", _alert_pending), ("not-executed", _alert_not_executed)):
+                try:
+                    alert(cutoff, outcomes)
+                except Exception:
+                    logger.exception("%s alert failed; the exit guard's run is unaffected", name)
+            return outcomes
+
+        streaks: dict[str, int] = {}
+        failed_streaks: dict[str, int] = {}
+
+        def _alert_pending(cutoff: datetime, outcomes: Any) -> None:
+            # Task 028 (registry v5.111, review T023-F4): a position the guard cannot price is EXIT_PENDING_PRICE,
+            # which holds it (never a sale at a guessed price). That is safe once, but it must not go unnoticed:
+            # a symbol pending for PENDING_PRICE_ALERT_CYCLES cycles in a row, or pending at all inside the
+            # weekend close-out window, raises an alert (metric, warning, EXIT_GUARD_PRICE_UNAVAILABLE event).
+            # Observability only: nothing here changes what the guard submits.
+            pending = {str(item.get("symbol")) for item in outcomes or ()
+                       if isinstance(item, dict) and item.get("state") == EXIT_PENDING_PRICE}
+            for symbol in list(streaks):
+                if symbol not in pending:
+                    del streaks[symbol]
+            for symbol in pending:
+                streaks[symbol] = streaks.get(symbol, 0) + 1
+            try:
+                in_window = is_forex_pre_close(cutoff, WEEKEND_CLOSE_MINUTES) is not False
+            except Exception:
+                in_window = True          # unsure: treated as inside the window, so the alert is not missed
+            # Task 029 (review): outside the window the alert fires when the streak reaches the threshold and then
+            # once every PENDING_PRICE_ALERT_REPEAT_CYCLES cycles, so a position held over a weekend does not
+            # warn every minute
+            def due(streak: int) -> bool:
+                over = streak - self.PENDING_PRICE_ALERT_CYCLES
+                return over >= 0 and over % self.PENDING_PRICE_ALERT_REPEAT_CYCLES == 0
+
+            alerted = sorted(s for s in pending if in_window or due(streaks[s]))
+            if not alerted:
+                return
+            loop._increment_metric("exit_pending_price_alerts")
+            logger.warning("Exit guard cannot price %s (in close-out window: %s); positions are held, not sold",
+                           alerted, in_window)
+            loop.publish("EXIT_GUARD_PRICE_UNAVAILABLE", {
+                "symbols": alerted, "consecutive_cycles": {s: streaks[s] for s in alerted},
+                "in_close_out_window": in_window,
+            })
+
+        def _alert_not_executed(cutoff: datetime, outcomes: Any) -> None:
+            # Task 029 (review R-2): an exit the guard submitted but ExecutionManager did not execute must be seen.
+            # It fires on the first failed cycle of a symbol and then once every PENDING_PRICE_ALERT_REPEAT_CYCLES
+            # cycles while it keeps failing (audit T029-F5), so a halted runtime does not alert every minute.
+            failed = {str(item.get("symbol")): str(item.get("execution_status")) for item in outcomes or ()
+                      if isinstance(item, dict) and item.get("outcome") == "SUBMITTED"
+                      and item.get("execution_status") != "PAPER_EXECUTED"}
+            for symbol in list(failed_streaks):
+                if symbol not in failed:
+                    del failed_streaks[symbol]
+            for symbol in failed:
+                failed_streaks[symbol] = failed_streaks.get(symbol, 0) + 1
+            alerted = {s: status for s, status in sorted(failed.items())
+                       if (failed_streaks[s] - 1) % self.PENDING_PRICE_ALERT_REPEAT_CYCLES == 0}
+            if not alerted:
+                return
+            loop._increment_metric("exit_not_executed_alerts")
+            logger.warning("Exit guard exits were not executed: %s", alerted)
+            loop.publish("EXIT_GUARD_EXIT_NOT_EXECUTED", {
+                "symbols": alerted, "consecutive_cycles": {s: failed_streaks[s] for s in alerted}})
+
+        run.guard = guard          # read by core.policy_manifest: the runner must belong to this guard
+        run.pending_streaks = streaks
+        self.market_loop.exit_guard_runner = run
+
     def _build_financial_services(self) -> None:
         """
         Construct the single canonical financial-risk service family.
@@ -771,6 +1129,13 @@ class AtlasApplication:
                     self.capital.total_capital
                 )
             ),
+            count_unrealized_in_daily_loss=self.count_unrealized_in_daily_loss,
+            sleeves_enabled=self.sleeves_enabled,
+            # Task 019: forex pairs are quoted in USD (EURUSD -> EUR exposure against USD)
+            # Task 025: forex is a margin book at the pinned leverage (policy manifest v4)
+            # Task 026: and allows shorts on that margin book (policy manifest v5)
+            **({"quote_currencies": ("USD",), "leverage": self._book_leverage(),
+                "shorts_enabled": self._forex_shorts_enabled()} if self.market == "FOREX" else {}),
         )
 
         self.risk_engine = RiskEngine(
@@ -809,6 +1174,9 @@ class AtlasApplication:
             closed_archive=ClosedPositionArchiveStore(
                 self.state_directory / EXECUTION_CLOSED_POSITIONS_FILE,
             ),
+            # Task 025: a FOREX book must be the schema 3 margin book at this leverage, a CRYPTO book the schema 2
+            # cash book; any other book is not ready (FINANCIAL_LEVERAGE_CONFLICT), so no new risk.
+            leverage=self._book_leverage(),
         )
 
         logger.info(
@@ -867,6 +1235,72 @@ class AtlasApplication:
             self.transaction_journal.has_unresolved(),
         )
 
+    def _attach_paper_confidence_experiment(self) -> None:
+        """Attach EXP-001 to the RiskEngine when opted in, and in PAPER mode only.
+
+        The sample cap must survive restarts, so prior tagged admissions are
+        counted from the durable audit log. If that log cannot be read the
+        experiment stays unattached: the default floors are the fail-closed
+        state.
+        """
+
+        if not self.paper_confidence_experiment or self.execution_mode != "PAPER":
+            return
+
+        experiment_id = getattr(self, "paper_confidence_experiment_id", "EXP-001")
+        experiment = PAPER_CONFIDENCE_EXPERIMENTS.get(experiment_id)
+        if experiment is None:
+            logger.error("unknown experiment %r not attached; default confidence floors remain",
+                         experiment_id)
+            return
+
+        try:
+            audited = count_experiment_admissions(
+                self.audit_store,
+                experiment.experiment_id,
+            )
+        except Exception:
+            logger.exception(
+                "%s not attached: audit log unreadable, default confidence floors remain",
+                experiment.experiment_id,
+            )
+            return
+
+        # registry v5.17: a second, independent durable count. The larger of
+        # the two wins, so losing audit lines can never re-open admissions;
+        # an unreadable ledger keeps the experiment off (fail-closed).
+        ledger = ExperimentAdmissionLedger(
+            self.state_directory / EXPERIMENT_LEDGER_FILE,
+        )
+
+        try:
+            recorded = ledger.count(experiment.experiment_id)
+        except Exception:
+            logger.exception(
+                "%s not attached: admission ledger unreadable, default confidence floors remain",
+                experiment.experiment_id,
+            )
+            return
+
+        prior = max(audited, recorded)
+
+        self.risk_engine.attach_experiment(
+            experiment,
+            prior_admissions=prior,
+            admission_recorder=ledger.record,
+        )
+
+        logger.info(
+            "%s attached (PAPER): floor=%s buckets=%s window=%s..%s admissions=%s/%s",
+            experiment.experiment_id,
+            experiment.minimum_confidence,
+            sorted(b.value for b in experiment.buckets),
+            experiment.starts_at.isoformat(),
+            experiment.ends_at.isoformat(),
+            prior,
+            experiment.max_admissions,
+        )
+
     @staticmethod
     def _root_source(variable: str) -> str:
         """
@@ -912,13 +1346,13 @@ class AtlasApplication:
 
         try:
             self.instrument_ruleset = load_instrument_ruleset(
-                DEFAULT_INSTRUMENT_RULES_PATH
+                self.instrument_rules_path
             )
         except InstrumentRulesConfigError as exc:
             self.instrument_ruleset = None
             logger.error(
                 "Instrument rules unavailable path=%s error=%s",
-                DEFAULT_INSTRUMENT_RULES_PATH,
+                self.instrument_rules_path,
                 exc,
             )
             return
@@ -1332,6 +1766,16 @@ class AtlasApplication:
         Stop Atlas services in reverse dependency order.
         """
 
+        try:
+            return self._stop_services()
+        finally:
+            root = getattr(self, "_instance_lock_root", None)
+            self._instance_lock_root = None
+            if root is not None:
+                instance_lock.release(root)
+
+    def _stop_services(self) -> bool:
+
         logger.info(
             "=================================================="
         )
@@ -1674,12 +2118,22 @@ class AtlasApplication:
         recovery state at all - unknown, not evidence of a halt - exactly as
         an absent thread_alive is treated above.
 
-        The halt *reason* is deliberately not published here. health() is
+        The raw halt *reason* is still never published here. health() is
         returned verbatim to /api/health (see web_app._safe_runtime_health),
         and ExecutionManager.halt_reason can carry a portfolio-foundation
         diagnostic that embeds a raw execution_id, idempotency_key,
-        position_id, or archive line number. The booleans say that an
-        operator is needed; the logs and status() say why.
+        position_id, or archive line number.
+
+        What is published, when execution_halted or execution_recovery_
+        required is True, is execution_halt_reason: the raw reason passed
+        through _classify_execution_halt_reason's allowlist, which only
+        ever returns one of a fixed set of known-safe constant codes or the
+        generic UNCLASSIFIED_EXECUTION_HALT_REASON. See
+        test_health_never_publishes_the_halt_reason, which still asserts
+        the raw diagnostic text never reaches this payload. The full,
+        unclassified reason remains available to an operator through the
+        logs and status() (and, per the same loopback trust boundary, the
+        /api/status route).
 
         Supervisor provenance
         ---------------------
@@ -1723,6 +2177,14 @@ class AtlasApplication:
             "recovery_required",
         )
 
+        execution_halt_reason = (
+            _classify_execution_halt_reason(
+                execution_operational_state.get("halt_reason"),
+            )
+            if execution_halted is True or execution_recovery_required is True
+            else None
+        )
+
         healthy = bool(
             runtime_status.get("healthy", True)
             and execution_status.get("running", True)
@@ -1733,11 +2195,44 @@ class AtlasApplication:
             and not self.errors
         )
 
+        brain_health = self._safe_health(
+            self.brain,
+        )
+
+        system_health = assess_system_health(
+            {
+                "running": self.running,
+                "loop_running": market_status.get("running"),
+                "loop_thread_alive": market_health.get("thread_alive"),
+                "loop_progress_age_seconds": market_health.get(
+                    "loop_progress_age_seconds",
+                ),
+                "loop_interval_seconds": market_health.get(
+                    "loop_interval_seconds",
+                ),
+                "market_data_stale": market_health.get("market_data_stale"),
+                "execution_running": execution_status.get("running"),
+                "execution_halted": execution_halted,
+                "recovery_required": execution_recovery_required,
+                "audit_persistence_state": execution_operational_state.get(
+                    "audit_persistence_state",
+                ),
+                "brain_healthy": brain_health.get("healthy"),
+                "policy_manifest_block": execution_operational_state.get(
+                    "policy_manifest_block",
+                ),
+            }
+        )
+
         return {
             "healthy": healthy,
             "running": self.running,
+            # Phase-2 D1: tri-state signals; UNKNOWN is never healthy. The
+            # legacy "healthy" flag above is unchanged for existing readers.
+            "system_health": system_health,
             "execution_halted": execution_halted,
             "execution_recovery_required": execution_recovery_required,
+            "execution_halt_reason": execution_halt_reason,
             "supervised": self.supervisor_epoch is not None,
             "supervisor_epoch": self.supervisor_epoch,
             "supervisor_restart_count": self.supervisor_restart_count,
@@ -1810,6 +2305,10 @@ class AtlasApplication:
 
             "capital": self._safe_status(
                 self.capital,
+            ),
+
+            "exit_guard": self._safe_status(
+                getattr(self, "exit_guard", None),
             ),
 
             "position_controller": self._safe_status(

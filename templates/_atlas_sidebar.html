@@ -1,0 +1,90 @@
+{#
+  Dashboard v1 left sidebar (owner design 2026-10-01). 10 items in three
+  groups; every item links to an EXISTING page, no new data pages. The
+  including template sets `atlas_active` to the item key it renders.
+  Atlas HQ stays a separate experience, linked as "Command Center".
+#}
+<style>
+    .atlas-shell { display: flex; min-height: 100vh; }
+    .atlas-side { width: 208px; flex: 0 0 208px; background: var(--atlas-panel); border-right: 1px solid var(--atlas-line); padding: 14px 10px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+    .atlas-side .brand { font-weight: 700; letter-spacing: .08em; color: var(--atlas-text); padding: 2px 8px 12px; }
+    .atlas-side .brand span { color: var(--atlas-accent); }
+    .atlas-side .grp { font-size: 11px; font-weight: 600; letter-spacing: .08em; color: var(--atlas-muted); padding: 12px 8px 4px; }
+    .atlas-side a { display: block; color: var(--atlas-muted); text-decoration: none; padding: 6px 8px; border-radius: 6px; font-size: 13px; }
+    .atlas-side a:hover { color: var(--atlas-text); background: var(--atlas-panel-2); }
+    .atlas-side a.active { color: var(--atlas-text); background: var(--atlas-panel-2); box-shadow: inset 2px 0 0 var(--atlas-accent); }
+    .atlas-side .cc { margin-top: 16px; border: 1px solid var(--atlas-line); }
+    .atlas-main { flex: 1 1 auto; min-width: 0; }
+    /* Density modes (Dashboard "later" item): compact shrinks spacing only, never hides data. */
+    body.atlas-compact { font-size: 13px; }
+    body.atlas-compact .pane, body.atlas-compact .card-body { padding: 8px !important; margin-bottom: 8px !important; }
+    body.atlas-compact td, body.atlas-compact th { padding: 2px 6px !important; }
+    @media (max-width: 860px) {
+        .atlas-shell { display: block; }
+        .atlas-side { width: auto; height: auto; position: static; display: flex; flex-wrap: wrap; gap: 2px; padding: 8px; border-right: 0; border-bottom: 1px solid var(--atlas-line); }
+        .atlas-side .grp { display: none; }
+        .atlas-side .brand { padding: 6px 8px; }
+        .atlas-side .cc { margin-top: 0; }
+    }
+</style>
+<aside class="atlas-side" aria-label="Atlas gezinme">
+    <div class="brand"><span>ATLAS</span></div>
+    {% set _items = [
+        ("CORE", [("overview", "/home", "Overview"), ("markets", "/trading", "Markets"), ("portfolio", "/dashboard", "Portfolio"), ("strategies", "/governance", "Strategies")]),
+        ("INTELLIGENCE", [("intelligence", "/decisions", "Intelligence"), ("agents", "/agents", "Agents"), ("research", "/research", "Research")]),
+        ("CONTROL", [("risk", "/trading#limits", "Risk"), ("proposals", "/governance#proposals", "Proposals"), ("system", "/system", "System")]),
+    ] %}
+    {% for group, entries in _items %}
+    <div class="grp">{{ group }}</div>
+    {% for key, href, label in entries %}
+    <a href="{{ href }}"{% if atlas_active == key %} class="active" aria-current="page"{% endif %}>{{ label }}</a>
+    {% endfor %}
+    {% endfor %}
+    <a class="cc" href="/hq">Command Center ↗</a>
+    <div class="grp" style="text-transform:none">Ctrl+K: hızlı git</div>
+    <button type="button" id="atlas-density" aria-pressed="false" style="background:none;border:0;color:var(--atlas-muted);font-size:12px;padding:4px 8px;text-align:left">Yoğunluk: rahat</button>
+</aside>
+{# Ctrl+K palette (Dashboard "later" item, 2026-10-01): navigation only. No fetch, no write. #}
+<div id="atlas-pal" hidden style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999">
+    <div style="max-width:420px;margin:12vh auto;background:var(--atlas-panel);border:1px solid var(--atlas-line);border-radius:8px;padding:10px">
+        <input id="atlas-pal-q" aria-label="Sayfa ara" placeholder="Sayfa ara…" style="width:100%;background:var(--atlas-bg);color:var(--atlas-text);border:1px solid var(--atlas-line);border-radius:6px;padding:6px 8px">
+        <div id="atlas-pal-list" style="margin-top:6px"></div>
+    </div>
+</div>
+<script>
+(() => {
+    const pages = [...document.querySelectorAll('.atlas-side a')].map((a) => [a.textContent.trim(), a.getAttribute('href')])
+        .concat([['İşlem analizi (post-mortem)', '/postmortem'], ['Güvenlik', '/security'], ['Yol haritası', '/roadmap']]);
+    const pal = document.getElementById('atlas-pal'), q = document.getElementById('atlas-pal-q'), list = document.getElementById('atlas-pal-list');
+    let hits = [];
+    const draw = () => {
+        const t = q.value.toLowerCase();
+        hits = pages.filter(([l, h]) => (l + ' ' + h).toLowerCase().includes(t));
+        list.innerHTML = '';
+        hits.forEach(([l, h], i) => { const a = document.createElement('a'); a.href = h; a.textContent = l; a.style.cssText = 'display:block;padding:5px 8px;border-radius:6px;text-decoration:none;color:' + (i ? 'var(--atlas-muted)' : 'var(--atlas-text)'); list.appendChild(a); });
+    };
+    document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); pal.hidden = false; q.value = ''; draw(); q.focus(); }
+        else if (!pal.hidden && e.key === 'Escape') pal.hidden = true;
+        else if (!pal.hidden && e.key === 'Enter' && hits.length) location.href = hits[0][1];
+    });
+    q.addEventListener('input', draw);
+    // Density: a per-viewer preference only, kept in this browser. Unreadable storage means "rahat".
+    const dBtn = document.getElementById('atlas-density');
+    const setDensity = (compact) => {
+        document.body.classList.toggle('atlas-compact', compact);
+        dBtn.textContent = 'Yoğunluk: ' + (compact ? 'sıkı' : 'rahat');
+        dBtn.setAttribute('aria-pressed', String(compact));
+    };
+    let saved = false;
+    try { saved = localStorage.getItem('atlas-density') === 'compact'; } catch (e) { saved = false; }
+    setDensity(saved);
+    dBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const next = !document.body.classList.contains('atlas-compact');
+        setDensity(next);
+        try { localStorage.setItem('atlas-density', next ? 'compact' : 'comfortable'); } catch (err) { /* preference not kept */ }
+    });
+    pal.addEventListener('click', (e) => { if (e.target === pal) pal.hidden = true; });
+})();
+</script>

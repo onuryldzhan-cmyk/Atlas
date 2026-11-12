@@ -838,6 +838,39 @@ class WorldAnalysisEngine:
 
         if band == cls.SENTIMENT_BAND_NEUTRAL:
 
+            # Design C (owner choice 2026-10-01): with Fear & Greed neutral, a
+            # crowded perpetual funding rate for this coin may give the one
+            # sentiment vote, through the SAME owner-confirmed rule: crowded
+            # short reads like FEAR, crowded long like GREED. Anything else
+            # (absent, unavailable, malformed, neutral) keeps the abstention,
+            # so missing evidence can never raise confidence (NB-4) and the
+            # roster stays five agents (NB-5).
+            funding = sentiment_input.get("funding")
+            mapped = None
+            if (isinstance(funding, dict) and funding.get("available") is True
+                    and funding.get("band") in ("CROWDED_SHORT", "CROWDED_LONG")):
+                mapped = cls.SENTIMENT_BAND_FEAR if funding["band"] == "CROWDED_SHORT" else cls.SENTIMENT_BAND_GREED
+            # Audit 2026-10-01 F-1 (HIGH): AgentFusion's NB-5 denominator makes a
+            # dissenting HOLD/SELL vote RAISE the winner's confidence versus an
+            # abstention. Until fuse() is fixed (separate governed change), funding
+            # may only add agreeing BUY evidence; any other funding read abstains.
+            vote = cls.sentiment_vote(mapped, cls._sentiment_trend(analysis, technical_status)) if mapped else None
+            if vote == "BUY":
+                trend = cls._sentiment_trend(analysis, technical_status)
+                return (
+                    MarketDataEvidenceStatus.AVAILABLE,
+                    cls.SENTIMENT_VOTE_SCORES[vote],
+                    {
+                        "fear_greed_index": value,
+                        "band": band,
+                        "funding_rate": funding.get("rate"),
+                        "funding_band": funding.get("band"),
+                        "trend_basis": trend or "AMBIGUOUS",
+                        "vote": vote,
+                        "reason": "FUNDING_RATE_CROWDED",
+                    },
+                )
+
             return (
                 MarketDataEvidenceStatus.UNAVAILABLE_NO_PROVIDER,
                 None,

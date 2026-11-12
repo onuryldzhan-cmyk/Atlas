@@ -64,6 +64,8 @@ established market meaning, so it is excluded.
 
 from __future__ import annotations
 
+import math
+
 import logging
 
 from datetime import UTC
@@ -618,6 +620,14 @@ class CandleProcessor:
         volume = float(
             candle["volume"]
         )
+
+        # NaN compares False with everything, so without this guard a NaN
+        # price or volume would pass every check below (task 5 finding).
+        if not all(
+            math.isfinite(value)
+            for value in (open_price, high_price, low_price, close_price, volume)
+        ):
+            return False
 
         if (
             open_price <= 0

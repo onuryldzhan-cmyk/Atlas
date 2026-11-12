@@ -59,7 +59,9 @@ def test_agreement_conflict_missing_and_deterministic_repeat():
 
 
 def test_duplicate_stale_invalid_future_and_wrong_symbol_never_inflate():
-    fusion = SignalFusion(policy())
+    # F-1 (P4-CLOSURE-004): the roster is only `technical`, so the evidence supplied is the full
+    # expected roster and this test keeps its subject; a missing expected source is covered separately.
+    fusion = SignalFusion(policy(weights={"technical": D("1")}))
     good = ev(score="0.4")
     duplicate = ev(score="1", eid="technical-2")
     result = fusion.fuse("BTCUSDT", [good, duplicate], now=NOW)
@@ -178,7 +180,9 @@ def test_decision_id_binds_reason_codes_model_attribution_and_market_context():
 
 
 def test_decision_threshold_boundary_is_not_abstain():
-    fusion = SignalFusion(policy(decision_threshold=D("0.2")))
+    # F-1 (P4-CLOSURE-004): the roster is only `technical`, so the evidence supplied is the full
+    # expected roster and this test keeps its subject; a missing expected source is covered separately.
+    fusion = SignalFusion(policy(weights={"technical": D("1")}, decision_threshold=D("0.2")))
     result = fusion.fuse("BTCUSDT", [ev(score="0.2")], now=NOW)
     assert result.action is Action.BUY
     assert result.confidence == D("0.200000")
@@ -189,7 +193,9 @@ def test_decision_threshold_edge_values():
         policy(decision_threshold=D("-0.01"))
     with pytest.raises(ValueError):
         policy(decision_threshold=D("1.01"))
-    zero_threshold = SignalFusion(policy(decision_threshold=D("0")))
+    # F-1 (P4-CLOSURE-004): the roster is only `technical`, so the evidence supplied is the full
+    # expected roster and this test keeps its subject; a missing expected source is covered separately.
+    zero_threshold = SignalFusion(policy(weights={"technical": D("1")}, decision_threshold=D("0")))
     assert zero_threshold.fuse("BTCUSDT", [ev(score="0.0001")], now=NOW).action is Action.BUY
 
 
@@ -201,7 +207,9 @@ def test_freshness_exactly_at_max_age_boundary_is_valid():
 def test_minimum_sources_edge_value():
     with pytest.raises(ValueError):
         policy(minimum_sources=0)
-    fusion = SignalFusion(policy(minimum_sources=1))
+    # F-1 (P4-CLOSURE-004): the roster is only `technical`, so the evidence supplied is the full
+    # expected roster and this test keeps its subject; a missing expected source is covered separately.
+    fusion = SignalFusion(policy(weights={"technical": D("1")}, minimum_sources=1))
     assert fusion.fuse("BTCUSDT", [ev()], now=NOW).action is Action.BUY
 
 
@@ -233,3 +241,54 @@ def test_record_canonical_decision_appends_to_audit_chain(tmp_path):
     assert store.verify_chain()["valid"] is True
     [stored] = store.read_all()
     assert stored.payload == decision.audit_record()
+
+
+# -- P4-CLOSURE-004 F-1: worst-case expected-roster bound -------------------
+
+import itertools
+
+ROSTER5 = {name: D("1") for name in ("a", "b", "c", "d", "e")}
+
+
+def _fuse(items, weights=ROSTER5, threshold=D("0.2")):
+    return SignalFusion(policy(weights=weights, decision_threshold=threshold)).fuse("BTCUSDT", items, now=NOW)
+
+
+def _rank(result):
+    return {Action.BUY: 1, Action.SELL: 1}.get(result.action, 0)
+
+
+def test_f1_missing_expected_source_is_reported_and_never_agreement():
+    result = _fuse([ev("a", score="1")])
+    assert result.action is Action.ABSTAIN and result.confidence == 0
+    assert result.missing_sources == ("b", "c", "d", "e") and result.coverage == D("0.200000")
+    assert "EXPECTED_SOURCES_MISSING" in result.reason_codes
+
+
+def test_f1_rejected_evidence_counts_as_missing_not_as_neutral():
+    stale = ev("b", score="1", observed_at=NOW - timedelta(minutes=6))
+    full = [ev(n, score="0.9") for n in ("a", "c", "d", "e")]
+    result = _fuse(full + [stale])
+    assert "b" in result.missing_sources
+    assert result.confidence < _fuse(full + [ev("b", score="0.9")]).confidence
+
+
+def test_f1_complete_roster_matches_the_previous_signed_mean():
+    items = [ev("a", score="0.9"), ev("b", Action.SELL, "0.3"), ev("c", Action.HOLD, "0.5"),
+             ev("d", score="0.6"), ev("e", score="0.7")]
+    result = _fuse(items)
+    assert result.confidence == ((D("0.9") - D("0.3") + D("0.6") + D("0.7")) / 5).quantize(D("0.000001"))
+    assert result.action is Action.BUY and result.missing_sources == ()
+
+
+@pytest.mark.parametrize("votes", list(itertools.product(
+    [(Action.BUY, "0.9"), (Action.SELL, "0.9"), (Action.HOLD, "0.5"), (Action.BUY, "0.3"), None], repeat=5)))
+def test_f1_nb4_no_single_removal_raises_confidence_or_promotes(votes):
+    items = [ev(n, action=v[0], score=v[1]) for n, v in zip(ROSTER5, votes) if v is not None]
+    base = _fuse(items, threshold=D("0.1"))
+    for i in range(len(items)):
+        smaller = _fuse(items[:i] + items[i + 1:], threshold=D("0.1"))
+        assert smaller.confidence <= base.confidence
+        assert _rank(smaller) <= _rank(base)
+        if smaller.action is not Action.ABSTAIN:
+            assert smaller.action is base.action

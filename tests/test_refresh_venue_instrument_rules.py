@@ -13,22 +13,27 @@ repository's real ``config/instrument_rules.json``.
 from __future__ import annotations
 
 import json
+import shutil
 from datetime import UTC, datetime
+from decimal import Decimal as D
 from pathlib import Path
 from typing import Any
 
 import pytest
 import requests
 
-from core.instrument_rules import load_instrument_ruleset
+from core.instrument_rules import RULE_CONFIG_KEYS, load_instrument_ruleset
+from tools import refresh_venue_instrument_rules as refresh_module
 from tools.refresh_venue_instrument_rules import (
     TRANSPORT_HTTP,
+    UPPER_BOUNDS_POLICY_WITHHELD,
     VERIFICATION_HTTP_UNVERIFIED_TRANSPORT,
+    WITHHELD_UPPER_BOUND_FIELDS,
     fetch_exchange_info_snapshot,
     main,
     refresh_venue_instrument_rules,
 )
-from tools.venue_metadata_adapter import VenueMetadataError
+from tools.venue_metadata_adapter import REFERENCE_CONFIG_PATH, VenueMetadataError
 
 
 # publish_venue_rules judges freshness against the real clock by default (no
@@ -172,8 +177,11 @@ def test_successful_refresh_writes_a_loadable_validated_file(tmp_path: Path) -> 
     assert destination.exists()
     ruleset = load_instrument_ruleset(destination)
     assert ruleset.symbols == ("BTCUSDT",)
-    assert ruleset.rules["BTCUSDT"].has_complete_venue_bounds
+    # Owner decision 2026-09-27: the tool validates the venue maxima but never
+    # writes them (Block 6B premise), so the written rule is unbounded.
+    assert ruleset.rules["BTCUSDT"].has_complete_venue_bounds is False
     assert report.symbols == ("BTCUSDT",)
+    assert report.destination == str(destination)
     assert report.verification_status == VERIFICATION_HTTP_UNVERIFIED_TRANSPORT
 
 
@@ -228,6 +236,119 @@ def test_refresh_never_writes_when_a_requested_symbol_is_absent(tmp_path: Path) 
         refresh_venue_instrument_rules(symbols=["BTCUSDT", "ETHUSDT"], destination=destination, session=session)
 
     assert not destination.exists()
+
+
+# ===========================================================================
+# Block 6B: venue upper bounds are never written (owner decision 2026-09-27)
+# ===========================================================================
+
+
+def assert_no_upper_bound_written(destination: Path) -> None:
+    """Checked on the raw JSON as well as on the loaded rules: the loader
+    reading a bound back as ``None`` is not the same as it never being on
+    disk."""
+    document = json.loads(destination.read_text(encoding="utf-8"))
+    for entry in document["rules"]:
+        assert not set(entry) & set(WITHHELD_UPPER_BOUND_FIELDS), entry["symbol"]
+
+    ruleset = load_instrument_ruleset(destination)
+    for symbol in ruleset.symbols:
+        rule = ruleset.rules[symbol]
+        assert (rule.max_quantity, rule.max_notional, rule.market_max_quantity) == (
+            None, None, None,
+        )
+        assert rule.has_complete_venue_bounds is False
+
+    assert document["provenance"]["venue_upper_bounds_modelled"] is False
+    assert document["provenance"]["venue_upper_bounds_policy"] == UPPER_BOUNDS_POLICY_WITHHELD
+
+
+def test_withheld_fields_are_exactly_the_block6b_upper_bounds() -> None:
+    """The withheld set must match the schema's own upper-bound fields, so a
+    renamed or added bound cannot slip past the strip unnoticed."""
+    fields = set(WITHHELD_UPPER_BOUND_FIELDS)
+    assert fields == {"max_quantity", "max_notional", "market_max_quantity"}
+    assert fields <= RULE_CONFIG_KEYS
+
+
+def test_refresh_never_writes_a_venue_upper_bound(tmp_path: Path) -> None:
+    """The regression test for the whole package: a venue payload carrying
+    every maximum for several symbols produces a written file with none of
+    them, while the lower bounds and provenance still update."""
+    destination = tmp_path / "instrument_rules.json"
+    symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+    session = json_session(exchange_info(*(symbol_entry(symbol) for symbol in symbols)))
+
+    report = refresh_venue_instrument_rules(
+        symbols=symbols, destination=destination, session=session,
+    )
+
+    assert_no_upper_bound_written(destination)
+    ruleset = load_instrument_ruleset(destination)
+    assert set(ruleset.symbols) == set(symbols)
+    assert ruleset.rules["BTCUSDT"].min_notional == D("5")
+    assert ruleset.rules["BTCUSDT"].retrieved_at == report.retrieved_at
+    assert report.freshness_status == "FRESH"
+    # Nothing but the destination is left behind: no bounded staging copy
+    # and no temporary file beside it.
+    assert sorted(path.name for path in tmp_path.iterdir()) == ["instrument_rules.json"]
+
+
+def test_refreshing_a_copy_of_the_shipped_config_keeps_the_block6b_premise(
+    tmp_path: Path,
+) -> None:
+    """Run exactly as the operator does - symbols defaulted from the
+    shipped config - against a copy of it: the result still satisfies the
+    premise tests/test_block6b_venue_upper_bounds.py asserts of the real
+    file."""
+    destination = tmp_path / "instrument_rules.json"
+    shutil.copyfile(REFERENCE_CONFIG_PATH, destination)
+    symbols = load_instrument_ruleset(destination).symbols
+    session = json_session(exchange_info(*(symbol_entry(symbol) for symbol in symbols)))
+
+    report = refresh_venue_instrument_rules(destination=destination, session=session)
+
+    assert set(report.symbols) == set(symbols)
+    assert report.replaced_existing is True
+    assert_no_upper_bound_written(destination)
+
+
+def test_a_payload_missing_only_a_maximum_is_still_refused(tmp_path: Path) -> None:
+    """Withholding the maxima from the written file must not stop them being
+    required of the venue payload: a snapshot lacking only MARKET_LOT_SIZE -
+    which carries no lower bound at all - is refused and writes nothing."""
+    destination = tmp_path / "instrument_rules.json"
+    session = json_session(exchange_info(symbol_entry("BTCUSDT", MARKET_LOT_SIZE=None)))
+
+    with pytest.raises(VenueMetadataError, match="MARKET_LOT_SIZE"):
+        refresh_venue_instrument_rules(symbols=["BTCUSDT"], destination=destination, session=session)
+
+    assert not destination.exists()
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_the_write_guard_refuses_bounds_even_if_the_strip_regresses(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Defence in depth: if a future change stopped stripping the maxima, the
+    write itself refuses and the previous file survives byte for byte."""
+    destination = tmp_path / "instrument_rules.json"
+    refresh_venue_instrument_rules(
+        symbols=["BTCUSDT"], destination=destination,
+        session=json_session(exchange_info(symbol_entry("BTCUSDT"))),
+    )
+    before = destination.read_bytes()
+
+    monkeypatch.setattr(refresh_module, "_withhold_upper_bounds", lambda ruleset: ruleset)
+
+    with pytest.raises(VenueMetadataError, match="upper bound"):
+        refresh_venue_instrument_rules(
+            symbols=["BTCUSDT"], destination=destination,
+            session=json_session(exchange_info(symbol_entry("BTCUSDT"))),
+        )
+
+    assert destination.read_bytes() == before
+    assert not destination.with_suffix(destination.suffix + ".tmp").exists()
 
 
 # ===========================================================================

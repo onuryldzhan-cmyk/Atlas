@@ -1,0 +1,79 @@
+"""The weekly forex session: open Sunday 17:00 New York time, closed Friday 17:00 New York time.
+
+New York time follows US daylight saving: EDT (UTC-4) from the second Sunday of March 02:00 local to the first Sunday
+of November 02:00 local, EST (UTC-5) otherwise. The rule is computed here, with no time-zone database, so it behaves
+the same on Windows (where Python ships no tz data) and Linux.
+
+Holidays (Task 024, registry v5.107): Christmas (25 December) and New Year (1 January) are closed. A forex trading day
+D runs from 17:00 New York time on D-1 to 17:00 on D, so a holiday closes the market for that whole session. A Friday
+holiday therefore moves the weekly close to Thursday 17:00. A holiday on a Saturday or Sunday changes nothing (no
+observed weekday). Broker early closes on 24 and 31 December are not modelled (UNKNOWN until measured on MT5).
+
+This is a guard, not the authority: brokers' hours differ by a few minutes. The broker's own quotes decide whether a
+price is fresh.
+"""
+
+from __future__ import annotations
+
+from datetime import UTC, datetime, timedelta
+
+_OPEN_HOUR = 17  # New York local time, Sunday open and Friday close
+HOLIDAYS = ((12, 25), (1, 1))  # (month, day): Christmas, New Year; closed for the whole trading day
+
+
+def _nth_sunday(year: int, month: int, n: int) -> datetime:
+    first = datetime(year, month, 1, tzinfo=UTC)
+    return first + timedelta(days=(6 - first.weekday()) % 7 + 7 * (n - 1))
+
+
+def new_york_utc_offset_hours(moment: datetime) -> int:
+    """-4 during US daylight saving, -5 otherwise (``moment`` must be timezone-aware)."""
+    if moment.tzinfo is None:
+        raise ValueError("moment must be timezone-aware")
+    at = moment.astimezone(UTC)
+    dst_start = _nth_sunday(at.year, 3, 2) + timedelta(hours=2 + 5)    # 02:00 EST = 07:00 UTC
+    dst_end = _nth_sunday(at.year, 11, 1) + timedelta(hours=2 + 4)     # 02:00 EDT = 06:00 UTC
+    return -4 if dst_start <= at < dst_end else -5
+
+
+def is_forex_market_open(moment: datetime) -> bool:
+    """True from Sunday 17:00 to Friday 17:00 New York time, except on a holiday's trading day."""
+    local = moment.astimezone(UTC) + timedelta(hours=new_york_utc_offset_hours(moment))
+    trading_day = local + timedelta(hours=24 - _OPEN_HOUR)   # 17:00 on D-1 starts trading day D
+    if (trading_day.month, trading_day.day) in HOLIDAYS:
+        return False
+    weekday, hour = local.weekday(), local.hour      # Monday = 0 ... Sunday = 6
+    if weekday == 5:
+        return False
+    if weekday == 4:
+        return hour < _OPEN_HOUR
+    if weekday == 6:
+        return hour >= _OPEN_HOUR
+    return True
+
+
+PRE_CLOSE_MINUTES = 60   # Task 022 (registry v5.105): no new risk in the last hour of the forex week
+WEEKEND_CLOSE_MINUTES = 30   # Task 023 (policy manifest v3): open positions closed 30 minutes before the close
+
+
+def is_forex_pre_close(moment: datetime, minutes: int = PRE_CLOSE_MINUTES) -> bool:
+    """True in the last ``minutes`` before the market closes, while it is still open.
+
+    The close is the Friday 17:00 New York close or a holiday closure (17:00 on the eve), whichever comes first.
+    """
+    if not is_forex_market_open(moment):
+        return False
+    return not is_forex_market_open(moment.astimezone(UTC) + timedelta(minutes=minutes))
+
+
+def next_forex_open(moment: datetime) -> datetime:
+    """``moment`` itself when the market is open, else the next open in UTC: Sunday 17:00 New York time, or 17:00 on
+    a holiday, when that ends the closure (e.g. Monday 2028-12-25)."""
+    if is_forex_market_open(moment):
+        return moment.astimezone(UTC)
+    at = moment.astimezone(UTC).replace(minute=0, second=0, microsecond=0)
+    for _ in range(24 * 8):
+        at += timedelta(hours=1)
+        if is_forex_market_open(at):
+            return at
+    raise RuntimeError("no forex open within eight days")  # unreachable: the longest closure is 72 hours

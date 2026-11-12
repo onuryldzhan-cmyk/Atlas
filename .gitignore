@@ -225,3 +225,13 @@ data/market_archive/*.sqlite3-wal
 # Must never enter history via a bulk `git add -A`.
 
 _quarantine/
+
+# =============================================================================
+# SCRATCH WORKTREES / PYTEST TEMP DIRECTORIES
+# =============================================================================
+#
+# Session-local scratch directories (isolated reproduction worktrees,
+# pytest --basetemp targets). Never intended to enter history.
+
+atlas[0-9]*/
+atlas_pytest_tmp*/

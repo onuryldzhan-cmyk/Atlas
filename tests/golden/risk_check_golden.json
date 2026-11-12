@@ -1,0 +1,2082 @@
+{
+ "above_upper_bound": {
+  "admissions": [],
+  "calls": [
+   {
+    "amount": 1000.0,
+    "approved_quote_allocation": null,
+    "reduce_only": false,
+    "verdict": {
+     "approved": false,
+     "details": {
+      "max_quantity": "1",
+      "symbol": "BTCUSDT"
+     },
+     "reason": "ABOVE_MAX_QUANTITY"
+    }
+   }
+  ],
+  "errors": [],
+  "last_risk_decision": {
+   "approved": true,
+   "approved_allocation": "1000.0",
+   "available_capital": "8000.000",
+   "daily_realized_pnl": "0",
+   "drawdown_amount": "0",
+   "drawdown_level": "NORMAL",
+   "drawdown_pct": "0",
+   "experiment_id": "",
+   "gross_exposure": "0",
+   "policy_version": "phase3-risk-v1",
+   "reason_code": "RISK_APPROVED",
+   "reserved_capital": "2000.000",
+   "status": "APPROVE"
+  },
+  "reservations": {},
+  "stats": {
+   "audit_events_written": 0,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 0,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 0,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 0,
+   "persistent_save_failures": 0,
+   "received": 0,
+   "rejected": 0,
+   "requests_claimed": 0,
+   "requests_completed": 0,
+   "requests_released": 0,
+   "validated": 0
+  }
+ },
+ "allocation_mismatch": {
+  "admissions": [],
+  "calls": [
+   {
+    "amount": 1000.0,
+    "approved_quote_allocation": null,
+    "reduce_only": false,
+    "verdict": {
+     "approved": false,
+     "reason": "RISK_ALLOCATION_MISMATCH"
+    }
+   }
+  ],
+  "errors": [],
+  "last_risk_decision": {
+   "approved": true,
+   "approved_allocation": "1001.0",
+   "available_capital": "8000.000",
+   "daily_realized_pnl": "0",
+   "drawdown_amount": "0",
+   "drawdown_level": "NORMAL",
+   "drawdown_pct": "0",
+   "experiment_id": "",
+   "gross_exposure": "0",
+   "policy_version": "phase3-risk-v1",
+   "reason_code": "RISK_APPROVED",
+   "reserved_capital": "2000.000",
+   "status": "APPROVE"
+  },
+  "reservations": {},
+  "stats": {
+   "audit_events_written": 0,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 0,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 0,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 0,
+   "persistent_save_failures": 0,
+   "received": 0,
+   "rejected": 0,
+   "requests_claimed": 0,
+   "requests_completed": 0,
+   "requests_released": 0,
+   "validated": 0
+  }
+ },
+ "below_min_notional": {
+  "admissions": [],
+  "calls": [
+   {
+    "amount": 1000.0,
+    "approved_quote_allocation": null,
+    "reduce_only": false,
+    "verdict": {
+     "approved": false,
+     "details": {
+      "floored_quote_notional": "1000.00",
+      "min_notional": "100000"
+     },
+     "reason": "NOTIONAL_BELOW_VENUE_MINIMUM"
+    }
+   }
+  ],
+  "errors": [],
+  "last_risk_decision": {
+   "approved": true,
+   "approved_allocation": "1000.0",
+   "available_capital": "8000.000",
+   "daily_realized_pnl": "0",
+   "drawdown_amount": "0",
+   "drawdown_level": "NORMAL",
+   "drawdown_pct": "0",
+   "experiment_id": "",
+   "gross_exposure": "0",
+   "policy_version": "phase3-risk-v1",
+   "reason_code": "RISK_APPROVED",
+   "reserved_capital": "2000.000",
+   "status": "APPROVE"
+  },
+  "reservations": {},
+  "stats": {
+   "audit_events_written": 0,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 0,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 0,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 0,
+   "persistent_save_failures": 0,
+   "received": 0,
+   "rejected": 0,
+   "requests_claimed": 0,
+   "requests_completed": 0,
+   "requests_released": 0,
+   "validated": 0
+  }
+ },
+ "below_min_quantity": {
+  "admissions": [],
+  "calls": [
+   {
+    "amount": 1000.0,
+    "approved_quote_allocation": null,
+    "reduce_only": false,
+    "verdict": {
+     "approved": false,
+     "details": {
+      "floored_base_quantity": "100.0",
+      "min_quantity": "1000"
+     },
+     "reason": "QUANTITY_BELOW_VENUE_MINIMUM"
+    }
+   }
+  ],
+  "errors": [],
+  "last_risk_decision": {
+   "approved": true,
+   "approved_allocation": "1000.0",
+   "available_capital": "8000.000",
+   "daily_realized_pnl": "0",
+   "drawdown_amount": "0",
+   "drawdown_level": "NORMAL",
+   "drawdown_pct": "0",
+   "experiment_id": "",
+   "gross_exposure": "0",
+   "policy_version": "phase3-risk-v1",
+   "reason_code": "RISK_APPROVED",
+   "reserved_capital": "2000.000",
+   "status": "APPROVE"
+  },
+  "reservations": {},
+  "stats": {
+   "audit_events_written": 0,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 0,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 0,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 0,
+   "persistent_save_failures": 0,
+   "received": 0,
+   "rejected": 0,
+   "requests_claimed": 0,
+   "requests_completed": 0,
+   "requests_released": 0,
+   "validated": 0
+  }
+ },
+ "below_quantity_step": {
+  "admissions": [],
+  "calls": [
+   {
+    "amount": 1000.0,
+    "approved_quote_allocation": null,
+    "reduce_only": false,
+    "verdict": {
+     "approved": false,
+     "details": {
+      "approved_allocation": "1000.0",
+      "execution_price": "10.0",
+      "quantity_step": "1000"
+     },
+     "reason": "QUANTITY_BELOW_VENUE_MINIMUM"
+    }
+   }
+  ],
+  "errors": [],
+  "last_risk_decision": {
+   "approved": true,
+   "approved_allocation": "1000.0",
+   "available_capital": "8000.000",
+   "daily_realized_pnl": "0",
+   "drawdown_amount": "0",
+   "drawdown_level": "NORMAL",
+   "drawdown_pct": "0",
+   "experiment_id": "",
+   "gross_exposure": "0",
+   "policy_version": "phase3-risk-v1",
+   "reason_code": "RISK_APPROVED",
+   "reserved_capital": "2000.000",
+   "status": "APPROVE"
+  },
+  "reservations": {},
+  "stats": {
+   "audit_events_written": 0,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 0,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 0,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 0,
+   "persistent_save_failures": 0,
+   "received": 0,
+   "rejected": 0,
+   "requests_claimed": 0,
+   "requests_completed": 0,
+   "requests_released": 0,
+   "validated": 0
+  }
+ },
+ "buy_approved": {
+  "admissions": [
+   "r1"
+  ],
+  "calls": [
+   {
+    "amount": 1000.0,
+    "approved_quote_allocation": "D:1000.0",
+    "reduce_only": false,
+    "verdict": {
+     "approved": true,
+     "details": {
+      "instrument_rules_digest": "eef0e1808a3b2a3fe33b55cc25425a1d2eb430145fa5696cbda19d66fb821352",
+      "instrument_rules_source_version": "1790687644597"
+     },
+     "reason": "RISK_APPROVED"
+    }
+   }
+  ],
+  "errors": [],
+  "last_risk_decision": {
+   "approved": true,
+   "approved_allocation": "1000.0",
+   "available_capital": "8000.000",
+   "daily_realized_pnl": "0",
+   "drawdown_amount": "0",
+   "drawdown_level": "NORMAL",
+   "drawdown_pct": "0",
+   "experiment_id": "",
+   "gross_exposure": "0",
+   "policy_version": "phase3-risk-v1",
+   "reason_code": "RISK_APPROVED",
+   "reserved_capital": "2000.000",
+   "status": "APPROVE"
+  },
+  "reservations": {
+   "r1": [
+    "RESERVED",
+    "1000.0"
+   ]
+  },
+  "stats": {
+   "audit_events_written": 0,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 0,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 0,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 0,
+   "persistent_save_failures": 0,
+   "received": 0,
+   "rejected": 0,
+   "requests_claimed": 0,
+   "requests_completed": 0,
+   "requests_released": 0,
+   "validated": 0
+  }
+ },
+ "buy_approved_twice_same_id": {
+  "admissions": [
+   "r1"
+  ],
+  "calls": [
+   {
+    "amount": 1000.0,
+    "approved_quote_allocation": "D:1000.0",
+    "reduce_only": false,
+    "verdict": {
+     "approved": true,
+     "details": {
+      "instrument_rules_digest": "eef0e1808a3b2a3fe33b55cc25425a1d2eb430145fa5696cbda19d66fb821352",
+      "instrument_rules_source_version": "1790687644597"
+     },
+     "reason": "RISK_APPROVED"
+    }
+   },
+   {
+    "amount": 1000.0,
+    "approved_quote_allocation": "D:1000.0",
+    "reduce_only": false,
+    "verdict": {
+     "approved": true,
+     "details": {
+      "instrument_rules_digest": "eef0e1808a3b2a3fe33b55cc25425a1d2eb430145fa5696cbda19d66fb821352",
+      "instrument_rules_source_version": "1790687644597"
+     },
+     "reason": "RISK_APPROVED"
+    }
+   }
+  ],
+  "errors": [],
+  "last_risk_decision": {
+   "approved": true,
+   "approved_allocation": "1000.0",
+   "available_capital": "8000.000",
+   "daily_realized_pnl": "0",
+   "drawdown_amount": "0",
+   "drawdown_level": "NORMAL",
+   "drawdown_pct": "0",
+   "experiment_id": "",
+   "gross_exposure": "0",
+   "policy_version": "phase3-risk-v1",
+   "reason_code": "RISK_APPROVED",
+   "reserved_capital": "2000.000",
+   "status": "APPROVE"
+  },
+  "reservations": {
+   "r1": [
+    "RESERVED",
+    "1000.0"
+   ]
+  },
+  "stats": {
+   "audit_events_written": 0,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 0,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 0,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 0,
+   "persistent_save_failures": 0,
+   "received": 0,
+   "rejected": 0,
+   "requests_claimed": 0,
+   "requests_completed": 0,
+   "requests_released": 0,
+   "validated": 0
+  }
+ },
+ "buy_caller_reduce_only_rederived": {
+  "admissions": [
+   "r1"
+  ],
+  "calls": [
+   {
+    "amount": 1000.0,
+    "approved_quote_allocation": "D:1000.0",
+    "reduce_only": false,
+    "verdict": {
+     "approved": true,
+     "details": {
+      "instrument_rules_digest": "eef0e1808a3b2a3fe33b55cc25425a1d2eb430145fa5696cbda19d66fb821352",
+      "instrument_rules_source_version": "1790687644597"
+     },
+     "reason": "RISK_APPROVED"
+    }
+   }
+  ],
+  "errors": [],
+  "last_risk_decision": {
+   "approved": true,
+   "approved_allocation": "1000.0",
+   "available_capital": "8000.000",
+   "daily_realized_pnl": "0",
+   "drawdown_amount": "0",
+   "drawdown_level": "NORMAL",
+   "drawdown_pct": "0",
+   "experiment_id": "",
+   "gross_exposure": "0",
+   "policy_version": "phase3-risk-v1",
+   "reason_code": "RISK_APPROVED",
+   "reserved_capital": "2000.000",
+   "status": "APPROVE"
+  },
+  "reservations": {
+   "r1": [
+    "RESERVED",
+    "1000.0"
+   ]
+  },
+  "stats": {
+   "audit_events_written": 0,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 0,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 0,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 0,
+   "persistent_save_failures": 0,
+   "received": 0,
+   "rejected": 0,
+   "requests_claimed": 0,
+   "requests_completed": 0,
+   "requests_released": 0,
+   "validated": 0
+  }
+ },
+ "buy_more_when_held": {
+  "admissions": [],
+  "calls": [
+   {
+    "amount": 1000.0,
+    "approved_quote_allocation": null,
+    "reduce_only": false,
+    "verdict": {
+     "approved": false,
+     "details": {
+      "approved": false,
+      "approved_allocation": "0",
+      "available_capital": "7000.000",
+      "daily_realized_pnl": "0",
+      "drawdown_amount": "0",
+      "drawdown_level": "NORMAL",
+      "drawdown_pct": "0",
+      "experiment_id": "",
+      "gross_exposure": "1000.00",
+      "policy_version": "phase3-risk-v1",
+      "reason_code": "DUPLICATE_OPEN_POSITION",
+      "reserved_capital": "2000.000",
+      "status": "REJECT"
+     },
+     "reason": "DUPLICATE_OPEN_POSITION",
+     "status": "REJECT"
+    }
+   }
+  ],
+  "errors": [],
+  "last_risk_decision": {
+   "approved": false,
+   "approved_allocation": "0",
+   "available_capital": "7000.000",
+   "daily_realized_pnl": "0",
+   "drawdown_amount": "0",
+   "drawdown_level": "NORMAL",
+   "drawdown_pct": "0",
+   "experiment_id": "",
+   "gross_exposure": "1000.00",
+   "policy_version": "phase3-risk-v1",
+   "reason_code": "DUPLICATE_OPEN_POSITION",
+   "reserved_capital": "2000.000",
+   "status": "REJECT"
+  },
+  "reservations": {
+   "seed": [
+    "COMMITTED",
+    "1000.00"
+   ]
+  },
+  "stats": {
+   "audit_events_written": 4,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 1,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 1,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 1,
+   "persistent_save_failures": 0,
+   "received": 1,
+   "rejected": 0,
+   "requests_claimed": 1,
+   "requests_completed": 1,
+   "requests_released": 0,
+   "validated": 1
+  }
+ },
+ "buy_stale_approval_cleared_on_reject": {
+  "admissions": [],
+  "calls": [
+   {
+    "amount": 1000.0,
+    "approved_quote_allocation": null,
+    "reduce_only": false,
+    "verdict": {
+     "approved": false,
+     "details": {
+      "approved": false,
+      "approved_allocation": "0",
+      "available_capital": "8000.000",
+      "daily_realized_pnl": "0",
+      "drawdown_amount": "0",
+      "drawdown_level": "NORMAL",
+      "drawdown_pct": "0",
+      "experiment_id": "",
+      "gross_exposure": "0",
+      "policy_version": "phase3-risk-v1",
+      "reason_code": "CONFIDENCE_BELOW_POLICY",
+      "reserved_capital": "2000.000",
+      "status": "REJECT"
+     },
+     "reason": "CONFIDENCE_BELOW_POLICY",
+     "status": "REJECT"
+    }
+   }
+  ],
+  "errors": [],
+  "last_risk_decision": {
+   "approved": false,
+   "approved_allocation": "0",
+   "available_capital": "8000.000",
+   "daily_realized_pnl": "0",
+   "drawdown_amount": "0",
+   "drawdown_level": "NORMAL",
+   "drawdown_pct": "0",
+   "experiment_id": "",
+   "gross_exposure": "0",
+   "policy_version": "phase3-risk-v1",
+   "reason_code": "CONFIDENCE_BELOW_POLICY",
+   "reserved_capital": "2000.000",
+   "status": "REJECT"
+  },
+  "reservations": {},
+  "stats": {
+   "audit_events_written": 0,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 0,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 0,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 0,
+   "persistent_save_failures": 0,
+   "received": 0,
+   "rejected": 0,
+   "requests_claimed": 0,
+   "requests_completed": 0,
+   "requests_released": 0,
+   "validated": 0
+  }
+ },
+ "buy_with_fee": {
+  "admissions": [
+   "r1"
+  ],
+  "calls": [
+   {
+    "amount": 1000.0,
+    "approved_quote_allocation": "D:1000.0",
+    "reduce_only": false,
+    "verdict": {
+     "approved": true,
+     "details": {
+      "instrument_rules_digest": "eef0e1808a3b2a3fe33b55cc25425a1d2eb430145fa5696cbda19d66fb821352",
+      "instrument_rules_source_version": "1790687644597",
+      "paper_fee_rate": "0.001"
+     },
+     "reason": "RISK_APPROVED"
+    }
+   }
+  ],
+  "errors": [],
+  "last_risk_decision": {
+   "approved": true,
+   "approved_allocation": "1000.0",
+   "available_capital": "8000.000",
+   "daily_realized_pnl": "0",
+   "drawdown_amount": "0",
+   "drawdown_level": "NORMAL",
+   "drawdown_pct": "0",
+   "experiment_id": "",
+   "gross_exposure": "0",
+   "policy_version": "phase3-risk-v1",
+   "reason_code": "RISK_APPROVED",
+   "reserved_capital": "2000.000",
+   "status": "APPROVE"
+  },
+  "reservations": {
+   "r1": [
+    "RESERVED",
+    "1000.0"
+   ]
+  },
+  "stats": {
+   "audit_events_written": 0,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 0,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 0,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 0,
+   "persistent_save_failures": 0,
+   "received": 0,
+   "rejected": 0,
+   "requests_claimed": 0,
+   "requests_completed": 0,
+   "requests_released": 0,
+   "validated": 0
+  }
+ },
+ "engine_raises": {
+  "admissions": [],
+  "calls": [
+   {
+    "amount": 1000.0,
+    "approved_quote_allocation": null,
+    "reduce_only": false,
+    "verdict": {
+     "approved": false,
+     "reason": "RISK_STATE_RESTORATION_FAILED",
+     "status": "BLOCK_RECOVERY_REQUIRED"
+    }
+   }
+  ],
+  "errors": [
+   [
+    "canonical_risk",
+    "engine boom"
+   ]
+  ],
+  "last_risk_decision": null,
+  "reservations": {},
+  "stats": {
+   "audit_events_written": 0,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 0,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 0,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 0,
+   "persistent_save_failures": 0,
+   "received": 0,
+   "rejected": 0,
+   "requests_claimed": 0,
+   "requests_completed": 0,
+   "requests_released": 0,
+   "validated": 0
+  }
+ },
+ "engine_rejects_critical_risk": {
+  "admissions": [],
+  "calls": [
+   {
+    "amount": 1000.0,
+    "approved_quote_allocation": null,
+    "reduce_only": false,
+    "verdict": {
+     "approved": false,
+     "details": {
+      "approved": false,
+      "approved_allocation": "0",
+      "available_capital": "8000.000",
+      "daily_realized_pnl": "0",
+      "drawdown_amount": "0",
+      "drawdown_level": "NORMAL",
+      "drawdown_pct": "0",
+      "experiment_id": "",
+      "gross_exposure": "0",
+      "policy_version": "phase3-risk-v1",
+      "reason_code": "CRITICAL_RISK_NOT_EXECUTABLE",
+      "reserved_capital": "2000.000",
+      "status": "REJECT"
+     },
+     "reason": "CRITICAL_RISK_NOT_EXECUTABLE",
+     "status": "REJECT"
+    }
+   }
+  ],
+  "errors": [],
+  "last_risk_decision": {
+   "approved": false,
+   "approved_allocation": "0",
+   "available_capital": "8000.000",
+   "daily_realized_pnl": "0",
+   "drawdown_amount": "0",
+   "drawdown_level": "NORMAL",
+   "drawdown_pct": "0",
+   "experiment_id": "",
+   "gross_exposure": "0",
+   "policy_version": "phase3-risk-v1",
+   "reason_code": "CRITICAL_RISK_NOT_EXECUTABLE",
+   "reserved_capital": "2000.000",
+   "status": "REJECT"
+  },
+  "reservations": {},
+  "stats": {
+   "audit_events_written": 0,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 0,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 0,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 0,
+   "persistent_save_failures": 0,
+   "received": 0,
+   "rejected": 0,
+   "requests_claimed": 0,
+   "requests_completed": 0,
+   "requests_released": 0,
+   "validated": 0
+  }
+ },
+ "engine_rejects_low_confidence": {
+  "admissions": [],
+  "calls": [
+   {
+    "amount": 1000.0,
+    "approved_quote_allocation": null,
+    "reduce_only": false,
+    "verdict": {
+     "approved": false,
+     "details": {
+      "approved": false,
+      "approved_allocation": "0",
+      "available_capital": "8000.000",
+      "daily_realized_pnl": "0",
+      "drawdown_amount": "0",
+      "drawdown_level": "NORMAL",
+      "drawdown_pct": "0",
+      "experiment_id": "",
+      "gross_exposure": "0",
+      "policy_version": "phase3-risk-v1",
+      "reason_code": "CONFIDENCE_BELOW_POLICY",
+      "reserved_capital": "2000.000",
+      "status": "REJECT"
+     },
+     "reason": "CONFIDENCE_BELOW_POLICY",
+     "status": "REJECT"
+    }
+   }
+  ],
+  "errors": [],
+  "last_risk_decision": {
+   "approved": false,
+   "approved_allocation": "0",
+   "available_capital": "8000.000",
+   "daily_realized_pnl": "0",
+   "drawdown_amount": "0",
+   "drawdown_level": "NORMAL",
+   "drawdown_pct": "0",
+   "experiment_id": "",
+   "gross_exposure": "0",
+   "policy_version": "phase3-risk-v1",
+   "reason_code": "CONFIDENCE_BELOW_POLICY",
+   "reserved_capital": "2000.000",
+   "status": "REJECT"
+  },
+  "reservations": {},
+  "stats": {
+   "audit_events_written": 0,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 0,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 0,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 0,
+   "persistent_save_failures": 0,
+   "received": 0,
+   "rejected": 0,
+   "requests_claimed": 0,
+   "requests_completed": 0,
+   "requests_released": 0,
+   "validated": 0
+  }
+ },
+ "free_capital_raises": {
+  "admissions": [],
+  "calls": [
+   {
+    "amount": 1000.0,
+    "approved_quote_allocation": null,
+    "reduce_only": false,
+    "verdict": {
+     "approved": false,
+     "reason": "DURABLE_CAPITAL_STATE_UNAVAILABLE",
+     "status": "BLOCK_RECOVERY_REQUIRED"
+    }
+   }
+  ],
+  "errors": [
+   [
+    "durable_capital",
+    "capital boom"
+   ]
+  ],
+  "last_risk_decision": {
+   "approved": true,
+   "approved_allocation": "1000.0",
+   "available_capital": "8000.000",
+   "daily_realized_pnl": "0",
+   "drawdown_amount": "0",
+   "drawdown_level": "NORMAL",
+   "drawdown_pct": "0",
+   "experiment_id": "",
+   "gross_exposure": "0",
+   "policy_version": "phase3-risk-v1",
+   "reason_code": "RISK_APPROVED",
+   "reserved_capital": "2000.000",
+   "status": "APPROVE"
+  },
+  "reservations": {},
+  "stats": {
+   "audit_events_written": 0,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 0,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 0,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 0,
+   "persistent_save_failures": 0,
+   "received": 0,
+   "rejected": 0,
+   "requests_claimed": 0,
+   "requests_completed": 0,
+   "requests_released": 0,
+   "validated": 0
+  }
+ },
+ "free_capital_unknown": {
+  "admissions": [
+   "r1"
+  ],
+  "calls": [
+   {
+    "amount": 1000.0,
+    "approved_quote_allocation": "D:1000.0",
+    "reduce_only": false,
+    "verdict": {
+     "approved": true,
+     "details": {
+      "instrument_rules_digest": "eef0e1808a3b2a3fe33b55cc25425a1d2eb430145fa5696cbda19d66fb821352",
+      "instrument_rules_source_version": "1790687644597"
+     },
+     "reason": "RISK_APPROVED"
+    }
+   }
+  ],
+  "errors": [],
+  "last_risk_decision": {
+   "approved": true,
+   "approved_allocation": "1000.0",
+   "available_capital": "8000.000",
+   "daily_realized_pnl": "0",
+   "drawdown_amount": "0",
+   "drawdown_level": "NORMAL",
+   "drawdown_pct": "0",
+   "experiment_id": "",
+   "gross_exposure": "0",
+   "policy_version": "phase3-risk-v1",
+   "reason_code": "RISK_APPROVED",
+   "reserved_capital": "2000.000",
+   "status": "APPROVE"
+  },
+  "reservations": {
+   "r1": [
+    "RESERVED",
+    "1000.0"
+   ]
+  },
+  "stats": {
+   "audit_events_written": 0,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 0,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 0,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 0,
+   "persistent_save_failures": 0,
+   "received": 0,
+   "rejected": 0,
+   "requests_claimed": 0,
+   "requests_completed": 0,
+   "requests_released": 0,
+   "validated": 0
+  }
+ },
+ "instrument_rules_none": {
+  "admissions": [],
+  "calls": [
+   {
+    "amount": 1000.0,
+    "approved_quote_allocation": null,
+    "reduce_only": false,
+    "verdict": {
+     "approved": false,
+     "details": {
+      "symbol": "BTCUSDT"
+     },
+     "reason": "INSTRUMENT_RULES_UNAVAILABLE"
+    }
+   }
+  ],
+  "errors": [],
+  "last_risk_decision": {
+   "approved": true,
+   "approved_allocation": "1000.0",
+   "available_capital": "8000.000",
+   "daily_realized_pnl": "0",
+   "drawdown_amount": "0",
+   "drawdown_level": "NORMAL",
+   "drawdown_pct": "0",
+   "experiment_id": "",
+   "gross_exposure": "0",
+   "policy_version": "phase3-risk-v1",
+   "reason_code": "RISK_APPROVED",
+   "reserved_capital": "2000.000",
+   "status": "APPROVE"
+  },
+  "reservations": {},
+  "stats": {
+   "audit_events_written": 0,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 0,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 0,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 0,
+   "persistent_save_failures": 0,
+   "received": 0,
+   "rejected": 0,
+   "requests_claimed": 0,
+   "requests_completed": 0,
+   "requests_released": 0,
+   "validated": 0
+  }
+ },
+ "insufficient_capital": {
+  "admissions": [],
+  "calls": [
+   {
+    "amount": 1000.0,
+    "approved_quote_allocation": null,
+    "reduce_only": false,
+    "verdict": {
+     "approved": false,
+     "details": {
+      "approved_allocation": "1000.0",
+      "available_quote_capital": "5"
+     },
+     "reason": "INSUFFICIENT_DURABLE_CAPITAL"
+    }
+   }
+  ],
+  "errors": [],
+  "last_risk_decision": {
+   "approved": true,
+   "approved_allocation": "1000.0",
+   "available_capital": "8000.000",
+   "daily_realized_pnl": "0",
+   "drawdown_amount": "0",
+   "drawdown_level": "NORMAL",
+   "drawdown_pct": "0",
+   "experiment_id": "",
+   "gross_exposure": "0",
+   "policy_version": "phase3-risk-v1",
+   "reason_code": "RISK_APPROVED",
+   "reserved_capital": "2000.000",
+   "status": "APPROVE"
+  },
+  "reservations": {},
+  "stats": {
+   "audit_events_written": 0,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 0,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 0,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 0,
+   "persistent_save_failures": 0,
+   "received": 0,
+   "rejected": 0,
+   "requests_claimed": 0,
+   "requests_completed": 0,
+   "requests_released": 0,
+   "validated": 0
+  }
+ },
+ "ledger_not_ready": {
+  "admissions": [],
+  "calls": [
+   {
+    "amount": 1000.0,
+    "approved_quote_allocation": null,
+    "reduce_only": false,
+    "verdict": {
+     "approved": false,
+     "reason": "CAPITAL_RESERVATION_STATE_NOT_READY",
+     "status": "BLOCK_RECOVERY_REQUIRED"
+    }
+   }
+  ],
+  "errors": [],
+  "last_risk_decision": null,
+  "reservations": {},
+  "stats": {
+   "audit_events_written": 0,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 0,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 0,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 0,
+   "persistent_save_failures": 0,
+   "received": 0,
+   "rejected": 0,
+   "requests_claimed": 0,
+   "requests_completed": 0,
+   "requests_released": 0,
+   "validated": 0
+  }
+ },
+ "no_instrument_rules": {
+  "admissions": [],
+  "calls": [
+   {
+    "amount": 1000.0,
+    "approved_quote_allocation": null,
+    "reduce_only": false,
+    "verdict": {
+     "approved": false,
+     "details": {
+      "symbol": "BTCUSDT"
+     },
+     "reason": "INSTRUMENT_RULES_UNAVAILABLE"
+    }
+   }
+  ],
+  "errors": [],
+  "last_risk_decision": {
+   "approved": true,
+   "approved_allocation": "1000.0",
+   "available_capital": "8000.000",
+   "daily_realized_pnl": "0",
+   "drawdown_amount": "0",
+   "drawdown_level": "NORMAL",
+   "drawdown_pct": "0",
+   "experiment_id": "",
+   "gross_exposure": "0",
+   "policy_version": "phase3-risk-v1",
+   "reason_code": "RISK_APPROVED",
+   "reserved_capital": "2000.000",
+   "status": "APPROVE"
+  },
+  "reservations": {},
+  "stats": {
+   "audit_events_written": 0,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 0,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 0,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 0,
+   "persistent_save_failures": 0,
+   "received": 0,
+   "rejected": 0,
+   "requests_claimed": 0,
+   "requests_completed": 0,
+   "requests_released": 0,
+   "validated": 0
+  }
+ },
+ "no_risk_engine": {
+  "admissions": [],
+  "calls": [
+   {
+    "amount": 1000.0,
+    "approved_quote_allocation": null,
+    "reduce_only": false,
+    "verdict": {
+     "approved": false,
+     "reason": "CANONICAL_RISK_SERVICE_REQUIRED",
+     "status": "BLOCK_RECOVERY_REQUIRED"
+    }
+   }
+  ],
+  "errors": [],
+  "last_risk_decision": null,
+  "reservations": {},
+  "stats": {
+   "audit_events_written": 0,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 0,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 0,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 0,
+   "persistent_save_failures": 0,
+   "received": 0,
+   "rejected": 0,
+   "requests_claimed": 0,
+   "requests_completed": 0,
+   "requests_released": 0,
+   "validated": 0
+  }
+ },
+ "no_risk_state_store": {
+  "admissions": [],
+  "calls": [
+   {
+    "amount": 1000.0,
+    "approved_quote_allocation": null,
+    "reduce_only": false,
+    "verdict": {
+     "approved": false,
+     "reason": "RISK_ACCOUNTING_STATE_STORE_REQUIRED",
+     "status": "BLOCK_RECOVERY_REQUIRED"
+    }
+   }
+  ],
+  "errors": [],
+  "last_risk_decision": null,
+  "reservations": {},
+  "stats": {
+   "audit_events_written": 0,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 0,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 0,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 0,
+   "persistent_save_failures": 0,
+   "received": 0,
+   "rejected": 0,
+   "requests_claimed": 0,
+   "requests_completed": 0,
+   "requests_released": 0,
+   "validated": 0
+  }
+ },
+ "other_symbol": {
+  "admissions": [
+   "e1"
+  ],
+  "calls": [
+   {
+    "amount": 1000.0,
+    "approved_quote_allocation": "D:1000.0",
+    "reduce_only": false,
+    "verdict": {
+     "approved": true,
+     "details": {
+      "instrument_rules_digest": "a9e9dadf8b8724662e266f1859156f9a9a2a449f28cef964f17178434f5afe38",
+      "instrument_rules_source_version": "1790687644597"
+     },
+     "reason": "RISK_APPROVED"
+    }
+   }
+  ],
+  "errors": [],
+  "last_risk_decision": {
+   "approved": true,
+   "approved_allocation": "1000.0",
+   "available_capital": "8000.000",
+   "daily_realized_pnl": "0",
+   "drawdown_amount": "0",
+   "drawdown_level": "NORMAL",
+   "drawdown_pct": "0",
+   "experiment_id": "",
+   "gross_exposure": "0",
+   "policy_version": "phase3-risk-v1",
+   "reason_code": "RISK_APPROVED",
+   "reserved_capital": "2000.000",
+   "status": "APPROVE"
+  },
+  "reservations": {
+   "e1": [
+    "RESERVED",
+    "1000.0"
+   ]
+  },
+  "stats": {
+   "audit_events_written": 0,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 0,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 0,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 0,
+   "persistent_save_failures": 0,
+   "received": 0,
+   "rejected": 0,
+   "requests_claimed": 0,
+   "requests_completed": 0,
+   "requests_released": 0,
+   "validated": 0
+  }
+ },
+ "position_limit": {
+  "admissions": [],
+  "calls": [
+   {
+    "amount": 1000.0,
+    "approved_quote_allocation": null,
+    "reduce_only": false,
+    "verdict": {
+     "approved": false,
+     "details": {
+      "symbol": "BTCUSDT"
+     },
+     "reason": "POSITION_LIMIT"
+    }
+   }
+  ],
+  "errors": [],
+  "last_risk_decision": {
+   "approved": true,
+   "approved_allocation": "1000.0",
+   "available_capital": "8000.000",
+   "daily_realized_pnl": "0",
+   "drawdown_amount": "0",
+   "drawdown_level": "NORMAL",
+   "drawdown_pct": "0",
+   "experiment_id": "",
+   "gross_exposure": "0",
+   "policy_version": "phase3-risk-v1",
+   "reason_code": "RISK_APPROVED",
+   "reserved_capital": "2000.000",
+   "status": "APPROVE"
+  },
+  "reservations": {},
+  "stats": {
+   "audit_events_written": 0,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 0,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 0,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 0,
+   "persistent_save_failures": 0,
+   "received": 0,
+   "rejected": 0,
+   "requests_claimed": 0,
+   "requests_completed": 0,
+   "requests_released": 0,
+   "validated": 0
+  }
+ },
+ "price_tick_misaligned": {
+  "admissions": [],
+  "calls": [
+   {
+    "amount": 1000.0,
+    "approved_quote_allocation": null,
+    "reduce_only": false,
+    "verdict": {
+     "approved": false,
+     "details": {
+      "price": "10.25",
+      "price_tick": "0.5",
+      "symbol": "BTCUSDT"
+     },
+     "reason": "PRICE_TICK_MISALIGNED"
+    }
+   }
+  ],
+  "errors": [],
+  "last_risk_decision": {
+   "approved": true,
+   "approved_allocation": "1000.0",
+   "available_capital": "8000.000",
+   "daily_realized_pnl": "0",
+   "drawdown_amount": "0",
+   "drawdown_level": "NORMAL",
+   "drawdown_pct": "0",
+   "experiment_id": "",
+   "gross_exposure": "0",
+   "policy_version": "phase3-risk-v1",
+   "reason_code": "RISK_APPROVED",
+   "reserved_capital": "2000.000",
+   "status": "APPROVE"
+  },
+  "reservations": {},
+  "stats": {
+   "audit_events_written": 0,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 0,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 0,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 0,
+   "persistent_save_failures": 0,
+   "received": 0,
+   "rejected": 0,
+   "requests_claimed": 0,
+   "requests_completed": 0,
+   "requests_released": 0,
+   "validated": 0
+  }
+ },
+ "reevaluate_near_capital_bound": {
+  "admissions": [
+   "r1"
+  ],
+  "calls": [
+   {
+    "amount": 2000.0,
+    "approved_quote_allocation": "D:2000.0",
+    "reduce_only": false,
+    "verdict": {
+     "approved": true,
+     "details": {
+      "instrument_rules_digest": "eef0e1808a3b2a3fe33b55cc25425a1d2eb430145fa5696cbda19d66fb821352",
+      "instrument_rules_source_version": "1790687644597"
+     },
+     "reason": "RISK_APPROVED"
+    }
+   },
+   {
+    "amount": 2000.0,
+    "approved_quote_allocation": "D:2000.0",
+    "reduce_only": false,
+    "verdict": {
+     "approved": true,
+     "details": {
+      "instrument_rules_digest": "eef0e1808a3b2a3fe33b55cc25425a1d2eb430145fa5696cbda19d66fb821352",
+      "instrument_rules_source_version": "1790687644597"
+     },
+     "reason": "RISK_APPROVED"
+    }
+   }
+  ],
+  "errors": [],
+  "last_risk_decision": {
+   "approved": true,
+   "approved_allocation": "2000.0",
+   "available_capital": "8000.000",
+   "daily_realized_pnl": "0",
+   "drawdown_amount": "0",
+   "drawdown_level": "NORMAL",
+   "drawdown_pct": "0",
+   "experiment_id": "",
+   "gross_exposure": "0",
+   "policy_version": "phase3-risk-v1",
+   "reason_code": "RISK_APPROVED",
+   "reserved_capital": "2000.000",
+   "status": "APPROVE"
+  },
+  "reservations": {
+   "r1": [
+    "RESERVED",
+    "2000.0"
+   ]
+  },
+  "stats": {
+   "audit_events_written": 0,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 0,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 0,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 0,
+   "persistent_save_failures": 0,
+   "received": 0,
+   "rejected": 0,
+   "requests_claimed": 0,
+   "requests_completed": 0,
+   "requests_released": 0,
+   "validated": 0
+  }
+ },
+ "requested_raises": {
+  "admissions": [],
+  "calls": [
+   {
+    "amount": 1000.0,
+    "approved_quote_allocation": null,
+    "reduce_only": false,
+    "verdict": {
+     "approved": false,
+     "reason": "RISK_STATE_RESTORATION_FAILED",
+     "status": "BLOCK_RECOVERY_REQUIRED"
+    }
+   }
+  ],
+  "errors": [
+   [
+    "canonical_risk",
+    "requested boom"
+   ]
+  ],
+  "last_risk_decision": null,
+  "reservations": {},
+  "stats": {
+   "audit_events_written": 0,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 0,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 0,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 0,
+   "persistent_save_failures": 0,
+   "received": 0,
+   "rejected": 0,
+   "requests_claimed": 0,
+   "requests_completed": 0,
+   "requests_released": 0,
+   "validated": 0
+  }
+ },
+ "reserve_not_reserved": {
+  "admissions": [],
+  "calls": [
+   {
+    "amount": 1000.0,
+    "approved_quote_allocation": null,
+    "reduce_only": false,
+    "verdict": {
+     "approved": false,
+     "reason": "CAPITAL_RESERVATION_FAILED",
+     "status": "BLOCK_RECOVERY_REQUIRED"
+    }
+   }
+  ],
+  "errors": [
+   [
+    "capital_reservation",
+    "reservation is not RESERVED"
+   ]
+  ],
+  "last_risk_decision": {
+   "approved": true,
+   "approved_allocation": "1000.0",
+   "available_capital": "8000.000",
+   "daily_realized_pnl": "0",
+   "drawdown_amount": "0",
+   "drawdown_level": "NORMAL",
+   "drawdown_pct": "0",
+   "experiment_id": "",
+   "gross_exposure": "0",
+   "policy_version": "phase3-risk-v1",
+   "reason_code": "RISK_APPROVED",
+   "reserved_capital": "2000.000",
+   "status": "APPROVE"
+  },
+  "reservations": {
+   "r1": [
+    "RESERVED",
+    "1000.0"
+   ]
+  },
+  "stats": {
+   "audit_events_written": 0,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 0,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 0,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 0,
+   "persistent_save_failures": 0,
+   "received": 0,
+   "rejected": 0,
+   "requests_claimed": 0,
+   "requests_completed": 0,
+   "requests_released": 0,
+   "validated": 0
+  }
+ },
+ "reserve_raises": {
+  "admissions": [],
+  "calls": [
+   {
+    "amount": 1000.0,
+    "approved_quote_allocation": null,
+    "reduce_only": false,
+    "verdict": {
+     "approved": false,
+     "reason": "CAPITAL_RESERVATION_FAILED",
+     "status": "BLOCK_RECOVERY_REQUIRED"
+    }
+   }
+  ],
+  "errors": [
+   [
+    "capital_reservation",
+    "reserve boom"
+   ]
+  ],
+  "last_risk_decision": {
+   "approved": true,
+   "approved_allocation": "1000.0",
+   "available_capital": "8000.000",
+   "daily_realized_pnl": "0",
+   "drawdown_amount": "0",
+   "drawdown_level": "NORMAL",
+   "drawdown_pct": "0",
+   "experiment_id": "",
+   "gross_exposure": "0",
+   "policy_version": "phase3-risk-v1",
+   "reason_code": "RISK_APPROVED",
+   "reserved_capital": "2000.000",
+   "status": "APPROVE"
+  },
+  "reservations": {},
+  "stats": {
+   "audit_events_written": 0,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 0,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 0,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 0,
+   "persistent_save_failures": 0,
+   "received": 0,
+   "rejected": 0,
+   "requests_claimed": 0,
+   "requests_completed": 0,
+   "requests_released": 0,
+   "validated": 0
+  }
+ },
+ "risk_state_raises": {
+  "admissions": [],
+  "calls": [
+   {
+    "amount": 1000.0,
+    "approved_quote_allocation": null,
+    "reduce_only": false,
+    "verdict": {
+     "approved": false,
+     "reason": "RISK_STATE_RESTORATION_FAILED",
+     "status": "BLOCK_RECOVERY_REQUIRED"
+    }
+   }
+  ],
+  "errors": [
+   [
+    "canonical_risk",
+    "state boom"
+   ]
+  ],
+  "last_risk_decision": null,
+  "reservations": {},
+  "stats": {
+   "audit_events_written": 0,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 0,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 0,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 0,
+   "persistent_save_failures": 0,
+   "received": 0,
+   "rejected": 0,
+   "requests_claimed": 0,
+   "requests_completed": 0,
+   "requests_released": 0,
+   "validated": 0
+  }
+ },
+ "rollover_raises_but_continues": {
+  "admissions": [
+   "r1"
+  ],
+  "calls": [
+   {
+    "amount": 1000.0,
+    "approved_quote_allocation": "D:1000.0",
+    "reduce_only": false,
+    "verdict": {
+     "approved": true,
+     "details": {
+      "instrument_rules_digest": "eef0e1808a3b2a3fe33b55cc25425a1d2eb430145fa5696cbda19d66fb821352",
+      "instrument_rules_source_version": "1790687644597"
+     },
+     "reason": "RISK_APPROVED"
+    }
+   }
+  ],
+  "errors": [
+   [
+    "risk_day_rollover",
+    "rollover boom"
+   ]
+  ],
+  "last_risk_decision": {
+   "approved": true,
+   "approved_allocation": "1000.0",
+   "available_capital": "8000.000",
+   "daily_realized_pnl": "0",
+   "drawdown_amount": "0",
+   "drawdown_level": "NORMAL",
+   "drawdown_pct": "0",
+   "experiment_id": "",
+   "gross_exposure": "0",
+   "policy_version": "phase3-risk-v1",
+   "reason_code": "RISK_APPROVED",
+   "reserved_capital": "2000.000",
+   "status": "APPROVE"
+  },
+  "reservations": {
+   "r1": [
+    "RESERVED",
+    "1000.0"
+   ]
+  },
+  "stats": {
+   "audit_events_written": 0,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 0,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 0,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 0,
+   "persistent_save_failures": 0,
+   "received": 0,
+   "rejected": 0,
+   "requests_claimed": 0,
+   "requests_completed": 0,
+   "requests_released": 0,
+   "validated": 0
+  }
+ },
+ "sell_full_exit_held": {
+  "admissions": [
+   "s1"
+  ],
+  "calls": [
+   {
+    "amount": 0.0,
+    "approved_quote_allocation": "D:1000.00",
+    "reduce_only": true,
+    "verdict": {
+     "approved": true,
+     "details": {
+      "instrument_rules_digest": "eef0e1808a3b2a3fe33b55cc25425a1d2eb430145fa5696cbda19d66fb821352",
+      "instrument_rules_source_version": "1790687644597"
+     },
+     "reason": "RISK_APPROVED"
+    }
+   }
+  ],
+  "errors": [],
+  "last_risk_decision": {
+   "approved": true,
+   "approved_allocation": "1000.00",
+   "available_capital": "7000.000",
+   "daily_realized_pnl": "0",
+   "drawdown_amount": "0",
+   "drawdown_level": "NORMAL",
+   "drawdown_pct": "0",
+   "experiment_id": "",
+   "gross_exposure": "1000.00",
+   "policy_version": "phase3-risk-v1",
+   "reason_code": "RISK_REDUCTION_APPROVED",
+   "reserved_capital": "2000.000",
+   "status": "APPROVE"
+  },
+  "reservations": {
+   "seed": [
+    "COMMITTED",
+    "1000.00"
+   ]
+  },
+  "stats": {
+   "audit_events_written": 4,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 1,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 1,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 1,
+   "persistent_save_failures": 0,
+   "received": 1,
+   "rejected": 0,
+   "requests_claimed": 1,
+   "requests_completed": 1,
+   "requests_released": 0,
+   "validated": 1
+  }
+ },
+ "sell_more_than_held": {
+  "admissions": [],
+  "calls": [
+   {
+    "amount": 50000.0,
+    "approved_quote_allocation": null,
+    "reduce_only": true,
+    "verdict": {
+     "approved": false,
+     "details": {
+      "approved": false,
+      "approved_allocation": "0",
+      "available_capital": "7000.000",
+      "daily_realized_pnl": "0",
+      "drawdown_amount": "0",
+      "drawdown_level": "NORMAL",
+      "drawdown_pct": "0",
+      "experiment_id": "",
+      "gross_exposure": "1000.00",
+      "policy_version": "phase3-risk-v1",
+      "reason_code": "INVALID_RISK_REDUCTION",
+      "reserved_capital": "2000.000",
+      "status": "REJECT"
+     },
+     "reason": "INVALID_RISK_REDUCTION",
+     "status": "REJECT"
+    }
+   }
+  ],
+  "errors": [],
+  "last_risk_decision": {
+   "approved": false,
+   "approved_allocation": "0",
+   "available_capital": "7000.000",
+   "daily_realized_pnl": "0",
+   "drawdown_amount": "0",
+   "drawdown_level": "NORMAL",
+   "drawdown_pct": "0",
+   "experiment_id": "",
+   "gross_exposure": "1000.00",
+   "policy_version": "phase3-risk-v1",
+   "reason_code": "INVALID_RISK_REDUCTION",
+   "reserved_capital": "2000.000",
+   "status": "REJECT"
+  },
+  "reservations": {
+   "seed": [
+    "COMMITTED",
+    "1000.00"
+   ]
+  },
+  "stats": {
+   "audit_events_written": 4,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 1,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 1,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 1,
+   "persistent_save_failures": 0,
+   "received": 1,
+   "rejected": 0,
+   "requests_claimed": 1,
+   "requests_completed": 1,
+   "requests_released": 0,
+   "validated": 1
+  }
+ },
+ "sell_partial_held": {
+  "admissions": [
+   "s2"
+  ],
+  "calls": [
+   {
+    "amount": 300.0,
+    "approved_quote_allocation": "D:300.0",
+    "reduce_only": true,
+    "verdict": {
+     "approved": true,
+     "details": {
+      "instrument_rules_digest": "eef0e1808a3b2a3fe33b55cc25425a1d2eb430145fa5696cbda19d66fb821352",
+      "instrument_rules_source_version": "1790687644597"
+     },
+     "reason": "RISK_APPROVED"
+    }
+   }
+  ],
+  "errors": [],
+  "last_risk_decision": {
+   "approved": true,
+   "approved_allocation": "300.0",
+   "available_capital": "7000.000",
+   "daily_realized_pnl": "0",
+   "drawdown_amount": "0",
+   "drawdown_level": "NORMAL",
+   "drawdown_pct": "0",
+   "experiment_id": "",
+   "gross_exposure": "1000.00",
+   "policy_version": "phase3-risk-v1",
+   "reason_code": "RISK_REDUCTION_APPROVED",
+   "reserved_capital": "2000.000",
+   "status": "APPROVE"
+  },
+  "reservations": {
+   "seed": [
+    "COMMITTED",
+    "1000.00"
+   ]
+  },
+  "stats": {
+   "audit_events_written": 4,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 1,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 1,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 1,
+   "persistent_save_failures": 0,
+   "received": 1,
+   "rejected": 0,
+   "requests_claimed": 1,
+   "requests_completed": 1,
+   "requests_released": 0,
+   "validated": 1
+  }
+ },
+ "unsized_buy": {
+  "admissions": [],
+  "calls": [
+   {
+    "amount": 0.0,
+    "approved_quote_allocation": null,
+    "reduce_only": false,
+    "verdict": {
+     "approved": false,
+     "details": {
+      "action": "BUY",
+      "symbol": "BTCUSDT"
+     },
+     "reason": "UNSIZED_REQUEST_REJECTED"
+    }
+   }
+  ],
+  "errors": [],
+  "last_risk_decision": null,
+  "reservations": {},
+  "stats": {
+   "audit_events_written": 0,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 0,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 0,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 0,
+   "persistent_save_failures": 0,
+   "received": 0,
+   "rejected": 0,
+   "requests_claimed": 0,
+   "requests_completed": 0,
+   "requests_released": 0,
+   "validated": 0
+  }
+ },
+ "unsized_sell_unheld": {
+  "admissions": [],
+  "calls": [
+   {
+    "amount": 0.0,
+    "approved_quote_allocation": null,
+    "reduce_only": false,
+    "verdict": {
+     "approved": false,
+     "details": {
+      "action": "SELL",
+      "symbol": "BTCUSDT"
+     },
+     "reason": "NO_POSITION_TO_SELL",
+     "status": "REJECT"
+    }
+   }
+  ],
+  "errors": [],
+  "last_risk_decision": null,
+  "reservations": {},
+  "stats": {
+   "audit_events_written": 0,
+   "audit_write_failures": 0,
+   "cached_results_returned": 0,
+   "duplicate_requests": 0,
+   "duplicate_requests_completed": 0,
+   "duplicate_requests_pending": 0,
+   "executed": 0,
+   "failed": 0,
+   "live_blocked": 0,
+   "paper_orders": 0,
+   "persistent_records_loaded": 0,
+   "persistent_records_saved": 0,
+   "persistent_save_failures": 0,
+   "received": 0,
+   "rejected": 0,
+   "requests_claimed": 0,
+   "requests_completed": 0,
+   "requests_released": 0,
+   "validated": 0
+  }
+ }
+}

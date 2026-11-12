@@ -413,3 +413,92 @@ def test_health_never_publishes_the_halt_reason(tmp_path: Path) -> None:
     assert report["healthy"] is False
     assert "EXEC-SECRET-0001" not in repr(report)
     assert "halt_reason" not in report
+
+
+# =====================================================================
+# Classified execution_halt_reason
+# =====================================================================
+
+
+def test_health_publishes_an_allowlisted_halt_reason_verbatim(
+    tmp_path: Path,
+) -> None:
+    """A known-safe constant code is published as-is."""
+
+    report = _application(
+        tmp_path,
+        StubMarketLoop(),
+        StubExecutionService(
+            running=True,
+            execution_halted=True,
+            recovery_required=True,
+            halt_reason="INSTRUMENT_RULES_UNAVAILABLE",
+        ),
+    ).health()
+
+    assert report["execution_halt_reason"] == "INSTRUMENT_RULES_UNAVAILABLE"
+
+
+def test_health_classifies_an_unrecognized_halt_reason_as_unclassified(
+    tmp_path: Path,
+) -> None:
+    """Free-form diagnostic text collapses to the generic safe code.
+
+    This is the same scenario test_health_never_publishes_the_halt_reason
+    exercises, asserted from the other direction: the classified field must
+    carry a safe, generic value rather than silently being absent.
+    """
+
+    from core.application import UNCLASSIFIED_EXECUTION_HALT_REASON
+
+    report = _application(
+        tmp_path,
+        StubMarketLoop(),
+        StubExecutionService(
+            running=True,
+            execution_halted=True,
+            recovery_required=True,
+            halt_reason=(
+                "FINANCIAL_APPLIED_AUTHORITY_CORRUPT: "
+                "execution_id=EXEC-SECRET-0001 line=42"
+            ),
+        ),
+    ).health()
+
+    assert report["execution_halt_reason"] == UNCLASSIFIED_EXECUTION_HALT_REASON
+    assert "EXEC-SECRET-0001" not in repr(report)
+
+
+def test_health_reports_no_halt_reason_when_not_halted(
+    tmp_path: Path,
+) -> None:
+    report = _application(
+        tmp_path,
+        StubMarketLoop(),
+        StubExecutionService(running=True),
+    ).health()
+
+    assert report["execution_halted"] is False
+    assert report["execution_recovery_required"] is False
+    assert report["execution_halt_reason"] is None
+
+
+def test_health_classifies_a_non_string_halt_reason_as_unclassified(
+    tmp_path: Path,
+) -> None:
+    """A malformed halt_reason (wrong type) must not be echoed or crash."""
+
+    from core.application import UNCLASSIFIED_EXECUTION_HALT_REASON
+
+    report = _application(
+        tmp_path,
+        StubMarketLoop(),
+        StubExecutionService(
+            running=True,
+            execution_halted=True,
+            recovery_required=True,
+            halt_reason={"unexpected": "shape"},
+        ),
+    ).health()
+
+    assert report["execution_halt_reason"] == UNCLASSIFIED_EXECUTION_HALT_REASON

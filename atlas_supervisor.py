@@ -52,18 +52,64 @@ new process group has Ctrl+C handling disabled, so the console event reaches
 this supervisor and not Atlas. Left alone that would orphan a running
 runtime, so the stop path below always signals the child explicitly.
 
-What this supervisor does not watch
------------------------------------
-It watches the child's *exit*, not its health. A child that hangs without
-exiting is not detected here and will not be restarted. Closing that would
-mean polling the operator surface, which is a different design with its own
-configuration and failure modes; it is deliberately not smuggled in.
+Hung-child detection
+--------------------
+A child that is alive but stuck - not exiting, not ticking its own main
+loop - is detected through a heartbeat file, not by polling the operator
+surface (that would pull an HTTP/domain dependency into a module that
+otherwise imports nothing from Atlas). ``main.AtlasProcess.run_forever``
+overwrites the file once per tick when it is told where to write it (see
+``ENV_HEARTBEAT_FILE`` below); this supervisor watches only the file's
+mtime, which keeps the isolation this module's docstring describes above
+intact - it never reads the file's contents, never imports anything to
+interpret it, and the detection is bare process/thread liveness, not a
+judgement about trading progress (that already belongs to MarketLoop's own
+staleness reporting and deliberately never gates health()). It proves only
+that the child's main thread is alive; progress-based liveness is a
+deliberately deferred, owner-accepted limitation.
+
+The mtime is only ever compared with an earlier mtime, for *change*, and
+never with a clock. A heartbeat counts as seen when the mtime differs from
+the snapshot taken just before the child was launched; every age this
+module computes is on the monotonic clock, measured from the moment such a
+change was observed. Two consequences follow, and both are the point:
+
+* A heartbeat file left behind by an earlier run can never make a new
+  child look alive (or, once its mtime ages, look hung): it is deleted
+  best-effort before each launch, and if that delete fails, its unchanged
+  mtime still does not count.
+* A wall-clock jump in either direction cannot cause a kill. The child
+  stamps the file on the wall clock, but only the fact that the stamp
+  changed is used, and "how long ago" is measured on the monotonic clock.
+
+A child that has produced no heartbeat is STARTING inside
+``startup_grace_seconds`` (nothing is done), then NO_HEARTBEAT_YET until
+``first_heartbeat_deadline_seconds`` (one warning, no kill), and past that
+deadline it is stopped as hung at startup. Once a heartbeat has been seen
+the child is RUNNING, and it is stopped as hung only when no further
+change has been observed for ``stale_after_seconds``.
+
+The heartbeat root is ``ATLAS_LOG_DIRECTORY`` (ADR-0007's off-OneDrive
+telemetry root), read directly rather than imported from
+``core.application.resolve_log_directory`` - the same "reads its own copy
+of the environment, imports nothing from Atlas" contract as the rest of
+this module. An unset or invalid value disables hung-child detection
+entirely rather than failing the supervisor: unlike the durable state
+roots, a missing heartbeat root costs nothing but this one optional check,
+so it fails open, not closed - loudly, with a WARNING naming which case
+applies.
+
+A detected hang is stopped exactly like a real exit would be - through
+``stop_child()`` - and then folded into the same restart bookkeeping as an
+abnormal exit, so the backoff/give-up policy above applies to a hang
+exactly as it already does to a crash.
 
 ============================================================
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import signal
@@ -93,11 +139,33 @@ CHILD_SCRIPT = REPOSITORY_ROOT / "atlas_service.py"
 # operator-requested shutdown into an infinite loop.
 CLEAN_EXIT_CODE = 0
 
+# Exit codes main.py uses for conditions a restart cannot fix: corrupted
+# durable state (INTEGRITY_HALT) and another instance already running on
+# the same state root (ALREADY_RUNNING). Mirrors main.py; tests pin both.
+INTEGRITY_HALT_EXIT_CODE = 75
+ALREADY_RUNNING_EXIT_CODE = 76
+NO_RESTART_EXIT_CODES = frozenset(
+    {INTEGRITY_HALT_EXIT_CODE, ALREADY_RUNNING_EXIT_CODE}
+)
+
 # Provenance handed to the child. Read back by AtlasApplication.health(), so
 # an operator can see that Atlas is supervised and how many times this
 # supervisor has already restarted it.
 ENV_EPOCH = "ATLAS_SUPERVISOR_EPOCH"
 ENV_RESTART_COUNT = "ATLAS_SUPERVISOR_RESTART_COUNT"
+
+# Told to the child only when hung-child detection is active, so
+# main.AtlasProcess knows where to write its liveness heartbeat. Absent
+# means "no heartbeat file configured" for both sides, independently -
+# the child then writes nothing and this supervisor never checks staleness.
+ENV_HEARTBEAT_FILE = "ATLAS_SUPERVISOR_HEARTBEAT_FILE"
+
+# Same string as core.application.LOG_DIRECTORY_ENV, defined independently
+# here rather than imported - see this module's docstring on why it reads
+# its own copy of the environment instead of depending on Atlas.
+LOG_DIRECTORY_ENV = "ATLAS_LOG_DIRECTORY"
+
+HEARTBEAT_FILE_NAME = "supervisor_heartbeat.json"
 
 # Windows-only, and both absent on POSIX. Resolved here so the module stays
 # importable anywhere while the behaviour below remains Windows-specific.
@@ -205,6 +273,257 @@ class RestartPolicy:
 
 
 # ============================================================
+# HEARTBEAT POLICY
+# ============================================================
+
+
+@dataclass(frozen=True)
+class HeartbeatPolicy:
+    """When a live child with a stale heartbeat counts as hung.
+
+    Pure decision logic with no clock and no I/O, same testing rationale as
+    RestartPolicy above.
+    """
+
+    # Comfortably above the child's 1s tick (main.AtlasProcess.run_forever)
+    # so ordinary scheduler jitter or a slow GC pause is never mistaken for
+    # a hang. Short enough that a genuine deadlock is still caught well
+    # inside a single operator shift.
+    stale_after_seconds: float = 30.0
+
+    # Startup connects to an exchange and loads every durable store before
+    # run_forever's loop ever ticks once - the same cost
+    # GRACEFUL_STOP_TIMEOUT_SECONDS's comment describes for shutdown. A
+    # child with no heartbeat yet is left entirely alone for this long
+    # after launch (monotonic), so a slow-but-healthy startup is never
+    # mistaken for a hang.
+    startup_grace_seconds: float = 120.0
+
+    # Past the grace a child with no heartbeat yet is only warned about;
+    # past this (also measured from launch) it is stopped as hung at
+    # startup. The gap is deliberate: a slow start is far more likely than
+    # a hung one, and a wrong kill here feeds the restart budget.
+    first_heartbeat_deadline_seconds: float = 300.0
+
+    # How often the heartbeat file is actually re-read. Must not be checked
+    # on every 0.25s poll tick; that would mean nothing but wasted stat()
+    # calls between real staleness verdicts.
+    check_interval_seconds: float = 5.0
+
+    def __post_init__(self) -> None:
+        for name, value in (
+            ("stale_after_seconds", self.stale_after_seconds),
+            ("startup_grace_seconds", self.startup_grace_seconds),
+            (
+                "first_heartbeat_deadline_seconds",
+                self.first_heartbeat_deadline_seconds,
+            ),
+            ("check_interval_seconds", self.check_interval_seconds),
+        ):
+            if value <= 0:
+                raise ValueError(f"{name} must be positive")
+
+        if self.check_interval_seconds >= self.stale_after_seconds:
+            raise ValueError(
+                "check_interval_seconds must be smaller than "
+                "stale_after_seconds, or a hang could sit undetected for "
+                "an extra full staleness window"
+            )
+
+        if (
+            self.first_heartbeat_deadline_seconds
+            <= self.startup_grace_seconds
+        ):
+            raise ValueError(
+                "first_heartbeat_deadline_seconds must exceed "
+                "startup_grace_seconds, or a slow start is killed without "
+                "ever being warned about"
+            )
+
+    def is_stale(self, *, now: float, heartbeat_at: float) -> bool:
+        """True when a heartbeat last seen at ``heartbeat_at`` is stale.
+
+        Both times are monotonic seconds: ``heartbeat_at`` is when this
+        supervisor observed the heartbeat file's mtime *change*, never the
+        mtime itself, which is stamped on the wall clock and has no fixed
+        relationship to the monotonic one.
+        """
+
+        return (now - heartbeat_at) >= self.stale_after_seconds
+
+    def startup_phase(self, *, since_launch: float) -> str:
+        """Where a child that has produced no heartbeat yet stands.
+
+        ``since_launch`` is monotonic seconds since the child was started.
+        Only meaningful before a first heartbeat has been seen; after that
+        the child is RUNNING and is judged by is_stale() alone.
+        """
+
+        if since_launch < self.startup_grace_seconds:
+            return PHASE_STARTING
+
+        if since_launch < self.first_heartbeat_deadline_seconds:
+            return PHASE_NO_HEARTBEAT_YET
+
+        return PHASE_HUNG_AT_STARTUP
+
+
+# The heartbeat states a live child moves through. Plain strings so a log
+# line or a test can name them directly.
+PHASE_STARTING = "STARTING"
+PHASE_NO_HEARTBEAT_YET = "NO_HEARTBEAT_YET"
+PHASE_HUNG_AT_STARTUP = "HUNG_AT_STARTUP"
+PHASE_RUNNING = "RUNNING"
+PHASE_STALE = "STALE"
+
+# Why hung-child detection is off, when it is. Named in the startup WARNING
+# so an operator can tell a forgotten variable from a mistyped one.
+HEARTBEAT_DISABLED_UNSET = "UNSET"
+HEARTBEAT_DISABLED_RELATIVE = "RELATIVE"
+HEARTBEAT_DISABLED_NOT_A_DIRECTORY = "NOT_A_DIRECTORY"
+HEARTBEAT_DISABLED_BY_CALLER = "DISABLED_BY_CALLER"
+
+
+@dataclass(frozen=True)
+class HeartbeatResolution:
+    """The heartbeat file to watch, or why there is none."""
+
+    path: Path | None
+    disabled_reason: str | None = None
+    # The directory the environment named, as resolved, when it was
+    # rejected - for the WARNING, so the operator sees what was checked.
+    rejected_directory: Path | None = None
+
+
+def _resolve_heartbeat_file() -> HeartbeatResolution:
+    """Return this run's heartbeat file, or why the check is disabled.
+
+    Deliberately fails open: an unset or unusable ATLAS_LOG_DIRECTORY costs
+    nothing but this one optional check, unlike the durable state roots in
+    core.application, where the same situation must fail closed. Nothing is
+    created here; the child creates the file itself on its first tick.
+    """
+
+    raw = os.environ.get(LOG_DIRECTORY_ENV)
+
+    if not raw or not raw.strip():
+        return HeartbeatResolution(
+            path=None,
+            disabled_reason=HEARTBEAT_DISABLED_UNSET,
+        )
+
+    directory = Path(raw.strip()).expanduser()
+
+    if not directory.is_absolute():
+        return HeartbeatResolution(
+            path=None,
+            disabled_reason=HEARTBEAT_DISABLED_RELATIVE,
+            rejected_directory=directory.absolute(),
+        )
+
+    if not directory.is_dir():
+        return HeartbeatResolution(
+            path=None,
+            disabled_reason=HEARTBEAT_DISABLED_NOT_A_DIRECTORY,
+            rejected_directory=directory,
+        )
+
+    return HeartbeatResolution(path=directory / HEARTBEAT_FILE_NAME)
+
+
+def _read_heartbeat_mtime(path: Path) -> int | None:
+    """Return a heartbeat file's mtime in nanoseconds, or None if unreadable.
+
+    The value is only ever compared with an earlier one for equality, never
+    with a clock, so the integer nanosecond form is used: exact, with no
+    float rounding that could make two distinct writes compare equal.
+
+    None reads as "nothing observed" - the same "unknown never flips the
+    verdict on its own" convention AtlasApplication.health() already
+    applies to thread liveness - never as evidence of a heartbeat.
+    """
+
+    try:
+        return path.stat().st_mtime_ns
+    except OSError:
+        return None
+
+
+# Phase-2 D1: a stalled MarketLoop (process alive, loop not progressing) is
+# only OBSERVED - logged on each transition - and never stops the child.
+# Moving it to ENFORCE is a separate owner decision: a restart cannot fix a
+# stall caused by durable-state recovery, and a wrong kill feeds the
+# restart budget.
+LOOP_STALL_POLICY = "OBSERVE"
+
+
+def _read_heartbeat_payload(path: Path) -> dict | None:
+    """Return the heartbeat JSON object, or None when unreadable/invalid."""
+
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+    return payload if isinstance(payload, dict) else None
+
+
+def loop_stalled(payload: dict | None) -> bool | None:
+    """True/False from the heartbeat's loop progress; None when unknown."""
+
+    if not isinstance(payload, dict):
+        return None
+
+    from core.system_health import stall_after_seconds
+
+    age = payload.get("loop_progress_age_seconds")
+
+    if isinstance(age, bool) or not isinstance(age, (int, float)):
+        return None
+
+    return age > stall_after_seconds(payload.get("loop_interval_seconds"))
+
+
+def _discard_heartbeat_file(path: Path) -> None:
+    """Delete a heartbeat file left by an earlier run. Raises OSError."""
+
+    path.unlink(missing_ok=True)
+
+
+# Marks a constructor argument as "not provided" where None is already a
+# meaningful, distinct value the caller can pass explicitly (see
+# ProcessSupervisor.__init__'s heartbeat_file parameter).
+_UNSET = object()
+
+
+@dataclass(frozen=True)
+class _Hung:
+    """_await_exit's verdict for a live child judged hung.
+
+    Distinct from both an int exit code and None (which already means
+    "operator stop requested").
+    """
+
+    # PHASE_HUNG_AT_STARTUP or PHASE_STALE.
+    phase: str
+
+    # Monotonic seconds since the last heartbeat change was seen, or None
+    # when none was ever seen (hung at startup).
+    heartbeat_age: float | None
+
+    since_launch: float
+
+# A synthetic exit code fed into the same restart bookkeeping a real
+# abnormal exit uses. Never CLEAN_EXIT_CODE, and chosen distinct from any
+# value a real Windows process reports (always >= 0) so a log line
+# inspecting the code can tell the two apart.
+_HUNG_EXIT_CODE = -1
+
+# How often a still-unreadable heartbeat file is warned about again.
+UNREADABLE_REWARN_SECONDS = 300.0
+
+
+# ============================================================
 # SUPERVISOR
 # ============================================================
 
@@ -227,6 +546,11 @@ class ProcessSupervisor:
         launch: Callable[[dict[str, str]], Any] | None = None,
         monotonic: Callable[[], float] | None = None,
         epoch: str | None = None,
+        heartbeat_policy: HeartbeatPolicy | None = None,
+        heartbeat_file: Path | None = _UNSET,
+        heartbeat_mtime: Callable[[Path], Any] | None = None,
+        heartbeat_discard: Callable[[Path], None] | None = None,
+        heartbeat_payload: Callable[[Path], Any] | None = None,
     ) -> None:
         self.policy = policy if policy is not None else RestartPolicy()
         self.launch = launch if launch is not None else _launch_atlas_service
@@ -237,6 +561,46 @@ class ProcessSupervisor:
         self.child: Any | None = None
         self.restart_count = 0
         self.stop_reason = ""
+
+        self.heartbeat_policy = (
+            heartbeat_policy if heartbeat_policy is not None else HeartbeatPolicy()
+        )
+
+        # heartbeat_file has three distinct states an ordinary "or a
+        # default" default cannot express: not provided (resolve it from
+        # ATLAS_LOG_DIRECTORY, the real production behaviour), explicitly
+        # None (detection off, what every existing scripted-clock test
+        # wants), or an explicit path (what a heartbeat-specific test
+        # wants). _UNSET is the only thing that triggers resolution.
+        if heartbeat_file is _UNSET:
+            self.heartbeat_resolution = _resolve_heartbeat_file()
+        elif heartbeat_file is None:
+            self.heartbeat_resolution = HeartbeatResolution(
+                path=None,
+                disabled_reason=HEARTBEAT_DISABLED_BY_CALLER,
+            )
+        else:
+            self.heartbeat_resolution = HeartbeatResolution(path=heartbeat_file)
+
+        self.heartbeat_file: Path | None = self.heartbeat_resolution.path
+
+        # The mtime reader's values are only compared for change, never
+        # against any clock - see this module's docstring.
+        self.heartbeat_payload = (
+            heartbeat_payload
+            if heartbeat_payload is not None
+            else _read_heartbeat_payload
+        )
+        # Last observed loop-stall verdict (Phase-2 D1, OBSERVE only).
+        self.loop_stall_observed: bool | None = None
+        self.heartbeat_mtime = (
+            heartbeat_mtime if heartbeat_mtime is not None else _read_heartbeat_mtime
+        )
+        self.heartbeat_discard = (
+            heartbeat_discard
+            if heartbeat_discard is not None
+            else _discard_heartbeat_file
+        )
 
         # Doubles as the backoff sleep, so an operator stop during a
         # five-minute wait is acted on immediately rather than five minutes
@@ -308,6 +672,9 @@ class ProcessSupervisor:
         environment[ENV_EPOCH] = self.epoch
         environment[ENV_RESTART_COUNT] = str(self.restart_count)
 
+        if self.heartbeat_file is not None:
+            environment[ENV_HEARTBEAT_FILE] = str(self.heartbeat_file)
+
         return environment
 
     def _start_child(self) -> Any:
@@ -325,16 +692,60 @@ class ProcessSupervisor:
 
         return child
 
-    def _await_exit(self, child: Any) -> int | None:
-        """Wait for the child to exit, or for a stop to be requested.
+    def _prepare_heartbeat(self) -> Any:
+        """Clear the previous run's heartbeat and snapshot what remains.
 
-        Returns the child's exit code, or None when a stop interrupted the
-        wait - the caller stops the child itself in that case.
+        Called immediately before each launch when detection is active.
+        The delete is best-effort: a heartbeat left behind by an earlier
+        run would otherwise make a healthy-but-slow new child look alive
+        and then hung. If it cannot be deleted, the snapshot returned here
+        still neutralises it - only an mtime that *differs* from this
+        snapshot counts as a heartbeat from the new child.
+        """
+
+        try:
+            self.heartbeat_discard(self.heartbeat_file)
+        except OSError as exc:
+            logger.warning(
+                "Could not delete the previous heartbeat file %s (%s); "
+                "continuing - its unchanged mtime will not count as a "
+                "heartbeat from the new child",
+                self.heartbeat_file,
+                type(exc).__name__,
+            )
+
+        return self.heartbeat_mtime(self.heartbeat_file)
+
+    def _await_exit(
+        self,
+        child: Any,
+        started_at: float,
+        heartbeat_baseline: Any = None,
+    ) -> int | None | _Hung:
+        """Wait for the child to exit, to be requested to stop, or to hang.
+
+        Returns the child's exit code, None when a stop interrupted the
+        wait (the caller stops the child itself in that case), or a _Hung
+        verdict when a configured heartbeat says the live child is hung.
 
         Polling rather than a blocking wait: on Windows a blocking wait is
         not interrupted by a console control event, so a blocked supervisor
         would ignore the operator's Ctrl+C until Atlas happened to exit.
+
+        ``started_at`` is self.monotonic() at launch, and every age below is
+        on that same clock. ``heartbeat_baseline`` is the heartbeat mtime
+        snapshotted just before launch (see _prepare_heartbeat); it is only
+        ever compared for change.
         """
+
+        policy = self.heartbeat_policy
+
+        last_mtime = heartbeat_baseline
+        last_change_at: float | None = None
+        last_check_at: float | None = None
+        warned_no_heartbeat = False
+        warned_unreadable = False
+        unreadable_warned_at: float | None = None
 
         while True:
             if self._stop_event.is_set():
@@ -345,9 +756,122 @@ class ProcessSupervisor:
             if returncode is not None:
                 return int(returncode)
 
+            if self.heartbeat_file is not None:
+                now = self.monotonic()
+
+                due_for_check = (
+                    last_check_at is None
+                    or now - last_check_at >= policy.check_interval_seconds
+                )
+
+                if due_for_check:
+                    last_check_at = now
+                    since_launch = now - started_at
+
+                    mtime = self.heartbeat_mtime(self.heartbeat_file)
+
+                    if mtime is not None and mtime != last_mtime:
+                        if last_change_at is None:
+                            logger.info(
+                                "First heartbeat from Atlas after %.1fs",
+                                since_launch,
+                            )
+                        elif warned_unreadable:
+                            logger.info(
+                                "Heartbeat file readable again"
+                            )
+
+                        last_mtime = mtime
+                        last_change_at = now
+                        warned_unreadable = False
+                        unreadable_warned_at = None
+
+                    if last_change_at is None:
+                        phase = policy.startup_phase(
+                            since_launch=since_launch,
+                        )
+
+                        if phase == PHASE_HUNG_AT_STARTUP:
+                            return _Hung(
+                                phase=PHASE_HUNG_AT_STARTUP,
+                                heartbeat_age=None,
+                                since_launch=since_launch,
+                            )
+
+                        if (
+                            phase == PHASE_NO_HEARTBEAT_YET
+                            and not warned_no_heartbeat
+                        ):
+                            warned_no_heartbeat = True
+
+                            logger.warning(
+                                "No heartbeat from Atlas yet after %.0fs "
+                                "(startup_grace=%.0fs); it will be stopped "
+                                "as hung at startup if none arrives by "
+                                "%.0fs after launch",
+                                since_launch,
+                                policy.startup_grace_seconds,
+                                policy.first_heartbeat_deadline_seconds,
+                            )
+
+                    elif mtime is None:
+                        # RUNNING, but the file cannot be read right now.
+                        # Unknown is not evidence of a hang: no verdict
+                        # until it can be read again.
+                        # Re-announced every UNREADABLE_REWARN_SECONDS so
+                        # detection cannot stay paused behind one old line.
+                        if (
+                            unreadable_warned_at is None
+                            or now - unreadable_warned_at
+                            >= UNREADABLE_REWARN_SECONDS
+                        ):
+                            warned_unreadable = True
+                            unreadable_warned_at = now
+
+                            logger.warning(
+                                "Heartbeat file %s unreadable; hung-child "
+                                "detection paused until it can be read",
+                                self.heartbeat_file,
+                            )
+
+                    elif policy.is_stale(
+                        now=now,
+                        heartbeat_at=last_change_at,
+                    ):
+                        return _Hung(
+                            phase=PHASE_STALE,
+                            heartbeat_age=now - last_change_at,
+                            since_launch=since_launch,
+                        )
+
+                    else:
+                        self._observe_loop_stall()
+
             self._stop_event.wait(
                 timeout=POLL_INTERVAL_SECONDS
             )
+
+    def _observe_loop_stall(self) -> None:
+        """Log loop-stall transitions; never stops the child (OBSERVE)."""
+
+        try:
+            stalled = loop_stalled(self.heartbeat_payload(self.heartbeat_file))
+        except Exception:
+            stalled = None
+
+        if stalled is None or stalled == self.loop_stall_observed:
+            return
+
+        self.loop_stall_observed = stalled
+
+        if stalled:
+            logger.warning(
+                "Atlas process is alive but MarketLoop is not progressing "
+                "(STALLED); policy=%s - not restarting",
+                LOOP_STALL_POLICY,
+            )
+        else:
+            logger.info("MarketLoop progressing again")
 
     def stop_child(self, child: Any) -> int | None:
         """Stop the child gracefully, escalating only if it will not go.
@@ -478,6 +1002,26 @@ class ProcessSupervisor:
             self.epoch,
         )
 
+        if self.heartbeat_file is not None:
+            logger.info(
+                "Hung-child detection active | heartbeat_file=%s "
+                "stale_after=%ss startup_grace=%ss "
+                "first_heartbeat_deadline=%ss",
+                self.heartbeat_file,
+                self.heartbeat_policy.stale_after_seconds,
+                self.heartbeat_policy.startup_grace_seconds,
+                self.heartbeat_policy.first_heartbeat_deadline_seconds,
+            )
+        else:
+            logger.warning(
+                "Hung-child detection is OFF | reason=%s %s=%s; Atlas will "
+                "still be restarted when it exits, but a hang will NOT be "
+                "detected",
+                self.heartbeat_resolution.disabled_reason,
+                LOG_DIRECTORY_ENV,
+                self.heartbeat_resolution.rejected_directory,
+            )
+
         try:
             return self._supervise()
         finally:
@@ -489,11 +1033,21 @@ class ProcessSupervisor:
         attempt = 0
 
         while True:
+            heartbeat_baseline = (
+                self._prepare_heartbeat()
+                if self.heartbeat_file is not None
+                else None
+            )
+
             child = self._start_child()
 
             started_at = self.monotonic()
 
-            returncode = self._await_exit(child)
+            returncode = self._await_exit(
+                child,
+                started_at,
+                heartbeat_baseline,
+            )
 
             ran_for = self.monotonic() - started_at
 
@@ -512,6 +1066,32 @@ class ProcessSupervisor:
 
                 return 0
 
+            was_hung = isinstance(returncode, _Hung)
+
+            if was_hung:
+                if returncode.phase == PHASE_HUNG_AT_STARTUP:
+                    logger.critical(
+                        "Atlas child hung at startup: no heartbeat at all "
+                        "within %.0fs of launch (policy "
+                        "first_heartbeat_deadline=%.0fs); stopping it and "
+                        "treating it as an abnormal exit",
+                        returncode.since_launch,
+                        self.heartbeat_policy.first_heartbeat_deadline_seconds,
+                    )
+                else:
+                    logger.critical(
+                        "Atlas child unresponsive: no heartbeat for %.0fs "
+                        "(policy stale_after=%.0fs) after %.1fs of runtime; "
+                        "stopping it and treating it as an abnormal exit",
+                        returncode.heartbeat_age,
+                        self.heartbeat_policy.stale_after_seconds,
+                        returncode.since_launch,
+                    )
+
+                self.stop_child(child)
+
+                returncode = _HUNG_EXIT_CODE
+
             self.child = None
 
             if returncode == CLEAN_EXIT_CODE:
@@ -522,13 +1102,30 @@ class ProcessSupervisor:
 
                 return 0
 
-            logger.error(
-                "Atlas exited abnormally | exit_code=%s after %.1fs",
-                returncode,
-                ran_for,
-            )
+            if returncode in NO_RESTART_EXIT_CODES:
+                logger.critical(
+                    "Atlas exited with exit_code=%s (%s); not restarting. "
+                    "A restart cannot fix this - it needs an operator.",
+                    returncode,
+                    "state integrity halt"
+                    if returncode == INTEGRITY_HALT_EXIT_CODE
+                    else "another Atlas instance is running",
+                )
 
-            if self.policy.resets_counter(ran_for):
+                return int(returncode)
+
+            if not was_hung:
+                logger.error(
+                    "Atlas exited abnormally | exit_code=%s after %.1fs",
+                    returncode,
+                    ran_for,
+                )
+
+            # A hang is never a healthy run, however long the child lived
+            # before hanging: letting it reset the counter would restart a
+            # process that keeps hanging late forever. Only a run that ended
+            # on its own may forgive earlier attempts.
+            if not was_hung and self.policy.resets_counter(ran_for):
                 if attempt:
                     logger.info(
                         "Atlas had run %.1fs (>= %.0fs); "

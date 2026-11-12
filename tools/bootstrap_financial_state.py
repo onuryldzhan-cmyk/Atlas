@@ -128,6 +128,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--verify-only", action="store_true",
         help="Validate existing state only. Creates and modifies nothing.",
     )
+    parser.add_argument(
+        "--leverage", type=int, choices=range(1, 6), default=1,
+        help="Account leverage of the financial book (Task 025): 1 = the cash book (default); "
+             "FOREX uses its pinned leverage, 2.",
+    )
     return parser
 
 
@@ -193,6 +198,7 @@ def main(argv: list[str] | None = None) -> int:
             policy_version=policy_version,
             today_utc=arguments.today_utc,
             verify_only=arguments.verify_only,
+            leverage=arguments.leverage,
         )
     except ValueError as exc:
         parser.error(sanitize_sensitive_text(str(exc)))

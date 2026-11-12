@@ -48,15 +48,16 @@ Atlas Brain / Decision Engine
 from __future__ import annotations
 
 from contextlib import nullcontext
+from dataclasses import dataclass
 import logging
-from decimal import ROUND_DOWN, ROUND_HALF_EVEN, Decimal, InvalidOperation, localcontext
+from decimal import ROUND_DOWN, ROUND_HALF_EVEN, ROUND_UP, Decimal, InvalidOperation, localcontext
 import threading
 import time
 import uuid
 
 from datetime import UTC, date, datetime
 from enum import Enum
-from typing import Any, Mapping
+from typing import Any, Mapping, cast
 
 from atlas_security import sanitize_sensitive_data
 
@@ -77,11 +78,16 @@ from core.execution_models import (
     ExecutionRequest,
     ExecutionResult,
     normalize_risk,
+    opens_risk,
+    reduces_risk,
 )
 from core.execution_portfolio_foundation import (
     SETTLEMENT_CONTEXT_PRECISION,
     ExecutionPortfolioFoundation,
     mint_long_position_id,
+    mint_position_id,
+    position_side,
+    position_unrealized,
 )
 from core.fee_accounting import FeeNormalizer, FeeRejected
 from core.instrument_rules import (
@@ -110,6 +116,12 @@ from data_layer.runtime_safety import (
 )
 
 
+# Registry v5.23 (owner decision: 0.1% per side, the public Binance spot base
+# rate; the owner's account tier is UNKNOWN). Pinned here, not configurable:
+# changing it is a governed change. Applies to paper fills only.
+PAPER_FEE_RATE_PER_SIDE = Decimal("0.001")
+PAPER_FEE_QUANTUM = Decimal("0.00000001")
+
 logger = logging.getLogger(
     "AtlasAI.ExecutionManager"
 )
@@ -127,6 +139,36 @@ class ExecutionResetRefusedError(RuntimeError):
     book, so ``reset()`` refuses rather than proceeding. The message is a
     fixed reason token (never a request_id, execution_id, or state payload).
     """
+
+
+class _Continue:
+    """Marker a ``_decision_*`` phase returns to let the run go on (T-0013 audit, LOW).
+
+    ``None`` is deliberately not the marker: if a terminal result were ever None
+    (e.g. a patched ``reject``), the single original body returned it; with None
+    as the marker the split would have fallen through to execution (fail-open).
+    """
+
+    __slots__ = ()
+
+
+_CONTINUE = _Continue()
+
+
+@dataclass
+class _DecisionRun:
+    """State one ``ExecutionManager._execute_decision`` call threads through its phases (T-0013).
+
+    ``request_claimed`` and ``last_audit_event_id`` are written by the phases
+    exactly where the original single body assigned its locals, so the
+    ``except`` and ``finally`` clauses observe the same values.
+    """
+
+    started_at: float
+    request: ExecutionRequest | None = None
+    request_id: str | None = None
+    request_claimed: bool = False
+    last_audit_event_id: str | None = None
 
 
 class ExecutionManager:
@@ -208,6 +250,11 @@ class ExecutionManager:
         "ERROR",
     }
 
+
+    # Registry v5.23: class default so instances built without __init__
+    # (e.g. test doubles via __new__) keep the historical fee-free paper path.
+    paper_fee_rate: Decimal = Decimal("0")
+
     def __init__(
         self,
         capital_manager: Any | None = None,
@@ -246,7 +293,15 @@ class ExecutionManager:
         instrument_rules: InstrumentRuleset | None = None,
         instrument_rule_freshness: VenueRuleFreshnessService | None = None,
         configured_symbols: list[str] | tuple[str, ...] | None = None,
+        paper_fee_rate: Decimal = Decimal("0"),
     ) -> None:
+        # Registry v5.23: per-side paper fee rate. Default 0 keeps the
+        # historical fee-free behaviour for any directly built manager; the
+        # composition root passes PAPER_FEE_RATE_PER_SIDE.
+        paper_fee_rate = Decimal(str(paper_fee_rate))
+        if not paper_fee_rate.is_finite() or paper_fee_rate < 0 or paper_fee_rate >= 1:
+            raise ValueError("paper_fee_rate must be in [0, 1)")
+        self.paper_fee_rate = paper_fee_rate
         # Retained for status/compatibility reporting only. No execution path
         # reads it: it is never asked to size an allocation and never asked to
         # approve a request. Removing the parameter outright would break every
@@ -260,6 +315,15 @@ class ExecutionManager:
         self.reservation_ledger = reservation_ledger
         self.risk_state_store = risk_state_store
         self.portfolio_foundation = portfolio_foundation
+        # S1 step 2 (owner approved option B, 2026-10-01): optional sidecar of
+        # the bucket each position was opened under. None keeps every
+        # exposure at risk_bucket=None (UNKNOWN), exactly as before.
+        self.position_risk_buckets: Any | None = None
+        # Order state machine stage 1 (observe only), default OFF.
+        self.order_lifecycle_observe: bool = False
+        self.order_lifecycle_violations: list[dict[str, str]] = []
+        # Audit F-B: held coins with no fresh price (F-3 then refuses new risk).
+        self.unpriced_held_symbols: list[str] = []
 
         # Block 5D: the sole venue instrument-precision authority. This
         # manager consumes it but never constructs, mutates, or invents an
@@ -317,6 +381,10 @@ class ExecutionManager:
         self.live_execution_enabled = bool(
             live_execution_enabled
         )
+
+        # Phase-2 G1: set by main.py from the policy manifest check. None means
+        # no block; a reason string refuses new BUYs (reductions unaffected).
+        self.policy_manifest_block: str | None = None
 
         self.running = False
 
@@ -471,6 +539,47 @@ class ExecutionManager:
             reason = foundation.diagnostics().get("reason")
             return False, str(reason or "FINANCIAL_STATE_RECOVERY_REQUIRED")
         return True, None
+
+    def set_policy_manifest_block(self, reason: str | None) -> None:
+        """Phase-2 G1: block (reason) or unblock (None) new risk for a manifest result.
+
+        Only ever a block on new BUYs; it changes no other setting.
+        """
+        if reason is not None and (not isinstance(reason, str) or not reason.strip()):
+            raise ValueError("policy manifest block reason must be a non-empty string or None")
+        self.policy_manifest_block = reason
+
+    def audit_persistence_state(self) -> str:
+        """Phase-2 A3: HEALTHY, DEGRADED or RECOVERY_REQUIRED.
+
+        Combines this manager's own incident state with the store's
+        durable-append state (A2): a poisoned writer or an unresolved
+        recovery marker is RECOVERY_REQUIRED, any failed append DEGRADED.
+        Unknown is never HEALTHY: a store that cannot report is DEGRADED.
+        """
+        if not getattr(self, "audit_enabled", False):
+            return "DISABLED"
+        store = getattr(self, "audit_store", None)
+        if store is None or not hasattr(store, "persistence_state"):
+            # An injected store without the A2 contract reports only through
+            # this manager's own incident state.
+            store_state = "AUDIT_HEALTHY"
+        else:
+            try:
+                store_state = str(store.persistence_state())
+            except Exception:
+                # Audit 2026-10-03 F3: any failure inside a real
+                # persistence_state() (AttributeError included) is unknown,
+                # and unknown is never HEALTHY.
+                return "DEGRADED"
+        if store_state == "AUDIT_RECOVERY_REQUIRED":
+            return "RECOVERY_REQUIRED"
+        if (
+            store_state != "AUDIT_HEALTHY"
+            or getattr(self, "audit_runtime_state", "HEALTHY") != "HEALTHY"
+        ):
+            return "DEGRADED"
+        return "HEALTHY"
 
     def _instrument_rules_startup_check(self) -> tuple[bool, str | None]:
         """Verify venue instrument rules cover every symbol this run needs.
@@ -1276,6 +1385,32 @@ class ExecutionManager:
         decision: Any,
         market_state: Any | None = None,
     ) -> dict[str, Any]:
+        """Run one decision; with order_lifecycle_observe on, also check it against the order state machine.
+
+        Stage 1 of proposals/2026-10-01_order_lifecycle_enforcement_DESIGN.md:
+        observe only. The result is returned unchanged; a violation is logged
+        and kept in order_lifecycle_violations, never acted on.
+        """
+        result = self._execute_decision(decision, market_state)
+        if self.order_lifecycle_observe and isinstance(result, dict):
+            try:
+                from core.order_lifecycle import observe_outcome
+
+                order_id = str(result.get("request_id") or getattr(decision, "get", lambda *_: None)("request_id") or "?")
+                with self._lock:  # audit F-D: mutate under the same lock status() reads with
+                    for problem in observe_outcome(order_id, result):
+                        self.order_lifecycle_violations.append({"request_id": order_id, "violation": problem})
+                        logger.warning("Order lifecycle violation (observe only) request_id=%s %s", order_id, problem)
+                    del self.order_lifecycle_violations[:-100]
+            except Exception:
+                logger.warning("Order lifecycle observer failed; execution unaffected", exc_info=True)
+        return result
+
+    def _execute_decision(
+        self,
+        decision: Any,
+        market_state: Any | None = None,
+    ) -> dict[str, Any]:
         """
         Validate and execute one Atlas decision.
 
@@ -1305,9 +1440,176 @@ class ExecutionManager:
         Audit writes are non-blocking. An audit storage failure
         increases audit_write_failures but does not interrupt
         execution.
+
+        Structure (T-0013)
+        ------------------
+        Each phase is one ``_decision_*`` helper, called in the order
+        above; a helper returns the terminal result that ends the run or
+        ``_CONTINUE`` to continue (not ``None``: a None result must end the
+        run exactly as the single body's ``return`` did, never fall through
+        to execution). The state the phases share - the request,
+        its id, whether it is claimed and the last audit event id - is
+        carried by ``_DecisionRun`` so the ``except``/``finally`` below see
+        exactly what the single original body saw.
         """
 
         started_at = time.perf_counter()
+
+        blocked = self._decision_preflight()
+
+        if not isinstance(blocked, _Continue):
+            return blocked
+
+        run = _DecisionRun(started_at=started_at)
+
+        try:
+            result = self._decision_pipeline(
+                run,
+                decision,
+                market_state,
+            )
+
+            # Phase-2 A3: the execution outcome stays exactly what it was; a
+            # degraded audit trail is reported beside it, never instead of it.
+            audit_state = self.audit_persistence_state()
+            if isinstance(result, dict) and audit_state not in {"HEALTHY", "DISABLED"}:
+                result["audit_persistence_state"] = audit_state
+
+            return result
+
+        except Exception as exc:
+            return self._decision_pipeline_failure(
+                run,
+                exc,
+            )
+
+        finally:
+            # Defensive release for exceptions or unexpected
+            # early exits after a successful atomic claim.
+            if run.request_id:
+                self._consume_execution_side_effect(
+                    run.request_id
+                )
+
+                if run.request_claimed:
+                    self._release_request(
+                        run.request_id
+                    )
+
+    def _decision_pipeline(
+        self,
+        run: _DecisionRun,
+        decision: Any,
+        market_state: Any | None,
+    ) -> dict[str, Any]:
+        """Run the phases of one admitted decision in order; any exception reaches the caller's handler."""
+
+        terminal = self._decision_build(
+            run,
+            decision,
+        )
+
+        if not isinstance(terminal, _Continue):
+            return terminal
+
+        terminal = self._decision_receive_and_claim(
+            run,
+        )
+
+        if not isinstance(terminal, _Continue):
+            return terminal
+
+        terminal = self._decision_validate(
+            run,
+        )
+
+        if not isinstance(terminal, _Continue):
+            return terminal
+
+        terminal = self._decision_risk_gate(
+            run,
+            market_state,
+        )
+
+        if not isinstance(terminal, _Continue):
+            return terminal
+
+        terminal = self._decision_prepare(
+            run,
+        )
+
+        if not isinstance(terminal, _Continue):
+            return terminal
+
+        result, status = self._decision_route(
+            run,
+        )
+
+        # =================================================
+        # RETRYABLE FAILURE / NOT COMMITTED
+        # =================================================
+        #
+        # Terminal classification is a SUCCESS allow-list, not a
+        # failure allow-list. Only a status this manager itself
+        # recognises as a completed execution may continue into
+        # durable finalization; every other terminal status resolves
+        # through the unsuccessful-execution path.
+        #
+        # The previous `status in FAILURE_STATUSES` test admitted
+        # everything outside {FAILED, ERROR} into the durable-commit
+        # branch. The statuses that actually reach this point are
+        # PAPER_EXECUTED and FAILED (paper_execute), REJECTED (the
+        # canonical-admission guard inside paper_execute and
+        # live_execute), and LIVE_DISABLED / LIVE_NOT_IMPLEMENTED
+        # (live_execute). So a correctly denied LIVE request - one
+        # that provably performed no side effect at all - was
+        # finalized as a confirmed execution: it failed inside
+        # _finalize_durable_financial_state and left the runtime
+        # halted with an unresolved journal entry, INDETERMINATE
+        # capital, and an audit record asserting that an execution
+        # "was confirmed" which had never occurred.
+        #
+        # Inverting the test is also what makes an unrecognised
+        # terminal status fail closed. ExecutionResult.status
+        # defaults to "UNKNOWN", and any status added in future is
+        # treated as not-committed until it is deliberately declared
+        # a success here, rather than being silently durable.
+        #
+        # This changes only how a status is classified, never how a
+        # side effect is judged: _resolve_unsuccessful_execution
+        # still decides deterministic rollback versus genuine
+        # uncertainty from the recorded side-effect marker alone, so
+        # a post-side-effect failure remains INDETERMINATE exactly
+        # as before.
+
+        if status not in self.SUCCESS_STATUSES:
+            terminal = self._decision_unsuccessful(
+                run,
+                result,
+                status,
+            )
+
+        else:
+            terminal = self._decision_commit(
+                run,
+                result,
+                status,
+            )
+
+        if not isinstance(terminal, _Continue):
+            return terminal
+
+        self.publish(
+            "EXECUTION_COMPLETED",
+            result,
+        )
+
+        return result
+
+    def _decision_preflight(
+        self,
+    ) -> dict[str, Any] | _Continue:
+        """Count the decision; refuse it while offline, halted or financially not ready."""
 
         with self._lock:
             self.stats[
@@ -1367,979 +1669,29 @@ class ExecutionManager:
                 "timestamp": self._utc_now(),
             }
 
-        request: ExecutionRequest | None = None
+        return _CONTINUE
 
-        request_id: str | None = None
+    def _decision_build(
+        self,
+        run: _DecisionRun,
+        decision: Any,
+    ) -> dict[str, Any] | _Continue:
+        """Build the canonical request; a build failure or an empty request id ends the run."""
 
-        request_claimed = False
-
-        last_audit_event_id: str | None = None
+        # =================================================
+        # BUILD REQUEST
+        # =================================================
 
         try:
-            # =================================================
-            # BUILD REQUEST
-            # =================================================
-
-            try:
-                request = self.build_request(
-                    decision
-                )
-
-            except Exception as build_exc:
-                self._record_error(
-                    phase="build_request",
-                    error=build_exc,
-                    request=None,
-                )
-
-                with self._lock:
-                    self.stats[
-                        "failed"
-                    ] += 1
-
-                logger.exception(
-                    "Execution request build failed"
-                )
-
-                failure = (
-                    self._build_input_failure_result(
-                        decision=decision,
-                        error=build_exc,
-                        started_at=started_at,
-                    )
-                )
-
-                with self._lock:
-                    self._append_bounded(
-                        self.history,
-                        failure,
-                        self.MAX_HISTORY,
-                    )
-
-                self.publish(
-                    "EXECUTION_FAILED",
-                    failure,
-                )
-
-                return failure
-
-            request_id = str(
-                request.request_id
-            ).strip()
-
-            if not request_id:
-                return self.reject(
-                    reason="INVALID_REQUEST_ID",
-                    request=request,
-                )
-
-            # =================================================
-            # REQUEST RECEIVED AUDIT
-            # =================================================
-
-            last_audit_event_id = (
-                self._write_audit_event(
-                    event_type=(
-                        "EXECUTION_REQUEST_RECEIVED"
-                    ),
-                    request=request,
-                    payload={
-                        "symbol": request.symbol,
-                        "action": request.action,
-                        "price": request.price,
-                        "amount": request.amount,
-                        "confidence": (
-                            request.confidence
-                        ),
-                        "strategy": request.strategy,
-                        "risk": request.risk,
-                        "request_mode": request.mode,
-                        "order_type": (
-                            request.order_type
-                        ),
-                        "source": request.source,
-                    },
-                )
+            run.request = self.build_request(
+                decision
             )
 
-            # =================================================
-            # ATOMIC IDEMPOTENCY CLAIM
-            # =================================================
-
-            duplicate_result = self._claim_request(
-                request
-            )
-
-            if duplicate_result is not None:
-                duplicate_reason = str(
-                    duplicate_result.get(
-                        "duplicate_reason",
-                        duplicate_result.get(
-                            "reason",
-                            "DUPLICATE_REQUEST",
-                        ),
-                    )
-                ).strip().upper()
-
-                if (
-                    duplicate_reason
-                    == "DUPLICATE_REQUEST_PENDING"
-                ):
-                    audit_type = (
-                        "DUPLICATE_REQUEST_PENDING"
-                    )
-
-                elif (
-                    duplicate_reason
-                    == "DUPLICATE_REQUEST_COMPLETED"
-                ):
-                    audit_type = (
-                        "DUPLICATE_REQUEST_COMPLETED"
-                    )
-
-                else:
-                    audit_type = (
-                        "DUPLICATE_REQUEST_DETECTED"
-                    )
-
-                self._write_audit_event(
-                    event_type=audit_type,
-                    request=request,
-                    payload={
-                        "status": (
-                            duplicate_result.get(
-                                "status"
-                            )
-                        ),
-                        "reason": duplicate_reason,
-                        "cache_hit": bool(
-                            duplicate_result.get(
-                                "idempotency",
-                                {},
-                            ).get(
-                                "cache_hit",
-                                False,
-                            )
-                        ),
-                        "duplicate": True,
-                    },
-                    causation_id=(
-                        last_audit_event_id
-                    ),
-                )
-
-                return duplicate_result
-
-            request_claimed = True
-
-            # =================================================
-            # REQUEST VALIDATION
-            # =================================================
-
-            validation = self.validate_request(
-                request
-            )
-
-            if not validation[
-                "approved"
-            ]:
-                result = self.reject(
-                    reason=validation[
-                        "reason"
-                    ],
-                    request=request,
-                    details=validation.get(
-                        "details"
-                    ),
-                )
-
-                self._complete_request(
-                    request_id=request_id,
-                    result=result,
-                )
-
-                request_claimed = False
-
-                self._write_audit_event(
-                    event_type=(
-                        "EXECUTION_REQUEST_REJECTED"
-                    ),
-                    request=request,
-                    payload={
-                        "stage": (
-                            "REQUEST_VALIDATION"
-                        ),
-                        "status": result.get(
-                            "status"
-                        ),
-                        "reason": validation.get(
-                            "reason"
-                        ),
-                        "details": validation.get(
-                            "details"
-                        ),
-                    },
-                    causation_id=(
-                        last_audit_event_id
-                    ),
-                )
-
-                return result
-
-            with self._lock:
-                self.stats[
-                    "validated"
-                ] += 1
-
-            last_audit_event_id = (
-                self._write_audit_event(
-                    event_type=(
-                        "EXECUTION_REQUEST_VALIDATED"
-                    ),
-                    request=request,
-                    payload={
-                        "approved": True,
-                        "symbol": request.symbol,
-                        "action": request.action,
-                        "confidence": (
-                            request.confidence
-                        ),
-                        "minimum_confidence": (
-                            self.minimum_confidence
-                        ),
-                    },
-                    causation_id=(
-                        last_audit_event_id
-                    ),
-                )
-                or last_audit_event_id
-            )
-
-            # =================================================
-            # RISK VALIDATION
-            # =================================================
-
-            risk_validation = self.risk_check(
-                request=request,
-                market_state=market_state,
-            )
-
-            if not risk_validation[
-                "approved"
-            ]:
-                result = self.reject(
-                    reason=risk_validation[
-                        "reason"
-                    ],
-                    request=request,
-                    details=risk_validation.get(
-                        "details"
-                    ),
-                )
-
-                self._complete_request(
-                    request_id=request_id,
-                    result=result,
-                )
-
-                request_claimed = False
-
-                self._write_audit_event(
-                    event_type="RISK_REJECTED",
-                    request=request,
-                    payload={
-                        "approved": False,
-                        "status": result.get(
-                            "status"
-                        ),
-                        "reason": (
-                            risk_validation.get(
-                                "reason"
-                            )
-                        ),
-                        "details": (
-                            risk_validation.get(
-                                "details"
-                            )
-                        ),
-                    },
-                    causation_id=(
-                        last_audit_event_id
-                    ),
-                )
-
-                return result
-
-            if not self._has_risk_admission(request):
-                return self.reject(reason="CANONICAL_RISK_ADMISSION_MISSING", request=request)
-
-            last_audit_event_id = (
-                self._write_audit_event(
-                    event_type="RISK_APPROVED",
-                    request=request,
-                    payload={
-                        "approved": True,
-                        "risk": request.risk,
-                        "confidence": (
-                            request.confidence
-                        ),
-                        "details": (
-                            risk_validation.get(
-                                "details"
-                            )
-                        ),
-                    },
-                    causation_id=(
-                        last_audit_event_id
-                    ),
-                )
-                or last_audit_event_id
-            )
-
-            # =================================================
-            # DURABLE TRANSACTION PREPARE BARRIER
-            # =================================================
-
-            try:
-                prepared = self.transaction_journal.prepare(
-                    request_id,
-                    request.to_dict(),
-                )
-
-            except Exception as prepare_exc:
-                prepared = False
-
-                self._record_error(
-                    phase="transaction_prepare",
-                    error=prepare_exc,
-                    request=request,
-                )
-
-            if not prepared:
-                self._release_capital_reservation(request_id)
-                self._release_request(
-                    request_id
-                )
-
-                request_claimed = False
-
-                not_committed = {
-                    "success": False,
-                    "status": (
-                        CommitOutcome
-                        .NOT_COMMITTED
-                        .value
-                    ),
-                    "commit_outcome": (
-                        CommitOutcome
-                        .NOT_COMMITTED
-                        .value
-                    ),
-                    "error_code": (
-                        "TRANSACTION_PREPARE_FAILED"
-                    ),
-                    "message": (
-                        "Durable transaction prepare failed"
-                    ),
-                    "request_id": request_id,
-                    "symbol": request.symbol,
-                    "action": request.action,
-                    "mode": self.mode,
-                    "timestamp": self._utc_now(),
-                }
-
-                self._record_result(
-                    not_committed
-                )
-
-                self.publish(
-                    "EXECUTION_NOT_COMMITTED",
-                    not_committed,
-                )
-
-                return not_committed
-
-            # =================================================
-            # EXECUTION ROUTING
-            # =================================================
-
-            if self.mode == self.MODE_PAPER:
-                result = self.paper_execute(
-                    request
-                )
-
-            else:
-                result = self.live_execute(
-                    request
-                )
-
-            result.setdefault(
-                "request_id",
-                request_id,
-            )
-
-            result.setdefault(
-                "latency_ms",
-                round(
-                    (
-                        time.perf_counter()
-                        - started_at
-                    )
-                    * 1000,
-                    3,
-                ),
-            )
-
-            status = str(
-                result.get(
-                    "status",
-                    "UNKNOWN",
-                )
-            ).strip().upper()
-
-            # =================================================
-            # RETRYABLE FAILURE / NOT COMMITTED
-            # =================================================
-            #
-            # Terminal classification is a SUCCESS allow-list, not a
-            # failure allow-list. Only a status this manager itself
-            # recognises as a completed execution may continue into
-            # durable finalization; every other terminal status resolves
-            # through the unsuccessful-execution path.
-            #
-            # The previous `status in FAILURE_STATUSES` test admitted
-            # everything outside {FAILED, ERROR} into the durable-commit
-            # branch. The statuses that actually reach this point are
-            # PAPER_EXECUTED and FAILED (paper_execute), REJECTED (the
-            # canonical-admission guard inside paper_execute and
-            # live_execute), and LIVE_DISABLED / LIVE_NOT_IMPLEMENTED
-            # (live_execute). So a correctly denied LIVE request - one
-            # that provably performed no side effect at all - was
-            # finalized as a confirmed execution: it failed inside
-            # _finalize_durable_financial_state and left the runtime
-            # halted with an unresolved journal entry, INDETERMINATE
-            # capital, and an audit record asserting that an execution
-            # "was confirmed" which had never occurred.
-            #
-            # Inverting the test is also what makes an unrecognised
-            # terminal status fail closed. ExecutionResult.status
-            # defaults to "UNKNOWN", and any status added in future is
-            # treated as not-committed until it is deliberately declared
-            # a success here, rather than being silently durable.
-            #
-            # This changes only how a status is classified, never how a
-            # side effect is judged: _resolve_unsuccessful_execution
-            # still decides deterministic rollback versus genuine
-            # uncertainty from the recorded side-effect marker alone, so
-            # a post-side-effect failure remains INDETERMINATE exactly
-            # as before.
-
-            if status not in self.SUCCESS_STATUSES:
-                # An unsuccessful result is classified by the same
-                # side-effect boundary as a raised exception. A paper
-                # mutation that already persisted is not undone by the
-                # execution then reporting FAILED.
-                side_effect_possible = (
-                    self._resolve_unsuccessful_execution(
-                        request_id=request_id,
-                        reason=status,
-                        result=result,
-                    )
-                )
-
-                self._release_request(
-                    request_id
-                )
-
-                request_claimed = False
-
-                if side_effect_possible:
-                    # The original business failure is preserved in
-                    # error_code, message, and original_status; only the
-                    # commit classification changes, because this runtime
-                    # can no longer claim nothing happened.
-                    result[
-                        "original_status"
-                    ] = status
-
-                    result[
-                        "success"
-                    ] = False
-
-                    result[
-                        "status"
-                    ] = (
-                        CommitOutcome
-                        .COMMIT_STATUS_UNKNOWN
-                        .value
-                    )
-
-                    result[
-                        "commit_outcome"
-                    ] = (
-                        CommitOutcome
-                        .COMMIT_STATUS_UNKNOWN
-                        .value
-                    )
-
-                    result[
-                        "recovery_required"
-                    ] = True
-
-                    with self._lock:
-                        self.stats[
-                            "failed"
-                        ] += 1
-
-                    self._record_result(
-                        result
-                    )
-
-                    self._write_audit_event(
-                        event_type=(
-                            "EXECUTION_COMMIT_STATUS_UNKNOWN"
-                        ),
-                        request=request,
-                        payload={
-                            "success": False,
-                            "status": result.get(
-                                "status"
-                            ),
-                            "original_status": status,
-                            "message": result.get(
-                                "message"
-                            ),
-                            "error_code": result.get(
-                                "error_code"
-                            ),
-                            "latency_ms": result.get(
-                                "latency_ms"
-                            ),
-                            "retryable": False,
-                            "commit_outcome": (
-                                result.get(
-                                    "commit_outcome"
-                                )
-                            ),
-                        },
-                        causation_id=(
-                            last_audit_event_id
-                        ),
-                    )
-
-                    self.publish(
-                        "EXECUTION_COMMIT_STATUS_UNKNOWN",
-                        result,
-                    )
-
-                    return result
-
-                result[
-                    "commit_outcome"
-                ] = (
-                    CommitOutcome
-                    .NOT_COMMITTED
-                    .value
-                )
-
-                self._record_result(
-                    result
-                )
-
-                self._write_audit_event(
-                    event_type="EXECUTION_FAILED",
-                    request=request,
-                    payload={
-                        "success": bool(
-                            result.get(
-                                "success",
-                                False,
-                            )
-                        ),
-                        "status": status,
-                        "message": result.get(
-                            "message"
-                        ),
-                        "error_code": result.get(
-                            "error_code"
-                        ),
-                        "latency_ms": result.get(
-                            "latency_ms"
-                        ),
-                        "retryable": True,
-                        "commit_outcome": (
-                            result.get(
-                                "commit_outcome"
-                            )
-                        ),
-                    },
-                    causation_id=(
-                        last_audit_event_id
-                    ),
-                )
-
-            # =================================================
-            # TERMINAL DURABLE COMMIT
-            # =================================================
-
-            else:
-                finalized = None
-
-                try:
-                    if self.portfolio_foundation is not None:
-                        # Side-effect boundary. apply_confirmed() mutates the
-                        # durable financial authority, so from here an
-                        # interrupted request has an outcome this manager
-                        # cannot prove. Nothing earlier in the paper flow
-                        # mutates anything any more: the paper paths are
-                        # purely computational, and PaperTrader is projected
-                        # from this authority only after the commit lands.
-                        self._mark_execution_side_effect(request_id)
-
-                        finalized = self._finalize_durable_financial_state(
-                            request=request,
-                            result=result,
-                        )
-                except Exception as finalization_exc:
-                    self._record_error(
-                        phase="durable_financial_finalization",
-                        error=finalization_exc,
-                        request=request,
-                    )
-                    self._mark_capital_indeterminate(request_id)
-                    try:
-                        self.transaction_journal.mark_unknown(
-                            request_id,
-                            reason="DURABLE_FINANCIAL_FINALIZATION_FAILED",
-                            result=result,
-                        )
-                    except Exception:
-                        logger.exception("Unable to mark failed financial finalization unknown")
-                    with self._lock:
-                        self.execution_halted = True
-                        self.recovery_required = True
-                        self.halt_reason = "DURABLE_FINANCIAL_FINALIZATION_FAILED"
-                    # Same claim discipline as the unsuccessful-result branch
-                    # above: an interrupted execution must not leave its
-                    # request_id claimed in flight, which would outlive the
-                    # halt and answer EXECUTION_REQUESTS_IN_FLIGHT forever.
-                    self._release_request(request_id)
-                    request_claimed = False
-                    unknown_result = {
-                        "success": False,
-                        "status": CommitOutcome.COMMIT_STATUS_UNKNOWN.value,
-                        "commit_outcome": CommitOutcome.COMMIT_STATUS_UNKNOWN.value,
-                        "recovery_required": True,
-                        "error_code": "DURABLE_FINANCIAL_FINALIZATION_FAILED",
-                        "message": "Execution was confirmed but durable position/portfolio finalization failed",
-                        "request_id": request_id,
-                        "symbol": request.symbol,
-                        "action": request.action,
-                        "mode": self.mode,
-                        "timestamp": self._utc_now(),
-                    }
-                    self._record_result(unknown_result)
-                    self.publish("EXECUTION_COMMIT_STATUS_UNKNOWN", unknown_result)
-                    return unknown_result
-
-                # Block 5E: commit the reservation at the exact settled
-                # amount - notional + quote fee - rather than the full
-                # reservation, so the deterministic sub-quantum remainder a
-                # BUY never spent stops being permanently encumbered by this
-                # reservation. `None` when either figure is absent (e.g. a
-                # non-paper/live result), which preserves the historical
-                # full-amount commit for that case. The addition is pinned
-                # to the same explicit context as the rest of the 5E
-                # settlement slice (final-review MEDIUM #2), so a caller
-                # thread's ambient precision can never round this sum
-                # differently than `_finalize_durable_financial_state`
-                # already rounded the identical `notional + fee` figure it
-                # checked against the approval moments earlier - a
-                # divergence here would either under-commit or spuriously
-                # halt on `settled_amount exceeds reserved amount`.
-                settled_amount = None
-                notional_raw = result.get("filled_quote_notional")
-                settled_fee_raw = result.get("fee_amount")
-                if notional_raw is not None and settled_fee_raw is not None:
-                    try:
-                        with localcontext() as context:
-                            context.prec = SETTLEMENT_CONTEXT_PRECISION
-                            context.rounding = ROUND_HALF_EVEN
-                            settled_amount = Decimal(str(notional_raw)) + Decimal(str(settled_fee_raw))
-                    except (InvalidOperation, ValueError, TypeError):
-                        settled_amount = None
-
-                if not self._commit_capital_reservation(request_id, settled_amount):
-                    try:
-                        self.transaction_journal.mark_unknown(
-                            request_id,
-                            reason="CAPITAL_RESERVATION_COMMIT_FAILED",
-                            result=result,
-                        )
-                    except Exception:
-                        logger.exception("Unable to mark reservation commit failure unknown")
-                    with self._lock:
-                        self.execution_halted = True
-                        self.recovery_required = True
-                        self.halt_reason = "CAPITAL_RESERVATION_COMMIT_FAILED"
-                    # F-5: the same claim discipline dac9b72 gave the
-                    # finalization-failure branch above. Clearing only the
-                    # local flag left request_id in pending_request_ids, so
-                    # the claim outlived the halt and reset() refused with
-                    # EXECUTION_REQUESTS_IN_FLIGHT until restart.
-                    self._release_request(request_id)
-                    request_claimed = False
-                    unknown_result = {
-                        "success": False,
-                        "status": CommitOutcome.COMMIT_STATUS_UNKNOWN.value,
-                        "commit_outcome": CommitOutcome.COMMIT_STATUS_UNKNOWN.value,
-                        "recovery_required": True,
-                        "error_code": "CAPITAL_RESERVATION_COMMIT_FAILED",
-                        "message": "Execution finalized but reservation commit could not be confirmed",
-                        "request_id": request_id,
-                        "symbol": request.symbol,
-                        "action": request.action,
-                        "mode": self.mode,
-                        "timestamp": self._utc_now(),
-                    }
-                    self._record_result(unknown_result)
-                    self.publish("EXECUTION_COMMIT_STATUS_UNKNOWN", unknown_result)
-                    return unknown_result
-
-                # The durable authority is committed and the reservation is
-                # settled; only now is the passive book projected from it.
-                # This can neither fail nor alter the execution.
-                self._mirror_paper_book(
-                    request=request,
-                    result=result,
-                    finalized=finalized,
-                )
-
-                result[
-                    "commit_outcome"
-                ] = (
-                    CommitOutcome
-                    .COMMITTED
-                    .value
-                )
-
-                persisted = self._complete_request(
-                    request_id=request_id,
-                    result=result,
-                )
-
-                request_claimed = False
-
-                if not persisted:
-                    self._mark_capital_indeterminate(request_id)
-                    try:
-                        self.transaction_journal.mark_unknown(
-                            request_id,
-                            reason="DURABLE_COMMIT_FAILED",
-                            result=result,
-                        )
-
-                    except Exception:
-                        logger.exception(
-                            "Unable to persist unknown "
-                            "transaction outcome"
-                        )
-
-                    with self._lock:
-                        self.execution_halted = True
-                        self.recovery_required = True
-                        self.halt_reason = (
-                            "UNRESOLVED_TRANSACTION"
-                        )
-
-                    unknown_result = {
-                        "success": False,
-                        "status": (
-                            CommitOutcome
-                            .COMMIT_STATUS_UNKNOWN
-                            .value
-                        ),
-                        "commit_outcome": (
-                            CommitOutcome
-                            .COMMIT_STATUS_UNKNOWN
-                            .value
-                        ),
-                        "recovery_required": True,
-                        "error_code": (
-                            "DURABLE_COMMIT_FAILED"
-                        ),
-                        "message": (
-                            "Financial side effect completed but "
-                            "durable terminal persistence failed"
-                        ),
-                        "request_id": request_id,
-                        "symbol": request.symbol,
-                        "action": request.action,
-                        "mode": self.mode,
-                        "timestamp": self._utc_now(),
-                        "original_result": result,
-                    }
-
-                    self._record_result(
-                        unknown_result
-                    )
-
-                    self.publish(
-                        "EXECUTION_COMMIT_STATUS_UNKNOWN",
-                        unknown_result,
-                    )
-
-                    return unknown_result
-
-                try:
-                    journal_committed = (
-                        self.transaction_journal.mark_committed(
-                            request_id,
-                            result,
-                        )
-                    )
-
-                except Exception:
-                    journal_committed = False
-
-                    logger.exception(
-                        "Transaction journal commit failed"
-                    )
-
-                if not journal_committed:
-                    self._mark_capital_indeterminate(request_id)
-                    try:
-                        self.transaction_journal.mark_unknown(
-                            request_id,
-                            reason=(
-                                "TRANSACTION_JOURNAL_COMMIT_FAILED"
-                            ),
-                            result=result,
-                        )
-
-                    except Exception:
-                        logger.exception(
-                            "Unable to mark transaction unknown"
-                        )
-
-                    with self._lock:
-                        self.execution_halted = True
-                        self.recovery_required = True
-                        self.halt_reason = (
-                            "UNRESOLVED_TRANSACTION"
-                        )
-
-                    unknown_result = {
-                        "success": False,
-                        "status": (
-                            CommitOutcome
-                            .COMMIT_STATUS_UNKNOWN
-                            .value
-                        ),
-                        "commit_outcome": (
-                            CommitOutcome
-                            .COMMIT_STATUS_UNKNOWN
-                            .value
-                        ),
-                        "recovery_required": True,
-                        "error_code": (
-                            "TRANSACTION_JOURNAL_COMMIT_FAILED"
-                        ),
-                        "message": (
-                            "Terminal result persisted but journal "
-                            "commit could not be confirmed"
-                        ),
-                        "request_id": request_id,
-                        "symbol": request.symbol,
-                        "action": request.action,
-                        "mode": self.mode,
-                        "timestamp": self._utc_now(),
-                    }
-
-                    self._record_result(
-                        unknown_result
-                    )
-
-                    self.publish(
-                        "EXECUTION_COMMIT_STATUS_UNKNOWN",
-                        unknown_result,
-                    )
-
-                    return unknown_result
-
-                self._record_result(
-                    result
-                )
-
-                self._write_audit_event(
-                    event_type=(
-                        "EXECUTION_COMPLETED"
-                    ),
-                    request=request,
-                    payload={
-                        "success": bool(
-                            result.get(
-                                "success",
-                                False,
-                            )
-                        ),
-                        "status": status,
-                        "execution_id": (
-                            result.get(
-                                "execution_id"
-                            )
-                        ),
-                        "filled_price": (
-                            result.get(
-                                "filled_price"
-                            )
-                        ),
-                        "filled_amount": (
-                            result.get(
-                                "filled_amount"
-                            )
-                        ),
-                        "fee": result.get(
-                            "fee"
-                        ),
-                        "fee_amount": result.get(
-                            "fee_amount"
-                        ),
-                        "fee_currency": result.get(
-                            "fee_currency"
-                        ),
-                        "pnl": result.get(
-                            "pnl"
-                        ),
-                        "latency_ms": (
-                            result.get(
-                                "latency_ms"
-                            )
-                        ),
-                        "terminal": True,
-                        "commit_outcome": (
-                            result.get(
-                                "commit_outcome"
-                            )
-                        ),
-                    },
-                    causation_id=(
-                        last_audit_event_id
-                    ),
-                )
-
-            self.publish(
-                "EXECUTION_COMPLETED",
-                result,
-            )
-
-            return result
-
-        except Exception as exc:
+        except Exception as build_exc:
             self._record_error(
-                phase="execute",
-                error=exc,
-                request=request,
+                phase="build_request",
+                error=build_exc,
+                request=None,
             )
 
             with self._lock:
@@ -2348,86 +1700,15 @@ class ExecutionManager:
                 ] += 1
 
             logger.exception(
-                "Execution pipeline failed"
+                "Execution request build failed"
             )
 
-            # An exception after risk admission must not leave capital
-            # reserved, an admission stale, and the runtime running.
-            side_effect_possible = (
-                self._resolve_unsuccessful_execution(
-                    request_id=request_id,
-                    reason="EXECUTION_PIPELINE_EXCEPTION",
+            failure = (
+                self._build_input_failure_result(
+                    decision=decision,
+                    error=build_exc,
+                    started_at=run.started_at,
                 )
-                if request_id
-                else False
-            )
-
-            if side_effect_possible:
-                failure = self._failure_result(
-                    request=request,
-                    status=(
-                        CommitOutcome
-                        .COMMIT_STATUS_UNKNOWN
-                        .value
-                    ),
-                    message=(
-                        "Execution was interrupted after a paper "
-                        "execution side effect"
-                    ),
-                    error_code=(
-                        "EXECUTION_PIPELINE_EXCEPTION"
-                    ),
-                    error=exc,
-                )
-
-                failure[
-                    "commit_outcome"
-                ] = (
-                    CommitOutcome
-                    .COMMIT_STATUS_UNKNOWN
-                    .value
-                )
-
-                failure[
-                    "recovery_required"
-                ] = True
-
-            else:
-                failure = self._failure_result(
-                    request=request,
-                    status="FAILED",
-                    message=(
-                        "Execution pipeline failed"
-                    ),
-                    error_code=(
-                        "EXECUTION_PIPELINE_EXCEPTION"
-                    ),
-                    error=exc,
-                )
-
-                failure[
-                    "commit_outcome"
-                ] = (
-                    CommitOutcome
-                    .NOT_COMMITTED
-                    .value
-                )
-
-            if request_id:
-                failure.setdefault(
-                    "request_id",
-                    request_id,
-                )
-
-            failure[
-                "latency_ms"
-            ] = round(
-                (
-                    time.perf_counter()
-                    - started_at
-                )
-                * 1000,
-                3,
             )
 
             with self._lock:
@@ -2437,69 +1718,1213 @@ class ExecutionManager:
                     self.MAX_HISTORY,
                 )
 
-            if request is not None:
-                self._write_audit_event(
-                    event_type=(
-                        "EXECUTION_COMMIT_STATUS_UNKNOWN"
-                        if side_effect_possible
-                        else "EXECUTION_FAILED"
-                    ),
-                    request=request,
-                    payload={
-                        "success": False,
-                        "status": failure.get(
-                            "status"
-                        ),
-                        "message": failure.get(
-                            "message"
-                        ),
-                        "error_code": (
-                            "EXECUTION_PIPELINE_EXCEPTION"
-                        ),
-                        "error": str(
-                            exc
-                        ),
-                        "error_type": type(
-                            exc
-                        ).__name__,
-                        "latency_ms": failure.get(
-                            "latency_ms"
-                        ),
-                        "retryable": (
-                            not side_effect_possible
-                        ),
-                        "commit_outcome": failure.get(
-                            "commit_outcome"
-                        ),
-                    },
-                    causation_id=(
-                        last_audit_event_id
-                    ),
-                )
-
             self.publish(
-                (
-                    "EXECUTION_COMMIT_STATUS_UNKNOWN"
-                    if side_effect_possible
-                    else "EXECUTION_FAILED"
-                ),
+                "EXECUTION_FAILED",
                 failure,
             )
 
             return failure
 
-        finally:
-            # Defensive release for exceptions or unexpected
-            # early exits after a successful atomic claim.
-            if request_id:
-                self._consume_execution_side_effect(
-                    request_id
+        run.request_id = str(
+            cast(ExecutionRequest, run.request).request_id
+        ).strip()
+
+        if not run.request_id:
+            return self.reject(
+                reason="INVALID_REQUEST_ID",
+                request=run.request,
+            )
+
+        return _CONTINUE
+
+    def _decision_receive_and_claim(
+        self,
+        run: _DecisionRun,
+    ) -> dict[str, Any] | _Continue:
+        """Audit the received request and claim its id; a duplicate ends the run."""
+
+        request = cast(ExecutionRequest, run.request)
+
+        # =================================================
+        # REQUEST RECEIVED AUDIT
+        # =================================================
+
+        run.last_audit_event_id = (
+            self._write_audit_event(
+                event_type=(
+                    "EXECUTION_REQUEST_RECEIVED"
+                ),
+                request=request,
+                payload={
+                    "symbol": request.symbol,
+                    "action": request.action,
+                    "price": request.price,
+                    "amount": request.amount,
+                    "confidence": (
+                        request.confidence
+                    ),
+                    "strategy": request.strategy,
+                    "risk": request.risk,
+                    "request_mode": request.mode,
+                    "order_type": (
+                        request.order_type
+                    ),
+                    "source": request.source,
+                },
+            )
+        )
+
+        # =================================================
+        # ATOMIC IDEMPOTENCY CLAIM
+        # =================================================
+
+        duplicate_result = self._claim_request(
+            request
+        )
+
+        if duplicate_result is not None:
+            duplicate_reason = str(
+                duplicate_result.get(
+                    "duplicate_reason",
+                    duplicate_result.get(
+                        "reason",
+                        "DUPLICATE_REQUEST",
+                    ),
+                )
+            ).strip().upper()
+
+            if (
+                duplicate_reason
+                == "DUPLICATE_REQUEST_PENDING"
+            ):
+                audit_type = (
+                    "DUPLICATE_REQUEST_PENDING"
                 )
 
-                if request_claimed:
-                    self._release_request(
-                        request_id
+            elif (
+                duplicate_reason
+                == "DUPLICATE_REQUEST_COMPLETED"
+            ):
+                audit_type = (
+                    "DUPLICATE_REQUEST_COMPLETED"
+                )
+
+            else:
+                audit_type = (
+                    "DUPLICATE_REQUEST_DETECTED"
+                )
+
+            self._write_audit_event(
+                event_type=audit_type,
+                request=request,
+                payload={
+                    "status": (
+                        duplicate_result.get(
+                            "status"
+                        )
+                    ),
+                    "reason": duplicate_reason,
+                    "cache_hit": bool(
+                        duplicate_result.get(
+                            "idempotency",
+                            {},
+                        ).get(
+                            "cache_hit",
+                            False,
+                        )
+                    ),
+                    "duplicate": True,
+                },
+                causation_id=(
+                    run.last_audit_event_id
+                ),
+            )
+
+            return duplicate_result
+
+        run.request_claimed = True
+
+        return _CONTINUE
+
+    def _decision_validate(
+        self,
+        run: _DecisionRun,
+    ) -> dict[str, Any] | _Continue:
+        """Validate the request structure; a rejection is persisted, audited and ends the run."""
+
+        request = cast(ExecutionRequest, run.request)
+        request_id = cast(str, run.request_id)
+
+        # =================================================
+        # REQUEST VALIDATION
+        # =================================================
+
+        validation = self.validate_request(
+            request
+        )
+
+        if not validation[
+            "approved"
+        ]:
+            result = self.reject(
+                reason=validation[
+                    "reason"
+                ],
+                request=request,
+                details=validation.get(
+                    "details"
+                ),
+            )
+
+            self._complete_request(
+                request_id=request_id,
+                result=result,
+            )
+
+            run.request_claimed = False
+
+            self._write_audit_event(
+                event_type=(
+                    "EXECUTION_REQUEST_REJECTED"
+                ),
+                request=request,
+                payload={
+                    "stage": (
+                        "REQUEST_VALIDATION"
+                    ),
+                    "status": result.get(
+                        "status"
+                    ),
+                    "reason": validation.get(
+                        "reason"
+                    ),
+                    "details": validation.get(
+                        "details"
+                    ),
+                },
+                causation_id=(
+                    run.last_audit_event_id
+                ),
+            )
+
+            return result
+
+        with self._lock:
+            self.stats[
+                "validated"
+            ] += 1
+
+        run.last_audit_event_id = (
+            self._write_audit_event(
+                event_type=(
+                    "EXECUTION_REQUEST_VALIDATED"
+                ),
+                request=request,
+                payload={
+                    "approved": True,
+                    "symbol": request.symbol,
+                    "action": request.action,
+                    "confidence": (
+                        request.confidence
+                    ),
+                    "minimum_confidence": (
+                        self.minimum_confidence
+                    ),
+                },
+                causation_id=(
+                    run.last_audit_event_id
+                ),
+            )
+            or run.last_audit_event_id
+        )
+
+        return _CONTINUE
+
+    def _decision_risk_gate(
+        self,
+        run: _DecisionRun,
+        market_state: Any | None,
+    ) -> dict[str, Any] | _Continue:
+        """Apply the institutional risk controls and require a canonical admission."""
+
+        request = cast(ExecutionRequest, run.request)
+        request_id = cast(str, run.request_id)
+
+        # =================================================
+        # RISK VALIDATION
+        # =================================================
+
+        risk_validation = self.risk_check(
+            request=request,
+            market_state=market_state,
+        )
+
+        if not risk_validation[
+            "approved"
+        ]:
+            result = self.reject(
+                reason=risk_validation[
+                    "reason"
+                ],
+                request=request,
+                details=risk_validation.get(
+                    "details"
+                ),
+            )
+
+            self._complete_request(
+                request_id=request_id,
+                result=result,
+            )
+
+            run.request_claimed = False
+
+            self._write_audit_event(
+                event_type="RISK_REJECTED",
+                request=request,
+                payload={
+                    "approved": False,
+                    "status": result.get(
+                        "status"
+                    ),
+                    "reason": (
+                        risk_validation.get(
+                            "reason"
+                        )
+                    ),
+                    "details": (
+                        risk_validation.get(
+                            "details"
+                        )
+                    ),
+                },
+                causation_id=(
+                    run.last_audit_event_id
+                ),
+            )
+
+            return result
+
+        if not self._has_risk_admission(request):
+            return self.reject(reason="CANONICAL_RISK_ADMISSION_MISSING", request=request)
+
+        risk_approved_event_id = self._write_audit_event(
+            event_type="RISK_APPROVED",
+            request=request,
+            payload={
+                "approved": True,
+                "risk": request.risk,
+                "confidence": (
+                    request.confidence
+                ),
+                "details": (
+                    risk_validation.get(
+                        "details"
                     )
+                ),
+            },
+            causation_id=(
+                run.last_audit_event_id
+            ),
+        )
+
+        self._close_experiment_if_unrecorded(
+            risk_approved_event_id,
+            risk_validation.get("details"),
+        )
+
+        run.last_audit_event_id = (
+            risk_approved_event_id
+            or run.last_audit_event_id
+        )
+
+        return _CONTINUE
+
+    def _decision_prepare(
+        self,
+        run: _DecisionRun,
+    ) -> dict[str, Any] | _Continue:
+        """Durable transaction prepare barrier; nothing is executed unless it holds."""
+
+        request = cast(ExecutionRequest, run.request)
+        request_id = cast(str, run.request_id)
+
+        # =================================================
+        # DURABLE TRANSACTION PREPARE BARRIER
+        # =================================================
+
+        try:
+            prepared = self.transaction_journal.prepare(
+                request_id,
+                request.to_dict(),
+            )
+
+        except Exception as prepare_exc:
+            prepared = False
+
+            self._record_error(
+                phase="transaction_prepare",
+                error=prepare_exc,
+                request=request,
+            )
+
+        if not prepared:
+            self._release_capital_reservation(request_id)
+            self._release_request(
+                request_id
+            )
+
+            run.request_claimed = False
+
+            not_committed = {
+                "success": False,
+                "status": (
+                    CommitOutcome
+                    .NOT_COMMITTED
+                    .value
+                ),
+                "commit_outcome": (
+                    CommitOutcome
+                    .NOT_COMMITTED
+                    .value
+                ),
+                "error_code": (
+                    "TRANSACTION_PREPARE_FAILED"
+                ),
+                "message": (
+                    "Durable transaction prepare failed"
+                ),
+                "request_id": request_id,
+                "symbol": request.symbol,
+                "action": request.action,
+                "mode": self.mode,
+                "timestamp": self._utc_now(),
+            }
+
+            self._record_result(
+                not_committed
+            )
+
+            self.publish(
+                "EXECUTION_NOT_COMMITTED",
+                not_committed,
+            )
+
+            return not_committed
+
+        return _CONTINUE
+
+    def _decision_route(
+        self,
+        run: _DecisionRun,
+    ) -> tuple[dict[str, Any], str]:
+        """Route to paper or live execution and classify the returned status."""
+
+        request = cast(ExecutionRequest, run.request)
+        request_id = cast(str, run.request_id)
+        started_at = run.started_at
+
+        # =================================================
+        # EXECUTION ROUTING
+        # =================================================
+
+        if self.mode == self.MODE_PAPER:
+            result = self.paper_execute(
+                request
+            )
+
+        else:
+            result = self.live_execute(
+                request
+            )
+
+        result.setdefault(
+            "request_id",
+            request_id,
+        )
+
+        result.setdefault(
+            "latency_ms",
+            round(
+                (
+                    time.perf_counter()
+                    - started_at
+                )
+                * 1000,
+                3,
+            ),
+        )
+
+        status = str(
+            result.get(
+                "status",
+                "UNKNOWN",
+            )
+        ).strip().upper()
+
+        return result, status
+
+    def _decision_unsuccessful(
+        self,
+        run: _DecisionRun,
+        result: dict[str, Any],
+        status: str,
+    ) -> dict[str, Any] | _Continue:
+        """Resolve a non-success result; ends the run only when a side effect may have happened."""
+
+        request = cast(ExecutionRequest, run.request)
+        request_id = cast(str, run.request_id)
+
+        # An unsuccessful result is classified by the same
+        # side-effect boundary as a raised exception. A paper
+        # mutation that already persisted is not undone by the
+        # execution then reporting FAILED.
+        side_effect_possible = (
+            self._resolve_unsuccessful_execution(
+                request_id=request_id,
+                reason=status,
+                result=result,
+            )
+        )
+
+        self._release_request(
+            request_id
+        )
+
+        run.request_claimed = False
+
+        if side_effect_possible:
+            # The original business failure is preserved in
+            # error_code, message, and original_status; only the
+            # commit classification changes, because this runtime
+            # can no longer claim nothing happened.
+            result[
+                "original_status"
+            ] = status
+
+            result[
+                "success"
+            ] = False
+
+            result[
+                "status"
+            ] = (
+                CommitOutcome
+                .COMMIT_STATUS_UNKNOWN
+                .value
+            )
+
+            result[
+                "commit_outcome"
+            ] = (
+                CommitOutcome
+                .COMMIT_STATUS_UNKNOWN
+                .value
+            )
+
+            result[
+                "recovery_required"
+            ] = True
+
+            with self._lock:
+                self.stats[
+                    "failed"
+                ] += 1
+
+            self._record_result(
+                result
+            )
+
+            self._write_audit_event(
+                event_type=(
+                    "EXECUTION_COMMIT_STATUS_UNKNOWN"
+                ),
+                request=request,
+                payload={
+                    "success": False,
+                    "status": result.get(
+                        "status"
+                    ),
+                    "original_status": status,
+                    "message": result.get(
+                        "message"
+                    ),
+                    "error_code": result.get(
+                        "error_code"
+                    ),
+                    "latency_ms": result.get(
+                        "latency_ms"
+                    ),
+                    "retryable": False,
+                    "commit_outcome": (
+                        result.get(
+                            "commit_outcome"
+                        )
+                    ),
+                },
+                causation_id=(
+                    run.last_audit_event_id
+                ),
+            )
+
+            self.publish(
+                "EXECUTION_COMMIT_STATUS_UNKNOWN",
+                result,
+            )
+
+            return result
+
+        result[
+            "commit_outcome"
+        ] = (
+            CommitOutcome
+            .NOT_COMMITTED
+            .value
+        )
+
+        self._record_result(
+            result
+        )
+
+        self._write_audit_event(
+            event_type="EXECUTION_FAILED",
+            request=request,
+            payload={
+                "success": bool(
+                    result.get(
+                        "success",
+                        False,
+                    )
+                ),
+                "status": status,
+                "message": result.get(
+                    "message"
+                ),
+                "error_code": result.get(
+                    "error_code"
+                ),
+                "latency_ms": result.get(
+                    "latency_ms"
+                ),
+                "retryable": True,
+                "commit_outcome": (
+                    result.get(
+                        "commit_outcome"
+                    )
+                ),
+            },
+            causation_id=(
+                run.last_audit_event_id
+            ),
+        )
+
+        return _CONTINUE
+
+    def _decision_commit(
+        self,
+        run: _DecisionRun,
+        result: dict[str, Any],
+        status: str,
+    ) -> dict[str, Any] | _Continue:
+        """Make a successful execution durable; any failure halts with COMMIT_STATUS_UNKNOWN."""
+
+        # =================================================
+        # TERMINAL DURABLE COMMIT
+        # =================================================
+
+        finalized, terminal = self._decision_finalize(
+            run,
+            result,
+        )
+
+        if not isinstance(terminal, _Continue):
+            return terminal
+
+        terminal = self._decision_commit_reservation(
+            run,
+            result,
+        )
+
+        if not isinstance(terminal, _Continue):
+            return terminal
+
+        terminal = self._decision_persist_terminal(
+            run,
+            result,
+            finalized,
+        )
+
+        if not isinstance(terminal, _Continue):
+            return terminal
+
+        terminal = self._decision_journal_commit(
+            run,
+            result,
+        )
+
+        if not isinstance(terminal, _Continue):
+            return terminal
+
+        request = cast(ExecutionRequest, run.request)
+
+        self._record_result(
+            result
+        )
+
+        self._write_audit_event(
+            event_type=(
+                "EXECUTION_COMPLETED"
+            ),
+            request=request,
+            payload={
+                "success": bool(
+                    result.get(
+                        "success",
+                        False,
+                    )
+                ),
+                "status": status,
+                "execution_id": (
+                    result.get(
+                        "execution_id"
+                    )
+                ),
+                "filled_price": (
+                    result.get(
+                        "filled_price"
+                    )
+                ),
+                "filled_amount": (
+                    result.get(
+                        "filled_amount"
+                    )
+                ),
+                "fee": result.get(
+                    "fee"
+                ),
+                "fee_amount": result.get(
+                    "fee_amount"
+                ),
+                "fee_currency": result.get(
+                    "fee_currency"
+                ),
+                "pnl": result.get(
+                    "pnl"
+                ),
+                "latency_ms": (
+                    result.get(
+                        "latency_ms"
+                    )
+                ),
+                "terminal": True,
+                "commit_outcome": (
+                    result.get(
+                        "commit_outcome"
+                    )
+                ),
+            },
+            causation_id=(
+                run.last_audit_event_id
+            ),
+        )
+
+        return _CONTINUE
+
+    def _decision_finalize(
+        self,
+        run: _DecisionRun,
+        result: dict[str, Any],
+    ) -> tuple[Any, dict[str, Any] | _Continue]:
+        """Apply the confirmed execution to the durable financial authority (the side-effect boundary)."""
+
+        request = cast(ExecutionRequest, run.request)
+        request_id = cast(str, run.request_id)
+
+        finalized = None
+
+        try:
+            if self.portfolio_foundation is not None:
+                # Side-effect boundary. apply_confirmed() mutates the
+                # durable financial authority, so from here an
+                # interrupted request has an outcome this manager
+                # cannot prove. Nothing earlier in the paper flow
+                # mutates anything any more: the paper paths are
+                # purely computational, and PaperTrader is projected
+                # from this authority only after the commit lands.
+                self._mark_execution_side_effect(request_id)
+
+                finalized = self._finalize_durable_financial_state(
+                    request=request,
+                    result=result,
+                )
+        except Exception as finalization_exc:
+            self._record_error(
+                phase="durable_financial_finalization",
+                error=finalization_exc,
+                request=request,
+            )
+            self._mark_capital_indeterminate(request_id)
+            try:
+                self.transaction_journal.mark_unknown(
+                    request_id,
+                    reason="DURABLE_FINANCIAL_FINALIZATION_FAILED",
+                    result=result,
+                )
+            except Exception:
+                logger.exception("Unable to mark failed financial finalization unknown")
+            with self._lock:
+                self.execution_halted = True
+                self.recovery_required = True
+                self.halt_reason = "DURABLE_FINANCIAL_FINALIZATION_FAILED"
+            # Same claim discipline as the unsuccessful-result branch
+            # above: an interrupted execution must not leave its
+            # request_id claimed in flight, which would outlive the
+            # halt and answer EXECUTION_REQUESTS_IN_FLIGHT forever.
+            self._release_request(request_id)
+            run.request_claimed = False
+            unknown_result = {
+                "success": False,
+                "status": CommitOutcome.COMMIT_STATUS_UNKNOWN.value,
+                "commit_outcome": CommitOutcome.COMMIT_STATUS_UNKNOWN.value,
+                "recovery_required": True,
+                "error_code": "DURABLE_FINANCIAL_FINALIZATION_FAILED",
+                "message": "Execution was confirmed but durable position/portfolio finalization failed",
+                "request_id": request_id,
+                "symbol": request.symbol,
+                "action": request.action,
+                "mode": self.mode,
+                "timestamp": self._utc_now(),
+            }
+            self._record_result(unknown_result)
+            self.publish("EXECUTION_COMMIT_STATUS_UNKNOWN", unknown_result)
+            return finalized, unknown_result
+
+        return finalized, _CONTINUE
+
+    def _decision_commit_reservation(
+        self,
+        run: _DecisionRun,
+        result: dict[str, Any],
+    ) -> dict[str, Any] | _Continue:
+        """Commit the capital reservation at the exact settled amount."""
+
+        request = cast(ExecutionRequest, run.request)
+        request_id = cast(str, run.request_id)
+
+        # Block 5E: commit the reservation at the exact settled
+        # amount - notional + quote fee - rather than the full
+        # reservation, so the deterministic sub-quantum remainder a
+        # BUY never spent stops being permanently encumbered by this
+        # reservation. `None` when either figure is absent (e.g. a
+        # non-paper/live result), which preserves the historical
+        # full-amount commit for that case. The addition is pinned
+        # to the same explicit context as the rest of the 5E
+        # settlement slice (final-review MEDIUM #2), so a caller
+        # thread's ambient precision can never round this sum
+        # differently than `_finalize_durable_financial_state`
+        # already rounded the identical `notional + fee` figure it
+        # checked against the approval moments earlier - a
+        # divergence here would either under-commit or spuriously
+        # halt on `settled_amount exceeds reserved amount`.
+        settled_amount = None
+        notional_raw = result.get("filled_quote_notional")
+        settled_fee_raw = result.get("fee_amount")
+        if notional_raw is not None and settled_fee_raw is not None:
+            try:
+                with localcontext() as context:
+                    context.prec = SETTLEMENT_CONTEXT_PRECISION
+                    context.rounding = ROUND_HALF_EVEN
+                    settled_amount = Decimal(str(notional_raw)) + Decimal(str(settled_fee_raw))
+            except (InvalidOperation, ValueError, TypeError):
+                settled_amount = None
+
+        if not self._commit_capital_reservation(request_id, settled_amount):
+            try:
+                self.transaction_journal.mark_unknown(
+                    request_id,
+                    reason="CAPITAL_RESERVATION_COMMIT_FAILED",
+                    result=result,
+                )
+            except Exception:
+                logger.exception("Unable to mark reservation commit failure unknown")
+            with self._lock:
+                self.execution_halted = True
+                self.recovery_required = True
+                self.halt_reason = "CAPITAL_RESERVATION_COMMIT_FAILED"
+            # F-5: the same claim discipline dac9b72 gave the
+            # finalization-failure branch above. Clearing only the
+            # local flag left request_id in pending_request_ids, so
+            # the claim outlived the halt and reset() refused with
+            # EXECUTION_REQUESTS_IN_FLIGHT until restart.
+            self._release_request(request_id)
+            run.request_claimed = False
+            unknown_result = {
+                "success": False,
+                "status": CommitOutcome.COMMIT_STATUS_UNKNOWN.value,
+                "commit_outcome": CommitOutcome.COMMIT_STATUS_UNKNOWN.value,
+                "recovery_required": True,
+                "error_code": "CAPITAL_RESERVATION_COMMIT_FAILED",
+                "message": "Execution finalized but reservation commit could not be confirmed",
+                "request_id": request_id,
+                "symbol": request.symbol,
+                "action": request.action,
+                "mode": self.mode,
+                "timestamp": self._utc_now(),
+            }
+            self._record_result(unknown_result)
+            self.publish("EXECUTION_COMMIT_STATUS_UNKNOWN", unknown_result)
+            return unknown_result
+
+        return _CONTINUE
+
+    def _decision_persist_terminal(
+        self,
+        run: _DecisionRun,
+        result: dict[str, Any],
+        finalized: Any,
+    ) -> dict[str, Any] | _Continue:
+        """Project the paper book, mark the result COMMITTED and persist it as the terminal idempotency record."""
+
+        request = cast(ExecutionRequest, run.request)
+        request_id = cast(str, run.request_id)
+
+        # The durable authority is committed and the reservation is
+        # settled; only now is the passive book projected from it.
+        # This can neither fail nor alter the execution.
+        self._mirror_paper_book(
+            request=request,
+            result=result,
+            finalized=finalized,
+        )
+
+        result[
+            "commit_outcome"
+        ] = (
+            CommitOutcome
+            .COMMITTED
+            .value
+        )
+
+        persisted = self._complete_request(
+            request_id=request_id,
+            result=result,
+        )
+
+        run.request_claimed = False
+
+        if not persisted:
+            self._mark_capital_indeterminate(request_id)
+            try:
+                self.transaction_journal.mark_unknown(
+                    request_id,
+                    reason="DURABLE_COMMIT_FAILED",
+                    result=result,
+                )
+
+            except Exception:
+                logger.exception(
+                    "Unable to persist unknown "
+                    "transaction outcome"
+                )
+
+            with self._lock:
+                self.execution_halted = True
+                self.recovery_required = True
+                self.halt_reason = (
+                    "UNRESOLVED_TRANSACTION"
+                )
+
+            unknown_result = {
+                "success": False,
+                "status": (
+                    CommitOutcome
+                    .COMMIT_STATUS_UNKNOWN
+                    .value
+                ),
+                "commit_outcome": (
+                    CommitOutcome
+                    .COMMIT_STATUS_UNKNOWN
+                    .value
+                ),
+                "recovery_required": True,
+                "error_code": (
+                    "DURABLE_COMMIT_FAILED"
+                ),
+                "message": (
+                    "Financial side effect completed but "
+                    "durable terminal persistence failed"
+                ),
+                "request_id": request_id,
+                "symbol": request.symbol,
+                "action": request.action,
+                "mode": self.mode,
+                "timestamp": self._utc_now(),
+                "original_result": result,
+            }
+
+            self._record_result(
+                unknown_result
+            )
+
+            self.publish(
+                "EXECUTION_COMMIT_STATUS_UNKNOWN",
+                unknown_result,
+            )
+
+            return unknown_result
+
+        return _CONTINUE
+
+    def _decision_journal_commit(
+        self,
+        run: _DecisionRun,
+        result: dict[str, Any],
+    ) -> dict[str, Any] | _Continue:
+        """Mark the durable transaction committed in the journal."""
+
+        request = cast(ExecutionRequest, run.request)
+        request_id = cast(str, run.request_id)
+
+        try:
+            journal_committed = (
+                self.transaction_journal.mark_committed(
+                    request_id,
+                    result,
+                )
+            )
+
+        except Exception:
+            journal_committed = False
+
+            logger.exception(
+                "Transaction journal commit failed"
+            )
+
+        if not journal_committed:
+            self._mark_capital_indeterminate(request_id)
+            try:
+                self.transaction_journal.mark_unknown(
+                    request_id,
+                    reason=(
+                        "TRANSACTION_JOURNAL_COMMIT_FAILED"
+                    ),
+                    result=result,
+                )
+
+            except Exception:
+                logger.exception(
+                    "Unable to mark transaction unknown"
+                )
+
+            with self._lock:
+                self.execution_halted = True
+                self.recovery_required = True
+                self.halt_reason = (
+                    "UNRESOLVED_TRANSACTION"
+                )
+
+            unknown_result = {
+                "success": False,
+                "status": (
+                    CommitOutcome
+                    .COMMIT_STATUS_UNKNOWN
+                    .value
+                ),
+                "commit_outcome": (
+                    CommitOutcome
+                    .COMMIT_STATUS_UNKNOWN
+                    .value
+                ),
+                "recovery_required": True,
+                "error_code": (
+                    "TRANSACTION_JOURNAL_COMMIT_FAILED"
+                ),
+                "message": (
+                    "Terminal result persisted but journal "
+                    "commit could not be confirmed"
+                ),
+                "request_id": request_id,
+                "symbol": request.symbol,
+                "action": request.action,
+                "mode": self.mode,
+                "timestamp": self._utc_now(),
+            }
+
+            self._record_result(
+                unknown_result
+            )
+
+            self.publish(
+                "EXECUTION_COMMIT_STATUS_UNKNOWN",
+                unknown_result,
+            )
+
+            return unknown_result
+
+        return _CONTINUE
+
+    def _decision_pipeline_failure(
+        self,
+        run: _DecisionRun,
+        exc: Exception,
+    ) -> dict[str, Any]:
+        """Handle an exception raised anywhere in the pipeline (called from the except clause)."""
+
+        request = run.request
+        request_id = run.request_id
+        started_at = run.started_at
+
+        self._record_error(
+            phase="execute",
+            error=exc,
+            request=request,
+        )
+
+        with self._lock:
+            self.stats[
+                "failed"
+            ] += 1
+
+        logger.exception(
+            "Execution pipeline failed"
+        )
+
+        # An exception after risk admission must not leave capital
+        # reserved, an admission stale, and the runtime running.
+        side_effect_possible = (
+            self._resolve_unsuccessful_execution(
+                request_id=request_id,
+                reason="EXECUTION_PIPELINE_EXCEPTION",
+            )
+            if request_id
+            else False
+        )
+
+        if side_effect_possible:
+            failure = self._failure_result(
+                request=request,
+                status=(
+                    CommitOutcome
+                    .COMMIT_STATUS_UNKNOWN
+                    .value
+                ),
+                message=(
+                    "Execution was interrupted after a paper "
+                    "execution side effect"
+                ),
+                error_code=(
+                    "EXECUTION_PIPELINE_EXCEPTION"
+                ),
+                error=exc,
+            )
+
+            failure[
+                "commit_outcome"
+            ] = (
+                CommitOutcome
+                .COMMIT_STATUS_UNKNOWN
+                .value
+            )
+
+            failure[
+                "recovery_required"
+            ] = True
+
+        else:
+            failure = self._failure_result(
+                request=request,
+                status="FAILED",
+                message=(
+                    "Execution pipeline failed"
+                ),
+                error_code=(
+                    "EXECUTION_PIPELINE_EXCEPTION"
+                ),
+                error=exc,
+            )
+
+            failure[
+                "commit_outcome"
+            ] = (
+                CommitOutcome
+                .NOT_COMMITTED
+                .value
+            )
+
+        if request_id:
+            failure.setdefault(
+                "request_id",
+                request_id,
+            )
+
+        failure[
+            "latency_ms"
+        ] = round(
+            (
+                time.perf_counter()
+                - started_at
+            )
+            * 1000,
+            3,
+        )
+
+        with self._lock:
+            self._append_bounded(
+                self.history,
+                failure,
+                self.MAX_HISTORY,
+            )
+
+        if request is not None:
+            self._write_audit_event(
+                event_type=(
+                    "EXECUTION_COMMIT_STATUS_UNKNOWN"
+                    if side_effect_possible
+                    else "EXECUTION_FAILED"
+                ),
+                request=request,
+                payload={
+                    "success": False,
+                    "status": failure.get(
+                        "status"
+                    ),
+                    "message": failure.get(
+                        "message"
+                    ),
+                    "error_code": (
+                        "EXECUTION_PIPELINE_EXCEPTION"
+                    ),
+                    "error": str(
+                        exc
+                    ),
+                    "error_type": type(
+                        exc
+                    ).__name__,
+                    "latency_ms": failure.get(
+                        "latency_ms"
+                    ),
+                    "retryable": (
+                        not side_effect_possible
+                    ),
+                    "commit_outcome": failure.get(
+                        "commit_outcome"
+                    ),
+                },
+                causation_id=(
+                    run.last_audit_event_id
+                ),
+            )
+
+        self.publish(
+            (
+                "EXECUTION_COMMIT_STATUS_UNKNOWN"
+                if side_effect_possible
+                else "EXECUTION_FAILED"
+            ),
+            failure,
+        )
+
+        return failure
 
     def build_request(
         self,
@@ -2733,7 +3158,16 @@ class ExecutionManager:
                 },
             }
 
-        if request.confidence < self.minimum_confidence:
+        # Phase-2 B1: confidence is a new-risk admission criterion. A SELL
+        # that reduces a held position is never refused for low confidence;
+        # one that is not a reduction is refused by RiskEngine regardless.
+        # Task 026: new risk is a BUY on the LONG side or a SELL on the SHORT
+        # side, so the side is derived from the durable book before this gate.
+        request.position_side = self._book_position_side(request)
+        if (
+            opens_risk(request.action, request.position_side)
+            and request.confidence < self.minimum_confidence
+        ):
             return {
                 "approved": False,
                 "reason": "LOW_CONFIDENCE",
@@ -2823,10 +3257,22 @@ class ExecutionManager:
             base = Decimal(str(position["base_quantity"]))
             mark = Decimal(str(position["mark_price"]))
             exposures.append(
-                PositionExposure(symbol, base, mark, base * mark)
+                PositionExposure(symbol, base, mark, base * mark,
+                                 risk_bucket=self._recorded_risk_bucket(position.get("position_id")),
+                                 side=position_side(position))   # Task 026
             )
 
         return tuple(exposures)
+
+    def _recorded_risk_bucket(self, position_id: Any) -> str | None:
+        store = self.position_risk_buckets
+        if store is None:
+            return None
+        try:
+            return store.lookup(position_id)
+        except Exception:
+            logger.warning("Position risk bucket unreadable; treated as UNKNOWN", exc_info=True)
+            return None
 
     def _derive_risk_state(
         self,
@@ -2899,6 +3345,29 @@ class ExecutionManager:
             today_utc=datetime.now(UTC).date(),
         )
 
+        # Phase-2 C1: one valuation snapshot per decision. Under the owner's
+        # F-3 switch (count_unrealized_in_daily_loss) current_equity is the
+        # conservative marked equity, so drawdown and sleeve capacity see
+        # open losses exactly as the daily-loss gate does. An INCOMPLETE
+        # snapshot leaves unrealized_pnl None, which RiskEngine refuses for
+        # new risk; reductions are decided before valuation is consulted.
+        valuation = (
+            self._valuation_snapshot(restored)
+            if foundation is not None
+            else None
+        )
+
+        if valuation is not None:
+            unrealized_pnl = valuation.unrealized_net
+            current_equity = (
+                valuation.marked_equity
+                if valuation.marked_equity is not None
+                else restored.current_equity
+            )
+        else:
+            unrealized_pnl = self._mark_to_market(positions)
+            current_equity = restored.current_equity
+
         return RiskState(
             positions=positions,
             committed_quote=sum(
@@ -2907,28 +3376,173 @@ class ExecutionManager:
             ),
             realized_daily_pnl=restored.realized_daily_pnl,
             peak_equity=restored.peak_equity,
-            current_equity=restored.current_equity,
+            current_equity=current_equity,
             state_ready=True,
             accounting_day_utc=restored.accounting_day_utc.isoformat(),
             policy_version=restored.policy_version,
+            unrealized_pnl=unrealized_pnl,
         )
 
-    @staticmethod
+    def _valuation_snapshot(self, restored: Any) -> Any:
+        """Phase-2 C1 ValuationSnapshot of the durable book, or None.
+
+        None when the owner's F-3 switch is off or no price provider is
+        wired (the historical ledger-only basis then applies unchanged).
+        Any failure yields an INCOMPLETE-equivalent None unrealized figure
+        through ``_mark_to_market``'s historical contract: never zero-filled.
+        """
+        if not getattr(self.risk_engine.policy, "count_unrealized_in_daily_loss", False):
+            return None
+        provider = getattr(self, "mark_price_provider", None)
+        if provider is None:
+            return None
+        from core.valuation_snapshot import build_valuation_snapshot
+
+        try:
+            snapshot = build_valuation_snapshot(
+                book_positions=self.portfolio_foundation.snapshot().get("positions") or {},
+                marks=provider() or {},
+                ledger_equity=restored.current_equity,
+                peak_equity=restored.peak_equity,
+                realized_daily=restored.realized_daily_pnl,
+                close_fee_rate=getattr(self, "paper_fee_rate", 0) or 0,
+                as_of=datetime.now(UTC).isoformat(),
+            )
+        except Exception:
+            logger.warning("valuation snapshot unavailable; unrealized P&L unknown", exc_info=True)
+            self.unpriced_held_symbols = []
+            self.last_valuation_snapshot = None
+            return None
+
+        # Audit F-B: name the coins that make the valuation incomplete.
+        self.unpriced_held_symbols = sorted(snapshot.missing_marks)
+        self.last_valuation_snapshot = snapshot
+        return snapshot
+
+    # Audit finding F-4 (owner 2026-09-30): PAPER fills at the candle close are
+    # idealised. With a positive value the fill moves against Atlas by this many
+    # basis points (BUY higher, SELL lower), rounded to the venue price tick in
+    # the adverse direction. 0 keeps the historical fill byte-identical.
+    PAPER_SLIPPAGE_BPS = Decimal("0")
+
+    def _paper_fill_price(self, request: Any) -> Any:
+        bps = Decimal(str(getattr(self, "paper_slippage_bps", self.PAPER_SLIPPAGE_BPS)))
+        if not bps.is_finite() or bps < 0 or bps >= 10000:  # audit A-3: never fail open
+            raise ValueError("PAPER_SLIPPAGE_BPS must be finite and in [0, 10000)")
+        if bps == 0:
+            return request.price
+        price = Decimal(str(request.price))
+        buy = str(request.action).upper().endswith("BUY")
+        raw = price * (1 + bps / Decimal("10000")) if buy else price * (1 - bps / Decimal("10000"))
+        rules = self.instrument_rules.get(request.symbol) if self.instrument_rules is not None else None
+        tick = Decimal(str(getattr(rules, "price_tick", "0") or "0"))
+        if tick > 0:
+            from decimal import ROUND_CEILING, ROUND_FLOOR
+            raw = (raw / tick).to_integral_value(rounding=ROUND_CEILING if buy else ROUND_FLOOR) * tick
+        if raw <= 0:
+            raise ValueError("slipped fill price is not positive")
+        return float(raw)
+
+    def _shadow_book_fill_price(self, request: Any) -> float | None:
+        """Live order book VWAP for this order (S2), rounded to the tick against Atlas; None = reject.
+
+        BUY notional is the risk-approved quote allocation; SELL notional is the base
+        quantity being sold (a partial reduction: approved / mark, capped at the holding)
+        at the request price. An unknown notional is never guessed.
+        """
+        side = "BUY" if str(request.action).upper().endswith("BUY") else "SELL"
+        try:
+            # Task 026: a short opens with a SELL and covers with a BUY; an object with no side is a long
+            if opens_risk(side, getattr(request, "position_side", "LONG")):
+                notional = request.approved_quote_allocation
+            else:
+                foundation = getattr(self, "portfolio_foundation", None)
+                held = ((foundation.snapshot().get("positions") or {}).get(request.symbol) or {}) if foundation else {}
+                quantity = held.get("base_quantity")
+                if quantity is not None:
+                    quantity = Decimal(str(quantity))
+                    # Audit 2026-10-02 (MEDIUM): a partial reduction sells about approved / mark
+                    # base units (_resolve_reduction_quantity), not the whole holding.
+                    approved, mark = request.approved_quote_allocation, held.get("mark_price")
+                    if approved is not None and mark is not None and Decimal(str(mark)) > 0:
+                        quantity = min(quantity, Decimal(str(approved)) / Decimal(str(mark)))
+                notional = None if quantity is None else quantity * Decimal(str(request.price))
+            if notional is None or not Decimal(str(notional)).is_finite() or Decimal(str(notional)) <= 0:
+                return None
+            price = self.paper_fill_provider(request.symbol, side, Decimal(str(notional)))
+        except Exception:
+            logger.exception("Shadow book fill price failed; the order is rejected")
+            return None
+        if not isinstance(price, Decimal) or not price.is_finite() or price <= 0:
+            return None
+        rules = self.instrument_rules.get(request.symbol) if self.instrument_rules is not None else None
+        tick = Decimal(str(getattr(rules, "price_tick", "0") or "0"))
+        if tick > 0:
+            from decimal import ROUND_CEILING, ROUND_FLOOR
+            price = (price / tick).to_integral_value(rounding=ROUND_CEILING if side == "BUY" else ROUND_FLOOR) * tick
+        return float(price) if price > 0 else None
+
+    def _mark_to_market(self, positions: Any) -> Decimal | None:
+        """Unrealized P&L of open positions (audit F-3), or None when not fully known.
+
+        Computed only when the risk policy counts it; any position without a
+        fresh mark price makes the whole figure unknown (never zero-filled),
+        which the engine turns into UNREALIZED_PNL_UNKNOWN for new risk.
+        """
+        if not getattr(self.risk_engine.policy, "count_unrealized_in_daily_loss", False):
+            return None
+        provider = getattr(self, "mark_price_provider", None)
+        if provider is None:
+            return None
+        try:
+            prices = provider() or {}
+            self.unpriced_held_symbols = []
+            foundation = getattr(self, "portfolio_foundation", None)
+            book = (foundation.snapshot().get("positions") or {}) if foundation is not None else {}
+            total = Decimal("0")
+            for p in positions:
+                price = prices.get(p.symbol)
+                if price is None:
+                    # Audit F-B: name the coin, so readiness can say why new buys stop.
+                    self.unpriced_held_symbols = sorted({q.symbol for q in positions if prices.get(q.symbol) is None})
+                    return None
+                value = Decimal(str(price)) * p.base_quantity
+                held = book.get(p.symbol)
+                if held is not None:
+                    # Audit F-C: measured against what the position really cost (cost
+                    # basis + entry fees) and net of the fee a close would pay, so
+                    # the figure can only be more conservative than before.
+                    # Task 026: a short's gross is cost - value.
+                    gross = position_unrealized(held, Decimal(str(price)))
+                    fees = Decimal(str(held.get("entry_fees") or "0"))
+                    total += gross - fees - value * Decimal(str(getattr(self, "paper_fee_rate", 0)))
+                elif p.side == "SHORT":
+                    total += p.quote_exposure - value
+                else:
+                    total += value - p.quote_exposure
+            return total if total.is_finite() else None
+        except Exception:
+            logger.warning("mark-to-market unavailable; unrealized P&L unknown", exc_info=True)
+            return None
+
     def _derive_reduce_only(
+        self,
         request: ExecutionRequest,
         state: RiskState,
     ) -> bool:
         """Derive risk-reduction intent from authoritative held-position state.
 
-        Atlas is LONG-only, so exposure can only fall by selling a symbol that
-        is actually held. A SELL against a held position is therefore handed to
+        Exposure can only fall by reducing a position that is actually held: a
+        SELL of a held LONG, or (Task 026, forex margin book) a BUY of a held
+        SHORT. A SELL against a held position is therefore handed to
         ``RiskEngine`` as reduce-only, and the engine keeps sole authority over
         whether the requested size is a *valid* reduction: an over-sized one
         still fails closed as ``INVALID_RISK_REDUCTION``. A SELL against a
-        symbol that is not held is not a reduction at all and stays
-        ``NON_RISK_REDUCING_SELL``.
+        symbol that is not held is not a reduction at all: a sized one is
+        refused by the engine as ``NON_RISK_REDUCING_SELL``, an unsized one by
+        ``risk_check`` as ``NO_POSITION_TO_SELL``.
 
-        A BUY can never reduce exposure, so it derives False unconditionally.
+        A BUY of a LONG side never reduces exposure, so it derives False.
         That also stops a caller-supplied flag from waiving the capital
         reservation the BUY path requires.
 
@@ -2936,15 +3550,31 @@ class ExecutionManager:
         logged and then discarded, because held-position state - not caller
         intent - decides whether exposure is being reduced.
         """
-        if str(request.action).strip().upper() != "SELL":
-            return False
-
+        # Task 026: the side is decided by the same durable position state - a held position's own side,
+        # else SHORT for a SELL when the policy allows shorts, else LONG - and is written on the request.
         symbol = str(request.symbol).strip().upper()
+        held = [position for position in state.positions if position.symbol == symbol]
+        request.position_side = held[0].side if held else self._flat_position_side(request)
+        return bool(held) and reduces_risk(request.action, request.position_side)
 
-        return any(
-            position.symbol == symbol
-            for position in state.positions
-        )
+    def _flat_position_side(self, request: ExecutionRequest) -> str:
+        """SHORT for a SELL of a symbol not held when the risk policy allows shorts (Task 026), else LONG."""
+        policy = getattr(self.risk_engine, "policy", None)
+        if str(request.action).strip().upper() == "SELL" and getattr(policy, "shorts_enabled", False) is True:
+            return "SHORT"
+        return "LONG"
+
+    def _book_position_side(self, request: ExecutionRequest) -> str:
+        """The side ``_derive_reduce_only`` will derive, read from the durable book before risk evaluation.
+
+        A book that cannot be read answers LONG; risk admission then refuses on the book's own state."""
+        foundation = self.portfolio_foundation
+        try:
+            held = foundation.snapshot()["positions"].get(str(request.symbol).strip().upper()) \
+                if foundation is not None and foundation.ready else None
+        except Exception:
+            held = None
+        return position_side(held) if held is not None else self._flat_position_side(request)
 
     # =========================================================
     # REQUESTED ALLOCATION (PRE-RISK)
@@ -2981,11 +3611,33 @@ class ExecutionManager:
         if self.portfolio_foundation is None or self.reservation_ledger is None:
             return None
 
-        cash = Decimal(str(self.portfolio_foundation.snapshot()["cash"]))
+        # Task 025: ``spendable_cash`` is the cash itself for a cash book; a margin book subtracts any
+        # unrealized loss from it.
+        cash = Decimal(str(self.portfolio_foundation.snapshot()["spendable_cash"]))
 
         return cash - self.reservation_ledger.active_reserved_capital(
             exclude=exclude
         )
+
+    @staticmethod
+    def _is_unsized_sell_of_unheld_symbol(request: ExecutionRequest) -> bool:
+        """A SELL that names no size, for a symbol ``_derive_reduce_only``
+        found not held. A malformed ``amount`` (non-numeric, NaN, negative) is
+        deliberately not "unsized", so its pre-existing refusal is unchanged."""
+
+        if (str(request.action).strip().upper() != "SELL" or request.reduce_only
+                or request.position_side == "SHORT"):   # Task 026: an unsized short is UNSIZED_REQUEST_REJECTED
+            return False
+
+        if request.proposed_quote_allocation is not None:
+            return False
+
+        try:
+            amount = Decimal(str(request.amount))
+        except (InvalidOperation, TypeError, ValueError):
+            return False
+
+        return amount.is_finite() and amount == 0
 
     def _requested_quote_allocation(
         self,
@@ -3030,9 +3682,13 @@ class ExecutionManager:
             refuses it as ``UNSIZED_REQUEST_REJECTED``.
 
         Unsized non-reducing SELL
-            Resolves to zero, which ``RiskEngine`` refuses as
-            ``INVALID_FINANCIAL_INPUT`` exactly as before: selling a symbol
-            that is not held is malformed, not merely unsized.
+            Resolves to zero. ``risk_check`` refuses a genuinely unsized one
+            (no proposal, ``amount`` exactly zero) as ``NO_POSITION_TO_SELL``
+            before the engine runs (registry v5.04). A non-positive or
+            malformed ``amount`` is not "unsized", so its pre-existing
+            refusal is unchanged (``INVALID_FINANCIAL_INPUT`` for a negative
+            or infinite amount, ``RISK_STATE_RESTORATION_FAILED`` for a
+            non-numeric one).
 
         The result is exact ``Decimal`` and deterministic for identical
         durable state.
@@ -3056,7 +3712,7 @@ class ExecutionManager:
                 Decimal("0"),
             )
 
-        if str(request.action).strip().upper() == "BUY":
+        if opens_risk(request.action, request.position_side):   # Task 026: a short opens with a SELL
             return None
 
         return Decimal("0")
@@ -3085,6 +3741,94 @@ class ExecutionManager:
         execution can commit. CapitalManager takes no part in any of this.
         """
 
+        # Task 026 (review F2): the new-risk gates in _risk_preconditions read the
+        # position side, so it is derived from the durable book here, before any
+        # gate, whoever built the request; _derive_reduce_only re-derives it from
+        # the risk state the engine evaluates.
+        request.position_side = self._book_position_side(request)
+
+        # T-0014: each gate is one _risk_* helper, called in the order below; a
+        # helper returns the refusal that ends the evaluation or _CONTINUE.
+        terminal = self._risk_preconditions(
+            request,
+        )
+
+        if not isinstance(terminal, _Continue):
+            return terminal
+
+        canonical, terminal = self._risk_canonical_verdict(
+            request,
+            market_state,
+        )
+
+        if not isinstance(terminal, _Continue):
+            return terminal
+
+        instrument_rules, request_price, terminal = self._risk_instrument_gates(
+            request,
+        )
+
+        if not isinstance(terminal, _Continue):
+            return terminal
+
+        # CapitalManager is not consulted here. It holds no admission
+        # authority over a canonical RiskDecision: it cannot veto one, cannot
+        # resize one, and cannot reinterpret one. The reject-capable gates
+        # that remain are the canonical engine itself, the position-limit
+        # check above, and the executable-quantum and durable-capital checks
+        # below - all of which run before any capital is reserved.
+
+        if opens_risk(request.action, request.position_side) and not request.reduce_only:   # Task 026
+            terminal = self._risk_buy_fill_bounds(
+                request,
+                canonical,
+                instrument_rules,
+                cast(Decimal, request_price),  # set whenever the gates continue
+            )
+
+            if not isinstance(terminal, _Continue):
+                return terminal
+
+            terminal = self._risk_buy_reserve(
+                request,
+                canonical,
+            )
+
+            if not isinstance(terminal, _Continue):
+                return terminal
+
+        # The single write of the canonical allocation, made only once every
+        # reject-capable gate has passed. It is the engine's own Decimal, not
+        # a re-derived one, and the admission token is sealed around it below.
+        request.approved_quote_allocation = canonical.approved_allocation
+        self._risk_admissions[request.request_id] = self._risk_admission_key(request)
+
+        return {
+            "approved": True,
+            "reason": "RISK_APPROVED",
+            # Block 5D: recorded here so it reaches the RISK_APPROVED audit
+            # event through the existing details pass-through, alongside the
+            # fill-time evidence _execute_paper_buy/_execute_paper_sell write
+            # onto result.data.
+            "details": {
+                "instrument_rules_digest": instrument_rules.digest,
+                "instrument_rules_source_version": instrument_rules.source_version,
+                # registry v5.01 EXP-001: present only when the admission needed
+                # the experiment's lowered floor; counted at startup for the cap.
+                **({"experiment_id": canonical.experiment_id} if canonical.experiment_id else {}),
+                # registry v5.23: the paper fee rate this execution charges,
+                # so recovery re-derives the fill exactly (absent -> 0, the
+                # historical fee-free contract). Recorded only when nonzero.
+                **({"paper_fee_rate": format(self.paper_fee_rate, "f")} if self.paper_fee_rate else {}),
+            },
+        }
+
+    def _risk_preconditions(
+        self,
+        request: ExecutionRequest,
+    ) -> dict[str, Any] | _Continue:
+        """Void any carried approval; require the risk services; roll the accounting day (failure is recorded, not fatal)."""
+
         # Any approval this request may be carrying from an earlier evaluation
         # is void the moment it is re-evaluated. Clearing first means a
         # refusal below can never leave a stale approval that a later stage
@@ -3109,6 +3853,44 @@ class ExecutionManager:
             self._auto_rollover_risk_accounting_day()
         except Exception as exc:
             self._record_error(phase="risk_day_rollover", error=exc, request=request)
+
+        # Phase-2 A3 (after the rollover housekeeping, so a failed refusal
+        # audit is still retried on the next request):
+        # while audit persistence is not provably healthy no new
+        # risk is admitted. New risk is a BUY on the LONG side or, on a forex
+        # margin book, a SELL on the SHORT side (Task 026); every other order is
+        # a reduction (allowed, B1) or refused by RiskEngine.
+        audit_state = self.audit_persistence_state()
+        if opens_risk(request.action, request.position_side):   # Task 026: a short opens with a SELL
+            # Phase-2 G1: runtime policy differs from the governance manifest.
+            policy_block = getattr(self, "policy_manifest_block", None)
+            if policy_block:
+                return {"approved": False, "reason": policy_block, "status": "BLOCK_NEW_RISK",
+                        "details": {"policy_manifest_block": policy_block}}
+            if audit_state not in {"HEALTHY", "DISABLED"}:
+                return {"approved": False, "reason": "AUDIT_PERSISTENCE_" + audit_state,
+                        "status": "BLOCK_NEW_RISK",
+                        "details": {"audit_persistence_state": audit_state}}
+        elif audit_state == "RECOVERY_REQUIRED":
+            # Phase-2 B1/B2: a reduction stays allowed while audit is merely
+            # DEGRADED. A poisoned audit writer, however, cannot record the
+            # write-ahead RISK_ACCOUNTING_REALIZED_PNL_PREPARED event every
+            # SELL's realized-P&L booking requires, so executing the exit
+            # would commit a trade that cannot be booked and then halt in
+            # recovery. Refuse cleanly before anything executes instead.
+            return {"approved": False, "reason": "AUDIT_PERSISTENCE_RECOVERY_REQUIRED",
+                    "status": "BLOCK_RECOVERY_REQUIRED",
+                    "details": {"audit_persistence_state": audit_state}}
+
+        return _CONTINUE
+
+    def _risk_canonical_verdict(
+        self,
+        request: ExecutionRequest,
+        market_state: Any | None,
+    ) -> tuple[Any, dict[str, Any] | _Continue]:
+        """Derive the risk state and reduce-only intent, resolve the size and take RiskEngine's canonical verdict."""
+
         if self.risk_engine is not None:
             try:
                 risk_state = self._derive_risk_state(market_state)
@@ -3135,7 +3917,7 @@ class ExecutionManager:
                 requested = self._requested_quote_allocation(request, risk_state)
             except Exception as exc:
                 self._record_error(phase="canonical_risk", error=exc, request=request)
-                return {"approved": False, "reason": "RISK_STATE_RESTORATION_FAILED",
+                return None, {"approved": False, "reason": "RISK_STATE_RESTORATION_FAILED",
                         "status": "BLOCK_RECOVERY_REQUIRED"}
 
             if requested is None:
@@ -3151,9 +3933,30 @@ class ExecutionManager:
                     request.action,
                     request.request_id,
                 )
-                return {
+                return None, {
                     "approved": False,
                     "reason": "UNSIZED_REQUEST_REJECTED",
+                    "details": {
+                        "symbol": request.symbol,
+                        "action": request.action,
+                    },
+                }
+
+            if self._is_unsized_sell_of_unheld_symbol(request):
+                # Registry v5.04: nothing is held, so there is nothing to sell.
+                # Refused before the engine and before any reservation, with its
+                # own reason, so it is no longer indistinguishable from
+                # genuinely malformed financial input.
+                logger.info(
+                    "Unsized SELL of an unheld symbol refused symbol=%s "
+                    "request_id=%s",
+                    request.symbol,
+                    request.request_id,
+                )
+                return None, {
+                    "approved": False,
+                    "reason": "NO_POSITION_TO_SELL",
+                    "status": "REJECT",
                     "details": {
                         "symbol": request.symbol,
                         "action": request.action,
@@ -3179,16 +3982,17 @@ class ExecutionManager:
                         execution_price=Decimal(str(request.price)),
                         risk_bucket=request.risk,
                         reduce_only=request.reduce_only,
+                        position_side=request.position_side,   # Task 026
                     ),
                     risk_state,
                 )
                 self.last_risk_decision = canonical.to_dict()
             except Exception as exc:
                 self._record_error(phase="canonical_risk", error=exc, request=request)
-                return {"approved": False, "reason": "RISK_STATE_RESTORATION_FAILED",
+                return None, {"approved": False, "reason": "RISK_STATE_RESTORATION_FAILED",
                         "status": "BLOCK_RECOVERY_REQUIRED"}
             if not canonical.approved:
-                return {
+                return None, {
                     "approved": False,
                     "reason": canonical.reason_code,
                     "status": canonical.status.value,
@@ -3199,7 +4003,15 @@ class ExecutionManager:
             # the two Decimals directly - routing either side through the float
             # mirror would be the very round-trip this field exists to avoid.
             if canonical.approved_allocation != requested:
-                return {"approved": False, "reason": "RISK_ALLOCATION_MISMATCH"}
+                return None, {"approved": False, "reason": "RISK_ALLOCATION_MISMATCH"}
+
+        return canonical, _CONTINUE
+
+    def _risk_instrument_gates(
+        self,
+        request: ExecutionRequest,
+    ) -> tuple[Any, Decimal | None, dict[str, Any] | _Continue]:
+        """Fail-closed venue instrument gates for every action, plus the BUY position limit."""
 
         # Block 5D owner decisions 2/3/7: venue instrument precision is a
         # fail-closed admission gate for every action, not only BUY. A
@@ -3216,7 +4028,7 @@ class ExecutionManager:
         )
 
         if instrument_rules is None:
-            return {
+            return None, None, {
                 "approved": False,
                 "reason": "INSTRUMENT_RULES_UNAVAILABLE",
                 "details": {"symbol": request.symbol},
@@ -3225,7 +4037,7 @@ class ExecutionManager:
         request_price = Decimal(str(request.price))
 
         if not is_aligned_to_step(request_price, instrument_rules.price_tick):
-            return {
+            return None, None, {
                 "approved": False,
                 "reason": "PRICE_TICK_MISALIGNED",
                 "details": {
@@ -3238,13 +4050,13 @@ class ExecutionManager:
         # Every reject-capable compatibility gate must run before capital is
         # reserved and admission is recorded, so a rejection here never
         # leaves a reservation or admission behind (Block-2 M-1).
-        if request.action == "BUY":
+        if opens_risk(request.action, request.position_side):   # Task 026
             allowed = self._can_open_position(
                 request.symbol
             )
 
             if not allowed:
-                return {
+                return None, None, {
                     "approved": False,
                     "reason": "POSITION_LIMIT",
                     "details": {
@@ -3252,219 +4064,219 @@ class ExecutionManager:
                     },
                 }
 
-        # CapitalManager is not consulted here. It holds no admission
-        # authority over a canonical RiskDecision: it cannot veto one, cannot
-        # resize one, and cannot reinterpret one. The reject-capable gates
-        # that remain are the canonical engine itself, the position-limit
-        # check above, and the executable-quantum and durable-capital checks
-        # below - all of which run before any capital is reserved.
+        return instrument_rules, request_price, _CONTINUE
 
-        if request.action == "BUY" and not request.reduce_only:
-            # An approval that cannot fund one whole venue quantity_step, or
-            # that floors to less than the venue's min_quantity/min_notional,
-            # can never produce a valid fill, so it is refused here rather
-            # than discovered after the paper book has already been mutated.
-            # `_resolve_base_fill` is the same pure derivation the
-            # post-component defense-in-depth check in `_execute_paper_buy`
-            # uses, so the two can never drift apart on how a fill is sized -
-            # only on the fee, which is not yet known at admission and is
-            # taken as zero here (Block 5D owner decision: reuse the same
-            # fill/step derivation for both).
-            #
-            # Reaching this condition past admission turns an unexecutable
-            # request into EXECUTION_INTERRUPTED_AFTER_SIDE_EFFECT -
-            # INDETERMINATE capital, an unresolved journal entry, a paper
-            # position the durable book never receives, and a halted runtime
-            # awaiting operator recovery. Refusing at admission leaves none
-            # of that behind.
-            #
-            # This sizes nothing. It is a pure feasibility bound on the
-            # amount the caller already asked for and the engine already
-            # approved: no allocation is raised, lowered, or manufactured
-            # (Block 5D owner decision: never raise allocation to satisfy a
-            # minimum), and a request below the bound is refused rather than
-            # rounded up to it.
-            admission_fill = self._resolve_base_fill(
-                allocation=canonical.approved_allocation,
-                price=request_price,
-                fee=Decimal("0"),
-                quantity_step=instrument_rules.quantity_step,
+    def _risk_buy_fill_bounds(
+        self,
+        request: ExecutionRequest,
+        canonical: Any,
+        instrument_rules: Any,
+        request_price: Decimal,
+    ) -> dict[str, Any] | _Continue:
+        """New-risk BUY: the approved allocation must yield a venue-valid fill (quantum, minimums, maximums)."""
+
+        # An approval that cannot fund one whole venue quantity_step, or
+        # that floors to less than the venue's min_quantity/min_notional,
+        # can never produce a valid fill, so it is refused here rather
+        # than discovered after the paper book has already been mutated.
+        # `_resolve_base_fill` is the same pure derivation the
+        # post-component defense-in-depth check in `_execute_paper_buy`
+        # uses, so the two can never drift apart on how a fill is sized -
+        # only on the fee, which is not yet known at admission and is
+        # taken as zero here (Block 5D owner decision: reuse the same
+        # fill/step derivation for both).
+        #
+        # Reaching this condition past admission turns an unexecutable
+        # request into EXECUTION_INTERRUPTED_AFTER_SIDE_EFFECT -
+        # INDETERMINATE capital, an unresolved journal entry, a paper
+        # position the durable book never receives, and a halted runtime
+        # awaiting operator recovery. Refusing at admission leaves none
+        # of that behind.
+        #
+        # This sizes nothing. It is a pure feasibility bound on the
+        # amount the caller already asked for and the engine already
+        # approved: no allocation is raised, lowered, or manufactured
+        # (Block 5D owner decision: never raise allocation to satisfy a
+        # minimum), and a request below the bound is refused rather than
+        # rounded up to it.
+        # Registry v5.23: the paper fee the fill will charge is known here
+        # (a pure function of the allocation), so the bound uses it - a
+        # fee must never push a fill below a venue minimum after the
+        # side-effect boundary, which would halt the runtime.
+        admission_fill = self._resolve_base_fill(
+            allocation=canonical.approved_allocation,
+            price=request_price,
+            fee=self._paper_buy_fee(canonical.approved_allocation),
+            quantity_step=instrument_rules.quantity_step,
+        )
+
+        if admission_fill is None:
+            logger.warning(
+                "Approved allocation cannot fund one whole "
+                "quantity_step symbol=%s request_id=%s approved=%s "
+                "price=%s quantity_step=%s",
+                request.symbol,
+                request.request_id,
+                format(canonical.approved_allocation, "f"),
+                format(request_price, "f"),
+                format(instrument_rules.quantity_step, "f"),
             )
+            return {
+                "approved": False,
+                "reason": "QUANTITY_BELOW_VENUE_MINIMUM",
+                "details": {
+                    "approved_allocation": format(
+                        canonical.approved_allocation, "f"
+                    ),
+                    "execution_price": format(request_price, "f"),
+                    "quantity_step": format(
+                        instrument_rules.quantity_step, "f"
+                    ),
+                },
+            }
 
-            if admission_fill is None:
-                logger.warning(
-                    "Approved allocation cannot fund one whole "
-                    "quantity_step symbol=%s request_id=%s approved=%s "
-                    "price=%s quantity_step=%s",
-                    request.symbol,
-                    request.request_id,
-                    format(canonical.approved_allocation, "f"),
-                    format(request_price, "f"),
-                    format(instrument_rules.quantity_step, "f"),
-                )
-                return {
-                    "approved": False,
-                    "reason": "QUANTITY_BELOW_VENUE_MINIMUM",
-                    "details": {
-                        "approved_allocation": format(
-                            canonical.approved_allocation, "f"
-                        ),
-                        "execution_price": format(request_price, "f"),
-                        "quantity_step": format(
-                            instrument_rules.quantity_step, "f"
-                        ),
-                    },
-                }
+        admission_base_quantity, admission_quote_notional = admission_fill
 
-            admission_base_quantity, admission_quote_notional = admission_fill
+        if admission_base_quantity < instrument_rules.min_quantity:
+            return {
+                "approved": False,
+                "reason": "QUANTITY_BELOW_VENUE_MINIMUM",
+                "details": {
+                    "floored_base_quantity": format(
+                        admission_base_quantity, "f"
+                    ),
+                    "min_quantity": format(
+                        instrument_rules.min_quantity, "f"
+                    ),
+                },
+            }
 
-            if admission_base_quantity < instrument_rules.min_quantity:
-                return {
-                    "approved": False,
-                    "reason": "QUANTITY_BELOW_VENUE_MINIMUM",
-                    "details": {
-                        "floored_base_quantity": format(
-                            admission_base_quantity, "f"
-                        ),
-                        "min_quantity": format(
-                            instrument_rules.min_quantity, "f"
-                        ),
-                    },
-                }
+        if admission_quote_notional < instrument_rules.min_notional:
+            # Terminal for this request/cycle only (Block 5D owner
+            # decision 6): this admission is refused outright, but it
+            # halts nothing - a future independent request (a new
+            # request_id, e.g. the next market-loop tick with an updated
+            # price or allocation) is evaluated fresh against the same
+            # rule.
+            return {
+                "approved": False,
+                "reason": "NOTIONAL_BELOW_VENUE_MINIMUM",
+                "details": {
+                    "floored_quote_notional": format(
+                        admission_quote_notional, "f"
+                    ),
+                    "min_notional": format(
+                        instrument_rules.min_notional, "f"
+                    ),
+                },
+            }
 
-            if admission_quote_notional < instrument_rules.min_notional:
-                # Terminal for this request/cycle only (Block 5D owner
-                # decision 6): this admission is refused outright, but it
-                # halts nothing - a future independent request (a new
-                # request_id, e.g. the next market-loop tick with an updated
-                # price or allocation) is evaluated fresh against the same
-                # rule.
-                return {
-                    "approved": False,
-                    "reason": "NOTIONAL_BELOW_VENUE_MINIMUM",
-                    "details": {
-                        "floored_quote_notional": format(
-                            admission_quote_notional, "f"
-                        ),
-                        "min_notional": format(
-                            instrument_rules.min_notional, "f"
-                        ),
-                    },
-                }
+        # Block 6B (readiness gate V1): the venue's upper bounds, on the
+        # same fill this gate just derived and in the same fail-closed
+        # place its lower bounds are enforced - before any reservation,
+        # before admission is recorded, and before any execution path can
+        # run. An order above ``LOT_SIZE.maxQty``,
+        # ``MARKET_LOT_SIZE.maxQty`` or ``NOTIONAL.maxNotional`` is
+        # refused outright; it is never split, capped, or resized down to
+        # the maximum, exactly as an undersized one is never raised to a
+        # minimum. A bound the config does not model is skipped here and
+        # refused at the live-authority gate instead, so a bounded PAPER
+        # runtime keeps its existing behaviour unchanged.
+        upper_bound = instrument_rules.upper_bound_violation(
+            base_quantity=admission_base_quantity,
+            quote_notional=admission_quote_notional,
+            order_type=request.order_type,
+        )
 
-            # Block 6B (readiness gate V1): the venue's upper bounds, on the
-            # same fill this gate just derived and in the same fail-closed
-            # place its lower bounds are enforced - before any reservation,
-            # before admission is recorded, and before any execution path can
-            # run. An order above ``LOT_SIZE.maxQty``,
-            # ``MARKET_LOT_SIZE.maxQty`` or ``NOTIONAL.maxNotional`` is
-            # refused outright; it is never split, capped, or resized down to
-            # the maximum, exactly as an undersized one is never raised to a
-            # minimum. A bound the config does not model is skipped here and
-            # refused at the live-authority gate instead, so a bounded PAPER
-            # runtime keeps its existing behaviour unchanged.
-            upper_bound = instrument_rules.upper_bound_violation(
-                base_quantity=admission_base_quantity,
-                quote_notional=admission_quote_notional,
-                order_type=request.order_type,
+        if upper_bound is not None:
+            reason, details = upper_bound
+            logger.warning(
+                "Admission refused above venue maximum symbol=%s "
+                "request_id=%s reason=%s",
+                request.symbol,
+                request.request_id,
+                reason,
             )
+            return {
+                "approved": False,
+                "reason": reason,
+                "details": {"symbol": request.symbol, **details},
+            }
 
-            if upper_bound is not None:
-                reason, details = upper_bound
-                logger.warning(
-                    "Admission refused above venue maximum symbol=%s "
-                    "request_id=%s reason=%s",
-                    request.symbol,
-                    request.request_id,
-                    reason,
-                )
-                return {
-                    "approved": False,
-                    "reason": reason,
-                    "details": {"symbol": request.symbol, **details},
-                }
+        return _CONTINUE
 
-            # RiskEngine judges against RiskPolicy.total_capital, which is a
-            # configured policy figure, not the cash the durable book actually
-            # holds. An approved allocation the book cannot fund would reserve
-            # capital, execute, and only then fail inside apply_confirmed as
-            # INSUFFICIENT_CASH - halting the runtime with an unresolved
-            # journal entry and INDETERMINATE capital. Checking it here turns
-            # that into an ordinary admission refusal that leaves no
-            # reservation and no admission behind, and gives capital
-            # exhaustion its own reason code instead of letting it surface as
-            # malformed input.
-            #
-            # The bound is fee-inclusive because the approved allocation is:
-            # settlement debits notional + fee, and the BUY path sizes the
-            # fill so that notional + fee never exceeds the approval. So
-            # reserving the approval reserves the whole economic requirement.
-            #
-            # The request's own reservation is excluded from the funding
-            # measurement, because re-evaluating a request must not be able to
-            # defund it: without the exclusion a request admitted once near the
-            # durable bound would refuse itself on its next evaluation, having
-            # been charged for capital it already holds. It still reserves at
-            # most once - `reserve` returns the identical existing entry rather
-            # than adding a second - and every other request's reservation
-            # continues to encumber this one's capital.
-            try:
-                free_capital = self._durable_free_quote_capital(
-                    exclude=request.request_id
-                )
-            except Exception as exc:
-                self._record_error(phase="durable_capital", error=exc, request=request)
-                return {"approved": False, "reason": "DURABLE_CAPITAL_STATE_UNAVAILABLE",
-                        "status": "BLOCK_RECOVERY_REQUIRED"}
+    def _risk_buy_reserve(
+        self,
+        request: ExecutionRequest,
+        canonical: Any,
+    ) -> dict[str, Any] | _Continue:
+        """New-risk BUY: the durable book must fund the approval; then reserve it (the last reject-capable step)."""
 
-            if (
-                free_capital is not None
-                and canonical.approved_allocation > free_capital
-            ):
-                return {
-                    "approved": False,
-                    "reason": "INSUFFICIENT_DURABLE_CAPITAL",
-                    "details": {
-                        "approved_allocation": format(
-                            canonical.approved_allocation, "f"
-                        ),
-                        "available_quote_capital": format(free_capital, "f"),
-                    },
-                }
+        # RiskEngine judges against RiskPolicy.total_capital, which is a
+        # configured policy figure, not the cash the durable book actually
+        # holds. An approved allocation the book cannot fund would reserve
+        # capital, execute, and only then fail inside apply_confirmed as
+        # INSUFFICIENT_CASH - halting the runtime with an unresolved
+        # journal entry and INDETERMINATE capital. Checking it here turns
+        # that into an ordinary admission refusal that leaves no
+        # reservation and no admission behind, and gives capital
+        # exhaustion its own reason code instead of letting it surface as
+        # malformed input.
+        #
+        # The bound is fee-inclusive because the approved allocation is:
+        # settlement debits notional + fee, and the BUY path sizes the
+        # fill so that notional + fee never exceeds the approval. So
+        # reserving the approval reserves the whole economic requirement.
+        #
+        # The request's own reservation is excluded from the funding
+        # measurement, because re-evaluating a request must not be able to
+        # defund it: without the exclusion a request admitted once near the
+        # durable bound would refuse itself on its next evaluation, having
+        # been charged for capital it already holds. It still reserves at
+        # most once - `reserve` returns the identical existing entry rather
+        # than adding a second - and every other request's reservation
+        # continues to encumber this one's capital.
+        try:
+            free_capital = self._durable_free_quote_capital(
+                exclude=request.request_id
+            )
+        except Exception as exc:
+            self._record_error(phase="durable_capital", error=exc, request=request)
+            return {"approved": False, "reason": "DURABLE_CAPITAL_STATE_UNAVAILABLE",
+                    "status": "BLOCK_RECOVERY_REQUIRED"}
 
-            try:
-                reservation = self.reservation_ledger.reserve(
-                    request.request_id, request.request_id, canonical.approved_allocation,
-                )
-                # F-3: admission is granted only against live encumbrance.
-                # reserve() returns a RESERVED record or raises; this keeps
-                # that contract structurally enforced here rather than
-                # assumed.
-                if reservation.status is not ReservationStatus.RESERVED:
-                    raise ValueError("reservation is not RESERVED")
-            except Exception as exc:
-                self._record_error(phase="capital_reservation", error=exc, request=request)
-                return {"approved": False, "reason": "CAPITAL_RESERVATION_FAILED",
-                        "status": "BLOCK_RECOVERY_REQUIRED"}
+        if (
+            free_capital is not None
+            and canonical.approved_allocation > free_capital
+        ):
+            return {
+                "approved": False,
+                "reason": "INSUFFICIENT_DURABLE_CAPITAL",
+                "details": {
+                    "approved_allocation": format(
+                        canonical.approved_allocation, "f"
+                    ),
+                    "available_quote_capital": format(free_capital, "f"),
+                },
+            }
 
-        # The single write of the canonical allocation, made only once every
-        # reject-capable gate has passed. It is the engine's own Decimal, not
-        # a re-derived one, and the admission token is sealed around it below.
-        request.approved_quote_allocation = canonical.approved_allocation
-        self._risk_admissions[request.request_id] = self._risk_admission_key(request)
+        try:
+            # checked not None/ready by _risk_preconditions (typing only)
+            reservation = cast(Any, self.reservation_ledger).reserve(
+                request.request_id, request.request_id, canonical.approved_allocation,
+            )
+            # F-3: admission is granted only against live encumbrance.
+            # reserve() returns a RESERVED record or raises; this keeps
+            # that contract structurally enforced here rather than
+            # assumed.
+            if reservation.status is not ReservationStatus.RESERVED:
+                raise ValueError("reservation is not RESERVED")
+        except Exception as exc:
+            self._record_error(phase="capital_reservation", error=exc, request=request)
+            return {"approved": False, "reason": "CAPITAL_RESERVATION_FAILED",
+                    "status": "BLOCK_RECOVERY_REQUIRED"}
 
-        return {
-            "approved": True,
-            "reason": "RISK_APPROVED",
-            # Block 5D: recorded here so it reaches the RISK_APPROVED audit
-            # event through the existing details pass-through, alongside the
-            # fill-time evidence _execute_paper_buy/_execute_paper_sell write
-            # onto result.data.
-            "details": {
-                "instrument_rules_digest": instrument_rules.digest,
-                "instrument_rules_source_version": instrument_rules.source_version,
-            },
-        }
+        return _CONTINUE
 
     def _can_open_position(
         self,
@@ -3597,6 +4409,7 @@ class ExecutionManager:
             str(Decimal(str(request.confidence))),
             request.risk,
             str(bool(request.reduce_only)),
+            request.position_side,   # Task 026
             rules.digest if rules is not None else "NO_INSTRUMENT_RULES",
             request.mode,
         )
@@ -3789,7 +4602,7 @@ class ExecutionManager:
             if self.reservation_ledger is not None
             else None
         )
-        reservation_required = request.action == "BUY" and not request.reduce_only
+        reservation_required = opens_risk(request.action, request.position_side) and not request.reduce_only
         if reservation_required and (
             reservation is None or reservation.status.value != "RESERVED"
         ):
@@ -3851,7 +4664,7 @@ class ExecutionManager:
                 reservation_confirmed=True,
                 expected_position_version=expected_version,
             )
-            if evidence.action == "SELL" and not finalized["replayed"]:
+            if reduces_risk(evidence.action, evidence.position_side) and not finalized["replayed"]:   # Task 026
                 self._record_realized_risk_accounting(
                     request=request,
                     evidence=evidence,
@@ -4186,7 +4999,7 @@ class ExecutionManager:
         if position is None:
             event = "CLOSE"
 
-        elif action == "SELL":
+        elif reduces_risk(action, request.position_side):   # Task 026: a cover is a BUY
             event = "REDUCE"
 
         else:
@@ -4267,6 +5080,17 @@ class ExecutionManager:
         if not self._has_risk_admission(request):
             return self.reject(reason="CANONICAL_RISK_ADMISSION_MISSING", request=request)
 
+        # Shadow fill model (S2, owner approval 2026-10-02): with a provider the
+        # fill is priced against the live order book; no price means REJECT,
+        # never a fallback to the last price. Without a provider this is the
+        # historical PAPER fill, byte-identical.
+        if getattr(self, "paper_fill_provider", None) is not None:
+            filled_price = self._shadow_book_fill_price(request)
+            if filled_price is None:
+                return self.reject(reason="SHADOW_BOOK_PRICE_UNAVAILABLE", request=request)
+        else:
+            filled_price = self._paper_fill_price(request)
+
         execution_id = str(
             uuid.uuid4()
         )
@@ -4289,7 +5113,8 @@ class ExecutionManager:
             execution_id=execution_id,
             symbol=request.symbol,
             action=request.action,
-            filled_price=request.price,
+            position_side=request.position_side,   # Task 026
+            filled_price=filled_price,
             filled_amount=0.0,
             mode=self.MODE_PAPER,
             data={
@@ -4313,13 +5138,15 @@ class ExecutionManager:
             provenance_ref=f"transaction-journal:{request.request_id}",
         )
 
-        if request.action == "BUY":
+        # Task 026: the opening executor sizes from the approved allocation and mints the position; the
+        # reducing one sizes from the held position. A short opens with a SELL and covers with a BUY.
+        if opens_risk(request.action, request.position_side):
             self._execute_paper_buy(
                 request=request,
                 result=result,
             )
 
-        elif request.action == "SELL":
+        elif reduces_risk(request.action, request.position_side):
             self._execute_paper_sell(
                 request=request,
                 result=result,
@@ -4451,6 +5278,67 @@ class ExecutionManager:
         never exceed what risk approved. See ``_resolve_base_fill``.
         """
 
+        prepared = self._paper_buy_preflight(
+            request=request,
+            result=result,
+        )
+
+        if prepared is None:
+            return
+
+        approved, instrument_rules = prepared
+
+        # Fill-evidence seam. No paper execution adapter is configured in
+        # this runtime, so this reports nothing and the fill is derived
+        # from the request price below. PaperTrader is NOT consulted here:
+        # it is a passive mirror of the durable authority (see
+        # _mirror_paper_book) and can neither report a fill nor refuse one.
+        paper_trade = self._paper_open_trade(
+            request=request,
+            allocation=float(approved),
+        )
+
+        if paper_trade is not None:
+            result.data["paper_trade"] = paper_trade
+
+            self._hydrate_result_from_component(
+                result=result,
+                payload=paper_trade,
+            )
+
+        if not result.order_id:
+            result.order_id = "paper-order:" + str(
+                uuid.uuid5(uuid.NAMESPACE_URL, str(request.request_id))
+            )
+
+        quote_notional = self._paper_buy_settle_fill(
+            result=result,
+            approved=approved,
+            instrument_rules=instrument_rules,
+        )
+
+        if quote_notional is None:
+            return
+
+        self._paper_buy_register_position(
+            request=request,
+            result=result,
+            approved=approved,
+            quote_notional=quote_notional,
+        )
+
+    def _paper_buy_preflight(
+        self,
+        *,
+        request: ExecutionRequest,
+        result: ExecutionResult,
+    ) -> tuple[Decimal, Any] | None:
+        """Checks before the side-effect boundary (T-0003 split of _execute_paper_buy).
+
+        Returns (approved allocation, instrument rules), or None after marking
+        the result failed - exactly where the original body returned.
+        """
+
         approved = self._admitted_quote_allocation(
             request
         )
@@ -4465,7 +5353,7 @@ class ExecutionManager:
                 message="Request carries no canonical approved allocation",
                 error_code="CANONICAL_ALLOCATION_MISSING",
             )
-            return
+            return None
 
         result.requested_quote_allocation = approved
         result.data["approved_quote_allocation"] = format(approved, "f")
@@ -4488,7 +5376,7 @@ class ExecutionManager:
                 message="No instrument rules for symbol",
                 error_code="INSTRUMENT_RULES_UNAVAILABLE",
             )
-            return
+            return None
 
         result.data["instrument_rules_digest"] = instrument_rules.digest
         result.data["instrument_rules_source"] = instrument_rules.source
@@ -4516,37 +5404,29 @@ class ExecutionManager:
             preflight_position = self.portfolio_foundation.snapshot()["positions"].get(request.symbol)
             if preflight_position is None:
                 try:
-                    mint_long_position_id(request.symbol, request.request_id)
+                    mint_position_id(request.symbol, request.request_id, request.position_side)
                 except ValueError:
                     self._mark_result_failure(
                         result=result,
                         message="symbol/request_id do not produce a valid composite position identity",
                         error_code="INVALID_POSITION_IDENTITY",
                     )
-                    return
+                    return None
 
-        # Fill-evidence seam. No paper execution adapter is configured in
-        # this runtime, so this reports nothing and the fill is derived
-        # from the request price below. PaperTrader is NOT consulted here:
-        # it is a passive mirror of the durable authority (see
-        # _mirror_paper_book) and can neither report a fill nor refuse one.
-        paper_trade = self._paper_open_trade(
-            request=request,
-            allocation=float(approved),
-        )
+        return approved, instrument_rules
 
-        if paper_trade is not None:
-            result.data["paper_trade"] = paper_trade
+    def _paper_buy_settle_fill(
+        self,
+        *,
+        result: ExecutionResult,
+        approved: Decimal,
+        instrument_rules: Any,
+    ) -> Decimal | None:
+        """Size the fill, settle the fee and re-assert venue minimums (T-0003 split).
 
-            self._hydrate_result_from_component(
-                result=result,
-                payload=paper_trade,
-            )
-
-        if not result.order_id:
-            result.order_id = "paper-order:" + str(
-                uuid.uuid5(uuid.NAMESPACE_URL, str(request.request_id))
-            )
+        Returns the executed quote notional, or None after marking the result
+        failed - exactly where the original body returned.
+        """
 
         # Sized after hydration, so the price and fee the executing component
         # actually reported are the ones the fill is derived from - not the
@@ -4562,14 +5442,23 @@ class ExecutionManager:
                 message="Paper fill quantity semantics are invalid",
                 error_code="INVALID_FINANCIAL_QUANTITY",
             )
-            return
+            return None
+
+        # Registry v5.23: with no component-reported fee, paper charges the
+        # governed PAPER_FEE_RATE_PER_SIDE. The fee is sized from the
+        # allocation as rate*A/(1+rate), which equals rate*(A-fee) and so is
+        # never below the fee on the (step-rounded, smaller) actual notional.
+        ExecutionManager._apply_paper_fee_if_unreported(
+            result=result,
+            fee_amount=self._paper_buy_fee(approved),
+            quote_asset=instrument_rules.quote_asset,
+        )
 
         # Block 5E: only a fee this venue's quote asset can settle exactly is
         # ever allowed to reach durable settlement. A base-asset fee, a
         # third-asset fee, or an undeclared nonzero fee is refused here -
         # before `_finalize_durable_financial_state` - never inferred and
-        # never converted, because there is no FX or fee-rate policy
-        # anywhere in this repository.
+        # never converted. The only fee-rate policy is the paper rate above.
         try:
             normalized_fee = FeeNormalizer.normalize(
                 fee_amount=result.fee_amount,
@@ -4590,7 +5479,7 @@ class ExecutionManager:
                     "base_asset": instrument_rules.base_asset,
                 },
             )
-            return
+            return None
 
         fee_amount = normalized_fee.quote_amount
 
@@ -4613,7 +5502,7 @@ class ExecutionManager:
                     "quantity_step": format(instrument_rules.quantity_step, "f"),
                 },
             )
-            return
+            return None
 
         base_quantity, quote_notional = fill
 
@@ -4639,7 +5528,7 @@ class ExecutionManager:
                     "min_quantity": format(instrument_rules.min_quantity, "f"),
                 },
             )
-            return
+            return None
 
         if quote_notional < instrument_rules.min_notional:
             self._mark_result_failure(
@@ -4652,7 +5541,7 @@ class ExecutionManager:
                     "min_notional": format(instrument_rules.min_notional, "f"),
                 },
             )
-            return
+            return None
 
         result.filled_base_quantity = base_quantity
         result.filled_quote_notional = quote_notional
@@ -4670,6 +5559,18 @@ class ExecutionManager:
         result.data["unallocated_quote_remainder"] = format(
             approved - quote_notional - fee_amount, "f"
         )
+
+        return quote_notional
+
+    def _paper_buy_register_position(
+        self,
+        *,
+        request: ExecutionRequest,
+        result: ExecutionResult,
+        approved: Decimal,
+        quote_notional: Decimal,
+    ) -> None:
+        """Register the executed position and publish TRADE_OPENED (T-0003 split)."""
 
         # The compatibility position path is told what was executed, not what
         # was approved. They differ by the sub-quantum remainder, and a
@@ -4700,9 +5601,17 @@ class ExecutionManager:
             existing = self.portfolio_foundation.snapshot()["positions"].get(request.symbol)
             result.position_id = (
                 existing["position_id"] if existing is not None
-                else mint_long_position_id(request.symbol, request.request_id)
+                else mint_position_id(request.symbol, request.request_id, request.position_side)
             )
             position = None
+            if self.position_risk_buckets is not None:
+                # Recorded before the durable commit: an id whose open never
+                # commits is simply never looked up. A failure here never
+                # blocks the trade; the position then reads as UNKNOWN.
+                try:
+                    self.position_risk_buckets.record(result.position_id, str(request.risk or ""))
+                except Exception:
+                    logger.warning("Position risk bucket not recorded; position reads as UNKNOWN", exc_info=True)
         else:
             # Side-effect boundary for the foundation-less configuration:
             # PositionController is mutated here and there is no durable
@@ -5268,6 +6177,13 @@ class ExecutionManager:
                 )
                 return
 
+            # Registry v5.23: paper exit fee on the exact exit notional.
+            ExecutionManager._apply_paper_fee_if_unreported(
+                result=result,
+                fee_amount=result.filled_quote_notional * self.paper_fee_rate,
+                quote_asset=instrument_rules.quote_asset,
+            )
+
             try:
                 normalized_fee = FeeNormalizer.normalize(
                     fee_amount=result.fee_amount,
@@ -5743,6 +6659,32 @@ class ExecutionManager:
                 result,
                 self.MAX_HISTORY,
             )
+
+    def _paper_buy_fee(self, allocation: Decimal) -> Decimal:
+        """The paper BUY fee for an allocation: ceil8(A*r/(1+r)) (registry v5.23)."""
+
+        rate = self.paper_fee_rate
+        if rate == 0:
+            return Decimal("0")
+        return (Decimal(allocation) * rate / (1 + rate)).quantize(PAPER_FEE_QUANTUM, rounding=ROUND_UP)
+
+    @staticmethod
+    def _apply_paper_fee_if_unreported(*, result: Any, fee_amount: Decimal, quote_asset: str) -> None:
+        """Charge the paper fee unless an executing component reported one.
+
+        Rounded up to 8 decimals so the paper fee never under-charges. Only
+        the paper paths call this; the fee is in the venue quote asset, the
+        one currency FeeNormalizer settles.
+        """
+
+        reported = result.fee_amount
+        if reported is not None and Decimal(str(reported)) != 0:
+            return
+        if fee_amount == 0:
+            return
+        result.fee_amount = Decimal(fee_amount).quantize(PAPER_FEE_QUANTUM, rounding=ROUND_UP)
+        result.fee = float(result.fee_amount)
+        result.fee_currency = quote_asset
 
     @staticmethod
     def _hydrate_result_from_component(
@@ -6917,11 +7859,9 @@ class ExecutionManager:
         replacing audit persistence, execution routing, risk,
         idempotency, or result handling.
 
-        The v31.2 policy is observational:
-        - mark audit runtime as degraded
-        - retain incident details
-        - expose state through health() and status()
-        - do not yet halt execution
+        The v31.2 policy marks the runtime degraded and keeps the incident.
+        Since Phase-2 A3 a non-HEALTHY audit persistence state blocks new
+        risk (BUY) in ``_risk_preconditions``; reduce-only exits continue.
         """
 
         request_id = str(
@@ -6977,6 +7917,23 @@ class ExecutionManager:
             self.last_audit_failure = dict(
                 failure
             )
+
+    def _close_experiment_if_unrecorded(
+        self,
+        event_id: str | None,
+        approval_details: Any,
+    ) -> None:
+        """registry v5.01 EXP-001: the sample cap is restored from RISK_APPROVED
+        events at startup, so an experiment admission whose event could not be
+        recorded closes the experiment for this process (fail-closed)."""
+
+        if (
+            event_id is None
+            and isinstance(approval_details, Mapping)
+            and approval_details.get("experiment_id")
+            and self.risk_engine is not None
+        ):
+            self.risk_engine.close_experiment("AUDIT_WRITE_FAILED")
 
     def _write_audit_event(
         self,
@@ -7172,6 +8129,7 @@ class ExecutionManager:
                 and not self.execution_halted
                 and not self.recovery_required
                 and self.audit_runtime_state == "HEALTHY"
+                and self.audit_persistence_state() in {"HEALTHY", "DISABLED"}
                 and not (
                     self.mode == self.MODE_LIVE
                     and not self.live_execution_enabled
@@ -7193,6 +8151,9 @@ class ExecutionManager:
                     "audit_runtime_state": (
                         self.audit_runtime_state
                     ),
+                    "audit_persistence_state": (
+                        self.audit_persistence_state()
+                    ),
                     "execution_halted": (
                         self.execution_halted
                     ),
@@ -7204,6 +8165,9 @@ class ExecutionManager:
                     ),
                     "audit_incident_count": (
                         self.audit_incident_count
+                    ),
+                    "policy_manifest_block": getattr(
+                        self, "policy_manifest_block", None
                     ),
                     "last_audit_failure": (
                         dict(
@@ -7232,6 +8196,17 @@ class ExecutionManager:
     def status(self) -> dict[str, Any]:
         with self._lock:
             return {
+                # S1 re-audit R-2: a corrupt bucket sidecar is visible, not only logged.
+                "position_risk_buckets": {
+                    "attached": self.position_risk_buckets is not None,
+                    "corrupt": bool(getattr(self.position_risk_buckets, "corrupt", False)),
+                },
+                "unpriced_held_symbols": list(self.unpriced_held_symbols),
+                "order_lifecycle": {
+                    "observe": self.order_lifecycle_observe,
+                    "violations": len(self.order_lifecycle_violations),
+                    "latest": list(self.order_lifecycle_violations[-3:]),
+                },
                 "name": self.NAME,
                 "version": self.VERSION,
                 "mode": self.mode,
@@ -7243,6 +8218,9 @@ class ExecutionManager:
                     self.live_execution_enabled
                 ),
                 "operational_state": {
+                    "audit_persistence_state": (
+                        self.audit_persistence_state()
+                    ),
                     "audit_runtime_state": (
                         self.audit_runtime_state
                     ),
@@ -7257,6 +8235,9 @@ class ExecutionManager:
                     ),
                     "audit_incident_count": (
                         self.audit_incident_count
+                    ),
+                    "policy_manifest_block": getattr(
+                        self, "policy_manifest_block", None
                     ),
                     "last_audit_failure": (
                         dict(

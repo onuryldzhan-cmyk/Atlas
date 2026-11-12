@@ -55,6 +55,7 @@ import logging
 
 from datetime import UTC
 from datetime import datetime
+import json
 from pathlib import Path
 from typing import Any
 
@@ -104,8 +105,15 @@ class AtlasBrain:
         event_bus: Any | None = None,
         state_directory: str | Path | None = None,
         evidence_store: Any | None = None,
+        closed_positions_path: str | Path | None = None,
     ) -> None:
         self.event_bus = event_bus
+        # BRAIN-MEM-001: the durable closed-position archive the
+        # intelligence layer reads (never writes) to learn from its own
+        # trades. None keeps the historical no-learning behaviour.
+        self.closed_positions_path = (
+            None if closed_positions_path is None else Path(closed_positions_path)
+        )
         self.state = BrainState()
 
         # The research Evidence Store (ADR-0008), threaded to the
@@ -279,6 +287,12 @@ class AtlasBrain:
             self.intelligence = IntelligenceBrain(
                 config=self._intelligence_config(),
             )
+            # Audit F-1 fix switch (default OFF): set on this brain's own fusion instance.
+            fusion = getattr(self.intelligence, "agents", None)
+            if fusion is not None and getattr(self, "fusion_full_weight_denominator", False):
+                fusion.full_weight_denominator = True
+            # Task 027: FOREX hands the brain its short-entry check (None in crypto)
+            self.intelligence.short_entry_check = getattr(self, "short_entry_check", None)
 
             logger.info(
                 "Intelligence Brain connected",
@@ -317,7 +331,41 @@ class AtlasBrain:
         if self.evidence_store is not None:
             config["evidence_store"] = self.evidence_store
 
+        if self.closed_positions_path is not None:
+            config["closed_trades_reader"] = self._read_closed_positions
+
         return config or None
+
+    def _read_closed_positions(self) -> list[dict[str, Any]]:
+        """Read-only view of the archive; a missing file is an empty book, a bad line raises.
+
+        Re-read only when the file's size or mtime changes (L-2); a row
+        repeated with the same position_id is counted once (L-1).
+        """
+
+        path = self.closed_positions_path
+        if path is None or not path.exists():
+            return []
+        stat = path.stat()
+        key = (stat.st_mtime_ns, stat.st_size, stat.st_ino, stat.st_ctime_ns)  # audit A-5
+        cached = getattr(self, "_closed_cache", None)
+        if cached is not None and cached[0] == key:
+            return [dict(r) if isinstance(r, dict) else r for r in cached[1]]
+        records, seen = [], set()
+        with path.open("r", encoding="utf-8") as stream:
+            for line in stream:
+                line = line.strip()
+                if not line:
+                    continue
+                record = json.loads(line)
+                pid = record.get("position_id") if isinstance(record, dict) else None
+                if pid is not None:
+                    if pid in seen:
+                        continue
+                    seen.add(pid)
+                records.append(record)
+        self._closed_cache = (key, records)
+        return [dict(r) if isinstance(r, dict) else r for r in records]
 
     # =========================================================
     # OBSERVATION

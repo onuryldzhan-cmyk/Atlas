@@ -127,11 +127,17 @@ jobs:
       # effect of any complete full-suite run, so this plain invocation
       # produces the artifact here for free - and, more importantly, does the
       # same thing on the operator's machine, which is where the dashboard
-      # actually reads from. $LASTEXITCODE is checked explicitly, matching
-      # the compilation step above.
+      # actually reads from.
+      #
+      # continue-on-error lets the job proceed to the evaluation step below
+      # even when pytest exits non-zero; this step's own outcome (visible in
+      # the GitHub UI, unaffected by continue-on-error) still reports the raw
+      # pytest result, so a real failure is never hidden here - only the
+      # job's aggregate pass/fail verdict is deferred to the narrower check.
       - name: Run Atlas test suite
         id: tests
         shell: pwsh
+        continue-on-error: true
         run: |
           python -m pytest `
             -q `
@@ -139,6 +145,42 @@ jobs:
 
           if ($LASTEXITCODE -ne 0) {
             throw "Atlas test suite failed (pytest exit code $LASTEXITCODE)."
+          }
+
+      # CI build-criteria configuration for two known-accepted failures:
+      # - B2 GRANT-B2-PERMANENT-CLOSURE (registry v4.63,
+      #   governance/findings/ARCH-EDGE-001_ANCESTOR_PACKAGE_FORBIDDEN_EDGES.md):
+      #   two atlas_finance ancestor-package forbidden edges are a final,
+      #   permanent owner decision to stay open and RED forever, by design.
+      # - D5 (registry v4.97/v4.99): the REM-001 Gate 1 state-authority-map
+      #   drift-check test is preserved, unedited, as a historical artifact
+      #   per GOV-DRIFT-005's permanent specification loss and is expected to
+      #   stay red.
+      # This step does not touch either test, add a permitted_exceptions
+      # entry, or add any xfail/skip marker -
+      # tools/ci_check_known_accepted_failures.py reads the JUnit XML the run
+      # above just produced, independently re-derives B2's violation set, and
+      # matches D5's own stable failure message. The aggregate build is
+      # reported PASSING only when the suite's failing testcases are exactly
+      # {B2} and/or {D5}, and FAILING for anything else - a different test
+      # failing, an additional failure alongside a known one, either known
+      # case failing for a different reason than its own established one, or
+      # any additional or missing forbidden edge. See registry v4.90 (B2) and
+      # this change (D5) for the CI-policy decisions this step implements.
+      - name: Evaluate build status against known-accepted B2/D5 failures
+        if: always()
+        shell: pwsh
+        run: |
+          if ('${{ steps.tests.outcome }}' -eq 'success') {
+            Write-Host "Test suite passed with zero failures; no known-accepted-failure evaluation needed."
+            exit 0
+          }
+
+          python tools/ci_check_known_accepted_failures.py `
+            --junit-xml reports/observability/test_results.junit.xml
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Build failed: the test suite has a failure that is not one of the known, permanently/durably-accepted B2 (GRANT-B2-PERMANENT-CLOSURE, registry v4.63) or D5 (registry v4.97/v4.99) cases."
           }
 
       # Auditability only: makes each run's exact pass/fail breakdown, and
@@ -175,6 +217,11 @@ jobs:
         if: success()
         shell: pwsh
         run: |
+          $testSuiteLine = "Test suite:               PASS"
+          if ('${{ steps.tests.outcome }}' -ne 'success') {
+            $testSuiteLine = "Test suite:               PASS (known-accepted B2/D5 case(s), registry v4.63/v4.90/v4.97/v4.99)"
+          }
+
           Write-Host "======================================"
           Write-Host "ATLAS CI VALIDATION: PASS"
           Write-Host "======================================"
@@ -182,5 +229,5 @@ jobs:
           Write-Host "Locked dependency install: PASS"
           Write-Host "Dependency integrity:     PASS"
           Write-Host "Canonical compilation:    PASS"
-          Write-Host "Test suite:               PASS"
+          Write-Host $testSuiteLine
           Write-Host "======================================"

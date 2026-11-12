@@ -1,0 +1,13 @@
+{
+  "schema_version": "1",
+  "note": "Task 13 (multi-venue). One venue is configured. Venue adapters would sit BELOW ExecutionManager as transport only; routing never bypasses RiskEngine. Adding a venue is a governed proposal (6C).",
+  "venues": [
+    {"venue_id": "BINANCE", "provider": "Binance spot", "asset_classes": ["crypto spot"], "quote_assets": ["USDT"],
+     "rules_source": "config/instrument_rules.json (exchangeInfo, digest-sealed per symbol)",
+     "fees": "0.1% per side (estimate; venue tier not fetched)", "rate_limits": "public REST weight limits (not tracked in runtime)",
+     "trading_hours": "24/7", "order_submission": "NONE: PAPER only, live_authority=DENIED", "status": "ACTIVE_PAPER"}
+  ],
+  "routing": "single venue; no smart order routing",
+  "reconciliation": "Atlas state vs venue state: NOT APPLICABLE in PAPER (no venue orders); tools/reconcile_execution_authorities.py reconciles Atlas's internal authorities",
+  "aggregate_exposure": "per symbol across venues = per symbol today (one venue)"
+}

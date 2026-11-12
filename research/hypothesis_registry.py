@@ -43,6 +43,13 @@ default. A relative default would resolve against the process working
 directory and write into Atlas's live runtime state when run from the
 repository root. Research code never writes to ``memory_data/``, never
 touches the paper-trading book, and never constructs AtlasApplication.
+
+This module still has no default path. Owner decision 2026-10-09 (review
+R4-2): the *tools* layer pins one canonical file for registered strategy
+studies, ``tools/strategy_compare.canonical_registry()`` =
+``<state root>/research/hypotheses.json``, next to the daily research files
+the tools already write there. Those writes are made by tools/, through this
+module's own API, into the ``research/`` subfolder only.
 """
 
 from __future__ import annotations

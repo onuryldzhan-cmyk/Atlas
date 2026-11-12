@@ -21,7 +21,7 @@ classified `NON_CANONICAL / RETIRE_OR_QUARANTINE`.
 ## Evidence (static reachability, verified by AST import analysis)
 
 - `main.py` imports exactly one first-party symbol: `core.application.AtlasApplication`,
-  and constructs it once (`self.application = AtlasApplication(...)`, `main.py:345`).
+  and constructs it once (`self.application = AtlasApplication(...)`, `main.py:406`).
   No other file constructs `AtlasApplication`.
 - `web_app.py` has zero first-party imports at module scope; it constructs no
   application, brain, market loop, or execution manager of its own.
