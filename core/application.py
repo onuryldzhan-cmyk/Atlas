@@ -1000,6 +1000,7 @@ class AtlasApplication:
 
     # Task 028: an exit the guard cannot price for this many cycles in a row raises an alert (see the runner).
     PENDING_PRICE_ALERT_CYCLES = 3
+    PENDING_PRICE_ALERT_REPEAT_CYCLES = 60
 
     def _attach_forex_weekend_close(self) -> None:
         """FOREX only: the exit guard in ENFORCE with the STOP_OUT and WEEKEND_CLOSE rules, run once per cycle."""
@@ -1033,14 +1034,17 @@ class AtlasApplication:
                 if rows and rows[-1][4] > 0:
                     marks[symbol] = Mark(Decimal(str(rows[-1][4])), rows[-1][0] / 1000)
             outcomes = guard.run_once(marks)
-            try:
-                _alert_pending(cutoff, outcomes)
-            except Exception:
-                # review T028-F1: the exits above are already submitted; an alert failure is reported as such
-                logger.exception("pending-price alert failed; the exit guard's run is unaffected")
+            # review T028-F1: the exits above are already submitted; an alert failure is reported as such. Each
+            # alert has its own guard, so one failing never costs the other (audit T029-F6).
+            for name, alert in (("pending-price", _alert_pending), ("not-executed", _alert_not_executed)):
+                try:
+                    alert(cutoff, outcomes)
+                except Exception:
+                    logger.exception("%s alert failed; the exit guard's run is unaffected", name)
             return outcomes
 
         streaks: dict[str, int] = {}
+        failed_streaks: dict[str, int] = {}
 
         def _alert_pending(cutoff: datetime, outcomes: Any) -> None:
             # Task 028 (registry v5.111, review T023-F4): a position the guard cannot price is EXIT_PENDING_PRICE,
@@ -1059,7 +1063,14 @@ class AtlasApplication:
                 in_window = is_forex_pre_close(cutoff, WEEKEND_CLOSE_MINUTES) is not False
             except Exception:
                 in_window = True          # unsure: treated as inside the window, so the alert is not missed
-            alerted = sorted(s for s in pending if in_window or streaks[s] >= self.PENDING_PRICE_ALERT_CYCLES)
+            # Task 029 (review): outside the window the alert fires when the streak reaches the threshold and then
+            # once every PENDING_PRICE_ALERT_REPEAT_CYCLES cycles, so a position held over a weekend does not
+            # warn every minute
+            def due(streak: int) -> bool:
+                over = streak - self.PENDING_PRICE_ALERT_CYCLES
+                return over >= 0 and over % self.PENDING_PRICE_ALERT_REPEAT_CYCLES == 0
+
+            alerted = sorted(s for s in pending if in_window or due(streaks[s]))
             if not alerted:
                 return
             loop._increment_metric("exit_pending_price_alerts")
@@ -1069,6 +1080,27 @@ class AtlasApplication:
                 "symbols": alerted, "consecutive_cycles": {s: streaks[s] for s in alerted},
                 "in_close_out_window": in_window,
             })
+
+        def _alert_not_executed(cutoff: datetime, outcomes: Any) -> None:
+            # Task 029 (review R-2): an exit the guard submitted but ExecutionManager did not execute must be seen.
+            # It fires on the first failed cycle of a symbol and then once every PENDING_PRICE_ALERT_REPEAT_CYCLES
+            # cycles while it keeps failing (audit T029-F5), so a halted runtime does not alert every minute.
+            failed = {str(item.get("symbol")): str(item.get("execution_status")) for item in outcomes or ()
+                      if isinstance(item, dict) and item.get("outcome") == "SUBMITTED"
+                      and item.get("execution_status") != "PAPER_EXECUTED"}
+            for symbol in list(failed_streaks):
+                if symbol not in failed:
+                    del failed_streaks[symbol]
+            for symbol in failed:
+                failed_streaks[symbol] = failed_streaks.get(symbol, 0) + 1
+            alerted = {s: status for s, status in sorted(failed.items())
+                       if (failed_streaks[s] - 1) % self.PENDING_PRICE_ALERT_REPEAT_CYCLES == 0}
+            if not alerted:
+                return
+            loop._increment_metric("exit_not_executed_alerts")
+            logger.warning("Exit guard exits were not executed: %s", alerted)
+            loop.publish("EXIT_GUARD_EXIT_NOT_EXECUTED", {
+                "symbols": alerted, "consecutive_cycles": {s: failed_streaks[s] for s in alerted}})
 
         run.guard = guard          # read by core.policy_manifest: the runner must belong to this guard
         run.pending_streaks = streaks

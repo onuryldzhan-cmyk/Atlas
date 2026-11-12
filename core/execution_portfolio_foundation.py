@@ -673,7 +673,13 @@ class ExecutionPortfolioFoundation:
         candidate = dict(self._state)
         candidate["reserved_capital"] = format(_decimal(value, "reserved_capital"), "f")
         if self.available_capital(candidate) < 0:
-            raise ValueError("NEGATIVE_AVAILABLE_CAPITAL")
+            # Task 029 (registry v5.112, review R-1): a margin book may carry negative cash after a loss larger
+            # than the account. A reservation that does not grow must then still be accepted, or every remaining
+            # exit would fail in finalization and the positions would be trapped. New risk stays refused: its own
+            # settlement needs cash (INSUFFICIENT_CASH), and admission needs free capital.
+            grows = D(candidate["reserved_capital"]) > D(str(self._state["reserved_capital"]))
+            if book_leverage(candidate) == 1 or grows:
+                raise ValueError("NEGATIVE_AVAILABLE_CAPITAL")
         self.store.save(candidate); self._state = candidate
 
     def apply_confirmed(self, result: ExecutionResult, *, risk_authorized: bool,

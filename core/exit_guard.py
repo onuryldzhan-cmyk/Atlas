@@ -37,6 +37,19 @@ The request id is derived from the position identity (position_id +
 opened_at) and the rule id, so a repeated trigger - the next cycle, a
 retry, or a restart - is the same request and ExecutionManager's duplicate
 and terminal-result handling make it execute at most once.
+
+Task 029 (registry v5.112, review R-2): ExecutionManager also remembers a
+clean refusal (status REJECTED - nothing was executed) under that id, so the
+same id would be answered "rejected" for ever and one transient refusal (a
+stale quote, an audit hiccup) would disable that position's exit. After a
+REJECTED answer the guard therefore retries under ``<id>:retry:<minute>``
+(the minute of its own clock): a new id each minute, the same id within a
+minute. Only REJECTED is retried under a new id. An indeterminate answer
+(anything that is neither REJECTED nor an execution) pins the id it was given
+to: from then on that exit is only ever re-sent under that same id, so an
+order whose fate is unknown is never sent twice (audit T029-F2). A second
+close of the same position stays impossible: the position leaves the durable
+book with the first close, and a reduction can never exceed what is held.
 ============================================================
 """
 
@@ -153,6 +166,8 @@ class ExitIntent:
     base_quantity: Decimal | None = None
     price: Decimal | None = None
     request_id: str | None = None
+    # Task 029: the stable id (position identity + rule), without any retry suffix; not serialized
+    base_request_id: str | None = None
     # Full-exit quote amount on the durable book's own basis
     # (base_quantity x durable mark_price): ExecutionManager sizes a
     # reduction against that basis, so only this exact amount closes the
@@ -217,7 +232,11 @@ class ExitGuard:
         self._lock = threading.RLock()
         self.last_run: list[dict[str, Any]] = []
         self.stats = {"runs": 0, "triggered": 0, "pending_price": 0,
-                      "submitted": 0, "unavailable": 0}
+                      "submitted": 0, "unavailable": 0, "rejected": 0}
+        # Task 029: stable request ids ExecutionManager answered REJECTED (in memory; a restart re-learns it from
+        # the first duplicate answer, one cycle later)
+        self._rejected_ids: set[str] = set()
+        self._pinned_ids: dict[str, str] = {}   # base id -> the id an indeterminate answer was given to
 
     # =========================================================
     # EVALUATE (pure read)
@@ -347,7 +366,8 @@ class ExitGuard:
                     symbol, EXIT_TRIGGERED, position_id,
                     rule_id=rule.rule_id, priority=rule.priority,
                     base_quantity=base, price=price,
-                    request_id=self._request_id(position, rule),
+                    request_id=self._retry_id(self._request_id(position, rule), now),
+                    base_request_id=self._request_id(position, rule),
                     exposure_quote=base * durable_mark,
                     detail={**detail, **({"position_side": "SHORT"} if short else {})},
                 )
@@ -384,6 +404,15 @@ class ExitGuard:
         )
         digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()[:24]
         return f"exitguard:{rule.priority.lower()}:{digest}"
+
+    def _retry_id(self, base: str, now: float) -> str:
+        """``base`` until ExecutionManager has answered it REJECTED; then a new id per minute (Task 029)."""
+        with self._lock:
+            pinned = self._pinned_ids.get(base)
+            rejected = base in self._rejected_ids
+        if pinned is not None:
+            return pinned   # its fate is unknown: only ever the same id again
+        return f"{base}:retry:{int(float(now) // 60)}" if rejected else base
 
     # =========================================================
     # RUN
@@ -457,6 +486,8 @@ class ExitGuard:
         except Exception as exc:
             with self._lock:
                 self.stats["unavailable"] += 1
+                if intent.base_request_id:   # a raised submission is indeterminate too: never a new id after it
+                    self._pinned_ids.setdefault(intent.base_request_id, intent.request_id)
             logger.exception("ExitGuard submission failed for %s", intent.symbol)
             return {"outcome": EXECUTION_UNAVAILABLE, "error_type": type(exc).__name__}
 
@@ -464,6 +495,17 @@ class ExitGuard:
             self.stats["submitted"] += 1
 
         status = result.get("status") if isinstance(result, Mapping) else None
+        if status == "REJECTED" and intent.base_request_id:
+            # Task 029: a clean refusal executed nothing; the next cycle retries under a fresh id
+            with self._lock:
+                self._rejected_ids.add(intent.base_request_id)
+                self.stats["rejected"] += 1
+            logger.warning("ExitGuard exit for %s was rejected (%s); it is retried next cycle",
+                           intent.symbol, result.get("reason"))
+        elif intent.base_request_id and status not in ("PAPER_EXECUTED", "EXECUTED"):
+            # anything else that is not an execution is indeterminate: never a new id for this exit again
+            with self._lock:
+                self._pinned_ids.setdefault(intent.base_request_id, intent.request_id)
         return {"outcome": SUBMITTED, "execution_status": status,
                 "execution_result": dict(result) if isinstance(result, Mapping) else None}
 
