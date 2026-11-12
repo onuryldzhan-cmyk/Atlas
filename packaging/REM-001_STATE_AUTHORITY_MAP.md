@@ -19,10 +19,10 @@ Command: `python -m tools.build_rem001_gate1_maps state --write`
 
 | field | value |
 | --- | --- |
-| generated_from_commit | `f17568280408c93c2c5177c5522392e16664dce2` |
-| generated_from_tree | `0830800de7232c4a34f1e1d9833d54609fb19703` |
+| generated_from_commit | `49edbac13388229efb7cbdb8a4ded76fadc03b81` |
+| generated_from_tree | `e57aa425f1eb543c42d59b6ef75b3f523f95abaa` |
 | tracked_working_tree_clean | False |
-| modified_tracked_paths_at_generation | ['core/execution_portfolio_foundation.py', 'core/exit_guard.py', 'ore/application.py', 'packaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/REM-001_STATE_AUTHORITY_MAP.md'] |
+| modified_tracked_paths_at_generation | ['ackaging/REM-001_RUNTIME_CONSTRUCTION_PATHS.md', 'packaging/REM-001_STATE_AUTHORITY_MAP.md'] |
 
 ## What this artifact is, and what it is not
 
